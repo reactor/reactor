@@ -72,10 +72,10 @@ def customizePom(def pom, def gradleProject) {
         generatedPom.project {
             name = gradleProject.description
             description = gradleProject.description
-            url = 'https://github.com/SpringSource/reactor'
+            url = 'https://github.com/reactor/reactor'
             organization {
-                name = 'SpringSource'
-                url = 'http://springsource.org'
+                name = 'reactor'
+                url = 'http://github.com/reactor'
             }
             licenses {
                 license {
@@ -85,9 +85,9 @@ def customizePom(def pom, def gradleProject) {
                 }
             }
             scm {
-                url = 'https://github.com/SpringSource/reactor'
-                connection = 'scm:git:git://github.com/SpringSource/reactor'
-                developerConnection = 'scm:git:git://github.com/SpringSource/reactor'
+                url = 'https://github.com/reactor/reactor'
+                connection = 'scm:git:git://github.com/reactor/reactor'
+                developerConnection = 'scm:git:git://github.com/reactor/reactor'
             }
             developers {
                 developer {
