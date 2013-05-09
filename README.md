@@ -4,8 +4,6 @@
 
 ### Build instructions
 
-[![Build Status](https://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
-
 `Reactor` uses a Gradle-based build system. Building the code yourself should be a straightforward case of:
 
     git clone git@github.com:reactor/reactor.git
@@ -15,6 +13,12 @@
 This should cause the submodules to be compiled and the tests to be run. To install these artifacts to your local Maven repo, use the handly Gradle Maven plugin:
 
     ./gradlew install
+
+### Community / Support
+
+* [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
+* [Pivotal Tracker backlog](https://www.pivotaltracker.com/s/projects/823517)
+* [GitHub Issues](https://github.com/reactor/reactor/issues)
 
 ### Introduction
 
@@ -28,82 +32,80 @@ Three of the most foundational components in Reactor’s `reactor-core` module a
 
 ##### Selector Matching
 
-There are different kinds of `Selector`s for doing different kinds of matching. The simplest form is just to match one object with another. For example, a `Selector` created from a `String` "test" will match another `Selector` whose wrapped object is also a `String` "test" (in this case it's just like a `String.equals(String)`.
+There are different kinds of `Selector`s for doing different kinds of matching. The simplest form is just to match one object with another. For example, a `Selector` created from a `String` "parse" will match another `Selector` whose wrapped object is also a `String` "parse" (in this case it's just like a `String.equals(String)`.
 
 But a `Selector` can also match another `Selector` based on `Class.isAssignableFrom(Class<?>)`, regular expressions, URL templates, or the like. There are helper methods on the `Fn` abstract class to make creating these `Selector`s very easy in user code.
 
 Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
-	  import static reactor.Fn.$;
+    // This helper method is like jQuery’s.
+    // It creates a Selector instance so you don’t have
+    // to do new Selector(“parse”)
+    import static reactor.Fn.$;
 
-    // Call a helper method that creates a Reactor that is registered in the global registry.
-    Reactor r = R.create();
+    Selector parse = $(“parse”);
+    Reactor reactor = R.create();
 
-    // Wire an event to print out the data sent with the Event
-    r.on($("hello"), new Consumer<Event<String>>() {
-      public void accept(Event<String> ev) {
-        System.out.println("Greeting: " + ev.getData());
+    // Wire an event to handle the data sent with the Event
+    reactor.on(parse, new Consumer<Event<String>>() {
+      public void call(Event<String> ev) {
+        service.handleEvent(ev);
       }
     });
 
-    // Send an event to this Reactor and trigger all consumers that match the given Selector
-    r.notify($("hello"), Fn.event("Hello World!"));
+    // Send an event to this Reactor and trigger all actions
+    // that match the given Selector
+    reactor.notify(parse, Fn.event(incomingJsonData));
 
 In Java 8, the event wiring would become extremely succinct:
 
-    public class MyService {
-      public void handleEvent(Event<String> ev) {
-        // Do some work
+    // Use a POJO as an event handler
+    class Service {
+      public <T> void handleEvent(Event<T> ev) {
+        // handle the event data
       }
     }
 
     @Inject
-    MyService service;
+    Service service;
 
-    r.on($("test"), (ev) -> service::handleEvent);
+    // Use a method reference to create a Consumer<Event<T>>
+    reactor.on($("parse"), service::handleEvent);
 
-##### Flexible Consumer Assignment
+    // Notify consumers of the 'parse' topic that data is ready
+    // by passing a Supplier<Event<T>> in the form of a lambda
+    reactor.notify($("parse"), () -> {
+      slurpNextEvent()
+    });
 
-If you don't need to access the argument of the `Event` and just need to execute code when the event is triggered, then use the composition method on `Fn` to turn any `Runnable` or `Callable<?>` into a consumer:
-
-    Reactor r = R.create();
-
-    r.on($("test"), Fn.compose(new Runnable() {
-      public void run() {
-        System.out.println("Test is finished.");
-      }
-    }));
-
-    // Trigger all consumers that match the given Selector
-    r.notify($("test"));
 
 ##### Headers
 
-Events have optional associated metadata in the `headers` property. Events are meant to be stateless helpers that provide an consumer with an argument value and related metadata. If you need to communicate information to consumer components, like the IDs of other Reactors that have an interest in the outcome of the work done on this `Event`, then set that information in a header value.
+Events have optional associated metadata in the `headers` property. Events are meant to be stateless helpers that provide a consumer with an argument value and related metadata. If you need to communicate information to consumer components, like the IDs of other Reactors that have an interest in the outcome of the work done on this `Event`, then set that information in a header value.
 
-	// Just use the default selector instead of a specific one
-	r.on(new Consumer<Event<String>>() {
-      public void accept(Event<String> ev) {
-        String otherData = ev.getHeaders().get("x-custom-header");
-        // do something with this other data
-      }
-	});
+    // Just use the default selector instead of a specific one
+    r.on(new Consumer<Event<String>>() {
+        public void accept(Event<String> ev) {
+          String otherData = ev.getHeaders().get("x-custom-header");
+          // do something with this other data
+        }
+    });
 
-	Event<String> ev = Fn.event("Hello World!");
-	ev.getHeaders().set("x-custom-header", "ID_TO_ANOTHER_REACTOR");
-	r.notify(ev);
+    Event<String> ev = Fn.event("Hello World!");
+    ev.getHeaders().set("x-custom-header", "ID_TO_ANOTHER_REACTOR");
+    r.notify(ev);
 
 ### Registrations
 
 When assigning an `Consumer` to a `Reactor`, a `Registration` is provided to the caller to manage that assignment. `Registration`s can be cancelled, which removes them from the `Reactor` or, if you don't want to remove an consumer entirely but just want to pause its execution for a time, you can accept `pause()` and later `resume()` which will cause the `Dispatcher` to skip over that `Consumer` when finding `Consumer`s that match a given `Selector`.
 
-	Registration reg = r.on(#("test"), new Consumer<Event<?>>() { … });
+    Registration reg = r.on($("test"), new Consumer<Event<?>>() { … });
 
-	// pause this consumer so it's not executed for a time
-	reg.pause();
+    // pause this consumer so it's not executed for a time
+    reg.pause();
 
-	// later decide to resume it
-	reg.resume();
+    // later decide to resume it
+    reg.resume();
 
 ### Complete Extensibility
 
@@ -117,4 +119,4 @@ Reactor includes two kinds of built-in load-balancing for assigned consumers: RO
 
 ---
 
-`Rector` is [Apache 2.0 licensed](http://www.apache.org/licenses/LICENSE-2.0.html).
+Reactor is [Apache 2.0 licensed](http://www.apache.org/licenses/LICENSE-2.0.html).
