@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2011-2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+description = 'Reactor-based application framework for the JVM.'
+
+ext {
+	gradleVersion = '1.5'
+	gradleScriptDir = "${rootProject.projectDir}/gradle"
+
+	// Languages
+	groovyVersion = '2.1.3'
+
+	// Logging
+	slf4jVersion = '1.7.5'
+	logbackVersion = '1.0.11'
+
+	// Libraries
+	disruptorVersion = '3.0.1'
+	springVersion = '3.2.2.RELEASE'
+
+	// Testing
+	spockVersion = '0.7-groovy-2.0'
+}
+
+apply from: "$gradleScriptDir/setup.gradle"
+
+allprojects {
+	apply plugin: 'idea'
+
+	configurations.all {
+		exclude group: "commons-logging"
+		exclude module: "junit"
+	}
+
+	group = 'reactor'
+	repositories {
+		maven { url 'http://repo.springsource.org/libs-release' }
+		//maven { url 'http://repository.codehaus.org' }
+		//maven { url 'http://maven.java.net/content/repositories/snapshots' }
+		//maven { url 'http://oss.sonatype.org/content/repositories/releases' }
+		mavenCentral()
+		mavenLocal()
+	}
+}
+
+subprojects { subproject ->
+	apply plugin: 'eclipse'
+	apply plugin: 'java'
+	apply plugin: 'groovy'
+
+	sourceCompatibility = 6
+	targetCompatibility = 6
+
+	[compileJava, compileTestJava]*.options*.compilerArgs = ["-Xlint:none", "-g"]
+
+	/* compileGroovy {
+			 options.useAnt = true
+			 groovyOptions.useAnt = true
+			 groovyOptions.metaClass.optionMap = {
+					 [
+									 memoryMaximumSize: '384m',
+									 fork: true,
+									 includeJavaRuntime: false,
+									 verbose: false,
+									 encoding: 'UTF-8',
+									 failonerror: true,
+									 stacktrace: false,
+									 listfiles: false
+					 ]
+			 }
+	 }*/
+
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task groovydocJar(type: Jar) {
+		classifier = 'groovydoc'
+		from groovydoc
+	}
+
+	artifacts {
+		archives sourcesJar
+		archives groovydocJar
+	}
+
+	// dependencies that are common across all java projects
+	dependencies {
+		// Logging
+		compile "org.slf4j:slf4j-api:$slf4jVersion"
+
+		// JSR-305 annotations
+		compile("com.google.code.findbugs:jsr305:2.0.0", optional)
+
+		// Groovy
+		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
+
+		// Testing
+		testCompile "org.spockframework:spock-core:$spockVersion"
+		testCompile "org.hamcrest:hamcrest-library:1.3"
+		testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
+	}
+}
+
+project('reactor-core') {
+	description = 'Core Reactor components'
+	dependencies {
+
+		// Type-1 UUIDs
+		compile "com.eaio.uuid:uuid:3.2"
+
+		// NonBlockingHashMap
+		compile "com.github.stephenc.high-scale-lib:high-scale-lib:1.1.4"
+
+		// High-speed Dispatching
+		compile "com.lmax:disruptor:$disruptorVersion"
+	}
+}
+
+project('reactor-groovy') {
+	description = 'Reactor Groovy components'
+	dependencies {
+		compile project(':reactor-core')
+
+		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
+	}
+}
+
+project('reactor-spring') {
+	description = 'Reactor Spring components'
+	dependencies {
+		compile project(':reactor-core')
+
+		// Spring
+		compile "org.springframework:spring-beans:$springVersion"
+		compile "org.springframework:spring-context:$springVersion"
+		compile "org.springframework:spring-context-support:$springVersion"
+		compile "org.springframework:spring-core:$springVersion"
+		compile "org.springframework:spring-expression:$springVersion"
+
+		// Testing
+		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+}

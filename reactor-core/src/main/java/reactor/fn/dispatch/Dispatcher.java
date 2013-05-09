@@ -1,0 +1,56 @@
+/*
+ * Copyright 2002-2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.
+ *
+ * See the License for the specific language governing permissions
+ * and limitations under the License.
+ */
+
+package reactor.fn.dispatch;
+
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.Lifecycle;
+
+/**
+ * Implementations of this interface provide a {@link Task} holder which the called can fill in with the details of the
+ * task execution it desires to have scheduled. Calling {@link reactor.fn.dispatch.Task#submit()} will cause the task to
+ * be submitted for execution using whatever method the implementation chooses to use.
+ *
+ * @author Jon Brisbin
+ */
+public interface Dispatcher extends Lifecycle {
+
+	/**
+	 * Get the {@link reactor.fn.ConsumerInvoker} currently in use.
+	 *
+	 * @return The {@link reactor.fn.ConsumerInvoker}. Cannot be null.
+	 */
+	ConsumerInvoker getConsumerInvoker();
+
+	/**
+	 * Set the {@link reactor.fn.ConsumerInvoker} currently in use.
+	 *
+	 * @param consumerInvoker The {@link reactor.fn.ConsumerInvoker} to use.
+	 * @return {@literal this}
+	 */
+	Dispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker);
+
+	/**
+	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of
+	 * consumers.
+	 *
+	 * @return A {@link Task} object, probably from a pool, used to hold the various parts of a dispatch event.
+	 */
+	<T> Task<T> nextTask();
+
+}

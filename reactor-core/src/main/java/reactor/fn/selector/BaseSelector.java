@@ -1,0 +1,119 @@
+/*
+ * Copyright 2002-2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied.
+ *
+ * See the License for the specific language governing permissions
+ * and limitations under the License.
+ */
+
+package reactor.fn.selector;
+
+import com.eaio.uuid.UUID;
+import reactor.fn.Selector;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * {@link reactor.fn.Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of
+ * the internal object to determine a match.
+ *
+ * @author Jon Brisbin
+ * @author Andy Wilkinson
+ */
+public class BaseSelector<T> implements Selector {
+
+	protected final UUID uuid = new UUID();
+	protected final T                 object;
+	protected final int               hashCode;
+	protected final boolean           comparable;
+	protected final Long              id;
+	protected       AtomicLong        usageCount;
+	protected       SortedSet<String> tags;
+
+	public BaseSelector(T object) {
+		this.object = object;
+		this.hashCode = object.hashCode();
+		this.comparable = object instanceof Comparable;
+		this.id = Math.abs(uuid.getTime() + uuid.getClockSeqAndNode());
+	}
+
+	/**
+	 * Keep track of how many times this selector has been accessed. Not everything will increment the usage count.
+	 *
+	 * @return An incrementing number for every time this method is called.
+	 */
+	public long getUsageCount() {
+		if (null == usageCount) {
+			usageCount = new AtomicLong();
+		}
+		return usageCount.incrementAndGet();
+	}
+
+	@Override
+	public Long getId() {
+		return id;
+	}
+
+	@Override
+	public T getObject() {
+		return object;
+	}
+
+	@Override
+	public Set<String> getTags() {
+		return (null == tags ? Collections.<String>emptySet() : tags);
+	}
+
+	@Override
+	public Selector setTags(String... tags) {
+		if (null == this.tags) {
+			this.tags = new TreeSet<String>();
+		} else {
+			this.tags.clear();
+		}
+		Collections.addAll(this.tags, tags);
+		return this;
+	}
+
+	@Override
+	public boolean matches(Selector other) {
+		if ((null == object && null != other) || !(other instanceof BaseSelector)) {
+			return false;
+		}
+		BaseSelector<?> s2 = (BaseSelector<?>) other;
+		return hashCode == s2.hashCode
+				|| object == s2.object
+				|| object.equals(s2.object);
+	}
+
+	@Override
+	protected Object clone() throws CloneNotSupportedException {
+		return new BaseSelector<T>(object);
+	}
+
+	@Override
+	public String toString() {
+		return "BaseSelector{" +
+				"object=" + object +
+				", id=" + id +
+				", uuid=" + uuid +
+				", usageCount=" + usageCount +
+				", tags=" + tags +
+				'}';
+	}
+
+}
