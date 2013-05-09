@@ -4,6 +4,8 @@
 
 ### Build instructions
 
+[![Build Status](https://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
+
 `Reactor` uses a Gradle-based build system. Building the code yourself should be a straightforward case of:
 
     git clone git@github.com:reactor/reactor.git
