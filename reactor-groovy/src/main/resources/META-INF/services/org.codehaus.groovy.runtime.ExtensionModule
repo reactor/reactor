@@ -19,4 +19,4 @@ moduleVersion=1.0
 extensionClasses=reactor.groovy.ext.ObservableExtensions,\
  reactor.groovy.ext.LinkableExtensions,\
  reactor.groovy.ext.PromiseExtensions
-staticExtensionClasses=reactor.groovy.ext.ReactorStaticExtensions
+#staticExtensionClasses=reactor.groovy.ext.ReactorStaticExtensions

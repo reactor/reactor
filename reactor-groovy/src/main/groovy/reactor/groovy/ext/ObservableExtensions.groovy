@@ -71,6 +71,14 @@ class ObservableExtensions {
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
+	                                        Selector selector,
+	                                        T obj = null) {
+		Event<T> toSend = coerce(obj)
+		selfType.notify selector, toSend
+		selfType
+	}
+
+	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 																					String selector,
 																					Closure supplier) {
 		Event<T> toSend = coerce(supplier)
