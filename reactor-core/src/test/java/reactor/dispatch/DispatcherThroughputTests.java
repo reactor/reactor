@@ -74,14 +74,14 @@ public class DispatcherThroughputTests {
 			// pre-select everything to ensure it's in the cache
 			reactor.getConsumerRegistry().select(sels[i]);
 		}
+	}
+
+	protected void preRun() {
+		start = System.currentTimeMillis();
 		latch = new CountDownLatch(selectors * iterations);
 	}
 
-	protected void startTimer() {
-		start = System.currentTimeMillis();
-	}
-
-	protected void stopTimer() {
+	protected void postRun() {
 		end = System.currentTimeMillis();
 		elapsed = (end - start);
 		throughput = Math.round((selectors * iterations) / (elapsed / 1000));
@@ -91,12 +91,12 @@ public class DispatcherThroughputTests {
 
 	protected void doTest() throws InterruptedException {
 		for (int j = 0; j < testRuns; j++) {
-			startTimer();
+			preRun();
 			for (int i = 0; i < selectors * iterations; i++) {
 				reactor.notify(sels[i % selectors], hello);
 			}
 			latch.await(30, TimeUnit.SECONDS);
-			stopTimer();
+			postRun();
 		}
 	}
 

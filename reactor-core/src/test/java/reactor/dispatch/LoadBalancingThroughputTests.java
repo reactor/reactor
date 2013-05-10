@@ -47,13 +47,13 @@ public class LoadBalancingThroughputTests extends DispatcherThroughputTests {
 	@Override
 	protected void doTest() throws InterruptedException {
 		for (int j = 0; j < testRuns; j++) {
-			startTimer();
+			preRun();
 			for (int i = 0; i < selectors * iterations; i++) {
 				int x = (i % selectors) % 10;
 				reactor.notify(sels[x], hello);
 			}
 			latch.await(30, TimeUnit.SECONDS);
-			stopTimer();
+			postRun();
 		}
 	}
 
