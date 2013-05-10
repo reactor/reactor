@@ -7,6 +7,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import reactor.fn.Registration;
 import reactor.fn.Registry;
@@ -21,7 +24,9 @@ import reactor.fn.selector.BaseSelector;
 public class CachingRegistry<T> implements Registry<T> {
 
 	private final    Random                                     random                = new Random();
-	private final    Object                                     monitor               = new Object();
+	private final    ReentrantReadWriteLock                     readWriteLock         = new ReentrantReadWriteLock(true);
+	private final    Lock                                       readLock              = readWriteLock.readLock();
+	private final    Lock                                       writeLock             = readWriteLock.writeLock();
 	private final    List<Registration<? extends T>>            registrations         = new ArrayList<Registration<? extends T>>();
 	private final    Map<Long, List<Registration<? extends T>>> registrationCache     = new HashMap<Long, List<Registration<? extends T>>>();
 
@@ -43,16 +48,22 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	public SelectionStrategy getSelectionStrategy() {
-		synchronized(monitor) {
+		readLock.lock();
+		try {
 			return selectionStrategy;
+		} finally {
+			readLock.unlock();
 		}
 	}
 
 	@Override
 	public Registry<T> setSelectionStrategy(SelectionStrategy selectionStrategy) {
-		synchronized(monitor) {
+		writeLock.lock();
+		try {
 			this.selectionStrategy = selectionStrategy;
 			refreshRequired = true;
+		} finally {
+			writeLock.unlock();
 		}
 		return this;
 	}
@@ -61,9 +72,12 @@ public class CachingRegistry<T> implements Registry<T> {
 	public <V extends T> Registration<V> register(Selector sel, V obj) {
 		CachableRegistration<V> reg = new CachableRegistration<V>(sel, obj);
 
-		synchronized (monitor) {
+		writeLock.lock();
+		try {
 			registrations.add(reg);
 			refreshRequired = true;
+		} finally {
+			writeLock.unlock();
 		}
 
 		return reg;
@@ -71,7 +85,9 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public boolean unregister(Selector sel) {
-		synchronized (monitor) {
+
+		writeLock.lock();
+		try {
 			if (registrations.isEmpty()) {
 				return false;
 			}
@@ -85,6 +101,8 @@ public class CachingRegistry<T> implements Registry<T> {
 			} else {
 				return false;
 			}
+		} finally {
+			writeLock.unlock();
 		}
 	}
 
@@ -92,12 +110,43 @@ public class CachingRegistry<T> implements Registry<T> {
 	public Iterable<Registration<? extends T>> select(Selector sel) {
 		List<Registration<? extends T>> matchingRegistrations;
 
-		synchronized (monitor) {
-			refreshCacheIfNecessary();
-			matchingRegistrations = registrationCache.get(sel.getId());
-			if (null == matchingRegistrations) {
-				matchingRegistrations = find(sel);
+		readLock.lock();
+
+		try {
+			if (refreshRequired) {
+				readLock.unlock();
+				writeLock.lock();
+				try {
+					if (refreshRequired) {
+						registrationCache.clear();
+						for (Registration<? extends T> reg : registrations) {
+							find(reg.getSelector());
+						}
+						refreshRequired = false;
+					}
+				} finally {
+					readLock.lock();
+					writeLock.unlock();
+				}
 			}
+
+			matchingRegistrations = registrationCache.get(sel.getId());
+
+			if (null == matchingRegistrations) {
+				readLock.unlock();
+				writeLock.lock();
+				try {
+					matchingRegistrations = registrationCache.get(sel.getId());
+					if (null == matchingRegistrations) {
+						matchingRegistrations = find(sel);
+					}
+				} finally {
+					readLock.lock();
+					writeLock.unlock();
+				}
+			}
+		} finally {
+			readLock.unlock();
 		}
 
 		switch (loadBalancingStrategy) {
@@ -119,25 +168,17 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {
-		synchronized (monitor) {
+		try {
+			readLock.lock();
 			return Collections.unmodifiableList(new ArrayList<Registration<? extends T>>(this.registrations)).iterator();
-		}
-	}
-
-	private void refreshCacheIfNecessary() {
-		synchronized (monitor) {
-			if (refreshRequired) {
-				registrationCache.clear();
-				for (Registration<? extends T> reg : registrations) {
-					find(reg.getSelector());
-				}
-				refreshRequired = false;
-			}
+		} finally {
+			readLock.unlock();
 		}
 	}
 
 	private List<Registration<? extends T>> find(final Selector sel) {
-		synchronized (monitor) {
+		try {
+			writeLock.lock();
 			if (registrations.isEmpty()) {
 				return Collections.emptyList();
 			}
@@ -146,6 +187,8 @@ public class CachingRegistry<T> implements Registry<T> {
 			registrationCache.put(sel.getId(), regs);
 
 			return regs;
+		} finally {
+			writeLock.unlock();
 		}
 	}
 
@@ -165,7 +208,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@SuppressWarnings("unchecked")
 	private void expire(Selector sel, long olderThan) {
-		synchronized (monitor) {
+		try {
+			writeLock.lock();
 			List<Registration<? extends T>> regsToRemove = new ArrayList<Registration<? extends T>>();
 			for (Registration<? extends T> reg : find(sel)) {
 				if (((CachableRegistration<?>) reg).getAge() > olderThan) {
@@ -174,6 +218,8 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 			registrations.removeAll(regsToRemove);
 			refreshRequired = true;
+		} finally {
+			writeLock.unlock();
 		}
 	}
 
