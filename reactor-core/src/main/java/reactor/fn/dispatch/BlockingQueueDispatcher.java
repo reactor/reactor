@@ -18,18 +18,20 @@
 
 package reactor.fn.dispatch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.fn.*;
-import reactor.support.QueueFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.fn.Consumer;
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.fn.Event;
+import reactor.fn.Lifecycle;
+import reactor.fn.Registration;
+import reactor.support.QueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -37,13 +39,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class BlockingQueueDispatcher implements Dispatcher, Linkable<Dispatcher> {
+public class BlockingQueueDispatcher implements Dispatcher {
 
 	private final static AtomicInteger THREAD_COUNT = new AtomicInteger();
 	private final static Logger        LOG          = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 
 	private final ThreadGroup      threadGroup       = new ThreadGroup("reactor-dispatcher");
-	private final List<Dispatcher> linkedDispatchers = Collections.synchronizedList(new ArrayList<Dispatcher>());
 	private final BlockingQueue<Task<?>> readyTasks;
 	private final TaskExecutor           taskExecutor;
 	private volatile ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
@@ -67,18 +68,6 @@ public class BlockingQueueDispatcher implements Dispatcher, Linkable<Dispatcher>
 	@Override
 	public BlockingQueueDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
 		this.invoker = consumerInvoker;
-		return this;
-	}
-
-	@Override
-	public BlockingQueueDispatcher link(Dispatcher dispatcher) {
-		linkedDispatchers.add(dispatcher);
-		return this;
-	}
-
-	@Override
-	public BlockingQueueDispatcher unlink(Dispatcher dispatcher) {
-		linkedDispatchers.remove(dispatcher);
 		return this;
 	}
 
@@ -144,48 +133,29 @@ public class BlockingQueueDispatcher implements Dispatcher, Linkable<Dispatcher>
 		@SuppressWarnings({"unchecked"})
 		public void run() {
 			Task<?> t = null;
-			BlockingQueueDispatcher victim = null;
 			while (true) {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
-					if (null == t) {
-						// No tasks to execute. Try to steal from another Dispatcher
+					if (null != t) {
 						try {
-							for (Dispatcher d : linkedDispatchers) {
-								if (d instanceof BlockingQueueDispatcher
-										&& null != (t = ((BlockingQueueDispatcher) d).steal())) {
-									// Stole a task, execute it.
-									victim = (BlockingQueueDispatcher) d;
-									break;
+							for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getSelector())) {
+								if (reg.isCancelled() || reg.isPaused()) {
+									continue;
+								}
+								reg.getSelector().setHeaders(t.getSelector(), t.getEvent());
+								invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
+								if (reg.isCancelAfterUse()) {
+									reg.cancel();
 								}
 							}
-						} catch (ConcurrentModificationException ignored) {
-							continue;
-						}
-					}
-					if (null == t) {
-						// Really no tasks to execute. Try again.
-						continue;
-					}
-
-					try {
-						for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getSelector())) {
-							if (reg.isCancelled() || reg.isPaused()) {
-								continue;
+							if (null != t.getCompletionConsumer()) {
+								invoker.invoke(t.getCompletionConsumer(), t.getConverter(), Void.TYPE, t.getEvent());
 							}
-							reg.getSelector().setHeaders(t.getSelector(), t.getEvent());
-							invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
-							if (reg.isCancelAfterUse()) {
-								reg.cancel();
+						} catch (Throwable x) {
+							LOG.error(x.getMessage(), x);
+							if (null != t.getErrorConsumer()) {
+								t.getErrorConsumer().accept(x);
 							}
-						}
-						if (null != t.getCompletionConsumer()) {
-							invoker.invoke(t.getCompletionConsumer(), t.getConverter(), Void.TYPE, t.getEvent());
-						}
-					} catch (Throwable x) {
-						LOG.error(x.getMessage(), x);
-						if (null != t.getErrorConsumer()) {
-							t.getErrorConsumer().accept(x);
 						}
 					}
 				} catch (InterruptedException e) {
@@ -195,15 +165,10 @@ public class BlockingQueueDispatcher implements Dispatcher, Linkable<Dispatcher>
 				} finally {
 					if (null != t) {
 						t.reset();
-						if (null != victim) {
-							victim.readyTasks.add(t);
-						} else {
-							readyTasks.add(t);
-						}
+						readyTasks.add(t);
 					}
 				}
 			}
 		}
 	}
-
 }

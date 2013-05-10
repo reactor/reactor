@@ -19,7 +19,7 @@ public class Context implements Lifecycle {
 
 	private final Dispatcher   rootDispatcher;
 	private final Dispatcher[] workerDispatchers;
-	private final Dispatcher   poolDispatcher;
+	private final Dispatcher   threadPoolDispatcher;
 	private final Dispatcher   syncDispatcher;
 	private final AtomicLong nextDispatcherCounter = new AtomicLong(Long.MIN_VALUE);
 
@@ -58,7 +58,7 @@ public class Context implements Lifecycle {
 		for (int i = 0; i < poolSize; i++) {
 			pooledDispatchers[i] = new BlockingQueueDispatcher("pool-worker", backlog);
 		}
-		poolDispatcher = new PooledDispatcher(pooledDispatchers);
+		threadPoolDispatcher = new ThreadPoolExecutorDispatcher(poolSize);
 
 		syncDispatcher = new SynchronousDispatcher();
 
@@ -72,7 +72,7 @@ public class Context implements Lifecycle {
 				dispatcher.destroy();
 			}
 			rootDispatcher.destroy();
-			poolDispatcher.destroy();
+			threadPoolDispatcher.destroy();
 			syncDispatcher.destroy();
 
 			alive = false;
@@ -88,7 +88,7 @@ public class Context implements Lifecycle {
 				dispatcher.stop();
 			}
 			rootDispatcher.stop();
-			poolDispatcher.stop();
+			threadPoolDispatcher.stop();
 			syncDispatcher.stop();
 			alive = false;
 		}
@@ -103,7 +103,7 @@ public class Context implements Lifecycle {
 				dispatcher.start();
 			}
 			rootDispatcher.start();
-			poolDispatcher.start();
+			threadPoolDispatcher.start();
 			syncDispatcher.start();
 
 			alive = true;
@@ -137,13 +137,13 @@ public class Context implements Lifecycle {
 	}
 
 	/**
-	 * Returns a pooled "worker" {@link Dispatcher}, which is a moderately high-speed Dispatcher designed for large numbers
+	 * Returns a thread pool-based {@link Dispatcher}, which is a moderately high-speed Dispatcher designed for large numbers
 	 * of batch or longer-running tasks.
 	 *
 	 * @return
 	 */
-	public static Dispatcher workerPoolDispatcher() {
-		return self.poolDispatcher;
+	public static Dispatcher threadPoolDispatcher() {
+		return self.threadPoolDispatcher;
 	}
 
 	/**

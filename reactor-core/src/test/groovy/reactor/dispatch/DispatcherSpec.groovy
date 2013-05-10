@@ -22,7 +22,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 		def sameThread = Context.synchronousDispatcher()
-		def diffThread = Context.workerPoolDispatcher()
+		def diffThread = Context.threadPoolDispatcher()
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>()
