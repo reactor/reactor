@@ -1,8 +1,11 @@
 .DS_Store
+bin
 build
-.eclipse
 .classpath
+.eclipse
 .gradle
+.project
+.settings
 out
 *.log
 *.i*
