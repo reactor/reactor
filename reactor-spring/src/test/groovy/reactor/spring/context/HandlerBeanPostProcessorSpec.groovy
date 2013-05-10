@@ -31,6 +31,7 @@ import static reactor.Fn.$
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class HandlerBeanPostProcessorSpec extends Specification {
 
@@ -78,7 +79,7 @@ class AnnotatedHandlerConfig {
 
 	@Bean
 	Reactor rootReactor() {
-		return R.create().setDispatcher(Context.synchronousDispatcher())
+		return R.create(true)
 	}
 
 	@Bean

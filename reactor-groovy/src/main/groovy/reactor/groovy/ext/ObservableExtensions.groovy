@@ -85,7 +85,7 @@ class ObservableExtensions {
 		selfType
 	}
 
-	static reactor.fn.Observable event(final reactor.fn.Observable selfType, final Map<String, ?> params) {
+	static reactor.fn.Observable notify(final reactor.fn.Observable selfType, final Map<String, ?> params) {
 		Object topic = params.remove ARG_TOPIC
 		Selector selector = topic instanceof Selector ? (Selector) topic : $(topic)
 

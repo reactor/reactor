@@ -2,7 +2,6 @@ package reactor.groovy
 
 import reactor.core.Context
 import reactor.core.R
-import reactor.core.R
 import reactor.fn.Event
 import spock.lang.Specification
 
@@ -13,7 +12,6 @@ import static reactor.Fn.$
 
 /**
  * @author Stephane Maldini (smaldini)
- * @date: 3/4/13
  */
 class GroovyReactorSpec extends Specification {
 
@@ -46,7 +44,7 @@ class GroovyReactorSpec extends Specification {
 			header = s.headers['someHeader']
 			latch.countDown()
 		}
-		r2.event for: 'test', data: 'Hello World!', someHeader: 'test'
+		r2.notify for: 'test', data: 'Hello World!', someHeader: 'test'
 
 		then:
 		latch.await(5, TimeUnit.SECONDS)
@@ -75,7 +73,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor enables Actor programming style"() {
 
 		given: "a simple reactor implementation"
-		def reactor = R.create().setDispatcher(Context.synchronousDispatcher())
+		def reactor = R.create(true)
 
 		when: 'Using simple arguments'
 		def data2 = ""
@@ -121,7 +119,7 @@ class GroovyReactorSpec extends Specification {
 		d1 = d2 = d3 = d4 = false
 
 		r2 | r4
-		r1.event for: 'test', data: 'bob'
+		r1.notify for: 'test', data: 'bob'
 
 		then: "r1,r2,r3 and r4 react"
 		d1 && d2 && d3 && d4
@@ -131,14 +129,14 @@ class GroovyReactorSpec extends Specification {
 		r1 - r2
 
 		and: "sending on r1"
-		r1.event for: 'test', data: 'bob'
+		r1.notify for: 'test', data: 'bob'
 
 		then: "only r1,r3 react"
 		d1 && d3 && !d2 && !d4
 
 		when: "sending on r2"
 		d1 = d2 = d3 = d4 = false
-		r2.event for: 'test', data: 'bob'
+		r2.notify for: 'test', data: 'bob'
 
 		then: "only r2,r4 react"
 		d2 && d4 && !d1 && !d3

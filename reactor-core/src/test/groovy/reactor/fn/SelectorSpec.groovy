@@ -19,6 +19,7 @@ import static reactor.fn.Registry.LoadBalancingStrategy.ROUND_ROBIN
 /**
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 class SelectorSpec extends Specification {
 
@@ -89,7 +90,7 @@ class SelectorSpec extends Specification {
 		given: "A UriTemplateSelector"
 		def sel1 = U("/path/to/{resource}")
 		def sel2 = $("/path/to/resourceId")
-		def r = R.create().setDispatcher(Context.synchronousDispatcher())
+		def r = R.create(true)
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
 			resourceId = ev.data
@@ -107,7 +108,7 @@ class SelectorSpec extends Specification {
 	def "SelectionStrategy can be load balanced"() {
 
 		given: "a set of consumers assigned to the same selector"
-		def r = R.create().setDispatcher(Context.synchronousDispatcher())
+		def r = R.create(true)
 		def latch = new CountDownLatch(4)
 		def called = []
 		def a1 = {
