@@ -19,6 +19,7 @@
 package reactor.fn.selector;
 
 import com.eaio.uuid.UUID;
+import reactor.fn.Event;
 import reactor.fn.Selector;
 
 import java.util.Collections;
@@ -94,13 +95,18 @@ public class BaseSelector<T> implements Selector {
 		if ((null == object && null != other) || !(other instanceof BaseSelector)) {
 			return false;
 		}
-		if(!other.getClass().equals(BaseSelector.class)){
+		if (!other.getClass().equals(BaseSelector.class)) {
 			return other.matches(this);
 		}
 		BaseSelector<?> s2 = (BaseSelector<?>) other;
 		return hashCode == s2.hashCode
 				|| object == s2.object
 				|| object.equals(s2.object);
+	}
+
+	@Override
+	public <T> Selector setHeaders(Selector other, Event<T> ev) {
+		return this;
 	}
 
 	@Override

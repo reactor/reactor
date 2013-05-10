@@ -76,6 +76,7 @@ public class SynchronousDispatcher implements Dispatcher {
 					if (reg.isCancelled() || reg.isPaused()) {
 						continue;
 					}
+					reg.getSelector().setHeaders(getSelector(), getEvent());
 					invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
 					if (reg.isCancelAfterUse()) {
 						reg.cancel();

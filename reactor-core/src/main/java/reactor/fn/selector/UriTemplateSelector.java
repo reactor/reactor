@@ -18,15 +18,17 @@
 
 package reactor.fn.selector;
 
+import reactor.fn.Event;
 import reactor.fn.Selector;
 import reactor.fn.support.UriTemplate;
+
+import java.util.Map;
 
 /**
  * A {@link reactor.fn.Selector} implementation based on the given string that is compiled into a {@link UriTemplate}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
- *
  * @see {@link UriTemplate}
  */
 public class UriTemplateSelector extends BaseSelector<UriTemplate> {
@@ -34,19 +36,32 @@ public class UriTemplateSelector extends BaseSelector<UriTemplate> {
 	/**
 	 * Create a selector from the given uri template string.
 	 *
-	 * @param urit The string to compile into a {@link UriTemplate}.
+	 * @param tmpl The string to compile into a {@link UriTemplate}.
 	 */
-	public UriTemplateSelector(String urit) {
-		super(new UriTemplate(urit));
+	public UriTemplateSelector(String tmpl) {
+		super(new UriTemplate(tmpl));
 	}
 
 	@Override
-	public boolean matches(Selector s2) {
-		if (!(s2.getObject() instanceof String)) {
+	public boolean matches(Selector other) {
+		if (!(other.getObject() instanceof String)) {
 			return false;
 		}
 
-		String path = (String) s2.getObject();
+		String path = (String) other.getObject();
 		return getObject().matches(path);
 	}
+
+	@Override
+	public <T> Selector setHeaders(Selector other, Event<T> ev) {
+		if (null == other.getObject() || !(other.getObject() instanceof String)) {
+			return this;
+		}
+		Map<String, String> headers = getObject().match((String) other.getObject());
+		if (null != headers && !headers.isEmpty()) {
+			ev.getHeaders().setAll(headers);
+		}
+		return this;
+	}
+
 }

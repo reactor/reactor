@@ -67,5 +67,15 @@ public interface Selector {
 	 */
 	boolean matches(Selector other);
 
+	/**
+	 * Match the given {@link Selector} and extract any applicable headers.
+	 *
+	 * @param other The {@link Selector} to match.
+	 * @param ev    The {@link Event} on which to set the headers.
+	 * @param <T>   The type of the data in the event.
+	 * @return {@literal this}
+	 */
+	<T> Selector setHeaders(Selector other, Event<T> ev);
+
 
 }

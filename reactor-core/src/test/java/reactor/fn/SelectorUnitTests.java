@@ -36,7 +36,7 @@ public class SelectorUnitTests {
 
 	static final Logger LOG        = LoggerFactory.getLogger(SelectorUnitTests.class);
 	static final int    selectors  = 500;
-	static final int    iterations = 2000;
+	static final int    iterations = 5000;
 
 	@Test
 	@SuppressWarnings({"unchecked", "rawtypes"})

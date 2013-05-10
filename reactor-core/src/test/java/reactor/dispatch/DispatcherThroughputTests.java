@@ -44,7 +44,7 @@ public class DispatcherThroughputTests {
 
 	static final Logger LOG        = LoggerFactory.getLogger(DispatcherThroughputTests.class);
 	static final int    selectors  = 500;
-	static final int    iterations = 2000;
+	static final int    iterations = 5000;
 	static final int    testRuns   = 3;
 
 	Reactor        reactor;

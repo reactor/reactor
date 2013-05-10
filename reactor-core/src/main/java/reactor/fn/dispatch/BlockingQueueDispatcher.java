@@ -173,6 +173,7 @@ public class BlockingQueueDispatcher implements Dispatcher, Linkable<Dispatcher>
 							if (reg.isCancelled() || reg.isPaused()) {
 								continue;
 							}
+							reg.getSelector().setHeaders(t.getSelector(), t.getEvent());
 							invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
 							if (reg.isCancelAfterUse()) {
 								reg.cancel();

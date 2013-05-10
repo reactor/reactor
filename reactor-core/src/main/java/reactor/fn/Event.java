@@ -46,7 +46,6 @@ public class Event<T> {
 	}
 
 	public Event(T data) {
-		this.headers = Headers.EMPTY_HEADERS;
 		this.data = data;
 	}
 
@@ -65,7 +64,7 @@ public class Event<T> {
 	 * @return
 	 */
 	public Headers getHeaders() {
-		if (headers == Headers.EMPTY_HEADERS) {
+		if (null == headers) {
 			headers = new Headers();
 		}
 		return headers;
@@ -117,9 +116,8 @@ public class Event<T> {
 	 * versions and the like.
 	 */
 	public static class Headers implements Serializable, Iterable<Map.Entry<String, String>> {
-		public static final  String  ORIGIN           = "x-reactor-origin";
-		public static final  Headers EMPTY_HEADERS    = new Headers(true, Collections.<String, String>emptyMap());
-		private static final long    serialVersionUID = 4984692586458514948L;
+		public static final  String ORIGIN           = "x-reactor-origin";
+		private static final long   serialVersionUID = 4984692586458514948L;
 		private final Map<String, String> headers;
 
 		private Headers(boolean sealed, Map<String, String> headers) {
@@ -144,6 +142,17 @@ public class Event<T> {
 		 */
 		public Headers() {
 			this(false, new ConcurrentHashMap<String, String>());
+		}
+
+		/**
+		 * Set all headers from the given {@link Map}.
+		 *
+		 * @param headers The map to use as the headers.
+		 * @return
+		 */
+		public Headers setAll(Map<String, String> headers) {
+			this.headers.putAll(headers);
+			return this;
 		}
 
 		/**

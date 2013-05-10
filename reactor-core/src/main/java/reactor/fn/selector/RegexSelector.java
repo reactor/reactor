@@ -18,13 +18,15 @@
 
 package reactor.fn.selector;
 
+import reactor.fn.Event;
 import reactor.fn.Selector;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A {@link reactor.fn.Selector} implementation based on the given regular expression. Parses it into a {@link Pattern} for
- * efficient matching against other {@link reactor.fn.Selector}s.
+ * A {@link reactor.fn.Selector} implementation based on the given regular expression. Parses it into a {@link Pattern}
+ * for efficient matching against other {@link reactor.fn.Selector}s.
  * <p/>
  * An example of creating a regex Selector would be:
  * <p/>
@@ -32,9 +34,7 @@ import java.util.regex.Pattern;
  * <p/>
  * This would match other selectors like:
  * <p/>
- * <code>Fn.$("event1")</code>
- * <code>Fn.$("event23")</code>
- * <code>Fn.$("event9")</code>
+ * <code>Fn.$("event1")</code> <code>Fn.$("event23")</code> <code>Fn.$("event9")</code>
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -46,7 +46,20 @@ public class RegexSelector extends BaseSelector<Pattern> {
 	}
 
 	@Override
-	public boolean matches(Selector s2) {
-		return getObject().matcher(s2.getObject().toString()).matches();
+	public boolean matches(Selector other) {
+		return getObject().matcher(other.getObject().toString()).matches();
 	}
+
+	@Override
+	public <T> RegexSelector setHeaders(Selector other, Event<T> ev) {
+		Matcher m = getObject().matcher(other.getObject().toString());
+		int groups = m.groupCount();
+		for (int i = 1; i <= groups; i++) {
+			String name = "group" + i;
+			String value = m.group(i);
+			ev.getHeaders().set(name, value);
+		}
+		return this;
+	}
+
 }
