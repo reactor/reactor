@@ -109,10 +109,10 @@ public class DispatcherThroughputTests {
 	}
 
 	@Test
-	public void testWorkerPoolDispatcher() throws InterruptedException {
-		reactor.setDispatcher(workerPoolDispatcher());
+	public void testThreadPoolDispatcher() throws InterruptedException {
+		reactor.setDispatcher(threadPoolDispatcher());
 
-		LOG.info("Starting worker pool test...");
+		LOG.info("Starting thread pool test...");
 		doTest();
 	}
 

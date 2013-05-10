@@ -133,8 +133,8 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 					case WORKER:
 						reactor.setDispatcher(Context.nextWorkerDispatcher());
 						break;
-					case WORKER_POOL:
-						reactor.setDispatcher(Context.workerPoolDispatcher());
+					case THREAD_POOL:
+						reactor.setDispatcher(Context.threadPoolDispatcher());
 						break;
 					case ROOT:
 						reactor.setDispatcher(Context.rootDispatcher());

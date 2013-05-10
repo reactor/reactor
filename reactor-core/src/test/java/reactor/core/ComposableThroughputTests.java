@@ -83,8 +83,8 @@ public class ComposableThroughputTests {
 	}
 
 	@Test
-	public void testWorkerPoolDispatcherComposableThroughput() throws InterruptedException {
-		doTest(Context.workerPoolDispatcher(), "worker pool");
+	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
+		doTest(Context.threadPoolDispatcher(), "thread pool");
 	}
 
 	@Test
