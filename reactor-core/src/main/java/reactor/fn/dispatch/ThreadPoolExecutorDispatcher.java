@@ -1,20 +1,17 @@
 package reactor.fn.dispatch;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.fn.*;
+import reactor.support.NamedDaemonThreadFactory;
 
-import reactor.fn.Consumer;
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
-import reactor.fn.Event;
-import reactor.fn.Lifecycle;
-import reactor.fn.Registration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
@@ -23,36 +20,51 @@ import reactor.fn.Registration;
  */
 public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 
-	private static final Logger LOG = LoggerFactory.getLogger(SynchronousDispatcher.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ThreadPoolExecutorDispatcher.class);
+	private final RingBuffer<RingBufferTask> ringBuffer;
+	private final Disruptor<RingBufferTask>  disruptor;
+	private final ExecutorService            executor;
+	private volatile ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
-	private static final AtomicInteger THREAD_COUNT = new AtomicInteger();
+	@SuppressWarnings("unchecked")
+	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
+		executor = Executors.newFixedThreadPool(poolSize + 1, new NamedDaemonThreadFactory("thread-pool-executor"));
 
-	private volatile ConsumerInvoker invoker  = new ConverterAwareConsumerInvoker();
-
-	private final ExecutorService executor;
-
-	public ThreadPoolExecutorDispatcher(int poolSize) {
-		executor = Executors.newFixedThreadPool(poolSize, new ThreadFactory() {
+		disruptor = new Disruptor<RingBufferTask>(
+				new EventFactory<RingBufferTask>() {
+					@Override
+					public RingBufferTask newInstance() {
+						return new RingBufferTask();
+					}
+				},
+				backlog,
+				executor
+		);
+		disruptor.handleEventsWith(new EventHandler<RingBufferTask>() {
 			@Override
-			public Thread newThread(Runnable r) {
-				return new Thread(r, "thread-pool-executor-" + THREAD_COUNT.incrementAndGet());
+			public void onEvent(RingBufferTask task, long sequence, boolean endOfBatch) throws Exception {
+				task.reset();
 			}
 		});
+
+		ringBuffer = disruptor.start();
 	}
 
 	@Override
-	public Lifecycle destroy() {
+	public ThreadPoolExecutorDispatcher destroy() {
+		disruptor.halt();
 		return this;
 	}
 
 	@Override
-	public Lifecycle stop() {
+	public ThreadPoolExecutorDispatcher stop() {
+		disruptor.shutdown();
 		executor.shutdown();
 		return this;
 	}
 
 	@Override
-	public Lifecycle start() {
+	public ThreadPoolExecutorDispatcher start() {
 		return this;
 	}
 
@@ -67,43 +79,57 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public Dispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
-		this.invoker = invoker;
+	public ThreadPoolExecutorDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
+		this.invoker = consumerInvoker;
 		return this;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <T> Task<T> nextTask() {
-		return new ExecutorTask<T>();
+		long l = ringBuffer.next();
+		RingBufferTask t = ringBuffer.get(l);
+		t.setSequenceId(l);
+		return (Task<T>) t;
 	}
 
-	private class ExecutorTask<T> extends Task<T> {
+	private class RingBufferTask extends Task<Object> implements Runnable {
+		private long sequenceId;
+
+		private RingBufferTask setSequenceId(long sequenceId) {
+			this.sequenceId = sequenceId;
+			return this;
+		}
+
 		@Override
 		public void submit() {
-			executor.execute(new Runnable() {
-				public void run() {
-					try {
-						for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getSelector())) {
-							if (reg.isCancelled() || reg.isPaused()) {
-								continue;
-							}
-							reg.getSelector().setHeaders(getSelector(), getEvent());
-							invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
-							if (reg.isCancelAfterUse()) {
-								reg.cancel();
-							}
-						}
-						if (null != getCompletionConsumer()) {
-							invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
-						}
-					} catch (Throwable x) {
-						LOG.error(x.getMessage(), x);
-						if (null != getErrorConsumer()) {
-							getErrorConsumer().accept(x);
-						}
+			executor.submit(this);
+		}
+
+		@Override
+		public void run() {
+			try {
+				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getSelector())) {
+					if (reg.isCancelled() || reg.isPaused()) {
+						continue;
+					}
+					invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
+					if (reg.isCancelAfterUse()) {
+						reg.cancel();
 					}
 				}
-			});
+				if (null != getCompletionConsumer()) {
+					invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
+				}
+			} catch (Throwable x) {
+				LOG.error(x.getMessage(), x);
+				if (null != getErrorConsumer()) {
+					getErrorConsumer().accept(x);
+				}
+			} finally {
+				ringBuffer.publish(sequenceId);
+			}
 		}
 	}
+
 }
