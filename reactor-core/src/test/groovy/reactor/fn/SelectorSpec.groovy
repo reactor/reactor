@@ -65,6 +65,32 @@ class SelectorSpec extends Specification {
 
 	}
 
+	def "Selectors are interchangeable"() {
+
+		when: "different selector types are defined"
+		def sel1_1 = Fn.R("test([0-9]+)")
+		def sel1_2 = $("test1")
+		def sel2_1 = U("/path/to/{resource}")
+		def sel2_2 = $("/path/to/resourceId")
+
+		then: "they match"
+		sel1_1.matches sel1_2
+		sel1_2.matches sel1_1
+		sel2_1.matches sel2_2
+		sel2_2.matches sel2_1
+
+		when: "selectors that don't fit the pattern are defined"
+		def selx = $("test-should-not-match")
+		def sely = $("/path/ot/resourceId")
+
+		then: "they don't match"
+		!selx.matches(sel1_1)
+		!sel1_1.matches(selx)
+		!sely.matches(sel2_1)
+		!sel2_1.matches(sely)
+
+	}
+
 	def "Selectors can be filtered by tag"() {
 
 		given: "A tag-aware SelectionStrategy"

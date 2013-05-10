@@ -94,6 +94,9 @@ public class BaseSelector<T> implements Selector {
 		if ((null == object && null != other) || !(other instanceof BaseSelector)) {
 			return false;
 		}
+		if(!other.getClass().equals(BaseSelector.class)){
+			return other.matches(this);
+		}
 		BaseSelector<?> s2 = (BaseSelector<?>) other;
 		return hashCode == s2.hashCode
 				|| object == s2.object
