@@ -38,7 +38,7 @@ class DynamicFactoryBeanSpec extends Specification {
 
 }
 
-@Dispatcher(DispatcherType.WORKER_POOL)
+@Dispatcher(DispatcherType.THREAD_POOL)
 interface TestReactor extends DynamicReactor {
 	TestReactor onTest(Consumer<String> consumer)
 

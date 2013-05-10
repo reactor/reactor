@@ -8,7 +8,7 @@ import reactor.fn.Consumer;
 /**
  * @author Jon Brisbin
  */
-@Dispatcher(DispatcherType.WORKER_POOL)
+@Dispatcher(DispatcherType.THREAD_POOL)
 public interface MyReactor extends DynamicReactor {
 
 	@On("test.test")

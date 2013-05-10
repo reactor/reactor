@@ -64,9 +64,9 @@ public class LoadBalancingThroughputTests extends DispatcherThroughputTests {
 	}
 
 	@Override
-	public void testWorkerPoolDispatcher() throws InterruptedException {
+	public void testThreadPoolDispatcher() throws InterruptedException {
 		reactor.getConsumerRegistry().setLoadBalancingStrategy(Registry.LoadBalancingStrategy.RANDOM);
-		super.testWorkerPoolDispatcher();
+		super.testThreadPoolDispatcher();
 	}
 
 	@Override

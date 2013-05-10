@@ -5,7 +5,7 @@ package reactor.core.dynamic.annotation;
  */
 public enum DispatcherType {
 
-	WORKER_POOL,
+	THREAD_POOL,
 	WORKER,
 	ROOT,
 	SYNC
