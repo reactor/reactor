@@ -52,15 +52,18 @@ public class SelectorUnitTests {
 		};
 
 		Selector[] sels = new Selector[selectors];
+		Object[] keys = new Object[selectors];
+
 		for (int i = 0; i < selectors; i++) {
-			sels[i] = $("test" + i);
+			keys[i] = "test" + i;
+			sels[i] = $(keys[i]);
 			registry.register(sels[i], hello);
 		}
 
 		long start = System.currentTimeMillis();
 		for (int i = 0; i < selectors * iterations; i++) {
 			int j = i % selectors;
-			for (Registration<? extends Consumer<?>> reg : registry.select(sels[j])) {
+			for (Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
 				reg.getObject().accept(null);
 			}
 		}
@@ -89,15 +92,17 @@ public class SelectorUnitTests {
 		registry.register(sel1, hello);
 
 		Selector[] sels = new Selector[selectors];
+		Object[] keys = new Object[selectors];
 		for (int i = 0; i < selectors; i++) {
-			sels[i] = $("/test/" + i);
+			keys[i] = "/test/" + i;
+			sels[i] = $(keys[i]);
 		}
 
 
 		long start = System.currentTimeMillis();
 		for (int i = 0; i < selectors * iterations; i++) {
 			int j = i % selectors;
-			for (Registration<? extends Consumer<?>> reg : registry.select(sels[j])) {
+			for (Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
 				reg.getObject().accept(null);
 			}
 		}

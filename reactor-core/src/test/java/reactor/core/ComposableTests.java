@@ -135,7 +135,8 @@ public class ComposableTests {
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
 		Reactor r = R.create();
-		Selector sel = $();
+		Object key = new Object();
+		Selector sel = $(key);
 
 		final CountDownLatch latch = new CountDownLatch(5);
 		r.on(sel, new Consumer<Event<Integer>>() {
@@ -148,7 +149,7 @@ public class ComposableTests {
 		Composable<Integer> c = Composable
 				.from(Arrays.asList("1", "2", "3", "4", "5"))
 				.map(STRING_2_INTEGER)
-				.consume(sel, r);
+				.consume(key, r);
 
 		c.get(); // Trigger the deferred value to be set
 

@@ -40,10 +40,10 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // This helper method is like jQuery’s.
     // It creates a Selector instance so you don’t have
-    // to do new Selector(“parse”)
+    // to do new Selector("parse”)
     import static reactor.Fn.$;
 
-    Selector parse = $(“parse”);
+    Selector parse = $("parse”);
     Reactor reactor = R.create();
 
     // Wire an event to handle the data sent with the Event
@@ -54,8 +54,8 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
     });
 
     // Send an event to this Reactor and trigger all actions
-    // that match the given Selector
-    reactor.notify(parse, Fn.event(incomingJsonData));
+    // that match the given key
+    reactor.notify("parse", Fn.event(incomingJsonData));
 
 In Java 8, the event wiring would become extremely succinct:
 
@@ -74,7 +74,7 @@ In Java 8, the event wiring would become extremely succinct:
 
     // Notify consumers of the 'parse' topic that data is ready
     // by passing a Supplier<Event<T>> in the form of a lambda
-    reactor.notify($("parse"), () -> {
+    reactor.notify("parse", () -> {
       slurpNextEvent()
     });
 

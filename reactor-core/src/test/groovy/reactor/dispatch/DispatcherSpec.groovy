@@ -33,7 +33,7 @@ class DispatcherSpec extends Specification {
 
 		when: "a task is submitted"
 		def t = sameThread.nextTask()
-		t.selector = sel
+		t.key = 'test'
 		t.event = Fn.event("Hello World!")
 		t.consumerRegistry = registry
 		t.submit()
@@ -44,7 +44,7 @@ class DispatcherSpec extends Specification {
 		when: "a task is submitted to the thread pool dispatcher"
 		def latch = new CountDownLatch(1)
 		t = diffThread.nextTask()
-		t.selector = sel
+		t.key = 'test'
 		t.event = Fn.event("Hello World!")
 		t.consumerRegistry = registry
 		t.setCompletionConsumer({ Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)

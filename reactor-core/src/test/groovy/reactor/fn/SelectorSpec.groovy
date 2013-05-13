@@ -23,71 +23,49 @@ import static reactor.fn.Registry.LoadBalancingStrategy.ROUND_ROBIN
  */
 class SelectorSpec extends Specification {
 
-	def "Selectors work with primitive types"() {
+	def "Selectors work with Strings"() {
 
-		when: "selectors with the same string are defined"
-		def str1 = $("test")
-		def str2 = $("test")
-		def l1 = $(1l)
-		def l2 = $(1l)
+		when: "a selector backed by a String is defined"
+		def selector = $("test")
 
-		then: "they match"
-		str1.matches str2
-		l1.matches l2
+		then: "it matches the string"
+		selector.matches "test"
+	}
 
+	def "Selectors work with primitives"() {
+
+		when: "a selector backed by a primitve is defined"
+		def selector = $(1L)
+
+		then: "it matches the primitive"
+		selector.matches 1L
 	}
 
 	def "Class selectors match on isAssignableFrom"() {
 
-		when: "selectors based on Class are defined"
+		when: "a selector based on Class is defined"
 		def clz1 = T(Throwable)
 		def clz2 = T(IllegalArgumentException)
 
-		then: "they match"
-		clz1.matches clz2
-
+		then: "it matches the class and its sub types"
+		clz1.matches Throwable
+		clz1.matches IllegalArgumentException
 	}
 
 	def "Regex selectors match on expressions"() {
 
-		when: "selectors based on a regular expression are defined"
+		when: "A selector based on a regular expression and a matching key are defined"
 		def sel1 = Fn.R("test([0-9]+)")
-		def sel2 = $("test1")
+		def key = "test1"
 
 		then: "they match"
-		sel1.matches sel2
+		sel1.matches "test1"
 
-		when: "selectors that don't fit the pattern are defined"
-		def sel3 = $("test-should-not-match")
+		when: "a key the does not fit the pattern is provided"
+		def key2 = "test-should-not-match"
 
-		then: "they don't match"
-		!sel1.matches(sel3)
-
-	}
-
-	def "Selectors are interchangeable"() {
-
-		when: "different selector types are defined"
-		def sel1_1 = Fn.R("test([0-9]+)")
-		def sel1_2 = $("test1")
-		def sel2_1 = U("/path/to/{resource}")
-		def sel2_2 = $("/path/to/resourceId")
-
-		then: "they match"
-		sel1_1.matches sel1_2
-		sel1_2.matches sel1_1
-		sel2_1.matches sel2_2
-		sel2_2.matches sel2_1
-
-		when: "selectors that don't fit the pattern are defined"
-		def selx = $("test-should-not-match")
-		def sely = $("/path/ot/resourceId")
-
-		then: "they don't match"
-		!selx.matches(sel1_1)
-		!sel1_1.matches(selx)
-		!sely.matches(sel2_1)
-		!sel2_1.matches(sely)
+		then: "it does not match"
+		!sel1.matches(key2)
 
 	}
 
@@ -100,36 +78,34 @@ class SelectorSpec extends Specification {
 		def strategy = new TagAwareSelectionStrategy()
 
 		when:
-		def match1 = strategy.matches(sel1, sel2)
-		def match2 = strategy.matches(sel1, sel3)
-		def match3 = strategy.matches(sel2, sel3)
+		def match1 = strategy.matches(sel1, new TagableKey('test2').setTags('three', 'four'))
+		def match2 = strategy.matches(sel1, new TagableKey('test2').setTags('one', 'three'))
+		def match3 = strategy.matches(sel2, new TagableKey('test2').setTags('one', 'three'))
 
 		then:
 		!match1
 		!match2
 		match3
-
 	}
 
 	def "Selectors can be matched on URI"() {
 
 		given: "A UriTemplateSelector"
 		def sel1 = U("/path/to/{resource}")
-		def sel2 = $("/path/to/resourceId")
+		def key = "/path/to/resourceId"
 		def r = R.create(true)
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
 			resourceId = ev.data
 		})
 
-		when: "The selectors are matched"
-		r.notify sel2, Fn.event("resourceId")
+		when: "The selector is matched"
+		r.notify key, Fn.event("resourceId")
 
 		then: "The resourceId has been set"
 		resourceId
 
 	}
-
 
 	def "SelectionStrategy can be load balanced"() {
 
@@ -174,9 +150,8 @@ class SelectorSpec extends Specification {
 			r.notify(Fn.event("Hello World!"))
 		}
 
-		then: "random selection of consumer shave been called"
+		then: "random selection of consumers have been called"
 		assertThat(called, anyOf(hasItem(1), hasItem(2), hasItem(3), hasItem(4)))
 
 	}
-
 }

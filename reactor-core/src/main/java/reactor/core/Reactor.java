@@ -41,12 +41,14 @@ import static reactor.Fn.T;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 
 	private static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
-	protected final Selector            DEFAULT_SELECTOR = $();
+	protected final Object              defaultKey = new Object();
+	protected final Selector            defaultSelector = $(defaultKey);
 	protected final UUID                id               = new UUID();
 	protected final Consumer<Throwable> errorHandler     = new Consumer<Throwable>() {
 		@Override
@@ -125,7 +127,7 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 
 	/**
 	 * Get the {@link SelectionStrategy} to use to help the {@link Dispatcher} find which {@link Selector}s in the {@link
-	 * Registry} match the {@link Selector} triggered by the given event.
+	 * Registry} match the key triggered by the given event.
 	 *
 	 * @return The {@link SelectionStrategy} in use. Defaults to {@literal null}.
 	 */
@@ -135,9 +137,9 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 
 	/**
 	 * Set the {@link SelectionStrategy} to use to help the {@link Dispatcher} find which {@link Selector}s in the {@link
-	 * Registry} match the {@link Selector} triggered by the given event.
+	 * Registry} match the key triggered by the given event.
 	 *
-	 * @param selectionStrategy The {@link SelectionStrategy} in use. Can be {@literal null} indicate that the {@link
+	 * @param selectionStrategy The {@link SelectionStrategy} in use. Can be {@literal null} to indicate that the {@link
 	 *                          Dispatcher} should use the default selection behaviour.
 	 * @return {@literal this}
 	 */
@@ -187,22 +189,22 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	}
 
 	@Override
-	public boolean respondsTo(Selector sel) {
-		Assert.notNull(sel, "Selector cannot be null.");
-		return consumerRegistry.select(sel).iterator().hasNext();
+	public boolean respondsToKey(Object key) {
+		Assert.notNull(key, "Key cannot be null.");
+		return consumerRegistry.select(key).iterator().hasNext();
 	}
 
 	@Override
-	public <T, E extends Event<T>> Registration<Consumer<E>> on(Selector sel, final Consumer<E> consumer) {
-		Assert.notNull(sel, "Selector cannot be null.");
+	public <T, E extends Event<T>> Registration<Consumer<E>> on(Selector selector, final Consumer<E> consumer) {
+		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
-		return consumerRegistry.register(sel, consumer);
+		return consumerRegistry.register(selector, consumer);
 	}
 
 	@Override
 	public <T, E extends Event<T>> Registration<Consumer<E>> on(Consumer<E> consumer) {
 		Assert.notNull(consumer, "Consumer cannot be null.");
-		return consumerRegistry.register(DEFAULT_SELECTOR, consumer);
+		return consumerRegistry.register(defaultSelector, consumer);
 	}
 
 	@Override
@@ -212,12 +214,12 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T, E extends Event<T>> Reactor notify(Selector sel, E ev, Consumer<E> onComplete) {
-		Assert.notNull(sel, "Selector cannot be null.");
+	public <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
+		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
 		Task<T> task = dispatcher.nextTask();
-		task.setSelector(sel);
+		task.setKey(key);
 		task.setEvent(ev);
 		task.setConverter(converter);
 		task.setConsumerRegistry(consumerRegistry);
@@ -227,7 +229,7 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 
 		if (!linkedReactors.isEmpty()) {
 			for (Reactor r : linkedReactors) {
-				r.notify(sel, ev);
+				r.notify(key, ev);
 			}
 		}
 
@@ -235,55 +237,55 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor notify(Selector sel, E ev) {
-		return notify(sel, ev, null);
+	public <T, E extends Event<T>> Reactor notify(Object key, E ev) {
+		return notify(key, ev, null);
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor notify(Selector sel, S supplier) {
-		return notify(sel, supplier.get(), null);
+	public <T, S extends Supplier<Event<T>>> Reactor notify(Object key, S supplier) {
+		return notify(key, supplier.get(), null);
 	}
 
 	@Override
 	public <T, E extends Event<T>> Reactor notify(E ev) {
-		return notify(DEFAULT_SELECTOR, ev, null);
+		return notify(defaultKey, ev, null);
 	}
 
 	@Override
 	public <T, S extends Supplier<Event<T>>> Reactor notify(S supplier) {
-		return notify(DEFAULT_SELECTOR, supplier.get(), null);
+		return notify(defaultKey, supplier.get(), null);
 	}
 
 	@Override
-	public Reactor notify(Selector sel) {
-		return notify(sel, NULL_EVENT, null);
+	public Reactor notify(Object key) {
+		return notify(key, NULL_EVENT, null);
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor send(Selector sel, E ev) {
-		return notify(sel, new ReplyToEvent<T>(ev, this));
+	public <T, E extends Event<T>> Reactor send(Object key, E ev) {
+		return notify(key, new ReplyToEvent<T>(ev, this));
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor send(Selector sel, S supplier) {
-		return notify(sel, new ReplyToEvent<T>(supplier.get(), this));
+	public <T, S extends Supplier<Event<T>>> Reactor send(Object key, S supplier) {
+		return notify(key, new ReplyToEvent<T>(supplier.get(), this));
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor send(Selector sel, E ev, Observable replyTo) {
-		return notify(sel, new ReplyToEvent<T>(ev, replyTo));
+	public <T, E extends Event<T>> Reactor send(Object key, E ev, Observable replyTo) {
+		return notify(key, new ReplyToEvent<T>(ev, replyTo));
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor send(Selector sel, S supplier, Observable replyTo) {
-		return notify(sel, new ReplyToEvent<T>(supplier.get(), replyTo));
+	public <T, S extends Supplier<Event<T>>> Reactor send(Object key, S supplier, Observable replyTo) {
+		return notify(key, new ReplyToEvent<T>(supplier.get(), replyTo));
 	}
 
 	/**
 	 * Register a {@link Function} to be triggered using the given {@link Selector}. The return value is automatically
-	 * handled and replied to the origin reactor/replyTo selector set within an incoming event
+	 * handled and replied to the origin reactor/replyTo key set within an incoming event
 	 *
-	 * @param sel      The left-hand side of the {@link Selector} comparison.
+	 * @param sel      The {@link Selector} to be used for matching
 	 * @param function The {@literal Function} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
 	 * @param <V>      The type of the return value from the given {@link Function}.
@@ -310,7 +312,7 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	/**
 	 * Register a {@link Function} to be triggered using the internal, global {@link Selector} that is unique to each
 	 * {@literal Observable} instance. The return value is automatically handled and replied to the origin reactor/replyTo
-	 * selector set within an incoming event
+	 * key set within an incoming event
 	 *
 	 * @param function The {@literal Consumer} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
@@ -319,20 +321,20 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	 */
 	public <T, E extends Event<T>, V> Composable<V> map(Function<E, V> function) {
 		Assert.notNull(function, "Function cannot be null.");
-		return map(DEFAULT_SELECTOR, function);
+		return map(defaultSelector, function);
 	}
 
 	/**
-	 * Notify this component that the consumers assigned to {@param sel} should consume the event {@param ev} and might
+	 * Notify this component that the consumers that match {@param key} should consume the event {@param ev} and might
 	 * reply using R.replyTo (which is automatically handled when used in combination with {@link #map(Function)}.
 	 *
-	 * @param sel The right-hand side of the {@link Selector} comparison.
+	 * @param key The notification key
 	 * @param ev  The {@link Event} to publish.
 	 * @return {@link Composable}
 	 */
-	public <T, V> Composable<V> compose(final Selector sel, T ev) {
+	public <T, V> Composable<V> compose(Object key, T ev) {
 		Composable<T> composable = new Composable<T>(new Reactor(this));
-		Composable<V> reply = composable.map(sel, this);
+		Composable<V> reply = composable.map(key, this);
 
 		composable.accept(ev);
 
@@ -340,17 +342,17 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	}
 
 	/**
-	 * Compose an action starting with the given {@link Selector} and {@link Supplier}.
+	 * Compose an action starting with the given key and {@link Supplier}.
 	 *
-	 * @param sel      The {@link Selector} to use.
+	 * @param key      The key to use.
 	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
 	 * @param <T>      The type of the incoming data.
 	 * @param <S>      The type of the event supplier.
 	 * @param <V>      The type of the {@link Composable}.
 	 * @return A new {@link Composable}.
 	 */
-	public <T, S extends Supplier<Event<T>>, V> Composable<V> compose(final Selector sel, S supplier) {
-		return compose(sel, supplier.get());
+	public <T, S extends Supplier<Event<T>>, V> Composable<V> compose(Object key, S supplier) {
+		return compose(key, supplier.get());
 	}
 
 	@Override

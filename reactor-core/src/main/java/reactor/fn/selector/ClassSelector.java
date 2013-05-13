@@ -18,11 +18,9 @@
 
 package reactor.fn.selector;
 
-import reactor.fn.Selector;
 
 /**
- * Implementation of {@link reactor.fn.Selector} that uses {@link Class#isAssignableFrom(Class)} to determine a match
- * with another {@literal Selector}.
+ * Implementation of {@link reactor.fn.Selector} that uses {@link Class#isAssignableFrom(Class)} to determine a match.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -34,11 +32,11 @@ public class ClassSelector extends BaseSelector<Class<?>> {
 	}
 
 	@Override
-	public boolean matches(Selector s2) {
-		if (!(s2 instanceof ClassSelector)) {
+	public boolean matches(Object key) {
+		if (!(key instanceof Class)) {
 			return false;
 		}
-		return getObject().isAssignableFrom(((ClassSelector) s2).getObject());
+		return getObject().isAssignableFrom((Class<?>)key);
 	}
 
 }

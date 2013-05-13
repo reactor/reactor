@@ -32,12 +32,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class Event<T> {
 
 	private final UUID id = new UUID();
 	private Headers  headers;
-	private Selector replyTo;
+	private Object   replyTo;
 	private T        data;
 
 	public Event(Headers headers, T data) {
@@ -71,21 +72,21 @@ public class Event<T> {
 	}
 
 	/**
-	 * Get the {@link Selector} to send replies to.
+	 * Get the key to send replies to.
 	 *
 	 * @return
 	 */
-	public Selector getReplyTo() {
+	public Object getReplyTo() {
 		return replyTo;
 	}
 
 	/**
-	 * Set the {@link Selector} that interested parties should send replies to.
+	 * Set the {@code key} that interested parties should send replies to.
 	 *
-	 * @param replyTo {@link Selector} to use to notify sender of replies.
+	 * @param replyTo The key to use to notify sender of replies.
 	 * @return {@literal this}
 	 */
-	public Event<T> setReplyTo(Selector replyTo) {
+	public Event<T> setReplyTo(Object replyTo) {
 		Assert.notNull(replyTo, "ReplyTo cannot be null.");
 		this.replyTo = replyTo;
 		return this;

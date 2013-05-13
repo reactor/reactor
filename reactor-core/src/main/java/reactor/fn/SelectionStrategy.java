@@ -18,21 +18,21 @@ package reactor.fn;
 
 
 /**
- * Implementations of this interface will provide matching of one {@link Selector} to another.
+ * A {@code SelectionStrategy} is used to provide custom {@link Selector} matching behaviour.
  *
  * @author Jon Brisbin
  * @uathor Andy Wilkinson
  */
-public interface SelectionStrategy extends Supports<Selector> {
+public interface SelectionStrategy extends Supports<Object> {
 
 	/**
-	 * Indicates whether or not the left-hand Selector matches the right-hand Selector.
+	 * Indicates whether or not the {@link Selector} matches the {@code key}.
 	 *
-	 * @param leftHand The left-hand selector
-	 * @param rightHand The right-hand selector
+	 * @param selector The selector to perform the match
+	 * @param key The object to match
 	 *
-	 * @return {@code true} if the Selectors match, otherwise {@code false}.
+	 * @return {@code true} if the Selector matches, otherwise {@code false}.
 	 */
-	boolean matches(Selector leftHand, Selector rightHand);
+	boolean matches(Selector selector, Object key);
 
 }

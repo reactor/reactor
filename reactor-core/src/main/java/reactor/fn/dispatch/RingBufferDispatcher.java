@@ -150,11 +150,11 @@ public class RingBufferDispatcher implements Dispatcher {
 		@Override
 		@SuppressWarnings({"unchecked"})
 		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
-			for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getSelector())) {
+			for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getKey())) {
 				if (reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
-				reg.getSelector().setHeaders(t.getSelector(), t.getEvent());
+				reg.getSelector().setHeaders(t.getKey(), t.getEvent());
 				invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
 				if (reg.isCancelAfterUse()) {
 					reg.cancel();

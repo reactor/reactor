@@ -18,7 +18,8 @@ public final class CachingRegistryTests {
 
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
-		Selector selector = $("selector");
+		String key = "selector";
+		Selector selector = $(key);
 
 		this.cachingRegistry.register(selector, "echo");
 		this.cachingRegistry.register(selector, "bravo");
@@ -26,7 +27,7 @@ public final class CachingRegistryTests {
 		this.cachingRegistry.register(selector, "charlie");
 		this.cachingRegistry.register(selector, "delta");
 
-		Iterable<Registration<? extends Object>> registrations = this.cachingRegistry.select(selector);
+		Iterable<Registration<? extends Object>> registrations = this.cachingRegistry.select(key);
 		List<Object> objects = new ArrayList<Object>();
 		for (Registration<? extends Object> registration : registrations) {
 			objects.add(registration.getObject());

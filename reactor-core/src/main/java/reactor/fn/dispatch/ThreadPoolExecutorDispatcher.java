@@ -109,7 +109,7 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 		@Override
 		public void run() {
 			try {
-				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getSelector())) {
+				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
 					if (reg.isCancelled() || reg.isPaused()) {
 						continue;
 					}

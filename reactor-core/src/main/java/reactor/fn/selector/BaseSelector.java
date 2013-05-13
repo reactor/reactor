@@ -39,34 +39,16 @@ public class BaseSelector<T> implements Selector {
 
 	protected final UUID uuid = new UUID();
 	protected final T                 object;
-	protected final int               hashCode;
-	protected final boolean           comparable;
-	protected final Long              id;
 	protected       AtomicLong        usageCount;
 	protected       SortedSet<String> tags;
 
 	public BaseSelector(T object) {
 		this.object = object;
-		this.hashCode = object.hashCode();
-		this.comparable = object instanceof Comparable;
-		this.id = Math.abs(uuid.getTime() + uuid.getClockSeqAndNode());
-	}
-
-	/**
-	 * Keep track of how many times this selector has been accessed. Not everything will increment the usage count.
-	 *
-	 * @return An incrementing number for every time this method is called.
-	 */
-	public long getUsageCount() {
-		if (null == usageCount) {
-			usageCount = new AtomicLong();
-		}
-		return usageCount.incrementAndGet();
 	}
 
 	@Override
-	public Long getId() {
-		return id;
+	public UUID getId() {
+		return uuid;
 	}
 
 	@Override
@@ -77,6 +59,11 @@ public class BaseSelector<T> implements Selector {
 	@Override
 	public Set<String> getTags() {
 		return (null == tags ? Collections.<String>emptySet() : tags);
+	}
+
+	@Override
+	public Object getTagged() {
+		return object;
 	}
 
 	@Override
@@ -91,21 +78,16 @@ public class BaseSelector<T> implements Selector {
 	}
 
 	@Override
-	public boolean matches(Selector other) {
-		if ((null == object && null != other) || !(other instanceof BaseSelector)) {
+	public boolean matches(Object key) {
+		if (null == object && null != key) {
 			return false;
 		}
-		if (!other.getClass().equals(BaseSelector.class)) {
-			return other.matches(this);
-		}
-		BaseSelector<?> s2 = (BaseSelector<?>) other;
-		return hashCode == s2.hashCode
-				|| object == s2.object
-				|| object.equals(s2.object);
+
+		return object.equals(key);
 	}
 
 	@Override
-	public <T> Selector setHeaders(Selector other, Event<T> ev) {
+	public <U> Selector setHeaders(Object other, Event<U> ev) {
 		return this;
 	}
 
@@ -118,7 +100,6 @@ public class BaseSelector<T> implements Selector {
 	public String toString() {
 		return "BaseSelector{" +
 				"object=" + object +
-				", id=" + id +
 				", uuid=" + uuid +
 				", usageCount=" + usageCount +
 				", tags=" + tags +

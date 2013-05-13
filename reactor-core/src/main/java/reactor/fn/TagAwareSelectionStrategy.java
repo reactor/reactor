@@ -18,20 +18,27 @@
 
 package reactor.fn;
 
+import java.util.Set;
+
 /**
- * Match two {@link Selector}s like normal, but only do that check if the two have at least one tag in common.
+ * Matches a {@link Selector} and key like normal, but only if the key is {@link Tagable} and they have at least one tag in common.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
 public class TagAwareSelectionStrategy implements SelectionStrategy {
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	public boolean matches(Selector sel1, Selector sel2) {
-		for (String s2 : sel2.getTags()) {
-			for (String s1 : sel1.getTags()) {
-				if (s1.equals(s2) && sel1.matches(sel2)) {
-					return true;
+	public boolean matches(Selector selector, Object key) {
+		Tagable taggableKey = (Tagable) key;
+		if (selector.matches(taggableKey.getTagged())) {
+			Set<String> tags = taggableKey.getTags();
+			for (String keyTag : tags) {
+				for (String selectorTag : selector.getTags()) {
+					if (selectorTag.equals(keyTag)) {
+						return true;
+					}
 				}
 			}
 		}
@@ -39,8 +46,8 @@ public class TagAwareSelectionStrategy implements SelectionStrategy {
 	}
 
 	@Override
-	public boolean supports(Selector sel) {
-		return !sel.getTags().isEmpty();
+	public boolean supports(Object sel) {
+		return sel instanceof Tagable;
 	}
 
 }

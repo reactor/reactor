@@ -29,6 +29,7 @@ import java.util.Map;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ *
  * @see {@link UriTemplate}
  */
 public class UriTemplateSelector extends BaseSelector<UriTemplate> {
@@ -43,21 +44,21 @@ public class UriTemplateSelector extends BaseSelector<UriTemplate> {
 	}
 
 	@Override
-	public boolean matches(Selector other) {
-		if (!(other.getObject() instanceof String)) {
+	public boolean matches(Object key) {
+		if (!(key instanceof String)) {
 			return false;
 		}
 
-		String path = (String) other.getObject();
+		String path = (String) key;
 		return getObject().matches(path);
 	}
 
 	@Override
-	public <T> Selector setHeaders(Selector other, Event<T> ev) {
-		if (null == other.getObject() || !(other.getObject() instanceof String)) {
+	public <T> Selector setHeaders(Object object, Event<T> ev) {
+		if (null == object || !(object instanceof String)) {
 			return this;
 		}
-		Map<String, String> headers = getObject().match((String) other.getObject());
+		Map<String, String> headers = getObject().match((String) object);
 		if (null != headers && !headers.isEmpty()) {
 			ev.getHeaders().setAll(headers);
 		}

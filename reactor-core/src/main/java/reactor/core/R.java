@@ -44,6 +44,7 @@ import static reactor.Fn.T;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class R {
 
@@ -253,34 +254,34 @@ public class R {
 	/**
 	 * Convenience method for publishing events on the global {@link Reactor}.
 	 *
-	 * @param selector The selector.
-	 * @param event    The event to publish.
+	 * @param key   The notification key.
+	 * @param event The event to publish.
 	 */
-	public static void notify(Selector selector, Event<?> event) {
-		self.rootReactor.notify(selector, event);
+	public static void notify(Object key, Event<?> event) {
+		self.rootReactor.notify(key, event);
 	}
 
 	/**
 	 * Convenience method for publishing events on a {@link Reactor} using its id reference.
 	 *
 	 * @param id       The id of the {@link Reactor}.
-	 * @param selector The selector.
+	 * @param key      The key.
 	 * @param event    The event to publish.
 	 */
-	public static void notify(String id, Selector selector, Event<?> event) {
+	public static void notifyReactor(String id, Object key, Event<?> event) {
 		Reactor r = get(id);
 		if (null != r) {
-			r.notify(selector, event);
+			r.notify(key, event);
 		}
 	}
 
 	/**
-	 * Convenience method for publishing events on a {@link Reactor}'s default {@link Selector} using its id reference.
+	 * Convenience method for publishing events on a {@link Reactor}'s default key using its id reference.
 	 *
 	 * @param id    The id of the {@link Reactor}.
 	 * @param event The event to publish.
 	 */
-	public static void notify(String id, Event<?> event) {
+	public static void notifyReactor(String id, Event<?> event) {
 		Reactor r = get(id);
 		if (null != r) {
 			r.notify(event);
@@ -288,7 +289,7 @@ public class R {
 	}
 
 	/**
-	 * Convenience method for publishing events on the global {@link Reactor}'s default {@link Selector}.
+	 * Convenience method for publishing events on the global {@link Reactor}'s default key.
 	 *
 	 * @param event The event to publish.
 	 */
@@ -316,10 +317,10 @@ public class R {
 		Assert.notNull(src, "Source Event cannot be null.");
 		Assert.notNull(reply, "Reply Event cannot be null.");
 
-		Selector replyToSel = src.getReplyTo();
+		Object replyToKey = src.getReplyTo();
 		Reactor replyToReactor = R.get(src.getHeaders().getOrigin());
 
-		if (null == replyToSel) {
+		if (null == replyToKey) {
 			if (null == replyToReactor) {
 				notify(reply);
 			} else {
@@ -327,9 +328,9 @@ public class R {
 			}
 		} else {
 			if (null == replyToReactor) {
-				notify(replyToSel, reply);
+				notify(replyToKey, reply);
 			} else {
-				replyToReactor.notify(replyToSel, reply);
+				replyToReactor.notify(replyToKey, reply);
 			}
 		}
 	}
@@ -343,14 +344,15 @@ public class R {
 	 * @param <T>      The type of the data.
 	 */
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		Selector sel = $();
+		Object key = new Object();
+		Selector sel = $(key);
 		observable.on(sel, new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> event) {
 				consumer.accept(event.getData());
 			}
 		}).cancelAfterUse();
-		observable.notify(sel, Fn.event(data));
+		observable.notify(key, Fn.event(data));
 	}
 
 	/**

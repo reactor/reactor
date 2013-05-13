@@ -3,7 +3,7 @@ package reactor.spring.context.annotation;
 import java.lang.annotation.*;
 
 /**
- * Indicate a method return is to be sent to the {@link reactor.fn.Selector} referenced by the given expression.
+ * Indicate a method return is to be sent to the key referenced by the given expression.
  *
  * @author Jon Brisbin
  */
@@ -15,7 +15,7 @@ import java.lang.annotation.*;
 public @interface Reply {
 
 	/**
-	 * An expression which evaluates to a {@link reactor.fn.Selector} to which is sent the method return value.
+	 * An expression which evaluates to a key to which is sent the method return value.
 	 *
 	 * @return The expression.
 	 */
