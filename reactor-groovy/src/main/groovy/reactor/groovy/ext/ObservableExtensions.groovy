@@ -104,16 +104,15 @@ class ObservableExtensions {
 
 	private static <T> Event<T> coerce(Object obj) {
 		if (!obj) {
-			return new Event<Void>(null) as Event<T>
-		}
-		if (obj instanceof Event) {
-			return (Event<T>) obj
+			(Event<T>)new Event<Void>(null)
+		}else if (obj instanceof Event) {
+			(Event<T>)obj
 		} else if (obj instanceof Supplier) {
-			return (obj as Supplier<Event<T>>).get()
+			(Event<T>)obj.get()
 		} else if (obj instanceof Closure) {
-			return new Event<T>((obj as Closure).call() as T)
+			new Event<T>((T)obj.call())
 		} else {
-			return new Event<T>(obj as T)
+			new Event<T>((T)obj)
 		}
 	}
 }
