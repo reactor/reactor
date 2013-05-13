@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@link reactor.fn.Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of
@@ -39,7 +38,6 @@ public class BaseSelector<T> implements Selector {
 
 	protected final UUID uuid = new UUID();
 	protected final T                 object;
-	protected       AtomicLong        usageCount;
 	protected       SortedSet<String> tags;
 
 	public BaseSelector(T object) {
@@ -94,10 +92,9 @@ public class BaseSelector<T> implements Selector {
 
 	@Override
 	public String toString() {
-		return "BaseSelector{" +
+		return "Selector{" +
 				"object=" + object +
 				", uuid=" + uuid +
-				", usageCount=" + usageCount +
 				", tags=" + tags +
 				'}';
 	}
