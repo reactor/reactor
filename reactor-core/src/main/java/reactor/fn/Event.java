@@ -37,9 +37,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Event<T> {
 
 	private final UUID id = new UUID();
-	private Headers  headers;
-	private Object   replyTo;
-	private T        data;
+	private Headers headers;
+	private Object  replyTo;
+	private T       data;
 
 	public Event(Headers headers, T data) {
 		this.headers = headers;
@@ -152,6 +152,9 @@ public class Event<T> {
 		 * @return
 		 */
 		public Headers setAll(Map<String, String> headers) {
+			if (null == headers || headers.isEmpty()) {
+				return this;
+			}
 			this.headers.putAll(headers);
 			return this;
 		}

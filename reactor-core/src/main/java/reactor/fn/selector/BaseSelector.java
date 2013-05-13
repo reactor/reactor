@@ -19,7 +19,7 @@
 package reactor.fn.selector;
 
 import com.eaio.uuid.UUID;
-import reactor.fn.Event;
+import reactor.fn.HeaderResolver;
 import reactor.fn.Selector;
 
 import java.util.Collections;
@@ -79,16 +79,12 @@ public class BaseSelector<T> implements Selector {
 
 	@Override
 	public boolean matches(Object key) {
-		if (null == object && null != key) {
-			return false;
-		}
-
-		return object.equals(key);
+		return !(null == object && null != key) && (object != null && object.equals(key));
 	}
 
 	@Override
-	public <U> Selector setHeaders(Object other, Event<U> ev) {
-		return this;
+	public HeaderResolver getHeaderResolver() {
+		return null;
 	}
 
 	@Override

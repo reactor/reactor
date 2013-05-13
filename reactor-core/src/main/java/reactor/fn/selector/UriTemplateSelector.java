@@ -18,10 +18,10 @@
 
 package reactor.fn.selector;
 
-import reactor.fn.Event;
-import reactor.fn.Selector;
+import reactor.fn.HeaderResolver;
 import reactor.fn.support.UriTemplate;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
@@ -29,10 +29,21 @@ import java.util.Map;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
- *
  * @see {@link UriTemplate}
  */
 public class UriTemplateSelector extends BaseSelector<UriTemplate> {
+
+	private final HeaderResolver headerResolver = new HeaderResolver() {
+		@Nullable
+		@Override
+		public Map<String, String> resolve(Object key) {
+			Map<String, String> headers = getObject().match(key.toString());
+			if (null != headers && !headers.isEmpty()) {
+				return headers;
+			}
+			return null;
+		}
+	};
 
 	/**
 	 * Create a selector from the given uri template string.
@@ -54,15 +65,8 @@ public class UriTemplateSelector extends BaseSelector<UriTemplate> {
 	}
 
 	@Override
-	public <T> Selector setHeaders(Object object, Event<T> ev) {
-		if (null == object || !(object instanceof String)) {
-			return this;
-		}
-		Map<String, String> headers = getObject().match((String) object);
-		if (null != headers && !headers.isEmpty()) {
-			ev.getHeaders().setAll(headers);
-		}
-		return this;
+	public HeaderResolver getHeaderResolver() {
+		return headerResolver;
 	}
 
 }

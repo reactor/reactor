@@ -5,28 +5,28 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * A helper class to make a notification key {@link Tagable}.
+ * A helper class to make a notification key {@link Taggable}.
  *
  * @author Andy Wilkinson
  */
-public final class TagableKey implements Tagable<TagableKey> {
+public final class TaggableKey implements Taggable<TaggableKey> {
 
 	private final Object delegate;
 
 	private Set<String> tags;
 
 	/**
-	 * Creates a {@link Tagable} notification key that will defer to the
+	 * Creates a {@link Taggable} notification key that will defer to the
 	 * {@code delegate} for {@link hashCode} and {@link equals}.
 	 *
 	 * @param delegate The delegate
 	 */
-	public TagableKey(Object delegate) {
+	public TaggableKey(Object delegate) {
 		this.delegate = delegate;
 	}
 
 	@Override
-	public Tagable<TagableKey> setTags(String... tags) {
+	public Taggable<TaggableKey> setTags(String... tags) {
 		if (null == this.tags) {
 			this.tags = new TreeSet<String>();
 		} else {

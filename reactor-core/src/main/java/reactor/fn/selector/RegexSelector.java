@@ -18,10 +18,13 @@
 
 package reactor.fn.selector;
 
+import reactor.fn.HeaderResolver;
+
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import reactor.fn.Event;
 
 /**
  * A {@link reactor.fn.Selector} implementation based on the given regular expression. Parses it into a {@link Pattern}
@@ -40,6 +43,30 @@ import reactor.fn.Event;
  */
 public class RegexSelector extends BaseSelector<Pattern> {
 
+	private final HeaderResolver headerResolver = new HeaderResolver() {
+		@Nullable
+		@Override
+		public Map<String, String> resolve(Object key) {
+			Matcher m = getObject().matcher(key.toString());
+			if (!m.matches()) {
+				return null;
+			}
+			int groups = m.groupCount();
+			Map<String, String> headers = new HashMap<String, String>();
+			for (int i = 1; i <= groups; i++) {
+				String name = "group" + i;
+				String value = m.group(i);
+				headers.put(name, value);
+			}
+			return headers;
+		}
+	};
+
+	/**
+	 * Create a {@link reactor.fn.Selector} from the given regex pattern.
+	 *
+	 * @param pattern The regex String that will be compiled into a {@link Pattern}.
+	 */
 	public RegexSelector(String pattern) {
 		super(Pattern.compile(pattern));
 	}
@@ -50,15 +77,8 @@ public class RegexSelector extends BaseSelector<Pattern> {
 	}
 
 	@Override
-	public <T> RegexSelector setHeaders(Object other, Event<T> ev) {
-		Matcher m = getObject().matcher(other.toString());
-		int groups = m.groupCount();
-		for (int i = 1; i <= groups; i++) {
-			String name = "group" + i;
-			String value = m.group(i);
-			ev.getHeaders().set(name, value);
-		}
-		return this;
+	public HeaderResolver getHeaderResolver() {
+		return headerResolver;
 	}
 
 }

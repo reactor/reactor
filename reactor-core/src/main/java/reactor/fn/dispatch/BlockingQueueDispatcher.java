@@ -18,20 +18,14 @@
 
 package reactor.fn.dispatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.fn.*;
+import reactor.support.QueueFactory;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.fn.Consumer;
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
-import reactor.fn.Event;
-import reactor.fn.Lifecycle;
-import reactor.fn.Registration;
-import reactor.support.QueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -44,7 +38,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	private final static AtomicInteger THREAD_COUNT = new AtomicInteger();
 	private final static Logger        LOG          = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 
-	private final ThreadGroup      threadGroup       = new ThreadGroup("reactor-dispatcher");
+	private final ThreadGroup threadGroup = new ThreadGroup("reactor-dispatcher");
 	private final BlockingQueue<Task<?>> readyTasks;
 	private final TaskExecutor           taskExecutor;
 	private volatile ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
@@ -142,7 +136,9 @@ public class BlockingQueueDispatcher implements Dispatcher {
 								if (reg.isCancelled() || reg.isPaused()) {
 									continue;
 								}
-								reg.getSelector().setHeaders(t.getKey(), t.getEvent());
+								if (null != reg.getSelector().getHeaderResolver()) {
+									t.getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(t.getKey()));
+								}
 								invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
 								if (reg.isCancelAfterUse()) {
 									reg.cancel();

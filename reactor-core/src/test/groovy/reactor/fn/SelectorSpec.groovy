@@ -1,7 +1,6 @@
 package reactor.fn
 
 import reactor.Fn
-import reactor.core.Context
 import reactor.core.R
 import spock.lang.Specification
 
@@ -78,9 +77,9 @@ class SelectorSpec extends Specification {
 		def strategy = new TagAwareSelectionStrategy()
 
 		when:
-		def match1 = strategy.matches(sel1, new TagableKey('test2').setTags('three', 'four'))
-		def match2 = strategy.matches(sel1, new TagableKey('test2').setTags('one', 'three'))
-		def match3 = strategy.matches(sel2, new TagableKey('test2').setTags('one', 'three'))
+		def match1 = strategy.matches(sel1, new TaggableKey('test2').setTags('three', 'four'))
+		def match2 = strategy.matches(sel1, new TaggableKey('test2').setTags('one', 'three'))
+		def match3 = strategy.matches(sel2, new TaggableKey('test2').setTags('one', 'three'))
 
 		then:
 		!match1

@@ -154,7 +154,9 @@ public class RingBufferDispatcher implements Dispatcher {
 				if (reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
-				reg.getSelector().setHeaders(t.getKey(), t.getEvent());
+				if (null != reg.getSelector().getHeaderResolver()) {
+					t.getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(t.getKey()));
+				}
 				invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
 				if (reg.isCancelAfterUse()) {
 					reg.cancel();
