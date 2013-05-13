@@ -18,7 +18,7 @@
 
 package reactor.dispatch;
 
-import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,8 +43,8 @@ import static reactor.core.Context.*;
 public class DispatcherThroughputTests {
 
 	static final Logger LOG        = LoggerFactory.getLogger(DispatcherThroughputTests.class);
-	static final int    selectors  = 500;
-	static final int    iterations = 5000;
+	static final int    selectors  = 250;
+	static final int    iterations = 7500;
 	static final int    testRuns   = 3;
 
 	Reactor        reactor;
@@ -120,7 +120,7 @@ public class DispatcherThroughputTests {
 	public void testRootDispatcher() throws InterruptedException {
 		reactor.setDispatcher(rootDispatcher());
 
-		LOG.info("Starting root (RingBuffer) test...");
+		LOG.info("Starting root RingBuffer test...");
 		doTest();
 	}
 
@@ -128,11 +128,11 @@ public class DispatcherThroughputTests {
 	public void testRingBufferDispatcher() throws InterruptedException {
 		reactor.setDispatcher(new RingBufferDispatcher("test",
 																									 1,
-																									 1024,
+																									 512,
 																									 ProducerType.SINGLE,
-																									 new BusySpinWaitStrategy()));
+																									 new YieldingWaitStrategy()));
 
-		LOG.info("Starting single, busy spin RingBuffer test...");
+		LOG.info("Starting single-producer, yielding RingBuffer test...");
 		doTest();
 	}
 

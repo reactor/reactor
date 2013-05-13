@@ -38,9 +38,9 @@ public class Context implements Lifecycle {
 	 * @param poolSize The number of threads to use when creating root-level {@link Dispatcher}s.
 	 */
 	public Context(int poolSize) {
-		int backlog = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "750"));
+		int backlog = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
 		int ringbufferThreads = Integer.parseInt(System.getProperty("reactor.max.ringbuffer.threads", "1"));
-		int ringbufferbacklog = Integer.parseInt(System.getProperty("reactor.max.ringbuffer.backlog", "1024"));
+		int ringbufferbacklog = Integer.parseInt(System.getProperty("reactor.max.ringbuffer.backlog", "512"));
 		rootDispatcher = new RingBufferDispatcher(
 				"root",
 				ringbufferThreads,
@@ -56,9 +56,9 @@ public class Context implements Lifecycle {
 
 		Dispatcher[] pooledDispatchers = new Dispatcher[poolSize];
 		for (int i = 0; i < poolSize; i++) {
-			pooledDispatchers[i] = new BlockingQueueDispatcher("pool-worker", backlog);
+			pooledDispatchers[i] = new BlockingQueueDispatcher("worker-pool", backlog);
 		}
-		threadPoolDispatcher = new ThreadPoolExecutorDispatcher(poolSize);
+		threadPoolDispatcher = new ThreadPoolExecutorDispatcher(poolSize * 2, backlog);
 
 		syncDispatcher = new SynchronousDispatcher();
 
@@ -137,8 +137,8 @@ public class Context implements Lifecycle {
 	}
 
 	/**
-	 * Returns a thread pool-based {@link Dispatcher}, which is a moderately high-speed Dispatcher designed for large numbers
-	 * of batch or longer-running tasks.
+	 * Returns a thread pool-based {@link Dispatcher}, which is a moderately high-speed Dispatcher designed for large
+	 * numbers of batch or longer-running tasks.
 	 *
 	 * @return
 	 */
@@ -153,7 +153,7 @@ public class Context implements Lifecycle {
 	 * @return
 	 */
 	public static Dispatcher nextWorkerDispatcher() {
-		long l = Math.abs(self.nextDispatcherCounter.incrementAndGet() % (PROCESSORS + 1));
+		long l = Math.abs(self.nextDispatcherCounter.incrementAndGet() % (self.workerDispatchers.length));
 		return self.workerDispatchers[(int) l];
 	}
 
@@ -178,7 +178,7 @@ public class Context implements Lifecycle {
 	private static void init() {
 		boolean init = Boolean.parseBoolean(System.getProperty("reactor.init.auto", "true"));
 		if (init) {
-			self = new Context(PROCESSORS + 1);
+			self = new Context(PROCESSORS);
 			local.set(self);
 			if (null == R.self) {
 				R.assignRx(new R());
