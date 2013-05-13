@@ -38,8 +38,13 @@ public class LoadBalancingThroughputTests extends DispatcherThroughputTests {
 		reactor = new Reactor();
 		for (int i = 0; i < selectors; i++) {
 			int j = i % 10;
-			sels[i] = $("test" + j);
+			objects[i] = "test" + j;
+			sels[i] = $(objects[i]);
 			reactor.on(sels[i], countDown);
+		}
+		for (int i = 0; i < selectors; i++) {
+			// pre-select everything to ensure it's in the cache
+			reactor.getConsumerRegistry().select(objects[i]);
 		}
 		latch = new CountDownLatch(selectors * iterations);
 	}
@@ -50,7 +55,7 @@ public class LoadBalancingThroughputTests extends DispatcherThroughputTests {
 			preRun();
 			for (int i = 0; i < selectors * iterations; i++) {
 				int x = (i % selectors) % 10;
-				reactor.notify(sels[x], hello);
+				reactor.notify(objects[x], hello);
 			}
 			latch.await(30, TimeUnit.SECONDS);
 			postRun();

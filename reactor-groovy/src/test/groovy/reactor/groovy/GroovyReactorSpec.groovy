@@ -110,7 +110,7 @@ class GroovyReactorSpec extends Specification {
 		r3.on $('test'), { String test -> d3 = true }
 		r4.on $('test'), { String test -> d4 = true }
 
-		r1.notify $('test'), new Event('bob')
+		r1.notify 'test', new Event('bob')
 
 		then: "r1,r2,r3 react"
 		d1 && d2 && d3

@@ -1,19 +1,5 @@
 package reactor.core.dynamic;
 
-import reactor.Fn;
-import reactor.core.Context;
-import reactor.core.R;
-import reactor.core.Reactor;
-import reactor.core.dynamic.annotation.Dispatcher;
-import reactor.core.dynamic.annotation.Notify;
-import reactor.core.dynamic.annotation.On;
-import reactor.core.dynamic.reflect.MethodArgumentResolver;
-import reactor.core.dynamic.reflect.MethodSelectorResolver;
-import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.support.Assert;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -23,20 +9,43 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import reactor.Fn;
+import reactor.core.Context;
+import reactor.core.R;
+import reactor.core.Reactor;
+import reactor.core.dynamic.annotation.Dispatcher;
+import reactor.core.dynamic.annotation.Notify;
+import reactor.core.dynamic.annotation.On;
+import reactor.core.dynamic.reflect.MethodArgumentResolver;
+import reactor.core.dynamic.reflect.MethodNotificationKeyResolver;
+import reactor.core.dynamic.reflect.MethodSelectorResolver;
+import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
+import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Selector;
+import reactor.support.Assert;
+
 /**
  * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based on the given interface, that
- * intercepts calls to the interface and translates them into the appropariate {@link Reactor#on(reactor.fn.Selector,
- * reactor.fn.Consumer)} or {@link Reactor#notify(reactor.fn.Selector, reactor.fn.Event)} calls.
+ * intercepts calls to the interface and translates them into the appropriate {@link Reactor#on(reactor.fn.Selector,
+ * reactor.fn.Consumer)} or {@link Reactor#notify(Object, Event)} calls.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class DynamicReactorFactory<T extends DynamicReactor> {
 
 	private final Class<T> type;
-	private List<MethodSelectorResolver> selectorResolvers = Arrays.<MethodSelectorResolver>asList(
+	private volatile List<MethodSelectorResolver> selectorResolvers = Arrays.<MethodSelectorResolver>asList(
 			new SimpleMethodSelectorResolver()
 	);
+
+	private volatile List<MethodNotificationKeyResolver> notificationKeyResolvers = Arrays.<MethodNotificationKeyResolver>asList(
+			new SimpleMethodNotificationKeyResolver()
+	);
+
 	private List<MethodArgumentResolver<?>> methodArgumentResolvers;
 
 	public DynamicReactorFactory(Class<T> type) {
@@ -83,6 +92,35 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		return this;
 	}
 
+	/**
+	 * Set the {@link MethodNotificationKeyResolver}s to use to resolves a {@link Method}'s notification key.
+	 *
+	 * @param notificationKeyResolvers The {@link MethodNotificationKeyResolver}s to use.
+	 * @return {@literal this}
+	 */
+	public DynamicReactorFactory<T> setNotificationKeyResolvers(List<MethodNotificationKeyResolver> notificationKeyResolvers) {
+		Assert.notNull(notificationKeyResolvers, "notificationKeyResolvers cannot be null.");
+		if (notificationKeyResolvers.isEmpty()) {
+			return this;
+		}
+		this.notificationKeyResolvers = notificationKeyResolvers;
+		return this;
+	}
+
+	/**
+	 * Set the {@link MethodNotificationKeyResolver}s to use to resolves a {@link Method}'s notification key.
+	 *
+	 * @param notificationKeyResolvers The {@link MethodNotificationKeyResolver}s to use.
+	 * @return {@literal this}
+	 */
+	public DynamicReactorFactory<T> setNotificationKeyResolvers(MethodNotificationKeyResolver... notificationKeyResolvers) {
+		if (notificationKeyResolvers.length == 0) {
+			return this;
+		}
+		this.notificationKeyResolvers = Arrays.asList(notificationKeyResolvers);
+		return this;
+	}
+
 	public List<MethodArgumentResolver<?>> getMethodArgumentResolvers() {
 		return methodArgumentResolvers;
 	}
@@ -121,11 +159,13 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		);
 	}
 
-	private class ReactorInvocationHandler<T> implements InvocationHandler {
-		private final Map<Method, reactor.fn.Selector> selectors = new HashMap<Method, reactor.fn.Selector>();
+	private class ReactorInvocationHandler<U> implements InvocationHandler {
+		private final Map<Method, Selector> selectors = new HashMap<Method, Selector>();
+		private final Map<Method, Object> notificationKeys = new HashMap<Method, Object>();
+
 		private final Reactor reactor;
 
-		private ReactorInvocationHandler(Reactor reactor, Class<T> type) {
+		private ReactorInvocationHandler(Reactor reactor, Class<U> type) {
 			this.reactor = reactor;
 			Dispatcher d = find(type, Dispatcher.class);
 			if (null != d) {
@@ -148,16 +188,25 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				if (m.getDeclaringClass() == Object.class || m.getName().contains("$")) {
 					continue;
 				}
-				if (!isOn(m) && !isNotify(m)) {
-					continue;
-				}
-				for (MethodSelectorResolver msr : selectorResolvers) {
-					if (msr.supports(m)) {
-						reactor.fn.Selector sel = msr.apply(m);
-						if (null != sel) {
-							selectors.put(m, sel);
+
+				if (isOn(m)) {
+					for (MethodSelectorResolver msr : selectorResolvers) {
+						if (msr.supports(m)) {
+							reactor.fn.Selector sel = msr.apply(m);
+							if (null != sel) {
+								selectors.put(m, sel);
+							}
+							break;
 						}
-						break;
+					}
+				} else if (isNotify(m)) {
+					for (MethodNotificationKeyResolver notificationKeyResolver : notificationKeyResolvers) {
+						if (notificationKeyResolver.supports(m)) {
+							String notificationKey = notificationKeyResolver.apply(m);
+							if (null != notificationKey) {
+								notificationKeys.put(m, notificationKey);
+							}
+						}
 					}
 				}
 			}
@@ -166,32 +215,34 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		@Override
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		public Object invoke(Object proxy, Method method, final Object[] args) throws Throwable {
-			reactor.fn.Selector sel = selectors.get(method);
-			if (null == sel) {
-				return proxy;
-			}
 
 			if (isOn(method)) {
-				if (args.length == 0 || !(args[0] instanceof Consumer)) {
-					return proxy;
-				}
-				reactor.on(sel, new Consumer<Event<Object>>() {
-					@Override
-					public void accept(Event<Object> ev) {
-						// There's only two options: accept the Event or the raw value
-						try {
-							((Consumer) args[0]).accept(ev);
-						} catch (ClassCastException ignored) {
-							// If this doesn't work we're screwed anyway
-							((Consumer) args[0]).accept(ev.getData());
-						}
+				Selector sel = selectors.get(method);
+				if (sel != null) {
+					if (args.length == 0 || !(args[0] instanceof Consumer)) {
+						return proxy;
 					}
-				});
+					reactor.on(sel, new Consumer<Event<Object>>() {
+						@Override
+						public void accept(Event<Object> ev) {
+							// There's only two options: accept the Event or the raw value
+							try {
+								((Consumer) args[0]).accept(ev);
+							} catch (ClassCastException ignored) {
+								// If this doesn't work we're screwed anyway
+								((Consumer) args[0]).accept(ev.getData());
+							}
+						}
+					});
+				}
 			} else if (isNotify(method)) {
-				if (args.length == 0) {
-					reactor.notify(sel);
-				} else {
-					reactor.notify(sel, Fn.event(args[0]));
+				Object key = notificationKeys.get(method);
+				if (key != null) {
+					if (args.length == 0) {
+						reactor.notify(key);
+					} else {
+						reactor.notify(key, Fn.event(args[0]));
+					}
 				}
 			}
 

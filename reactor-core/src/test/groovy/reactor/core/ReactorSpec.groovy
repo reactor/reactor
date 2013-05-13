@@ -31,7 +31,7 @@ class ReactorSpec extends Specification {
 		} as Consumer<Event<String>>)
 
 		when:
-		reactor.notify($("test"), Fn.event("Hello World!"))
+		reactor.notify("test", Fn.event("Hello World!"))
 
 		then:
 		data == "Hello World!"
@@ -50,18 +50,18 @@ class ReactorSpec extends Specification {
 		reg.pause()
 
 		when: "event is triggered"
-		reactor.notify($("test"), Fn.event("Hello World!"))
+		reactor.notify("test", Fn.event("Hello World!"))
 
 		then: "data should not have updated"
 		data == ""
 
 		when: "registration is cancelled"
 		reg.cancel()
-		reactor.notify($("test"), Fn.event("Hello World!"))
+		reactor.notify("test", Fn.event("Hello World!"))
 
 		then: "it shouldn't be found any more"
 		data == ""
-		!reactor.respondsTo($("test"))
+		!reactor.respondsToKey("test")
 
 	}
 
@@ -89,7 +89,6 @@ class ReactorSpec extends Specification {
 	def "Reactors respond to events"() {
 
 		given: "a simple consumer"
-		def sayHello = $('say-hello')
 		def data = ""
 		def latch = new CountDownLatch(1)
 		def a = { ev ->
@@ -98,8 +97,8 @@ class ReactorSpec extends Specification {
 		}
 
 		when: "an event is dispatched to the global reactor"
-		R.on(sayHello, a as Consumer<Event<String>>)
-		R.notify(sayHello, new Event<String>('Hello World!'))
+		R.on($('say-hello'), a as Consumer<Event<String>>)
+		R.notify('say-hello', new Event<String>('Hello World!'))
 		latch.await(5, TimeUnit.SECONDS)
 
 		then: "the data is updated"
@@ -116,14 +115,15 @@ class ReactorSpec extends Specification {
 		} as Function<Event<String>, String>
 		def result = ""
 		def sel = $("hello")
-		def replyTo = $()
+		def replyToKey = new Object()
+		def replyTo = $(replyToKey)
 		r.on(replyTo, { ev ->
 			result = ev.data
 		} as Consumer<Event<String>>)
 
 		when: "a Function is assigned that produces a Response and an Event is triggered"
 		r.receive(sel, f)
-		r.send(sel, Fn.event("Hello World!", replyTo))
+		r.send("hello", Fn.event("Hello World!", replyToKey))
 
 		then: "the result should have been updated"
 		result == "Hello World!"
@@ -166,12 +166,13 @@ class ReactorSpec extends Specification {
 		when: "registering few handlers"
 		r.on R('t[a-z]st'), consumer { println 'test1' }
 		r.on R('t[a-z]st'), consumer { println 'test2' }
-		r.notify $("test"), Fn.event("test")
 
-		then: "will report false when asked whether it responds to an unassigned Selector"
-		r.respondsTo $('test')
-		r.consumerRegistry.unregister($('test'))
-		!r.respondsTo($('test'))
+		r.notify "test", Fn.event("test")
+
+		then: "will report false when asked whether it responds to an unmatched key"
+		r.respondsToKey 'test'
+		r.consumerRegistry.unregister('test')
+		!r.respondsToKey('test')
 	}
 
 	def "Multiple consumers can use the same selector"() {
@@ -186,7 +187,7 @@ class ReactorSpec extends Specification {
 		r.on(selector, consumer { d2 = true })
 
 		then: "both consumers are notified"
-		r.notify selector, new Event('foo')
+		r.notify 'test', new Event('foo')
 		d1 && d2
 	}
 
@@ -208,7 +209,7 @@ class ReactorSpec extends Specification {
 		r3.on $('test'), Fn.compose({ d3 = true })
 		r4.on $('test'), Fn.compose({ d4 = true })
 
-		r1.notify $('test'), new Event('bob')
+		r1.notify 'test', new Event('bob')
 
 		then: "r1,r2,r3 react"
 		d1 && d2 && d3
@@ -217,7 +218,7 @@ class ReactorSpec extends Specification {
 		d1 = d2 = d3 = d4 = false
 
 		r2.link r4
-		r1.notify $('test'), new Event('bob')
+		r1.notify 'test', new Event('bob')
 
 		then: "r1,r2,r3 and r4 react"
 		d1 && d2 && d3 && d4
@@ -227,14 +228,14 @@ class ReactorSpec extends Specification {
 		r1.unlink r2
 
 		and: "sending on r1"
-		r1.notify $('test'), new Event('bob')
+		r1.notify 'test', new Event('bob')
 
 		then: "only r1,r3 react"
 		d1 && d3 && !d2 && !d4
 
 		when: "sending on r2"
 		d1 = d2 = d3 = d4 = false
-		r2.notify $('test'), new Event('bob')
+		r2.notify 'test', new Event('bob')
 
 		then: "only r2,r4 react"
 		d2 && d4 && !d1 && !d3

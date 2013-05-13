@@ -35,7 +35,7 @@ public interface Registration<T> {
 	/**
 	 * The item being registered in this assignment.
 	 *
-	 * @return {@literal this}
+	 * @return the registered object
 	 */
 	T getObject();
 

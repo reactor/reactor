@@ -63,26 +63,18 @@ class ObservableExtensions {
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
-																					String selector,
-																					T obj = null) {
-		Event<T> toSend = coerce(obj)
-		selfType.notify $(selector), toSend
-		selfType
-	}
-
-	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
-	                                        Selector selector,
+	                                        Object key,
 	                                        T obj = null) {
 		Event<T> toSend = coerce(obj)
-		selfType.notify selector, toSend
+		selfType.notify key, toSend
 		selfType
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
-																					String selector,
+																					String key,
 																					Closure supplier) {
 		Event<T> toSend = coerce(supplier)
-		selfType.notify $(selector), toSend
+		selfType.notify key, toSend
 		selfType
 	}
 
@@ -95,7 +87,6 @@ class ObservableExtensions {
 
 	static reactor.fn.Observable notify(final reactor.fn.Observable selfType, final Map<String, ?> params) {
 		Object topic = params.remove ARG_TOPIC
-		Selector selector = topic instanceof Selector ? (Selector) topic : $(topic)
 
 		def toSend
 		if (params) {
@@ -107,7 +98,7 @@ class ObservableExtensions {
 			toSend = new Event(params.remove(ARG_DATA))
 		}
 
-		selfType.notify selector, toSend
+		selfType.notify topic, toSend
 		selfType
 	}
 

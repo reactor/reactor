@@ -291,16 +291,16 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	public Composable<T> consume(Selector sel, Observable observable) {
+	public Composable<T> consume(Object key, Observable observable) {
 		switch (state) {
 			case SUCCESS: {
-				observable.notify(sel, Fn.event(value));
+				observable.notify(key, Fn.event(value));
 				return this;
 			}
 			case FAILURE:
 				assertSuccess();
 			default:
-				return super.consume(sel, observable);
+				return super.consume(key, observable);
 		}
 	}
 

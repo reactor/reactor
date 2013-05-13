@@ -34,19 +34,9 @@ import java.util.concurrent.Callable;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public abstract class Fn {
-
-	/**
-	 * Creates a {@link Selector} based on a unique JVM reference.
-	 *
-	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.BaseSelector}
-	 */
-	public static Selector $() {
-		return $(new Object() {
-		});
-	}
 
 	/**
 	 * Creates a {@link Selector} based on the given object.
@@ -105,16 +95,15 @@ public abstract class Fn {
 	}
 
 	/**
-	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@link
-	 * Selector}.
+	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@code key}.
 	 *
 	 * @param obj     The object to wrap.
-	 * @param replyTo The {@link Selector} to use as a {@literal replyTo}.
+	 * @param replyTo The key to use as a {@literal replyTo}.
 	 * @param <T>     The type of the given object.
 	 * @return The new {@link Event}.
 	 */
-	public static <T> Event<T> event(T obj, Selector replyTo) {
-		return new Event<T>(obj).setReplyTo(replyTo);
+	public static <T> Event<T> event(T obj, Object replyToKey) {
+		return new Event<T>(obj).setReplyTo(replyToKey);
 	}
 
 	/**

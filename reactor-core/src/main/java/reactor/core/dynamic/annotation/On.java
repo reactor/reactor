@@ -3,10 +3,10 @@ package reactor.core.dynamic.annotation;
 import java.lang.annotation.*;
 
 /**
- * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#on(reactor.fn.Selector,
- * reactor.fn.Consumer)}.
+ * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#on(reactor.fn.Selector, reactor.fn.Consumer))}.
  *
  * @author Jon Brisbin
+ * @author Andy Wilkinson
  */
 @Target({
 						ElementType.METHOD

@@ -23,21 +23,22 @@ package reactor.fn;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public interface Observable {
 
 	/**
-	 * Are there any {@link Registration}s that match the given {@link Selector}.
+	 * Are there any {@link Registration}s with {@link Selector}s that match the given {@code key}.
 	 *
-	 * @param sel The right-hand side of the {@link Selector} comparison.
-	 * @return {@literal true} if there are any {@literal Registration}s assigned, {@literal false} otherwise.
+     * @param key The key to be matched by the {@link Selector}s.
+	 * @return {@literal true} if there are any matching {@literal Registration}s, {@literal false} otherwise.
 	 */
-	boolean respondsTo(Selector sel);
+	boolean respondsToKey(Object key);
 
 	/**
-	 * Register a {@link Consumer} to be triggered using the given {@link Selector}.
+	 * Register a {@link Consumer} to be triggered when a notification matches the given {@link Selector}.
 	 *
-	 * @param sel      The left-hand side of the {@link Selector} comparison.
+	 * @param sel      The {@link Selector} to be used for matching
 	 * @param consumer The {@literal Consumer} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
@@ -57,7 +58,7 @@ public interface Observable {
 	/**
 	 * Assign a {@link Function} to receive an {@link Event} and produce a reply of the given type.
 	 *
-	 * @param sel The left-hand side of the {@link Selector} comparison.
+	 * @param sel The {@link Selector} to be used for matching
 	 * @param fn  The transformative {@link Function} to call to receive an {@link Event}.
 	 * @param <T> The type of the request data.
 	 * @param <V> The type of the response data.
@@ -68,37 +69,37 @@ public interface Observable {
 	/**
 	 * Notify this component that an {@link Event} is ready to be processed and accept onComplete after dispatching.
 	 *
-	 * @param sel        The right-hand side of the {@link Selector} comparison.
+	 * @param key        The key to be matched by {@link Selector}s.
 	 * @param ev         The {@literal Event}.
 	 * @param onComplete The callback {@link Consumer}.
 	 * @param <T>        The type of the data in the {@link Event}.
 	 * @return {@literal this}
 	 */
-	<T, E extends Event<T>> Observable notify(Selector sel, E ev, Consumer<E> onComplete);
+	<T, E extends Event<T>> Observable notify(Object key, E ev, Consumer<E> onComplete);
 
 	/**
 	 * Notify this component that an {@link Event} is ready to be processed.
 	 *
-	 * @param sel The right-hand side of the {@link Selector} comparison.
-	 * @param ev  The {@literal Event}.
-	 * @param <T> The type of the data in the {@link Event}.
+	 * @param key    The key to be matched by {@link Selector}s.
+	 * @param ev     The {@literal Event}.
+	 * @param <T>    The type of the data in the {@link Event}.
 	 * @return {@literal this}
 	 */
-	<T, E extends Event<T>> Observable notify(Selector sel, E ev);
+	<T, E extends Event<T>> Observable notify(Object key, E ev);
 
 	/**
 	 * Notify this component that the given {@link Supplier} can provide an event that's ready to be processed.
 	 *
-	 * @param sel      The right-hand side of the {@link Selector} comparison.
+	 * @param key      The key to be matched by {@link Selector}s.
 	 * @param supplier The {@link Supplier} that will provide the actual {@link Event}.
 	 * @param <T>      The type of the data in the {@link Event}.
 	 * @param <S>      The type of the {@link Supplier}.
 	 * @return {@literal this}
 	 */
-	<T, S extends Supplier<Event<T>>> Observable notify(Selector sel, S supplier);
+	<T, S extends Supplier<Event<T>>> Observable notify(Object key, S supplier);
 
 	/**
-	 * Notify this component that an {@link Event} is ready to be processed using the internal, global {@link Selector}
+	 * Notify this component that an {@link Event} is ready to be processed using the internal, global key
 	 * that is unique to each {@literal Observable} instance.
 	 *
 	 * @param ev  The {@literal Event}.
@@ -108,7 +109,7 @@ public interface Observable {
 	<T, E extends Event<T>> Observable notify(E ev);
 
 	/**
-	 * Notify this component that an {@link Event} is ready to be processed using the internal, global {@link Selector}
+	 * Notify this component that an {@link Event} is ready to be processed using the internal, global key
 	 * that is unique to each {@link Observable} instance and that the given {@link Supplier} will provide the actual
 	 * {@link Event} to publish.
 	 *
@@ -121,62 +122,62 @@ public interface Observable {
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
-	 * of a previously-registered {@link Function} and respond to the {@link Selector} set on the {@link Event}'s {@literal
-	 * replyTo} property.
+	 * of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal replyTo}
+	 * property.
 	 *
-	 * @param sel The right-hand side of the {@link Selector} comparison.
-	 * @param ev  The {@literal Event}.
-	 * @param <T> The type of the request data.
+	 * @param key    The key to be matched by {@link Selector Selectors}.
+	 * @param ev     The {@literal Event}.
+	 * @param <T>    The type of the request data.
 	 * @return {@literal this}
 	 */
-	<T, E extends Event<T>> Observable send(Selector sel, E ev);
+	<T, E extends Event<T>> Observable send(Object key, E ev);
 
 	/**
 	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
-	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the {@link Selector}
-	 * set on the {@link Event}'s {@literal replyTo} property.
+	 * Consumer} that will take the output of a previously-registered {@link Function} and respond using the key set on
+	 * the {@link Event}'s {@literal replyTo} property.
 	 *
-	 * @param sel      The right-hand side of the {@link Selector} comparison.
+	 * @param key      The key to be matched by {@link Selector Selectors}.
 	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
 	 * @param <T>      The type of the request data.
 	 * @return {@literal this}
 	 */
-	<T, S extends Supplier<Event<T>>> Observable send(Selector sel, S supplier);
+	<T, S extends Supplier<Event<T>>> Observable send(Object key, S supplier);
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
-	 * of a previously-registered {@link Function} and respond to the {@link Selector} set on the {@link Event}'s {@literal
-	 * replyTo} property and will call the {@code notify} method on the given {@link Observable}.
+	 * of a previously-registered {@link Function} and respond to the key set on the {@link Event}'s {@literal replyTo}
+	 * property and will call the {@code notify} method on the given {@link Observable}.
 	 *
-	 * @param sel     The right-hand side of the {@link Selector} comparison.
+	 * @param key     The key to be matched by {@link Selector Selectors}.
 	 * @param ev      The {@literal Event}.
 	 * @param replyTo The {@link Observable} on which to invoke the notify method.
 	 * @param <T>     The type of the request data.
 	 * @return {@literal this}
 	 */
-	<T, E extends Event<T>> Observable send(Selector sel, E ev, Observable replyTo);
+	<T, E extends Event<T>> Observable send(Object key, E ev, Observable replyTo);
 
 	/**
 	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
-	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the {@link Selector}
-	 * set on the {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link
-	 * Observable}.
+	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the key set on the
+	 * {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link Observable}.
 	 *
-	 * @param sel      The right-hand side of the {@link Selector} comparison.
+	 * @param key      The key to be matched by {@link Selector Selectors}.
 	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
 	 * @param replyTo  The {@link Observable} on which to invoke the notify method.
 	 * @param <T>      The type of the request data.
 	 * @return {@literal this}
 	 */
-	<T, S extends Supplier<Event<T>>> Observable send(Selector sel, S supplier, Observable replyTo);
+	<T, S extends Supplier<Event<T>>> Observable send(Object key, S supplier, Observable replyTo);
 
 	/**
-	 * Notify this component that the consumers assigned to this {@link Selector} should be triggered with a {@literal
-	 * null} input argument.
+	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
+	 * triggered with a {@literal null} input argument.
 	 *
-	 * @param sel The right-hand side of the {@link Selector} comparison.
+	 * @param object The object to be matched by {@link Selector Selectors}.
+	 *
 	 * @return {@literal this}
 	 */
-	Observable notify(Selector sel);
+	Observable notify(Object key);
 
 }

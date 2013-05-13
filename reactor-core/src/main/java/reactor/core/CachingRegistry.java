@@ -7,15 +7,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import reactor.fn.Registration;
 import reactor.fn.Registry;
 import reactor.fn.SelectionStrategy;
 import reactor.fn.Selector;
-import reactor.fn.selector.BaseSelector;
 
 /**
  * @author Jon Brisbin
@@ -28,7 +27,8 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final    Lock                                       readLock              = readWriteLock.readLock();
 	private final    Lock                                       writeLock             = readWriteLock.writeLock();
 	private final    List<Registration<? extends T>>            registrations         = new ArrayList<Registration<? extends T>>();
-	private final    Map<Long, List<Registration<? extends T>>> registrationCache     = new HashMap<Long, List<Registration<? extends T>>>();
+	private final    Map<Object, List<Registration<? extends T>>> registrationCache   = new HashMap<Object, List<Registration<? extends T>>>();
+	private final    Map<Object, AtomicLong>                    usageCounts           = new HashMap<Object, AtomicLong>();
 
 	private volatile LoadBalancingStrategy                      loadBalancingStrategy = LoadBalancingStrategy.NONE;
 	private          SelectionStrategy                          selectionStrategy;
@@ -84,7 +84,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public boolean unregister(Selector sel) {
+	public boolean unregister(Object key) {
 
 		writeLock.lock();
 		try {
@@ -92,7 +92,7 @@ public class CachingRegistry<T> implements Registry<T> {
 				return false;
 			}
 
-			List<Registration<? extends T>> regs = findMatchingRegistrations(sel);
+			List<Registration<? extends T>> regs = findMatchingRegistrations(key);
 
 			if (!regs.isEmpty()) {
 				registrations.removeAll(regs);
@@ -107,7 +107,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public Iterable<Registration<? extends T>> select(Selector sel) {
+	public Iterable<Registration<? extends T>> select(Object key) {
 		List<Registration<? extends T>> matchingRegistrations;
 
 		readLock.lock();
@@ -130,15 +130,15 @@ public class CachingRegistry<T> implements Registry<T> {
 				}
 			}
 
-			matchingRegistrations = registrationCache.get(sel.getId());
+			matchingRegistrations = registrationCache.get(key);
 
 			if (null == matchingRegistrations) {
 				readLock.unlock();
 				writeLock.lock();
 				try {
-					matchingRegistrations = registrationCache.get(sel.getId());
+					matchingRegistrations = registrationCache.get(key);
 					if (null == matchingRegistrations) {
-						matchingRegistrations = find(sel);
+						matchingRegistrations = find(key);
 					}
 				} finally {
 					readLock.lock();
@@ -151,10 +151,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		switch (loadBalancingStrategy) {
 			case ROUND_ROBIN: {
-				if (!(sel instanceof BaseSelector)) {
-					throw new IllegalArgumentException("Cannot ROUND_ROBIN load balance using a " + sel.getClass().getName());
-				}
-				int i = (int) (((BaseSelector<?>) sel).getUsageCount() % matchingRegistrations.size());
+				int i = (int) (getUsageCount(key).incrementAndGet() % matchingRegistrations.size());
 				return Collections.<Registration<? extends T>>singletonList(matchingRegistrations.get(i));
 			}
 			case RANDOM: {
@@ -163,6 +160,29 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 			default:
 				return matchingRegistrations;
+		}
+	}
+
+	private AtomicLong getUsageCount(Object key) {
+		readLock.lock();
+		try {
+			AtomicLong usageCount = this.usageCounts.get(key);
+			if (usageCount == null) {
+				readLock.unlock();
+				writeLock.lock();
+				try {
+					if (usageCount == null) {
+						usageCount = new AtomicLong();
+						this.usageCounts.put(key,  usageCount);
+					}
+				} finally {
+					writeLock.unlock();
+					readLock.lock();
+				}
+			}
+			return usageCount;
+		} finally {
+			readLock.unlock();
 		}
 	}
 
@@ -176,15 +196,15 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 	}
 
-	private List<Registration<? extends T>> find(final Selector sel) {
+	private List<Registration<? extends T>> find(Object object) {
 		try {
 			writeLock.lock();
 			if (registrations.isEmpty()) {
 				return Collections.emptyList();
 			}
 
-			List<Registration<? extends T>> regs = findMatchingRegistrations(sel);
-			registrationCache.put(sel.getId(), regs);
+			List<Registration<? extends T>> regs = findMatchingRegistrations(object);
+			registrationCache.put(object, regs);
 
 			return regs;
 		} finally {
@@ -192,14 +212,14 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 	}
 
-	private List<Registration<? extends T>> findMatchingRegistrations(Selector sel) {
+	private List<Registration<? extends T>> findMatchingRegistrations(Object object) {
 		List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
 		for (Registration<? extends T> reg : registrations) {
 			if (null != selectionStrategy
-					&& selectionStrategy.supports(sel)
-					&& selectionStrategy.matches(reg.getSelector(), sel)) {
+					&& selectionStrategy.supports(object)
+					&& selectionStrategy.matches(reg.getSelector(), object)) {
 				regs.add(reg);
-			} else if (reg.getSelector().matches(sel)) {
+			} else if (reg.getSelector().matches(object)) {
 				regs.add(reg);
 			}
 		}

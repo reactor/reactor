@@ -43,14 +43,14 @@ class HandlerBeanPostProcessorSpec extends Specification {
 		def reactor = appCtx.getBean(Reactor)
 
 		when: "an Event is emitted onto the Reactor in context"
-		reactor.notify($('test'), Fn.event("Hello World!"))
+		reactor.notify('test', Fn.event("Hello World!"))
 
 		then: "the method has been invoked"
 		handlerBean.handled
 
 		when: "the event is emitted on the root Reactor"
 		handlerBean.handled = false
-		R.notify($('test'), Fn.event("Hello World!"))
+		R.notify('test', Fn.event("Hello World!"))
 		Thread.sleep(250) // Naive way to make sure the task has been dispatched in the other thread
 
 		then: "the method has been invoked"

@@ -138,11 +138,11 @@ public class BlockingQueueDispatcher implements Dispatcher {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
 						try {
-							for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getSelector())) {
+							for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getKey())) {
 								if (reg.isCancelled() || reg.isPaused()) {
 									continue;
 								}
-								reg.getSelector().setHeaders(t.getSelector(), t.getEvent());
+								reg.getSelector().setHeaders(t.getKey(), t.getEvent());
 								invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
 								if (reg.isCancelAfterUse()) {
 									reg.cancel();

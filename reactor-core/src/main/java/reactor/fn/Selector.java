@@ -18,24 +18,24 @@
 
 package reactor.fn;
 
-import java.util.Set;
+import com.eaio.uuid.UUID;
 
 /**
- * A {@literal Selector} is a wrapper around an arbitrary object as well as provides tagging functionality so that
- * {@literal Selector}s can be filtered based on tags.
+ * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link Tagable} so that they can
+ * be filtered based on their tags.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector {
+public interface Selector extends Tagable<Selector> {
 
 	/**
 	 * Get the unique id of this Selector. Useful for things like caches and referencing in distributed situations.
 	 *
 	 * @return The unique id.
 	 */
-	Long getId();
+	UUID getId();
 
 	/**
 	 * Get the object being used for comparisons and equals checks.
@@ -45,37 +45,20 @@ public interface Selector {
 	Object getObject();
 
 	/**
-	 * Get the set of tags currently assigned to this {@literal Selector}.
+	 * Indicates whether this Selector matches the {@code object}.
 	 *
-	 * @return
-	 */
-	Set<String> getTags();
-
-	/**
-	 * Set the set of tags to assign to this {@literal Selector}. Wipes out any currently-assigned tags.
-	 *
-	 * @param tags The full set of tags to assign to this {@literal Selector}.
-	 * @return {@literal this}
-	 */
-	Selector setTags(String... tags);
-
-	/**
-	 * Indicates whether this Selector matches the {@code other} Selector.
-	 *
-	 * @param other The other Selector
+	 * @param other The object to match
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
-	boolean matches(Selector other);
+	boolean matches(Object object);
 
 	/**
-	 * Match the given {@link Selector} and extract any applicable headers.
+	 * Match the given {@link key} and extract any applicable headers.
 	 *
-	 * @param other The {@link Selector} to match.
-	 * @param ev    The {@link Event} on which to set the headers.
-	 * @param <T>   The type of the data in the event.
+	 * @param key    The key to match.
+	 * @param ev     The {@link Event} on which to set the headers.
+	 * @param <T>    The type of the data in the event.
 	 * @return {@literal this}
 	 */
-	<T> Selector setHeaders(Selector other, Event<T> ev);
-
-
+	<T> Selector setHeaders(Object key, Event<T> ev);
 }

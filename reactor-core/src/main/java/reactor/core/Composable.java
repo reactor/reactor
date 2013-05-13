@@ -54,11 +54,19 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	}
 
 	protected final Object     monitor             = new Object();
-	protected final Selector   accept              = $();
-	protected final Selector   first               = $();
-	protected final Selector   last                = $();
+
+	protected final Object     acceptKey           = new Object();
+	protected final Selector   acceptSelector      = $(acceptKey);
+
+	protected final Object     firstKey            = new Object();
+	protected final Selector   firstSelector       = $(firstKey);
+
+	protected final Object     lastKey             = new Object();
+	protected final Selector   lastSelector        = $(lastKey);
+
 	protected final AtomicLong acceptedCount       = new AtomicLong(0);
 	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
+
 	protected final    Observable observable;
 	protected volatile Dispatcher dispatcher;
 	protected boolean hasBlockers = false;
@@ -116,7 +124,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given {@link Selector} and {@link Event} and delay notification of the event
+	 * Create a {@literal Composable} from the given {@code key} and {@link Event} and delay notification of the event
 	 * on the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
 	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
 	 *
@@ -126,12 +134,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 * @param <T>        The type of the {@link Event} data.
 	 * @return The new {@literal Composable}.
 	 */
-	public static <T, E extends Event<T>> Composable<E> from(final Selector sel, E ev, final Observable observable) {
+	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
 		return Composable.from(ev)
 										 .consume(new Consumer<E>() {
 											 @Override
 											 public void accept(E e) {
-												 observable.notify(sel, e, null);
+												 observable.notify(key, e, null);
 											 }
 										 });
 	}
@@ -159,7 +167,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	public Composable<T> setExpectedAcceptCount(long expectedAcceptCount) {
 		this.expectedAcceptCount.set(expectedAcceptCount);
 		if (this.acceptedCount.get() >= expectedAcceptCount) {
-			observable.notify(last, Fn.event(value));
+			observable.notify(lastKey, Fn.event(value));
 			synchronized (monitor) {
 				monitor.notifyAll();
 			}
@@ -175,22 +183,22 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 * @see {@link #accept(Object)}
 	 */
 	public Composable<T> consume(Consumer<T> consumer) {
-		return when(accept, consumer);
+		return when(acceptSelector, consumer);
 	}
 
 	/**
-	 * Register a {@link Selector} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is
+	 * Register a {@code key} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is
 	 * called.
 	 *
-	 * @param sel        The {@link Selector} to use when publishing the {@link Event}.
+	 * @param key        The key to use when publishing the {@link Event}.
 	 * @param observable The {@link Observable} on which to publish the {@link Event}.
 	 * @return {@literal this}
 	 */
-	public Composable<T> consume(final Selector sel, final Observable observable) {
-		return when(accept, new Consumer<T>() {
+	public Composable<T> consume(final Object key, final Observable observable) {
+		return when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T event) {
-				observable.notify(sel, Event.class.isAssignableFrom(event.getClass()) ? (Event<?>) event : Fn.event(event));
+				observable.notify(key, Event.class.isAssignableFrom(event.getClass()) ? (Event<?>) event : Fn.event(event));
 			}
 		});
 	}
@@ -204,7 +212,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	public Composable<T> first() {
 		final Composable<T> c = createComposable(observable);
 		c.expectedAcceptCount.set(1);
-		when(first, new Consumer<T>() {
+		when(firstSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
 				c.accept(t);
@@ -223,7 +231,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	public Composable<T> last() {
 		final Composable<T> c = createComposable(observable);
 		c.expectedAcceptCount.set(1);
-		when(last, new Consumer<T>() {
+		when(lastSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
 				c.accept(t);
@@ -261,15 +269,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 */
 	public <V> Composable<V> map(final Function<T, V> fn) {
 		final Composable<V> c = createComposable(createObservable(observable));
-		when(accept, new Consumer<T>() {
+		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
 					c.accept(fn.apply(value));
 				} catch (Throwable t) {
-					// Errors should be reported on the returned Composable, not the parent.
-					c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-					c.decreaseAcceptLength();
+					handleError(c, t);
 				}
 			}
 		});
@@ -277,45 +283,43 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	}
 
 	/**
-	 * Create a new {@link Composable} that is linked to the parent through the given {@link Selector} and {@link
+	 * Create a new {@link Composable} that is linked to the parent through the given {@code key} and {@link
 	 * Observable}. When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and
-	 * passed to {@link Observable#notify (reactor.fn.Event)} along with the given {@link Selector}. After the event is
+	 * passed to {@link Observable#notify (reactor.fn.Event)} along with the given {@code key}. After the event is
 	 * being propagated to the reactor consumers, the new composition expects {@param <V>} replies to be returned - A
 	 * consumer might reply using {@link R#replyTo(reactor.fn.Event, reactor.fn.Event)}. }
 	 *
-	 * @param sel        The selector to notify
+	 * @param key        The key to notify
 	 * @param observable The observable to notify
 	 * @param <V>        The type of the object returned by reactor reply.
 	 * @return The new {@link Composable}.
 	 */
-	public <V> Composable<V> map(final Selector sel, final Observable observable) {
+	public <V> Composable<V> map(final Object key, final Observable observable) {
 		/* todo look if we may pick the size from consumerRegistry or just use a unbounded length */
 		final Composable<V> c = new DelayedAcceptComposable<V>(observable, -1);
-		final Selector replyTo = $();
+		final Object replyTo = new Object();
 
-		observable.on(replyTo, new Consumer<Event<V>>() {
+		observable.on($(replyTo), new Consumer<Event<V>>() {
 			@Override
 			public void accept(Event<V> event) {
 				try {
 					c.accept(event.getData());
 				} catch (Throwable t) {
-					c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-					c.decreaseAcceptLength();
+					handleError(c, t);
 				}
 			}
 		});
 
-		when(accept, new Consumer<T>() {
+		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
 					Event<?> event = Event.class.isAssignableFrom(value.getClass()) ? (Event<?>) value : Fn.event(value);
 					event.setReplyTo(replyTo);
 					//event.getHeaders().setOrigin(reactor.getId());
-					observable.notify(sel, event);
+					observable.notify(key, event);
 				} catch (Throwable t) {
-					c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-					c.decreaseAcceptLength();
+					handleError(c, t);
 				}
 			}
 		});
@@ -336,7 +340,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
 		final Composable<V> c = createComposable(createObservable(observable));
 		c.setExpectedAcceptCount(1);
-		when(accept, new Consumer<T>() {
+		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
@@ -346,13 +350,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 						c.accept(lastValue.get());
 					}
 				} catch (Throwable t) {
-					// Errors should be reported on the returned Composable, not the parent.
-					c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-					c.decreaseAcceptLength();
+					handleError(c, t);
 				}
 			}
 		});
-		when(last, new Consumer<T>() {
+		when(lastSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
 				c.accept(lastValue.get());
@@ -383,7 +385,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 */
 	public Composable<T> filter(final Function<T, Boolean> fn) {
 		final Composable<T> c = createComposable(createObservable(observable));
-		when(accept, new Consumer<T>() {
+		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
@@ -393,9 +395,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 						c.decreaseAcceptLength();
 					}
 				} catch (Throwable t) {
-					// Errors should be reported on the returned Composable, not the parent.
-					c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-					c.decreaseAcceptLength();
+					handleError(c, t);
 				}
 			}
 		});
@@ -430,7 +430,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 				monitor.notifyAll();
 			}
 		}
-		observable.notify(accept, Fn.event(value));
+		observable.notify(acceptKey, Fn.event(value));
 		acceptedCount.incrementAndGet();
 	}
 
@@ -487,7 +487,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 			}
 		};
 
-		if (sel == accept && value != null) {
+		if (sel == acceptSelector && value != null) {
 			R.schedule(consumer, value, observable);
 		} else {
 			observable.on(sel, whenConsumer);
@@ -520,6 +520,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 				monitor.notifyAll();
 			}
 		}
+	}
+
+	private <V> void handleError(final Composable<V> c, Throwable t) {
+		c.observable.notify(t.getClass(), Fn.event(t));
+		c.decreaseAcceptLength();
 	}
 
 	/**
@@ -581,7 +586,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 			synchronized (monitor) {
 				this.error = error;
 			}
-			observable.notify(Fn.T(error.getClass()), Fn.event(error));
+			observable.notify(error.getClass(), Fn.event(error));
 		}
 
 		@Override
@@ -595,13 +600,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(expectedAcceptCount.get()));
 
 			if (acceptedCount.get() == 1) {
-				observable.notify(first, ev);
+				observable.notify(firstKey, ev);
 			}
 
-			observable.notify(accept, ev);
+			observable.notify(acceptKey, ev);
 
 			if (acceptedCount.get() == expectedAcceptCount.get()) {
-				observable.notify(last, ev);
+				observable.notify(lastKey, ev);
 				synchronized (monitor) {
 					monitor.notifyAll();
 				}

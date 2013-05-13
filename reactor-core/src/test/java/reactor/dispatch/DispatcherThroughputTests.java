@@ -42,10 +42,11 @@ import static reactor.core.Context.*;
  */
 public class DispatcherThroughputTests {
 
-	static final Logger LOG        = LoggerFactory.getLogger(DispatcherThroughputTests.class);
 	static final int    selectors  = 250;
 	static final int    iterations = 7500;
-	static final int    testRuns   = 3;
+	static final int    testRuns   = 10;
+
+	protected final Logger log        = LoggerFactory.getLogger(getClass());
 
 	Reactor        reactor;
 	CountDownLatch latch;
@@ -56,6 +57,7 @@ public class DispatcherThroughputTests {
 			latch.countDown();
 		}
 	};
+	Object[] objects = new Object[selectors];
 	Selector[]    sels  = new Selector[selectors];
 	Event<String> hello = new Event<String>("Hello World!");
 	long   start;
@@ -67,12 +69,14 @@ public class DispatcherThroughputTests {
 	public void start() {
 		reactor = new Reactor();
 		for (int i = 0; i < selectors; i++) {
-			sels[i] = $("test" + i);
+			Object object = "test" + i;
+			sels[i] = $(object);
+			objects[i] = object;
 			reactor.on(sels[i], countDown);
 		}
 		for (int i = 0; i < selectors; i++) {
 			// pre-select everything to ensure it's in the cache
-			reactor.getConsumerRegistry().select(sels[i]);
+			reactor.getConsumerRegistry().select(objects[i]);
 		}
 	}
 
@@ -86,14 +90,14 @@ public class DispatcherThroughputTests {
 		elapsed = (end - start);
 		throughput = Math.round((selectors * iterations) / (elapsed / 1000));
 
-		LOG.info(reactor.getDispatcher().getClass().getSimpleName() + " throughput (" + ((long) elapsed) + "ms): " + throughput + "/sec");
+		log.info(reactor.getDispatcher().getClass().getSimpleName() + " throughput (" + ((long) elapsed) + "ms): " + throughput + "/sec");
 	}
 
 	protected void doTest() throws InterruptedException {
 		for (int j = 0; j < testRuns; j++) {
 			preRun();
 			for (int i = 0; i < selectors * iterations; i++) {
-				reactor.notify(sels[i % selectors], hello);
+				reactor.notify(objects[i % selectors], hello);
 			}
 			latch.await(30, TimeUnit.SECONDS);
 			postRun();
@@ -104,7 +108,7 @@ public class DispatcherThroughputTests {
 	public void testBlockingQueueDispatcher() throws InterruptedException {
 		reactor.setDispatcher(nextWorkerDispatcher());
 
-		LOG.info("Starting blocking queue test...");
+		log.info("Starting blocking queue test...");
 		doTest();
 	}
 
@@ -112,7 +116,7 @@ public class DispatcherThroughputTests {
 	public void testThreadPoolDispatcher() throws InterruptedException {
 		reactor.setDispatcher(threadPoolDispatcher());
 
-		LOG.info("Starting thread pool test...");
+		log.info("Starting thread pool test...");
 		doTest();
 	}
 
@@ -120,7 +124,7 @@ public class DispatcherThroughputTests {
 	public void testRootDispatcher() throws InterruptedException {
 		reactor.setDispatcher(rootDispatcher());
 
-		LOG.info("Starting root RingBuffer test...");
+		log.info("Starting root RingBuffer test...");
 		doTest();
 	}
 
@@ -132,7 +136,7 @@ public class DispatcherThroughputTests {
 																									 ProducerType.SINGLE,
 																									 new YieldingWaitStrategy()));
 
-		LOG.info("Starting single-producer, yielding RingBuffer test...");
+		log.info("Starting single-producer, yielding RingBuffer test...");
 		doTest();
 	}
 

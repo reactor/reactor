@@ -72,11 +72,11 @@ public class SynchronousDispatcher implements Dispatcher {
 		@Override
 		public void submit() {
 			try {
-				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getSelector())) {
+				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
 					if (reg.isCancelled() || reg.isPaused()) {
 						continue;
 					}
-					reg.getSelector().setHeaders(getSelector(), getEvent());
+					reg.getSelector().setHeaders(getKey(), getEvent());
 					invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
 					if (reg.isCancelAfterUse()) {
 						reg.cancel();

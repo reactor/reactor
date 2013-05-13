@@ -22,7 +22,6 @@ import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Registry;
-import reactor.fn.Selector;
 
 /**
  * Abstract class that a {@link Dispatcher} will implement that provides a caller with a holder for the components of an
@@ -33,19 +32,19 @@ import reactor.fn.Selector;
  */
 public abstract class Task<T> {
 
-	private Selector                               selector;
+	private Object                                 key;
 	private Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private Event<T>                               event;
 	private Converter                              converter;
 	private Consumer<Event<T>>                     completionConsumer;
 	private Consumer<Throwable>                    errorConsumer;
 
-	public Selector getSelector() {
-		return selector;
+	public Object getKey() {
+		return key;
 	}
 
-	public Task<T> setSelector(Selector selector) {
-		this.selector = selector;
+	public Task<T> setKey(Object key) {
+		this.key = key;
 		return this;
 	}
 
@@ -95,7 +94,7 @@ public abstract class Task<T> {
 	}
 
 	public void reset() {
-		selector = null;
+		key = null;
 		consumerRegistry = null;
 		event = null;
 		completionConsumer = null;
