@@ -1,20 +1,16 @@
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.fn.Registration;
 import reactor.fn.Registry;
 import reactor.fn.SelectionStrategy;
 import reactor.fn.Selector;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author Jon Brisbin
@@ -22,17 +18,18 @@ import reactor.fn.Selector;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final    Random                                     random                = new Random();
-	private final    ReentrantReadWriteLock                     readWriteLock         = new ReentrantReadWriteLock(true);
-	private final    Lock                                       readLock              = readWriteLock.readLock();
-	private final    Lock                                       writeLock             = readWriteLock.writeLock();
-	private final    List<Registration<? extends T>>            registrations         = new ArrayList<Registration<? extends T>>();
-	private final    Map<Object, List<Registration<? extends T>>> registrationCache   = new HashMap<Object, List<Registration<? extends T>>>();
-	private final    Map<Object, AtomicLong>                    usageCounts           = new HashMap<Object, AtomicLong>();
+	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
+	private final Random                                       random            = new Random();
+	private final ReentrantReadWriteLock                       readWriteLock     = new ReentrantReadWriteLock(true);
+	private final Lock                                         readLock          = readWriteLock.readLock();
+	private final Lock                                         writeLock         = readWriteLock.writeLock();
+	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
+	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
+	private final Map<Object, AtomicLong>                      usageCounts       = new HashMap<Object, AtomicLong>();
 
-	private volatile LoadBalancingStrategy                      loadBalancingStrategy = LoadBalancingStrategy.NONE;
-	private          SelectionStrategy                          selectionStrategy;
-	private          boolean                                    refreshRequired;
+	private volatile LoadBalancingStrategy loadBalancingStrategy = LoadBalancingStrategy.NONE;
+	private SelectionStrategy selectionStrategy;
+	private boolean           refreshRequired;
 
 	public LoadBalancingStrategy getLoadBalancingStrategy() {
 		return loadBalancingStrategy;
@@ -119,9 +116,6 @@ public class CachingRegistry<T> implements Registry<T> {
 				try {
 					if (refreshRequired) {
 						registrationCache.clear();
-						for (Registration<? extends T> reg : registrations) {
-							find(reg.getSelector());
-						}
 						refreshRequired = false;
 					}
 				} finally {
@@ -173,7 +167,7 @@ public class CachingRegistry<T> implements Registry<T> {
 				try {
 					if (usageCount == null) {
 						usageCount = new AtomicLong();
-						this.usageCounts.put(key,  usageCount);
+						this.usageCounts.put(key, usageCount);
 					}
 				} finally {
 					writeLock.unlock();
@@ -223,28 +217,13 @@ public class CachingRegistry<T> implements Registry<T> {
 				regs.add(reg);
 			}
 		}
+		if (regs.isEmpty() && log.isDebugEnabled()) {
+			log.debug("No objects registered for key {}", object);
+		}
 		return regs;
 	}
 
-	@SuppressWarnings("unchecked")
-	private void expire(Selector sel, long olderThan) {
-		try {
-			writeLock.lock();
-			List<Registration<? extends T>> regsToRemove = new ArrayList<Registration<? extends T>>();
-			for (Registration<? extends T> reg : find(sel)) {
-				if (((CachableRegistration<?>) reg).getAge() > olderThan) {
-					regsToRemove.add(reg);
-				}
-			}
-			registrations.removeAll(regsToRemove);
-			refreshRequired = true;
-		} finally {
-			writeLock.unlock();
-		}
-	}
-
 	private class CachableRegistration<V> implements Registration<V> {
-		private final long created = System.currentTimeMillis();
 		private final Selector selector;
 		private final V        object;
 		private volatile boolean cancelAfterUse = false;
@@ -254,10 +233,6 @@ public class CachingRegistry<T> implements Registry<T> {
 		private CachableRegistration(Selector selector, V object) {
 			this.selector = selector;
 			this.object = object;
-		}
-
-		long getAge() {
-			return System.currentTimeMillis() - created;
 		}
 
 		@Override
@@ -311,4 +286,5 @@ public class CachingRegistry<T> implements Registry<T> {
 			return this;
 		}
 	}
+
 }
