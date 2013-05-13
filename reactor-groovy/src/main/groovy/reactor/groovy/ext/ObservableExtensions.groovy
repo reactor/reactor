@@ -110,7 +110,7 @@ class ObservableExtensions {
 		} else if (obj instanceof Supplier) {
 			(Event<T>)obj.get()
 		} else if (obj instanceof Closure) {
-			(Event<T>)obj.call()
+			new Event<T>((T)obj.call())
 		} else {
 			new Event<T>((T)obj)
 		}
