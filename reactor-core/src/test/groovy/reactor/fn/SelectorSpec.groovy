@@ -95,13 +95,13 @@ class SelectorSpec extends Specification {
 		def r = R.create(true)
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
-			resourceId = ev.data
+			resourceId = ev.headers["resource"]
 		})
 
 		when: "The selector is matched"
-		r.notify key, Fn.event("resourceId")
+		r.notify key, Fn.event("")
 
-		then: "The resourceId has been set"
+		then: "The resourceId has been set from the headers"
 		resourceId
 
 	}
