@@ -9,3 +9,4 @@ build
 out
 *.log
 *.i*
+*.java.hsp
