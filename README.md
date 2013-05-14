@@ -14,6 +14,32 @@ This should cause the submodules to be compiled and the tests to be run. To inst
 
     ./gradlew install
 
+### Maven Artifacts
+
+Snapshot Maven artifacts are provided in the SpringSource snapshot repositories. To add this repo to your Gradle build, specify the URL like the following:
+
+    ext {
+      reactorVersion = '1.0.0.BUILD-SNAPSHOT'
+    }
+
+    repositories {
+      mavenLocal()
+      maven { url 'http://repo.springsource.org/libs-release' }
+      maven { url 'http://repo.springsource.org/libs-snapshot' }
+      mavenCentral()
+    }
+
+    dependencies {
+      // Reactor Core
+      compile 'reactor:reactor-core:$reactorVersion'
+      // Reactor Groovy
+      compile 'reactor:reactor-groovy:$reactorVersion'
+      // Reactor Spring
+      compile 'reactor:reactor-spring:$reactorVersion'
+    }
+
+When Reactor is released as a milestone or release, the artifacts will be generally available in Maven Central. Until then, you'll want to use the above snapshot repository for access to the artifacts.
+
 ### Community / Support
 
 * [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
