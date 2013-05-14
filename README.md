@@ -17,7 +17,6 @@ This should cause the submodules to be compiled and the tests to be run. To inst
 ### Community / Support
 
 * [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
-* [Pivotal Tracker backlog](https://www.pivotaltracker.com/s/projects/823517)
 * [GitHub Issues](https://github.com/reactor/reactor/issues)
 
 ### Introduction
