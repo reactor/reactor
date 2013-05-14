@@ -124,7 +124,6 @@ public class BlockingQueueDispatcher implements Dispatcher {
 		}
 
 		@Override
-		@SuppressWarnings({"unchecked"})
 		public void run() {
 			Task<?> t = null;
 			while (true) {

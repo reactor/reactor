@@ -51,8 +51,8 @@ public abstract class ConsumerUtils {
 			CACHE_READ_LOCK.unlock();
 		}
 
-		if (obj instanceof Event && null != ((Event) obj).getData()) {
-			return (Class<? extends T>) ((Event) obj).getData().getClass();
+		if (obj instanceof Event && null != ((Event<?>) obj).getData()) {
+			return (Class<? extends T>) ((Event<?>) obj).getData().getClass();
 		}
 
 		for (Type t : obj.getClass().getGenericInterfaces()) {

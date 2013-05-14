@@ -50,7 +50,7 @@ public class DispatcherThroughputTests {
 
 	Reactor        reactor;
 	CountDownLatch latch;
-	@SuppressWarnings({"rawtypes"})
+
 	Consumer<Event<Object>> countDown = new Consumer<Event<Object>>() {
 		@Override
 		public void accept(Event<Object> ev) {

@@ -150,7 +150,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	 * @param reactor The {@link Reactor} to use.
 	 * @return A proxy based on {@link #type}.
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({"unchecked"})
 	public T create(Reactor reactor) {
 		return (T) Proxy.newProxyInstance(
 				DynamicReactorFactory.class.getClassLoader(),

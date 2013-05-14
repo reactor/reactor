@@ -119,7 +119,6 @@ public class Promise<T> extends Composable<T> {
 	 * @return The new {@literal Promise}.
 	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> sync(Throwable reason) {
 		return Promise.<T>from(reason).setDispatcher(Context.synchronousDispatcher());
 	}
@@ -404,8 +403,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <T> Composable<T> createComposable(Observable src) {
-		return new Promise<T>(src);
+	protected <U> Composable<U> createComposable(Observable src) {
+		return new Promise<U>(src);
 	}
 
 	private void assertSuccess() {

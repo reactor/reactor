@@ -114,7 +114,6 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	 *
 	 * @return The {@link Registry} in use.
 	 */
-	@SuppressWarnings("unchecked")
 	public Registry<Consumer<? extends Event<?>>> getConsumerRegistry() {
 		return consumerRegistry;
 	}
@@ -409,7 +408,7 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 			Observable replyToObservable = Reactor.this;
 
 			if (ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
-				Observable o = ((ReplyToEvent) ev).getReplyToObservable();
+				Observable o = ((ReplyToEvent<?>) ev).getReplyToObservable();
 				if (null != o) {
 					replyToObservable = o;
 				}
