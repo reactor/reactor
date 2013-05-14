@@ -27,6 +27,6 @@ import reactor.groovy.ClosureConsumer
  * @author Stephane Maldini
  */
 @CompileStatic
-class PromiseExtensions {
+class ComposableExtensions {
 
 }
