@@ -48,7 +48,7 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // Wire an event to handle the data sent with the Event
     reactor.on(parse, new Consumer<Event<String>>() {
-      public void call(Event<String> ev) {
+      public void accept(Event<String> ev) {
         service.handleEvent(ev);
       }
     });
