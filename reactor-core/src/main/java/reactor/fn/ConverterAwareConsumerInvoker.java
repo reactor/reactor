@@ -21,7 +21,7 @@ import java.util.concurrent.Callable;
  */
 public class ConverterAwareConsumerInvoker implements ConsumerInvoker {
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public <T> T invoke(Consumer<?> consumer,
 											Converter converter,
@@ -45,9 +45,9 @@ public class ConverterAwareConsumerInvoker implements ConsumerInvoker {
 				} else if (null != converter && converter.canConvert(o.getClass(), argType)) {
 					return invoke(consumer, converter, returnType, converter.convert(o, argType));
 				} else if (Event.class.isAssignableFrom(o.getClass())
-						&& null != ((Event) o).getData()
-						&& argType.isAssignableFrom(((Event) o).getData().getClass())) {
-					return invoke(consumer, converter, returnType, ((Event) o).getData());
+						&& null != ((Event<?>) o).getData()
+						&& argType.isAssignableFrom(((Event<?>) o).getData().getClass())) {
+					return invoke(consumer, converter, returnType, ((Event<?>) o).getData());
 				}
 			}
 			throw e;

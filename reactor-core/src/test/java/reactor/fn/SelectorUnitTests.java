@@ -39,7 +39,6 @@ public class SelectorUnitTests {
 	static final int    iterations = 5000;
 
 	@Test
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	public void testSelectionThroughput() throws Exception {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
 		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
@@ -75,7 +74,6 @@ public class SelectorUnitTests {
 		assertThat("All handlers have been found and executed.", counter.get() == 0);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testUriTemplateSelectorThroughput() throws Exception {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);

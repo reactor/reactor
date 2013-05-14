@@ -508,8 +508,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 		}
 	}
 
-	protected <T> Composable<T> createComposable(Observable src) {
-		Composable<T> c = new Composable<T>(src);
+	protected <U> Composable<U> createComposable(Observable src) {
+		Composable<U> c = new Composable<U>(src);
 		c.expectedAcceptCount.set(expectedAcceptCount.get());
 		return c;
 	}
@@ -571,7 +571,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 			super(src);
 			this.values = values;
 			if (values instanceof Collection) {
-				expectedAcceptCount.set(((Collection) values).size());
+				expectedAcceptCount.set(((Collection<?>) values).size());
 			}
 		}
 
@@ -626,10 +626,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
-		protected <T> Composable<T> createComposable(Observable src) {
+		protected <U> Composable<U> createComposable(Observable src) {
 			final DelayedAcceptComposable<T> self = (DelayedAcceptComposable<T>) this;
-			return new DelayedAcceptComposable<T>(src, self.expectedAcceptCount.get()) {
+			return new DelayedAcceptComposable<U>(src, self.expectedAcceptCount.get()) {
 				@Override
 				protected void delayedAccept() {
 					self.delayedAccept();

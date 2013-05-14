@@ -65,7 +65,7 @@ public abstract class GroovyTestUtils {
 
 	public static <K, V> Function<K, V> function(final Closure<V> cl) {
 		return new Function<K, V>() {
-			Class[] argTypes = cl.getParameterTypes();
+			Class<?>[] argTypes = cl.getParameterTypes();
 
 			@Override
 			@SuppressWarnings({"unchecked"})
@@ -77,7 +77,7 @@ public abstract class GroovyTestUtils {
 						&& argTypes[0] != Object.class
 						&& !argTypes[0].isAssignableFrom(arg.getClass())
 						&& arg instanceof Event) {
-					return apply((K) ((Event) arg).getData());
+					return apply((K) ((Event<?>) arg).getData());
 				}
 
 				return cl.call(arg);
