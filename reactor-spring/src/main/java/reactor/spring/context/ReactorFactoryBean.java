@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
 import reactor.core.R;
 import reactor.core.Reactor;
+import reactor.fn.dispatch.Dispatcher;
 
 /**
  * @author Jon Brisbin
@@ -21,14 +22,23 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 	@Autowired(required = false)
 	private ConversionService conversionService;
 	private boolean rootReactor = false;
-	private String name;
-
+	private String     name;
+	private Dispatcher dispatcher;
 
 	public ReactorFactoryBean(boolean rootReactor) {
 		this.rootReactor = rootReactor;
 	}
 
 	public ReactorFactoryBean() {
+	}
+
+	public ConversionService getConversionService() {
+		return conversionService;
+	}
+
+	public ReactorFactoryBean setConversionService(ConversionService conversionService) {
+		this.conversionService = conversionService;
+		return this;
 	}
 
 	public boolean isRootReactor() {
@@ -49,12 +59,15 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 		return this;
 	}
 
-	public ConversionService getConversionService() {
-		return conversionService;
+	public Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 
-	public ReactorFactoryBean setConversionService(ConversionService conversionService) {
-		this.conversionService = conversionService;
+	public ReactorFactoryBean setDispatcher(Dispatcher dispatcher) {
+		this.dispatcher = dispatcher;
+		if (ROOT_REACTOR.getDispatcher() != dispatcher) {
+			ROOT_REACTOR.setDispatcher(dispatcher);
+		}
 		return this;
 	}
 
@@ -71,6 +84,10 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
 		if (conversionService != null) {
 			reactor.setConverter(new ConversionServiceConverter(conversionService));
+		}
+
+		if (dispatcher != null) {
+			reactor.setDispatcher(dispatcher);
 		}
 
 		return reactor;
