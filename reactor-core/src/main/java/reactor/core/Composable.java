@@ -128,7 +128,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 * on the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
 	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
 	 *
-	 * @param sel        The right-hand side of the {@link Selector} comparison.
+	 * @param key        The key to use when notifying the {@link Observable}.
 	 * @param ev         The {@literal Event}.
 	 * @param observable The {@link Observable} on which to invoke the notify method.
 	 * @param <T>        The type of the {@link Event} data.
