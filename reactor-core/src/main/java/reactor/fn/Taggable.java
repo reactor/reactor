@@ -20,7 +20,7 @@ public interface Taggable<T extends Taggable<T>> {
 	Taggable<T> setTags(String... tags);
 
 	/**
-	 * Get the set of tags currently assigned to this {@literal Selector}.
+	 * Get the set of currently assigned tags
 	 *
 	 * @return the tags
 	 */

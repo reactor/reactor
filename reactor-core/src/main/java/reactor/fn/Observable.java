@@ -174,7 +174,7 @@ public interface Observable {
 	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
 	 * triggered with a {@literal null} input argument.
 	 *
-	 * @param object The object to be matched by {@link Selector Selectors}.
+	 * @param key The key to be matched by {@link Selector Selectors}.
 	 *
 	 * @return {@literal this}
 	 */

@@ -97,9 +97,9 @@ public abstract class Fn {
 	/**
 	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@code key}.
 	 *
-	 * @param obj     The object to wrap.
-	 * @param replyTo The key to use as a {@literal replyTo}.
-	 * @param <T>     The type of the given object.
+	 * @param obj        The object to wrap.
+	 * @param replyToKey The key to use as a {@literal replyTo}.
+	 * @param <T>        The type of the given object.
 	 * @return The new {@link Event}.
 	 */
 	public static <T> Event<T> event(T obj, Object replyToKey) {

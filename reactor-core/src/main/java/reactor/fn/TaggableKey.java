@@ -17,7 +17,7 @@ public final class TaggableKey implements Taggable<TaggableKey> {
 
 	/**
 	 * Creates a {@link Taggable} notification key that will defer to the
-	 * {@code delegate} for {@link hashCode} and {@link equals}.
+	 * {@code delegate} for {@link #hashCode} and {@link #equals}.
 	 *
 	 * @param delegate The delegate
 	 */
