@@ -16,8 +16,10 @@
 
 package reactor.core;
 
-import static reactor.Fn.$;
-import static reactor.core.Context.synchronousDispatcher;
+import org.slf4j.LoggerFactory;
+import reactor.Fn;
+import reactor.fn.*;
+import reactor.fn.dispatch.Dispatcher;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,17 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.slf4j.LoggerFactory;
-
-import reactor.Fn;
-import reactor.fn.Consumer;
-import reactor.fn.Deferred;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Observable;
-import reactor.fn.Selector;
-import reactor.fn.Supplier;
-import reactor.fn.dispatch.Dispatcher;
+import static reactor.Fn.$;
+import static reactor.core.Context.synchronousDispatcher;
 
 /**
  * A {@literal Composable} is a way to provide components from other threads to act on incoming data and provide new
@@ -75,21 +68,21 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		}
 	}
 
-	protected final Object     monitor             = new Object();
+	protected final Object monitor = new Object();
 
-	protected final Object     acceptKey           = new Object();
-	protected final Selector   acceptSelector      = $(acceptKey);
+	protected final Object   acceptKey      = new Object();
+	protected final Selector acceptSelector = $(acceptKey);
 
-	protected final Object     firstKey            = new Object();
-	protected final Selector   firstSelector       = $(firstKey);
+	protected final Object   firstKey      = new Object();
+	protected final Selector firstSelector = $(firstKey);
 
-	protected final Object     lastKey             = new Object();
-	protected final Selector   lastSelector        = $(lastKey);
+	protected final Object   lastKey      = new Object();
+	protected final Selector lastSelector = $(lastKey);
 
 	protected final AtomicLong acceptedCount       = new AtomicLong(0);
 	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
 
-	protected final    Observable observable;
+	protected final Observable observable;
 	protected boolean hasBlockers = false;
 	protected T         value;
 	protected Throwable error;
@@ -98,7 +91,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * Create a {@literal Composable} with default behavior.
 	 */
 	public Composable() {
-		this.observable = createObservable((Observable)null);
+		this.observable = createObservable((Observable) null);
 	}
 
 	public Composable(Dispatcher dispatcher) {
@@ -130,11 +123,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @param value The value to use.
 	 * @param <T>   The type of the value.
-	 * @return The new {@link Composable}.
+	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Composable<T> from(T value) {
-		return new DelayedAcceptComposable<T>(new Reactor(), Arrays.asList(value));
+	public static <T> Builder<T> from(T value) {
+		return new Builder<T>(Arrays.asList(value));
 	}
 
 	/**
@@ -142,15 +135,15 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @param values The values to use.
 	 * @param <T>    The type of the values.
-	 * @return The new {@literal Composable}.
+	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
 	 */
-	public static <T> Composable<T> from(Iterable<T> values) {
-		return new DelayedAcceptComposable<T>(new Reactor(), values);
+	public static <T> Builder<T> from(Iterable<T> values) {
+		return new Builder<T>(values);
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given {@code key} and {@link Event} and delay notification of the event
-	 * on the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
+	 * Create a {@literal Composable} from the given {@code key} and {@link Event} and delay notification of the event on
+	 * the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
 	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
 	 *
 	 * @param key        The key to use when notifying the {@link Observable}.
@@ -161,6 +154,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
 		return Composable.from(ev)
+										 .build()
 										 .consume(new Consumer<E>() {
 											 @Override
 											 public void accept(E e) {
@@ -198,8 +192,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Register a {@code key} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is
-	 * called.
+	 * Register a {@code key} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is called.
 	 *
 	 * @param key        The key to use when publishing the {@link Event}.
 	 * @param observable The {@link Observable} on which to publish the {@link Event}.
@@ -294,11 +287,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a new {@link Composable} that is linked to the parent through the given {@code key} and {@link
-	 * Observable}. When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and
-	 * passed to {@link Observable#notify (reactor.fn.Event)} along with the given {@code key}. After the event is
-	 * being propagated to the reactor consumers, the new composition expects {@param <V>} replies to be returned - A
-	 * consumer might reply using {@link R#replyTo(reactor.fn.Event, reactor.fn.Event)}. }
+	 * Create a new {@link Composable} that is linked to the parent through the given {@code key} and {@link Observable}.
+	 * When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and passed to
+	 * {@link Observable#notify (reactor.fn.Event)} along with the given {@code key}. After the event is being propagated
+	 * to the reactor consumers, the new composition expects {@param <V>} replies to be returned - A consumer might reply
+	 * using {@link R#replyTo(reactor.fn.Event, reactor.fn.Event)}. }
 	 *
 	 * @param key        The key to notify
 	 * @param observable The observable to notify
@@ -572,6 +565,43 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		 */
 		public T getNextValue() {
 			return nextValue;
+		}
+	}
+
+	/**
+	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
+	 *
+	 * @param <T> The type of the values.
+	 */
+	public static class Builder<T> {
+
+		protected final Iterable<T> values;
+		protected       Dispatcher  dispatcher;
+		protected       Reactor     reactor;
+
+		Builder(Iterable<T> values) {
+			this.values = values;
+		}
+
+		public Builder<T> using(Reactor reactor) {
+			this.reactor = reactor;
+			return this;
+		}
+
+		public Builder<T> using(Dispatcher dispatcher) {
+			this.dispatcher = dispatcher;
+			return this;
+		}
+
+		public Composable<T> build() {
+			if (null == reactor) {
+				if (null == dispatcher) {
+					reactor = new Reactor();
+				} else {
+					reactor = new Reactor(dispatcher);
+				}
+			}
+			return new DelayedAcceptComposable<T>(reactor, values);
 		}
 	}
 
