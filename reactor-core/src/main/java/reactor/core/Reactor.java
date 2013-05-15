@@ -52,7 +52,7 @@ import com.eaio.uuid.UUID;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Reactor implements Observable, Linkable<Reactor> {
+public class Reactor implements Observable, Linkable<Observable> {
 
 	private static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
@@ -69,7 +69,7 @@ public class Reactor implements Observable, Linkable<Reactor> {
 			Reactor.this.notify(T(t.getClass()), Fn.event(t));
 		}
 	};
-	private final Set<Reactor>        linkedReactors   = new NonBlockingHashSet<Reactor>();
+	private final Set<Observable>        linkedReactors   = new NonBlockingHashSet<Observable>();
 
 
 	/**
@@ -205,7 +205,7 @@ public class Reactor implements Observable, Linkable<Reactor> {
 		task.submit();
 
 		if (!linkedReactors.isEmpty()) {
-			for (Reactor r : linkedReactors) {
+			for (Observable r : linkedReactors) {
 				r.notify(key, ev);
 			}
 		}
@@ -333,13 +333,13 @@ public class Reactor implements Observable, Linkable<Reactor> {
 	}
 
 	@Override
-	public Reactor link(Reactor reactor) {
+	public Reactor link(Observable reactor) {
 		linkedReactors.add(reactor);
 		return this;
 	}
 
 	@Override
-	public Reactor unlink(Reactor reactor) {
+	public Reactor unlink(Observable reactor) {
 		linkedReactors.remove(reactor);
 		return this;
 	}

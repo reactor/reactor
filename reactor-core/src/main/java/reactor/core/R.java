@@ -298,7 +298,7 @@ public class R {
 	 *
 	 * @param reactor The {@literal Reactor}s to link to the root.
 	 */
-	public static void link(Reactor reactor) {
+	public static void link(Observable reactor) {
 		self.rootReactor.link(reactor);
 	}
 

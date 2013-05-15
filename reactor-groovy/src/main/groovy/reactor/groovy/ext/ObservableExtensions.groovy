@@ -106,7 +106,7 @@ class ObservableExtensions {
 		selfType
 	}
 
-	private static <T> Event<T> coerce(Object obj) {
+	static <T> Event<T> coerce(Object obj) {
 		if (!obj) {
 			(Event<T>)new Event<Void>(null)
 		}else if (obj instanceof Event) {
