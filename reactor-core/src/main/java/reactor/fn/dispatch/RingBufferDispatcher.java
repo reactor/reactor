@@ -35,7 +35,6 @@ import java.util.concurrent.Executors;
  */
 public class RingBufferDispatcher implements Dispatcher {
 
-	private final static Logger LOG = LoggerFactory.getLogger(RingBufferDispatcher.class);
 	private final    RingBuffer<RingBufferTask> ringBuffer;
 	private final    Disruptor<RingBufferTask>  disruptor;
 	private volatile ConsumerInvoker            invoker;
@@ -62,9 +61,14 @@ public class RingBufferDispatcher implements Dispatcher {
 		disruptor.handleEventsWith(new RingBufferTaskHandler());
 		disruptor.handleExceptionsWith(
 				new ExceptionHandler() {
+					Logger log;
+
 					@Override
 					public void handleEventException(Throwable ex, long sequence, Object event) {
-						LOG.error(ex.getMessage(), ex);
+						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
+						if (log.isErrorEnabled()) {
+							log.error(ex.getMessage(), ex);
+						}
 						Consumer<Throwable> a;
 						if (null != (a = ((Task<?>) event).getErrorConsumer())) {
 							a.accept(ex);
@@ -73,12 +77,18 @@ public class RingBufferDispatcher implements Dispatcher {
 
 					@Override
 					public void handleOnStartException(Throwable ex) {
-						LOG.error(ex.getMessage(), ex);
+						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
+						if (log.isErrorEnabled()) {
+							log.error(ex.getMessage(), ex);
+						}
 					}
 
 					@Override
 					public void handleOnShutdownException(Throwable ex) {
-						LOG.error(ex.getMessage(), ex);
+						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
+						if (log.isErrorEnabled()) {
+							log.error(ex.getMessage(), ex);
+						}
 					}
 				}
 		);
@@ -97,20 +107,19 @@ public class RingBufferDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public Lifecycle destroy() {
+	public RingBufferDispatcher destroy() {
 		disruptor.shutdown();
 		return this;
 	}
 
 	@Override
-	public Lifecycle stop() {
+	public RingBufferDispatcher stop() {
 		disruptor.halt();
 		return this;
 	}
 
 	@Override
-	public Lifecycle start() {
-		disruptor.start();
+	public RingBufferDispatcher start() {
 		return this;
 	}
 
