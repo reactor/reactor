@@ -39,7 +39,7 @@ public class SelectorUnitTests {
 	@Test
 	public void testSelectionThroughput() throws Exception {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
-		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
+		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>(null, null);
 
 		Consumer<?> hello = new Consumer<Object>() {
 			@Override
@@ -75,7 +75,7 @@ public class SelectorUnitTests {
 	@Test
 	public void testUriTemplateSelectorThroughput() throws Exception {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
-		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
+		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>(null, null);
 
 		Consumer<?> hello = new Consumer<Object>() {
 			@Override

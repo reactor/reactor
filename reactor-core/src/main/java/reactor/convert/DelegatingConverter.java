@@ -17,7 +17,7 @@
 package reactor.convert;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -26,32 +26,14 @@ import java.util.List;
  */
 public class DelegatingConverter implements Converter {
 
-	private List<Converter> delegateConverters = Collections.emptyList();
-
-	public DelegatingConverter() {
-	}
+	private final List<Converter> delegateConverters;
 
 	public DelegatingConverter(List<Converter> delegateConverters) {
-		setDelegateConverters(delegateConverters);
+		this.delegateConverters = new ArrayList<Converter>(delegateConverters);
 	}
 
-	public static DelegatingConverter create(Converter... converters) {
-		List<Converter> delegateConverters = new ArrayList<Converter>(converters.length);
-		Collections.addAll(delegateConverters, converters);
-		return new DelegatingConverter(delegateConverters);
-	}
-
-	public List<Converter> getDelegateConverters() {
-		return delegateConverters;
-	}
-
-	public DelegatingConverter setDelegateConverters(List<Converter> delegateConverters) {
-		if(null == delegateConverters) {
-			this.delegateConverters = Collections.emptyList();
-		} else {
-			this.delegateConverters = delegateConverters;
-		}
-		return this;
+	public DelegatingConverter(Converter... converters) {
+		this.delegateConverters = Arrays.asList(converters);
 	}
 
 	@Override public boolean canConvert(Class<?> sourceType, Class<?> targetType) {

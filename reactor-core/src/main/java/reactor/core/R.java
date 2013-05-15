@@ -16,26 +16,27 @@
 
 package reactor.core;
 
-import com.eaio.uuid.UUID;
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.Fn;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Observable;
-import reactor.fn.Selector;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.support.Assert;
+import static reactor.Fn.$;
+import static reactor.Fn.T;
 
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
-import static reactor.Fn.$;
-import static reactor.Fn.T;
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.Fn;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Observable;
+import reactor.fn.Selector;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.support.Assert;
+
+import com.eaio.uuid.UUID;
 
 /**
  * Helper class to encapsulate commonly-used functionality around Reactors.
@@ -49,14 +50,14 @@ public class R {
 	public static final Timer TIMER = new Timer("reactor-timer", true);
 
 	private static final Logger     LOG             = LoggerFactory.getLogger(R.class);
-	private static final Dispatcher SYNC_DISPATCHER = new SynchronousDispatcher();
+	private static final Dispatcher SYNC_DISPATCHER = Context.synchronousDispatcher();
 
 	private final Reactor rootReactor;
 	private final NonBlockingHashMap<String, ReactorEntry> reactors = new NonBlockingHashMap<String, ReactorEntry>();
 
 	static R self;
 
-	static void assignRx(R r) {
+	static void assignR(R r) {
 		self = r;
 	}
 
@@ -106,10 +107,7 @@ public class R {
 	 * @see {@link R#get(String)}
 	 */
 	public static Reactor create(boolean synchronous) {
-		Reactor r = new Reactor();
-		if (synchronous) {
-			r.setDispatcher(SYNC_DISPATCHER);
-		}
+		Reactor r = new Reactor(SYNC_DISPATCHER);
 		updateRegistry(r);
 		return r;
 	}

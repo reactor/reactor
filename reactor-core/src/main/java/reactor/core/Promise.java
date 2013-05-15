@@ -74,7 +74,11 @@ public class Promise<T> extends Composable<T> {
 	 * Create a {@literal Promise} with default behavior.
 	 */
 	public Promise() {
-		super();
+		this((Dispatcher)null);
+	}
+
+	public Promise(Dispatcher dispatcher) {
+		super(dispatcher);
 		expectedAcceptCount.set(1);
 		observable.on(Fn.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
@@ -106,7 +110,7 @@ public class Promise<T> extends Composable<T> {
 	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync() {
-		return new Promise<T>().setDispatcher(Context.synchronousDispatcher());
+		return new Promise<T>(Context.synchronousDispatcher());
 	}
 
 	/**
@@ -118,7 +122,7 @@ public class Promise<T> extends Composable<T> {
 	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync(Throwable reason) {
-		return Promise.<T>from(reason).setDispatcher(Context.synchronousDispatcher());
+		return Promise.<T>sync().set(reason);
 	}
 
 	/**
@@ -130,7 +134,7 @@ public class Promise<T> extends Composable<T> {
 	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync(T value) {
-		return from(value).setDispatcher(Context.synchronousDispatcher());
+		return Promise.<T>sync().set(value);
 	}
 
 	/**
@@ -153,12 +157,6 @@ public class Promise<T> extends Composable<T> {
 	 */
 	public static <T> Promise<T> from(T value) {
 		return new Promise<T>().set(value);
-	}
-
-	@Override
-	public Promise<T> setDispatcher(Dispatcher dispatcher) {
-		super.setDispatcher(dispatcher);
-		return this;
 	}
 
 	/**

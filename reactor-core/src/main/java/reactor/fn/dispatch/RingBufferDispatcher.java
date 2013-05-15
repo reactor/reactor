@@ -88,17 +88,6 @@ public class RingBufferDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public ConsumerInvoker getConsumerInvoker() {
-		return invoker;
-	}
-
-	@Override
-	public RingBufferDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
-		this.invoker = consumerInvoker;
-		return this;
-	}
-
-	@Override
 	@SuppressWarnings({"unchecked"})
 	public <T> Task<T> nextTask() {
 		long l = ringBuffer.next();

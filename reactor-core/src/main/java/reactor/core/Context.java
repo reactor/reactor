@@ -41,8 +41,8 @@ public class Context implements Lifecycle {
 
 	private volatile boolean alive = false;
 
-	protected static final ThreadLocal<Context> local = new InheritableThreadLocal<Context>();
-	protected static Context self;
+	private static final ThreadLocal<Context> local = new InheritableThreadLocal<Context>();
+	private static Context self;
 
 	static {
 		init();
@@ -197,7 +197,7 @@ public class Context implements Lifecycle {
 			self = new Context(PROCESSORS);
 			local.set(self);
 			if (null == R.self) {
-				R.assignRx(new R());
+				R.assignR(new R());
 			}
 		}
 	}

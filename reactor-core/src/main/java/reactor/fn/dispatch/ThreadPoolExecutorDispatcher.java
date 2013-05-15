@@ -90,17 +90,6 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public ConsumerInvoker getConsumerInvoker() {
-		return this.invoker;
-	}
-
-	@Override
-	public ThreadPoolExecutorDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
-		this.invoker = consumerInvoker;
-		return this;
-	}
-
-	@Override
 	@SuppressWarnings("unchecked")
 	public <T> Task<T> nextTask() {
 		long l = ringBuffer.next();

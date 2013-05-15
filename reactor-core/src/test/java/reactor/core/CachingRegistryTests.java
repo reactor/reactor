@@ -30,7 +30,7 @@ import reactor.fn.Selector;
 
 public final class CachingRegistryTests {
 
-	private final CachingRegistry<Object> cachingRegistry = new CachingRegistry<Object>();
+	private final CachingRegistry<Object> cachingRegistry = new CachingRegistry<Object>(null, null);
 
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {

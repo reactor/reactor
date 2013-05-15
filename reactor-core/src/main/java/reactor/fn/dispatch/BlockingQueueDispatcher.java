@@ -36,10 +36,11 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	private final static AtomicInteger THREAD_COUNT = new AtomicInteger();
 	private final static Logger        LOG          = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 
-	private final ThreadGroup threadGroup = new ThreadGroup("reactor-dispatcher");
+	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
+	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
+
 	private final BlockingQueue<Task<?>> readyTasks;
 	private final TaskExecutor           taskExecutor;
-	private volatile ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
 	public BlockingQueueDispatcher(String name, int backlog) {
 		this.readyTasks = QueueFactory.createQueue();
@@ -50,17 +51,6 @@ public class BlockingQueueDispatcher implements Dispatcher {
 			this.readyTasks.add(new BlockingQueueTask<Object>());
 		}
 		this.start();
-	}
-
-	@Override
-	public ConsumerInvoker getConsumerInvoker() {
-		return invoker;
-	}
-
-	@Override
-	public BlockingQueueDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
-		this.invoker = consumerInvoker;
-		return this;
 	}
 
 	Task<?> steal() {

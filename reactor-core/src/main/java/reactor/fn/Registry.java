@@ -30,24 +30,6 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	}
 
 	/**
-	 * Registries can handle multiple objects registered with the same {@link Selector} differently, depending on how those
-	 * multiple objects should be load-balanced.
-	 *
-	 * @param lb The {@link LoadBalancingStrategy} to use.
-	 * @return {@literal this}
-	 */
-	Registry<T> setLoadBalancingStrategy(LoadBalancingStrategy lb);
-
-	/**
-	 * Registries can use a configurable {@link SelectionStrategy} to determine which objects in the registry match the
-	 * given {@link Selector}.
-	 *
-	 * @param selectionStrategy The {@link SelectionStrategy} to use.
-	 * @return {@literal this}
-	 */
-	Registry<T> setSelectionStrategy(SelectionStrategy selectionStrategy);
-
-	/**
 	 * Assign the given {@link Selector} with the given object.
 	 *
 	 * @param sel The left-hand side of the {@literal Selector} comparison check.
@@ -72,5 +54,19 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @return An {@link Iterable} of {@link Registration}s whose {@link Selector} matches the given key.
 	 */
 	Iterable<Registration<? extends T>> select(Object key);
+
+	/**
+	 * Returns the custom selection strategy, if any, that is being used by this {@literal Registry}
+	 *
+	 * @return the {@link SelectionStrategy}. May be {@code null}.
+	 */
+	SelectionStrategy getSelectionStrategy();
+
+	/**
+	 * Returns the load balancing strategy that is being used by this {@literal Registry}.
+	 *
+	 * @return the {@link LoadBalancingStrategy}.
+	 */
+	LoadBalancingStrategy getLoadBalancingStrategy();
 
 }
