@@ -36,14 +36,14 @@ public class PromiseTests {
 
 	@Test
 	public void testPromiseNotifiesOfValues() throws InterruptedException {
-		Promise<String> p = Promise.from("Hello World!");
+		Promise<String> p = Promise.from("Hello World!").build();
 
 		assertThat("Promise contains value", p.get(), is("Hello World!"));
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testPromiseNotifiesOfFailures() throws InterruptedException {
-		Promise<String> p = Promise.from(new IllegalArgumentException("Bad code! Bad!"));
+		Promise<String> p = Promise.<String>from(new IllegalArgumentException("Bad code! Bad!")).build();
 
 		assertThat("Promise is in failed state", p.getState(), is(Promise.State.FAILURE));
 		assertThat("Promise has exploded", p.get(), is(nullValue()));

@@ -19,8 +19,14 @@ package reactor.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
-import reactor.fn.*;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it starts with a state of
@@ -74,7 +80,7 @@ public class Promise<T> extends Composable<T> {
 	 * Create a {@literal Promise} with default behavior.
 	 */
 	public Promise() {
-		this((Dispatcher)null);
+		this((Dispatcher) null);
 	}
 
 	public Promise(Dispatcher dispatcher) {
@@ -144,8 +150,9 @@ public class Promise<T> extends Composable<T> {
 	 * @param <T>    The type of the intended {@literal Promise} value.
 	 * @return The new {@literal Promise}.
 	 */
-	public static <T> Promise<T> from(Throwable reason) {
-		return new Promise<T>().set(reason);
+	@SuppressWarnings("unchecked")
+	public static <T> Builder<T> from(Throwable reason) {
+		return (Builder<T>) new Builder<Object>(Arrays.asList((Object) reason));
 	}
 
 	/**
@@ -155,8 +162,9 @@ public class Promise<T> extends Composable<T> {
 	 * @param <T>   The type of the value.
 	 * @return The new {@literal Promise}.
 	 */
-	public static <T> Promise<T> from(T value) {
-		return new Promise<T>().set(value);
+	@SuppressWarnings("unchecked")
+	public static <T> Builder<T> from(T value) {
+		return new Builder<T>(Arrays.asList(value));
 	}
 
 	/**
@@ -412,6 +420,54 @@ public class Promise<T> extends Composable<T> {
 	private void assertPending() {
 		if (state != State.PENDING) {
 			throw new IllegalStateException("This Promise has already completed.");
+		}
+	}
+
+	/**
+	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
+	 *
+	 * @param <T> The type of the values.
+	 */
+	public static class Builder<T> extends Composable.Builder<T> {
+
+		Builder(Iterable<T> values) {
+			super(values);
+		}
+
+		@Override
+		public Builder<T> using(Reactor reactor) {
+			super.using(reactor);
+			return this;
+		}
+
+		@Override
+		public Builder<T> using(Dispatcher dispatcher) {
+			super.using(dispatcher);
+			return this;
+		}
+
+		public Promise<T> build() {
+			if (null == reactor) {
+				if (null == dispatcher) {
+					reactor = new Reactor();
+				} else {
+					reactor = new Reactor(dispatcher);
+				}
+			}
+			T value = null;
+			if (List.class.isInstance(values)) {
+				List<T> l = (List<T>) values;
+				if (!l.isEmpty()) {
+					value = ((List<T>) values).get(0);
+				}
+			} else {
+				value = values.iterator().next();
+			}
+			if (Throwable.class.isInstance(value)) {
+				return new Promise<T>(reactor).set((Throwable) value);
+			} else {
+				return new Promise<T>(reactor).set(value);
+			}
 		}
 	}
 
