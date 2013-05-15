@@ -51,7 +51,7 @@ public class Tuple implements Iterable {
 	 * @param <T1> The type of the first value.
 	 * @return The new {@link Tuple1}.
 	 */
-	public static <T1> Tuple1<T1> from(T1 t1) {
+	public static <T1> Tuple1<T1> of(T1 t1) {
 		return new Tuple1<T1>(t1);
 	}
 
@@ -64,7 +64,7 @@ public class Tuple implements Iterable {
 	 * @param <T2> The type of the second value.
 	 * @return The new {@link Tuple2}.
 	 */
-	public static <T1, T2> Tuple2<T1, T2> from(T1 t1, T2 t2) {
+	public static <T1, T2> Tuple2<T1, T2> of(T1 t1, T2 t2) {
 		return new Tuple2<T1, T2>(t1, t2);
 	}
 
@@ -79,7 +79,7 @@ public class Tuple implements Iterable {
 	 * @param <T3> The type of the third value.
 	 * @return The new {@link Tuple3}.
 	 */
-	public static <T1, T2, T3> Tuple3<T1, T2, T3> from(T1 t1, T2 t2, T3 t3) {
+	public static <T1, T2, T3> Tuple3<T1, T2, T3> of(T1 t1, T2 t2, T3 t3) {
 		return new Tuple3<T1, T2, T3>(t1, t2, t3);
 	}
 
@@ -96,7 +96,7 @@ public class Tuple implements Iterable {
 	 * @param <T4> The type of the fourth value.
 	 * @return The new {@link Tuple4}.
 	 */
-	public static <T1, T2, T3, T4> Tuple4<T1, T2, T3, T4> from(T1 t1, T2 t2, T3 t3, T4 t4) {
+	public static <T1, T2, T3, T4> Tuple4<T1, T2, T3, T4> of(T1 t1, T2 t2, T3 t3, T4 t4) {
 		return new Tuple4<T1, T2, T3, T4>(t1, t2, t3, t4);
 	}
 
@@ -115,7 +115,7 @@ public class Tuple implements Iterable {
 	 * @param <T5> The type of the fifth value.
 	 * @return The new {@link Tuple5}.
 	 */
-	public static <T1, T2, T3, T4, T5> Tuple5<T1, T2, T3, T4, T5> from(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
+	public static <T1, T2, T3, T4, T5> Tuple5<T1, T2, T3, T4, T5> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
 		return new Tuple5<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5);
 	}
 
@@ -136,7 +136,7 @@ public class Tuple implements Iterable {
 	 * @param <T6> The type of the sixth value.
 	 * @return The new {@link Tuple6}.
 	 */
-	public static <T1, T2, T3, T4, T5, T6> Tuple6<T1, T2, T3, T4, T5, T6> from(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
+	public static <T1, T2, T3, T4, T5, T6> Tuple6<T1, T2, T3, T4, T5, T6> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
 		return new Tuple6<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6);
 	}
 
@@ -159,7 +159,7 @@ public class Tuple implements Iterable {
 	 * @param <T7> The type of the seventh value.
 	 * @return The new {@link Tuple7}.
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7> Tuple7<T1, T2, T3, T4, T5, T6, T7> from(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7) {
+	public static <T1, T2, T3, T4, T5, T6, T7> Tuple7<T1, T2, T3, T4, T5, T6, T7> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7) {
 		return new Tuple7<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7);
 	}
 
@@ -184,7 +184,7 @@ public class Tuple implements Iterable {
 	 * @param <T8> The type of the eighth value.
 	 * @return The new {@link Tuple8}.
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8> Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> from(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8) {
+	public static <T1, T2, T3, T4, T5, T6, T7, T8> Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8) {
 		return new Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>(t1, t2, t3, t4, t5, t6, t7, t8);
 	}
 
@@ -210,7 +210,7 @@ public class Tuple implements Iterable {
 	 * @param <TRest> The type of the last tuple.
 	 * @return The new {@link Tuple8}.
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest> from(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8, Object... tRest) {
+	public static <T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8, Object... tRest) {
 		return new TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest>(t1, t2, t3, t4, t5, t6, t7, t8, new Tuple(tRest));
 	}
 
