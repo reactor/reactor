@@ -20,7 +20,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.1.3'
+	groovyVersion = '2.1.1'
 
 	// Logging
 	slf4jVersion = '1.7.5'
@@ -167,5 +167,14 @@ project('reactor-spring') {
 
 		// Testing
 		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+}
+
+project('reactor-logback') {
+	description = 'Reactor async Logback appender implementation'
+	dependencies {
+		compile project(':reactor-core')
+
+		compile "ch.qos.logback:logback-classic:$logbackVersion"
 	}
 }
