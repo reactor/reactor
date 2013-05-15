@@ -83,7 +83,7 @@ class ObservableExtensions {
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        Object key,
 	                                        T obj) {
-		selfType.notify key, Fn.event(obj)
+		selfType.notify key, Fn.<T>event(obj)
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
@@ -98,7 +98,7 @@ class ObservableExtensions {
 		selfType.notify key, obj
 	}
 
-	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
+	static reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        Object key) {
 		selfType.notify key, Fn.<Void> event(null)
 	}
@@ -106,7 +106,7 @@ class ObservableExtensions {
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        String key,
 	                                        Closure<T> closure) {
-		selfType.notify key, Fn.event(closure.call())
+		selfType.notify key, Fn.event((T)closure.call())
 	}
 
 	static Reactor toReactor(String self) {
@@ -143,7 +143,7 @@ class ObservableExtensions {
 	}
 
 	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final Closure<T> obj) {
-		selfType.notify Fn.event(obj.call())
+		selfType.notify Fn.event((T)obj.call())
 	}
 
 	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final Supplier<Event<T>> obj) {
