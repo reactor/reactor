@@ -19,9 +19,10 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.core.Composable
 import reactor.core.Promise
+import reactor.fn.Consumer
 import reactor.fn.Function
-import reactor.fn.Linkable
 import reactor.groovy.ClosureConsumer
+import reactor.groovy.ClosureEventConsumer
 import reactor.groovy.ClosureFunction
 
 /**
@@ -31,12 +32,40 @@ import reactor.groovy.ClosureFunction
 @CompileStatic
 class ComposableExtensions {
 
-	static <T,V> Composable<V> map(final Composable<T> selfType, Closure<V> closure) {
-		selfType.map(new ClosureFunction<T,V>(closure))
+	static <T,V> Composable<V> map(final Composable<T> selfType, final Closure<V> closure) {
+		or selfType, new ClosureFunction<T,V>(closure)
 	}
+
+	static <T> Composable<T> consume(final Composable<T> selfType, final Closure closure) {
+		div selfType, new ClosureConsumer<T>(closure)
+	}
+
+	static <T> Composable<T> filter(final Composable<T> selfType, final Closure<Boolean> closure) {
+		and selfType, new ClosureFunction<T,Boolean>(closure)
+	}
+
+
+	static <T,E> Composable<T> when(final Composable<T> selfType, final Class<E> exceptionType, final Closure closure) {
+		selfType.when exceptionType, new ClosureConsumer<E>(closure)
+	}
+
+
+	static <T> Composable<T> div(final Composable<T> selfType, final Consumer<T> other) {
+		selfType.consume other
+	}
+
+	static <T,V> Composable<V> or(final Composable<T> selfType, final Function<T,V> other) {
+		selfType.map other
+	}
+
+	static <T,V> Composable<V> and(final Composable<T> selfType, final Function<T,Boolean> other) {
+		selfType.filter other
+	}
+
 
 	static <T> Composable<T> leftShift(final Composable<T> selfType, T value) {
 		selfType.accept value
+		selfType
 	}
 
 	static <T> Promise<T> leftShift(final Promise<T> selfType, T value) {

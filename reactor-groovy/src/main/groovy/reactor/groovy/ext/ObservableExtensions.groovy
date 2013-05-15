@@ -23,7 +23,7 @@ import reactor.core.Reactor
 import reactor.fn.Event
 import reactor.fn.Selector
 import reactor.fn.Supplier
-import reactor.groovy.ClosureConsumer
+import reactor.groovy.ClosureEventConsumer
 
 import static reactor.Fn.$
 import static reactor.core.R.get
@@ -45,22 +45,22 @@ class ObservableExtensions {
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
 																	Selector selector,
-																	@DelegatesTo(value = ClosureConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		selfType.on selector, new ClosureConsumer(handler)
+																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+		selfType.on selector, new ClosureEventConsumer(handler)
 		selfType
 	}
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
 																	String selector,
-																	@DelegatesTo(value = ClosureConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		selfType.on $(selector), new ClosureConsumer(handler)
+																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+		selfType.on $(selector), new ClosureEventConsumer(handler)
 		selfType
 	}
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
-																	@DelegatesTo(value = ClosureConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		//selfType.on T(handler?.parameterTypes[0]), new ClosureConsumer(handler)
-		selfType.on new ClosureConsumer(handler)
+		selfType.on new ClosureEventConsumer(handler)
 		selfType
 	}
 

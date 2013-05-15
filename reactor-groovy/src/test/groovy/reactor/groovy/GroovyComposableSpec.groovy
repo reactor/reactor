@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Stephane Maldini (smaldini)
  */
-class GroovyPromisesSpec extends Specification {
+class GroovyComposableSpec extends Specification {
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
@@ -52,7 +52,9 @@ class GroovyPromisesSpec extends Specification {
 		def p = Promise.sync()
 
 		when: "add a mapping closure"
-		def s = p | { Integer.parseInt it }
+		def s = p.map {
+			Integer.parseInt it
+		}
 
 		and: "setting a value"
 		p << '10'
@@ -65,8 +67,12 @@ class GroovyPromisesSpec extends Specification {
 		given: "a synchronous promise"
 		def p = Promise.sync()
 
-		when: "add a mapping closure and a filter"
-		def s = p | { Integer.parseInt it } & { it > 10 }
+		when: "add a mapping closure"
+		def s = p.map {
+			Integer.parseInt it
+		}.filter {
+			it > 10
+		}
 
 		and: "setting a value"
 		p << '10'
@@ -76,7 +82,7 @@ class GroovyPromisesSpec extends Specification {
 	}
 
 	def "A promise can be be consumed by another promise"() {
-		given: "two synchronous promises"
+		given: "a synchronous promise"
 		def p1 = Promise.sync()
 		def p2 = Promise.sync()
 
@@ -93,14 +99,14 @@ class GroovyPromisesSpec extends Specification {
 
 
 	def "Errors stop compositions"() {
-		given: "a promise"
+		given: "a synchronous promise"
 		def p = Promise.create()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		p.map{ Integer.parseInt it }.
+		p.map { Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
-				filter{ println('not in log'); true }
+				filter { println('not in log'); true }
 
 		and: "setting a value"
 		p << 'not a number'
@@ -114,8 +120,8 @@ class GroovyPromisesSpec extends Specification {
 		given: "a synchronous promise"
 		def p = Promise.sync('10')
 
-		when: "composing 2 functions"
-		def s = p | { Integer.parseInt it } | { it*10 }
+		when: "p1 is consumed by p2"
+		def s = p.map { Integer.parseInt it } map { it*10 }
 
 		then:
 		s.get() == 100

@@ -17,23 +17,35 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
+import reactor.Fn
+import reactor.core.R
+import reactor.core.R
 import reactor.fn.Consumer
 import reactor.fn.Event
 
 /**
+ * @author Jon Brisbin
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureConsumer<T> implements Consumer<T> {
+class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 
 	final Closure callback
+	final boolean eventArg = true
 
-	ClosureConsumer(Closure cl) {
+
+	ClosureEventConsumer(Closure cl) {
 		callback = cl
+		def argTypes = callback.parameterTypes
+		eventArg = Event.isAssignableFrom(argTypes[0])
 	}
 
 	@Override
-	void accept(T arg) {
-		callback arg
+	void accept(Event<T> arg) {
+		if (eventArg) {
+			callback arg
+		} else {
+			callback arg.data
+		}
 	}
 }
