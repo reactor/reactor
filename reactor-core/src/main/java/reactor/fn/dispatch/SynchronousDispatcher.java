@@ -26,8 +26,6 @@ import reactor.fn.*;
  */
 public class SynchronousDispatcher implements Dispatcher {
 
-	private static final Logger LOG = LoggerFactory.getLogger(SynchronousDispatcher.class);
-
 	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
 	@Override
@@ -37,17 +35,17 @@ public class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public Lifecycle destroy() {
+	public SynchronousDispatcher destroy() {
 		return this;
 	}
 
 	@Override
-	public Lifecycle stop() {
+	public SynchronousDispatcher stop() {
 		return this;
 	}
 
 	@Override
-	public Lifecycle start() {
+	public SynchronousDispatcher start() {
 		return this;
 	}
 
@@ -76,7 +74,10 @@ public class SynchronousDispatcher implements Dispatcher {
 					invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
 				}
 			} catch (Throwable x) {
-				LOG.error(x.getMessage(), x);
+				Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
+				if (log.isErrorEnabled()) {
+					log.error(x.getMessage(), x);
+				}
 				if (null != getErrorConsumer()) {
 					getErrorConsumer().accept(x);
 				}

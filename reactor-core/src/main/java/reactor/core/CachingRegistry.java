@@ -34,7 +34,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
 	private final Random                                       random            = new Random();
 	private final ReentrantReadWriteLock                       readWriteLock     = new ReentrantReadWriteLock(true);
 	private final Lock                                         readLock          = readWriteLock.readLock();
@@ -213,8 +212,11 @@ public class CachingRegistry<T> implements Registry<T> {
 				regs.add(reg);
 			}
 		}
-		if (regs.isEmpty() && log.isDebugEnabled()) {
-			log.debug("No objects registered for key {}", object);
+		if (regs.isEmpty()) {
+			Logger log = LoggerFactory.getLogger(CachingRegistry.class);
+			if (log.isTraceEnabled()) {
+				log.trace("No objects registered for key {}", object);
+			}
 		}
 		return regs;
 	}

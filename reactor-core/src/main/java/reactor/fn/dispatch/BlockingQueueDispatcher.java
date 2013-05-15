@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class BlockingQueueDispatcher implements Dispatcher {
 
 	private final static AtomicInteger THREAD_COUNT = new AtomicInteger();
-	private final static Logger        LOG          = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 
 	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
 	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
@@ -79,18 +78,18 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public Lifecycle destroy() {
+	public BlockingQueueDispatcher destroy() {
 		return this;
 	}
 
 	@Override
-	public Lifecycle stop() {
+	public BlockingQueueDispatcher stop() {
 		taskExecutor.interrupt();
 		return this;
 	}
 
 	@Override
-	public Lifecycle start() {
+	public BlockingQueueDispatcher start() {
 		taskExecutor.start();
 		return this;
 	}
@@ -135,7 +134,10 @@ public class BlockingQueueDispatcher implements Dispatcher {
 								invoker.invoke(t.getCompletionConsumer(), t.getConverter(), Void.TYPE, t.getEvent());
 							}
 						} catch (Throwable x) {
-							LOG.error(x.getMessage(), x);
+							Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
+							if (log.isErrorEnabled()) {
+								log.error(x.getMessage(), x);
+							}
 							if (null != t.getErrorConsumer()) {
 								t.getErrorConsumer().accept(x);
 							}
@@ -144,7 +146,10 @@ public class BlockingQueueDispatcher implements Dispatcher {
 				} catch (InterruptedException e) {
 					interrupt();
 				} catch (Exception e) {
-					LOG.error(e.getMessage(), e);
+					Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
+					if (log.isErrorEnabled()) {
+						log.error(e.getMessage(), e);
+					}
 				} finally {
 					if (null != t) {
 						t.reset();
