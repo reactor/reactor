@@ -19,11 +19,13 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.core.R
 import reactor.core.Reactor
 import reactor.fn.Event
 import reactor.fn.Selector
 import reactor.fn.Supplier
 import reactor.groovy.ClosureEventConsumer
+import reactor.groovy.ClosureFunction
 
 import static reactor.Fn.$
 import static reactor.core.R.get
@@ -43,6 +45,12 @@ class ObservableExtensions {
 	/**
 	 * Closure converters
 	 */
+
+
+	static <V> void receive(final reactor.fn.Observable selfType, final Selector key, final Closure<V> closure) {
+		selfType.receive key,  new ClosureFunction(closure)
+	}
+
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
 																	Selector selector,
