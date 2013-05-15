@@ -23,8 +23,6 @@ sonarRunner {
         property "sonar.jdbc.driverClassName", "$sonarJdbcDriver"
         property "sonar.jdbc.username", "$sonarJdbcUsername"
         property "sonar.jdbc.password", "$sonarJdbcPassword"
-        property "sonar.login", "$sonarLogin"
-        property "sonar.password", "$sonarPassword"
         property "sonar.core.codeCoveragePlugin", "jacoco"
         property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
         property "sonar.links.ci", "https://build.springsource.org/browse/REACTOR-CORE"
