@@ -21,9 +21,9 @@ import reactor.core.Composable
 import reactor.core.Promise
 import reactor.fn.Consumer
 import reactor.fn.Function
-import reactor.groovy.ClosureConsumer
-import reactor.groovy.ClosureFunction
-import reactor.groovy.ClosureReduce
+import reactor.groovy.support.ClosureConsumer
+import reactor.groovy.support.ClosureFunction
+import reactor.groovy.support.ClosureReduce
 import reactor.fn.Observable
 
 /**

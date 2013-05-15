@@ -19,13 +19,14 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.R
 import reactor.core.Reactor
+import reactor.fn.Consumer
 import reactor.fn.Event
+import reactor.fn.Registration
 import reactor.fn.Selector
 import reactor.fn.Supplier
-import reactor.groovy.ClosureEventConsumer
-import reactor.groovy.ClosureFunction
+import reactor.groovy.support.ClosureEventConsumer
+import reactor.groovy.support.ClosureFunction
 
 import static reactor.Fn.$
 import static reactor.core.R.get
@@ -41,33 +42,34 @@ class ObservableExtensions {
 	static final String ARG_DATA = 'data'
 	static final String ARG_TOPIC = 'for'
 
-
 	/**
 	 * Closure converters
 	 */
 
 
-	static <V> void receive(final reactor.fn.Observable selfType, final Selector key, final Closure<V> closure) {
-		selfType.receive key,  new ClosureFunction(closure)
+	static <T, E extends Event<T>, V> Registration<Consumer<E>> receive(final reactor.fn.Observable selfType,
+	                                                                    final Selector key,
+	                                                                    final Closure<V> closure) {
+		selfType.receive key, new ClosureFunction<E,V>(closure)
 	}
 
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
-																	Selector selector,
-																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+	                                Selector selector,
+	                                @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		selfType.on selector, new ClosureEventConsumer(handler)
 		selfType
 	}
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
-																	String selector,
-																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+	                                String selector,
+	                                @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		selfType.on $(selector), new ClosureEventConsumer(handler)
 		selfType
 	}
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
-																	@DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
+	                                @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		//selfType.on T(handler?.parameterTypes[0]), new ClosureConsumer(handler)
 		selfType.on new ClosureEventConsumer(handler)
 		selfType
@@ -86,8 +88,8 @@ class ObservableExtensions {
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
-																					String key,
-																					Closure supplier) {
+	                                        String key,
+	                                        Closure supplier) {
 		Event<T> toSend = coerce(supplier)
 		selfType.notify key, toSend
 		selfType
@@ -116,15 +118,15 @@ class ObservableExtensions {
 
 	static <T> Event<T> coerce(Object obj) {
 		if (!obj) {
-			(Event<T>)new Event<Void>(null)
-		}else if (obj instanceof Event) {
-			(Event<T>)obj
+			(Event<T>) new Event<Void>(null)
+		} else if (obj instanceof Event) {
+			(Event<T>) obj
 		} else if (obj instanceof Supplier) {
-			(Event<T>)obj.get()
+			(Event<T>) obj.get()
 		} else if (obj instanceof Closure) {
-			new Event<T>((T)obj.call())
+			new Event<T>((T) obj.call())
 		} else {
-			new Event<T>((T)obj)
+			new Event<T>((T) obj)
 		}
 	}
 

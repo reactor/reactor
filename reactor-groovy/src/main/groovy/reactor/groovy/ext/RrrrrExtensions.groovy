@@ -17,19 +17,12 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.Composable
-import reactor.core.Promise
 import reactor.core.R
-import reactor.fn.Consumer
 import reactor.fn.Event
-import reactor.fn.Function
-import reactor.fn.Linkable
 import reactor.fn.Observable
 import reactor.fn.Selector
-import reactor.groovy.ClosureConsumer
-import reactor.groovy.ClosureEventConsumer
-import reactor.groovy.ClosureFunction
-import reactor.groovy.ClosureReduce
+import reactor.groovy.support.ClosureConsumer
+import reactor.groovy.support.ClosureEventConsumer
 
 /**
  * @author Jon Brisbin
@@ -65,12 +58,12 @@ class RrrrrExtensions {
 	 * Closure converters
 	 */
 
-	static <V> void schedule(final R selfType, final value, final Closure<V> closure) {
-		R.schedule new ClosureEventConsumer(closure), value
+	static <T> void schedule(final R selfType, final T value, final Closure closure) {
+		R.schedule new ClosureConsumer<T>(closure), value
 	}
 
-	static <V> void schedule(final R selfType, final value, final Observable observable, final Closure<V> closure) {
-		R.schedule new ClosureEventConsumer(closure), value, observable
+	static <T> void schedule(final R selfType, final T value, final Observable observable, final Closure closure) {
+		R.schedule new ClosureConsumer(closure), value, observable
 	}
 
 	static void on(final R selfType,

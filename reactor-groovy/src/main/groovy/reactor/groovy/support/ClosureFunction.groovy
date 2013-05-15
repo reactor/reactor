@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 
-package reactor.groovy
+package reactor.groovy.support
 
 import groovy.transform.CompileStatic
+import reactor.Fn
+import reactor.core.R
 import reactor.fn.Consumer
 import reactor.fn.Event
+import reactor.fn.Function
 
 /**
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureConsumer<T> implements Consumer<T> {
+class ClosureFunction<K,V> implements Function<K,V> {
 
-	final Closure callback
+	final Closure<V> callback
 
-	ClosureConsumer(Closure cl) {
+	ClosureFunction(Closure<V> cl) {
 		callback = cl
 	}
 
 	@Override
-	void accept(T arg) {
-		callback arg
+	V apply(K t) {
+		callback t
 	}
 }

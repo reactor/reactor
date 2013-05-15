@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-package reactor.groovy
+package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.core.R
-import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.Function
 
@@ -27,16 +24,23 @@ import reactor.fn.Function
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureFunction<K,V> implements Function<K,V> {
+class ClosureEventFunction<K,V> implements Function<Event<K>,V> {
 
 	final Closure<V> callback
+	final boolean eventArg = true
 
-	ClosureFunction(Closure<V> cl) {
+	ClosureEventFunction(Closure<V> cl) {
 		callback = cl
+		def argTypes = callback.parameterTypes
+		eventArg = Event.isAssignableFrom(argTypes[0])
 	}
 
 	@Override
-	V apply(K t) {
-		callback t
+	V apply(Event<K> arg) {
+		if (eventArg) {
+			callback arg
+		} else {
+			callback arg.data
+		}
 	}
 }

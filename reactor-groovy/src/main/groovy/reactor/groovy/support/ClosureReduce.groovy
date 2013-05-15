@@ -14,38 +14,30 @@
  * limitations under the License.
  */
 
-package reactor.groovy
+package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.core.R
-import reactor.core.R
-import reactor.fn.Consumer
-import reactor.fn.Event
+import reactor.core.Composable
+import reactor.fn.Function
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureEventConsumer<T> implements Consumer<Event<T>> {
+class ClosureReduce<T,V> implements Function<Composable.Reduce<T,V>,V>  {
 
-	final Closure callback
-	final boolean eventArg = true
+	final Closure<V> callback
 
-
-	ClosureEventConsumer(Closure cl) {
+	ClosureReduce(Closure<V> cl) {
 		callback = cl
-		def argTypes = callback.parameterTypes
-		eventArg = Event.isAssignableFrom(argTypes[0])
 	}
 
 	@Override
-	void accept(Event<T> arg) {
-		if (eventArg) {
-			callback arg
-		} else {
-			callback arg.data
-		}
+	V apply(Composable.Reduce<T,V> t) {
+
+		if(t.lastValue)
+			callback t.nextValue, t.lastValue
+		else
+			callback t.nextValue
 	}
 }
