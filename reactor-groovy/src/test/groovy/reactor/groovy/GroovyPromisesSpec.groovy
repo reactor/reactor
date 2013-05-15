@@ -16,58 +16,54 @@
 
 package reactor.groovy
 
-import org.junit.Test
 import reactor.core.Promise
-import reactor.fn.Consumer
-import reactor.fn.Deferred
-import reactor.fn.Function
-import reactor.fn.Supplier
 import spock.lang.Specification
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-import static org.hamcrest.CoreMatchers.is
-import static org.hamcrest.CoreMatchers.nullValue
-import static org.hamcrest.MatcherAssert.assertThat
-
 
 /**
  * @author Stephane Maldini (smaldini)
  */
 class GroovyPromisesSpec extends Specification {
 
+	def "Promise returns value"() {
+		when: "a deferred Promise"
+		def p = Promise.from("Hello World!")
+
+		then: 'Promise contains value'
+		p.get() == "Hello World!"
+	}
+
+	def "Promise notifies of Failure"() {
+		when: "a deferred failed Promise"
+		def p = Promise.from(new IllegalArgumentException("Bad code! Bad!"))
+
+		and: "invoke result"
+		p.get()
+
+		then:
+		p.state == Promise.State.FAILURE
+		thrown(IllegalStateException)
+	}
+
+	def "Promises can be mapped"() {
+		given: "a synchronous promise"
+		def p = Promise.sync()
+
+		when: "add a mapping closure"
+		def s = p.map {
+			Integer.parseInt it
+		}
+
+		and: "setting a value"
+		p << '10'
+
+		then:
+		s.get() == 10
+	}
+
+
 
 	/*@Test
-	public void testPromiseNotifiesOfValues() throws InterruptedException {
-		Promise<String> p = Promise.from("Hello World!");
 
-		assertThat("Promise contains value", p.get(), is("Hello World!"));
-	}
-
-	@Test(expected = IllegalStateException.class)
-	public void testPromiseNotifiesOfFailures() throws InterruptedException {
-		Promise<String> p = Promise.from(new IllegalArgumentException("Bad code! Bad!"));
-
-		assertThat("Promise is in failed state", p.getState(), is(Promise.State.FAILURE));
-		assertThat("Promise has exploded", p.get(), is(nullValue()));
-	}
-
-	@Test
-	public void testPromisesCanBeMapped() {
-		Promise<String> p = Promise.sync();
-
-		Supplier<Integer> s = p.map(new Function<String, Integer>() {
-			@Override
-			public Integer apply(String s) {
-				return Integer.parseInt(s);
-			}
-		});
-
-		p.set("10");
-
-		assertThat("Transformation has occurred", s.get(), is(10));
-	}
 
 	@Test
 	public void testPromisesCanBeFiltered() {

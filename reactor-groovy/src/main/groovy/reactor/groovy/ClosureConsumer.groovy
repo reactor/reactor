@@ -28,52 +28,24 @@ import reactor.fn.Event
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureConsumer<T> implements Consumer<T> {
+class ClosureConsumer<T> implements Consumer<Event<T>> {
 
 	final Closure callback
-	final Class[] argTypes
+	final boolean eventArg = true
 
-	Event currentEvent
 
 	ClosureConsumer(Closure cl) {
 		callback = cl
-		argTypes = callback.parameterTypes
-		callback.resolveStrategy = Closure.DELEGATE_FIRST
+		def argTypes = callback.parameterTypes
+		eventArg = Event.isAssignableFrom(argTypes[0])
 	}
 
 	@Override
-	void accept(T arg) {
-		def isEvent = arg instanceof Event
-		if (isEvent) {
-			currentEvent = (Event) arg
-		}
-
-		if (!argTypes) {
-			callback()
-			return
-		}
-
-		if (arg
-				&& argTypes[0] != Object
-				&& !argTypes[0].isAssignableFrom(arg.class)
-				&& isEvent) {
-			callback(currentEvent.data)
-		} else {
+	void accept(Event<T> arg) {
+		if (eventArg) {
 			callback arg
+		} else {
+			callback arg.data
 		}
 	}
-
-	void reply(Object replyData) {
-		reply(Fn.event(replyData))
-	}
-
-	void reply(Event<?> replyEvent) {
-		R.replyTo currentEvent, replyEvent
-	}
-
-//	@Override
-//	protected Object clone() throws CloneNotSupportedException {
-//		return super.clone()
-//	}
-
 }

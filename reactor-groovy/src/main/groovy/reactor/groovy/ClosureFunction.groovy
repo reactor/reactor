@@ -14,32 +14,31 @@
  * limitations under the License.
  */
 
-package reactor.groovy.ext
+
+
+package reactor.groovy
 
 import groovy.transform.CompileStatic
-import reactor.core.Composable
-import reactor.core.Promise
+import reactor.Fn
+import reactor.core.R
+import reactor.fn.Consumer
+import reactor.fn.Event
 import reactor.fn.Function
-import reactor.fn.Linkable
-import reactor.groovy.ClosureConsumer
-import reactor.groovy.ClosureFunction
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 @CompileStatic
-class ComposableExtensions {
+class ClosureFunction<K,V> implements Function<K,V> {
 
-	static <T,V> Composable<V> map(final Composable<T> selfType, Closure<V> closure) {
-		selfType.map(new ClosureFunction<T,V>(closure))
+	final Closure<V> callback
+
+	ClosureFunction(Closure<V> cl) {
+		callback = cl
 	}
 
-	static <T> Composable<T> leftShift(final Composable<T> selfType, T value) {
-		selfType.accept value
-	}
-
-	static <T> Promise<T> leftShift(final Promise<T> selfType, T value) {
-		selfType.set value
+	@Override
+	V apply(K t) {
+		callback t
 	}
 }

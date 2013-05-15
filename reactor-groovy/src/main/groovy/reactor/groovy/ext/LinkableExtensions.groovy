@@ -13,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
@@ -25,7 +22,6 @@ import reactor.fn.Linkable
 
 /**
  * @author Stephane Maldini (smaldini)
- * @date: 3/5/13
  */
 @CompileStatic
 class LinkableExtensions {
