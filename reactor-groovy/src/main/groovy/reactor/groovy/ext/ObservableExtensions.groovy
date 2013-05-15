@@ -19,6 +19,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.Fn
 import reactor.core.Reactor
 import reactor.fn.Consumer
 import reactor.fn.Event
@@ -50,7 +51,7 @@ class ObservableExtensions {
 	static <T, E extends Event<T>, V> Registration<Consumer<E>> receive(final reactor.fn.Observable selfType,
 	                                                                    final Selector key,
 	                                                                    final Closure<V> closure) {
-		selfType.receive key, new ClosureFunction<E,V>(closure)
+		selfType.receive key, new ClosureFunction<E, V>(closure)
 	}
 
 
@@ -81,18 +82,31 @@ class ObservableExtensions {
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        Object key,
-	                                        T obj = null) {
-		Event<T> toSend = coerce(obj)
-		selfType.notify key, toSend
-		selfType
+	                                        T obj) {
+		selfType.notify key, Fn.<T>event(obj)
+	}
+
+	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
+	                                        Object key,
+	                                        Supplier<Event<T>> obj) {
+		selfType.notify key, obj.get()
+	}
+
+	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
+	                                        Object key,
+	                                        Event<T> obj) {
+		selfType.notify key, obj
+	}
+
+	static reactor.fn.Observable notify(reactor.fn.Observable selfType,
+	                                        Object key) {
+		selfType.notify key, Fn.<Void> event(null)
 	}
 
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        String key,
-	                                        Closure supplier) {
-		Event<T> toSend = coerce(supplier)
-		selfType.notify key, toSend
-		selfType
+	                                        Closure<T> closure) {
+		selfType.notify key, Fn.event((T)closure.call())
 	}
 
 	static Reactor toReactor(String self) {
@@ -116,28 +130,24 @@ class ObservableExtensions {
 		selfType
 	}
 
-	static <T> Event<T> coerce(Object obj) {
-		if (!obj) {
-			(Event<T>) new Event<Void>(null)
-		} else if (obj instanceof Event) {
-			(Event<T>) obj
-		} else if (obj instanceof Supplier) {
-			(Event<T>) obj.get()
-		} else if (obj instanceof Closure) {
-			new Event<T>((T) obj.call())
-		} else {
-			new Event<T>((T) obj)
-		}
-	}
-
 	/**
 	 * Operator overloading
 	 */
 
 	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final T obj) {
-		Event<T> toSend = coerce(obj)
-		//selfType.notify T(toSend.data.class), toSend
-		selfType.notify toSend
-		selfType
+		selfType.notify Fn.event(obj)
 	}
+
+	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final Event<T> obj) {
+		selfType.notify obj
+	}
+
+	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final Closure<T> obj) {
+		selfType.notify Fn.event((T)obj.call())
+	}
+
+	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final Supplier<Event<T>> obj) {
+		selfType.notify obj.get()
+	}
+
 }
