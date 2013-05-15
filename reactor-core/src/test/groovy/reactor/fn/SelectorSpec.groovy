@@ -16,20 +16,22 @@
 
 package reactor.fn
 
-import reactor.Fn
-import reactor.core.R
-import spock.lang.Specification
-
-import java.util.concurrent.CountDownLatch
-
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
+import static reactor.core.Context.synchronousDispatcher
 import static reactor.fn.Registry.LoadBalancingStrategy.RANDOM
 import static reactor.fn.Registry.LoadBalancingStrategy.ROUND_ROBIN
+
+import java.util.concurrent.CountDownLatch
+
+import reactor.Fn
+import reactor.core.R
+import reactor.core.Reactor
+import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
@@ -122,10 +124,10 @@ class SelectorSpec extends Specification {
 
 	}
 
-	def "SelectionStrategy can be load balanced"() {
+	def "Selectors can be round-robin load balanced"() {
 
-		given: "a set of consumers assigned to the same selector"
-		def r = R.create(true)
+		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
+		def r = new Reactor(synchronousDispatcher(), ROUND_ROBIN, null, null)
 		def latch = new CountDownLatch(4)
 		def called = []
 		def a1 = {
@@ -149,24 +151,50 @@ class SelectorSpec extends Specification {
 		r.on(Fn.compose(a3))
 		r.on(Fn.compose(a4))
 
-		when: "events are triggered with ROUND_ROBIN"
-		r.consumerRegistry.loadBalancingStrategy = ROUND_ROBIN
+		when: "events are triggered"
 		(1..4).each {
 			r.notify(Fn.event("Hello World!"))
 		}
 
 		then: "all consumers should have been called once"
 		assertThat(called, hasItems(1, 2, 3, 4))
+	}
 
-		when: "events are triggered with RANDOM"
-		called.clear()
-		r.consumerRegistry.loadBalancingStrategy = RANDOM
+	def "Selectors can be randomly load balanced"() {
+
+		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
+
+		def r = new Reactor(synchronousDispatcher(), RANDOM, null, null)
+		def latch = new CountDownLatch(4)
+		def called = []
+		def a1 = {
+			called << 1
+			latch.countDown()
+		}
+		def a2 = {
+			called << 2
+			latch.countDown()
+		}
+		def a3 = {
+			called << 3
+			latch.countDown()
+		}
+		def a4 = {
+			called << 4
+			latch.countDown()
+		}
+		r.on(Fn.compose(a1))
+		r.on(Fn.compose(a2))
+		r.on(Fn.compose(a3))
+		r.on(Fn.compose(a4))
+
+		when: "events are triggered"
+
 		(1..4).each {
 			r.notify(Fn.event("Hello World!"))
 		}
 
 		then: "random selection of consumers have been called"
 		assertThat(called, anyOf(hasItem(1), hasItem(2), hasItem(3), hasItem(4)))
-
 	}
 }

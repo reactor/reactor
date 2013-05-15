@@ -23,7 +23,7 @@ import java.util.Set;
  *
  * @author Andy Wilkinson
  *
- * @param <T> The tagable type subclass
+ * @param <T> The taggable type subclass
  */
 public interface Taggable<T extends Taggable<T>> {
 

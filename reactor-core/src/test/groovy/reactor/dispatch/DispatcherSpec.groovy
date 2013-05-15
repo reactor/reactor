@@ -41,7 +41,7 @@ class DispatcherSpec extends Specification {
 		def diffThread = Context.threadPoolDispatcher()
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
-		def registry = new CachingRegistry<Consumer<Event>>()
+		def registry = new CachingRegistry<Consumer<Event>>(null, null)
 		def sel = $('test')
 		registry.register(sel, consumer {
 			taskThread = Thread.currentThread()

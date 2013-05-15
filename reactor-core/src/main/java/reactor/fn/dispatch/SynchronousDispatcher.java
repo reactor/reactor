@@ -26,19 +26,9 @@ import reactor.fn.*;
  */
 public class SynchronousDispatcher implements Dispatcher {
 
-	private static final Logger          LOG     = LoggerFactory.getLogger(SynchronousDispatcher.class);
-	private volatile     ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	private static final Logger LOG = LoggerFactory.getLogger(SynchronousDispatcher.class);
 
-	@Override
-	public ConsumerInvoker getConsumerInvoker() {
-		return invoker;
-	}
-
-	@Override
-	public SynchronousDispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker) {
-		this.invoker = consumerInvoker;
-		return this;
-	}
+	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
 	@Override
 	@SuppressWarnings({"unchecked"})

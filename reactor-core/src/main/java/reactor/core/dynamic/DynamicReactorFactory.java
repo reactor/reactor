@@ -16,6 +16,17 @@
 
 package reactor.core.dynamic;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.core.Context;
@@ -28,18 +39,14 @@ import reactor.core.dynamic.reflect.MethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
-import reactor.fn.*;
+import reactor.fn.Consumer;
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Registration;
+import reactor.fn.Selector;
 import reactor.support.Assert;
-
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
 
 /**
  * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based on the given interface, that
@@ -53,21 +60,20 @@ import java.util.concurrent.Callable;
 public class DynamicReactorFactory<T extends DynamicReactor> {
 
 	private final Class<T> type;
-	private final    Map<Method, DynamicMethod>          dynamicMethods           = new HashMap<Method, DynamicMethod>();
-	private volatile List<MethodSelectorResolver>        selectorResolvers        =
-			Arrays.<MethodSelectorResolver>asList(
-					new SimpleMethodSelectorResolver()
-			);
-	private volatile List<MethodNotificationKeyResolver> notificationKeyResolvers =
-			Arrays.<MethodNotificationKeyResolver>asList(
-					new SimpleMethodNotificationKeyResolver()
-			);
-	private volatile ConsumerInvoker                     consumerInvoker          =
-			new ConverterAwareConsumerInvoker();
+	private final List<MethodSelectorResolver>        selectorResolvers;
+	private final List<MethodNotificationKeyResolver> notificationKeyResolvers;
+	private final Map<Method, DynamicMethod>          dynamicMethods           = new HashMap<Method, DynamicMethod>();
+	private volatile ConsumerInvoker                     consumerInvoker          = new ConverterAwareConsumerInvoker();
 	private volatile Converter converter;
 
-	public DynamicReactorFactory(Class<T> type) {
+	public DynamicReactorFactory(Class<T> type, List<MethodSelectorResolver> selectorResolvers, List<MethodNotificationKeyResolver> notificationKeyResolvers) {
 		this.type = type;
+		this.selectorResolvers = selectorResolvers;
+		this.notificationKeyResolvers = notificationKeyResolvers;
+	}
+
+	public DynamicReactorFactory(Class<T> type) {
+		this(type, Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()), Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
 	}
 
 	/**
@@ -76,67 +82,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	 * @return The {@link MethodSelectorResolver}s in use.
 	 */
 	public List<MethodSelectorResolver> getSelectorResolvers() {
-		return selectorResolvers;
-	}
-
-	/**
-	 * Set the {@link MethodSelectorResolver}s to use to determine what {@link reactor.fn.Selector} maps to what {@link
-	 * Method}.
-	 *
-	 * @param selectorResolvers The {@link MethodSelectorResolver}s to use.
-	 * @return {@literal this}
-	 */
-	public DynamicReactorFactory<T> setSelectorResolvers(List<MethodSelectorResolver> selectorResolvers) {
-		Assert.notNull(selectorResolvers, "MethodSelectorResolvers cannot be null.");
-		if (selectorResolvers.isEmpty()) {
-			return this;
-		}
-		this.selectorResolvers = selectorResolvers;
-		return this;
-	}
-
-	/**
-	 * Set the {@link MethodSelectorResolver}s to use to determine what {@link reactor.fn.Selector} maps to what {@link
-	 * Method}.
-	 *
-	 * @param selectorResolvers The {@link MethodSelectorResolver}s to use.
-	 * @return {@literal this}
-	 */
-	public DynamicReactorFactory<T> setSelectorResolvers(MethodSelectorResolver... selectorResolvers) {
-		if (selectorResolvers.length == 0) {
-			return this;
-		}
-		this.selectorResolvers = Arrays.asList(selectorResolvers);
-		return this;
-	}
-
-	/**
-	 * Set the {@link MethodNotificationKeyResolver}s to use to resolves a {@link Method}'s notification key.
-	 *
-	 * @param notificationKeyResolvers The {@link MethodNotificationKeyResolver}s to use.
-	 * @return {@literal this}
-	 */
-	public DynamicReactorFactory<T> setNotificationKeyResolvers(List<MethodNotificationKeyResolver> notificationKeyResolvers) {
-		Assert.notNull(notificationKeyResolvers, "notificationKeyResolvers cannot be null.");
-		if (notificationKeyResolvers.isEmpty()) {
-			return this;
-		}
-		this.notificationKeyResolvers = notificationKeyResolvers;
-		return this;
-	}
-
-	/**
-	 * Set the {@link MethodNotificationKeyResolver}s to use to resolves a {@link Method}'s notification key.
-	 *
-	 * @param notificationKeyResolvers The {@link MethodNotificationKeyResolver}s to use.
-	 * @return {@literal this}
-	 */
-	public DynamicReactorFactory<T> setNotificationKeyResolvers(MethodNotificationKeyResolver... notificationKeyResolvers) {
-		if (notificationKeyResolvers.length == 0) {
-			return this;
-		}
-		this.notificationKeyResolvers = Arrays.asList(notificationKeyResolvers);
-		return this;
+		return Collections.unmodifiableList(selectorResolvers);
 	}
 
 	/**
@@ -180,19 +126,13 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		return this;
 	}
 
-	/**
-	 * Generate a {@link Proxy} based on the given interface using the default behavior.
-	 *
-	 * @return A proxy based on {@link #type}.
-	 */
 	public T create() {
 		return create(R.create());
 	}
 
 	/**
-	 * Generate a {@link Proxy} based on the given interface using the given {@link Reactor} for dispatching events.
+	 * Generate a {@link Proxy} based on the given interface.
 	 *
-	 * @param reactor The {@link Reactor} to use.
 	 * @return A proxy based on {@link #type}.
 	 */
 	@SuppressWarnings({"unchecked"})
@@ -200,7 +140,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		return (T) Proxy.newProxyInstance(
 				DynamicReactorFactory.class.getClassLoader(),
 				new Class[]{type},
-				new ReactorInvocationHandler<T>(reactor, type)
+				new ReactorInvocationHandler<T>(type)
 		);
 	}
 
@@ -210,25 +150,10 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 
 		private final Reactor reactor;
 
-		private ReactorInvocationHandler(Reactor reactor, Class<U> type) {
-			this.reactor = reactor;
+		private ReactorInvocationHandler(Class<U> type) {
 			Dispatcher d = find(type, Dispatcher.class);
-			if (null != d) {
-				switch (d.value()) {
-					case WORKER:
-						reactor.setDispatcher(Context.nextWorkerDispatcher());
-						break;
-					case THREAD_POOL:
-						reactor.setDispatcher(Context.threadPoolDispatcher());
-						break;
-					case ROOT:
-						reactor.setDispatcher(Context.rootDispatcher());
-						break;
-					case SYNC:
-						reactor.setDispatcher(Context.synchronousDispatcher());
-						break;
-				}
-			}
+			this.reactor = createReactor(d);
+
 			for (Method m : type.getDeclaredMethods()) {
 				if (m.getDeclaringClass() == Object.class || m.getName().contains("$")) {
 					continue;
@@ -240,7 +165,6 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				dm.returnsProxy = type.isAssignableFrom(m.getReturnType());
 
 				if (isOn(m)) {
-					dm.isOn = true;
 					for (MethodSelectorResolver msr : selectorResolvers) {
 						if (msr.supports(m)) {
 							reactor.fn.Selector sel = msr.apply(m);
@@ -252,7 +176,6 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 						}
 					}
 				} else if (isNotify(m)) {
-					dm.isNotify = true;
 					for (MethodNotificationKeyResolver notificationKeyResolver : notificationKeyResolvers) {
 						if (notificationKeyResolver.supports(m)) {
 							String notificationKey = notificationKeyResolver.apply(m);
@@ -319,6 +242,27 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				throw new NoSuchMethodError(method.getName());
 			}
 		}
+
+		private Reactor createReactor(Dispatcher dispatcherType) {
+			reactor.fn.dispatch.Dispatcher dispatcher = null;
+			if (dispatcherType != null) {
+				switch (dispatcherType.value()) {
+					case WORKER:
+						dispatcher = Context.nextWorkerDispatcher();
+						break;
+					case THREAD_POOL:
+						dispatcher = Context.threadPoolDispatcher();
+						break;
+					case ROOT:
+						dispatcher = Context.rootDispatcher();
+						break;
+					case SYNC:
+						dispatcher = Context.synchronousDispatcher();
+						break;
+				}
+			}
+			return new Reactor(dispatcher);
+		}
 	}
 
 	private static boolean isOn(Method m) {
@@ -341,9 +285,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		return null;
 	}
 
-	private static class DynamicMethod {
-		boolean isOn                = false;
-		boolean isNotify            = false;
+	private static final class DynamicMethod {
 		boolean returnsRegistration = false;
 		boolean returnsProxy        = true;
 	}
