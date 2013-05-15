@@ -26,6 +26,10 @@ import reactor.fn.Linkable
 @CompileStatic
 class LinkableExtensions {
 
+	/**
+	 * Operator overloading
+	 */
+
 	static <T> Linkable<T> minus(final Linkable<T> selfType, T... linkables) {
 		for (T linkable in linkables)
 			selfType.unlink linkable

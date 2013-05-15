@@ -537,14 +537,14 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * A {@link #reduce(reactor.fn.Function)} operation needs a stateful object to pass as the argument, which contains the
 	 * last accumulated value, as well as the next, just-accepted value.
 	 *
-	 * @param <T> The type of the input value.
-	 * @param <V> The type of the accumulated or last value.
+	 * @param <NEXTVALUE> The type of the input value.
+	 * @param <LASTVALUE> The type of the accumulated or last value.
 	 */
-	public static class Reduce<T, V> {
-		private final V lastValue;
-		private final T nextValue;
+	public static class Reduce<NEXTVALUE, LASTVALUE> {
+		private final LASTVALUE lastValue;
+		private final NEXTVALUE nextValue;
 
-		public Reduce(V lastValue, T nextValue) {
+		public Reduce(LASTVALUE lastValue, NEXTVALUE nextValue) {
 			this.lastValue = lastValue;
 			this.nextValue = nextValue;
 		}
@@ -554,7 +554,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		 *
 		 * @return
 		 */
-		public V getLastValue() {
+		public LASTVALUE getLastValue() {
 			return lastValue;
 		}
 
@@ -563,7 +563,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		 *
 		 * @return
 		 */
-		public T getNextValue() {
+		public NEXTVALUE getNextValue() {
 			return nextValue;
 		}
 	}

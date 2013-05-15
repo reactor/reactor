@@ -17,26 +17,27 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.core.R
-import reactor.fn.Consumer
-import reactor.fn.Event
+import reactor.core.Composable
 import reactor.fn.Function
 
 /**
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureFunction<K,V> implements Function<K,V> {
+class ClosureReduce<T,V> implements Function<Composable.Reduce<T,V>,V>  {
 
 	final Closure<V> callback
 
-	ClosureFunction(Closure<V> cl) {
+	ClosureReduce(Closure<V> cl) {
 		callback = cl
 	}
 
 	@Override
-	V apply(K t) {
-		callback t
+	V apply(Composable.Reduce<T,V> t) {
+
+		if(t.lastValue)
+			callback t.nextValue, t.lastValue
+		else
+			callback t.nextValue
 	}
 }

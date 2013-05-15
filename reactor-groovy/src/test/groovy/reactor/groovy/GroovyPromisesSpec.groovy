@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * @author Stephane Maldini (smaldini)
+ * @author Stephane Maldini
  */
 class GroovyPromisesSpec extends Specification {
 
@@ -66,7 +66,7 @@ class GroovyPromisesSpec extends Specification {
 		def p = Promise.sync()
 
 		when: "add a mapping closure and a filter"
-		def s = p | { Integer.parseInt it } & { it > 10 }
+		def s = (p | { Integer.parseInt it }) & { it > 10 }
 
 		and: "setting a value"
 		p << '10'
@@ -98,7 +98,7 @@ class GroovyPromisesSpec extends Specification {
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		p.map{ Integer.parseInt it }.
+		def s = p.map{ Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
 				filter{ println('not in log'); true }
 
@@ -106,7 +106,7 @@ class GroovyPromisesSpec extends Specification {
 		p << 'not a number'
 
 		then: 'No value'
-		!p.await(500, TimeUnit.MILLISECONDS)
+		!s.await(500, TimeUnit.MILLISECONDS)
 		latch.count == 0
 	}
 

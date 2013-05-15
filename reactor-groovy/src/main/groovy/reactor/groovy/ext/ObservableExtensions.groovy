@@ -39,9 +39,10 @@ class ObservableExtensions {
 	static final String ARG_DATA = 'data'
 	static final String ARG_TOPIC = 'for'
 
-	static Reactor toReactor(String self) {
-		get self
-	}
+
+	/**
+	 * Closure converters
+	 */
 
 	static reactor.fn.Observable on(reactor.fn.Observable selfType,
 																	Selector selector,
@@ -64,6 +65,10 @@ class ObservableExtensions {
 		selfType
 	}
 
+	/**
+	 * Alias and Misc. Helpers
+	 */
+
 	static <T> reactor.fn.Observable notify(reactor.fn.Observable selfType,
 	                                        Object key,
 	                                        T obj = null) {
@@ -80,11 +85,8 @@ class ObservableExtensions {
 		selfType
 	}
 
-	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final T obj) {
-		Event<T> toSend = coerce(obj)
-		//selfType.notify T(toSend.data.class), toSend
-		selfType.notify toSend
-		selfType
+	static Reactor toReactor(String self) {
+		get self
 	}
 
 	static reactor.fn.Observable notify(final reactor.fn.Observable selfType, final Map<String, ?> params) {
@@ -116,5 +118,16 @@ class ObservableExtensions {
 		} else {
 			new Event<T>((T)obj)
 		}
+	}
+
+	/**
+	 * Operator overloading
+	 */
+
+	static <T> reactor.fn.Observable leftShift(final reactor.fn.Observable selfType, final T obj) {
+		Event<T> toSend = coerce(obj)
+		//selfType.notify T(toSend.data.class), toSend
+		selfType.notify toSend
+		selfType
 	}
 }

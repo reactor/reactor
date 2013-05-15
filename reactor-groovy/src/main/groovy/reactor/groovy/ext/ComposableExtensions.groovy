@@ -22,8 +22,9 @@ import reactor.core.Promise
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.groovy.ClosureConsumer
-import reactor.groovy.ClosureEventConsumer
 import reactor.groovy.ClosureFunction
+import reactor.groovy.ClosureReduce
+import reactor.fn.Observable
 
 /**
  * @author Jon Brisbin
@@ -32,38 +33,76 @@ import reactor.groovy.ClosureFunction
 @CompileStatic
 class ComposableExtensions {
 
-	static <T,V> Composable<V> map(final Composable<T> selfType, final Closure<V> closure) {
-		or selfType, new ClosureFunction<T,V>(closure)
+	/**
+	 * Alias
+	 */
+
+	static <T, V> Composable<V> to(final Composable<T> selfType, final key, final Observable observable) {
+		selfType.consume key, observable
+	}
+
+	/**
+	 * Closure converters
+	 */
+
+	static <T, V> Composable<V> map(final Composable<T> selfType, final Closure<V> closure) {
+		selfType.map new ClosureFunction<T, V>(closure)
 	}
 
 	static <T> Composable<T> consume(final Composable<T> selfType, final Closure closure) {
-		div selfType, new ClosureConsumer<T>(closure)
+		selfType.consume new ClosureConsumer<T>(closure)
 	}
 
 	static <T> Composable<T> filter(final Composable<T> selfType, final Closure<Boolean> closure) {
-		and selfType, new ClosureFunction<T,Boolean>(closure)
+		selfType.filter new ClosureFunction<T, Boolean>(closure)
 	}
 
+	static <T, V> Composable<V> reduce(final Composable<T> selfType, final Closure<V> closure, V initial = null) {
+		selfType.reduce new ClosureReduce<T, V>(closure), initial
+	}
 
-	static <T,E> Composable<T> when(final Composable<T> selfType, final Class<E> exceptionType, final Closure closure) {
+	static <T, E> Composable<T> when(final Composable<T> selfType, final Class<E> exceptionType, final Closure closure) {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
+	/**
+	 * Operator overloading
+	 */
 
 	static <T> Composable<T> div(final Composable<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 
-	static <T,V> Composable<V> or(final Composable<T> selfType, final Function<T,V> other) {
+	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Composable.Reduce<T, V>,V> other) {
+		selfType.reduce other
+	}
+
+	static <T, V> Composable<V> or(final Composable<T> selfType, final Function<T, V> other) {
 		selfType.map other
 	}
 
-	static <T,V> Composable<V> and(final Composable<T> selfType, final Function<T,Boolean> other) {
+	static <T, V> Composable<V> and(final Composable<T> selfType, final Function<T, Boolean> other) {
 		selfType.filter other
 	}
 
+	static <T> Composable<T> div(final Composable<T> selfType, final Closure other) {
+		consume selfType, other
+	}
 
-	static <T> Composable<T> leftShift(final Composable<T> selfType, T value) {
+	static <T, V> Composable<V> mod(final Composable<T> selfType, final Closure<V> other) {
+		reduce selfType, other
+	}
+
+	static <T, V> Composable<V> or(final Composable<T> selfType, final Closure<V> other) {
+		map selfType, other
+	}
+
+	static <T> Composable<T> and(final Composable<T> selfType, final Closure<Boolean> other) {
+		filter selfType, other
+	}
+
+
+	static <T> Consumer<T> leftShift(final Consumer<T> selfType, T value) {
 		selfType.accept value
 		selfType
 	}

@@ -16,115 +16,171 @@
 
 package reactor.groovy
 
-import reactor.core.Promise
+import reactor.core.Composable
+import reactor.core.R
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+import static reactor.Fn.$
+
 /**
- * @author Stephane Maldini (smaldini)
+ * @author Stephane Maldini
  */
 class GroovyComposableSpec extends Specification {
 
-	def "Promise returns value"() {
-		when: "a deferred Promise"
-		def p = Promise.from("Hello World!").build()
+	def "Compose from single value"() {
+		when: 'Defer a composition'
+		def c = Composable.from("Hello World!").build()
 
-		then: 'Promise contains value'
-		p.get() == "Hello World!"
-	}
-
-	def "Promise notifies of Failure"() {
-		when: "a deferred failed Promise"
-		def p = Promise.from(new IllegalArgumentException("Bad code! Bad!")).build()
-
-		and: "invoke result"
-		p.get()
-
-		then:
-		p.state == Promise.State.FAILURE
-		thrown(IllegalStateException)
-	}
-
-	def "Promises can be mapped"() {
-		given: "a synchronous promise"
-		def p = Promise.sync()
-
-		when: "add a mapping closure"
-		def s = p.map {
-			Integer.parseInt it
+		and: 'apply a transformation'
+		def d = c.map {
+				 'Goodbye then!'
 		}
 
-		and: "setting a value"
-		p << '10'
+		then: 'Composition contains value'
+		d.await 1, TimeUnit.SECONDS
+		d.get() == 'Goodbye then!'
+	}
+
+	def "Compose from multiple values"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
+
+		and: 'apply a transformation'
+		int sum = 0
+		def d = c | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
-		s.get() == 10
+		d.await 1, TimeUnit.SECONDS
+		sum == 15
 	}
 
-	def "Promises can be filtered"() {
-		given: "a synchronous promise"
-		def p = Promise.sync()
+	def "Compose from multiple filtered values"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
 
-		when: "add a mapping closure"
-		def s = p.map {
-			Integer.parseInt it
-		}.filter {
-			it > 10
+		and: 'apply a transformation that filters odd elements'
+		def d = (c | { Integer.parseInt it }) & { it % 2 == 0 }
+
+		then:
+		d.await 1, TimeUnit.SECONDS
+		d.get() == 4
+	}
+
+	def "Error handling with composition from multiple values"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
+
+		and: 'apply a transformation that generates an exception for the last value'
+		int sum = 0
+		def d = c | { Integer.parseInt it } | { if(it >= 5) throw new IllegalArgumentException() else sum += it }
+
+		then:
+		d.await 1, TimeUnit.SECONDS
+		d.get() == 10
+	}
+
+
+	def "Value is immediately available"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
+
+		then:
+		c.get() == '5'
+	}
+
+
+
+	def "Reduce composition from multiple values"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
+
+		and: 'apply a reduction'
+		def d =( c | { Integer.parseInt it } ) % { i, acc = 1 -> acc * i}
+
+		then:
+		d.await 1, TimeUnit.SECONDS
+		d.get() == 120
+	}
+
+
+	def "consume first and last with a composition from multiple values"() {
+		when: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
+
+		and: 'apply a transformation'
+		def d = c | { Integer.parseInt it }
+
+		and: 'reference first and last'
+		def first = d.first()
+		def last = d.last()
+
+		then:
+		first.await(1, TimeUnit.SECONDS) == 1
+		last.await(1, TimeUnit.SECONDS )== 5
+	}
+
+
+	def "relay events to reactor"() {
+		given: 'a reactor and a selector'
+		def r = R.create()
+		def key = $(new Object())
+
+		when: 'we consume from this reactor and key'
+		def latch = new CountDownLatch(5)
+		r.on(key){
+			latch.countDown()
 		}
 
-		and: "setting a value"
-		p << '10'
+		and: 'Defer a composition'
+		def c = Composable.from(['1','2','3','4','5']).build()
 
-		then: 'No value'
-		!s.get()
-	}
+		and: 'apply a transformation and call an explicit reactor'
+		def d = (c | { Integer.parseInt it }).to(key.object, r)
+		d.get()
 
-	def "A promise can be be consumed by another promise"() {
-		given: "a synchronous promise"
-		def p1 = Promise.sync()
-		def p2 = Promise.sync()
-
-		when: "p1 is consumed by p2"
-		p1 / p2 //p1.consume p2
-
-		and: "setting a value"
-		p1 << 'Hello World!'
-
-		then: 'P2 consumes the value from P1'
-		p2.get() == 'Hello World!'
-	}
-
-
-
-	def "Errors stop compositions"() {
-		given: "a synchronous promise"
-		def p = Promise.create()
-		final latch = new CountDownLatch(1)
-
-		when: "p1 is consumed by p2"
-		p.map { Integer.parseInt it }.
-				when (NumberFormatException, { latch.countDown() }).
-				filter { println('not in log'); true }
-
-		and: "setting a value"
-		p << 'not a number'
-
-		then: 'No value'
-		!p.await(500, TimeUnit.MILLISECONDS)
+		then:
+		latch.await(1, TimeUnit.SECONDS)
 		latch.count == 0
+		d.get() == 5
 	}
 
-	def "Promise compose after set"() {
-		given: "a synchronous promise"
-		def p = Promise.sync('10')
+	def "compose from unknown number of values"() {
 
-		when: "p1 is consumed by p2"
-		def s = p.map { Integer.parseInt it } map { it*10 }
+		when: 'Defer a composition'
+		def c = Composable.from(new TestIterable('1','2','3','4','5')).build()
+
+		and: 'apply a transformation and call an explicit reactor'
+		def sum = 0
+		def d = c | { Integer.parseInt it } | {sum += it; sum}
+
+		and:
+		Thread.start{
+			sleep 500
+			c.expectedAcceptCount = 5
+		}
 
 		then:
-		s.get() == 100
+		d.await(1, TimeUnit.SECONDS)
+		d.get() == 15
+	}
+
+	static class TestIterable<T> implements Iterable<T> {
+
+		private final Collection<T> items;
+
+		@SafeVarargs
+		public TestIterable(T... items) {
+			this.items = Arrays.asList(items);
+		}
+
+		@Override
+		public Iterator<T> iterator() {
+			return this.items.iterator();
+		}
+
 	}
 
 }
