@@ -16,9 +16,13 @@
 
 package reactor.spring.context;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
+
+import reactor.convert.Converter;
 import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.dispatch.Dispatcher;
@@ -26,10 +30,13 @@ import reactor.fn.dispatch.Dispatcher;
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
 	private static final Reactor ROOT_REACTOR = new Reactor();
+
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	static {
 		R.link(ROOT_REACTOR);
@@ -81,32 +88,28 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
 	public ReactorFactoryBean setDispatcher(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
-		if (ROOT_REACTOR.getDispatcher() != dispatcher) {
-			ROOT_REACTOR.setDispatcher(dispatcher);
-		}
 		return this;
 	}
 
 	@Override
 	public Reactor getObject() throws Exception {
-		Reactor reactor;
 		if (rootReactor) {
-			reactor = ROOT_REACTOR;
+			warnIfReactorShouldBeCustomized();
+			return ROOT_REACTOR;
 		} else if (null != name) {
-			reactor = R.createOrGet(name);
-		} else {
-			reactor = R.create();
+			Reactor reactor = R.get(name);
+			if (null != reactor) {
+				warnIfReactorShouldBeCustomized();
+				return reactor;
+			}
 		}
 
+		Converter converter = null;
 		if (conversionService != null) {
-			reactor.setConverter(new ConversionServiceConverter(conversionService));
+			converter = new ConversionServiceConverter(conversionService);
 		}
 
-		if (dispatcher != null) {
-			reactor.setDispatcher(dispatcher);
-		}
-
-		return reactor;
+		return new Reactor(dispatcher, null, null, converter);
 	}
 
 	@Override
@@ -117,6 +120,15 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 	@Override
 	public boolean isSingleton() {
 		return rootReactor || null != name;
+	}
+
+	private void warnIfReactorShouldBeCustomized() {
+		if (dispatcher != null) {
+			log.warn("Dispatcher cannot be customized as an existing Reactor is being reused");
+		}
+		if (conversionService != null) {
+			log.warn("Converter cannot be customized as an existing Reactor is being reused");
+		}
 	}
 
 }

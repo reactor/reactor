@@ -47,10 +47,11 @@ public class UriTemplate {
 	//private static final String  NAME_REPLACEMENT = "(?<%NAME%>[^\\/.]*)";
 	private static final String  NAME_REPLACEMENT = "([^\\/.]*)";
 
-	private Pattern uriPattern;
-	private       List<String>                         pathVariables = new ArrayList<String>();
+	private final List<String>                         pathVariables = new ArrayList<String>();
 	private final HashMap<String, Matcher>             matchers      = new HashMap<String, Matcher>();
 	private final HashMap<String, Map<String, String>> vars          = new HashMap<String, Map<String, String>>();
+
+	private final Pattern uriPattern;
 
 	public UriTemplate(String uriPattern) {
 		String s = "^" + uriPattern;

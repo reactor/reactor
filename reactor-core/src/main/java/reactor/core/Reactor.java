@@ -16,20 +16,31 @@
 
 package reactor.core;
 
-import com.eaio.uuid.UUID;
-import org.cliffc.high_scale_lib.NonBlockingHashSet;
-import reactor.Fn;
-import reactor.convert.Converter;
-import reactor.fn.*;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.DispatcherAware;
-import reactor.fn.dispatch.Task;
-import reactor.support.Assert;
+import static reactor.Fn.$;
+import static reactor.Fn.T;
 
 import java.util.Set;
 
-import static reactor.Fn.$;
-import static reactor.Fn.T;
+import org.cliffc.high_scale_lib.NonBlockingHashSet;
+
+import reactor.Fn;
+import reactor.convert.Converter;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Linkable;
+import reactor.fn.Observable;
+import reactor.fn.Registration;
+import reactor.fn.Registry;
+import reactor.fn.Registry.LoadBalancingStrategy;
+import reactor.fn.SelectionStrategy;
+import reactor.fn.Selector;
+import reactor.fn.Supplier;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.Task;
+import reactor.support.Assert;
+
+import com.eaio.uuid.UUID;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -41,25 +52,25 @@ import static reactor.Fn.T;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
+public class Reactor implements Observable, Linkable<Reactor> {
 
 	private static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
-	protected final Object              defaultKey = new Object();
-	protected final Selector            defaultSelector = $(defaultKey);
-	protected final UUID                id               = new UUID();
-	protected final Consumer<Throwable> errorHandler     = new Consumer<Throwable>() {
+	private final Dispatcher                             dispatcher;
+	private final Converter                              converter;
+	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
+
+	private final Object              defaultKey = new Object();
+	private final Selector            defaultSelector = $(defaultKey);
+	private final UUID                id               = new UUID();
+	private final Consumer<Throwable> errorHandler     = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
 			Reactor.this.notify(T(t.getClass()), Fn.event(t));
 		}
 	};
-	protected final Set<Reactor>        linkedReactors   = new NonBlockingHashSet<Reactor>();
+	private final Set<Reactor>        linkedReactors   = new NonBlockingHashSet<Reactor>();
 
-	protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>();
-	protected volatile SelectionStrategy selectionStrategy;
-	protected volatile Dispatcher        dispatcher;
-	protected volatile Converter         converter;
 
 	/**
 	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry}. Each {@literal
@@ -70,22 +81,42 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	 *            Dispatcher}.
 	 */
 	public Reactor(Reactor src) {
-		this(src.getDispatcher());
-		this.selectionStrategy = src.getSelectionStrategy();
-		this.converter = src.getConverter();
+		this(src.getDispatcher(), src.consumerRegistry.getLoadBalancingStrategy(), src.consumerRegistry.getSelectionStrategy(), src.getConverter());
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}.
+	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry} and {@link Dispatcher}.
+	 * Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given
+	 * {@literal Reactor} from being triggered on the new {@literal Reactor}.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use.
+	 * @param src The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}.
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked dispatcher is used
+	 */
+	public Reactor(Reactor src, Dispatcher dispatcher) {
+		this(dispatcher, src.consumerRegistry.getLoadBalancingStrategy(), src.consumerRegistry.getSelectionStrategy(), src.getConverter());
+	}
+
+	/**
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy}, {@link SelectionStrategy},
+	 * and {@link Converter} will be used.
+	 *
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked dispatcher is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
-		if (dispatcher == null) {
-			this.dispatcher = Context.nextWorkerDispatcher();
-		} else {
-			this.dispatcher = dispatcher;
-		}
+		this(dispatcher, null, null, null);
+	}
+
+	/**
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link SelectionStrategy}, {@link LoadBalancingStrategy}, and {@link Converter}.
+	 *
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly-assigned worker dispatcher is used.
+	 * @param loadBalancingStrategy The {@link LoadBalancingStrategy} to use when dispatching events to consumers. May be {@code null} to use the default.
+	 * @param selectionStrategy The custom {@link SelectionStrategy} to use. May be {@code null}.
+	 */
+	public Reactor(Dispatcher dispatcher, LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy, Converter converter) {
+		this.dispatcher = dispatcher == null ? Context.nextWorkerDispatcher() : dispatcher;
+		this.converter = converter;
+		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(loadBalancingStrategy, selectionStrategy);
 	}
 
 	/**
@@ -94,7 +125,7 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	 * @see {@link Context#nextWorkerDispatcher()}
 	 */
 	public Reactor() {
-		this(Context.nextWorkerDispatcher());
+		this(Context.nextWorkerDispatcher(), null, null, null);
 	}
 
 	/**
@@ -116,35 +147,6 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 		return consumerRegistry;
 	}
 
-	public Reactor setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
-		Assert.notNull(consumerRegistry, "Registry cannot be null.");
-		this.consumerRegistry = consumerRegistry;
-		return this;
-	}
-
-	/**
-	 * Get the {@link SelectionStrategy} to use to help the {@link Dispatcher} find which {@link Selector}s in the {@link
-	 * Registry} match the key triggered by the given event.
-	 *
-	 * @return The {@link SelectionStrategy} in use. Defaults to {@literal null}.
-	 */
-	public SelectionStrategy getSelectionStrategy() {
-		return selectionStrategy;
-	}
-
-	/**
-	 * Set the {@link SelectionStrategy} to use to help the {@link Dispatcher} find which {@link Selector}s in the {@link
-	 * Registry} match the key triggered by the given event.
-	 *
-	 * @param selectionStrategy The {@link SelectionStrategy} in use. Can be {@literal null} to indicate that the {@link
-	 *                          Dispatcher} should use the default selection behaviour.
-	 * @return {@literal this}
-	 */
-	public Reactor setSelectionStrategy(SelectionStrategy selectionStrategy) {
-		this.selectionStrategy = selectionStrategy;
-		return this;
-	}
-
 	/**
 	 * Get the {@link Dispatcher} currently in use.
 	 *
@@ -155,34 +157,12 @@ public class Reactor implements Observable, DispatcherAware, Linkable<Reactor> {
 	}
 
 	/**
-	 * Set the {@link Dispatcher} to use when executing {@link Task}s.
-	 *
-	 * @param dispatcher The {@link Dispatcher} to use.
-	 * @return {@literal this}
-	 */
-	public Reactor setDispatcher(Dispatcher dispatcher) {
-		this.dispatcher = dispatcher;
-		return this;
-	}
-
-	/**
 	 * Get the {@link Converter} in use for converting arguments to {@link Consumer}s.
 	 *
 	 * @return The {@link Converter} in use.
 	 */
 	public Converter getConverter() {
 		return converter;
-	}
-
-	/**
-	 * Set the {@link Converter} to use for converting arguments to {@link Consumer}s.
-	 *
-	 * @param converter The {@link Converter} to use.
-	 * @return {@literal this}
-	 */
-	public Reactor setConverter(Converter converter) {
-		this.converter = converter;
-		return this;
 	}
 
 	@Override

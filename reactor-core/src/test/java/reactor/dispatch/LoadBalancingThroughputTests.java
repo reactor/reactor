@@ -16,72 +16,65 @@
 
 package reactor.dispatch;
 
-import org.junit.Before;
-import reactor.core.Reactor;
-import reactor.fn.Registry;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import static reactor.Fn.$;
+import static reactor.core.Context.nextWorkerDispatcher;
+import static reactor.core.Context.rootDispatcher;
+import static reactor.core.Context.threadPoolDispatcher;
+
+import org.junit.Test;
+
+import reactor.core.Reactor;
+import reactor.fn.Registry.LoadBalancingStrategy;
 
 /**
  * @author Jon Brisbin
+ * @author Andy Wilkinson
  */
-public class LoadBalancingThroughputTests extends DispatcherThroughputTests {
+public class LoadBalancingThroughputTests extends AbstractThroughputTests {
 
-	@Override
-	@Before
-	public void start() {
-		reactor = new Reactor();
+	public void registerConsumersAndWarmCache(Reactor reactor) {
 		for (int i = 0; i < selectors; i++) {
 			int j = i % 10;
 			objects[i] = "test" + j;
 			sels[i] = $(objects[i]);
-			reactor.on(sels[i], countDown);
+			reactor.on(sels[i], countDownConsumer);
 		}
 		for (int i = 0; i < selectors; i++) {
 			// pre-select everything to ensure it's in the cache
 			reactor.getConsumerRegistry().select(objects[i]);
 		}
-		latch = new CountDownLatch(selectors * iterations);
 	}
 
-	@Override
-	protected void doTest() throws InterruptedException {
+	protected void doTest(Reactor reactor) throws InterruptedException {
+		registerConsumersAndWarmCache(reactor);
+
 		for (int j = 0; j < testRuns; j++) {
 			preRun();
 			for (int i = 0; i < selectors * iterations; i++) {
 				int x = (i % selectors) % 10;
 				reactor.notify(objects[x], hello);
 			}
-			latch.await(30, TimeUnit.SECONDS);
-			postRun();
+			postRun(reactor);
 		}
 	}
 
-	@Override
-	public void testBlockingQueueDispatcher() throws InterruptedException {
-		reactor.getConsumerRegistry().setLoadBalancingStrategy(Registry.LoadBalancingStrategy.RANDOM);
-		super.testBlockingQueueDispatcher();
+	@Test
+	public void blockingQueueDispatcherWithRandomLoadBalancing() throws InterruptedException {
+		doTest(new Reactor(nextWorkerDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
-	@Override
-	public void testThreadPoolDispatcher() throws InterruptedException {
-		reactor.getConsumerRegistry().setLoadBalancingStrategy(Registry.LoadBalancingStrategy.RANDOM);
-		super.testThreadPoolDispatcher();
+	@Test
+	public void threadPoolDispatcherWithRandomLoadBalancing() throws InterruptedException {
+		doTest(new Reactor(threadPoolDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
-	@Override
-	public void testRootDispatcher() throws InterruptedException {
-		reactor.getConsumerRegistry().setLoadBalancingStrategy(Registry.LoadBalancingStrategy.RANDOM);
-		super.testRingBufferDispatcher();
+	@Test
+	public void rootDispatcherWithRandomLoadBalancing() throws InterruptedException {
+		doTest(new Reactor(rootDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
-	@Override
-	public void testRingBufferDispatcher() throws InterruptedException {
-		reactor.getConsumerRegistry().setLoadBalancingStrategy(Registry.LoadBalancingStrategy.RANDOM);
-		super.testRingBufferDispatcher();
+	@Test
+	public void ringBufferDispatcherWithRandomLoadBalancing() throws InterruptedException {
+		doTest(new Reactor(createRingBufferDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
 	}
-
 }

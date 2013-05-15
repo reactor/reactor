@@ -53,8 +53,7 @@ public class ComposableThroughputTests {
 	}
 
 	private Composable<Integer> createComposable(Dispatcher dispatcher) {
-		return new Composable<Integer>()
-				.setDispatcher(dispatcher)
+		return new Composable<Integer>(dispatcher)
 				.map(new Function<Integer, Integer>() {
 					@Override
 					public Integer apply(Integer integer) {

@@ -43,42 +43,22 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
 	private final Map<Object, AtomicLong>                      usageCounts       = new HashMap<Object, AtomicLong>();
 
-	private volatile LoadBalancingStrategy loadBalancingStrategy = LoadBalancingStrategy.NONE;
-	private SelectionStrategy selectionStrategy;
-	private boolean           refreshRequired;
+	private final LoadBalancingStrategy loadBalancingStrategy;
+	private final SelectionStrategy     selectionStrategy;
 
-	public LoadBalancingStrategy getLoadBalancingStrategy() {
-		return loadBalancingStrategy;
-	}
+	private boolean refreshRequired;
 
-	@Override
-	public Registry<T> setLoadBalancingStrategy(LoadBalancingStrategy lb) {
-		if (null == lb) {
-			lb = LoadBalancingStrategy.NONE;
-		}
-		this.loadBalancingStrategy = lb;
-		return this;
+	public CachingRegistry(LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy) {
+		this.loadBalancingStrategy = loadBalancingStrategy == null ? LoadBalancingStrategy.NONE : loadBalancingStrategy;
+		this.selectionStrategy = selectionStrategy;
 	}
 
 	public SelectionStrategy getSelectionStrategy() {
-		readLock.lock();
-		try {
-			return selectionStrategy;
-		} finally {
-			readLock.unlock();
-		}
+		return selectionStrategy;
 	}
 
-	@Override
-	public Registry<T> setSelectionStrategy(SelectionStrategy selectionStrategy) {
-		writeLock.lock();
-		try {
-			this.selectionStrategy = selectionStrategy;
-			refreshRequired = true;
-		} finally {
-			writeLock.unlock();
-		}
-		return this;
+	public LoadBalancingStrategy getLoadBalancingStrategy() {
+		return loadBalancingStrategy;
 	}
 
 	@Override

@@ -125,10 +125,10 @@ public abstract class Fn {
 	 * @param c The {@link Callable}.
 	 * @return An {@link reactor.fn.Consumer} that executes the {@link Callable}.
 	 */
-	public static <T> Function<?, T> compose(final Callable<T> c) {
-		return new Function<Object, T>() {
+	public static <T> Function<? extends Event<T>, T> compose(final Callable<T> c) {
+		return new Function<Event<T>, T>() {
 			@Override
-			public T apply(Object o) {
+			public T apply(Event<T> o) {
 				try {
 					return c.call();
 				} catch (Exception e) {

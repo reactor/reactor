@@ -27,9 +27,11 @@ import java.util.TreeSet;
  */
 public final class TaggableKey implements Taggable<TaggableKey> {
 
+	private final Object monitor = new Object();
+
 	private final Object delegate;
 
-	private Set<String> tags;
+	private Set<String> tags = new TreeSet<String>();
 
 	/**
 	 * Creates a {@link Taggable} notification key that will defer to the
@@ -43,18 +45,18 @@ public final class TaggableKey implements Taggable<TaggableKey> {
 
 	@Override
 	public Taggable<TaggableKey> setTags(String... tags) {
-		if (null == this.tags) {
+		synchronized(monitor) {
 			this.tags = new TreeSet<String>();
-		} else {
-			this.tags.clear();
+			Collections.addAll(this.tags, tags);
 		}
-		Collections.addAll(this.tags, tags);
 		return this;
 	}
 
 	@Override
 	public Set<String> getTags() {
-		return (null == tags ? Collections.<String>emptySet() : tags);
+		synchronized(monitor) {
+			return (null == tags ? Collections.<String>emptySet() : Collections.<String>unmodifiableSet(tags));
+		}
 	}
 
 	@Override

@@ -107,11 +107,10 @@ class GroovyReactorSpec extends Specification {
 	def "Simple reactors linking"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = R.create()
-		def r2 = R.create()
-		def r3 = R.create()
-		def r4 = R.create()
-		r1.dispatcher = r2.dispatcher = r3.dispatcher = r4.dispatcher = Context.synchronousDispatcher()
+		def r1 = R.create(true)
+		def r2 = R.create(true)
+		def r3 = R.create(true)
+		def r4 = R.create(true)
 
 		def d1, d2, d3, d4
 

@@ -16,7 +16,6 @@
 
 package reactor.fn.dispatch;
 
-import reactor.fn.ConsumerInvoker;
 import reactor.fn.Lifecycle;
 
 /**
@@ -29,26 +28,10 @@ import reactor.fn.Lifecycle;
 public interface Dispatcher extends Lifecycle {
 
 	/**
-	 * Get the {@link reactor.fn.ConsumerInvoker} currently in use.
-	 *
-	 * @return The {@link reactor.fn.ConsumerInvoker}. Cannot be null.
-	 */
-	ConsumerInvoker getConsumerInvoker();
-
-	/**
-	 * Set the {@link reactor.fn.ConsumerInvoker} currently in use.
-	 *
-	 * @param consumerInvoker The {@link reactor.fn.ConsumerInvoker} to use.
-	 * @return {@literal this}
-	 */
-	Dispatcher setConsumerInvoker(ConsumerInvoker consumerInvoker);
-
-	/**
 	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of
 	 * consumers.
 	 *
 	 * @return A {@link Task} object, probably from a pool, used to hold the various parts of a dispatch event.
 	 */
 	<T> Task<T> nextTask();
-
 }

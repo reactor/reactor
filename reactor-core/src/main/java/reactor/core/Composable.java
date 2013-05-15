@@ -16,11 +16,8 @@
 
 package reactor.core;
 
-import org.slf4j.LoggerFactory;
-import reactor.Fn;
-import reactor.fn.*;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.DispatcherAware;
+import static reactor.Fn.$;
+import static reactor.core.Context.synchronousDispatcher;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,8 +25,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static reactor.Fn.$;
-import static reactor.core.Context.synchronousDispatcher;
+import org.slf4j.LoggerFactory;
+
+import reactor.Fn;
+import reactor.fn.Consumer;
+import reactor.fn.Deferred;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Observable;
+import reactor.fn.Selector;
+import reactor.fn.Supplier;
+import reactor.fn.dispatch.Dispatcher;
 
 /**
  * A {@literal Composable} is a way to provide components from other threads to act on incoming data and provide new
@@ -39,11 +45,11 @@ import static reactor.core.Context.synchronousDispatcher;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, DispatcherAware {
+public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
-	static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
-	static       long     DEFAULT_TIMEOUT               = 30l;
-	static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
+	private static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
+	private static       long     DEFAULT_TIMEOUT               = 30l;
+	private static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
 
 	static {
 		String s = System.getProperty("reactor.max.await.timeout");
@@ -84,7 +90,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
 
 	protected final    Observable observable;
-	protected volatile Dispatcher dispatcher;
 	protected boolean hasBlockers = false;
 	protected T         value;
 	protected Throwable error;
@@ -93,7 +98,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 	 * Create a {@literal Composable} with default behavior.
 	 */
 	public Composable() {
-		this.observable = createObservable(null);
+		this.observable = createObservable((Observable)null);
+	}
+
+	public Composable(Dispatcher dispatcher) {
+		this.observable = createObservable(dispatcher);
 	}
 
 	/**
@@ -158,20 +167,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 												 observable.notify(key, e, null);
 											 }
 										 });
-	}
-
-	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
-	@Override
-	public Composable<T> setDispatcher(Dispatcher dispatcher) {
-		this.dispatcher = dispatcher;
-		if (observable instanceof DispatcherAware) {
-			((DispatcherAware) observable).setDispatcher(dispatcher);
-		}
-		return this;
 	}
 
 	/**
@@ -511,14 +506,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T>, Dis
 		return this;
 	}
 
+	protected Observable createObservable(Dispatcher dispatcher) {
+		return new Reactor(dispatcher);
+	}
+
 	protected Observable createObservable(Observable src) {
 		if (null == src) {
 			return new Reactor();
 		}
 		if (src instanceof Reactor) {
-			return new Reactor((Reactor) src).setDispatcher(synchronousDispatcher());
-		} else if (src instanceof DispatcherAware) {
-			return new Reactor().setDispatcher(((DispatcherAware) src).getDispatcher());
+			return new Reactor((Reactor) src, synchronousDispatcher());
 		} else {
 			return new Reactor();
 		}
