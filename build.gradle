@@ -126,6 +126,10 @@ subprojects { subproject ->
 
 	test {
 		jvmArgs "-javaagent:${configurations.jacoco.asPath}=destfile=${buildDir}/jacoco.exec,includes=reactor.*"
+		testLogging {
+			events "failed"
+			exceptionFormat "full"
+		}
 	}
 }
 
