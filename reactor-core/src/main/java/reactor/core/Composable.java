@@ -97,7 +97,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} with default behavior.
+	 * Create a delayed {@literal Composable} with no initial state, ready to accept values.
+	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
 	 */
 	public static <T> Builder<T> lazy() {
 		return new Builder<T>();
@@ -382,7 +383,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public Composable<T> take(final long count) {
-		final Queue<T> values = QueueFactory.createQueue();
 		final AtomicLong cursor = new AtomicLong(count);
 		final Composable<T> c = createComposable(createObservable(observable));
 		c.setExpectedAcceptCount(count);
@@ -390,16 +390,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			@Override
 			public void accept(T value) {
 				try {
-					long _cursor = cursor.decrementAndGet();
-					if(_cursor > 0)
-						values.add(value);
-					if(_cursor == 0){
-						T val;
-						while((val = values.poll()) != null){
-							c.accept(val);
-						}
 						c.accept(value);
-					}
 				} catch (Throwable t) {
 					handleError(c, t);
 				}
