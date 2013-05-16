@@ -47,7 +47,7 @@ public final class Buffers implements Iterable<ByteBuffer> {
 
 	private final Lock lock = new ReentrantLock();
 
-	private final Condition newBuffersAvaileable;
+	private final Condition newBuffersAvailable;
 
 	private volatile int position;
 
@@ -55,7 +55,7 @@ public final class Buffers implements Iterable<ByteBuffer> {
 
 
 	public Buffers() {
-		this.newBuffersAvaileable = this.lock.newCondition();
+		this.newBuffersAvailable = this.lock.newCondition();
 	}
 
 	public int getPosition() {
@@ -70,7 +70,7 @@ public final class Buffers implements Iterable<ByteBuffer> {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Buffer added, now:" + this.toString());
 			}
-			this.newBuffersAvaileable.signalAll();
+			this.newBuffersAvailable.signalAll();
 		}
 		finally {
 			this.lock.unlock();
@@ -215,20 +215,23 @@ public final class Buffers implements Iterable<ByteBuffer> {
 
 		@Override
 		public int read() throws IOException {
-			while (feeder.isExhausted()) {
-				// TODO: Add socket timeout
-				lock.lock();
-				try {
-					newBuffersAvaileable.await();
-				}
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new IOException(e);
-				}
-				finally {
-					lock.unlock();
+			lock.lock();
+			try {
+				while (feeder.isExhausted()) {
+					// TODO: Add socket timeout
+					try {
+						newBuffersAvailable.await();
+					}
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						throw new IOException(e);
+					}
 				}
 			}
+			finally {
+				lock.unlock();
+			}
+
 			if (this.originalEpoch != epoch) {
 				throw new IOException("InputStream has been reset");
 			}
