@@ -18,6 +18,8 @@ package reactor.groovy
 
 import reactor.core.Composable
 import reactor.core.R
+import reactor.core.Reactor
+import reactor.fn.Consumer
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -156,11 +158,15 @@ class GroovyComposableSpec extends Specification {
 			(Integer.parseInt(test))*100
 		}
 
-		then: 'compose the event'
-		r.compose(key.object, '1'){
-			println it
-		}/*% {i, acc = [] -> println i+' '+acc;acc << i}*/
+		and: 'prepare reduce and notify composition'
+		def c1 = Composable.lazy().using(r).build()
+		def c2 = c1.take(2).reduce{i, acc = [] -> acc <<	i }
 
+		r.compose(key.object, '1', c1)
+
+		then:
+		c2.await(1, TimeUnit.SECONDS)
+		c2.get() == [1,100]
 	}
 
 	def "relay events to reactor"() {

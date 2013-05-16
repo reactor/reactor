@@ -20,9 +20,11 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.support.QueueFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -94,6 +96,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		this.observable = createObservable((Observable) null);
 	}
 
+	/**
+	 * Create a {@literal Composable} with default behavior.
+	 */
+	public static <T> Builder<T> lazy() {
+		return new Builder<T>();
+	}
+
 	public Composable(Dispatcher dispatcher) {
 		this.observable = createObservable(dispatcher);
 	}
@@ -154,13 +163,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
 		return Composable.from(ev)
-										 .build()
-										 .consume(new Consumer<E>() {
-											 @Override
-											 public void accept(E e) {
-												 observable.notify(key, e, null);
-											 }
-										 });
+				.build()
+				.consume(new Consumer<E>() {
+					@Override
+					public void accept(E e) {
+						observable.notify(key, e, null);
+					}
+				});
 	}
 
 	/**
@@ -299,8 +308,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public <V> Composable<V> map(final Object key, final Observable observable) {
-		/* todo look if we may pick the size from consumerRegistry or just use a unbounded length */
-		final Composable<V> c = new DelayedAcceptComposable<V>(observable, -1);
+		final Composable<V> c = createComposable(createObservable(observable));
 		final Object replyTo = new Object();
 
 		observable.on($(replyTo), new Consumer<Event<V>>() {
@@ -321,7 +329,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					Event<?> event = Event.class.isAssignableFrom(value.getClass()) ? (Event<?>) value : Fn.event(value);
 					event.setReplyTo(replyTo);
 					//event.getHeaders().setOrigin(reactor.getId());
-					observable.notify(key, event);
+					observable.send(key, event);
 				} catch (Throwable t) {
 					handleError(c, t);
 				}
@@ -344,6 +352,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
 		final Composable<V> c = createComposable(createObservable(observable));
 		c.setExpectedAcceptCount(1);
+		when(lastSelector, new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				c.accept(lastValue.get());
+			}
+		});
 		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
@@ -358,10 +372,37 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
-		when(lastSelector, new Consumer<T>() {
+		return c;
+	}
+
+	/**
+	 * Take {@param count} number of values and send lastSelector event after {@param count} iterations
+	 *
+	 * @param count Number of values to accept
+	 * @return The new {@link Composable}.
+	 */
+	public Composable<T> take(final long count) {
+		final Queue<T> values = QueueFactory.createQueue();
+		final AtomicLong cursor = new AtomicLong(count);
+		final Composable<T> c = createComposable(createObservable(observable));
+		c.setExpectedAcceptCount(count);
+		when(acceptSelector, new Consumer<T>() {
 			@Override
-			public void accept(T t) {
-				c.accept(lastValue.get());
+			public void accept(T value) {
+				try {
+					long _cursor = cursor.decrementAndGet();
+					if(_cursor > 0)
+						values.add(value);
+					if(_cursor == 0){
+						T val;
+						while((val = values.poll()) != null){
+							c.accept(val);
+						}
+						c.accept(value);
+					}
+				} catch (Throwable t) {
+					handleError(c, t);
+				}
 			}
 		});
 		return c;
@@ -491,10 +532,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			}
 		};
 
-		if (sel == acceptSelector && value != null) {
-			R.schedule(consumer, value, observable);
-		} else {
+		if (!isComplete()) {
 			observable.on(sel, whenConsumer);
+		}else{
+			R.schedule(consumer, value, observable);
 		}
 		return this;
 	}
@@ -583,6 +624,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			this.values = values;
 		}
 
+		Builder() {
+			this.values = null;
+		}
+
 		public Builder<T> using(Reactor reactor) {
 			this.reactor = reactor;
 			return this;
@@ -601,7 +646,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					reactor = new Reactor(dispatcher);
 				}
 			}
-			return new DelayedAcceptComposable<T>(reactor, values);
+			if(values != null){
+				return new DelayedAcceptComposable<T>(reactor, values);
+			}else{
+				return new DelayedAcceptComposable<T>(reactor, -1);
+			}
+
 		}
 	}
 

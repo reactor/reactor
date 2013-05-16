@@ -311,7 +311,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @return {@link Composable}
 	 */
 	public <T, E extends Event<T>, V> Composable<V> compose(Object key, E ev) {
-		return Composable.from(ev).build().map(key, this);
+		return Composable.from(ev).using(this).build().map(key, this);
 	}
 
 	/**
@@ -321,10 +321,10 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param key The notification key
 	 * @param ev  The {@link Event} to publish.
 	 * @param consumer  The {@link Composable} to pass the replies.
-	 * @return {@litteral this}
+	 * @return {@literal this}
 	 */
 	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
-		Composable<E> composable = new Composable<E>(new Reactor(this));
+		Composable<E> composable = Composable.from(ev).using(this).build();
 		composable.<V>map(key, this).consume(consumer);
 		composable.accept(ev);
 

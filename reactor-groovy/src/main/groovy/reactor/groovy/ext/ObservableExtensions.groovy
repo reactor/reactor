@@ -23,6 +23,7 @@ import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Reactor
 import reactor.fn.*
+import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.groovy.support.ClosureEventFunction
 
@@ -90,11 +91,11 @@ class ObservableExtensions {
 	}
 
 	static <T> Reactor compose(Reactor selfType,
-	                              Object key,
-	                              T obj,
-	                             @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
-	                             Closure handler) {
-		selfType.compose key, Fn.event(obj), new ClosureEventConsumer<T>(handler)
+	                           Object key,
+	                           T obj,
+	                           @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
+	                           Closure handler) {
+		selfType.compose key, Fn.event(obj), new ClosureConsumer<T>(handler)
 	}
 
 	static <T> Reactor compose(Reactor selfType,
@@ -102,18 +103,27 @@ class ObservableExtensions {
 	                           Event<T> obj,
 	                           @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
 	                           Closure handler) {
-		selfType.compose key, obj, new ClosureEventConsumer<T>(handler)
+		selfType.compose key, obj, new ClosureConsumer<T>(handler)
 	}
 
 	/**
 	 * Alias and Misc. Helpers
 	 */
 
-	static <T,V> Composable<V> compose(Reactor selfType,
-	                           Object key,
-	                           T obj) {
+	static <T, V> Composable<V> compose(Reactor selfType,
+	                                    Object key,
+	                                    T obj) {
 		selfType.compose key, Fn.event(obj)
 	}
+
+
+	static <T> Reactor compose(Reactor selfType,
+	                                    Object key,
+	                                    T obj,
+	                                    Consumer<T> consumer) {
+		selfType.compose key, Fn.event(obj), consumer
+	}
+
 
 	static <T> Observable notify(Observable selfType,
 	                             Object key,

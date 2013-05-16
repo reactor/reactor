@@ -45,7 +45,7 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 		if (eventArg) {
 			callback arg
 		} else {
-			callback arg.data
+			callback arg?.data
 		}
 	}
 }
