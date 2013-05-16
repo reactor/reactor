@@ -165,7 +165,7 @@ class GroovyComposableSpec extends Specification {
 		r.compose(key.object, '1', c1)
 
 		then:
-		c2.await(1, TimeUnit.SECONDS)
+		c2.await(5, TimeUnit.SECONDS)
 		c2.get() == [1,100]
 	}
 
