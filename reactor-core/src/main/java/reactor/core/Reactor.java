@@ -302,20 +302,33 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Notify this component that the consumers that match {@param key} should consume the event {@param ev} and might
+	 * Return a new composition ready to accept an event {@param ev}, thus notifying this component that the
+	 * consumers matching {@param key} should consume the event and might
 	 * reply using R.replyTo (which is automatically handled when used in combination with {@link #map(Function)}.
 	 *
 	 * @param key The notification key
 	 * @param ev  The {@link Event} to publish.
 	 * @return {@link Composable}
 	 */
-	public <T, V> Composable<V> compose(Object key, T ev) {
-		Composable<T> composable = new Composable<T>(new Reactor(this));
-		Composable<V> reply = composable.map(key, this);
+	public <T, E extends Event<T>, V> Composable<V> compose(Object key, E ev) {
+		return Composable.from(ev).build().map(key, this);
+	}
 
+	/**
+	 * Notify this component that the consumers matching {@param key} should consume the event {@param ev} and might
+	 * send replies to the consumer {@param consumer}.
+	 *
+	 * @param key The notification key
+	 * @param ev  The {@link Event} to publish.
+	 * @param consumer  The {@link Composable} to pass the replies.
+	 * @return {@litteral this}
+	 */
+	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
+		Composable<E> composable = new Composable<E>(new Reactor(this));
+		composable.<V>map(key, this).consume(consumer);
 		composable.accept(ev);
 
-		return reply;
+		return this;
 	}
 
 	/**
@@ -330,6 +343,22 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 */
 	public <T, S extends Supplier<Event<T>>, V> Composable<V> compose(Object key, S supplier) {
 		return compose(key, supplier.get());
+	}
+
+
+	/**
+	 * Compose an action starting with the given key, the {@link Supplier} and a replies consumer.
+	 *
+	 * @param key      The key to use.
+	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
+	 * @param consumer The {@link Consumer} that will consume replies.
+	 * @param <T>      The type of the incoming data.
+	 * @param <S>      The type of the event supplier.
+	 * @param <V>      The type of the {@link Composable}.
+	 * @return A new {@link Composable}.
+	 */
+	public <T, S extends Supplier<Event<T>>, V> Reactor compose(Object key, S supplier, Consumer<V> consumer) {
+		return compose(key, supplier.get(), consumer);
 	}
 
 	@Override

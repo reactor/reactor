@@ -43,8 +43,8 @@ class GroovyReactorSpec extends Specification {
 		r1.on('test2') { String s ->
 			result = s
 			latch.countDown()
-		}.
-				notify 'test2', 'Hello'
+		}
+		r1.notify 'test2', 'Hello'
 
 		then:
 		latch.await(5, TimeUnit.SECONDS)

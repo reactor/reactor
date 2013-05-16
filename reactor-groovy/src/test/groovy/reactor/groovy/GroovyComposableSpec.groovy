@@ -123,6 +123,46 @@ class GroovyComposableSpec extends Specification {
 	}
 
 
+
+	def "Compose events (Request/Reply)"() {
+		given: 'a reactor and a selector'
+		def r = R.create()
+		def key = $(new Object())
+
+		when: 'register a Reply Consumer'
+		r.receive(key){String test->
+			Integer.parseInt test
+		}
+
+		and: 'compose the event'
+		def c = r.compose(key.object, '1') % {i, acc = [] -> acc << i}
+
+		then:
+		c.await(1, TimeUnit.SECONDS)
+		c.get() == [1]
+	}
+
+
+	def "Compose events (Request/ N Replies)"() {
+		given: 'a reactor and a selector'
+		def r = R.create()
+		def key = $(new Object())
+
+		when: 'register a Reply Consumer'
+		r.receive(key){String test->
+			Integer.parseInt test
+		}
+		r.receive(key){String test->
+			(Integer.parseInt(test))*100
+		}
+
+		then: 'compose the event'
+		r.compose(key.object, '1'){
+			println it
+		}/*% {i, acc = [] -> println i+' '+acc;acc << i}*/
+
+	}
+
 	def "relay events to reactor"() {
 		given: 'a reactor and a selector'
 		def r = R.create()

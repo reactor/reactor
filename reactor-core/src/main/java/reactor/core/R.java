@@ -107,7 +107,7 @@ public class R {
 	 * @see {@link R#get(String)}
 	 */
 	public static Reactor create(boolean synchronous) {
-		Reactor r = new Reactor(SYNC_DISPATCHER);
+		Reactor r = synchronous ? new Reactor(SYNC_DISPATCHER) : new Reactor(self.rootReactor);
 		updateRegistry(r);
 		return r;
 	}
