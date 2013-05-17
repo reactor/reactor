@@ -526,15 +526,14 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	protected Registration<Consumer<Event<T>>> when(Selector sel, final Consumer<T> consumer) {
-
-		Consumer<Event<T>> whenConsumer = new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> ev) {
-				consumer.accept(ev.getData());
-			}
-		};
-
 		if (!isComplete()) {
+			Consumer<Event<T>> whenConsumer = new Consumer<Event<T>>() {
+				@Override
+				public void accept(Event<T> ev) {
+					consumer.accept(ev.getData());
+				}
+			};
+
 			return observable.on(sel, whenConsumer);
 		} else {
 			R.schedule(consumer, value, observable);
