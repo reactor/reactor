@@ -128,7 +128,7 @@ public abstract class Task<T> {
 				invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
 			}
 		} catch (Throwable x) {
-			Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
+			Logger log = LoggerFactory.getLogger(Task.class);
 			if (log.isErrorEnabled()) {
 				log.error(x.getMessage(), x);
 			}
