@@ -34,12 +34,12 @@ public class Tuple implements Iterable {
 	protected final List<Object> entries;
 	protected final int          size;
 
-	protected Tuple(@Nonnull Collection<Object> values) {
+	public Tuple(@Nonnull Collection<Object> values) {
 		this.entries = Arrays.asList(values.toArray());
 		this.size = entries.size();
 	}
 
-	protected Tuple(Object... values) {
+	public Tuple(Object... values) {
 		this.entries = Arrays.asList(values);
 		this.size = values.length;
 	}

@@ -21,7 +21,7 @@ package reactor.fn;
  */
 public class Tuple1<T1> extends Tuple {
 
-	Tuple1(Object... values) {
+	public Tuple1(Object... values) {
 		super(values);
 	}
 
