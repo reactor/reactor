@@ -501,7 +501,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 	private boolean isComplete() {
 		long expectedAcceptCount = this.expectedAcceptCount.get();
-		return null != error || (null != value && expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount);
+		return null != error || (expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount);
 	}
 
 	@Override
