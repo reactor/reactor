@@ -151,7 +151,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return The new {@literal Promise}.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Builder<T> from(Throwable reason) {
+	public static <T> Promise.Builder<T> from(Throwable reason) {
 		return (Builder<T>) new Builder<Object>(Arrays.asList((Object) reason));
 	}
 
@@ -163,7 +163,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return The new {@literal Promise}.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Builder<T> from(T value) {
+	public static <T> Promise.Builder<T> from(T value) {
 		return new Builder<T>(Arrays.asList(value));
 	}
 
