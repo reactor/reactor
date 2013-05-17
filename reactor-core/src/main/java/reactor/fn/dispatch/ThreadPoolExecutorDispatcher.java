@@ -16,18 +16,21 @@
 
 package reactor.fn.dispatch;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.support.NamedDaemonThreadFactory;
+
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.fn.*;
-import reactor.support.NamedDaemonThreadFactory;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
@@ -114,24 +117,9 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 		@Override
 		public void run() {
 			try {
-				for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
-					if (reg.isCancelled() || reg.isPaused()) {
-						continue;
-					}
-					invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
-					if (reg.isCancelAfterUse()) {
-						reg.cancel();
-					}
-				}
-				if (null != getCompletionConsumer()) {
-					invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
-				}
-			} catch (Throwable x) {
-				LOG.error(x.getMessage(), x);
-				if (null != getErrorConsumer()) {
-					getErrorConsumer().accept(x);
-				}
-			} finally {
+				execute(invoker);
+			}
+			finally {
 				ringBuffer.publish(sequenceId);
 			}
 		}
