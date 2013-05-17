@@ -16,9 +16,14 @@
 
 package reactor.fn.dispatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
+import reactor.fn.ConsumerInvoker;
 import reactor.fn.Event;
+import reactor.fn.Registration;
 import reactor.fn.Registry;
 
 /**
@@ -104,5 +109,33 @@ public abstract class Task<T> {
 	 * for execution.
 	 */
 	public abstract void submit();
+
+	protected void execute(ConsumerInvoker invoker) {
+		try {
+			for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
+				if (reg.isCancelled() || reg.isPaused()) {
+					continue;
+				}
+				if (null != reg.getSelector().getHeaderResolver()) {
+					getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(getKey()));
+				}
+				invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
+				if (reg.isCancelAfterUse()) {
+					reg.cancel();
+				}
+			}
+			if (null != getCompletionConsumer()) {
+				invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
+			}
+		} catch (Throwable x) {
+			Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
+			if (log.isErrorEnabled()) {
+				log.error(x.getMessage(), x);
+			}
+			if (null != getErrorConsumer()) {
+				getErrorConsumer().accept(x);
+			}
+		}
+	}
 
 }

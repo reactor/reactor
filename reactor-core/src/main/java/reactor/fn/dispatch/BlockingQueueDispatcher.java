@@ -16,14 +16,16 @@
 
 package reactor.fn.dispatch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.fn.*;
-import reactor.support.QueueFactory;
-
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.support.QueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -117,31 +119,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
-						try {
-							for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getKey())) {
-								if (reg.isCancelled() || reg.isPaused()) {
-									continue;
-								}
-								if (null != reg.getSelector().getHeaderResolver()) {
-									t.getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(t.getKey()));
-								}
-								invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
-								if (reg.isCancelAfterUse()) {
-									reg.cancel();
-								}
-							}
-							if (null != t.getCompletionConsumer()) {
-								invoker.invoke(t.getCompletionConsumer(), t.getConverter(), Void.TYPE, t.getEvent());
-							}
-						} catch (Throwable x) {
-							Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
-							if (log.isErrorEnabled()) {
-								log.error(x.getMessage(), x);
-							}
-							if (null != t.getErrorConsumer()) {
-								t.getErrorConsumer().accept(x);
-							}
-						}
+						t.execute(invoker);
 					}
 				} catch (InterruptedException e) {
 					interrupt();

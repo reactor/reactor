@@ -16,15 +16,23 @@
 
 package reactor.fn.dispatch;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.util.concurrent.Executors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.fn.*;
+
+import reactor.fn.Consumer;
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
-import java.util.concurrent.Executors;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.ExceptionHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * Implementation of a {@link Dispatcher} that uses a <a href="http://github.com/lmax-exchange/disruptor">Disruptor
@@ -61,7 +69,6 @@ public class RingBufferDispatcher implements Dispatcher {
 		disruptor.handleEventsWith(new RingBufferTaskHandler());
 		disruptor.handleExceptionsWith(
 				new ExceptionHandler() {
-					Logger log;
 
 					@Override
 					public void handleEventException(Throwable ex, long sequence, Object event) {
@@ -145,21 +152,7 @@ public class RingBufferDispatcher implements Dispatcher {
 	private class RingBufferTaskHandler implements EventHandler<RingBufferTask> {
 		@Override
 		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
-			for (Registration<? extends Consumer<? extends Event<?>>> reg : t.getConsumerRegistry().select(t.getKey())) {
-				if (reg.isCancelled() || reg.isPaused()) {
-					continue;
-				}
-				if (null != reg.getSelector().getHeaderResolver()) {
-					t.getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(t.getKey()));
-				}
-				invoker.invoke(reg.getObject(), t.getConverter(), Void.TYPE, t.getEvent());
-				if (reg.isCancelAfterUse()) {
-					reg.cancel();
-				}
-			}
-			if (null != t.getCompletionConsumer()) {
-				invoker.invoke(t.getCompletionConsumer(), t.getConverter(), Void.TYPE, t.getEvent());
-			}
+			t.execute(invoker);
 		}
 	}
 
