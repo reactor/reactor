@@ -20,11 +20,9 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
-import reactor.support.QueueFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -165,13 +163,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
 		return Composable.from(ev)
-				.build()
-				.consume(new Consumer<E>() {
-					@Override
-					public void accept(E e) {
-						observable.notify(key, e, null);
-					}
-				});
+										 .build()
+										 .consume(new Consumer<E>() {
+											 @Override
+											 public void accept(E e) {
+												 observable.notify(key, e, null);
+											 }
+										 });
 	}
 
 	/**
@@ -396,10 +394,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			public void accept(T value) {
 				try {
 					long _cursor = cursor.decrementAndGet();
-					if(_cursor== 0){
+					if (_cursor == 0) {
 						reg.get().cancel();
 					}
-					if(_cursor>=0){
+					if (_cursor >= 0) {
 						c.accept(value);
 					}
 				} catch (Throwable t) {
@@ -527,14 +525,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 	protected Registration<Consumer<Event<T>>> when(Selector sel, final Consumer<T> consumer) {
 		if (!isComplete()) {
-			Consumer<Event<T>> whenConsumer = new Consumer<Event<T>>() {
+			return observable.on(sel, new Consumer<Event<T>>() {
 				@Override
 				public void accept(Event<T> ev) {
 					consumer.accept(ev.getData());
 				}
-			};
-
-			return observable.on(sel, whenConsumer);
+			});
 		} else {
 			R.schedule(consumer, value, observable);
 		}
