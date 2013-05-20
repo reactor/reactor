@@ -16,15 +16,15 @@
 
 package reactor.groovy
 
-import reactor.core.Context
-import reactor.core.R
-import reactor.fn.Event
-import spock.lang.Specification
+import static reactor.Fn.$
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.Fn.$
+import reactor.core.Reactor
+import reactor.fn.Event
+import reactor.fn.dispatch.SynchronousDispatcher
+import spock.lang.Specification
 
 /**
  * @author Stephane Maldini (smaldini)
@@ -34,8 +34,8 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor dispatches events properly"() {
 
 		given: "a simple reactor implementation"
-		def r1 = R.create()
-		def r2 = R.create()
+		def r1 = new Reactor()
+		def r2 = new Reactor()
 		def latch = new CountDownLatch(1)
 
 		when: 'Using simple arguments'
@@ -72,7 +72,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor provides Closure as Supplier on notify"() {
 
 		given: "a simple Reactor"
-		def r = R.create(true)
+		def r = new Reactor(new SynchronousDispatcher())
 		def result = ""
 		r.on('supplier') { String s ->
 			result = s
@@ -89,7 +89,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor enables Actor programming style"() {
 
 		given: "a simple reactor implementation"
-		def reactor = R.create(true)
+		def reactor = new Reactor(new SynchronousDispatcher())
 
 		when: 'Using simple arguments'
 		def data2 = ""
@@ -107,10 +107,10 @@ class GroovyReactorSpec extends Specification {
 	def "Simple reactors linking"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = R.create(true)
-		def r2 = R.create(true)
-		def r3 = R.create(true)
-		def r4 = R.create(true)
+		def r1 = new Reactor(new SynchronousDispatcher())
+		def r2 = new Reactor(new SynchronousDispatcher())
+		def r3 = new Reactor(new SynchronousDispatcher())
+		def r4 = new Reactor(new SynchronousDispatcher())
 
 		def d1, d2, d3, d4
 
@@ -157,15 +157,4 @@ class GroovyReactorSpec extends Specification {
 		d2 && d4 && !d1 && !d3
 
 	}
-
-	def "Reactor finder"() {
-
-		when: "a simple reactor implementation"
-		R.createOrGet('funkyReactor')
-
-		then:
-		'funkyReactor'.toReactor()
-
-	}
-
 }

@@ -32,30 +32,45 @@ import reactor.support.QueueFactory;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class BlockingQueueDispatcher implements Dispatcher {
-
-	private final static AtomicInteger THREAD_COUNT = new AtomicInteger();
-
+	
+	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));	
+	private static final AtomicInteger INSTANCE_COUNT  = new AtomicInteger();
+	
 	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
 	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
 
-	private final BlockingQueue<Task<?>> readyTasks;
-	private final TaskExecutor           taskExecutor;
+	private final BlockingQueue<Task<?>> readyTasks = QueueFactory.createQueue();
+	private final BlockingQueue<Task<?>> taskQueue = QueueFactory.createQueue();
+	private final Thread           taskExecutor;
+	
+	/**
+	 * Creates a new {@literal BlockingQueueDispatcher} named 'blocking-queue' that will use the default backlog,
+	 * as configured by the {@code reactor.dispatcher.backlog} system property. If the property is not set,
+	 * a backlog of 128 is used.
+	 */
+	public BlockingQueueDispatcher() {
+		this("blocking-queue", DEFAULT_BACKLOG);
+	}
 
+	/**
+	 * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
+	 * 
+	 * @param name The name 
+	 * @param backlog The backlog size
+	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
-		this.readyTasks = QueueFactory.createQueue();
-		String threadName = name + "-dispatcher-" + THREAD_COUNT.incrementAndGet();
-		this.taskExecutor = new TaskExecutor(threadGroup, threadName);
+		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
+		
+		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
+		this.taskExecutor.setDaemon(true);
+		this.taskExecutor.setPriority(Thread.MAX_PRIORITY);
 
 		for (int i = 0; i < Math.max(backlog, 64); i++) {
 			this.readyTasks.add(new BlockingQueueTask<Object>());
 		}
-		this.start();
-	}
-
-	Task<?> steal() {
-		return taskExecutor.taskQueue.poll();
 	}
 
 	@Override
@@ -73,9 +88,10 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	}
 
 	private class BlockingQueueTask<T> extends Task<T> {
+		
 		@Override
-		public void submit() {
-			taskExecutor.taskQueue.add(this);
+		public void submit() {	
+			taskQueue.add(this);
 		}
 	}
 
@@ -101,17 +117,8 @@ public class BlockingQueueDispatcher implements Dispatcher {
 		return true;
 	}
 
-	private class TaskExecutor extends Thread {
-		private final BlockingQueue<Task<?>> taskQueue;
-
-		private TaskExecutor(ThreadGroup group,
-												 String name) {
-			super(group, name);
-			this.taskQueue = QueueFactory.createQueue();
-			setDaemon(true);
-			setPriority(Thread.MAX_PRIORITY);
-		}
-
+	private class TaskExecutingRunnable implements Runnable {
+						
 		@Override
 		public void run() {
 			Task<?> t = null;
@@ -122,7 +129,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 						t.execute(invoker);
 					}
 				} catch (InterruptedException e) {
-					interrupt();
+					Thread.currentThread().interrupt();
 				} catch (Exception e) {
 					Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 					if (log.isErrorEnabled()) {

@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.SynchronousDispatcher;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,7 +29,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static reactor.Fn.$;
-import static reactor.core.Context.synchronousDispatcher;
 
 /**
  * A {@literal Composable} is a way to provide components from other threads to act on incoming data and provide new
@@ -43,6 +43,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	private static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
 	private static       long     DEFAULT_TIMEOUT               = 30l;
 	private static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
+	
+	protected static final SynchronousDispatcher SYNCHRONOUS_DISPATCHER = new SynchronousDispatcher();
 
 	static {
 		String s = System.getProperty("reactor.max.await.timeout");
@@ -82,6 +84,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	protected final AtomicLong acceptedCount       = new AtomicLong(0);
 	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
 
+	
 	protected final Observable observable;
 	protected boolean hasBlockers = false;
 	protected T         value;
@@ -556,7 +559,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			return new Reactor();
 		}
 		if (src instanceof Reactor) {
-			return new Reactor((Reactor) src, synchronousDispatcher());
+			return new Reactor((Reactor) src, SYNCHRONOUS_DISPATCHER);
 		} else {
 			return new Reactor();
 		}

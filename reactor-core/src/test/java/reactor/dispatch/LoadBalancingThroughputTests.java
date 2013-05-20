@@ -17,14 +17,14 @@
 package reactor.dispatch;
 
 import static reactor.Fn.$;
-import static reactor.core.Context.nextWorkerDispatcher;
-import static reactor.core.Context.rootDispatcher;
-import static reactor.core.Context.threadPoolDispatcher;
 
 import org.junit.Test;
 
 import reactor.core.Reactor;
 import reactor.fn.Registry.LoadBalancingStrategy;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 /**
  * @author Jon Brisbin
@@ -56,21 +56,23 @@ public class LoadBalancingThroughputTests extends AbstractThroughputTests {
 			}
 			postRun(reactor);
 		}
+
+		reactor.getDispatcher().stop();
 	}
 
 	@Test
 	public void blockingQueueDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(nextWorkerDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(new Reactor(new BlockingQueueDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
 	@Test
 	public void threadPoolDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(threadPoolDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(new Reactor(new ThreadPoolExecutorDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
 	@Test
 	public void rootDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(rootDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(new Reactor(new RingBufferDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
 	}
 
 	@Test

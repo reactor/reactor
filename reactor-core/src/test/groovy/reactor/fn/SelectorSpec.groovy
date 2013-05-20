@@ -22,15 +22,14 @@ import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-import static reactor.core.Context.synchronousDispatcher
 import static reactor.fn.Registry.LoadBalancingStrategy.RANDOM
 import static reactor.fn.Registry.LoadBalancingStrategy.ROUND_ROBIN
 
 import java.util.concurrent.CountDownLatch
 
 import reactor.Fn
-import reactor.core.R
 import reactor.core.Reactor
+import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 
 /**
@@ -110,7 +109,7 @@ class SelectorSpec extends Specification {
 		given: "A UriTemplateSelector"
 		def sel1 = U("/path/to/{resource}")
 		def key = "/path/to/resourceId"
-		def r = R.create(true)
+		def r = new Reactor(new SynchronousDispatcher())
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
 			resourceId = ev.headers["resource"]
@@ -127,7 +126,7 @@ class SelectorSpec extends Specification {
 	def "Selectors can be round-robin load balanced"() {
 
 		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
-		def r = new Reactor(synchronousDispatcher(), ROUND_ROBIN, null, null)
+		def r = new Reactor(new SynchronousDispatcher(), ROUND_ROBIN, null, null)
 		def latch = new CountDownLatch(4)
 		def called = []
 		def a1 = {
@@ -164,7 +163,7 @@ class SelectorSpec extends Specification {
 
 		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
 
-		def r = new Reactor(synchronousDispatcher(), RANDOM, null, null)
+		def r = new Reactor(new SynchronousDispatcher(), RANDOM, null, null)
 		def latch = new CountDownLatch(4)
 		def called = []
 		def a1 = {

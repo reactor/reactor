@@ -16,18 +16,19 @@
 
 package reactor.dispatch
 
-import reactor.Fn
-import reactor.core.Context
-import reactor.core.CachingRegistry
-import reactor.fn.Consumer
-import reactor.fn.Event
-import spock.lang.Specification
+import static reactor.GroovyTestUtils.$
+import static reactor.GroovyTestUtils.consumer
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.GroovyTestUtils.$
-import static reactor.GroovyTestUtils.consumer
+import reactor.Fn
+import reactor.core.CachingRegistry
+import reactor.fn.Consumer
+import reactor.fn.Event
+import reactor.fn.dispatch.SynchronousDispatcher
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher
+import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
@@ -37,8 +38,9 @@ class DispatcherSpec extends Specification {
 	def "Dispatcher executes tasks in correct thread"() {
 
 		given:
-		def sameThread = Context.synchronousDispatcher()
-		def diffThread = Context.threadPoolDispatcher()
+		def sameThread = new SynchronousDispatcher()
+		def diffThread = new ThreadPoolExecutorDispatcher()
+		diffThread.start()
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>(null, null)
@@ -70,6 +72,8 @@ class DispatcherSpec extends Specification {
 
 		then: "the task thread should be different from the current thread"
 		taskThread != currentThread
+
+		diffThread.stop()
 
 	}
 

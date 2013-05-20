@@ -77,6 +77,6 @@ public abstract class AbstractThroughputTests {
 	}
 
 	protected Dispatcher createRingBufferDispatcher() {
-		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy());
+		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy()).start();
 	}
 }

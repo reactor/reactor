@@ -17,9 +17,10 @@ public class AwaitTests {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
+		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64).start();
 		for (int i = 0; i < 1000; i++) {
 			Reactor reactor = new Reactor();
-			Reactor innerReactor = new Reactor(new ThreadPoolExecutorDispatcher(4, 64));
+			Reactor innerReactor = new Reactor(dispatcher);
 
 			final Promise<String> promise = new Promise<String>(reactor);
 			final CountDownLatch latch = new CountDownLatch(1);

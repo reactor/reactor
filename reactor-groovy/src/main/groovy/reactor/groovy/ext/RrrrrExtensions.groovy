@@ -31,60 +31,9 @@ import reactor.groovy.support.ClosureEventConsumer
 class RrrrrExtensions {
 
 	/**
-	 * Alias
-	 */
-
-	static <V> void call(final R selfType, final value, final Closure<V> closure) {
-		schedule selfType, value, closure
-	}
-
-	static void notify(final R selfType, final Map<String, ?> params) {
-		Object topic = params.remove ObservableExtensions.ARG_TOPIC
-
-		def toSend
-		if (params) {
-			toSend = new Event(new Event.Headers(), params.remove(ObservableExtensions.ARG_DATA))
-			for (entry in params.entrySet()) {
-				toSend.headers.set entry.key, entry.value?.toString()
-			}
-		} else {
-			toSend = new Event(params.remove(ObservableExtensions.ARG_DATA))
-		}
-
-		R.notify topic, toSend
-	}
-
-	/**
 	 * Closure converters
 	 */
-
-	static <T> void schedule(final R selfType, final T value, final Closure closure) {
-		R.schedule new ClosureConsumer<T>(closure), value
-	}
-
 	static <T> void schedule(final R selfType, final T value, final Observable observable, final Closure closure) {
 		R.schedule new ClosureConsumer(closure), value, observable
-	}
-
-	static void on(final R selfType,
-	               Selector selector,
-	               @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		R.on selector, new ClosureEventConsumer(handler)
-	}
-
-	static void on(final R selfType,
-	               final String id,
-	               final Selector selector,
-	               @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		R.on id, selector, new ClosureEventConsumer(handler)
-	}
-
-	/**
-	 * Operator overloading
-	 */
-
-	static void or(final R selfType, Observable linkable) {
-		R.link linkable
-		R
 	}
 }

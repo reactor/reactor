@@ -16,19 +16,23 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.YieldingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
-import org.junit.Before;
-import org.junit.Test;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
+
+import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * @author Jon Brisbin
@@ -96,26 +100,28 @@ public class ComposableThroughputTests {
 																		 name,
 																		 elapsed,
 																		 Math.round((length * runs * samples) / (elapsed * 1.0 / 1000)) + "/sec"));
+
+		dispatcher.stop();
 	}
 
 	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
-		doTest(Context.threadPoolDispatcher(), "thread pool");
+		doTest(new ThreadPoolExecutorDispatcher().start(), "thread pool");
 	}
 
 	@Test
 	public void testWorkerDispatcherComposableThroughput() throws InterruptedException {
-		doTest(Context.nextWorkerDispatcher(), "worker");
+		doTest(new BlockingQueueDispatcher().start(), "worker");
 	}
 
 	@Test
 	public void testRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(Context.rootDispatcher(), "root");
+		doTest(new RingBufferDispatcher().start(), "root");
 	}
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1, 1024, ProducerType.SINGLE, new YieldingWaitStrategy()), "single-producer ring buffer");
+		doTest(new RingBufferDispatcher("test", 1, 1024, ProducerType.SINGLE, new YieldingWaitStrategy()).start(), "single-producer ring buffer");
 	}
 
 }

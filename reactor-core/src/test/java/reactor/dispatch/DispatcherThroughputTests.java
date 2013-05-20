@@ -17,13 +17,13 @@
 package reactor.dispatch;
 
 import static reactor.Fn.$;
-import static reactor.core.Context.nextWorkerDispatcher;
-import static reactor.core.Context.rootDispatcher;
-import static reactor.core.Context.threadPoolDispatcher;
 
 import org.junit.Test;
 
 import reactor.core.Reactor;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 /**
  * @author Jon Brisbin
@@ -55,28 +55,30 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 			}
 			postRun(reactor);
 		}
+
+		reactor.getDispatcher().stop();
 	}
 
 	@Test
 	public void blockingQueueDispatcherThroughput() throws InterruptedException {
 		log.info("Starting blocking queue test...");
-		doTest(new Reactor(nextWorkerDispatcher()));
+		doTest(new Reactor(new BlockingQueueDispatcher().start()));
 	}
 
 	@Test
 	public void threadPoolDispatcherThroughput() throws InterruptedException {
 		log.info("Starting thread pool test...");
-		doTest(new Reactor(threadPoolDispatcher()));
+		doTest(new Reactor(new ThreadPoolExecutorDispatcher().start()));
 	}
 
 	@Test
-	public void rootDispatcherThroughput() throws InterruptedException {
+	public void defaultRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting root RingBuffer test...");
-		doTest(new Reactor(rootDispatcher()));
+		doTest(new Reactor(new RingBufferDispatcher().start()));
 	}
 
 	@Test
-	public void ringBufferDispatcherThroughput() throws InterruptedException {
+	public void singleProducerRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting single-producer, yielding RingBuffer test...");
 		doTest(new Reactor(createRingBufferDispatcher()));
 	}

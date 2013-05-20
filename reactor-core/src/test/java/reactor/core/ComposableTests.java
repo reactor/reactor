@@ -150,7 +150,7 @@ public class ComposableTests {
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		Reactor r = R.create();
+		Reactor r = new Reactor();
 		Tuple2<Selector,Object> key = $();
 
 		final CountDownLatch latch = new CountDownLatch(5);

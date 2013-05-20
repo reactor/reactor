@@ -16,18 +16,19 @@
 
 package reactor.core
 
-import reactor.Fn
-import reactor.fn.Consumer
-import reactor.fn.Event
-import reactor.fn.Function
-import spock.lang.Specification
+import static reactor.Fn.$
+import static reactor.Fn.R
+import static reactor.GroovyTestUtils.consumer
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.Fn.$
-import static reactor.Fn.R
-import static reactor.GroovyTestUtils.consumer
+import reactor.Fn
+import reactor.fn.Consumer
+import reactor.fn.Event
+import reactor.fn.Function
+import reactor.fn.dispatch.SynchronousDispatcher
+import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
@@ -38,7 +39,7 @@ class ReactorSpec extends Specification {
 	def "Reactor dispatches events properly"() {
 
 		given: "a plain Reactor"
-		def reactor = R.create(true)
+		def reactor = new Reactor(new SynchronousDispatcher())
 		def data = ""
 		Thread t = null
 		reactor.on($("test"), { ev ->
@@ -58,7 +59,7 @@ class ReactorSpec extends Specification {
 	def "Registrations are pausable and cancellable"() {
 
 		given: "a simple reactor implementation"
-		def reactor = R.create(true)
+		def reactor = new Reactor(new SynchronousDispatcher())
 		def data = ""
 		def reg = reactor.on($("test"), { ev ->
 			data = ev.data
@@ -104,6 +105,8 @@ class ReactorSpec extends Specification {
 
 	def "Reactors respond to events"() {
 
+		def r = new Reactor();
+
 		given: "a simple consumer"
 		def data = ""
 		def latch = new CountDownLatch(1)
@@ -113,8 +116,8 @@ class ReactorSpec extends Specification {
 		}
 
 		when: "an event is dispatched to the global reactor"
-		R.on($('say-hello'), a as Consumer<Event<String>>)
-		R.notify('say-hello', new Event<String>('Hello World!'))
+		r.on($('say-hello'), a as Consumer<Event<String>>)
+		r.notify('say-hello', new Event<String>('Hello World!'))
 		latch.await(5, TimeUnit.SECONDS)
 
 		then: "the data is updated"
@@ -125,7 +128,7 @@ class ReactorSpec extends Specification {
 	def "Reactors support send and receive"() {
 
 		given: "a simple Reactor and a response-producing Function"
-		def r = R.create(true)
+		def r = new Reactor(new SynchronousDispatcher())
 		def f = { s ->
 			"Hello World!"
 		} as Function<Event<String>, String>
@@ -145,38 +148,10 @@ class ReactorSpec extends Specification {
 
 	}
 
-	def "Reactors are globally-accessible"() {
-
-		given: "a reference to a Reactor"
-		def r = R.create()
-
-		when:
-		def reactor = R.get(r.id)
-
-		then:
-		reactor != null
-
-	}
-
-	def "Reactors are validated"() {
-
-		given: "a reference to a validated Reactor"
-		def v = { String id, Reactor reactor, Long age ->
-			return false // Always fail validation
-		} as R.Validator
-		def r = R.create(v)
-
-		when: "trying to get an invalid reactor"
-		def reactor = R.get(r.id)
-
-		then: "no reactor should be returned"
-		reactor == null
-	}
-
 	def "Consumers can be unassigned"() {
 
 		given: "a normal reactor"
-		def r = R.create()
+		def r = new Reactor();
 
 		when: "registering few handlers"
 		r.on R('t[a-z]st'), consumer { println 'test1' }
@@ -193,7 +168,7 @@ class ReactorSpec extends Specification {
 	def "Multiple consumers can use the same selector"() {
 
 		given: "a normal synchronous reactor"
-		def r = R.create(true)
+		def r = new Reactor(new SynchronousDispatcher())
 		def d1, d2
 		def selector = $("test")
 
@@ -209,10 +184,10 @@ class ReactorSpec extends Specification {
 	def "Linking Reactors"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = R.create(true)
-		def r2 = R.create(true)
-		def r3 = R.create(true)
-		def r4 = R.create(true)
+		def r1 = new Reactor(new SynchronousDispatcher())
+		def r2 = new Reactor(new SynchronousDispatcher())
+		def r3 = new Reactor(new SynchronousDispatcher())
+		def r4 = new Reactor(new SynchronousDispatcher())
 
 		def d1, d2, d3, d4
 

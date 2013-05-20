@@ -21,28 +21,28 @@ package reactor.fn;
  *
  * @author Jon Brisbin
  */
-public interface Lifecycle {
+public interface Lifecycle<T extends Lifecycle<T>> {
 
 	/**
 	 * Close/Shutdown this object
 	 *
 	 * @return {@literal this}
 	 */
-	Lifecycle destroy();
+	T destroy();
 
 	/**
 	 * Pause this object
 	 *
 	 * @return {@literal this}
 	 */
-	Lifecycle stop();
+	T stop();
 
 	/**
 	 * Resume normal behavior
 	 *
 	 * @return {@literal this}
 	 */
-	Lifecycle start();
+	T start();
 
 	/**
 	 * Is object active?
