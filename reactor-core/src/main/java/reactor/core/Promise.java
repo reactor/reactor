@@ -29,10 +29,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it starts with a state of
- * {@link State#PENDING}. If a value of type {@link Throwable} is set, then the {@literal Promise} transitions to state
- * {@link State#FAILURE} and the error handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead,
- * the {@literal Promise} transitions to state {@link State#SUCCESS}.
+ * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending.
+ * If a value of type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error}
+ * and the error handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead,
+ * the {@literal Promise} is completed {@link #isSuccess successfully}.
  * <p/>
  * Calls to {@link reactor.core.Promise#get()} are always non-blocking. If it is desirable to block the calling thread
  * until a result is available, though, call the {@link Promise#await(long, java.util.concurrent.TimeUnit)} method.
@@ -43,28 +43,7 @@ import java.util.List;
  */
 public class Promise<T> extends Composable<T> {
 
-	/**
-	 * A {@literal Promise} can only be in state {@link State#PENDING}, {@link State#SUCCESS}, or {@link State#FAILURE}.
-	 */
-	public enum State {
-		/**
-		 * Means this {@literal Promise} has not been fulfilled yet.
-		 */
-		PENDING,
-		/**
-		 * Means this {@literal Promise} contains a value of type <code>&lt;T&gt;</code>
-		 */
-		SUCCESS,
-		/**
-		 * Means this {@literal Promise} contains an error. Any calls to {@link reactor.core.Promise#get()} will result in the
-		 * error being thrown.
-		 */
-		FAILURE
-	}
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-
-	private volatile State state = State.PENDING;
+	private final Logger log = LoggerFactory.getLogger(getClass());	
 
 	/**
 	 * Create a {@literal Promise} based on the given {@link Observable}.
@@ -89,10 +68,12 @@ public class Promise<T> extends Composable<T> {
 		observable.on(Fn.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
 			public void accept(Event<Throwable> throwableEvent) {
-				if (state == State.PENDING) {
-					Promise.this.set(throwableEvent.getData());
-				} else {
-					log.error(throwableEvent.getData().getMessage(), throwableEvent.getData());
+				synchronized(monitor) {
+					if (!isComplete()) {					
+						Promise.this.set(throwableEvent.getData());
+					} else {
+						log.error(throwableEvent.getData().getMessage(), throwableEvent.getData());
+					}
 				}
 			}
 		});
@@ -167,14 +148,16 @@ public class Promise<T> extends Composable<T> {
 		return new Builder<T>(Arrays.asList(value));
 	}
 
-	/**
-	 * Get the state the {@literal Promise} is currently in.
-	 *
-	 * @return One of {@link State#PENDING}, {@link State#SUCCESS}, or {@link State#FAILURE}.
-	 */
-	public State getState() {
-		return this.state;
-	}
+//	/**
+//	 * Get the state the {@literal Promise} is currently in.
+//	 *
+//	 * @return One of {@link State#PENDING}, {@link State#SUCCESS}, or {@link State#FAILURE}.
+//	 */
+//	public State getState() {
+//		synchronized(monitor) {
+//			return this.state;
+//		}
+//	}
 
 	/**
 	 * Set this {@literal Promise} to state {@link State#FAILURE} and set the value of the {@literal Promise} so that
@@ -186,9 +169,8 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> set(Throwable error) {
 		synchronized (monitor) {
 			assertPending();
-			this.state = State.FAILURE;
+			super.accept(error);
 		}
-		super.accept(error);
 		return this;
 	}
 
@@ -201,9 +183,8 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> set(T value) {
 		synchronized (monitor) {
 			assertPending();
-			this.state = State.SUCCESS;
+			super.accept(value);
 		}
-		super.accept(value);
 		return this;
 	}
 
@@ -278,69 +259,98 @@ public class Promise<T> extends Composable<T> {
 		c.when(Throwable.class, onError);
 		return c;
 	}
+	
+	/**
+	 * Indicates if this {@literal Promise} has been successfully completed
+	 * 
+	 * @return {@literal true} if fulfilled successfully, otherwise {@literal false}.
+	 */
+	public boolean isSuccess() {
+		return acceptCountReached();
+	}
+	
+	/**
+	 * Indicates if this {@literal Promise} has completed in error
+	 * 
+	 * @return {@literal true} if the promise completed in error, otherwise {@literal false}.
+	 */
+	public boolean isError() {
+		return super.isError();
+	}
+	
+	/**
+	 * Indicates if this {@literal Promise} is still pending
+	 * 
+	 * @return {@literal true} if pending, otherwise {@literal false}.
+	 */
+	public boolean isPending() {
+		return !isComplete();		
+	}
 
 	@Override
 	public Composable<T> consume(final Consumer<T> consumer) {
-		switch (state) {
-			case SUCCESS: {
-				R.schedule(consumer, value, observable);
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);
+			} else if (acceptCountReached()) {
+				R.schedule(consumer, value, observable);	
 				return this;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
+			} else {				
 				return super.consume(consumer);
+			}			
 		}
 	}
 
 	@Override
 	public Composable<T> consume(Object key, Observable observable) {
-		switch (state) {
-			case SUCCESS: {
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);
+			} else if (acceptCountReached()) {
 				observable.notify(key, Fn.event(value));
 				return this;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
+			} else {
 				return super.consume(key, observable);
+			}
 		}
 	}
 
 	@Override
 	public Composable<T> first() {
-		switch (state) {
-			case SUCCESS: {
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);
+			} else if (acceptCountReached()) {				
 				Composable<T> c = super.first();
 				c.accept(value);
 				return c;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
-				return super.first();
+			} else {
+				return super.first();				
+			}			
 		}
 	}
 
 	@Override
 	public Composable<T> last() {
-		switch (state) {
-			case SUCCESS: {
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);
+			} else if (acceptCountReached()) {				
 				Composable<T> c = super.last();
 				c.accept(value);
 				return c;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
+			} else {				
 				return super.last();
+			}			
 		}
 	}
 
 	@Override
 	public <V> Composable<V> map(final Function<T, V> fn) {
-		switch (state) {
-			case SUCCESS: {
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);				
+			} else if (acceptCountReached()) {
 				final Composable<V> c = createComposable(createObservable(observable));
 				R.schedule(new Consumer<T>() {
 					@Override
@@ -354,18 +364,18 @@ public class Promise<T> extends Composable<T> {
 					}
 				}, value, observable);
 				return c;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
+			} else {				
 				return super.map(fn);
+			}			
 		}
 	}
 
 	@Override
 	public Composable<T> filter(final Function<T, Boolean> fn) {
-		switch (state) {
-			case SUCCESS: {
+		synchronized(monitor) {
+			if (isError()) {
+				throw new IllegalStateException(error);
+			} else if (acceptCountReached()) {
 				final Composable<T> c = createComposable(createObservable(observable));
 				R.schedule(new Consumer<T>() {
 					@Override
@@ -382,12 +392,10 @@ public class Promise<T> extends Composable<T> {
 						}
 					}
 				}, value, observable);
-				return c;
-			}
-			case FAILURE:
-				assertSuccess();
-			default:
+				return c;				
+			} else {				
 				return super.filter(fn);
+			}			
 		}
 	}
 
@@ -402,24 +410,24 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	public T get() {
-		assertSuccess();
-		return super.get();
+		synchronized(this.monitor) {
+			if (isError()) {				
+				throw new IllegalStateException(error);
+			}
+			return super.get();
+		}
 	}
 
 	@Override
 	protected <U> Composable<U> createComposable(Observable src) {
 		return new Promise<U>(src);
-	}
-
-	private void assertSuccess() {
-		if (state == State.FAILURE) {
-			throw new IllegalStateException(error);
-		}
-	}
+	}	
 
 	private void assertPending() {
-		if (state != State.PENDING) {
-			throw new IllegalStateException("This Promise has already completed.");
+		synchronized(monitor) {
+			if (!isPending()) {
+				throw new IllegalStateException("This Promise has already completed.");
+			}
 		}
 	}
 

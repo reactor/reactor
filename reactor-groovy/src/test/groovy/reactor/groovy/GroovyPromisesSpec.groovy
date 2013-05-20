@@ -43,7 +43,7 @@ class GroovyPromisesSpec extends Specification {
 		p.get()
 
 		then:
-		p.state == Promise.State.FAILURE
+		p.error
 		thrown(IllegalStateException)
 	}
 

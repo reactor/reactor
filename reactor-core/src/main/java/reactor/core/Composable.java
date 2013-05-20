@@ -475,8 +475,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				monitor.notifyAll();
 			}
 		}
-		observable.notify(acceptKey, Fn.event(value));
 		acceptedCount.incrementAndGet();
+		observable.notify(acceptKey, Fn.event(value));
 	}
 
 	@Override
@@ -508,9 +508,19 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return get();
 	}
 
-	private boolean isComplete() {
+	protected boolean isComplete() {
+		return isError() || acceptCountReached();		
+	}
+	
+	protected boolean isError() {
+		synchronized(monitor) {
+			return null != error;
+		}
+	}
+	
+	protected boolean acceptCountReached() {
 		long expectedAcceptCount = this.expectedAcceptCount.get();
-		return null != error || (expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount);
+		return expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount;
 	}
 
 	@Override
