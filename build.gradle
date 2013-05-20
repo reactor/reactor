@@ -46,12 +46,12 @@ allprojects {
 
 	group = 'reactor'
 	repositories {
+		mavenLocal()
+		mavenCentral()
 		maven { url 'http://repo.springsource.org/libs-release' }
 		//maven { url 'http://repository.codehaus.org' }
 		//maven { url 'http://maven.java.net/content/repositories/snapshots' }
 		//maven { url 'http://oss.sonatype.org/content/repositories/releases' }
-		mavenCentral()
-		mavenLocal()
 	}
 }
 
