@@ -337,14 +337,7 @@ public class R {
 	 * @param <T>      The type of the data.
 	 */
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		Tuple2<Selector,Object> key = $();
-		observable.on(key.getT1(), new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> event) {
-				consumer.accept(event.getData());
-			}
-		}).cancelAfterUse();
-		observable.notify(key.getT2(), Fn.event(data));
+		observable.notify(Fn.event(Tuple.of(consumer, data)));
 	}
 
 	/**
@@ -362,7 +355,7 @@ public class R {
 						consumer.accept(data);
 					}
 				},
-				0
+				1
 		);
 	}
 
@@ -383,7 +376,7 @@ public class R {
 						consumer.accept(data);
 					}
 				},
-				0,
+				1,
 				interval
 		);
 	}

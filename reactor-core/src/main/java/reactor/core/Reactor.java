@@ -16,31 +16,20 @@
 
 package reactor.core;
 
-import static reactor.Fn.$;
-import static reactor.Fn.T;
-
-import java.util.Set;
-
+import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
-
 import reactor.Fn;
 import reactor.convert.Converter;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Linkable;
-import reactor.fn.Observable;
-import reactor.fn.Registration;
-import reactor.fn.Registry;
+import reactor.fn.*;
 import reactor.fn.Registry.LoadBalancingStrategy;
-import reactor.fn.SelectionStrategy;
-import reactor.fn.Selector;
-import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.support.Assert;
 
-import com.eaio.uuid.UUID;
+import java.util.Set;
+
+import static reactor.Fn.$;
+import static reactor.Fn.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -52,6 +41,7 @@ import com.eaio.uuid.UUID;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class Reactor implements Observable, Linkable<Observable> {
 
 	private static final Event<Void> NULL_EVENT = new Event<Void>(null);
@@ -60,17 +50,16 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Converter                              converter;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 
-	private final Object              defaultKey = new Object();
+	private final Object              defaultKey      = new Object();
 	private final Selector            defaultSelector = $(defaultKey);
-	private final UUID                id               = new UUID();
-	private final Consumer<Throwable> errorHandler     = new Consumer<Throwable>() {
+	private final UUID                id              = new UUID();
+	private final Consumer<Throwable> errorHandler    = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
 			Reactor.this.notify(T(t.getClass()), Fn.event(t));
 		}
 	};
-	private final Set<Observable>        linkedReactors   = new NonBlockingHashSet<Observable>();
-
+	private final Set<Observable>     linkedReactors  = new NonBlockingHashSet<Observable>();
 
 	/**
 	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry}. Each {@literal
@@ -85,38 +74,56 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry} and {@link Dispatcher}.
-	 * Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given
-	 * {@literal Reactor} from being triggered on the new {@literal Reactor}.
+	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry} and {@link
+	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
+	 * registered on the given {@literal Reactor} from being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}.
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked dispatcher is used
+	 * @param src        The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}.
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked
+	 *                   dispatcher is used
 	 */
 	public Reactor(Reactor src, Dispatcher dispatcher) {
 		this(dispatcher, src.consumerRegistry.getLoadBalancingStrategy(), src.consumerRegistry.getSelectionStrategy(), src.getConverter());
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy}, {@link SelectionStrategy},
-	 * and {@link Converter} will be used.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy},
+	 * {@link SelectionStrategy}, and {@link Converter} will be used.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked dispatcher is used
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked
+	 *                   dispatcher is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
 		this(dispatcher, null, null, null);
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link SelectionStrategy}, {@link LoadBalancingStrategy}, and {@link Converter}.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link SelectionStrategy}, {@link
+	 * LoadBalancingStrategy}, and {@link Converter}.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly-assigned worker dispatcher is used.
-	 * @param loadBalancingStrategy The {@link LoadBalancingStrategy} to use when dispatching events to consumers. May be {@code null} to use the default.
-	 * @param selectionStrategy The custom {@link SelectionStrategy} to use. May be {@code null}.
+	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a newly-assigned
+	 *                              worker dispatcher is used.
+	 * @param loadBalancingStrategy The {@link LoadBalancingStrategy} to use when dispatching events to consumers. May be
+	 *                              {@code null} to use the default.
+	 * @param selectionStrategy     The custom {@link SelectionStrategy} to use. May be {@code null}.
 	 */
 	public Reactor(Dispatcher dispatcher, LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy, Converter converter) {
 		this.dispatcher = dispatcher == null ? Context.nextWorkerDispatcher() : dispatcher;
 		this.converter = converter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(loadBalancingStrategy, selectionStrategy);
+
+		this.on(new Consumer<Event>() {
+			@Override
+			public void accept(Event event) {
+				if (Tuple2.class.isInstance(event.getData())) {
+					Object consumer = ((Tuple2) event.getData()).getT1();
+					Object data = ((Tuple2) event.getData()).getT2();
+					if (Consumer.class.isInstance(consumer)) {
+						((Consumer) consumer).accept(data);
+					}
+				}
+			}
+		});
 	}
 
 	/**
@@ -302,9 +309,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Return a new composition ready to accept an event {@param ev}, thus notifying this component that the
-	 * consumers matching {@param key} should consume the event and might
-	 * reply using R.replyTo (which is automatically handled when used in combination with {@link #map(Function)}.
+	 * Return a new composition ready to accept an event {@param ev}, thus notifying this component that the consumers
+	 * matching {@param key} should consume the event and might reply using R.replyTo (which is automatically handled when
+	 * used in combination with {@link #map(Function)}.
 	 *
 	 * @param key The notification key
 	 * @param ev  The {@link Event} to publish.
@@ -315,12 +322,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Notify this component that the consumers matching {@param key} should consume the event {@param ev} and might
-	 * send replies to the consumer {@param consumer}.
+	 * Notify this component that the consumers matching {@param key} should consume the event {@param ev} and might send
+	 * replies to the consumer {@param consumer}.
 	 *
-	 * @param key The notification key
-	 * @param ev  The {@link Event} to publish.
-	 * @param consumer  The {@link Composable} to pass the replies.
+	 * @param key      The notification key
+	 * @param ev       The {@link Event} to publish.
+	 * @param consumer The {@link Composable} to pass the replies.
 	 * @return {@literal this}
 	 */
 	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
