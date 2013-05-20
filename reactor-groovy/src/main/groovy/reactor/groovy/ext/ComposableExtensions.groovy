@@ -69,7 +69,7 @@ class ComposableExtensions {
 	 * Operator overloading
 	 */
 
-	static <T> Composable<T> div(final Composable<T> selfType, final Consumer<T> other) {
+	static <T> Composable<T> leftShift(final Composable<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 
@@ -85,7 +85,7 @@ class ComposableExtensions {
 		selfType.filter other
 	}
 
-	static <T> Composable<T> div(final Composable<T> selfType, final Closure other) {
+	static <T> Composable<T> leftShift(final Composable<T> selfType, final Closure other) {
 		consume selfType, other
 	}
 

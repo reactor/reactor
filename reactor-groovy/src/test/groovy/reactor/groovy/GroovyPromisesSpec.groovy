@@ -81,7 +81,7 @@ class GroovyPromisesSpec extends Specification {
 		def p2 = Promise.sync()
 
 		when: "p1 is consumed by p2"
-		p1 / p2 //p1.consume p2
+		p1 << p2 //p1.consume p2
 
 		and: "setting a value"
 		p1 << 'Hello World!'
