@@ -165,6 +165,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return converter;
 	}
 
+	/**
+	 * Checks if thisreactor has active registrations for given key
+	 *
+	 * @param key Key to verify
+	 * @return {@literal true} if this reactor responds to given key, {@literal false} otherwise
+	 */
 	@Override
 	public boolean respondsToKey(Object key) {
 		Assert.notNull(key, "Key cannot be null.");

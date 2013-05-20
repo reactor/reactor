@@ -118,6 +118,7 @@ class ReactorSpec extends Specification {
 		latch.await(5, TimeUnit.SECONDS)
 
 		then: "the data is updated"
+		R.respondsToKey('say-hello')
 		data == 'Hello World!'
 
 	}

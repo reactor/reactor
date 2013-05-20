@@ -248,6 +248,17 @@ public class R {
 	}
 
 	/**
+	 * Checks if root reactor has active registrations for given key
+	 *
+	 * @param key Key to verify
+	 * @return {@literal true} if root reactor responds to given key, {@literal false} otherwise
+	 */
+	public static boolean respondsToKey(Object key) {
+		Assert.notNull(key, "Key cannot be null.");
+		return self.rootReactor.respondsToKey(key);
+	}
+
+	/**
 	 * Convenience method for publishing events on the global {@link Reactor}.
 	 *
 	 * @param key   The notification key.
