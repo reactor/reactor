@@ -148,17 +148,6 @@ public class Promise<T> extends Composable<T> {
 		return new Builder<T>(Arrays.asList(value));
 	}
 
-//	/**
-//	 * Get the state the {@literal Promise} is currently in.
-//	 *
-//	 * @return One of {@link State#PENDING}, {@link State#SUCCESS}, or {@link State#FAILURE}.
-//	 */
-//	public State getState() {
-//		synchronized(monitor) {
-//			return this.state;
-//		}
-//	}
-
 	/**
 	 * Set this {@literal Promise} to state {@link State#FAILURE} and set the value of the {@literal Promise} so that
 	 * subsequent calls to {@link reactor.core.Promise#get()} will throw this exception instead of returning a value.
