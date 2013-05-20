@@ -16,18 +16,21 @@
 
 package reactor.core;
 
-import org.junit.Test;
-import reactor.fn.Consumer;
-import reactor.fn.Deferred;
-import reactor.fn.Function;
-import reactor.fn.Supplier;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.Test;
+
+import reactor.fn.Consumer;
+import reactor.fn.Deferred;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 /**
  * @author Jon Brisbin
@@ -37,15 +40,14 @@ public class PromiseTests {
 	@Test
 	public void testPromiseNotifiesOfValues() throws InterruptedException {
 		Promise<String> p = Promise.from("Hello World!").build();
-
+		assertThat("Promise is in success state", p.isSuccess(), is(true));
 		assertThat("Promise contains value", p.get(), is("Hello World!"));
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testPromiseNotifiesOfFailures() throws InterruptedException {
 		Promise<String> p = Promise.<String>from(new IllegalArgumentException("Bad code! Bad!")).build();
-
-		assertThat("Promise is in failed state", p.getState(), is(Promise.State.FAILURE));
+		assertThat("Promise is in failed state", p.isError(), is(true));
 		assertThat("Promise has exploded", p.get(), is(nullValue()));
 	}
 
@@ -152,5 +154,35 @@ public class PromiseTests {
 
 		assertThat("Promise has provided the value to the composition", s.get(), is(100));
 	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void promiseCanBeFulfilledFromASeparateThread() throws InterruptedException {	
+		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
+		
+		Reactor reactor = new Reactor();
+		Reactor innerReactor = new Reactor(dispatcher);
 
+		final Promise<String> promise = new Promise<String>(reactor);
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		R.schedule(new Consumer() {
+
+			@Override
+			public void accept(Object t) {
+				promise.set("foo");
+			}
+
+		}, null, innerReactor);
+
+		promise.onSuccess(new Consumer<String>() {
+
+			@Override
+			public void accept(String t) {
+				latch.countDown();
+			}
+		});
+
+		assertTrue(latch.await(5, TimeUnit.SECONDS));
+	}
 }
