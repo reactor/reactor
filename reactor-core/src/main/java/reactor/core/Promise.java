@@ -29,10 +29,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending.
- * If a value of type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error}
- * and the error handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead,
- * the {@literal Promise} is completed {@link #isSuccess successfully}.
+ * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
+ * type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error} and the error
+ * handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead, the {@literal Promise} is completed
+ * {@link #isSuccess successfully}.
  * <p/>
  * Calls to {@link reactor.core.Promise#get()} are always non-blocking. If it is desirable to block the calling thread
  * until a result is available, though, call the {@link Promise#await(long, java.util.concurrent.TimeUnit)} method.
@@ -43,7 +43,7 @@ import java.util.List;
  */
 public class Promise<T> extends Composable<T> {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());	
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	/**
 	 * Create a {@literal Promise} based on the given {@link Observable}.
@@ -68,8 +68,8 @@ public class Promise<T> extends Composable<T> {
 		observable.on(Fn.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
 			public void accept(Event<Throwable> throwableEvent) {
-				synchronized(monitor) {
-					if (!isComplete()) {					
+				synchronized (monitor) {
+					if (!isComplete()) {
 						Promise.this.set(throwableEvent.getData());
 					} else {
 						log.error(throwableEvent.getData().getMessage(), throwableEvent.getData());
@@ -149,8 +149,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	/**
-	 * Set this {@literal Promise} to state {@link State#FAILURE} and set the value of the {@literal Promise} so that
-	 * subsequent calls to {@link reactor.core.Promise#get()} will throw this exception instead of returning a value.
+	 * Set the value of the {@literal Promise} so that subsequent calls to {@link reactor.core.Promise#get()} will throw
+	 * this exception instead of returning a value.
 	 *
 	 * @param error The exception to use.
 	 * @return {@literal this}
@@ -164,9 +164,9 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	/**
-	 * Set this {@literal Promise} to state {@link State#SUCCESS} and set the internal value to the given value.
+	 * Set this {@literal Promise} to the given value.
 	 *
-	 * @param value The value to use.
+	 * @param value The value to set.
 	 * @return {@literal this}
 	 */
 	public Promise<T> set(T value) {
@@ -248,51 +248,51 @@ public class Promise<T> extends Composable<T> {
 		c.when(Throwable.class, onError);
 		return c;
 	}
-	
+
 	/**
 	 * Indicates if this {@literal Promise} has been successfully completed
-	 * 
+	 *
 	 * @return {@literal true} if fulfilled successfully, otherwise {@literal false}.
 	 */
 	public boolean isSuccess() {
 		return acceptCountReached();
 	}
-	
+
 	/**
 	 * Indicates if this {@literal Promise} has completed in error
-	 * 
+	 *
 	 * @return {@literal true} if the promise completed in error, otherwise {@literal false}.
 	 */
 	public boolean isError() {
 		return super.isError();
 	}
-	
+
 	/**
 	 * Indicates if this {@literal Promise} is still pending
-	 * 
+	 *
 	 * @return {@literal true} if pending, otherwise {@literal false}.
 	 */
 	public boolean isPending() {
-		return !isComplete();		
+		return !isComplete();
 	}
 
 	@Override
 	public Composable<T> consume(final Consumer<T> consumer) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
-				R.schedule(consumer, value, observable);	
+				R.schedule(consumer, value, observable);
 				return this;
-			} else {				
+			} else {
 				return super.consume(consumer);
-			}			
+			}
 		}
 	}
 
 	@Override
 	public Composable<T> consume(Object key, Observable observable) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
@@ -306,39 +306,39 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	public Composable<T> first() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
 				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {				
+			} else if (acceptCountReached()) {
 				Composable<T> c = super.first();
 				c.accept(value);
 				return c;
 			} else {
-				return super.first();				
-			}			
+				return super.first();
+			}
 		}
 	}
 
 	@Override
 	public Composable<T> last() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
 				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {				
+			} else if (acceptCountReached()) {
 				Composable<T> c = super.last();
 				c.accept(value);
 				return c;
-			} else {				
+			} else {
 				return super.last();
-			}			
+			}
 		}
 	}
 
 	@Override
 	public <V> Composable<V> map(final Function<T, V> fn) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
-				throw new IllegalStateException(error);				
+				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
 				final Composable<V> c = createComposable(createObservable(observable));
 				R.schedule(new Consumer<T>() {
@@ -353,15 +353,15 @@ public class Promise<T> extends Composable<T> {
 					}
 				}, value, observable);
 				return c;
-			} else {				
+			} else {
 				return super.map(fn);
-			}			
+			}
 		}
 	}
 
 	@Override
 	public Composable<T> filter(final Function<T, Boolean> fn) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (isError()) {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
@@ -381,10 +381,10 @@ public class Promise<T> extends Composable<T> {
 						}
 					}
 				}, value, observable);
-				return c;				
-			} else {				
+				return c;
+			} else {
 				return super.filter(fn);
-			}			
+			}
 		}
 	}
 
@@ -399,8 +399,8 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	public T get() {
-		synchronized(this.monitor) {
-			if (isError()) {				
+		synchronized (this.monitor) {
+			if (isError()) {
 				throw new IllegalStateException(error);
 			}
 			return super.get();
@@ -410,10 +410,10 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	protected <U> Composable<U> createComposable(Observable src) {
 		return new Promise<U>(src);
-	}	
+	}
 
 	private void assertPending() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			if (!isPending()) {
 				throw new IllegalStateException("This Promise has already completed.");
 			}
