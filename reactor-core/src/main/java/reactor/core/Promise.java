@@ -97,7 +97,7 @@ public class Promise<T> extends Composable<T> {
 	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync() {
-		return new Promise<T>(Context.synchronousDispatcher());
+		return new Promise<T>(SYNCHRONOUS_DISPATCHER);
 	}
 
 	/**

@@ -148,10 +148,6 @@ class ObservableExtensions {
 		selfType.notify key, Fn.event((T) closure.call())
 	}
 
-	static Reactor toReactor(String self) {
-		get self
-	}
-
 	static Observable notify(final Observable selfType, final Map<String, ?> params) {
 		Object topic = params.remove ARG_TOPIC
 

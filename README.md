@@ -72,7 +72,7 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
     import static reactor.Fn.$;
 
     Selector parse = $("parse”);
-    Reactor reactor = R.create();
+    Reactor reactor = new Reactor();
 
     // Wire an event to handle the data sent with the Event
     reactor.on(parse, new Consumer<Event<String>>() {

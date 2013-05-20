@@ -154,14 +154,12 @@ public class PromiseTests {
 
 		assertThat("Promise has provided the value to the composition", s.get(), is(100));
 	}
-	
+
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
-	public void promiseCanBeFulfilledFromASeparateThread() throws InterruptedException {	
-		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
-		
+	public void promiseCanBeFulfilledFromASeparateThread() throws InterruptedException {
 		Reactor reactor = new Reactor();
-		Reactor innerReactor = new Reactor(dispatcher);
+		Reactor innerReactor = new Reactor(new ThreadPoolExecutorDispatcher(4, 64).start());
 
 		final Promise<String> promise = new Promise<String>(reactor);
 		final CountDownLatch latch = new CountDownLatch(1);

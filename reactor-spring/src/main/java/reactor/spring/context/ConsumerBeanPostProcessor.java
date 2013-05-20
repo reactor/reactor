@@ -16,6 +16,12 @@
 
 package reactor.spring.context;
 
+import java.io.Serializable;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -25,27 +31,27 @@ import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
-import org.springframework.expression.*;
+import org.springframework.expression.AccessException;
+import org.springframework.expression.BeanResolver;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.EvaluationException;
+import org.springframework.expression.Expression;
+import org.springframework.expression.MethodExecutor;
+import org.springframework.expression.MethodResolver;
+import org.springframework.expression.TypedValue;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+
 import reactor.Fn;
-import reactor.core.Context;
 import reactor.core.Reactor;
-import reactor.core.R;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Selector;
 import reactor.spring.context.annotation.On;
-
-import java.io.Serializable;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author Jon Brisbin
@@ -86,12 +92,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 				Object reactorObj = null;
 				if (StringUtils.hasText(onAnno.reactor())) {
-					try {
-						Expression reactorExpr = expressionParser.parseExpression(onAnno.reactor());
-						reactorObj = reactorExpr.getValue(evalCtx);
-					} catch (EvaluationException e) {
-						reactorObj = R.createOrGet(onAnno.reactor());
-					}
+					Expression reactorExpr = expressionParser.parseExpression(onAnno.reactor());
+					reactorObj = reactorExpr.getValue(evalCtx);
 				}
 
 				Object selObj;
@@ -143,8 +145,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 																								 + onAnno.selector() + "', is not a Selector");
 				}
 				if (null == reactorObj) {
-					Context.current();
-					R.on((Selector) selObj, handler);
+					throw new IllegalStateException("Cannot register handler with null Reactor");
 				} else {
 					((Reactor) reactorObj).on((Selector) selObj, handler);
 				}
@@ -166,19 +167,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 																	Object targetObject,
 																	String name,
 																	List<TypeDescriptor> argumentTypes) throws AccessException {
-			if ("reactors".equals(name)) {
-				return new MethodExecutor() {
-					@Override
-					public TypedValue execute(EvaluationContext context,
-																		Object target,
-																		Object... arguments) throws AccessException {
-						return (arguments.length == 1 && null != arguments[0]
-										? new TypedValue(R.createOrGet(arguments[0].toString()),
-																		 TypeDescriptor.valueOf(Reactor.class))
-										: null);
-					}
-				};
-			} else if ("$".equals(name)) {
+			if ("$".equals(name)) {
 				return new MethodExecutor() {
 					@Override
 					public TypedValue execute(EvaluationContext context,

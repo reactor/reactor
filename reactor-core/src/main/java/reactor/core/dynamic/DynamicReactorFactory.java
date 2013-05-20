@@ -29,8 +29,6 @@ import java.util.concurrent.Callable;
 
 import reactor.Fn;
 import reactor.convert.Converter;
-import reactor.core.Context;
-import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.core.dynamic.annotation.Dispatcher;
 import reactor.core.dynamic.annotation.Notify;
@@ -46,6 +44,10 @@ import reactor.fn.Event;
 import reactor.fn.Function;
 import reactor.fn.Registration;
 import reactor.fn.Selector;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.support.Assert;
 
 /**
@@ -127,7 +129,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	}
 
 	public T create() {
-		return create(R.create());
+		return create(new Reactor());
 	}
 
 	/**
@@ -248,18 +250,19 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 			if (dispatcherType != null) {
 				switch (dispatcherType.value()) {
 					case WORKER:
-						dispatcher = Context.nextWorkerDispatcher();
+						dispatcher = new BlockingQueueDispatcher();
 						break;
 					case THREAD_POOL:
-						dispatcher = Context.threadPoolDispatcher();
+						dispatcher = new ThreadPoolExecutorDispatcher();
 						break;
 					case ROOT:
-						dispatcher = Context.rootDispatcher();
+						dispatcher = new RingBufferDispatcher();
 						break;
 					case SYNC:
-						dispatcher = Context.synchronousDispatcher();
+						dispatcher = new SynchronousDispatcher();
 						break;
 				}
+				dispatcher.start();
 			}
 			return new Reactor(dispatcher);
 		}

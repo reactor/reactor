@@ -25,7 +25,7 @@ import reactor.fn.Lifecycle;
  *
  * @author Jon Brisbin
  */
-public interface Dispatcher extends Lifecycle {
+public interface Dispatcher extends Lifecycle<Dispatcher> {
 
 	/**
 	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of

@@ -22,6 +22,10 @@ import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.Registry.LoadBalancingStrategy;
+import reactor.fn.SelectionStrategy;
+import reactor.fn.Selector;
+import reactor.fn.Supplier;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.support.Assert;
@@ -79,7 +83,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * registered on the given {@literal Reactor} from being triggered on the new {@literal Reactor}.
 	 *
 	 * @param src        The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}.
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
 	public Reactor(Reactor src, Dispatcher dispatcher) {
@@ -90,7 +94,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy},
 	 * {@link SelectionStrategy}, and {@link Converter} will be used.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a newly assigned worked
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
@@ -101,14 +105,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link SelectionStrategy}, {@link
 	 * LoadBalancingStrategy}, and {@link Converter}.
 	 *
-	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a newly-assigned
-	 *                              worker dispatcher is used.
+	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a new worker
+	 *                              dispatcher is used.
 	 * @param loadBalancingStrategy The {@link LoadBalancingStrategy} to use when dispatching events to consumers. May be
 	 *                              {@code null} to use the default.
 	 * @param selectionStrategy     The custom {@link SelectionStrategy} to use. May be {@code null}.
 	 */
 	public Reactor(Dispatcher dispatcher, LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy, Converter converter) {
-		this.dispatcher = dispatcher == null ? Context.nextWorkerDispatcher() : dispatcher;
+		this.dispatcher = dispatcher == null ? createDispatcher() : dispatcher;
 		this.converter = converter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(loadBalancingStrategy, selectionStrategy);
 
@@ -127,12 +131,16 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Create a new {@literal Reactor} with a newly-assigned worker {@link Dispatcher}.
-	 *
-	 * @see {@link Context#nextWorkerDispatcher()}
+	 * Create a new {@literal Reactor} with default configuration.
 	 */
 	public Reactor() {
-		this(Context.nextWorkerDispatcher(), null, null, null);
+		this(null, null, null, null);
+	}
+
+	private static Dispatcher createDispatcher() {
+		Dispatcher dispatcher = new BlockingQueueDispatcher();
+		dispatcher.start();
+		return dispatcher;
 	}
 
 	/**

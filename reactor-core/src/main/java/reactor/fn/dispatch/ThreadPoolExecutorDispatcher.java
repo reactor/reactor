@@ -20,9 +20,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import reactor.fn.ConsumerInvoker;
 import reactor.fn.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
@@ -38,16 +35,39 @@ import com.lmax.disruptor.dsl.Disruptor;
  * @author Andy Wilkinson
  */
 public final class ThreadPoolExecutorDispatcher implements Dispatcher {
+	
+	private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
+	
+	private static final int DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
 
-	private static final Logger LOG = LoggerFactory.getLogger(ThreadPoolExecutorDispatcher.class);
-	private final RingBuffer<RingBufferTask> ringBuffer;
+
 	private final Disruptor<RingBufferTask>  disruptor;
 	private final ExecutorService            executor;
-	private volatile ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	
+	private volatile ConsumerInvoker            invoker = new ConverterAwareConsumerInvoker();	
+	private volatile RingBuffer<RingBufferTask> ringBuffer;
+	
+	/**
+	 * Creates a new {@literal ThreadPoolExecutorDispatcher} that will use the default backlog,
+	 * as configured by the {@code reactor.dispatcher.backlog} system property (if the property is not set,
+	 * a backlog of 128 is used), and the default pool size: the number of available processors.
+	 * 
+	 * @see Runtime#availableProcessors()
+	 */
+	public ThreadPoolExecutorDispatcher() {
+		this(DEFAULT_POOL_SIZE, DEFAULT_BACKLOG);
+	}
 
 	@SuppressWarnings("unchecked")
+	/**
+	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
+	 * 
+	 * @param poolSize the pool size
+	 * @param backlog the backlog size
+	 *
+	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
-		executor = Executors.newFixedThreadPool(poolSize + 1, new NamedDaemonThreadFactory("thread-pool-executor"));
+		executor = Executors.newFixedThreadPool(poolSize, new NamedDaemonThreadFactory("thread-pool-executor-dispatcher"));
 
 		disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
@@ -65,8 +85,6 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 				task.reset();
 			}
 		});
-
-		ringBuffer = disruptor.start();
 	}
 
 	@Override
@@ -84,6 +102,7 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 
 	@Override
 	public ThreadPoolExecutorDispatcher start() {
+		ringBuffer = disruptor.start();
 		return this;
 	}
 

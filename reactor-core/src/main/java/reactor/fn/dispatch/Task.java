@@ -34,13 +34,13 @@ import reactor.fn.Registry;
  * @author Jon Brisbin
  */
 public abstract class Task<T> {
-
-	private Object                                 key;
-	private Registry<Consumer<? extends Event<?>>> consumerRegistry;
-	private Event<T>                               event;
-	private Converter                              converter;
-	private Consumer<Event<T>>                     completionConsumer;
-	private Consumer<Throwable>                    errorConsumer;
+	
+	private volatile Object                                 key;
+	private volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
+	private volatile Event<T>                               event;
+	private volatile Converter                              converter;
+	private volatile Consumer<Event<T>>                     completionConsumer;
+	private volatile Consumer<Throwable>                    errorConsumer;
 
 	public Object getKey() {
 		return key;
@@ -55,7 +55,7 @@ public abstract class Task<T> {
 		return consumerRegistry;
 	}
 
-	public Task<T> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+	public Task<T> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {		
 		this.consumerRegistry = consumerRegistry;
 		return this;
 	}
@@ -111,7 +111,7 @@ public abstract class Task<T> {
 	public abstract void submit();
 
 	protected void execute(ConsumerInvoker invoker) {
-		try {
+		try {			
 			for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
 				if (reg.isCancelled() || reg.isPaused()) {
 					continue;

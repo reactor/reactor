@@ -26,6 +26,7 @@ import reactor.fn.ConsumerInvoker;
 import reactor.fn.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.ExceptionHandler;
@@ -43,10 +44,33 @@ import com.lmax.disruptor.dsl.ProducerType;
  */
 public class RingBufferDispatcher implements Dispatcher {
 
-	private final    RingBuffer<RingBufferTask> ringBuffer;
+	private static final int DEFAULT_RING_BUFFER_THREADS = Integer.parseInt(System.getProperty("reactor.dispatcher.ringbuffer.threads", "1"));
+    private static final int DEFAULT_RING_BUFFER_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.ringbuffer.backlog", "512"));
+
 	private final    Disruptor<RingBufferTask>  disruptor;
 	private volatile ConsumerInvoker            invoker;
+	private volatile RingBuffer<RingBufferTask> ringBuffer;
 
+	/**
+	 * Creates a new {@literal RingBufferDispatcher} in its default configuration. The dispatcher will be named "ring-buffer". The number of
+	 * threads used is determined by the {@code reactor.dispatcher.ringbuffer.threads} system property. If the property is not set, one thread
+	 * will be used. The size of the backlog is determined by the {@code reactor dispatcher.ringbuffer.backlog} system property. If the
+	 * property is not set, a backlog of 512 will be used. The dispatcher's {@link RingBuffer} will configured to be used with
+	 * {@link ProducerType#MULTI multiple producers} and will use a {@link BlockingWaitStrategy blocking wait strategy}.
+	 */
+	public RingBufferDispatcher() {
+		this("ring-buffer", DEFAULT_RING_BUFFER_THREADS, DEFAULT_RING_BUFFER_BACKLOG, ProducerType.MULTI, new BlockingWaitStrategy());
+	}
+
+	/**
+	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
+	 *
+	 * @param name The name of the dispatcher
+	 * @param poolSize The size of the thread pool used to remove items from the buffer
+	 * @param backlog The backlog size to configuration the ring buffer with
+	 * @param producerType The producer type to configure the ring buffer with
+	 * @param waitStrategy The wait strategy to configure the ring buffer with
+	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
 															int poolSize,
@@ -99,8 +123,6 @@ public class RingBufferDispatcher implements Dispatcher {
 					}
 				}
 		);
-		ringBuffer = disruptor.start();
-
 		invoker = new ConverterAwareConsumerInvoker();
 	}
 
@@ -127,6 +149,7 @@ public class RingBufferDispatcher implements Dispatcher {
 
 	@Override
 	public RingBufferDispatcher start() {
+		ringBuffer = disruptor.start();
 		return this;
 	}
 
