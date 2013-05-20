@@ -36,7 +36,7 @@ public class AsyncAppenderTests {
 		log.info(MSG);
 		long end = System.currentTimeMillis();
 
-		assertThat("Time for call is too short to have done blocking IO", (end - start), lessThan(15L));
+		assertThat("Time for call is too short to have done blocking IO", (end - start), lessThan(25L));
 	}
 
 }
