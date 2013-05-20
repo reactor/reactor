@@ -154,7 +154,7 @@ class GroovyComposableSpec extends Specification {
 		r.receive(key.t1){String test->
 			Integer.parseInt test
 		}
-		r.receive(key.t2){String test->
+		r.receive(key.t1){String test->
 			(Integer.parseInt(test))*100
 		}
 
@@ -162,7 +162,7 @@ class GroovyComposableSpec extends Specification {
 		def c1 = Composable.lazy().using(r).build()
 		def c2 = c1.take(2).reduce{i, acc = [] -> acc <<	i }
 
-		r.compose(key.object, '1', c1)
+		r.compose(key.t2, '1', c1)
 
 		then:
 		c2.await(5, TimeUnit.SECONDS)
