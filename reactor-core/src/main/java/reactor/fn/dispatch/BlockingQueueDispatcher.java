@@ -129,7 +129,8 @@ public class BlockingQueueDispatcher implements Dispatcher {
 						t.execute(invoker);
 					}
 				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
+					// TODO: leaving this uncommented results in 100% CPU usage in the tests
+					//Thread.currentThread().interrupt();
 				} catch (Exception e) {
 					Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 					if (log.isErrorEnabled()) {
