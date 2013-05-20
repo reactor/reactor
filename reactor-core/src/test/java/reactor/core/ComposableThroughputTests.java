@@ -53,8 +53,8 @@ public class ComposableThroughputTests {
 	}
 
 	private Composable<Integer> createComposable(Dispatcher dispatcher) {
-		return new Composable<Integer>(dispatcher)
-				.map(new Function<Integer, Integer>() {
+		Composable<Integer> cInt = new Composable<Integer>(dispatcher);
+		cInt.map(new Function<Integer, Integer>() {
 					@Override
 					public Integer apply(Integer integer) {
 						return integer;
@@ -73,6 +73,7 @@ public class ComposableThroughputTests {
 						latch.countDown();
 					}
 				});
+		return cInt;
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
