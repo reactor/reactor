@@ -186,13 +186,18 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private List<Registration<? extends T>> find(Object object) {
+		cacheMiss(object);
 		try {
 			writeLock.lock();
+
+			List<Registration<? extends T>> regs;
+
 			if (registrations.isEmpty()) {
-				return Collections.emptyList();
+				regs = Collections.emptyList();
+			} else {
+				regs = findMatchingRegistrations(object);
 			}
 
-			List<Registration<? extends T>> regs = findMatchingRegistrations(object);
 			registrationCache.put(object, regs);
 
 			return regs;
@@ -219,6 +224,10 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		}
 		return regs;
+	}
+
+	protected void cacheMiss(Object key) {
+
 	}
 
 	private class CachableRegistration<V> implements Registration<V> {
