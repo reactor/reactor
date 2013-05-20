@@ -16,10 +16,7 @@
 
 package reactor;
 
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Selector;
+import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
 import reactor.fn.selector.ClassSelector;
 import reactor.fn.selector.RegexSelector;
@@ -35,6 +32,17 @@ import java.util.concurrent.Callable;
  * @author Andy Wilkinson
  */
 public abstract class Fn {
+
+	/**
+	 * Creates an anonymous {@link Selector}.
+	 *
+	 * @return A {@link Tuple} containing the {@link Selector} and the object key.
+	 * @see {@link reactor.fn.selector.BaseSelector}
+	 */
+	public static Tuple2<Selector, Object> $() {
+		Object obj = new Object();
+		return new Tuple2<Selector, Object>($(obj), obj);
+	}
 
 	/**
 	 * Creates a {@link Selector} based on the given object.

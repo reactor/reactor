@@ -129,15 +129,15 @@ class GroovyComposableSpec extends Specification {
 	def "Compose events (Request/Reply)"() {
 		given: 'a reactor and a selector'
 		def r = R.create()
-		def key = $(new Object())
+		def key = $()
 
 		when: 'register a Reply Consumer'
-		r.receive(key){String test->
+		r.receive(key.t1){String test->
 			Integer.parseInt test
 		}
 
 		and: 'compose the event'
-		def c = r.compose(key.object, '1') % {i, acc = [] -> acc << i}
+		def c = r.compose(key.t2, '1') % {i, acc = [] -> acc << i}
 
 		then:
 		c.await(1, TimeUnit.SECONDS)
@@ -148,13 +148,13 @@ class GroovyComposableSpec extends Specification {
 	def "Compose events (Request/ N Replies)"() {
 		given: 'a reactor and a selector'
 		def r = R.create()
-		def key = $(new Object())
+		def key = $()
 
 		when: 'register a Reply Consumer'
-		r.receive(key){String test->
+		r.receive(key.t1){String test->
 			Integer.parseInt test
 		}
-		r.receive(key){String test->
+		r.receive(key.t2){String test->
 			(Integer.parseInt(test))*100
 		}
 
@@ -172,11 +172,11 @@ class GroovyComposableSpec extends Specification {
 	def "relay events to reactor"() {
 		given: 'a reactor and a selector'
 		def r = R.create()
-		def key = $(new Object())
+		def key = $()
 
 		when: 'we consume from this reactor and key'
 		def latch = new CountDownLatch(5)
-		r.on(key){
+		r.on(key.t1){
 			latch.countDown()
 		}
 
@@ -184,7 +184,7 @@ class GroovyComposableSpec extends Specification {
 		def c = Composable.from(['1','2','3','4','5']).build()
 
 		and: 'apply a transformation and call an explicit reactor'
-		def d = (c | { Integer.parseInt it }).to(key.object, r)
+		def d = (c | { Integer.parseInt it }).to(key.t2, r)
 		d.get()
 
 		then:

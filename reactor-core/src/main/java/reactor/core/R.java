@@ -29,10 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import reactor.Fn;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Observable;
-import reactor.fn.Selector;
+import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.support.Assert;
 
@@ -340,15 +337,14 @@ public class R {
 	 * @param <T>      The type of the data.
 	 */
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		Object key = new Object();
-		Selector sel = $(key);
-		observable.on(sel, new Consumer<Event<T>>() {
+		Tuple2<Selector,Object> key = $();
+		observable.on(key.getT1(), new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> event) {
 				consumer.accept(event.getData());
 			}
 		}).cancelAfterUse();
-		observable.notify(key, Fn.event(data));
+		observable.notify(key.getT2(), Fn.event(data));
 	}
 
 	/**

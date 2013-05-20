@@ -131,15 +131,14 @@ class ReactorSpec extends Specification {
 		} as Function<Event<String>, String>
 		def result = ""
 		def sel = $("hello")
-		def replyToKey = new Object()
-		def replyTo = $(replyToKey)
-		r.on(replyTo, { ev ->
+		def replyTo = $()
+		r.on(replyTo.t1, { ev ->
 			result = ev.data
 		} as Consumer<Event<String>>)
 
 		when: "a Function is assigned that produces a Response and an Event is triggered"
 		r.receive(sel, f)
-		r.send("hello", Fn.event("Hello World!", replyToKey))
+		r.send("hello", Fn.event("Hello World!", replyTo.t2))
 
 		then: "the result should have been updated"
 		result == "Hello World!"

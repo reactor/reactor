@@ -29,8 +29,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
+ * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks
+ * Events dispatching strategy can be tuned through its {@link LoadBalancingStrategy} .
+ *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public class CachingRegistry<T> implements Registry<T> {
 
