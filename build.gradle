@@ -31,6 +31,7 @@ ext {
 	springVersion = '3.2.2.RELEASE'
 
 	// Testing
+	mockitoVersion = '1.9.5'
 	spockVersion = '0.7-groovy-2.0'
 
 	// Code coverage
@@ -180,5 +181,13 @@ project('reactor-logback') {
 		compile project(':reactor-core')
 
 		compile "ch.qos.logback:logback-classic:$logbackVersion"
+	}
+}
+
+project('reactor-tcp') {
+	description = 'Reactor TCP component'
+	dependencies {
+		compile project(':reactor-core')
+		testCompile "org.mockito:mockito-all:$mockitoVersion"
 	}
 }

@@ -16,6 +16,7 @@
 
 package reactor.support;
 
+
 /**
  * @author Stephane Maldini (smaldini)
  * @date: 3/21/13
@@ -30,9 +31,22 @@ public class Assert {
 		}
 	}
 
+	public static void isNull(Object object, String message) {
+		if (object != null) {
+			throw new IllegalArgumentException(message);
+		}
+	}
+
 	public static void isTrue(boolean expression, String message) {
 		if (!expression) {
 			throw new IllegalArgumentException(message);
 		}
+	}
+
+	public static void isInstanceOf(Class<?> type, Object object, String message) {
+		if (!type.isInstance(object)) {
+			throw new IllegalArgumentException(message);
+		}
+
 	}
 }
