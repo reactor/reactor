@@ -28,7 +28,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 
 	static {
 		// We only need one thread for all appenders actually
-		dispatcher = new RingBufferDispatcher("log", 1, 1024, ProducerType.SINGLE, new BlockingWaitStrategy());
+		dispatcher = new RingBufferDispatcher("log", 1, 1024, ProducerType.SINGLE, new BlockingWaitStrategy()).start();
 	}
 
 	public AsyncAppender() {
