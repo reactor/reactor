@@ -24,7 +24,6 @@ import reactor.tcp.Buffers;
 
 /**
  * @author Gary Russell
- * @since 1.0
  *
  */
 public class JavaSerializationCodec extends PullCodecSupport implements StreamingCodec {

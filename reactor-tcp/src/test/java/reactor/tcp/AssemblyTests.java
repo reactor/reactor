@@ -32,7 +32,6 @@ import reactor.tcp.codec.DefaultAssembly;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class AssemblyTests {

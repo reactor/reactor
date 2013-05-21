@@ -22,7 +22,6 @@ import reactor.tcp.ByteIterator;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class SimpleAssembly implements Assembly {

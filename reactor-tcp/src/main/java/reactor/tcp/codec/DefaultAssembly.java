@@ -33,7 +33,6 @@ import reactor.tcp.ByteIterator;
  * without copying the data. {@link DefaultAssembly#asBytes} is
  * cached once accessed.
  * @author Gary Russell
- * @since 1.0
  *
  */
 public class DefaultAssembly implements Assembly {

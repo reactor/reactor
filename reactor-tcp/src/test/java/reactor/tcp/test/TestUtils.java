@@ -35,7 +35,6 @@ import reactor.tcp.ConnectionFactorySupport;
  * systems.
  *
  * @author Gunnar Hillert
- * @since 2.2
  *
  */
 public final class TestUtils {

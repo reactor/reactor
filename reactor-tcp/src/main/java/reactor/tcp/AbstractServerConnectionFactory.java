@@ -28,7 +28,6 @@ import reactor.support.Assert;
  * for each new connection.
  *
  * @author Gary Russell
- * @since 2.0
  */
 public abstract class AbstractServerConnectionFactory
 		extends ConnectionFactorySupport implements Runnable {

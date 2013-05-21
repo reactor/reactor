@@ -22,7 +22,6 @@ import java.net.Socket;
  * Default implementation of {@link TcpSocketConfigurer}; makes no
  * changes to sockets.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public class DefaultTcpSocketSupport implements TcpSocketConfigurer {

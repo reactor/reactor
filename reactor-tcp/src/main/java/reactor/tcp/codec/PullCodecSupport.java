@@ -26,7 +26,6 @@ import reactor.tcp.Buffers;
  * the more efficient push algorithm.
  *
  * @author Gary Russell
- * @since 1.0
  *
  */
 public abstract class PullCodecSupport extends AbstractCodec {

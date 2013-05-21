@@ -17,7 +17,6 @@ package reactor.tcp.codec;
 
 /**
  * @author Gary Russell
- * @since 1.0
  *
  */
 public interface DecoderResult {

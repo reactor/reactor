@@ -44,7 +44,6 @@ import reactor.support.Assert;
  * This class supports the management of handshaking as necessary, both from the
  * initiating and receiving peers.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public class TcpNioSSLConnection extends TcpNioConnection {

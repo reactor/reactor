@@ -21,7 +21,6 @@ import reactor.tcp.Buffers;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public interface Codec {

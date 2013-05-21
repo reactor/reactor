@@ -35,7 +35,6 @@ import reactor.tcp.TcpConnectionEvent.TcpConnectionEventType;
  * (incoming).
  *
  * @author Gary Russell
- * @since 2.0
  *
  */
 public abstract class TcpConnectionSupport implements TcpConnection {

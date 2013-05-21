@@ -27,7 +27,6 @@ import java.nio.channels.SocketChannel;
  * to receive incoming messages.
  *
  * @author Gary Russell
- * @since 2.0
  *
  */
 public interface TcpConnection {

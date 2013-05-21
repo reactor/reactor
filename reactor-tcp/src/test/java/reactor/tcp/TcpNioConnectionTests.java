@@ -48,7 +48,6 @@ import reactor.tcp.codec.SimpleAssembly;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class TcpNioConnectionTests {

@@ -36,7 +36,6 @@ import reactor.support.Assert;
  * Implements a server connection factory that produces {@link TcpNioConnection}s using
  * a {@link ServerSocketChannel}. Must have a {@link TcpListener} registered.
  * @author Gary Russell
- * @since 2.0
  *
  */
 public class TcpNioServerConnectionFactory extends AbstractServerConnectionFactory {

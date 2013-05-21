@@ -22,7 +22,6 @@ import java.net.Socket;
  * Abstract class for client connection factories; client connection factories
  * establish outgoing connections.
  * @author Gary Russell
- * @since 2.0
  *
  */
 public abstract class AbstractClientConnectionFactory extends ConnectionFactorySupport {

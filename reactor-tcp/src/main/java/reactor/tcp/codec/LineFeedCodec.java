@@ -22,7 +22,6 @@ import reactor.tcp.Buffers;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class LineFeedCodec extends AbstractCodec implements Codec {

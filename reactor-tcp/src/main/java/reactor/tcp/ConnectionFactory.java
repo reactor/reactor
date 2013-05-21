@@ -22,7 +22,6 @@ import reactor.fn.Lifecycle;
  * A factory used to create TcpConnection objects.
  *
  * @author Gary Russell
- * @since 2.0
  *
  */
 public interface ConnectionFactory extends Lifecycle<ConnectionFactory> {

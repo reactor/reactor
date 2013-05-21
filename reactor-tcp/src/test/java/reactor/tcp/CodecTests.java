@@ -38,7 +38,6 @@ import reactor.tcp.codec.LineFeedCodec;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class CodecTests {

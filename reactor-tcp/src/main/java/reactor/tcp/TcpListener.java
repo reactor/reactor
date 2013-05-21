@@ -24,7 +24,6 @@ import reactor.tcp.codec.DecoderResult;
  * connection factory to receive messages retrieved from a
  * {@link TcpConnection}
  * @author Gary Russell
- * @since 2.0
  *
  */
 public interface TcpListener {

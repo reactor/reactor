@@ -32,7 +32,6 @@ import reactor.support.Assert;
  * 'TLS' (by default) {@link SSLContext}, initialized with 'JKS'
  * keystores, managed by 'SunX509' Key and Trust managers.
  * @author Gary Russell
- * @since 2.1
  *
  */
 public class DefaultTcpSSLContextConfigurer implements TcpSSLContextConfigurer {

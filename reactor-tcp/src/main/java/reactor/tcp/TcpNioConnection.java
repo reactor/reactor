@@ -42,7 +42,6 @@ import reactor.tcp.codec.StreamingCodec;
  * A TcpConnection that uses and underlying {@link SocketChannel}.
  *
  * @author Gary Russell
- * @since 2.0
  *
  */
 public class TcpNioConnection extends TcpConnectionSupport {

@@ -22,7 +22,6 @@ import java.nio.channels.SocketChannel;
  * Implementation of {@link TcpNioConnectionConfigurer} for non-SSL
  * NIO connections.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public class DefaultTcpNioConnectionConfigurer implements TcpNioConnectionConfigurer {

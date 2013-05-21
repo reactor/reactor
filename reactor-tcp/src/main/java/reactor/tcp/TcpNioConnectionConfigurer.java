@@ -22,7 +22,6 @@ import java.nio.channels.SocketChannel;
  * Used by NIO connection factories to instantiate a {@link TcpNioConnection} object.
  * Implementations for SSL and non-SSL {@link TcpNioConnection}s are provided.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public interface TcpNioConnectionConfigurer {

@@ -54,7 +54,6 @@ import reactor.tcp.codec.LineFeedCodec;
  * Base class for all connection factories.
  *
  * @author Gary Russell
- * @since 2.0
  *
  */
 public abstract class ConnectionFactorySupport implements ConnectionFactory {

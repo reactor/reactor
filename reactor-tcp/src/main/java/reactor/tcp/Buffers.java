@@ -34,7 +34,6 @@ import reactor.support.Assert;
 /**
  * A collection of buffers.
  * @author Gary Russell
- * @since 3.0
  *
  */
 public final class Buffers implements Iterable<ByteBuffer> {

@@ -24,7 +24,6 @@ import javax.net.ssl.SSLContext;
  * Strategy interface for the creation of an {@link SSLContext} object
  * for use with SSL/TLS sockets.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public interface TcpSSLContextConfigurer {

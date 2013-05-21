@@ -21,7 +21,6 @@ import java.net.Socket;
 /**
  * Strategy interface for modifying sockets.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public interface TcpSocketConfigurer {

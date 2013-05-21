@@ -28,7 +28,6 @@ import reactor.support.Assert;
  * Implementation of {@link TcpNioConnectionConfigurer} for SSL
  * NIO connections.
  * @author Gary Russell
- * @since 2.2
  *
  */
 public class DefaultTcpNioSSLConnectionConfigurer implements TcpNioConnectionConfigurer {

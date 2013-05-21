@@ -20,7 +20,6 @@ import reactor.fn.Event;
 /**
  * ApplicationEvent representing certain operations on a {@link TcpConnection}.
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class TcpConnectionEvent extends Event<TcpConnection> {

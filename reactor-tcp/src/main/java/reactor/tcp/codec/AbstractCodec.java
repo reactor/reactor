@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @author Gary Russell
- * @since 1.0
  *
  */
 public abstract class AbstractCodec implements Codec {

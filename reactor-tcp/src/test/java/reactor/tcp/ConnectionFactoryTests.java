@@ -36,7 +36,6 @@ import reactor.tcp.test.TestUtils;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public class ConnectionFactoryTests {

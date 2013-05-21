@@ -17,7 +17,6 @@ package reactor.tcp;
 
 /**
  * @author Gary Russell
- * @since 3.0
  *
  */
 public interface ByteIterator {

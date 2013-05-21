@@ -21,7 +21,6 @@ import java.io.OutputStream;
  * Codecs that wish to stream the output.
  *
  * @author Gary Russell
- * @since 1.0
  *
  */
 public interface StreamingCodec extends Codec {

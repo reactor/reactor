@@ -36,7 +36,6 @@ import reactor.support.Assert;
 /**
  * A client connection factory that creates {@link TcpNioConnection}s.
  * @author Gary Russell
- * @since 2.0
  *
  */
 public class TcpNioClientConnectionFactory extends

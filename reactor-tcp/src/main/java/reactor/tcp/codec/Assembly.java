@@ -22,7 +22,6 @@ import reactor.tcp.ByteIterator;
 /**
  * Represents the reassembly of a "message" from TCP.
  * @author Gary Russell
- * @since 1.0
  *
  */
 public interface Assembly extends DecoderResult {
