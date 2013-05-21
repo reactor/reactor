@@ -40,10 +40,10 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		def p = Promise.from{"Hello World!"}.using(new SynchronousDispatcher()).build()
+		def p = Promise.from{"Hello World!"}.build()
 
 		then: 'Promise contains value'
-		p.get() == "Hello World!"
+		p.await() == "Hello World!"
 	}
 
 	def "Promise notifies of Failure"() {
