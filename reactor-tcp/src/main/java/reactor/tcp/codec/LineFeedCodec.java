@@ -24,7 +24,7 @@ import reactor.tcp.Buffers;
  * @author Gary Russell
  *
  */
-public class LineFeedCodec extends AbstractCodec implements Codec {
+public class LineFeedCodec extends AbstractCodec {
 
 	private static final int LF = 0x0a;
 
@@ -49,5 +49,4 @@ public class LineFeedCodec extends AbstractCodec implements Codec {
 		buffers.add(LF_BB.duplicate());
 		return buffers;
 	}
-
 }

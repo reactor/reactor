@@ -55,7 +55,7 @@ public class ConnectionFactoryTests {
 			}
 		});
 		server.start();
-		TestUtils.waitListening(server, null);
+		TestUtils.waitListening(server);
 		Socket socket = SocketFactory.getDefault().createSocket("localhost", port);
 		socket.getOutputStream().write("foo\n".getBytes());
 		socket.close();
@@ -89,7 +89,7 @@ public class ConnectionFactoryTests {
 			}
 		});
 		server.start();
-		TestUtils.waitListening(server, null);
+		TestUtils.waitListening(server);
 		Socket socket = SocketFactory.getDefault().createSocket("localhost", port);
 		socket.setSoTimeout(10000);
 		ByteBuffer bb = ByteBuffer.allocate(10);
@@ -125,7 +125,7 @@ public class ConnectionFactoryTests {
 		});
 //		server.setSoTimeout(2000);
 		server.start();
-		TestUtils.waitListening(server, null);
+		TestUtils.waitListening(server);
 		TcpNioClientConnectionFactory client = new TcpNioClientConnectionFactory("localhost", port);
 		final CountDownLatch latch = new CountDownLatch(2);
 		client.registerListener(new TcpListener() {
@@ -165,7 +165,7 @@ public class ConnectionFactoryTests {
 			}
 		});
 		server.start();
-		TestUtils.waitListening(server, null);
+		TestUtils.waitListening(server);
 
 		TcpNioClientConnectionFactory client = new TcpNioClientConnectionFactory("localhost", port);
 		client.setTcpNioConnectionSupport(tcpNioConnectionSupport);
