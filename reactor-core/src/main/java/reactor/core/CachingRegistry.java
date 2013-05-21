@@ -270,8 +270,15 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<V> cancel() {
 			this.cancelled = true;
-			registrations.remove(CachableRegistration.this);
-			refreshRequired = true;
+
+			writeLock.lock();
+			try {
+				registrations.remove(CachableRegistration.this);
+				refreshRequired = true;
+			} finally {
+				writeLock.unlock();
+			}
+
 			return this;
 		}
 
