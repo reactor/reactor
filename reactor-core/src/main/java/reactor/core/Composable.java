@@ -43,7 +43,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	private static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
 	private static       long     DEFAULT_TIMEOUT               = 30l;
 	private static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
-	
+
 	protected static final SynchronousDispatcher SYNCHRONOUS_DISPATCHER = new SynchronousDispatcher();
 
 	static {
@@ -84,7 +84,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	protected final AtomicLong acceptedCount       = new AtomicLong(0);
 	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
 
-	
+
 	protected final Observable observable;
 	protected boolean hasBlockers = false;
 	protected T         value;
@@ -154,6 +154,17 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
+	 * Create a {@literal Composable} from the given {@link Function}.
+	 *
+	 * @param supplier The function to defer.
+	 * @param <T>      The type of the values.
+	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
+	 */
+	public static <T> Builder<T> from(Supplier<T> supplier) {
+		return new Builder<T>(supplier);
+	}
+
+	/**
 	 * Create a {@literal Composable} from the given {@code key} and {@link Event} and delay notification of the event on
 	 * the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
 	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
@@ -166,13 +177,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
 		return Composable.from(ev)
-										 .build()
-										 .consume(new Consumer<E>() {
-											 @Override
-											 public void accept(E e) {
-												 observable.notify(key, e, null);
-											 }
-										 });
+				.build()
+				.consume(new Consumer<E>() {
+					@Override
+					public void accept(E e) {
+						observable.notify(key, e, null);
+					}
+				});
 	}
 
 	/**
@@ -304,8 +315,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * Create a new {@link Composable} that is linked to the parent through the given {@code key} and {@link Observable}.
 	 * When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and passed to
 	 * {@link Observable#notify (reactor.fn.Event)} along with the given {@code key}. After the event is being propagated
-	 * to the reactor consumers, the new composition expects {@param <V>} replies to be returned - A consumer might reply
-	 * using {@link R#replyTo(reactor.fn.Event, reactor.fn.Event)}. }
+	 * to the reactor consumers, the new composition expects {@param <V>} replies to be returned.
 	 *
 	 * @param key        The key to notify
 	 * @param observable The observable to notify
@@ -512,15 +522,15 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	protected boolean isComplete() {
-		return isError() || acceptCountReached();		
+		return isError() || acceptCountReached();
 	}
-	
+
 	protected boolean isError() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			return null != error;
 		}
 	}
-	
+
 	protected boolean acceptCountReached() {
 		long expectedAcceptCount = this.expectedAcceptCount.get();
 		return expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount;
@@ -627,15 +637,25 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	public static class Builder<T> {
 
 		protected final Iterable<T> values;
+		protected final Supplier<T> supplier;
 		protected       Dispatcher  dispatcher;
 		protected       Reactor     reactor;
 
-		Builder(Iterable<T> values) {
+		Builder(Iterable<T> values, Supplier<T> supplier) {
 			this.values = values;
+			this.supplier = supplier;
+		}
+
+		Builder(Iterable<T> values) {
+			this(values, null);
+		}
+
+		Builder(Supplier<T> supplier) {
+			this(null, supplier);
 		}
 
 		Builder() {
-			this.values = null;
+			this(null, null);
 		}
 
 		public Builder<T> using(Reactor reactor) {
@@ -648,7 +668,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			return this;
 		}
 
-		public Composable<T> build() {
+		protected void configure() {
 			if (null == reactor) {
 				if (null == dispatcher) {
 					reactor = new Reactor();
@@ -656,12 +676,32 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					reactor = new Reactor(dispatcher);
 				}
 			}
+		}
+
+		public Composable<T> build() {
+			configure();
 			if (values != null) {
 				return new DelayedAcceptComposable<T>(reactor, values);
+			} else if (supplier != null) {
+				return new DelayedAcceptComposable<T>(reactor, 1) {
+					@Override
+					protected void delayedAccept() {
+						final DelayedAcceptComposable<T> self = this;
+						R.schedule(new Consumer<Object>() {
+							@Override
+							public void accept(Object o) {
+								try {
+									self.doAccept(null, null, supplier.get());
+								} catch (Throwable t) {
+									self.doAccept(t, null, null);
+								}
+							}
+						}, null, reactor);
+					}
+				};
 			} else {
 				return new DelayedAcceptComposable<T>(reactor, -1);
 			}
-
 		}
 	}
 
@@ -730,7 +770,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 		@Override
 		protected <U> Composable<U> createComposable(Observable src) {
-			final DelayedAcceptComposable<T> self = (DelayedAcceptComposable<T>) this;
+			final DelayedAcceptComposable<T> self = this;
 			return new DelayedAcceptComposable<U>(src, self.expectedAcceptCount.get()) {
 				@Override
 				protected void delayedAccept() {
@@ -740,9 +780,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		}
 
 		protected void delayedAccept() {
-			Throwable localError = null;
-			Iterable<T> localValues = null;
-			T localValue = null;
+			doAccept(null, null, null);
+		}
+
+		protected void doAccept(Throwable localError, Iterable<T> localValues, T localValue) {
 
 			boolean acceptRequired = false;
 
@@ -750,10 +791,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				if (acceptState == AcceptState.ACCEPTED) {
 					return;
 				} else if (acceptState == AcceptState.DELAYED) {
-					synchronized (this.monitor) {
-						localError = error;
-						localValue = value;
-						localValues = values;
+					if (localError == null && localValue == null && localValues == null) {
+						synchronized (this.monitor) {
+							localError = error;
+							localValue = value;
+							localValues = values;
+						}
 					}
 					acceptState = AcceptState.ACCEPTING;
 					acceptRequired = true;

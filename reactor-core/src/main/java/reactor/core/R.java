@@ -46,4 +46,8 @@ public class R {
 	 */
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
 		observable.notify(Fn.event(Tuple.of(consumer, data)));
-	}}
+	}
+
+}
+
+

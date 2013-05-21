@@ -17,6 +17,7 @@
 package reactor.fn;
 
 import reactor.convert.Converter;
+import reactor.fn.support.ConsumerUtils;
 
 import java.util.concurrent.Callable;
 

@@ -16,7 +16,9 @@
 
 package reactor.groovy
 
+import reactor.core.Composable
 import reactor.core.Promise
+import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -30,6 +32,15 @@ class GroovyPromisesSpec extends Specification {
 	def "Promise returns value"() {
 		when: "a deferred Promise"
 		def p = Promise.from("Hello World!").build()
+
+		then: 'Promise contains value'
+		p.get() == "Hello World!"
+	}
+
+
+	def "Promise from Closure"() {
+		when: "a deferred Promise"
+		def p = Promise.from{"Hello World!"}.using(new SynchronousDispatcher()).build()
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"

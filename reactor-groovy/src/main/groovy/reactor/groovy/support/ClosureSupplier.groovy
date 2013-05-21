@@ -14,26 +14,24 @@
  * limitations under the License.
  */
 
-package reactor.groovy.ext
+package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.core.R
-import reactor.fn.Event
-import reactor.fn.Observable
-import reactor.fn.Selector
-import reactor.groovy.support.ClosureConsumer
-import reactor.groovy.support.ClosureEventConsumer
-
+import reactor.fn.Supplier
 /**
- * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @CompileStatic
-class RrrrrExtensions {
+class ClosureSupplier<V> implements Supplier<V> {
 
-	/**
-	 * Closure converters
-	 */
-	static <T> void schedule(final R selfType, final T value, final Observable observable, final Closure closure) {
-		R.schedule new ClosureConsumer(closure), value, observable
+	final Closure<V> callback
+
+	ClosureSupplier(Closure<V> cl) {
+		callback = cl
+	}
+
+	@Override
+	V get() {
+		callback()
 	}
 }
