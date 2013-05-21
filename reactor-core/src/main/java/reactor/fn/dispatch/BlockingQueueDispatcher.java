@@ -35,17 +35,17 @@ import reactor.support.QueueFactory;
  * @author Andy Wilkinson
  */
 public class BlockingQueueDispatcher implements Dispatcher {
-	
-	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));	
+
+	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
 	private static final AtomicInteger INSTANCE_COUNT  = new AtomicInteger();
-	
+
 	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
 	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
 
 	private final BlockingQueue<Task<?>> readyTasks = QueueFactory.createQueue();
 	private final BlockingQueue<Task<?>> taskQueue = QueueFactory.createQueue();
 	private final Thread           taskExecutor;
-	
+
 	/**
 	 * Creates a new {@literal BlockingQueueDispatcher} named 'blocking-queue' that will use the default backlog,
 	 * as configured by the {@code reactor.dispatcher.backlog} system property. If the property is not set,
@@ -57,13 +57,13 @@ public class BlockingQueueDispatcher implements Dispatcher {
 
 	/**
 	 * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
-	 * 
-	 * @param name The name 
+	 *
+	 * @param name The name
 	 * @param backlog The backlog size
 	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
 		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
-		
+
 		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
 		this.taskExecutor.setDaemon(true);
 		this.taskExecutor.setPriority(Thread.MAX_PRIORITY);
@@ -88,9 +88,9 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	}
 
 	private class BlockingQueueTask<T> extends Task<T> {
-		
+
 		@Override
-		public void submit() {	
+		public void submit() {
 			taskQueue.add(this);
 		}
 	}
@@ -118,7 +118,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
-						
+
 		@Override
 		public void run() {
 			Task<?> t = null;
@@ -129,8 +129,8 @@ public class BlockingQueueDispatcher implements Dispatcher {
 						t.execute(invoker);
 					}
 				} catch (InterruptedException e) {
-					// TODO: leaving this uncommented results in 100% CPU usage in the tests
-					//Thread.currentThread().interrupt();
+					Thread.currentThread().interrupt();
+					break;
 				} catch (Exception e) {
 					Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
 					if (log.isErrorEnabled()) {
