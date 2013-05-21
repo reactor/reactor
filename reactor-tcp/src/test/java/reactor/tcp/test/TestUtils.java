@@ -25,16 +25,18 @@ import javax.net.ServerSocketFactory;
 import reactor.support.Assert;
 import reactor.tcp.AbstractServerConnectionFactory;
 import reactor.tcp.ConnectionFactorySupport;
+import reactor.tcp.test.TimeoutUtils.TimeoutCallback;
 
 /**
  *
  * Contains several socket-specific utility methods. For example, you may have
  * test cases that require an open port. Rather than hard-coding the relevant port,
  * it will be better to use methods from this utility class to automatically select
- * an open port, therefore improving the portability of your test-cases across
+ * an open port, thereby improving the portability of your test-cases across
  * systems.
  *
  * @author Gunnar Hillert
+ * @author Andy Wilkinson
  *
  */
 public final class TestUtils {
@@ -147,82 +149,60 @@ public final class TestUtils {
 
 	/**
 	 * Wait for a server connection factory to actually start listening before
-	 * starting a test. Waits for up to 10 seconds by default.
+	 * starting a test. Waits for up to 30 seconds
+	 *
 	 * @param serverConnectionFactory The server connection factory.
-	 * @param delay How long to wait in milliseconds; default 10000 (10 seconds) if null.
-	 * @throws IllegalStateException
+	 *
+	 * @throws IllegalStateException if the server is not listening after 30 seconds
+	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitListening(AbstractServerConnectionFactory serverConnectionFactory, Long delay)
-		throws IllegalStateException {
-		if (delay == null) {
-			delay = 100L;
-		}
-		else {
-			delay = delay / 100;
-		}
-		int n = 0;
-		while (!serverConnectionFactory.isListening()) {
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e1) {
-				Thread.currentThread().interrupt();
-				throw new IllegalStateException(e1);
+	public static void waitListening(final AbstractServerConnectionFactory serverConnectionFactory) throws IllegalStateException, InterruptedException {
+		TimeoutUtils.doWithTimeout(30000,  new TimeoutCallback() {
+			@Override
+			public boolean isComplete() {
+				return serverConnectionFactory.isListening();
 			}
-
-			if (n++ > delay) {
-				throw new IllegalStateException ("Server didn't start listening.");
-			}
-		}
+		});
 	}
 
 	/**
 	 * Wait for a server connection factory to stop listening.
-	 * Waits for up to 10 seconds by default.
+	 * Waits for up to 30 seconds.
+	 *
 	 * @param serverConnectionFactory The server connection factory.
-	 * @param delay How long to wait in milliseconds; default 10000 (10 seconds) if null.
-	 * @throws IllegalStateException
+	 *
+	 * @throws IllegalStateException if the server has not stopped listening after 30 seconds
+	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitStopListening(AbstractServerConnectionFactory serverConnectionFactory, Long delay)
-			throws IllegalStateException {
-		if (delay == null) {
-			delay = 100L;
-		}
-		else {
-			delay = delay / 100;
-		}
-		int n = 0;
-		while (serverConnectionFactory.isListening()) {
-			try {
-				Thread.sleep(100);
+	public static void waitStopListening(final AbstractServerConnectionFactory serverConnectionFactory) throws IllegalStateException, InterruptedException {
+		TimeoutUtils.doWithTimeout(30000,  new TimeoutCallback() {
+			@Override
+			public boolean isComplete() {
+				return serverConnectionFactory.isListening();
 			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				throw new IllegalStateException(e);
-			}
-			if (n++ > 200) {
-				throw new IllegalStateException ("Server didn't stop listening.");
-			}
-		}
+		});
 	}
 
 	/**
 	 * Wait for up to 10 seconds for the connection factory to have the specified number
 	 * of connections.
+	 *
 	 * @param factory The factory.
-	 * @param n The required number of connections.
-	 * @throws Exception IllegalStateException if the count does not match.
+	 * @param requiredConnections The required number of connections.
+	 *
+	 * @throws IllegalStateException if the count does not match.
+	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitUntilFactoryHasThisNumberOfConnections(ConnectionFactorySupport factory, int n)
+	public static void waitUntilFactoryHasThisNumberOfConnections(final ConnectionFactorySupport factory, final int requiredConnections)
 			throws Exception {
-		int timer = 0;
-		while (timer < 10000) {
-			if (factory.getOpenConnectionIds().size() == n) {
-				return;
+		TimeoutUtils.doWithTimeout(10000,  new TimeoutCallback() {
+
+			@Override
+			public boolean isComplete() {
+				return factory.getOpenConnectionIds().size() >= requiredConnections;
 			}
-			Thread.sleep(100);
-			timer += 100;
-		}
-		throw new IllegalStateException("Connections=" + factory.getOpenConnectionIds().size() + "wanted=" + n);
+
+		});
 	}
 
 }
