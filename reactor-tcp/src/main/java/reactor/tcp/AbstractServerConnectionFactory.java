@@ -55,12 +55,13 @@ public abstract class AbstractServerConnectionFactory
 	public ConnectionFactory start() {
 		synchronized (this.lifecycleMonitor) {
 			if (!this.isActive()) {
+				super.start();
 				this.setActive(true);
 				this.shuttingDown = false;
 				this.getTaskExecutor().execute(this);
 			}
 		}
-		super.start();
+
 		return this;
 	}
 
