@@ -15,7 +15,6 @@
  */
 package reactor.tcp.codec;
 
-import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -32,7 +31,7 @@ import reactor.tcp.Buffers;
  */
 public abstract class PullCodecSupport extends AbstractCodec {
 
-	private final Reactor reactor = R.create();
+	private final Reactor reactor = new Reactor();
 
 	public PullCodecSupport() {
 		this.reactor.on(new Consumer<Event<AssemblyInstructions>>() {

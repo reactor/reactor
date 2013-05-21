@@ -25,6 +25,6 @@ import reactor.fn.Lifecycle;
  * @since 2.0
  *
  */
-public interface ConnectionFactory extends Lifecycle {
+public interface ConnectionFactory extends Lifecycle<ConnectionFactory> {
 
 }

@@ -43,11 +43,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import reactor.Fn;
-import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Lifecycle;
 import reactor.support.Assert;
 import reactor.tcp.codec.Codec;
 import reactor.tcp.codec.LineFeedCodec;
@@ -59,7 +57,7 @@ import reactor.tcp.codec.LineFeedCodec;
  * @since 2.0
  *
  */
-public abstract class ConnectionFactorySupport implements ConnectionFactory, Lifecycle {
+public abstract class ConnectionFactorySupport implements ConnectionFactory {
 
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -81,7 +79,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory, Lif
 
 	protected static final reactor.fn.Selector DECODE = $(DECODE_KEY);
 
-	private final Reactor ioReactor = R.create();
+	private final Reactor ioReactor = new Reactor();
 
 	private volatile Selector ioSelector;
 
@@ -434,7 +432,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory, Lif
 	 * Stops the server.
 	 */
 	@Override
-	public Lifecycle stop() {
+	public ConnectionFactory stop() {
 		this.active = false;
 		this.close();
 		synchronized (this.connections) {
@@ -475,7 +473,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory, Lif
 
 
 	@Override
-	public Lifecycle destroy() {
+	public ConnectionFactory destroy() {
 		return this;
 	}
 

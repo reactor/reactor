@@ -28,7 +28,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import reactor.Fn;
-import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -79,7 +78,7 @@ public class TcpNioConnection extends TcpConnectionSupport {
 			receiveBufferSize = this.maxMessageSize;
 		}
 		this.ioSelector = connectionFactory.getIoSelector();
-		this.connectionReactor = R.create();
+		this.connectionReactor = new Reactor();
 		this.connectionReactor.on(ConnectionFactorySupport.READ, new Consumer<Event<SelectionKey>> () {
 
 			@Override
