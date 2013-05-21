@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.tcp;
+package reactor.tcp.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -29,12 +29,14 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import reactor.tcp.codec.DefaultAssembly;
+import reactor.tcp.data.Buffers;
+import reactor.tcp.data.ByteIterator;
 
 /**
  * @author Gary Russell
  *
  */
-public class AssemblyTests {
+public class BuffersTests {
 
 	@Test
 	public void testBasic() {

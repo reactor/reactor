@@ -18,7 +18,7 @@ package reactor.tcp.codec;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.tcp.Buffers;
+import reactor.tcp.data.Buffers;
 
 /**
  * Base class for codecs (specifically decoders) that can only

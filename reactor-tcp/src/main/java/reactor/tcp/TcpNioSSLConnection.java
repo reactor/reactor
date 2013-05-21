@@ -28,6 +28,7 @@ import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
 
 import reactor.support.Assert;
+import reactor.tcp.data.Buffers;
 
 /**
  * Implementation of {@link TcpConnection} supporting SSL/TLS over NIO.

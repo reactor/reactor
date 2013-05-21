@@ -23,8 +23,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import reactor.support.Assert;
-import reactor.tcp.Buffers;
-import reactor.tcp.ByteIterator;
+import reactor.tcp.data.Buffers;
+import reactor.tcp.data.ByteIterator;
 
 /**
  * Implementation of {@link Assembly} that represents a series of

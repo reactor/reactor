@@ -37,6 +37,7 @@ import reactor.tcp.codec.Codec.DecoderCallback;
 import reactor.tcp.codec.DecoderResult;
 import reactor.tcp.codec.LineFeedCodec;
 import reactor.tcp.codec.StreamingCodec;
+import reactor.tcp.data.Buffers;
 
 /**
  * A TcpConnection that uses and underlying {@link SocketChannel}.

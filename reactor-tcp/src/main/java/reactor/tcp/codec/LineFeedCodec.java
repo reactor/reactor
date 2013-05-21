@@ -17,7 +17,7 @@ package reactor.tcp.codec;
 
 import java.nio.ByteBuffer;
 
-import reactor.tcp.Buffers;
+import reactor.tcp.data.Buffers;
 
 
 /**

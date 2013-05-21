@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.tcp;
+package reactor.tcp.codec;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -28,13 +28,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
-import reactor.tcp.codec.Assembly;
 import reactor.tcp.codec.Codec.DecoderCallback;
-import reactor.tcp.codec.DecodedObject;
-import reactor.tcp.codec.DecoderResult;
-import reactor.tcp.codec.DefaultAssembly;
-import reactor.tcp.codec.JavaSerializationCodec;
-import reactor.tcp.codec.LineFeedCodec;
+import reactor.tcp.data.Buffers;
 
 /**
  * @author Gary Russell

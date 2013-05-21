@@ -20,7 +20,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import reactor.Fn;
-import reactor.tcp.Buffers;
+import reactor.tcp.data.Buffers;
 
 /**
  * @author Gary Russell

@@ -17,7 +17,7 @@ package reactor.tcp.codec;
 
 import java.io.InputStream;
 
-import reactor.tcp.ByteIterator;
+import reactor.tcp.data.ByteIterator;
 
 /**
  * Represents the reassembly of a "message" from TCP.

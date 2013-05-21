@@ -18,7 +18,7 @@ package reactor.tcp.codec;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
-import reactor.tcp.ByteIterator;
+import reactor.tcp.data.ByteIterator;
 
 /**
  * @author Gary Russell
