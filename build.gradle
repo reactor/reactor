@@ -20,7 +20,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.1.1'
+	groovyVersion = '2.1.3'
 
 	// Logging
 	slf4jVersion = '1.7.5'
@@ -28,7 +28,7 @@ ext {
 
 	// Libraries
 	disruptorVersion = '3.0.1'
-	springVersion = '3.2.2.RELEASE'
+	springVersion = '3.2.3.RELEASE'
 
 	// Testing
 	mockitoVersion = '1.9.5'
