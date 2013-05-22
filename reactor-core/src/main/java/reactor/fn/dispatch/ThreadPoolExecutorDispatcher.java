@@ -27,11 +27,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
+import reactor.support.NamedDaemonThreadFactory;
+
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
  *
  * @author Andy Wilkinson
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 

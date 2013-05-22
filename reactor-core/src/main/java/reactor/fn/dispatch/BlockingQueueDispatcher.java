@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.fn.Cache;
 import reactor.fn.ConsumerInvoker;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.fn.LoadingCache;
 import reactor.fn.Supplier;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
