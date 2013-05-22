@@ -15,9 +15,14 @@
  */
 package reactor.tcp.data;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.support.Assert;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -26,15 +31,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.support.Assert;
-
 /**
  * A collection of buffers.
- * @author Gary Russell
  *
+ * @author Gary Russell
  */
 public final class Buffers implements Iterable<ByteBuffer> {
 
@@ -70,8 +70,7 @@ public final class Buffers implements Iterable<ByteBuffer> {
 				logger.debug("Buffer added, now:" + this.toString());
 			}
 			this.newBuffersAvailable.signalAll();
-		}
-		finally {
+		} finally {
 			this.lock.unlock();
 		}
 	}
@@ -137,14 +136,17 @@ public final class Buffers implements Iterable<ByteBuffer> {
 		if (this.byteIterator.hasNext()) {
 			position++;
 			return this.byteIterator.next();
-		}
-		else {
+		} else {
 			throw new IllegalStateException("No more data");
 		}
 	}
 
 	public InputStream getInputStream() {
 		return new BuffersInputStream(epoch);
+	}
+
+	public ReadableByteChannel getReadableByteChannel() {
+		return new BuffersReadableByteChannel(epoch);
 	}
 
 	@Override
@@ -164,7 +166,7 @@ public final class Buffers implements Iterable<ByteBuffer> {
 				this.bufferView = buffers.get(0).duplicate();
 			}
 			return this.bufferView == null ||
-				(this.currentBuffer == buffers.size() - 1 && this.bufferView.remaining() == 0);
+					(this.currentBuffer == buffers.size() - 1 && this.bufferView.remaining() == 0);
 		}
 
 		protected int nextByte() {
@@ -220,14 +222,12 @@ public final class Buffers implements Iterable<ByteBuffer> {
 					// TODO: Add socket timeout
 					try {
 						newBuffersAvailable.await();
-					}
-					catch (InterruptedException e) {
+					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						throw new IOException(e);
 					}
 				}
-			}
-			finally {
+			} finally {
 				lock.unlock();
 			}
 
@@ -243,7 +243,49 @@ public final class Buffers implements Iterable<ByteBuffer> {
 			discardBytes(this.bytesRead);
 		}
 
+	}
+
+	private class BuffersReadableByteChannel implements ReadableByteChannel {
+
+		private final ByteFeeder feeder = new ByteFeeder();
+		private final    int originalEpoch;
+		private volatile int bytesRead;
+
+		private BuffersReadableByteChannel(int originalEpoch) {
+			this.originalEpoch = originalEpoch;
+		}
+
+		@Override
+		public int read(ByteBuffer dst) throws IOException {
+			if (this.originalEpoch != epoch) {
+				throw new IOException("InputStream has been reset");
+			}
+
+			int start = bytesRead;
+			int avail = dst.remaining();
+			for (int i = 0; i < avail; i++) {
+				if (feeder.isExhausted()) {
+					break;
+				}
+				int b = feeder.nextByte();
+				bytesRead++;
+				dst.put((byte) b);
+			}
+
+			return bytesRead - start;
+		}
+
+		@Override
+		public boolean isOpen() {
+			return hasNext();
+		}
+
+		@Override
+		public void close() throws IOException {
+			discardBytes(this.bytesRead);
+		}
 
 	}
+
 }
 
