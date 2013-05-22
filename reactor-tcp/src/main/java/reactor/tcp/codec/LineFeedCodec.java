@@ -35,7 +35,7 @@ public class LineFeedCodec extends AbstractCodec<String> {
 	public void decode(Buffers buffers, Consumer<String> consumer) {
 		while (buffers.hasNext()) {
 			if (buffers.next() == LF) {
-				consumer.accept(new DefaultAssembly(buffers, buffers.getPosition(), 1).toString());
+				consumer.accept(new DefaultAssembly(buffers, buffers.getPosition() - 1, 1).toString());
 			}
 		}
 		if (logger.isDebugEnabled()) {
