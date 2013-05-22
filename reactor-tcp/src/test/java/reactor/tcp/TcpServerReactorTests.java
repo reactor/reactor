@@ -18,7 +18,7 @@ import org.junit.Test;
 import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.tcp.codec.DecoderResult;
+import reactor.tcp.codec.LineFeedCodecSupplier;
 import reactor.tcp.test.TestUtils;
 import reactor.tcp.test.TimeoutUtils;
 import reactor.tcp.test.TimeoutUtils.TimeoutCallback;
@@ -30,15 +30,15 @@ public class TcpServerReactorTests {
 
 		int port = TestUtils.findAvailableServerSocket();
 
-		TcpServerReactor reactor = new TcpServerReactor(port);
+		TcpServerReactor<String> reactor = new TcpServerReactor<String>(port, new LineFeedCodecSupplier());
 		reactor.start();
 
 		final CountDownLatch latch = new CountDownLatch(10);
 
-		reactor.onRequest(new Consumer<Event<DecoderResult>>() {
+		reactor.onRequest(new Consumer<Event<String>>() {
 
 			@Override
-			public void accept(Event<DecoderResult> t) {
+			public void accept(Event<String> t) {
 				latch.countDown();
 			}
 		});
@@ -66,13 +66,13 @@ public class TcpServerReactorTests {
 
 		int port = TestUtils.findAvailableServerSocket();
 
-		final TcpServerReactor reactor = new TcpServerReactor(port);
+		final TcpServerReactor<String> reactor = new TcpServerReactor<String>(port, new LineFeedCodecSupplier());
 		reactor.start();
 
-		reactor.onRequest(new Consumer<Event<DecoderResult>>() {
+		reactor.onRequest(new Consumer<Event<String>>() {
 
 			@Override
-			public void accept(Event<DecoderResult> t) {
+			public void accept(Event<String> t) {
 				reactor.notify(t.getReplyTo(), Fn.event(("Response " + t.getData()).getBytes()));
 			}
 		});
@@ -102,7 +102,7 @@ public class TcpServerReactorTests {
 		}
 	}
 
-	private void awaitAlive(final TcpServerReactor reactor) throws InterruptedException {
+	private void awaitAlive(final TcpServerReactor<?> reactor) throws InterruptedException {
 		TimeoutUtils.doWithTimeout(30000, new TimeoutCallback() {
 
 			@Override

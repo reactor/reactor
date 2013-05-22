@@ -29,7 +29,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import reactor.fn.Supplier;
 import reactor.support.Assert;
+import reactor.tcp.codec.Codec;
 
 
 
@@ -38,10 +40,9 @@ import reactor.support.Assert;
  * @author Gary Russell
  *
  */
-public class TcpNioClientConnectionFactory extends
-		AbstractClientConnectionFactory implements Runnable {
+public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFactory<T> implements Runnable {
 
-	private final Map<SocketChannel, TcpNioConnection> channelMap = new ConcurrentHashMap<SocketChannel, TcpNioConnection>();
+	private final Map<SocketChannel, TcpNioConnection<T>> channelMap = new ConcurrentHashMap<SocketChannel, TcpNioConnection<T>>();
 
 	private final BlockingQueue<SocketChannel> newChannels = new LinkedBlockingQueue<SocketChannel>();
 
@@ -54,8 +55,8 @@ public class TcpNioClientConnectionFactory extends
 	 * @param host the host
 	 * @param port the port
 	 */
-	public TcpNioClientConnectionFactory(String host, int port) {
-		super(host, port);
+	public TcpNioClientConnectionFactory(String host, int port, Supplier<Codec<T>> codecSupplier) {
+		super(host, port, codecSupplier);
 	}
 
 	/**
@@ -64,8 +65,8 @@ public class TcpNioClientConnectionFactory extends
 	 * @throws SocketException
 	 */
 	@Override
-	protected TcpConnectionSupport obtainConnection() throws Exception {
-		TcpConnectionSupport theConnection = this.getTheConnection();
+	protected TcpConnectionSupport<T> obtainConnection() throws Exception {
+		TcpConnectionSupport<T> theConnection = this.getTheConnection();
 		if (theConnection != null && theConnection.isOpen()) {
 			return theConnection;
 		}
@@ -74,10 +75,9 @@ public class TcpNioClientConnectionFactory extends
 		}
 		SocketChannel socketChannel = SocketChannel.open(new InetSocketAddress(this.getHost(), this.getPort()));
 		applySocketAttributes(socketChannel.socket());
-		TcpNioConnection connection = this.tcpNioConnectionSupport.createNewConnection(
-				socketChannel, false, this.isLookupHost(), this);
+		TcpNioConnection<T> connection = this.tcpNioConnectionSupport.createNewConnection(
+				socketChannel, false, this.isLookupHost(), this, this.getCodecSupplier());
 		connection.setUsingDirectBuffers(this.usingDirectBuffers);
-		connection.setCodec(this.getCodec());
 		initializeConnection(connection, socketChannel.socket());
 		socketChannel.configureBlocking(false);
 		if (this.getSoTimeout() > 0) {
@@ -114,7 +114,7 @@ public class TcpNioClientConnectionFactory extends
 	}
 
 	@Override
-	public TcpNioClientConnectionFactory start() {
+	public TcpNioClientConnectionFactory<T> start() {
 		synchronized (this.lifecycleMonitor) {
 			if (!this.isActive()) {
 				super.start();
@@ -170,7 +170,7 @@ public class TcpNioClientConnectionFactory extends
 	/**
 	 * @return the connections
 	 */
-	protected Map<SocketChannel, TcpNioConnection> getConnections() {
+	protected Map<SocketChannel, TcpNioConnection<T>> getConnections() {
 		return channelMap;
 	}
 

@@ -29,7 +29,7 @@ import java.nio.channels.SocketChannel;
  * @author Gary Russell
  *
  */
-public interface TcpConnection {
+public interface TcpConnection<T> {
 
 	/**
 	 * Closes the connection.
@@ -87,7 +87,7 @@ public interface TcpConnection {
 	/**
 	 * @return this connection's listener
 	 */
-	TcpListener getListener();
+	TcpListener<T> getListener();
 
 	/**
 	 * @return the next sequence number for a message received on this socket

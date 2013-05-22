@@ -20,7 +20,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import reactor.fn.Supplier;
 import reactor.support.Assert;
+import reactor.tcp.codec.Codec;
 
 /**
  * Base class for all server connection factories. Server connection factories
@@ -29,8 +31,8 @@ import reactor.support.Assert;
  *
  * @author Gary Russell
  */
-public abstract class AbstractServerConnectionFactory
-		extends ConnectionFactorySupport implements Runnable {
+public abstract class AbstractServerConnectionFactory<T>
+		extends ConnectionFactorySupport<T> implements Runnable {
 
 	private static final int DEFAULT_BACKLOG = 5;
 
@@ -47,8 +49,8 @@ public abstract class AbstractServerConnectionFactory
 	 * The port on which the factory will listen.
 	 * @param port
 	 */
-	public AbstractServerConnectionFactory(int port) {
-		super(port);
+	public AbstractServerConnectionFactory(int port, Supplier<Codec<T>> codecSupplier) {
+		super(port, codecSupplier);
 	}
 
 	@Override
@@ -91,8 +93,8 @@ public abstract class AbstractServerConnectionFactory
 	 * @param connection The new connection.
 	 * @param socket The new socket.
 	 */
-	protected void initializeConnection(TcpConnectionSupport connection, Socket socket) {
-		TcpListener listener = this.getListener();
+	protected void initializeConnection(TcpConnectionSupport<T> connection, Socket socket) {
+		TcpListener<T> listener = this.getListener();
 		if (listener != null) {
 			connection.registerListener(listener);
 		}

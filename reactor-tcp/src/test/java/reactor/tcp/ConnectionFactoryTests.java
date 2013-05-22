@@ -30,8 +30,7 @@ import javax.net.SocketFactory;
 
 import org.junit.Test;
 
-import reactor.tcp.codec.Assembly;
-import reactor.tcp.codec.DecoderResult;
+import reactor.tcp.codec.LineFeedCodecSupplier;
 import reactor.tcp.test.TestUtils;
 
 /**
@@ -43,14 +42,15 @@ public class ConnectionFactoryTests {
 	@Test
 	public void testServer() throws Exception {
 		int port = TestUtils.findAvailableServerSocket();
-		TcpNioServerConnectionFactory server = new TcpNioServerConnectionFactory(port);
+
+		TcpNioServerConnectionFactory<String> server = new TcpNioServerConnectionFactory<String>(port, new LineFeedCodecSupplier());
 		final CountDownLatch latch = new CountDownLatch(1);
-		final AtomicReference<DecoderResult> assy = new AtomicReference<DecoderResult>();
-		server.registerListener(new TcpListener() {
+		final AtomicReference<String> resultHolder = new AtomicReference<String>();
+		server.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assembly, TcpConnection connection) {
-				assy.set(assembly);
+			public void onDecode(String decoded, TcpConnection<String> connection) {
+				resultHolder.set(decoded);
 				latch.countDown();
 			}
 		});
@@ -61,21 +61,21 @@ public class ConnectionFactoryTests {
 		socket.close();
 		assertTrue(latch.await(10, TimeUnit.SECONDS));
 		server.stop();
-		assertEquals("foo", new String(((Assembly) assy.get()).asBytes()));
+		assertEquals("foo", resultHolder.get());
 	}
 
 	@Test
 	public void testServerUnsolicited() throws Exception {
 		int port = TestUtils.findAvailableServerSocket();
-		TcpNioServerConnectionFactory server = new TcpNioServerConnectionFactory(port);
-		server.registerListener(new ConnectionAwareTcpListener() {
+		TcpNioServerConnectionFactory<String> server = new TcpNioServerConnectionFactory<String>(port, new LineFeedCodecSupplier());
+		server.registerListener(new ConnectionAwareTcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assembly, TcpConnection connection) {
+			public void onDecode(String decoded, TcpConnection<String> connection) {
 			}
 
 			@Override
-			public void newConnection(TcpConnection connection) {
+			public void newConnection(TcpConnection<String> connection) {
 				try {
 					connection.send("bar".getBytes());
 				}
@@ -85,7 +85,7 @@ public class ConnectionFactoryTests {
 			}
 
 			@Override
-			public void connectionClosed(TcpConnection connection) {
+			public void connectionClosed(TcpConnection<String> connection) {
 			}
 		});
 		server.start();
@@ -109,12 +109,12 @@ public class ConnectionFactoryTests {
 	@Test
 	public void testClientAndServer() throws Exception {
 		int port = TestUtils.findAvailableServerSocket();
-		TcpNioServerConnectionFactory server = new TcpNioServerConnectionFactory(port);
-		server.registerListener(new TcpListener() {
+		TcpNioServerConnectionFactory<String> server = new TcpNioServerConnectionFactory<String>(port, new LineFeedCodecSupplier());
+		server.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assembly, TcpConnection connection) {
-				System.out.println(assembly);
+			public void onDecode(String decoded, TcpConnection<String> connection) {
+				System.out.println(decoded);
 				try {
 					connection.send("bar".getBytes());
 				}
@@ -126,18 +126,18 @@ public class ConnectionFactoryTests {
 //		server.setSoTimeout(2000);
 		server.start();
 		TestUtils.waitListening(server);
-		TcpNioClientConnectionFactory client = new TcpNioClientConnectionFactory("localhost", port);
+		TcpNioClientConnectionFactory<String> client = new TcpNioClientConnectionFactory<String>("localhost", port, new LineFeedCodecSupplier());
 		final CountDownLatch latch = new CountDownLatch(2);
-		client.registerListener(new TcpListener() {
+		client.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assembly, TcpConnection connection) {
+			public void onDecode(String decoded, TcpConnection<String> connection) {
 				latch.countDown();
-				System.out.println(assembly);
+				System.out.println(decoded);
 			}
 		});
 		client.start();
-		TcpConnectionSupport connection = client.getConnection();
+		TcpConnectionSupport<String> connection = client.getConnection();
 		connection.send("foo\nfoo".getBytes());
 		assertTrue(latch.await(10, TimeUnit.SECONDS));
 		client.stop();
@@ -148,40 +148,40 @@ public class ConnectionFactoryTests {
 	public void testClientAndServerSSL() throws Exception {
 		System.setProperty("javax.net.debug", "all"); // SSL activity in the console
 		int port = TestUtils.findAvailableServerSocket();
-		TcpNioServerConnectionFactory server = new TcpNioServerConnectionFactory(port);
+		TcpNioServerConnectionFactory<String> server = new TcpNioServerConnectionFactory<String>(port, new LineFeedCodecSupplier());
 		DefaultTcpSSLContextConfigurer sslContextConfigurer = new DefaultTcpSSLContextConfigurer(new File("src/test/resources/test.ks"),
 				new File("src/test/resources/test.truststore.ks"), "secret", "secret");
 		sslContextConfigurer.setProtocol("SSL");
 		DefaultTcpNioSSLConnectionConfigurer tcpNioConnectionSupport = new DefaultTcpNioSSLConnectionConfigurer(sslContextConfigurer);
 		server.setTcpNioConnectionSupport(tcpNioConnectionSupport);
-		final AtomicReference<DecoderResult> assembly = new AtomicReference<DecoderResult>();
+		final AtomicReference<String> resultHolder = new AtomicReference<String>();
 		final CountDownLatch latch = new CountDownLatch(1);
-		server.registerListener(new TcpListener() {
+		server.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assy, TcpConnection connection) {
-				assembly.set(assy);
+			public void onDecode(String decoded, TcpConnection<String> connection) {
+				resultHolder.set(decoded);
 				latch.countDown();
 			}
 		});
 		server.start();
 		TestUtils.waitListening(server);
 
-		TcpNioClientConnectionFactory client = new TcpNioClientConnectionFactory("localhost", port);
+		TcpNioClientConnectionFactory<String> client = new TcpNioClientConnectionFactory<String>("localhost", port, new LineFeedCodecSupplier());
 		client.setTcpNioConnectionSupport(tcpNioConnectionSupport);
-		client.registerListener(new TcpListener() {
+		client.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult assembly, TcpConnection connection) {
-				System.out.println("Client " + assembly);
+			public void onDecode(String result, TcpConnection<String> connection) {
+				System.out.println("Client " + result);
 			}
 		});
 		client.start();
 
-		TcpConnection connection = client.getConnection();
+		TcpConnection<String> connection = client.getConnection();
 		connection.send("Hello, world!".getBytes());
 		assertTrue(latch.await(10, TimeUnit.SECONDS));
-		assertEquals("Hello, world!", new String(((Assembly) assembly.get()).asBytes()));
+		assertEquals("Hello, world!", resultHolder.get());
 	}
 
 

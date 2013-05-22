@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
-import reactor.tcp.codec.Codec.DecoderCallback;
+import reactor.fn.Consumer;
 import reactor.tcp.data.Buffers;
 
 /**
@@ -58,24 +58,24 @@ public class CodecTests {
 		buffers.add(ByteBuffer.wrap("456".getBytes()));
 		buffers.add(ByteBuffer.wrap("789".getBytes()));
 		buffers.add(ByteBuffer.wrap("0ab".getBytes()));
-		final AtomicReference<DecoderResult> assembly = new AtomicReference<DecoderResult>();
-		codec.decode(buffers, new DecoderCallback() {
+		final AtomicReference<String> assembly = new AtomicReference<String>();
+		codec.decode(buffers, new Consumer<String>() {
 
 			@Override
-			public void complete(DecoderResult result) {
-				assembly.set(result);
+			public void accept(String decoded) {
+				assembly.set(decoded);
 			}
 		});
 		buffers.add(ByteBuffer.wrap("foo\nbar".getBytes()));
-		codec.decode(buffers, new DecoderCallback() {
+		codec.decode(buffers, new Consumer<String>() {
 
 			@Override
-			public void complete(DecoderResult result) {
-				assembly.set(result);
+			public void accept(String decoded) {
+				assembly.set(decoded);
 			}
 		});
 		assertNotNull(assembly);
-		assertEquals("1234567890abfoo", new String(((Assembly) assembly.get()).asBytes()));
+		assertEquals("1234567890abfoo", assembly.get());
 		assertEquals(1, buffers.getBufferCount());
 		Assembly assy = new DefaultAssembly(buffers, 3);
 		assertEquals("bar", new String(assy.asBytes()));
@@ -86,25 +86,25 @@ public class CodecTests {
 	@Test
 	public void testJavaEncodeDecode() throws Exception {
 		String foo = "foo";
-		JavaSerializationCodec codec = new JavaSerializationCodec();
+		JavaSerializationCodec<String> codec = new JavaSerializationCodec<String>();
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		codec.encode(foo, baos);
 
 		Buffers buffers = new Buffers();
 		ByteBuffer bb = ByteBuffer.wrap(baos.toByteArray());
 		buffers.add(bb);
-		final AtomicReference<DecodedObject> result = new AtomicReference<DecodedObject>();
+		final AtomicReference<String> result = new AtomicReference<String>();
 		final CountDownLatch latch = new CountDownLatch(1);
-		codec.decode(buffers, new DecoderCallback() {
+		codec.decode(buffers, new Consumer<String>() {
 
 			@Override
-			public void complete(DecoderResult r) {
-				result.set((DecodedObject) r);
+			public void accept(String decoded) {
+				result.set(decoded);
 				latch.countDown();
 			}
 		});
 		assertTrue(latch.await(10,  TimeUnit.SECONDS));
-		assertEquals("foo", result.get().getObject());
+		assertEquals("foo", result.get());
 	}
 
 }

@@ -11,9 +11,8 @@ import reactor.fn.Event;
 import reactor.fn.Lifecycle;
 import reactor.fn.Registration;
 import reactor.fn.Selector;
+import reactor.fn.Supplier;
 import reactor.tcp.codec.Codec;
-import reactor.tcp.codec.DecoderResult;
-import reactor.tcp.codec.LineFeedCodec;
 
 /**
  * A {@literal TcpServerReactor} is a {@link Reactor} that acts as a TCP server. It listens on a configurable
@@ -22,7 +21,7 @@ import reactor.tcp.codec.LineFeedCodec;
  *
  * @author Andy Wilkinson
  */
-public class TcpServerReactor extends Reactor implements Lifecycle<TcpServerReactor> {
+public class TcpServerReactor<T> extends Reactor implements Lifecycle<TcpServerReactor<T>> {
 
 	private final Object requestKey = new Object();
 
@@ -30,34 +29,23 @@ public class TcpServerReactor extends Reactor implements Lifecycle<TcpServerReac
 
 	private final Object monitor = new Object();
 
-	private final TcpNioServerConnectionFactory server;
+	private final TcpNioServerConnectionFactory<T> server;
 
 	private boolean alive = false;
-
-	/**
-	 * Creates a new {@literal TcpServerReactor} that will listen on the given {@literal port} and will use the default
-	 * {@link LineFeedCodec} to decode the data it receives.
-	 *
-	 * @param port The port to listen on
-	 */
-	public TcpServerReactor(int port) {
-		this(port, new LineFeedCodec());
-	}
 
 	/**
 	 * Creates a new {@literal TcpServerReactor} that will listen on the given {@literal port} and will use the given
 	 * {@literal codec} to decode the data it receives.
 	 *
 	 * @param port The port to listen on
-	 * @param codec The codec to use to decode incoming data
+	 * @param codecSupplier The codec to use to decode incoming data
 	 */
-	public TcpServerReactor(int port, Codec codec) {
-		server = new TcpNioServerConnectionFactory(port);
-		server.setCodec(codec);
-		server.registerListener(new TcpListener() {
+	public TcpServerReactor(int port, Supplier<Codec<T>> codecSupplier) {
+		server = new TcpNioServerConnectionFactory<T>(port, codecSupplier);
+		server.registerListener(new TcpListener<T>() {
 			@Override
-			public void onDecode(DecoderResult result, final TcpConnection connection) {
-				Event<DecoderResult> event = Fn.event(result);
+			public void onDecode(T result, final TcpConnection<T> connection) {
+				Event<T> event = Fn.event(result);
 
 				Object replyToKey = new Object();
 				event.setReplyTo(replyToKey);
@@ -89,17 +77,17 @@ public class TcpServerReactor extends Reactor implements Lifecycle<TcpServerReac
 	 *
 	 * @return The registration
 	 */
-	public <T, E extends Event<T>> Registration<Consumer<E>> onRequest(Consumer<E> consumer) {
+	public <E extends Event<T>> Registration<Consumer<E>> onRequest(Consumer<E> consumer) {
 		return on(requestSelector, consumer);
 	}
 
 	@Override
-	public TcpServerReactor destroy() {
+	public TcpServerReactor<T> destroy() {
 		return this;
 	}
 
 	@Override
-	public TcpServerReactor stop() {
+	public TcpServerReactor<T> stop() {
 		synchronized(monitor) {
 			if (!alive) {
 				server.stop();
@@ -110,7 +98,7 @@ public class TcpServerReactor extends Reactor implements Lifecycle<TcpServerReac
 	}
 
 	@Override
-	public TcpServerReactor start() {
+	public TcpServerReactor<T> start() {
 		synchronized(monitor) {
 			if (!alive) {
 				alive = true;

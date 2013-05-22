@@ -37,13 +37,13 @@ import reactor.tcp.TcpConnectionEvent.TcpConnectionEventType;
  * @author Gary Russell
  *
  */
-public abstract class TcpConnectionSupport implements TcpConnection {
+public abstract class TcpConnectionSupport<T> implements TcpConnection<T> {
 
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-	private final ConnectionFactorySupport connectionFactory;
+	private final ConnectionFactorySupport<T> connectionFactory;
 
-	private volatile TcpListener listener;
+	private volatile TcpListener<T> listener;
 
 	private volatile boolean singleUse;
 
@@ -78,7 +78,7 @@ public abstract class TcpConnectionSupport implements TcpConnection {
 	 * during event publishing, may be null, in which case "unknown" will be used.
 	 */
 	public TcpConnectionSupport(Socket socket, boolean server, boolean lookupHost,
-			ConnectionFactorySupport connectionFactory) {
+			ConnectionFactorySupport<T> connectionFactory) {
 		this.connectionFactory = connectionFactory;
 		this.server = server;
 		InetAddress inetAddress = socket.getInetAddress();
@@ -123,7 +123,7 @@ public abstract class TcpConnectionSupport implements TcpConnection {
 	 * Sets the listener that will receive incoming Messages.
 	 * @param listener The listener.
 	 */
-	public void registerListener(TcpListener listener) {
+	public void registerListener(TcpListener<T> listener) {
 		this.listener = listener;
 	}
 
@@ -131,7 +131,7 @@ public abstract class TcpConnectionSupport implements TcpConnection {
 	 * @return the listener
 	 */
 	@Override
-	public TcpListener getListener() {
+	public TcpListener<T> getListener() {
 		return this.listener;
 	}
 
@@ -177,7 +177,7 @@ public abstract class TcpConnectionSupport implements TcpConnection {
 		return this.connectionId;
 	}
 
-	protected ConnectionFactorySupport getConnectionFactory() {
+	protected ConnectionFactorySupport<T> getConnectionFactory() {
 		return connectionFactory;
 	}
 
@@ -211,7 +211,7 @@ public abstract class TcpConnectionSupport implements TcpConnection {
 
 	private void doPublish(TcpConnectionEvent event) {
 		if (this.listener instanceof ConnectionAwareTcpListener) {
-			ConnectionAwareTcpListener listener = (ConnectionAwareTcpListener) this.listener;
+			ConnectionAwareTcpListener<T> listener = (ConnectionAwareTcpListener<T>) this.listener;
 			if (event.getType() == TcpConnectionEventType.OPEN) {
 				listener.newConnection(this);
 			}

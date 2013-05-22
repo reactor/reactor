@@ -17,6 +17,9 @@ package reactor.tcp;
 
 import java.nio.channels.SocketChannel;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+
 
 /**
  * Implementation of {@link TcpNioConnectionConfigurer} for non-SSL
@@ -26,8 +29,8 @@ import java.nio.channels.SocketChannel;
  */
 public class DefaultTcpNioConnectionConfigurer implements TcpNioConnectionConfigurer {
 
-	public TcpNioConnection createNewConnection(SocketChannel socketChannel, boolean server, boolean lookupHost,
-			 ConnectionFactorySupport connectionFactory) throws Exception {
-		return new TcpNioConnection(socketChannel, server, lookupHost, connectionFactory);
+	public <T> TcpNioConnection<T> createNewConnection(SocketChannel socketChannel, boolean server, boolean lookupHost,
+			 ConnectionFactorySupport<T> connectionFactory, Supplier<Codec<T>> codecSupplier) throws Exception {
+		return new TcpNioConnection<T>(socketChannel, server, lookupHost, connectionFactory, codecSupplier.get());
 	}
 }

@@ -33,9 +33,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.support.Assert;
 import reactor.tcp.codec.Codec;
-import reactor.tcp.codec.Codec.DecoderCallback;
-import reactor.tcp.codec.DecoderResult;
-import reactor.tcp.codec.LineFeedCodec;
 import reactor.tcp.codec.StreamingCodec;
 import reactor.tcp.data.Buffers;
 
@@ -45,7 +42,7 @@ import reactor.tcp.data.Buffers;
  * @author Gary Russell
  *
  */
-public class TcpNioConnection extends TcpConnectionSupport {
+public class TcpNioConnection<T> extends TcpConnectionSupport<T> {
 
 	private final SocketChannel socketChannel;
 
@@ -55,7 +52,7 @@ public class TcpNioConnection extends TcpConnectionSupport {
 
 	private final Buffers readBuffers = new Buffers();
 
-	private volatile Codec codec = new LineFeedCodec();
+	private final Codec<T> codec;
 
 	private final BlockingQueue<Buffers> outbound = new LinkedBlockingQueue<Buffers>();
 
@@ -70,9 +67,11 @@ public class TcpNioConnection extends TcpConnectionSupport {
 	 * a result of an incoming request.
 	 */
 	public TcpNioConnection(SocketChannel socketChannel, boolean server, boolean lookupHost,
-			ConnectionFactorySupport connectionFactory) throws IOException {
+			ConnectionFactorySupport<T> connectionFactory, Codec<T> codec) throws IOException {
 			super(socketChannel.socket(), server, lookupHost, connectionFactory);
 		this.socketChannel = socketChannel;
+		this.codec = codec;
+
 		int receiveBufferSize = socketChannel.socket().getReceiveBufferSize();
 		if (receiveBufferSize <= 0) {
 			receiveBufferSize = this.maxMessageSize;
@@ -99,10 +98,10 @@ public class TcpNioConnection extends TcpConnectionSupport {
 				handleWriteSelection(ioSelector, keyEvent.getData());
 			}
 		});
-		this.connectionReactor.on(ConnectionFactorySupport.DECODE, new Consumer<Event<TcpNioConnection>>() {
+		this.connectionReactor.on(ConnectionFactorySupport.DECODE, new Consumer<Event<TcpNioConnection<T>>>() {
 
 			@Override
-			public void accept(Event<TcpNioConnection> connectionEvent) {
+			public void accept(Event<TcpNioConnection<T>> connectionEvent) {
 				if (logger.isTraceEnabled()) {
 					logger.trace("DECODE for " + TcpNioConnection.this.getConnectionId());
 				}
@@ -110,10 +109,6 @@ public class TcpNioConnection extends TcpConnectionSupport {
 			}
 		});
 
-	}
-
-	protected void setCodec(Codec codec) {
-		this.codec = codec;
 	}
 
 	SocketChannel getSocketChannel() {
@@ -185,10 +180,10 @@ public class TcpNioConnection extends TcpConnectionSupport {
 	}
 
 	public void decode() {
-		this.codec.decode(this.readBuffers, new DecoderCallback() {
+		this.codec.decode(this.readBuffers, new Consumer<T>() {
 
 			@Override
-			public void complete(DecoderResult assembly) {
+			public void accept(T assembly) {
 				getListener().onDecode(assembly, TcpNioConnection.this);
 			}
 		});
@@ -204,7 +199,7 @@ public class TcpNioConnection extends TcpConnectionSupport {
 	@Override
 	public synchronized void send(Object object) throws IOException {
 		Assert.isInstanceOf(StreamingCodec.class, this.codec, "Codec must be streamable");
-		StreamingCodec codec = (StreamingCodec) this.codec;
+		StreamingCodec<T> codec = (StreamingCodec<T>) this.codec;
 		codec.encode(object, new OutputStream() {
 
 			private volatile ByteBuffer buffer = allocate(2048);

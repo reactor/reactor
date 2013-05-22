@@ -24,7 +24,7 @@ import reactor.tcp.data.ByteIterator;
  * @author Gary Russell
  *
  */
-public interface Assembly extends DecoderResult {
+public interface Assembly {
 
 	InputStream asInputStream();
 

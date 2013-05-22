@@ -17,6 +17,7 @@ package reactor.tcp.codec;
 
 import java.nio.ByteBuffer;
 
+import reactor.fn.Consumer;
 import reactor.tcp.data.Buffers;
 
 
@@ -24,17 +25,17 @@ import reactor.tcp.data.Buffers;
  * @author Gary Russell
  *
  */
-public class LineFeedCodec extends AbstractCodec {
+public class LineFeedCodec extends AbstractCodec<String> {
 
 	private static final int LF = 0x0a;
 
 	private static final ByteBuffer LF_BB = ByteBuffer.wrap(new byte[] {LF});
 
 	@Override
-	public void decode(Buffers buffers, DecoderCallback callback) {
+	public void decode(Buffers buffers, Consumer<String> consumer) {
 		while (buffers.hasNext()) {
 			if (buffers.next() == LF) {
-				callback.complete(new DefaultAssembly(buffers, buffers.getPosition(), 1));
+				consumer.accept(new DefaultAssembly(buffers, buffers.getPosition(), 1).toString());
 			}
 		}
 		if (logger.isDebugEnabled()) {

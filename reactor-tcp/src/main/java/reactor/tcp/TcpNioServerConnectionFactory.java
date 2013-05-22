@@ -29,7 +29,9 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 
+import reactor.fn.Supplier;
 import reactor.support.Assert;
+import reactor.tcp.codec.Codec;
 
 /**
 /**
@@ -38,13 +40,13 @@ import reactor.support.Assert;
  * @author Gary Russell
  *
  */
-public class TcpNioServerConnectionFactory extends AbstractServerConnectionFactory {
+public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFactory<T> {
 
 	private volatile ServerSocketChannel serverChannel;
 
 	private volatile boolean usingDirectBuffers;
 
-	private final Map<SocketChannel, TcpNioConnection> channelMap = new HashMap<SocketChannel, TcpNioConnection>();
+	private final Map<SocketChannel, TcpNioConnection<T>> channelMap = new HashMap<SocketChannel, TcpNioConnection<T>>();
 
 	private volatile TcpNioConnectionConfigurer tcpNioConnectionSupport = new DefaultTcpNioConnectionConfigurer();
 
@@ -52,8 +54,8 @@ public class TcpNioServerConnectionFactory extends AbstractServerConnectionFacto
 	 * Listens for incoming connections on the port.
 	 * @param port The port.
 	 */
-	public TcpNioServerConnectionFactory(int port) {
-		super(port);
+	public TcpNioServerConnectionFactory(int port, Supplier<Codec<T>> codecSupplier) {
+		super(port, codecSupplier);
 	}
 
 	/**
@@ -140,13 +142,12 @@ public class TcpNioServerConnectionFactory extends AbstractServerConnectionFacto
 				channel.configureBlocking(false);
 				Socket socket = channel.socket();
 				applySocketAttributes(socket);
-				TcpNioConnection connection = createTcpNioConnection(channel);
+				TcpNioConnection<T> connection = createTcpNioConnection(channel);
 				if (connection == null) {
 					channel.close();
 					return;
 				}
 				connection.setLastRead(now);
-				connection.setCodec(this.getCodec());
 				this.channelMap.put(channel, connection);
 				this.addConnection(connection);
 				try {
@@ -165,11 +166,10 @@ public class TcpNioServerConnectionFactory extends AbstractServerConnectionFacto
 		}
 	}
 
-	private TcpNioConnection createTcpNioConnection(SocketChannel socketChannel) {
+	private TcpNioConnection<T> createTcpNioConnection(SocketChannel socketChannel) {
 		try {
-			TcpNioConnection connection = this.tcpNioConnectionSupport
-					.createNewConnection(socketChannel, true,
-							this.isLookupHost(), this);
+			TcpNioConnection<T> connection = this.tcpNioConnectionSupport.createNewConnection(socketChannel, true,
+							this.isLookupHost(), this, getCodecSupplier());
 			connection.setUsingDirectBuffers(this.usingDirectBuffers);
 			this.initializeConnection(connection, socketChannel.socket());
 			return connection;
@@ -219,7 +219,7 @@ public class TcpNioServerConnectionFactory extends AbstractServerConnectionFacto
 	/**
 	 * @return the connections
 	 */
-	protected Map<SocketChannel, TcpNioConnection> getConnections() {
+	protected Map<SocketChannel, TcpNioConnection<T>> getConnections() {
 		return channelMap;
 	}
 

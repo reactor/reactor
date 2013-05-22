@@ -18,23 +18,26 @@ package reactor.tcp;
 
 import java.net.Socket;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+
 /**
  * Abstract class for client connection factories; client connection factories
  * establish outgoing connections.
  * @author Gary Russell
  *
  */
-public abstract class AbstractClientConnectionFactory extends ConnectionFactorySupport {
+public abstract class AbstractClientConnectionFactory<T> extends ConnectionFactorySupport<T> {
 
-	private TcpConnectionSupport theConnection;
+	private TcpConnectionSupport<T> theConnection;
 
 	/**
 	 * Constructs a factory that will established connections to the host and port.
 	 * @param host The host.
 	 * @param port The port.
 	 */
-	public AbstractClientConnectionFactory(String host, int port) {
-		super(host, port);
+	public AbstractClientConnectionFactory(String host, int port, Supplier<Codec<T>> codecSupplier) {
+		super(host, port, codecSupplier);
 	}
 
 	/**
@@ -42,20 +45,20 @@ public abstract class AbstractClientConnectionFactory extends ConnectionFactoryS
 	 * true, a new connection is returned; otherwise a single connection is
 	 * reused for all requests while the connection remains open.
 	 */
-	public TcpConnectionSupport getConnection() throws Exception {
+	public TcpConnectionSupport<T> getConnection() throws Exception {
 		this.checkActive();
 		if (this.isSingleUse()) {
 			return obtainConnection();
 		} else {
 			synchronized(this) {
-				TcpConnectionSupport connection = obtainConnection();
+				TcpConnectionSupport<T> connection = obtainConnection();
 				this.setTheConnection(connection);
 				return connection;
 			}
 		}
 	}
 
-	protected abstract TcpConnectionSupport obtainConnection() throws Exception;
+	protected abstract TcpConnectionSupport<T> obtainConnection() throws Exception;
 
 	/**
 	 * Transfers attributes such as (de)serializers, singleUse etc to a new connection.
@@ -66,8 +69,8 @@ public abstract class AbstractClientConnectionFactory extends ConnectionFactoryS
 	 * @param connection The new connection.
 	 * @param socket The new socket.
 	 */
-	protected void initializeConnection(TcpConnectionSupport connection, Socket socket) {
-		TcpListener listener = this.getListener();
+	protected void initializeConnection(TcpConnectionSupport<T> connection, Socket socket) {
+		TcpListener<T> listener = this.getListener();
 		if (listener != null) {
 			connection.registerListener(listener);
 		}
@@ -78,14 +81,14 @@ public abstract class AbstractClientConnectionFactory extends ConnectionFactoryS
 	/**
 	 * @param theConnection the theConnection to set
 	 */
-	protected void setTheConnection(TcpConnectionSupport theConnection) {
+	protected void setTheConnection(TcpConnectionSupport<T> theConnection) {
 		this.theConnection = theConnection;
 	}
 
 	/**
 	 * @return the theConnection
 	 */
-	protected TcpConnectionSupport getTheConnection() {
+	protected TcpConnectionSupport<T> getTheConnection() {
 		return theConnection;
 	}
 
@@ -94,7 +97,7 @@ public abstract class AbstractClientConnectionFactory extends ConnectionFactoryS
 	 * a shared connection.
 	 * @param connection
 	 */
-	public void forceClose(TcpConnection connection) {
+	public void forceClose(TcpConnection<T> connection) {
 		if (this.theConnection == connection) {
 			this.theConnection = null;
 		}

@@ -28,7 +28,7 @@ import reactor.tcp.data.Buffers;
  * @author Gary Russell
  *
  */
-public abstract class PullCodecSupport extends AbstractCodec {
+public abstract class PullCodecSupport<T> extends AbstractCodec<T> {
 
 	private final Reactor reactor = new Reactor();
 
@@ -37,7 +37,7 @@ public abstract class PullCodecSupport extends AbstractCodec {
 
 			@Override
 			public void accept(Event<AssemblyInstructions> event) {
-				doAssembly(event.getData().buffers, event.getData().callback);
+				doAssembly(event.getData().buffers, event.getData().consumer);
 			}
 		});
 	}
@@ -46,17 +46,17 @@ public abstract class PullCodecSupport extends AbstractCodec {
 		return reactor;
 	}
 
-	abstract void doAssembly(Buffers buffers, DecoderCallback callback);
+	abstract void doAssembly(Buffers buffers, Consumer<T> callback);
 
 	protected class AssemblyInstructions {
 
 		private final Buffers buffers;
 
-		private final DecoderCallback callback;
+		private final Consumer<T> consumer;
 
-		public AssemblyInstructions(Buffers buffers, DecoderCallback callback) {
+		public AssemblyInstructions(Buffers buffers, Consumer<T> consumer) {
 			this.buffers = buffers;
-			this.callback = callback;
+			this.consumer = consumer;
 		}
 	}
 }

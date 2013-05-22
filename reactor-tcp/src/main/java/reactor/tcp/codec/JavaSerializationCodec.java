@@ -20,16 +20,17 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import reactor.Fn;
+import reactor.fn.Consumer;
 import reactor.tcp.data.Buffers;
 
 /**
  * @author Gary Russell
  *
  */
-public class JavaSerializationCodec extends PullCodecSupport implements StreamingCodec {
+public class JavaSerializationCodec<T> extends PullCodecSupport<T> implements StreamingCodec<T> {
 
 	@Override
-	public void decode(Buffers buffers, DecoderCallback callback) {
+	public void decode(Buffers buffers, Consumer<T> callback) {
 		this.getReactor().notify(Fn.event(new AssemblyInstructions(buffers, callback)));
 	}
 
@@ -48,11 +49,12 @@ public class JavaSerializationCodec extends PullCodecSupport implements Streamin
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	void doAssembly(Buffers buffers, DecoderCallback callback) {
+	void doAssembly(Buffers buffers, Consumer<T> callback) {
 		try {
-			Object object = SerializationUtils.deserialize(buffers.getInputStream());
-			callback.complete(new DecodedObject(object));
+			T object = (T) SerializationUtils.deserialize(buffers.getInputStream());
+			callback.accept(object);
 		}
 		catch (IOException e) {
 			throw new RuntimeException(e);
