@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * @author Gary Russell
  *
  */
-public abstract class AbstractCodec implements Codec {
+public abstract class AbstractCodec<T> implements Codec<T> {
 
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 }

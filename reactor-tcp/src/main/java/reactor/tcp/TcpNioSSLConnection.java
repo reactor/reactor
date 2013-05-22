@@ -28,6 +28,7 @@ import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
 
 import reactor.support.Assert;
+import reactor.tcp.codec.Codec;
 import reactor.tcp.data.Buffers;
 
 /**
@@ -47,7 +48,7 @@ import reactor.tcp.data.Buffers;
  * @author Gary Russell
  *
  */
-public class TcpNioSSLConnection extends TcpNioConnection {
+public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 
 	private final SSLEngine sslEngine;
 
@@ -69,9 +70,9 @@ public class TcpNioSSLConnection extends TcpNioConnection {
 
 	private volatile boolean needHandshake = true;
 
-	public TcpNioSSLConnection(SocketChannel socketChannel, boolean server, boolean lookupHost, ConnectionFactorySupport connectionFactory,
-			SSLEngine sslEngine) throws Exception {
-		super(socketChannel, server, lookupHost, connectionFactory);
+	public TcpNioSSLConnection(SocketChannel socketChannel, boolean server, boolean lookupHost, ConnectionFactorySupport<T> connectionFactory,
+			SSLEngine sslEngine, Codec<T> codec) throws Exception {
+		super(socketChannel, server, lookupHost, connectionFactory, codec);
 		this.sslEngine = sslEngine;
 	}
 

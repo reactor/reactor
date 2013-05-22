@@ -22,7 +22,9 @@ import java.security.GeneralSecurityException;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import reactor.fn.Supplier;
 import reactor.support.Assert;
+import reactor.tcp.codec.Codec;
 
 /**
  * Implementation of {@link TcpNioConnectionConfigurer} for SSL
@@ -49,9 +51,9 @@ public class DefaultTcpNioSSLConnectionConfigurer implements TcpNioConnectionCon
 	/**
 	 * Creates a {@link TcpNioSSLConnection}.
 	 */
-	public TcpNioConnection createNewConnection(SocketChannel socketChannel, boolean server, boolean lookupHost, ConnectionFactorySupport connectionFactory) throws Exception {
+	public <T> TcpNioConnection<T> createNewConnection(SocketChannel socketChannel, boolean server, boolean lookupHost, ConnectionFactorySupport<T> connectionFactory, Supplier<Codec<T>> codecSupplier) throws Exception {
 		SSLEngine sslEngine = this.sslContext.createSSLEngine();
-		TcpNioSSLConnection tcpNioSSLConnection = new TcpNioSSLConnection(socketChannel, server, lookupHost, connectionFactory, sslEngine);
+		TcpNioSSLConnection<T> tcpNioSSLConnection = new TcpNioSSLConnection<T>(socketChannel, server, lookupHost, connectionFactory, sslEngine, codecSupplier.get());
 		tcpNioSSLConnection.init();
 		return tcpNioSSLConnection;
 	}

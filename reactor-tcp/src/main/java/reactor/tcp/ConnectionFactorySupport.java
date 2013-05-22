@@ -46,9 +46,9 @@ import reactor.Fn;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
+import reactor.fn.Supplier;
 import reactor.support.Assert;
 import reactor.tcp.codec.Codec;
-import reactor.tcp.codec.LineFeedCodec;
 
 /**
  * Base class for all connection factories.
@@ -56,7 +56,7 @@ import reactor.tcp.codec.LineFeedCodec;
  * @author Gary Russell
  *
  */
-public abstract class ConnectionFactorySupport implements ConnectionFactory {
+public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -80,13 +80,15 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 
 	private final Reactor ioReactor = new Reactor();
 
+	private final Supplier<Codec<T>> codecSupplier;
+
 	private volatile Selector ioSelector;
 
 	private volatile String host;
 
 	private volatile int port;
 
-	private volatile TcpListener listener;
+	private volatile TcpListener<T> listener;
 
 	private volatile int soTimeout = -1;
 
@@ -112,7 +114,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 
 	private volatile boolean lookupHost = true;
 
-	private volatile List<TcpConnectionSupport> connections = new LinkedList<TcpConnectionSupport>();
+	private volatile List<TcpConnectionSupport<T>> connections = new LinkedList<TcpConnectionSupport<T>>();
 
 	private volatile TcpSocketConfigurer tcpSocketSupport = new DefaultTcpSocketSupport();
 
@@ -128,18 +130,18 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 
 	private final AtomicBoolean harvesting = new AtomicBoolean();
 
-	private volatile Codec codec = new LineFeedCodec();
+	private final BlockingQueue<TcpNioConnection<T>> writeOpsNeeded = new LinkedBlockingQueue<TcpNioConnection<T>>();
 
-	private final BlockingQueue<TcpNioConnection> writeOpsNeeded = new LinkedBlockingQueue<TcpNioConnection>();
-
-	public ConnectionFactorySupport(int port) {
+	public ConnectionFactorySupport(int port, Supplier<Codec<T>> codecSupplier) {
 		this.port = port;
+		this.codecSupplier = codecSupplier;
 	}
 
-	public ConnectionFactorySupport(String host, int port) {
+	public ConnectionFactorySupport(String host, int port, Supplier<Codec<T>> codecSupplier) {
 		Assert.notNull(host, "host must not be null");
 		this.host = host;
 		this.port = port;
+		this.codecSupplier = codecSupplier;
 	}
 
 	/**
@@ -257,7 +259,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 	/**
 	 * @return the listener
 	 */
-	public TcpListener getListener() {
+	public TcpListener<T> getListener() {
 		return listener;
 	}
 
@@ -266,7 +268,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 	 * the payload has been converted from the input data.
 	 * @param listener the TcpListener.
 	 */
-	public void registerListener(TcpListener listener) {
+	public void registerListener(TcpListener<T> listener) {
 		Assert.isNull(this.listener, this.getClass().getName() +
 				" may only be used by one inbound adapter");
 		this.listener = listener;
@@ -332,12 +334,8 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		this.factoryName = factoryName;
 	}
 
-	public void setCodec(Codec codec) {
-		this.codec = codec;
-	}
-
-	protected Codec getCodec() {
-		return this.codec;
+	protected Supplier<Codec<T>> getCodecSupplier() {
+		return this.codecSupplier;
 	}
 
 	Selector getIoSelector() {
@@ -362,7 +360,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		return this;
 	}
 
-	void writeOpNeeded(TcpNioConnection connection) {
+	void writeOpNeeded(TcpNioConnection<T> connection) {
 		if (logger.isTraceEnabled()) {
 			logger.trace("Write(s) needed for " + connection.getConnectionId());
 		}
@@ -371,7 +369,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 	}
 
 	protected void setWriteOps() {
-		TcpNioConnection connection;
+		TcpNioConnection<T> connection;
 		while ((connection = this.writeOpsNeeded.poll()) != null) {
 			SelectionKey key = connection.getSocketChannel().keyFor(this.ioSelector);
 			if (key != null) {
@@ -435,9 +433,9 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		this.active = false;
 		this.close();
 		synchronized (this.connections) {
-			Iterator<TcpConnectionSupport> iterator = this.connections.iterator();
+			Iterator<TcpConnectionSupport<T>> iterator = this.connections.iterator();
 			while (iterator.hasNext()) {
-				TcpConnection connection = iterator.next();
+				TcpConnection<T> connection = iterator.next();
 				connection.close();
 				iterator.remove();
 			}
@@ -492,9 +490,9 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		if (this.soTimeout > 0 ||
 				now >= this.nextCheckForClosedNioConnections) {
 			this.nextCheckForClosedNioConnections = now + this.nioHarvestInterval;
-			Iterator<TcpConnectionSupport> it = connections.iterator();
+			Iterator<TcpConnectionSupport<T>> it = connections.iterator();
 			while (it.hasNext()) {
-				TcpConnectionSupport connection = it.next();
+				TcpConnectionSupport<T> connection = it.next();
 				if (this.soTimeout > 0 && connection.isOpen()) {
 					if (now - connection.getLastRead() >= this.soTimeout) {
 						/*
@@ -556,6 +554,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private void handleKey(long now, final SelectionKey key) {
 		try {
 			if (!key.isValid()) {
@@ -564,14 +563,14 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 			else {
 				if (key.isReadable()) {
 					key.interestOps(key.interestOps() - SelectionKey.OP_READ);
-					TcpNioConnection connection;
-					connection = (TcpNioConnection) key.attachment();
+					TcpNioConnection<T> connection;
+					connection = (TcpNioConnection<T>) key.attachment();
 					connection.getConnectionReactor().notify(READ_KEY, Fn.event(key));
 				}
 				if (key.isWritable()) {
 					key.interestOps(key.interestOps() - SelectionKey.OP_WRITE);
-					TcpNioConnection connection;
-					connection = (TcpNioConnection) key.attachment();
+					TcpNioConnection<T> connection;
+					connection = (TcpNioConnection<T>) key.attachment();
 					connection.getConnectionReactor().notify(WRITE_KEY, Fn.event(key));
 				}
 				if (key.isAcceptable()) {
@@ -615,7 +614,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		throw new UnsupportedOperationException("Nio server factory must override this method");
 	}
 
-	protected void addConnection(TcpConnectionSupport connection) {
+	protected void addConnection(TcpConnectionSupport<T> connection) {
 		synchronized (this.connections) {
 			if (!this.active) {
 				connection.close();
@@ -632,9 +631,9 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 	private List<String> removeClosedConnectionsAndReturnOpenConnectionIds() {
 		synchronized (this.connections) {
 			List<String> openConnectionIds = new ArrayList<String>();
-			Iterator<TcpConnectionSupport> iterator = this.connections.iterator();
+			Iterator<TcpConnectionSupport<T>> iterator = this.connections.iterator();
 			while (iterator.hasNext()) {
-				TcpConnection connection = iterator.next();
+				TcpConnection<T> connection = iterator.next();
 				if (!connection.isOpen()) {
 					iterator.remove();
 				}
@@ -700,7 +699,7 @@ public abstract class ConnectionFactorySupport implements ConnectionFactory {
 		Assert.notNull(connectionId, "'connectionId' to close must not be null");
 		synchronized(this.connections) {
 			boolean closed = false;
-			for (TcpConnectionSupport connection : connections) {
+			for (TcpConnectionSupport<T> connection : connections) {
 				if (connectionId.equals(connection.getConnectionId())) {
 					try {
 						connection.close();

@@ -23,7 +23,7 @@ import java.io.OutputStream;
  * @author Gary Russell
  *
  */
-public interface StreamingCodec extends Codec {
+public interface StreamingCodec<T> extends Codec<T> {
 
 	void encode(Object data, OutputStream stream);
 }

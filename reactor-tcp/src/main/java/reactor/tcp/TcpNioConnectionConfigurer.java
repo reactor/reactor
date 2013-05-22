@@ -17,26 +17,31 @@ package reactor.tcp;
 
 import java.nio.channels.SocketChannel;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
 
 /**
  * Used by NIO connection factories to instantiate a {@link TcpNioConnection} object.
  * Implementations for SSL and non-SSL {@link TcpNioConnection}s are provided.
- * @author Gary Russell
  *
+ * @author Gary Russell
  */
 public interface TcpNioConnectionConfigurer {
 
 	/**
 	 * Create a new {@link TcpNioConnection} object wrapping the {@link SocketChannel}
-	 * @param socketChannel the SocketChannel.
-	 * @param server true if this connection is a server connection.
-	 * @param lookupHost true if hostname lookup should be performed, otherwise the connection will
-	 * be identified using the ip address.
-	 * @param connectionFactory the connection factory creating this connection; used
-	 * during event publishing, may be null, in which case "unknown" will be used.
+	 *
+	 * @param socketChannel     the SocketChannel.
+	 * @param server            {@code true} if this connection is a server connection.
+	 * @param lookupHost        {@code true} if hostname lookup should be performed, {@code false} if the connection
+	 *                          should be identified using the IP address.
+	 * @param connectionFactory the connection factory creating this connection; used during event publishing, may be
+	 *                          {@code null}, in which case "unknown" will be used.
+	 *
 	 * @return the TcpNioConnection
-	 * @throws Exception
+	 *
+	 * @throws Exception if connection creation fails
 	 */
-	TcpNioConnection createNewConnection(SocketChannel socketChannel,
-			boolean server, boolean lookupHost, ConnectionFactorySupport connectionFactory) throws Exception;
+	<T> TcpNioConnection<T> createNewConnection(SocketChannel socketChannel,
+			boolean server, boolean lookupHost, ConnectionFactorySupport<T> connectionFactory, Supplier<Codec<T>> codecSupplier) throws Exception;
 }

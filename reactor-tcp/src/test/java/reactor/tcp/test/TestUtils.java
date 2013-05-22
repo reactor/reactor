@@ -156,7 +156,7 @@ public final class TestUtils {
 	 * @throws IllegalStateException if the server is not listening after 30 seconds
 	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitListening(final AbstractServerConnectionFactory serverConnectionFactory) throws IllegalStateException, InterruptedException {
+	public static void waitListening(final AbstractServerConnectionFactory<?> serverConnectionFactory) throws IllegalStateException, InterruptedException {
 		TimeoutUtils.doWithTimeout(30000,  new TimeoutCallback() {
 			@Override
 			public boolean isComplete() {
@@ -174,7 +174,7 @@ public final class TestUtils {
 	 * @throws IllegalStateException if the server has not stopped listening after 30 seconds
 	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitStopListening(final AbstractServerConnectionFactory serverConnectionFactory) throws IllegalStateException, InterruptedException {
+	public static void waitStopListening(final AbstractServerConnectionFactory<?> serverConnectionFactory) throws IllegalStateException, InterruptedException {
 		TimeoutUtils.doWithTimeout(30000,  new TimeoutCallback() {
 			@Override
 			public boolean isComplete() {
@@ -193,7 +193,7 @@ public final class TestUtils {
 	 * @throws IllegalStateException if the count does not match.
 	 * @throws InterruptedException if interrupted while waiting
 	 */
-	public static void waitUntilFactoryHasThisNumberOfConnections(final ConnectionFactorySupport factory, final int requiredConnections)
+	public static void waitUntilFactoryHasThisNumberOfConnections(final ConnectionFactorySupport<?> factory, final int requiredConnections)
 			throws Exception {
 		TimeoutUtils.doWithTimeout(10000,  new TimeoutCallback() {
 

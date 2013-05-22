@@ -17,31 +17,32 @@ package reactor.tcp.codec;
 
 import java.nio.ByteBuffer;
 
+import reactor.fn.Consumer;
 import reactor.tcp.data.Buffers;
 
 /**
- * @author Gary Russell
+ * A {@code Codec} is used to decode raw data into a type, and to encode bytes into buffers with framing.
  *
+ * @author Gary Russell
+ * @author Andy Wilkinson
+ *
+ * @param T the type that will be decoded
  */
-public interface Codec {
+public interface Codec<T> {
 
 	/**
 	 * Decode the data in buffers into an assembled message, either from
 	 * partial data in one buffer or by reassembling multiple buffers.
-	 * @param buffers The buffers.
-	 * @param callback a callback to invoke for each assembly
+	 *
+	 * @param buffers  the buffers
+	 * @param consumer the consumer to invoke with each assembly
 	 */
-	void decode(Buffers buffers, DecoderCallback callback);
+	void decode(Buffers buffers, Consumer<T> consumer);
 
 	/**
 	 * Add framing to data for transmittal.
-	 * @return a collection of ByteBuffers containing the data with framing.
+	 *
+	 * @return {@link Buffers} containing the data with framing.
 	 */
 	Buffers encode(ByteBuffer buffer);
-
-
-	interface DecoderCallback {
-
-		void complete(DecoderResult result);
-	}
 }

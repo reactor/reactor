@@ -16,23 +16,23 @@
 
 package reactor.tcp;
 
-import reactor.tcp.codec.DecoderResult;
-
-
 /**
  * Classes that implement this interface may register with a
  * connection factory to receive messages retrieved from a
  * {@link TcpConnection}
+ *
  * @author Gary Russell
+ * @author Andy Wilkinson
  *
  */
-public interface TcpListener {
+public interface TcpListener<T> {
 
 	/**
-	 * Called by a TCPConnection when a new message arrives.
-	 * @param message The message.
-	 * @return true if the message was intercepted
+	 * Called when inbound data has been decoded into an instance of {@code T}.
+	 *
+	 * @param T          the decoded data
+	 * @param connection the TCP connection that the data was received on
 	 */
-	void onDecode(DecoderResult result, TcpConnection connection);
+	void onDecode(T decoded, TcpConnection<T> connection);
 
 }

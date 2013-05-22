@@ -18,13 +18,24 @@ package reactor.tcp;
 /**
  * Listener that is informed of new (and closed) connections. Useful
  * when a server wants to emit unsolicited messages.
+ *
  * @author Gary Russell
  *
  */
-public interface ConnectionAwareTcpListener extends TcpListener {
+public interface ConnectionAwareTcpListener<T> extends TcpListener<T> {
 
-	void newConnection(TcpConnection connection);
+	/**
+	 * Notification that a new connection has been created
+	 *
+	 * @param connection the new connection
+	 */
+	void newConnection(TcpConnection<T> connection);
 
-	void connectionClosed(TcpConnection connection);
+	/**
+	 * Notification that a connection has been closed
+	 *
+	 * @param connection the closed connection
+	 */
+	void connectionClosed(TcpConnection<T> connection);
 
 }

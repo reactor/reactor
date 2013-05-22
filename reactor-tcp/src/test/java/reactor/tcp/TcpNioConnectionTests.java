@@ -29,6 +29,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,10 +41,9 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import reactor.tcp.codec.Assembly;
+import reactor.fn.Consumer;
 import reactor.tcp.codec.Codec;
-import reactor.tcp.codec.DecoderResult;
-import reactor.tcp.codec.SimpleAssembly;
+import reactor.tcp.codec.LineFeedCodec;
 import reactor.tcp.data.Buffers;
 
 
@@ -53,6 +53,7 @@ import reactor.tcp.data.Buffers;
  */
 public class TcpNioConnectionTests {
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRead() throws Exception {
 		System.out.println(System.getProperty("java.class.path"));
@@ -71,15 +72,15 @@ public class TcpNioConnectionTests {
 				return null;
 			}
 		}).when(socketChannel).read(any(ByteBuffer.class));
-		ConnectionFactorySupport connectionFactory = mock(ConnectionFactorySupport.class);
-		TcpNioConnection connection = new TcpNioConnection(socketChannel, false, false, connectionFactory);
-		final AtomicReference<DecoderResult> assembly = new AtomicReference<DecoderResult>();
+		ConnectionFactorySupport<String> connectionFactory = mock(ConnectionFactorySupport.class);
+		TcpNioConnection<String> connection = new TcpNioConnection<String>(socketChannel, false, false, connectionFactory, new LineFeedCodec());
+		final AtomicReference<String> resultHolder = new AtomicReference<String>();
 		final CountDownLatch latch = new CountDownLatch(1);
-		connection.registerListener(new TcpListener() {
+		connection.registerListener(new TcpListener<String>() {
 
 			@Override
-			public void onDecode(DecoderResult arg, TcpConnection connection) {
-				assembly.set(arg);
+			public void onDecode(String decoded, TcpConnection<String> connection) {
+				resultHolder.set(decoded);
 				latch.countDown();
 			}
 		});
@@ -91,10 +92,11 @@ public class TcpNioConnectionTests {
 		connection.readPacket();
 		assertEquals(3, calls.get());
 		assertTrue(latch.await(10, TimeUnit.SECONDS));
-		assertNotNull(assembly.get());
-		assertEquals("foofoobar", new String(((Assembly) assembly.get()).asBytes()));
+		assertNotNull(resultHolder.get());
+		assertEquals("foofoobar", resultHolder.get());
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testWrite() throws Exception {
 		SocketChannel socketChannel = mock(SocketChannel.class);
@@ -112,10 +114,10 @@ public class TcpNioConnectionTests {
 				return null;
 			}
 		}).when(socketChannel).write(any(ByteBuffer.class));
-		ConnectionFactorySupport connectionFactory = mock(ConnectionFactorySupport.class);
+		ConnectionFactorySupport<String> connectionFactory = mock(ConnectionFactorySupport.class);
 		Selector selector = mock(Selector.class);
 		when(connectionFactory.getIoSelector()).thenReturn(selector);
-		TcpNioConnection connection = new TcpNioConnection(socketChannel, false, false, connectionFactory);
+		TcpNioConnection<String> connection = new TcpNioConnection<String>(socketChannel, false, false, connectionFactory, new LineFeedCodec());
 		connection.send("foo".getBytes());
 		connection.doWrite(connection.getBuffersToWrite());
 		byte[] out = new byte[4];
@@ -124,6 +126,7 @@ public class TcpNioConnectionTests {
 		assertEquals("foo\n", new String(out));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testPullCodec() throws Exception {
 		Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -143,22 +146,11 @@ public class TcpNioConnectionTests {
 				return null;
 			}
 		}).when(socketChannel).read(any(ByteBuffer.class));
-		ConnectionFactorySupport connectionFactory = mock(ConnectionFactorySupport.class);
-		TcpNioConnection connection = new TcpNioConnection(socketChannel, false, false, connectionFactory);
-		final AtomicReference<DecoderResult> assembly = new AtomicReference<DecoderResult>();
-		final CountDownLatch latch = new CountDownLatch(1);
-		connection.registerListener(new TcpListener() {
+		ConnectionFactorySupport<String> connectionFactory = mock(ConnectionFactorySupport.class);
+		TcpNioConnection<String> connection = new TcpNioConnection<String>(socketChannel, false, false, connectionFactory, new Codec<String>() {
 
 			@Override
-			public void onDecode(DecoderResult arg, TcpConnection connection) {
-				assembly.set(arg);
-				latch.countDown();
-			}
-		});
-		connection.setCodec(new Codec() {
-
-			@Override
-			public void decode(Buffers buffers, DecoderCallback callback) {
+			public void decode(Buffers buffers, Consumer<String> callback) {
 				byte[] bytes = new byte[20];
 				InputStream inputStream = buffers.getInputStream();
 				int c;
@@ -175,12 +167,23 @@ public class TcpNioConnectionTests {
 				catch (IOException e) {
 					e.printStackTrace();
 				}
-				callback.complete(new SimpleAssembly(bytes, 0, n));
+				callback.accept(new String(Arrays.copyOf(bytes, n)));
 			}
 
 			@Override
 			public Buffers encode(ByteBuffer buffer) {
 				return null;
+			}
+		});
+
+		final AtomicReference<String> resultHolder = new AtomicReference<String>();
+		final CountDownLatch latch = new CountDownLatch(1);
+		connection.registerListener(new TcpListener<String>() {
+
+			@Override
+			public void onDecode(String decoded, TcpConnection<String> connection) {
+				resultHolder.set(decoded);
+				latch.countDown();
 			}
 		});
 		connection.readPacket();
@@ -191,7 +194,7 @@ public class TcpNioConnectionTests {
 		connection.readPacket();
 		assertEquals(3, calls.get());
 		assertTrue(latch.await(10, TimeUnit.SECONDS));
-		assertNotNull(assembly.get());
-		assertEquals("foofoobar", new String(((Assembly) assembly.get()).asBytes()));
+		assertNotNull(resultHolder.get());
+		assertEquals("foofoobar", resultHolder.get());
 	}
 }

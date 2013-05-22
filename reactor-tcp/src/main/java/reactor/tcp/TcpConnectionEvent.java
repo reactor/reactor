@@ -22,7 +22,7 @@ import reactor.fn.Event;
  * @author Gary Russell
  *
  */
-public class TcpConnectionEvent extends Event<TcpConnection> {
+public class TcpConnectionEvent extends Event<TcpConnection<?>> {
 
 	/**
 	 * Valid EventTypes - subclasses should provide similar enums for
@@ -41,7 +41,7 @@ public class TcpConnectionEvent extends Event<TcpConnection> {
 
 	private final Throwable throwable;
 
-	public TcpConnectionEvent(TcpConnection connection, EventType type,
+	public TcpConnectionEvent(TcpConnection<?> connection, EventType type,
 			String connectionFactoryName) {
 		super(connection);
 		this.type = type;
@@ -49,7 +49,7 @@ public class TcpConnectionEvent extends Event<TcpConnection> {
 		this.connectionFactoryName = connectionFactoryName;
 	}
 
-	public TcpConnectionEvent(TcpConnection connection, Throwable t,
+	public TcpConnectionEvent(TcpConnection<?> connection, Throwable t,
 			String connectionFactoryName) {
 		super(connection);
 		this.type = TcpConnectionEventType.EXCEPTION;
