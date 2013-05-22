@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.support;
 
 import reactor.fn.Event;
 

@@ -38,7 +38,7 @@ class GroovyComposableSpec extends Specification {
 
 		and: 'apply a transformation'
 		def d = c.map {
-				 'Goodbye then!'
+			'Goodbye then!'
 		}
 
 		then: 'Composition contains value'
@@ -46,9 +46,21 @@ class GroovyComposableSpec extends Specification {
 		d.get() == 'Goodbye then!'
 	}
 
+	def "Compose from Closure"() {
+		when: 'Defer a composition'
+		def c = Composable.from { sleep 500; 1 } build()
+
+		and: 'apply a transformation'
+		def d = c | { it + 1 }
+
+		then: 'Composition contains value'
+		d.await 5, TimeUnit.SECONDS
+		d.get() == 2
+	}
+
 	def "Compose from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a transformation'
 		int sum = 0
@@ -61,7 +73,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from multiple filtered values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a transformation that filters odd elements'
 		def d = (c | { Integer.parseInt it }) & { it % 2 == 0 }
@@ -73,11 +85,11 @@ class GroovyComposableSpec extends Specification {
 
 	def "Error handling with composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a transformation that generates an exception for the last value'
 		int sum = 0
-		def d = c | { Integer.parseInt it } | { if(it >= 5) throw new IllegalArgumentException() else sum += it }
+		def d = c | { Integer.parseInt it } | { if (it >= 5) throw new IllegalArgumentException() else sum += it }
 
 		then:
 		d.await 1, TimeUnit.SECONDS
@@ -87,20 +99,19 @@ class GroovyComposableSpec extends Specification {
 
 	def "Value is immediately available"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		then:
 		c.get() == '5'
 	}
 
 
-
 	def "Reduce composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a reduction'
-		def d =( c | { Integer.parseInt it } ) % { i, acc = 1 -> acc * i}
+		def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i }
 
 		then:
 		d.await 1, TimeUnit.SECONDS
@@ -110,7 +121,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "consume first and last with a composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a transformation'
 		def d = c | { Integer.parseInt it }
@@ -121,9 +132,8 @@ class GroovyComposableSpec extends Specification {
 
 		then:
 		first.await(1, TimeUnit.SECONDS) == 1
-		last.await(1, TimeUnit.SECONDS )== 5
+		last.await(1, TimeUnit.SECONDS) == 5
 	}
-
 
 
 	def "Compose events (Request/Reply)"() {
@@ -132,12 +142,12 @@ class GroovyComposableSpec extends Specification {
 		def key = $()
 
 		when: 'register a Reply Consumer'
-		r.receive(key.t1){String test->
+		r.receive(key.t1) { String test ->
 			Integer.parseInt test
 		}
 
 		and: 'compose the event'
-		def c = r.compose(key.t2, '1') % {i, acc = [] -> acc << i}
+		def c = r.compose(key.t2, '1') % { i, acc = [] -> acc << i }
 
 		then:
 		c.await(1, TimeUnit.SECONDS)
@@ -151,22 +161,22 @@ class GroovyComposableSpec extends Specification {
 		def key = $()
 
 		when: 'register a Reply Consumer'
-		r.receive(key.t1){String test->
+		r.receive(key.t1) { String test ->
 			Integer.parseInt test
 		}
-		r.receive(key.t1){String test->
-			(Integer.parseInt(test))*100
+		r.receive(key.t1) { String test ->
+			(Integer.parseInt(test)) * 100
 		}
 
 		and: 'prepare reduce and notify composition'
 		def c1 = Composable.lazy().using(r).build()
-		def c2 = c1.take(2).reduce{i, acc = [] -> acc <<	i }
+		def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
 		r.compose(key.t2, '1', c1)
 
 		then:
 		c2.await(5, TimeUnit.SECONDS)
-		c2.get() == [1,100]
+		c2.get() == [1, 100]
 	}
 
 	def "relay events to reactor"() {
@@ -176,12 +186,12 @@ class GroovyComposableSpec extends Specification {
 
 		when: 'we consume from this reactor and key'
 		def latch = new CountDownLatch(5)
-		r.on(key.t1){
+		r.on(key.t1) {
 			latch.countDown()
 		}
 
 		and: 'Defer a composition'
-		def c = Composable.from(['1','2','3','4','5']).build()
+		def c = Composable.from(['1', '2', '3', '4', '5']).build()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def d = (c | { Integer.parseInt it }).to(key.t2, r)
@@ -196,14 +206,14 @@ class GroovyComposableSpec extends Specification {
 	def "compose from unknown number of values"() {
 
 		when: 'Defer a composition'
-		def c = Composable.from(new TestIterable('1','2','3','4','5')).build()
+		def c = Composable.from(new TestIterable('1', '2', '3', '4', '5')).build()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def sum = 0
-		def d = c | { Integer.parseInt it } | {sum += it; sum}
+		def d = c | { Integer.parseInt it } | { sum += it; sum }
 
 		and:
-		Thread.start{
+		Thread.start {
 			sleep 500
 			c.expectedAcceptCount = 5
 		}

@@ -19,14 +19,12 @@ package reactor.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Observable;
+import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -94,7 +92,6 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @param <T> The type of the value.
 	 * @return The new {@literal Promise}.
-	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync() {
 		return new Promise<T>(SYNCHRONOUS_DISPATCHER);
@@ -106,7 +103,6 @@ public class Promise<T> extends Composable<T> {
 	 * @param reason The error to set the value of this {@literal Promise} to.
 	 * @param <T>    The type of the value.
 	 * @return The new {@literal Promise}.
-	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync(Throwable reason) {
 		return Promise.<T>sync().set(reason);
@@ -118,7 +114,6 @@ public class Promise<T> extends Composable<T> {
 	 * @param value The value of the {@literal Promise}.
 	 * @param <T>   The type of the value.
 	 * @return The new {@literal Promise}.
-	 * @see {@link reactor.core.Context#synchronousDispatcher()}
 	 */
 	public static <T> Promise<T> sync(T value) {
 		return Promise.<T>sync().set(value);
@@ -146,6 +141,17 @@ public class Promise<T> extends Composable<T> {
 	@SuppressWarnings("unchecked")
 	public static <T> Promise.Builder<T> from(T value) {
 		return new Builder<T>(Arrays.asList(value));
+	}
+
+	/**
+	 * Create a {@literal Promise} based on the given supplier.
+	 *
+	 * @param supplier The value to use.
+	 * @param <T>   The type of the function result.
+	 * @return The new {@literal Promise}.
+	 */
+	public static <T> Builder<T> from(Supplier<T>  supplier) {
+		return new Builder<T>(supplier);
 	}
 
 	/**
@@ -243,8 +249,8 @@ public class Promise<T> extends Composable<T> {
 	 * @param onError   The {@link Consumer} to invoke on failure.
 	 * @return {@literal this}
 	 */
-	public <V> Composable<V> then(Function<T, V> onSuccess, Consumer<Throwable> onError) {
-		Composable<V> c = map(onSuccess);
+	public <V> Promise<V> then(Function<T, V> onSuccess, Consumer<Throwable> onError) {
+		Promise<V> c = (Promise<V>) map(onSuccess);
 		c.when(Throwable.class, onError);
 		return c;
 	}
@@ -430,6 +436,9 @@ public class Promise<T> extends Composable<T> {
 		Builder(Iterable<T> values) {
 			super(values);
 		}
+		Builder(Supplier<T> values) {
+			super(values);
+		}
 
 		@Override
 		public Builder<T> using(Reactor reactor) {
@@ -444,25 +453,36 @@ public class Promise<T> extends Composable<T> {
 		}
 
 		public Promise<T> build() {
-			if (null == reactor) {
-				if (null == dispatcher) {
-					reactor = new Reactor();
-				} else {
-					reactor = new Reactor(dispatcher);
-				}
-			}
+			configure();
 			T value = null;
 			if (List.class.isInstance(values)) {
 				List<T> l = (List<T>) values;
 				if (!l.isEmpty()) {
 					value = ((List<T>) values).get(0);
 				}
-			} else {
+			} else if(values != null){
 				value = values.iterator().next();
 			}
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
-			} else {
+			} else if(supplier != null){
+				final Composable<T> composable = Composable.from(supplier).build();
+				Promise<T> result = new Promise<T>(reactor){
+					@Override
+					public T get() {
+						composable.get();
+						return super.get();
+					}
+
+					@Override
+					public T await(long timeout, TimeUnit unit) throws InterruptedException {
+						composable.await(timeout, unit);
+						return super.await(timeout, unit);
+					}
+				};
+				composable.consume(result);
+				return result;
+			}else{
 				return new Promise<T>(reactor).set(value);
 			}
 		}

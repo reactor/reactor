@@ -97,6 +97,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 
 	@Override
 	public BlockingQueueDispatcher destroy() {
+		taskExecutor.interrupt();
 		return this;
 	}
 

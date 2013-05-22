@@ -16,7 +16,9 @@
 
 package reactor.groovy
 
+import reactor.core.Composable
 import reactor.core.Promise
+import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -33,6 +35,15 @@ class GroovyPromisesSpec extends Specification {
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"
+	}
+
+
+	def "Promise from Closure"() {
+		when: "a deferred Promise"
+		def p = Promise.from{"Hello World!"}.build()
+
+		then: 'Promise contains value'
+		p.await() == "Hello World!"
 	}
 
 	def "Promise notifies of Failure"() {
@@ -81,7 +92,7 @@ class GroovyPromisesSpec extends Specification {
 		def p2 = Promise.sync()
 
 		when: "p1 is consumed by p2"
-		p1 / p2 //p1.consume p2
+		p1 << p2 //p1.consume p2
 
 		and: "setting a value"
 		p1 << 'Hello World!'
