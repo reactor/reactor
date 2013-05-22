@@ -7,7 +7,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import reactor.support.Assert;
+import reactor.util.Assert;
 
 public class SerializationUtils {
 

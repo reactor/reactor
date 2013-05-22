@@ -16,6 +16,10 @@
 
 package reactor.tcp;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
@@ -29,16 +33,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import reactor.fn.Supplier;
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
-
-
-
 /**
  * A client connection factory that creates {@link TcpNioConnection}s.
- * @author Gary Russell
  *
+ * @author Gary Russell
  */
 public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFactory<T> implements Runnable {
 
@@ -52,6 +50,7 @@ public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFa
 
 	/**
 	 * Creates a TcpNioClientConnectionFactory for connections to the host and port.
+	 *
 	 * @param host the host
 	 * @param port the port
 	 */
@@ -91,8 +90,8 @@ public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFa
 	}
 
 	/**
-	 * When set to true, connections created by this factory attempt
-	 * to use direct buffers where possible.
+	 * When set to true, connections created by this factory attempt to use direct buffers where possible.
+	 *
 	 * @param usingDirectBuffers
 	 * @see ByteBuffer
 	 */
@@ -136,8 +135,7 @@ public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFa
 				registerNewChannelsIfAny(selector);
 				doSelect(selector);
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.error("Exception in read selector thread", e);
 			this.setActive(false);
 		}
@@ -151,8 +149,7 @@ public class TcpNioClientConnectionFactory<T> extends AbstractClientConnectionFa
 		while ((newChannel = newChannels.poll()) != null) {
 			try {
 				newChannel.register(selector, SelectionKey.OP_READ, channelMap.get(newChannel));
-			}
-			catch (ClosedChannelException cce) {
+			} catch (ClosedChannelException cce) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Channel closed before registering with selector for reading");
 				}

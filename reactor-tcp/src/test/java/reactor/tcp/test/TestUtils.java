@@ -22,7 +22,7 @@ import java.util.Random;
 
 import javax.net.ServerSocketFactory;
 
-import reactor.support.Assert;
+import reactor.util.Assert;
 import reactor.tcp.AbstractServerConnectionFactory;
 import reactor.tcp.ConnectionFactorySupport;
 import reactor.tcp.test.TimeoutUtils.TimeoutCallback;

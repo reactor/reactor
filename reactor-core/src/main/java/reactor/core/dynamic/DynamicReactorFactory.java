@@ -16,17 +16,6 @@
 
 package reactor.core.dynamic;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.core.Reactor;
@@ -37,18 +26,19 @@ import reactor.core.dynamic.reflect.MethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
-import reactor.fn.Consumer;
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Registration;
-import reactor.fn.Selector;
+import reactor.fn.*;
 import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.support.Assert;
+import reactor.util.Assert;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.*;
+import java.util.concurrent.Callable;
 
 /**
  * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based on the given interface, that
@@ -61,11 +51,11 @@ import reactor.support.Assert;
  */
 public class DynamicReactorFactory<T extends DynamicReactor> {
 
-	private final Class<T> type;
+	private final Class<T>                            type;
 	private final List<MethodSelectorResolver>        selectorResolvers;
 	private final List<MethodNotificationKeyResolver> notificationKeyResolvers;
-	private final Map<Method, DynamicMethod>          dynamicMethods           = new HashMap<Method, DynamicMethod>();
-	private volatile ConsumerInvoker                     consumerInvoker          = new ConverterAwareConsumerInvoker();
+	private final    Map<Method, DynamicMethod> dynamicMethods  = new HashMap<Method, DynamicMethod>();
+	private volatile ConsumerInvoker            consumerInvoker = new ConverterAwareConsumerInvoker();
 	private volatile Converter converter;
 
 	public DynamicReactorFactory(Class<T> type, List<MethodSelectorResolver> selectorResolvers, List<MethodNotificationKeyResolver> notificationKeyResolvers) {
@@ -137,7 +127,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	 *
 	 * @return A proxy based on {@link #type}.
 	 */
-	@SuppressWarnings({"unchecked"})
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public T create(Reactor reactor) {
 		return (T) Proxy.newProxyInstance(
 				DynamicReactorFactory.class.getClassLoader(),
@@ -217,7 +207,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				} else if (Runnable.class.isInstance(arg)) {
 					reg = reactor.on(sel, Fn.<Event<Object>>compose((Runnable) arg));
 				} else if (Callable.class.isInstance(arg)) {
-					reg = reactor.receive(sel, Fn.<Event<Object>>compose((Callable) arg));
+					reg = reactor.receive(sel, Fn.<Object>compose((Callable) arg));
 				} else if (null == converter || !converter.canConvert(arg.getClass(), Consumer.class)) {
 					throw new IllegalArgumentException(
 							String.format("No Converter available to convert '%s' to Consumer", arg.getClass().getName())

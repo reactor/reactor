@@ -17,7 +17,7 @@
 package reactor.fn;
 
 import com.eaio.uuid.UUID;
-import reactor.support.Assert;
+import reactor.util.Assert;
 
 import java.io.Serializable;
 import java.util.Collections;

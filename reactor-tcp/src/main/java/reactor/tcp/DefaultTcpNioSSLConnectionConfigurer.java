@@ -15,22 +15,20 @@
  */
 package reactor.tcp;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.security.GeneralSecurityException;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-
-import reactor.fn.Supplier;
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
-
 /**
- * Implementation of {@link TcpNioConnectionConfigurer} for SSL
- * NIO connections.
- * @author Gary Russell
+ * Implementation of {@link TcpNioConnectionConfigurer} for SSL NIO connections.
  *
+ * @author Gary Russell
  */
 public class DefaultTcpNioSSLConnectionConfigurer implements TcpNioConnectionConfigurer {
 

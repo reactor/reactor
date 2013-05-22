@@ -16,7 +16,15 @@
 
 package reactor.tcp;
 
-import static reactor.Fn.$;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.Fn;
+import reactor.core.Reactor;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -26,35 +34,16 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.Fn;
-import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Supplier;
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
+import static reactor.Fn.$;
 
 /**
  * Base class for all connection factories.
  *
  * @author Gary Russell
- *
  */
 public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
@@ -98,7 +87,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	private volatile boolean soTcpNoDelay;
 
-	private volatile int soLinger  = -1; // don't set by default
+	private volatile int soLinger = -1; // don't set by default
 
 	private volatile boolean soKeepAlive;
 
@@ -264,8 +253,8 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	}
 
 	/**
-	 * Registers a TcpListener to receive messages after
-	 * the payload has been converted from the input data.
+	 * Registers a TcpListener to receive messages after the payload has been converted from the input data.
+	 *
 	 * @param listener the TcpListener.
 	 */
 	public void registerListener(TcpListener<T> listener) {
@@ -290,6 +279,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	/**
 	 * If true, sockets created by this factory will be used once.
+	 *
 	 * @param singleUse
 	 */
 	public void setSingleUse(boolean singleUse) {
@@ -298,8 +288,8 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 
 	/**
-	 * If true, DNS reverse lookup is done on the remote ip address.
-	 * Default true.
+	 * If true, DNS reverse lookup is done on the remote ip address. Default true.
+	 *
 	 * @param lookupHost the lookupHost to set
 	 */
 	public void setLookupHost(boolean lookupHost) {
@@ -314,10 +304,9 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	}
 
 	/**
-	 * How often we clean up closed NIO connections if soTimeout is 0.
-	 * Ignored when {@code soTimeout > 0} because the clean up
-	 * process is run as part of the timeout handling.
-	 * Default 2000 milliseconds.
+	 * How often we clean up closed NIO connections if soTimeout is 0. Ignored when {@code soTimeout > 0} because the clean
+	 * up process is run as part of the timeout handling. Default 2000 milliseconds.
+	 *
 	 * @param nioHarvestInterval The interval in milliseconds.
 	 */
 	public void setNioHarvestInterval(int nioHarvestInterval) {
@@ -380,6 +369,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	/**
 	 * Sets socket attributes on the socket.
+	 *
 	 * @param socket The socket.
 	 * @throws SocketException
 	 */
@@ -468,7 +458,6 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	}
 
 
-
 	@Override
 	public ConnectionFactory destroy() {
 		return this;
@@ -500,19 +489,17 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 						 * send was within the current timeout.
 						 */
 						if (!connection.isServer() &&
-							now - connection.getLastSend() < this.soTimeout &&
-							now - connection.getLastRead() < this.soTimeout * 2)
-						{
+								now - connection.getLastSend() < this.soTimeout &&
+								now - connection.getLastRead() < this.soTimeout * 2) {
 							if (logger.isDebugEnabled()) {
 								logger.debug("Skipping a connection timeout because we have a recent send "
-										+ connection.getConnectionId());
+																 + connection.getConnectionId());
 							}
-						}
-						else {
+						} else {
 							if (logger.isWarnEnabled()) {
 								logger.warn("Timing out TcpNioConnection " +
-											this.port + " : " +
-										    connection.getConnectionId());
+																this.port + " : " +
+																connection.getConnectionId());
 							}
 							connection.publishConnectionExceptionEvent(new SocketTimeoutException("Timing out connection"));
 							connection.timeout();
@@ -535,8 +522,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 			}
 			this.setWriteOps();
 			this.handleSelections(selector);
-		}
-		catch (CancelledKeyException cke) {
+		} catch (CancelledKeyException cke) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("CancelledKeyException during Selector.select()");
 			}
@@ -559,8 +545,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 		try {
 			if (!key.isValid()) {
 				logger.debug("Selection key no longer valid");
-			}
-			else {
+			} else {
 				if (key.isReadable()) {
 					key.interestOps(key.interestOps() - SelectionKey.OP_READ);
 					TcpNioConnection<T> connection;
@@ -576,19 +561,16 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 				if (key.isAcceptable()) {
 					try {
 						handleAcceptSelection(now);
-					}
-					catch (Exception e) {
+					} catch (Exception e) {
 						logger.error("Exception accepting new connection", e);
 					}
 				}
 			}
-		}
-		catch (CancelledKeyException e) {
+		} catch (CancelledKeyException e) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Selection key " + key + " cancelled");
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.error("Exception on selection key " + key, e);
 		}
 	}
@@ -626,6 +608,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	/**
 	 * Cleans up this.connections by removing any closed connections.
+	 *
 	 * @return a list of open connection ids.
 	 */
 	private List<String> removeClosedConnectionsAndReturnOpenConnectionIds() {
@@ -636,8 +619,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 				TcpConnection<T> connection = iterator.next();
 				if (!connection.isOpen()) {
 					iterator.remove();
-				}
-				else {
+				} else {
 					openConnectionIds.add(connection.getConnectionId());
 				}
 			}
@@ -682,8 +664,9 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	}
 
 	/**
-	 * Returns a list of (currently) open {@link TcpConnection} connection ids; allows,
-	 * for example, broadcast operations to all open connections.
+	 * Returns a list of (currently) open {@link TcpConnection} connection ids; allows, for example, broadcast operations
+	 * to all open connections.
+	 *
 	 * @return the list of connection ids.
 	 */
 	public List<String> getOpenConnectionIds() {
@@ -692,12 +675,13 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	/**
 	 * Close a connection with the specified connection id.
+	 *
 	 * @param connectionId the connection id.
 	 * @return true if the connection was closed.
 	 */
 	public boolean closeConnection(String connectionId) {
 		Assert.notNull(connectionId, "'connectionId' to close must not be null");
-		synchronized(this.connections) {
+		synchronized (this.connections) {
 			boolean closed = false;
 			for (TcpConnectionSupport<T> connection : connections) {
 				if (connectionId.equals(connection.getConnectionId())) {
@@ -705,8 +689,7 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 						connection.close();
 						closed = true;
 						break;
-					}
-					catch (Exception e) {
+					} catch (Exception e) {
 						if (logger.isDebugEnabled()) {
 							logger.debug("Failed to close connection " + connectionId, e);
 						}

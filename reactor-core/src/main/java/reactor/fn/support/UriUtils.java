@@ -15,7 +15,7 @@
  */
 package reactor.fn.support;
 
-import reactor.support.Assert;
+import reactor.util.Assert;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;

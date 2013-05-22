@@ -16,18 +16,17 @@
 
 package reactor.tcp;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
-import reactor.fn.Supplier;
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
-
 /**
- * Base class for all server connection factories. Server connection factories
- * listen on a port for incoming connections and create new TcpConnection objects
- * for each new connection.
+ * Base class for all server connection factories. Server connection factories listen on a port for incoming connections
+ * and create new TcpConnection objects for each new connection.
  *
  * @author Gary Russell
  */
@@ -47,6 +46,7 @@ public abstract class AbstractServerConnectionFactory<T>
 
 	/**
 	 * The port on which the factory will listen.
+	 *
 	 * @param port
 	 */
 	public AbstractServerConnectionFactory(int port, Supplier<Codec<T>> codecSupplier) {
@@ -76,7 +76,6 @@ public abstract class AbstractServerConnectionFactory<T>
 
 
 	/**
-	 *
 	 * @return true if the server is listening on the port.
 	 */
 	public boolean isListening() {
@@ -88,10 +87,11 @@ public abstract class AbstractServerConnectionFactory<T>
 	}
 
 	/**
-	 * Transfers attributes such as (de)serializer, singleUse etc to a new connection.
-	 * For single use sockets, enforces a socket timeout (default 10 seconds).
+	 * Transfers attributes such as (de)serializer, singleUse etc to a new connection. For single use sockets, enforces a
+	 * socket timeout (default 10 seconds).
+	 *
 	 * @param connection The new connection.
-	 * @param socket The new socket.
+	 * @param socket     The new socket.
 	 */
 	protected void initializeConnection(TcpConnectionSupport<T> connection, Socket socket) {
 		TcpListener<T> listener = this.getListener();
@@ -108,8 +108,7 @@ public abstract class AbstractServerConnectionFactory<T>
 		if (this.isSingleUse() && this.getSoTimeout() < 0) {
 			try {
 				socket.setSoTimeout(DEFAULT_REPLY_TIMEOUT);
-			}
-			catch (SocketException e) {
+			} catch (SocketException e) {
 				logger.error("Error setting default reply timeout", e);
 			}
 		}
@@ -122,7 +121,6 @@ public abstract class AbstractServerConnectionFactory<T>
 	}
 
 	/**
-	 *
 	 * @return the localAddress
 	 */
 	public String getLocalAddress() {
@@ -130,8 +128,9 @@ public abstract class AbstractServerConnectionFactory<T>
 	}
 
 	/**
-	 * Used on multi-homed systems to enforce the server to listen
-	 * on a specfic network address instead of all network adapters.
+	 * Used on multi-homed systems to enforce the server to listen on a specfic network address instead of all network
+	 * adapters.
+	 *
 	 * @param localAddress the ip address of the required adapter.
 	 */
 	public void setLocalAddress(String localAddress) {
@@ -141,6 +140,7 @@ public abstract class AbstractServerConnectionFactory<T>
 
 	/**
 	 * The number of sockets in the server connection backlog.
+	 *
 	 * @return The backlog.
 	 */
 	public int getBacklog() {
@@ -148,8 +148,8 @@ public abstract class AbstractServerConnectionFactory<T>
 	}
 
 	/**
-	 * The number of sockets in the connection backlog. Default 5;
-	 * increase if you expect high connection rates.
+	 * The number of sockets in the connection backlog. Default 5; increase if you expect high connection rates.
+	 *
 	 * @param backlog
 	 */
 	public void setBacklog(int backlog) {

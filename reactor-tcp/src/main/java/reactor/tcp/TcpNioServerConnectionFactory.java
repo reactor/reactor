@@ -16,29 +16,24 @@
 
 package reactor.tcp;
 
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import reactor.fn.Supplier;
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
-
 /**
-/**
- * Implements a server connection factory that produces {@link TcpNioConnection}s using
- * a {@link ServerSocketChannel}. Must have a {@link TcpListener} registered.
- * @author Gary Russell
+ * Implements a server connection factory that produces {@link TcpNioConnection}s using a {@link ServerSocketChannel}.
+ * Must have a {@link TcpListener} registered.
  *
+ * @author Gary Russell
  */
 public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFactory<T> {
 
@@ -52,6 +47,7 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 
 	/**
 	 * Listens for incoming connections on the port.
+	 *
 	 * @param port The port.
 	 */
 	public TcpNioServerConnectionFactory(int port, Supplier<Codec<T>> codecSupplier) {
@@ -59,11 +55,10 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 	}
 
 	/**
-	 * If no listener registers, exits.
-	 * Accepts incoming connections and creates TcpConnections for each new connection.
-	 * Invokes {{@link #initializeConnection(TcpConnectionSupport, Socket)} and executes the
-	 * connection {@link TcpConnection#run()} using the task executor.
-	 * I/O errors on the server socket/channel are logged and the factory is stopped.
+	 * If no listener registers, exits. Accepts incoming connections and creates TcpConnections for each new connection.
+	 * Invokes {{@link #initializeConnection(TcpConnectionSupport, Socket)} and executes the connection {@link
+	 * TcpConnection#run()} using the task executor. I/O errors on the server socket/channel are logged and the factory is
+	 * stopped.
 	 */
 	@Override
 	public void run() {
@@ -81,11 +76,11 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 			this.serverChannel.configureBlocking(false);
 			if (this.getLocalAddress() == null) {
 				this.serverChannel.socket().bind(new InetSocketAddress(port),
-					Math.abs(this.getBacklog()));
+																				 Math.abs(this.getBacklog()));
 			} else {
 				InetAddress whichNic = InetAddress.getByName(this.getLocalAddress());
 				this.serverChannel.socket().bind(new InetSocketAddress(whichNic, port),
-						Math.abs(this.getBacklog()));
+																				 Math.abs(this.getBacklog()));
 			}
 			Selector selector = this.getIoSelector();
 			Assert.notNull(selector, "Factory not initialized");
@@ -98,21 +93,18 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 			if (this.isActive()) {
 				logger.error("Error on ServerSocketChannel", e);
 			}
-		}
-		finally {
+		} finally {
 			this.setListening(false);
 			this.setActive(false);
 		}
 	}
 
 	/**
-	 * Listens for incoming connections and for notifications that a connected
-	 * socket is ready for reading.
-	 * Accepts incoming connections, registers the new socket with the
-	 * selector for reading.
-	 * When a socket is ready for reading, unregisters the read interest and
-	 * schedules a call to doRead which reads all available data. When the read
-	 * is complete, the socket is again registered for read interest.
+	 * Listens for incoming connections and for notifications that a connected socket is ready for reading. Accepts
+	 * incoming connections, registers the new socket with the selector for reading. When a socket is ready for reading,
+	 * unregisters the read interest and schedules a call to doRead which reads all available data. When the read is
+	 * complete, the socket is again registered for read interest.
+	 *
 	 * @param server
 	 * @param selector
 	 * @throws IOException
@@ -133,11 +125,10 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 		if (this.isShuttingDown()) {
 			if (logger.isInfoEnabled()) {
 				logger.info("New connection from " + channel.socket().getInetAddress().getHostAddress()
-						+ " rejected; the server is in the process of shutting down.");
+												+ " rejected; the server is in the process of shutting down.");
 			}
 			channel.close();
-		}
-		else {
+		} else {
 			try {
 				channel.configureBlocking(false);
 				Socket socket = channel.socket();
@@ -152,14 +143,12 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 				this.addConnection(connection);
 				try {
 					channel.register(this.getIoSelector(), SelectionKey.OP_READ, connection);
-				}
-				catch (ClosedChannelException e) {
+				} catch (ClosedChannelException e) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Chanel closed before we could register it for OP_READ");
 					}
 				}
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				logger.error("Exception accepting new connection", e);
 				channel.close();
 			}
@@ -169,7 +158,7 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 	private TcpNioConnection<T> createTcpNioConnection(SocketChannel socketChannel) {
 		try {
 			TcpNioConnection<T> connection = this.tcpNioConnectionSupport.createNewConnection(socketChannel, true,
-							this.isLookupHost(), this, getCodecSupplier());
+																																												this.isLookupHost(), this, getCodecSupplier());
 			connection.setUsingDirectBuffers(this.usingDirectBuffers);
 			this.initializeConnection(connection, socketChannel.socket());
 			return connection;
@@ -189,7 +178,8 @@ public class TcpNioServerConnectionFactory<T> extends AbstractServerConnectionFa
 		}
 		try {
 			this.serverChannel.close();
-		} catch (IOException e) {}
+		} catch (IOException e) {
+		}
 		this.serverChannel = null;
 	}
 

@@ -15,38 +15,32 @@
  */
 package reactor.tcp;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import reactor.tcp.codec.Codec;
+import reactor.tcp.data.Buffers;
+import reactor.util.Assert;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
-
-import reactor.support.Assert;
-import reactor.tcp.codec.Codec;
-import reactor.tcp.data.Buffers;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Implementation of {@link TcpConnection} supporting SSL/TLS over NIO.
- * Unlike TcpNetConnection, which uses Sockets, the JVM does not directly support SSL for
- * SocketChannels, used by NIO. Instead, the SSLEngine is provided whereby the SSL
- * encryption is performed by passing in a plain text buffer, and receiving an
- * encrypted buffer to transmit over the network. Similarly, encrypted data read from
- * the network is decrypted.<p>
- * However, before this can be done, certain handshaking operations are required, involving
- * the creation of data buffers which must be exchanged by the peers. A number of such
- * transfers are required; once the handshake is finished, it is relatively simple to
- * encrypt/decrypt the data.<p>
- * Also, it may be deemed necessary to re-perform handshaking.<p>
- * This class supports the management of handshaking as necessary, both from the
- * initiating and receiving peers.
- * @author Gary Russell
+ * Implementation of {@link TcpConnection} supporting SSL/TLS over NIO. Unlike TcpNetConnection, which uses Sockets, the
+ * JVM does not directly support SSL for SocketChannels, used by NIO. Instead, the SSLEngine is provided whereby the SSL
+ * encryption is performed by passing in a plain text buffer, and receiving an encrypted buffer to transmit over the
+ * network. Similarly, encrypted data read from the network is decrypted.<p> However, before this can be done, certain
+ * handshaking operations are required, involving the creation of data buffers which must be exchanged by the peers. A
+ * number of such transfers are required; once the handshake is finished, it is relatively simple to encrypt/decrypt the
+ * data.<p> Also, it may be deemed necessary to re-perform handshaking.<p> This class supports the management of
+ * handshaking as necessary, both from the initiating and receiving peers.
  *
+ * @author Gary Russell
  */
 public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 
@@ -71,18 +65,15 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 	private volatile boolean needHandshake = true;
 
 	public TcpNioSSLConnection(SocketChannel socketChannel, boolean server, boolean lookupHost, ConnectionFactorySupport<T> connectionFactory,
-			SSLEngine sslEngine, Codec<T> codec) throws Exception {
+														 SSLEngine sslEngine, Codec<T> codec) throws Exception {
 		super(socketChannel, server, lookupHost, connectionFactory, codec);
 		this.sslEngine = sslEngine;
 	}
 
 	/**
-	 * Overrides super class method to perform decryption and/or participate
-	 * in handshaking. Decrypted data is sent to the super class to be
-	 * assembled into a Message. Data received from the network may
-	 * constitute multiple SSL packets, and may end with a partial
-	 * packet. In that case, the buffer is compacted, ready to receive
-	 * the remainder of the packet.
+	 * Overrides super class method to perform decryption and/or participate in handshaking. Decrypted data is sent to the
+	 * super class to be assembled into a Message. Data received from the network may constitute multiple SSL packets, and
+	 * may end with a partial packet. In that case, the buffer is compacted, ready to receive the remainder of the packet.
 	 */
 	@Override
 	protected void fireNewDataEvent(final ByteBuffer networkBuffer) throws IOException {
@@ -100,8 +91,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 		}
 		if (result.getStatus() == Status.BUFFER_UNDERFLOW) {
 			networkBuffer.compact();
-		}
-		else {
+		} else {
 			networkBuffer.clear();
 		}
 		if (logger.isDebugEnabled()) {
@@ -110,11 +100,10 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 	}
 
 	/**
-	 * Performs the actual decryption of a received packet - which may be real
-	 * data, or handshaking data. Appropriate action is taken with the data.
-	 * If this side did not initiate the handshake, any handshaking data sent out
-	 * is handled by the thread running in the {@link SSLChannelOutputStream#doWrite(ByteBuffer)}
-	 * method, which is awoken here, as a result of reaching that stage in the handshaking.
+	 * Performs the actual decryption of a received packet - which may be real data, or handshaking data. Appropriate
+	 * action is taken with the data. If this side did not initiate the handshake, any handshaking data sent out is handled
+	 * by the thread running in the {@link SSLChannelOutputStream#doWrite(ByteBuffer)} method, which is awoken here, as a
+	 * result of reaching that stage in the handshaking.
 	 */
 	@SuppressWarnings("fallthrough")
 	private SSLEngineResult decode(ByteBuffer networkBuffer) throws IOException {
@@ -129,51 +118,50 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 		}
 
 		switch (handshakeStatus) {
-		case NEED_TASK:
-			runTasks();
-			break;
-		case NEED_UNWRAP:
-		case FINISHED:
-		case NOT_HANDSHAKING:
-			this.decoded.clear();
-			result = this.sslEngine.unwrap(networkBuffer, this.decoded);
-			if (logger.isDebugEnabled()) {
-				logger.debug("After unwrap:" + resultToString(result));
-			}
-			Status status = result.getStatus();
-			if (status == Status.BUFFER_OVERFLOW) {
-				this.decoded = this.allocateEncryptionBuffer(this.sslEngine.getSession().getApplicationBufferSize());
-			}
-			if (result.bytesProduced() > 0) {
-				this.decoded.flip();
-				byte[] buf = new byte[this.decoded.remaining()];
-				ByteBuffer copy = ByteBuffer.wrap(buf);
-				this.decoded.get(buf);
-				super.fireNewDataEvent(copy);
-			}
-			break;
-		case NEED_WRAP:
-			this.encoded.clear();
-			result = this.sslEngine.wrap(networkBuffer, this.encoded);
-			if (logger.isDebugEnabled()) {
-				logger.debug("After wrap:" + resultToString(result));
-			}
-			if (result.getStatus() == Status.BUFFER_OVERFLOW) {
-				this.encoded = this.allocateEncryptionBuffer(this.sslEngine.getSession().getPacketBufferSize());
-			}
-			else {
-				this.writeEncodedIfAny();
-			}
-			break;
-		default:
+			case NEED_TASK:
+				runTasks();
+				break;
+			case NEED_UNWRAP:
+			case FINISHED:
+			case NOT_HANDSHAKING:
+				this.decoded.clear();
+				result = this.sslEngine.unwrap(networkBuffer, this.decoded);
+				if (logger.isDebugEnabled()) {
+					logger.debug("After unwrap:" + resultToString(result));
+				}
+				Status status = result.getStatus();
+				if (status == Status.BUFFER_OVERFLOW) {
+					this.decoded = this.allocateEncryptionBuffer(this.sslEngine.getSession().getApplicationBufferSize());
+				}
+				if (result.bytesProduced() > 0) {
+					this.decoded.flip();
+					byte[] buf = new byte[this.decoded.remaining()];
+					ByteBuffer copy = ByteBuffer.wrap(buf);
+					this.decoded.get(buf);
+					super.fireNewDataEvent(copy);
+				}
+				break;
+			case NEED_WRAP:
+				this.encoded.clear();
+				result = this.sslEngine.wrap(networkBuffer, this.encoded);
+				if (logger.isDebugEnabled()) {
+					logger.debug("After wrap:" + resultToString(result));
+				}
+				if (result.getStatus() == Status.BUFFER_OVERFLOW) {
+					this.encoded = this.allocateEncryptionBuffer(this.sslEngine.getSession().getPacketBufferSize());
+				} else {
+					this.writeEncodedIfAny();
+				}
+				break;
+			default:
 		}
 		switch (result.getHandshakeStatus()) {
-		case FINISHED:
-		case NOT_HANDSHAKING:
-		case NEED_UNWRAP:
-			this.needMoreNetworkData = result.getStatus() == Status.BUFFER_UNDERFLOW || networkBuffer.remaining() == 0;
-			break;
-		default:
+			case FINISHED:
+			case NOT_HANDSHAKING:
+			case NEED_UNWRAP:
+				this.needMoreNetworkData = result.getStatus() == Status.BUFFER_UNDERFLOW || networkBuffer.remaining() == 0;
+				break;
+			default:
 		}
 		if (result.getHandshakeStatus() == HandshakeStatus.FINISHED) {
 			this.needHandshake = false;
@@ -185,8 +173,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 	}
 
 	/**
-	 * Part of the SSLEngine handshaking protocol required at
-	 * various stages. Tasks are run on the current thread.
+	 * Part of the SSLEngine handshaking protocol required at various stages. Tasks are run on the current thread.
 	 */
 	private void runTasks() {
 		Runnable task;
@@ -245,8 +232,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 						logger.debug("Still blocked");
 					}
 					break;
-				}
-				else {
+				} else {
 					if (this.sslEngine.getHandshakeStatus() != HandshakeStatus.FINISHED) {
 						if (logger.isDebugEnabled()) {
 							logger.debug("Still handshaking");
@@ -259,13 +245,11 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 				doWrite(ByteBuffer.wrap(new byte[0]));
 				workToDo = false;
 				pendingSend = true;
-			}
-			else {
+			} else {
 				Buffers buffers = plainTextBuffers.poll();
 				if (buffers == null) {
 					workToDo = false;
-				}
-				else {
+				} else {
 					int consumedBuffers = 0;
 					int bytesWritten = 0;
 					for (ByteBuffer buffer : buffers) {
@@ -275,8 +259,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 							bytesWritten -= buffer.remaining();
 							workToDo = false;
 							break;
-						}
-						else {
+						} else {
 							consumedBuffers++;
 						}
 						if (this.writeBlocked) {
@@ -293,10 +276,9 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 	}
 
 	/**
-	 * Encrypts the plaintText buffer and writes it to the SocketChannel.
-	 * Will participate in SSL handshaking as necessary. For very large
-	 * data, the SSL packets will be limited by the engine's buffer sizes
-	 * and multiple writes will be necessary.
+	 * Encrypts the plaintText buffer and writes it to the SocketChannel. Will participate in SSL handshaking as necessary.
+	 * For very large data, the SSL packets will be limited by the engine's buffer sizes and multiple writes will be
+	 * necessary.
 	 */
 	protected synchronized void doWrite(ByteBuffer plainText)
 			throws IOException {
@@ -314,8 +296,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 									+ remaining);
 				}
 				remaining = plainText.remaining();
-			}
-			else {
+			} else {
 				if (doClientSideHandshake(plainText, result)) {
 					return;
 				}
@@ -329,11 +310,10 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 	}
 
 	/**
-	 * Handles SSL handshaking; when network data is needed from the peer, suspends
-	 * until that data is received.
+	 * Handles SSL handshaking; when network data is needed from the peer, suspends until that data is received.
 	 */
 	private boolean doClientSideHandshake(ByteBuffer plainText,
-			SSLEngineResult result) throws IOException {
+																				SSLEngineResult result) throws IOException {
 		HandshakeStatus status = TcpNioSSLConnection.this.sslEngine.getHandshakeStatus();
 		this.needMoreNetworkData = false;
 		while (status != HandshakeStatus.FINISHED) {
@@ -362,8 +342,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 					newStatus == HandshakeStatus.FINISHED) {
 				return newStatus;
 			}
-		}
-		else {
+		} else {
 			if (logger.isDebugEnabled()) {
 				logger.debug(status.toString());
 			}
@@ -381,8 +360,7 @@ public class TcpNioSSLConnection<T> extends TcpNioConnection<T> {
 			if (this.encoded.remaining() > 0) {
 				this.writeBlocked = true;
 				this.encodedBuffers.discardBytes(remaining - this.encoded.remaining());
-			}
-			else {
+			} else {
 				this.encoded.clear();
 				if (this.encodedBuffers.getBufferCount() > 0) {
 					this.encodedBuffers.discardBuffers(1);

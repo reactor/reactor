@@ -28,7 +28,7 @@ import reactor.fn.Supplier;
 import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.Task;
-import reactor.support.Assert;
+import reactor.util.Assert;
 
 import java.util.Set;
 

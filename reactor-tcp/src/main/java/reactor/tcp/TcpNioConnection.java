@@ -31,7 +31,7 @@ import reactor.Fn;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.support.Assert;
+import reactor.util.Assert;
 import reactor.tcp.codec.Codec;
 import reactor.tcp.codec.StreamingCodec;
 import reactor.tcp.data.Buffers;

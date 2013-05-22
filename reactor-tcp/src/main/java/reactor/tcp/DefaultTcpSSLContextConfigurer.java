@@ -25,7 +25,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
-import reactor.support.Assert;
+import reactor.util.Assert;
 
 /**
  * Default implementation of {@link TcpSSLContextConfigurer}; uses a
