@@ -15,7 +15,6 @@ import javax.net.SocketFactory;
 
 import org.junit.Test;
 
-import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.tcp.codec.LineFeedCodecSupplier;
@@ -72,8 +71,9 @@ public class TcpServerReactorTests {
 		reactor.onRequest(new Consumer<Event<String>>() {
 
 			@Override
-			public void accept(Event<String> t) {
-				reactor.notify(t.getReplyTo(), Fn.event(("Response " + t.getData()).getBytes()));
+			public void accept(Event<String> request) {
+				Event<byte[]> response = new Event<byte[]>(request.getHeaders(), ("Response " + request.getData()).getBytes());
+				reactor.notify(request.getReplyTo(), response);
 			}
 		});
 
