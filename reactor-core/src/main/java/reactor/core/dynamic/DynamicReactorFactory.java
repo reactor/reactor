@@ -32,6 +32,7 @@ import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.util.Assert;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;

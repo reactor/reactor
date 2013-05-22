@@ -17,7 +17,7 @@
 package reactor.fn.dispatch;
 
 import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
 
 /**
  * @author Jon Brisbin

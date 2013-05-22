@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
 import com.lmax.disruptor.EventFactory;

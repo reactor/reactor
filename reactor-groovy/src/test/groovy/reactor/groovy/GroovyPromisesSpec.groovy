@@ -16,14 +16,11 @@
 
 package reactor.groovy
 
-import reactor.core.Composable
 import reactor.core.Promise
-import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-
 /**
  * @author Stephane Maldini
  */

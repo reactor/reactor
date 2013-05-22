@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import reactor.fn.Consumer;
 import reactor.fn.ConsumerInvoker;
-import reactor.fn.ConverterAwareConsumerInvoker;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
