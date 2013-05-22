@@ -3,6 +3,13 @@ package reactor.tcp;
 import static reactor.Fn.$;
 
 import java.io.IOException;
+import java.util.WeakHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import reactor.Fn;
 import reactor.core.Reactor;
@@ -16,12 +23,14 @@ import reactor.tcp.codec.Codec;
 
 /**
  * A {@literal TcpServerReactor} is a {@link Reactor} that acts as a TCP server. It listens on a configurable
- * report, decoding the requests which it receives, and passing the decoded request to any {@link
+ * port, decoding the requests which it receives, and passing the decoded request to any {@link
  * #onRequest(Consumer) registered Consumers}.
  *
  * @author Andy Wilkinson
  */
 public class TcpServerReactor<T> extends Reactor implements Lifecycle<TcpServerReactor<T>> {
+
+	private static final String HEADER_NAME_TCP_CONNECTION_ID = "reactor.tcp.connection.id";
 
 	private final Object requestKey = new Object();
 
@@ -30,6 +39,12 @@ public class TcpServerReactor<T> extends Reactor implements Lifecycle<TcpServerR
 	private final Object monitor = new Object();
 
 	private final TcpNioServerConnectionFactory<T> server;
+
+	private final ReplySendingConsumer replyingConsumer = new ReplySendingConsumer();
+
+	private final Object replyKey = new Object();
+
+	private final Selector replySelector = $(replyKey);
 
 	private boolean alive = false;
 
@@ -42,32 +57,33 @@ public class TcpServerReactor<T> extends Reactor implements Lifecycle<TcpServerR
 	 */
 	public TcpServerReactor(int port, Supplier<Codec<T>> codecSupplier) {
 		server = new TcpNioServerConnectionFactory<T>(port, codecSupplier);
-		server.registerListener(new TcpListener<T>() {
+		server.registerListener(new ConnectionAwareTcpListener<T>() {
 			@Override
 			public void onDecode(T result, final TcpConnection<T> connection) {
 				Event<T> event = Fn.event(result);
 
-				Object replyToKey = new Object();
-				event.setReplyTo(replyToKey);
+				event.setReplyTo(replyKey);
+				event.getHeaders().set(HEADER_NAME_TCP_CONNECTION_ID, connection.getConnectionId());
 
-				TcpServerReactor.this.on($(replyToKey), new Consumer<Event<Object>>() {
-					@Override
-					public void accept(Event<Object> t) {
-						try {
-							if (t.getData() instanceof byte[]) {
-								connection.send((byte[]) t.getData());
-							} else {
-								connection.send(t.getData());
-							}
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				}).cancelAfterUse();
+
 
 				TcpServerReactor.this.notify(requestKey, event);
 			}
+
+			@Override
+			public void newConnection(TcpConnection<T> connection) {
+				replyingConsumer.storeConnection(connection);
+
+			}
+
+			@Override
+			public void connectionClosed(TcpConnection<T> connection) {
+				replyingConsumer.removeConnection(connection);
+			}
 		});
+
+
+		on(replySelector, replyingConsumer);
 	}
 
 	/**
@@ -118,6 +134,64 @@ public class TcpServerReactor<T> extends Reactor implements Lifecycle<TcpServerR
 	public boolean isAlive() {
 		synchronized(monitor) {
 			return alive && server.isListening();
+		}
+	}
+
+	private class ReplySendingConsumer implements Consumer<Event<Object>> {
+
+		private final Logger logger = LoggerFactory.getLogger(getClass());
+
+		private final WeakHashMap<String, TcpConnection<?>> connections = new WeakHashMap<String, TcpConnection<?>>();
+
+		private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+
+		private final Lock readLock = readWriteLock.readLock();
+
+		private final Lock writeLock = readWriteLock.writeLock();
+
+		@Override
+		public void accept(Event<Object> event) {
+			try {
+				TcpConnection<?> connection = getConnection(event.getHeaders().get(HEADER_NAME_TCP_CONNECTION_ID));
+				if (connection != null) {
+					if (event.getData() instanceof byte[]) {
+						connection.send((byte[]) event.getData());
+					} else {
+						connection.send(event.getData());
+					}
+				} else {
+					this.logger.warn("Connection not available to send response. Response '{}' has been dropped", event.getData());
+				}
+			} catch (IOException e) {
+				this.logger.warn("Failed to send response '{}'", event.getData(), e);
+			}
+		}
+
+		private TcpConnection<?> getConnection(String id) {
+			readLock.lock();
+			try {
+				return this.connections.get(id);
+			} finally {
+				readLock.unlock();
+			}
+		}
+
+		private void storeConnection(TcpConnection<?> connection) {
+			writeLock.lock();
+			try {
+				connections.put(connection.getConnectionId(), connection);
+			} finally {
+				writeLock.unlock();
+			}
+		}
+
+		private void removeConnection(TcpConnection<?> connection) {
+			writeLock.lock();
+			try {
+				connections.remove(connection.getConnectionId());
+			} finally {
+				writeLock.unlock();
+			}
 		}
 	}
 }
