@@ -21,8 +21,8 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-import reactor.util.Assert;
 import reactor.tcp.data.Buffers;
 import reactor.tcp.data.ByteIterator;
 
@@ -72,15 +72,14 @@ public class DefaultAssembly implements Assembly {
 	 *
 	 * @param pendingBuffers The pending buffers containing the assembled data
 	 * @param leadingDiscard The number of bytes at the start to skip
-	 * @param totalConsumed The number of bytes to consume (including skips)
+	 * @param assemblyLength The number of bytes to includes in the assembly
 	 * @param trailingDiscard The number of bytes at the end to skip
 	 */
-	public DefaultAssembly(Buffers pendingBuffers, int leadingDiscard, int totalConsumed, int trailingDiscard) {
+	public DefaultAssembly(Buffers pendingBuffers, int leadingDiscard, int assemblyLength, int trailingDiscard) {
 		pendingBuffers.discardBytes(leadingDiscard);
 		ByteBuffer buffer = pendingBuffers.get(0);
 		this.buffers.add(buffer);
 		int remainingFirstBuffer = buffer.remaining();
-		int assemblyLength = totalConsumed - leadingDiscard - trailingDiscard;
 		int bytesNeeded = assemblyLength - remainingFirstBuffer;
 		if (bytesNeeded > 0) {
 			int n = 1;
@@ -90,7 +89,7 @@ public class DefaultAssembly implements Assembly {
 				bytesNeeded -= buffer.remaining();
 			}
 		}
-		pendingBuffers.discardBytes(totalConsumed);
+		pendingBuffers.discardBytes(assemblyLength + trailingDiscard);
 		this.length = assemblyLength;
 	}
 
@@ -159,7 +158,9 @@ public class DefaultAssembly implements Assembly {
 
 		@Override
 		public byte next() {
-			Assert.isTrue(this.remaining > 0, "No more bytes");
+			if (!hasNext()) {
+				throw new NoSuchElementException();
+			}
 			if (this.bufferView.remaining() == 0) {
 				this.bufferView = buffers.get(++this.currentBuffer).duplicate();
 			}
