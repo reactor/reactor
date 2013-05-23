@@ -66,5 +66,5 @@ public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TAR
 		return doBuild(configureReactor());
 	}
 
-	public abstract TARGET doBuild(final Reactor reactor);
+	protected abstract TARGET doBuild(final Reactor reactor);
 }
