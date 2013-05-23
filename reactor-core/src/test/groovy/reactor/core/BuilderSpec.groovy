@@ -17,11 +17,9 @@
 package reactor.core
 
 import reactor.Fn
-import reactor.fn.Consumer
-import reactor.fn.Event
 import spock.lang.Specification
 
-import static reactor.Fn.$
+import static reactor.Fn.compose
 /**
  * @author Stephane Maldini
  */
@@ -29,54 +27,33 @@ class BuilderSpec extends Specification {
 
 	def "Reactor correctly built"() {
 
-		given: "a plain Reactor"
-
+		when: "we create a plain Reactor"
 		def reactor = Reactor.create().sync().get()
-		def data = ""
-		Thread t = null
-		reactor.on($("test"), { ev ->
-			data = ev.data
-			t = Thread.currentThread()
-		} as Consumer<Event<String>>)
-
-		when:
-		reactor.notify("test", Fn.event("Hello World!"))
 
 		then:
-		data == "Hello World!"
-		Thread.currentThread() == t
-
+		Reactor.isAssignableFrom(reactor.class)
 	}
 
 
 	def "Composable correctly built"() {
 
-		given: "a plain Reactor"
-
-		def reactor = Reactor.create().sync().get()
-		def data = ""
-		Thread t = null
-		reactor.on($("test"), { ev ->
-			data = ev.data
-			t = Thread.currentThread()
-		} as Consumer<Event<String>>)
-
-		when:
-		reactor.notify("test", Fn.event("Hello World!"))
+		when: "we create a plain Composable"
+		def composable = compose('test').sync().get()
 
 		then:
-		data == "Hello World!"
-		Thread.currentThread() == t
+		Composable.isAssignableFrom(composable.class)
+		composable.get() == 'test'
 
 	}
 
 
 	def "Promise correctly built"() {
 
-		when: "a plain Promise"
-		def promise = Fn.compose('test').sync().get()
+		when: "we create a plain Promise"
+		def promise = Fn.promise('test').sync().get()
 
 		then:
+		Promise.isAssignableFrom(promise.class)
 		promise.get() == 'test'
 
 	}
