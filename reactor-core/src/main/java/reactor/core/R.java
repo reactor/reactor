@@ -16,14 +16,12 @@
 
 package reactor.core;
 
-import reactor.Fn;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Observable;
-import reactor.fn.Tuple;
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Helper class to encapsulate commonly-used functionality around Reactors.
+ * Base class to encapsulate commonly-used functionality around Reactors and build a clean context.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -31,21 +29,43 @@ import reactor.fn.Tuple;
  */
 public class R {
 
-	private R() {
 
+	private final int eventsLoops;
+	private final AtomicLong                               nextDispatcherCounter = new AtomicLong(Long.MIN_VALUE);
+	private final NonBlockingHashMap<String, ReactorEntry> reactors              = new NonBlockingHashMap<String,
+			ReactorEntry>();
+
+	public R() {
+		this(Runtime.getRuntime().availableProcessors());
 	}
 
-	/**
-	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link Observable}, passing the given {@link
-	 * Event}.
-	 *
-	 * @param consumer   The {@link Consumer} to invoke.
-	 * @param data       The data to pass to the consumer.
-	 * @param observable The {@literal Observable} that will be used to invoke the {@literal Consumer}
-	 * @param <T>        The type of the data.
-	 */
-	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		observable.notify(Fn.event(Tuple.of(consumer, data)));
+	public R(int eventsLoops) {
+		this.eventsLoops = eventsLoops > 0 ? eventsLoops : Runtime.getRuntime().availableProcessors();
+	}
+
+	private static class ReactorEntry {
+		final Reactor reactor;
+		final Long    created;
+
+		private ReactorEntry(Reactor reactor) {
+			this.reactor = reactor;
+			this.created = System.nanoTime();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			ReactorEntry that = (ReactorEntry) o;
+			return reactor.equals(that.reactor);
+
+		}
+
+		@Override
+		public int hashCode() {
+			return reactor.hashCode();
+		}
 	}
 
 }

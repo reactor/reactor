@@ -31,7 +31,7 @@ public interface Dispatcher extends Lifecycle<Dispatcher> {
 	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of
 	 * consumers.
 	 *
-	 * @return A {@link Task} object, probably from a pool, used to hold the various parts of a dispatch event.
+	 * @return A {@link Task} object, probably when a pool, used to hold the various parts of a dispatch event.
 	 */
 	<T> Task<T> nextTask();
 }

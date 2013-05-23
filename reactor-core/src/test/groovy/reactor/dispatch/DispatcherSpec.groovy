@@ -70,7 +70,7 @@ class DispatcherSpec extends Specification {
 
 		latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 
-		then: "the task thread should be different from the current thread"
+		then: "the task thread should be different when the current thread"
 		taskThread != currentThread
 
 		diffThread.stop()

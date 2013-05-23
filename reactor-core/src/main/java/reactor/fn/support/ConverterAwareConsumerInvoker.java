@@ -55,7 +55,7 @@ public class ConverterAwareConsumerInvoker implements ConsumerInvoker {
 				throw e;
 			}
 
-			// Try and find an argument from the list of possible arguments past the 1st
+			// Try and find an argument when the list of possible arguments past the 1st
 			for (int i = 1; i < possibleArgs.length; i++) {
 				Object o = possibleArgs[i];
 				if (null == o) {

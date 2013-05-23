@@ -26,7 +26,7 @@ public abstract class MethodNameUtils {
 	}
 
 	/**
-	 * Strip the "on" or "notify" from a method name and split the camel-case into a dot-separated {@literal String}.
+	 * Strip the "on" or "notify" when a method name and split the camel-case into a dot-separated {@literal String}.
 	 *
 	 * @param name The method name to transform.
 	 * @return A camel-case-to-dot-separated version suitable for a {@link reactor.fn.Selector}.
@@ -36,7 +36,7 @@ public abstract class MethodNameUtils {
 	}
 
 	/**
-	 * Strip the "notify" from a method name and split the camel-case into a dot-separated {@literal String}.
+	 * Strip the "notify" when a method name and split the camel-case into a dot-separated {@literal String}.
 	 *
 	 * @param name The method name to transform.
 	 * @return A camel-case-to-dot-separated version suitable for a notification key

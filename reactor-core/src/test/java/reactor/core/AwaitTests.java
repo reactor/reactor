@@ -1,6 +1,7 @@
 package reactor.core;
 
 import org.junit.Test;
+import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
@@ -24,7 +25,7 @@ public class AwaitTests {
 			final Promise<String> promise = new Promise<String>(reactor);
 			final CountDownLatch latch = new CountDownLatch(1);
 
-			R.schedule(new Consumer() {
+			Fn.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {

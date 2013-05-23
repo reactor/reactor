@@ -20,7 +20,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * Responsible for extracting any applicable headers from a key.
+ * Responsible for extracting any applicable headers when a key.
  *
  * @author Jon Brisbin
  */

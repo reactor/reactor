@@ -184,7 +184,7 @@ class GroovyComposableSpec extends Specification {
 		def r = new Reactor()
 		def key = $()
 
-		when: 'we consume from this reactor and key'
+		when: 'we consume when this reactor and key'
 		def latch = new CountDownLatch(5)
 		r.on(key.t1) {
 			latch.countDown()

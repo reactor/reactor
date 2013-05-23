@@ -51,7 +51,7 @@ public interface Selector extends Taggable<Selector> {
 	boolean matches(Object key);
 
 	/**
-	 * Return a component that can resolve headers from a given key.
+	 * Return a component that can resolve headers when a given key.
 	 *
 	 * @return A {@link HeaderResolver} applicable to this {@link Selector} type.
 	 */

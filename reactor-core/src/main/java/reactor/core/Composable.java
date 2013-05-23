@@ -18,6 +18,7 @@ package reactor.core;
 
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
+import reactor.config.ReactorBuilder;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
@@ -31,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static reactor.Fn.$;
 
 /**
- * A {@literal Composable} is a way to provide components from other threads to act on incoming data and provide new
+ * A {@literal Composable} is a way to provide components when other threads to act on incoming data and provide new
  * data to other components that must wait on the data to become available.
  *
  * @author Jon Brisbin
@@ -97,15 +98,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		this.observable = createObservable((Observable) null);
 	}
 
-	/**
-	 * Create a delayed {@literal Composable} with no initial state, ready to accept values.
-	 *
-	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
-	 */
-	public static <T> Builder<T> lazy() {
-		return new Builder<T>();
-	}
-
 	public Composable(Dispatcher dispatcher) {
 		this.observable = createObservable(dispatcher);
 	}
@@ -131,7 +123,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given value.
+	 * Create a delayed {@literal Composable} with no initial state, ready to accept values.
+	 *
+	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
+	 */
+	public static <T> Builder<T> lazy() {
+		return new Builder<T>();
+	}
+
+	/**
+	 * Create a {@literal Composable} when the given value.
 	 *
 	 * @param value The value to use.
 	 * @param <T>   The type of the value.
@@ -143,7 +144,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given list of values.
+	 * Create a {@literal Composable} when the given list of values.
 	 *
 	 * @param values The values to use.
 	 * @param <T>    The type of the values.
@@ -154,7 +155,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given {@link Function}.
+	 * Create a {@literal Composable} when the given {@link Supplier}.
 	 *
 	 * @param supplier The function to defer.
 	 * @param <T>      The type of the values.
@@ -165,7 +166,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} from the given {@code key} and {@link Event} and delay notification of the event on
+	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
 	 * the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
 	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
 	 *
@@ -270,7 +271,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Register a {@link Consumer} to be invoked whenever an exception that is assignable from the given exception type.
+	 * Register a {@link Consumer} to be invoked whenever an exception that is assignable when the given exception type.
 	 *
 	 * @param exceptionType The type of exception to handle. Also matches an subclass of this type.
 	 * @param onError       The {@link Consumer} to invoke when this error occurs.
@@ -293,7 +294,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * {@link Composable}.
 	 *
 	 * @param fn  The transformation function to apply.
-	 * @param <V> The type of the object returned from the given {@link Function}.
+	 * @param <V> The type of the object returned when the given {@link Function}.
 	 * @return The new {@link Composable}.
 	 */
 	public <V> Composable<V> map(final Function<T, V> fn) {
@@ -555,7 +556,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			});
 		} else {
-			R.schedule(consumer, value, observable);
+			Fn.schedule(consumer, value, observable);
 		}
 		return null;
 	}
@@ -634,12 +635,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Builder<T>{
+	public static class Builder<T> extends ReactorBuilder<Builder<T>, Composable<T>> {
 
 		protected final Iterable<T> values;
 		protected final Supplier<T> supplier;
-		protected       Dispatcher  dispatcher;
-		protected       Reactor     reactor;
 
 		Builder(Iterable<T> values, Supplier<T> supplier) {
 			this.values = values;
@@ -658,28 +657,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			this(null, null);
 		}
 
-		public Builder<T> using(Reactor reactor) {
-			this.reactor = reactor;
-			return this;
-		}
-
-		public Builder<T> using(Dispatcher dispatcher) {
-			this.dispatcher = dispatcher;
-			return this;
-		}
-
-		protected void configure() {
-			if (null == reactor) {
-				if (null == dispatcher) {
-					reactor = new Reactor();
-				} else {
-					reactor = new Reactor(dispatcher);
-				}
-			}
-		}
-
-		public Composable<T> build() {
-			configure();
+		@Override
+		public Composable<T> doBuild(final Reactor reactor) {
 			if (values != null) {
 				return new DelayedAcceptComposable<T>(reactor, values);
 			} else if (supplier != null) {
@@ -687,7 +666,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					@Override
 					protected void delayedAccept() {
 						final DelayedAcceptComposable<T> self = this;
-						R.schedule(new Consumer<Object>() {
+						Fn.schedule(new Consumer<Object>() {
 							@Override
 							public void accept(Object o) {
 								try {

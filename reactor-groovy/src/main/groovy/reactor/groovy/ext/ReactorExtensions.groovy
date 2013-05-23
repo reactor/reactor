@@ -17,6 +17,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Promise
 import reactor.core.R
@@ -25,7 +26,6 @@ import reactor.fn.Function
 import reactor.fn.Observable
 import reactor.fn.Supplier
 import reactor.groovy.support.ClosureConsumer
-import reactor.groovy.support.ClosureFunction
 import reactor.groovy.support.ClosureSupplier
 /**
  * @author Stephane Maldini
@@ -55,7 +55,7 @@ class ReactorExtensions {
 
 	
 	static <T> void schedule(final R selfType, final T value, final Observable observable, final Closure closure) {
-		R.schedule new ClosureConsumer(closure), value, observable
+		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
 	static <T> Composable.Builder<T>  from(final Composable<T> selfType, Closure<T> callback) {
@@ -63,6 +63,6 @@ class ReactorExtensions {
 	}
 
 	static <T> Promise.Builder<T>  from(final Promise<T> selfType, Closure<T> callback) {
-		Promise.from new ClosureSupplier<T>(callback)
+		Promise.when new ClosureSupplier<T>(callback)
 	}
 }

@@ -112,6 +112,21 @@ public abstract class Fn {
 		return new Event<T>(obj).setReplyTo(replyToKey);
 	}
 
+
+	/**
+	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link Observable}, passing the given {@link
+	 * Event}.
+	 *
+	 * @param consumer   The {@link Consumer} to invoke.
+	 * @param data       The data to pass to the consumer.
+	 * @param observable The {@literal Observable} that will be used to invoke the {@literal Consumer}
+	 * @param <T>        The type of the data.
+	 */
+	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
+		observable.notify(Fn.event(Tuple.of(consumer, data)));
+	}
+
+
 	/**
 	 * Return a null event
 	 *

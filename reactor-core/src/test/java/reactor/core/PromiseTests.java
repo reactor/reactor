@@ -16,21 +16,21 @@
 
 package reactor.core;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import org.junit.Test;
-
+import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.Deferred;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
@@ -39,14 +39,14 @@ public class PromiseTests {
 
 	@Test
 	public void testPromiseNotifiesOfValues() throws InterruptedException {
-		Promise<String> p = Promise.from("Hello World!").build();
+		Promise<String> p = Promise.when("Hello World!").build();
 		assertThat("Promise is in success state", p.isSuccess(), is(true));
 		assertThat("Promise contains value", p.get(), is("Hello World!"));
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testPromiseNotifiesOfFailures() throws InterruptedException {
-		Promise<String> p = Promise.<String>from(new IllegalArgumentException("Bad code! Bad!")).build();
+		Promise<String> p = Promise.<String>when(new IllegalArgumentException("Bad code! Bad!")).build();
 		assertThat("Promise is in failed state", p.isError(), is(true));
 		assertThat("Promise has exploded", p.get(), is(nullValue()));
 	}
@@ -164,7 +164,7 @@ public class PromiseTests {
 		final Promise<String> promise = new Promise<String>(reactor);
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		R.schedule(new Consumer() {
+		Fn.schedule(new Consumer() {
 
 			@Override
 			public void accept(Object t) {

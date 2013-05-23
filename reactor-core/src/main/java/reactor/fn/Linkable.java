@@ -37,7 +37,7 @@ public interface Linkable<T> {
 	 * Unlink components.
 	 *
 	 * @param t
-	 * 		Component to unlink from this parent.
+	 * 		Component to unlink when this parent.
 	 *
 	 * @return {@literal this}
 	 */

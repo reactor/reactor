@@ -28,7 +28,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
-		def p = Promise.from("Hello World!").build()
+		def p = Promise.when("Hello World!").build()
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"
@@ -45,7 +45,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		def p = Promise.from(new IllegalArgumentException("Bad code! Bad!")).build()
+		def p = Promise.when(new IllegalArgumentException("Bad code! Bad!")).build()
 
 		and: "invoke result"
 		p.get()
@@ -94,7 +94,7 @@ class GroovyPromisesSpec extends Specification {
 		and: "setting a value"
 		p1 << 'Hello World!'
 
-		then: 'P2 consumes the value from P1'
+		then: 'P2 consumes the value when P1'
 		p2.get() == 'Hello World!'
 	}
 

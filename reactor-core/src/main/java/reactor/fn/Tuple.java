@@ -45,7 +45,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple1} from the given object.
+	 * Create a {@link Tuple1} when the given object.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param <T1> The type of the first value.
@@ -56,7 +56,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple2} from the given objects.
+	 * Create a {@link Tuple2} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -69,7 +69,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple3} from the given objects.
+	 * Create a {@link Tuple3} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -84,7 +84,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple4} from the given objects.
+	 * Create a {@link Tuple4} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -101,7 +101,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple5} from the given objects.
+	 * Create a {@link Tuple5} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -120,7 +120,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple6} from the given objects.
+	 * Create a {@link Tuple6} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -141,7 +141,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple7} from the given objects.
+	 * Create a {@link Tuple7} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -164,7 +164,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link Tuple8} from the given objects.
+	 * Create a {@link Tuple8} when the given objects.
 	 *
 	 * @param t1   The first value in the tuple.
 	 * @param t2   The second value in the tuple.
@@ -189,7 +189,7 @@ public class Tuple implements Iterable {
 	}
 
 	/**
-	 * Create a {@link TupleN} from the given objects.
+	 * Create a {@link TupleN} when the given objects.
 	 *
 	 * @param t1      The first value in the tuple.
 	 * @param t2      The second value in the tuple.

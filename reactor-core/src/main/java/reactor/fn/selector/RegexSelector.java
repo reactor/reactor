@@ -61,7 +61,7 @@ public class RegexSelector extends BaseSelector<Pattern> {
 	};
 
 	/**
-	 * Create a {@link reactor.fn.Selector} from the given regex pattern.
+	 * Create a {@link reactor.fn.Selector} when the given regex pattern.
 	 *
 	 * @param pattern The regex String that will be compiled into a {@link Pattern}.
 	 */

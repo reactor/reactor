@@ -19,11 +19,10 @@ package reactor.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
+import reactor.config.ReactorBuilder;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -127,8 +126,8 @@ public class Promise<T> extends Composable<T> {
 	 * @return The new {@literal Promise}.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Promise.Builder<T> from(Throwable reason) {
-		return (Builder<T>) new Builder<Object>(Arrays.asList((Object) reason));
+	public static <T> Builder<T> when(Throwable reason) {
+		return (Promise.Builder<T>) new Promise.Builder<Throwable>(reason);
 	}
 
 	/**
@@ -139,19 +138,19 @@ public class Promise<T> extends Composable<T> {
 	 * @return The new {@literal Promise}.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Promise.Builder<T> from(T value) {
-		return new Builder<T>(Arrays.asList(value));
+	public static <T> Builder<T> when(T value) {
+		return new Promise.Builder<T>(value);
 	}
 
 	/**
 	 * Create a {@literal Promise} based on the given supplier.
 	 *
 	 * @param supplier The value to use.
-	 * @param <T>   The type of the function result.
+	 * @param <T>      The type of the function result.
 	 * @return The new {@literal Promise}.
 	 */
-	public static <T> Builder<T> from(Supplier<T>  supplier) {
-		return new Builder<T>(supplier);
+	public static <T> Builder<T> when(Supplier<T> supplier) {
+		return new Promise.Builder<T>(supplier);
 	}
 
 	/**
@@ -288,7 +287,7 @@ public class Promise<T> extends Composable<T> {
 			if (isError()) {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
-				R.schedule(consumer, value, observable);
+				Fn.schedule(consumer, value, observable);
 				return this;
 			} else {
 				return super.consume(consumer);
@@ -347,7 +346,7 @@ public class Promise<T> extends Composable<T> {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
 				final Composable<V> c = createComposable(createObservable(observable));
-				R.schedule(new Consumer<T>() {
+				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
 						try {
@@ -372,7 +371,7 @@ public class Promise<T> extends Composable<T> {
 				throw new IllegalStateException(error);
 			} else if (acceptCountReached()) {
 				final Composable<T> c = createComposable(createObservable(observable));
-				R.schedule(new Consumer<T>() {
+				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
 						try {
@@ -431,43 +430,35 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Builder<T> extends Composable.Builder<T> {
+	public static class Builder<T> extends ReactorBuilder<Builder<T>, Promise<T>> {
 
-		Builder(Iterable<T> values) {
-			super(values);
+		protected final T           value;
+		protected final Supplier<T> supplier;
+
+		Builder(T value, Supplier<T> supplier) {
+			this.value = value;
+			this.supplier = supplier;
 		}
-		Builder(Supplier<T> values) {
-			super(values);
+
+		Builder(T value) {
+			this(value, null);
+		}
+
+		Builder(Supplier<T> supplier) {
+			this(null, supplier);
+		}
+
+		Builder() {
+			this(null, null);
 		}
 
 		@Override
-		public Builder<T> using(Reactor reactor) {
-			super.using(reactor);
-			return this;
-		}
-
-		@Override
-		public Builder<T> using(Dispatcher dispatcher) {
-			super.using(dispatcher);
-			return this;
-		}
-
-		public Promise<T> build() {
-			configure();
-			T value = null;
-			if (List.class.isInstance(values)) {
-				List<T> l = (List<T>) values;
-				if (!l.isEmpty()) {
-					value = ((List<T>) values).get(0);
-				}
-			} else if(values != null){
-				value = values.iterator().next();
-			}
+		public Promise<T> doBuild(final Reactor reactor) {
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
-			} else if(supplier != null){
+			} else if (supplier != null) {
 				final Composable<T> composable = Composable.from(supplier).build();
-				Promise<T> result = new Promise<T>(reactor){
+				Promise<T> result = new Promise<T>(reactor) {
 					@Override
 					public T get() {
 						composable.get();
@@ -482,7 +473,7 @@ public class Promise<T> extends Composable<T> {
 				};
 				composable.consume(result);
 				return result;
-			}else{
+			} else {
 				return new Promise<T>(reactor).set(value);
 			}
 		}

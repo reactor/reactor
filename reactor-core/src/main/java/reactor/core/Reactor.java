@@ -19,6 +19,7 @@ package reactor.core;
 import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import reactor.Fn;
+import reactor.config.ReactorBuilder;
 import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.Registry.LoadBalancingStrategy;
@@ -66,9 +67,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	/**
 	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry}. Each {@literal
 	 * Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given {@literal
-	 * Reactor} from being triggered on the new {@literal Reactor}.
+	 * Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}, and {@link
+	 * @param src The {@literal Reactor} when which to get the {@link SelectionStrategy}, {@link Converter}, and {@link
 	 *            Dispatcher}.
 	 */
 	public Reactor(Reactor src) {
@@ -78,9 +79,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	/**
 	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry} and {@link
 	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
-	 * registered on the given {@literal Reactor} from being triggered on the new {@literal Reactor}.
+	 * registered on the given {@literal Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src        The {@literal Reactor} from which to get the {@link SelectionStrategy}, {@link Converter}.
+	 * @param src        The {@literal Reactor} when which to get the {@link SelectionStrategy}, {@link Converter}.
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
@@ -278,7 +279,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param sel      The {@link Selector} to be used for matching
 	 * @param function The {@literal Function} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
-	 * @param <V>      The type of the return value from the given {@link Function}.
+	 * @param <V>      The type of the return value when the given {@link Function}.
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
 	 */
 	public <T, E extends Event<T>, V> Composable<V> map(Selector sel, final Function<E, V> function) {
@@ -306,7 +307,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *
 	 * @param function The {@literal Consumer} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
-	 * @param <V>      The type of the return value from the given {@link Function}.
+	 * @param <V>      The type of the return value when the given {@link Function}.
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
 	 */
 	public <T, E extends Event<T>, V> Composable<V> map(Function<E, V> function) {
@@ -450,5 +451,35 @@ public class Reactor implements Observable, Linkable<Observable> {
 			}
 		}
 	}
+
+	public static Builder create(String id) {
+		return new Builder(id);
+	}
+
+	public static Builder create() {
+		return new Builder(null);
+	}
+
+	public static class Builder extends ReactorBuilder<Builder, Reactor> {
+
+		private boolean link;
+
+		protected Builder(String id) {
+		}
+
+		public Builder link() {
+			this.link = true;
+			return this;
+		}
+
+		@Override
+		public Reactor doBuild(Reactor reactor) {
+			if(link)
+				this.reactor.link(reactor);
+
+			return reactor;
+		}
+	}
+
 
 }

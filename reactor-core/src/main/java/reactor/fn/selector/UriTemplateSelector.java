@@ -44,7 +44,7 @@ public class UriTemplateSelector extends BaseSelector<UriTemplate> {
 	};
 
 	/**
-	 * Create a selector from the given uri template string.
+	 * Create a selector when the given uri template string.
 	 *
 	 * @param tmpl The string to compile into a {@link UriTemplate}.
 	 */

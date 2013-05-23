@@ -66,7 +66,7 @@ public class RingBufferDispatcher implements Dispatcher {
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
 	 *
 	 * @param name The name of the dispatcher
-	 * @param poolSize The size of the thread pool used to remove items from the buffer
+	 * @param poolSize The size of the thread pool used to remove items when the buffer
 	 * @param backlog The backlog size to configuration the ring buffer with
 	 * @param producerType The producer type to configure the ring buffer with
 	 * @param waitStrategy The wait strategy to configure the ring buffer with

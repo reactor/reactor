@@ -118,7 +118,7 @@ class SelectorSpec extends Specification {
 		when: "The selector is matched"
 		r.notify key, Fn.event("")
 
-		then: "The resourceId has been set from the headers"
+		then: "The resourceId has been set when the headers"
 		resourceId
 
 	}

@@ -53,7 +53,7 @@ public interface Registration<T> {
 	boolean isCancelAfterUse();
 
 	/**
-	 * Cancel this {@literal Registration} by removing it from the registry so it will no longer be assigned.
+	 * Cancel this {@literal Registration} by removing it when the registry so it will no longer be assigned.
 	 *
 	 * @return {@literal this}
 	 */

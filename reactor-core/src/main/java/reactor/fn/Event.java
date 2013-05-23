@@ -144,7 +144,7 @@ public class Event<T> {
 		}
 
 		/**
-		 * Set all headers from the given {@link Map}.
+		 * Set all headers when the given {@link Map}.
 		 *
 		 * @param headers The map to use as the headers.
 		 * @return
