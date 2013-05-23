@@ -16,10 +16,9 @@
 
 package reactor.core
 
-import reactor.Fn
 import spock.lang.Specification
 
-import static reactor.Fn.compose
+import static reactor.core.R.compose
 /**
  * @author Stephane Maldini
  */
@@ -28,7 +27,7 @@ class BuilderSpec extends Specification {
 	def "Reactor correctly built"() {
 
 		when: "we create a plain Reactor"
-		def reactor = Fn.reactor().sync().get()
+		def reactor = R.reactor().sync().get()
 
 		then:
 		Reactor.isAssignableFrom(reactor.class)
@@ -50,7 +49,7 @@ class BuilderSpec extends Specification {
 	def "Promise correctly built"() {
 
 		when: "we create a plain Promise"
-		def promise = Fn.promise('test').sync().get()
+		def promise = R.promise('test').sync().get()
 
 		then:
 		Promise.isAssignableFrom(promise.class)

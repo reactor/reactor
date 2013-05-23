@@ -41,7 +41,7 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Composable<String> c = Fn.compose("Hello World!").get();
+		Composable<String> c = R.compose("Hello World!").get();
 
 		Deferred<String> d = c.map(new Function<String, String>() {
 			@Override
@@ -55,7 +55,7 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -74,7 +74,7 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -92,7 +92,7 @@ public class ComposableTests {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -114,14 +114,14 @@ public class ComposableTests {
 
 	@Test
 	public void valueIsImmediatelyAvailable() throws InterruptedException {
-		Composable<String> c = Fn.compose(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Composable<String> c = R.compose(Arrays.asList("1", "2", "3", "4", "5")).get();
 
 		await(c, is("5"));
 	}
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -137,7 +137,7 @@ public class ComposableTests {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER);
@@ -162,7 +162,7 @@ public class ComposableTests {
 			}
 		});
 
-		Composable<Integer> c = Fn
+		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -177,7 +177,7 @@ public class ComposableTests {
 
 	@Test
 	public void composableWithInitiallyUnknownNumberOfValues() throws InterruptedException {
-		final Composable<Integer> c = Fn
+		final Composable<Integer> c = R
 				.compose(new TestIterable<String>("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)

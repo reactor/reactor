@@ -16,8 +16,8 @@
 
 package reactor.groovy
 
-import reactor.Fn
 import reactor.core.Promise
+import reactor.core.R
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -29,7 +29,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
-		def p = Fn.promise("Hello World!").get()
+		def p = R.promise("Hello World!").get()
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"
@@ -38,7 +38,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		def p = Fn.promise{"Hello World!"}.get()
+		def p = R.promise{"Hello World!"}.get()
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"
@@ -46,7 +46,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		def p = Fn.promise(new IllegalArgumentException("Bad code! Bad!")).get()
+		def p = R.promise(new IllegalArgumentException("Bad code! Bad!")).get()
 
 		and: "invoke result"
 		p.get()

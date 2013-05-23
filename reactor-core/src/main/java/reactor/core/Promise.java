@@ -473,7 +473,7 @@ public class Promise<T> extends Composable<T> {
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
 			} else if (supplier != null) {
-				final Composable<T> composable = Fn.compose(supplier).get();
+				final Composable<T> composable = R.compose(supplier).get();
 				Promise<T> result = new Promise<T>(reactor) {
 					@Override
 					public T get() {

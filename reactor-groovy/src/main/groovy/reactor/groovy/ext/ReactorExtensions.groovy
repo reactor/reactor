@@ -40,11 +40,11 @@ class ReactorExtensions {
 		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
-	static <T> Composable.Builder<T> compose(final Fn selfType, Closure<T> callback) {
-		Fn.compose new ClosureSupplier<T>(callback)
+	static <T> Composable.Builder<T> compose(final R selfType, Closure<T> callback) {
+		R.compose new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Builder<T> promise(final Fn selfType, Closure<T> callback) {
-		Fn.promise new ClosureSupplier<T>(callback)
+	static <T> Promise.Builder<T> promise(final R selfType, Closure<T> callback) {
+		R.promise new ClosureSupplier<T>(callback)
 	}
 }
