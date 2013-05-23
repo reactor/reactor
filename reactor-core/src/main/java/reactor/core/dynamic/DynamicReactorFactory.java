@@ -206,9 +206,9 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				} else if (Function.class.isInstance(arg)) {
 					reg = reactor.receive(sel, (Function) arg);
 				} else if (Runnable.class.isInstance(arg)) {
-					reg = reactor.on(sel, Fn.<Event<Object>>compose((Runnable) arg));
+					reg = reactor.on(sel, Fn.<Event<Object>>consumer((Runnable) arg));
 				} else if (Callable.class.isInstance(arg)) {
-					reg = reactor.receive(sel, Fn.<Object>compose((Callable) arg));
+					reg = reactor.receive(sel, Fn.<Object>function((Callable) arg));
 				} else if (null == converter || !converter.canConvert(arg.getClass(), Consumer.class)) {
 					throw new IllegalArgumentException(
 							String.format("No Converter available to convert '%s' to Consumer", arg.getClass().getName())

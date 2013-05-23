@@ -28,7 +28,7 @@ class BuilderSpec extends Specification {
 	def "Reactor correctly built"() {
 
 		when: "we create a plain Reactor"
-		def reactor = Reactor.create().sync().get()
+		def reactor = Fn.reactor().sync().get()
 
 		then:
 		Reactor.isAssignableFrom(reactor.class)

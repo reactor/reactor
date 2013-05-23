@@ -452,19 +452,15 @@ public class Reactor implements Observable, Linkable<Observable> {
 		}
 	}
 
-	public static Builder create(String id) {
-		return new Builder(id);
-	}
-
-	public static Builder create() {
-		return new Builder(null);
+	public static Reactor create() {
+		return new Reactor();
 	}
 
 	public static class Builder extends ReactorBuilder<Builder, Reactor> {
 
 		private boolean link;
 
-		protected Builder(String id) {
+		public Builder(String id) {
 		}
 
 		public Builder link() {

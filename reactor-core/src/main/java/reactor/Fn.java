@@ -18,6 +18,7 @@ package reactor;
 
 import reactor.core.Composable;
 import reactor.core.Promise;
+import reactor.core.Reactor;
 import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
 import reactor.fn.selector.ClassSelector;
@@ -35,6 +36,16 @@ import java.util.concurrent.Callable;
  * @author Andy Wilkinson
  */
 public abstract class Fn {
+
+
+	/**
+	 * Create a {@literal Reactor} based on the given id.
+	 *
+	 * @return The new {@link Reactor}.
+	 */
+	public static Reactor.Builder reactor() {
+		return new Reactor.Builder(null);
+	}
 
 	/**
 	 * Creates an anonymous {@link Selector}.
@@ -224,7 +235,7 @@ public abstract class Fn {
 	 *
 	 * @param reason The exception to use as the value.
 	 * @param <T>    The type of the intended {@literal Promise} value.
-	 * @return The new {@literal Promise}.
+	 * @return a {@link Promise.Builder} to further refine the {@link Promise} and then build it..
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Promise.Builder<T> promise(Throwable reason) {
@@ -236,7 +247,7 @@ public abstract class Fn {
 	 *
 	 * @param value The value to use.
 	 * @param <T>   The type of the value.
-	 * @return The new {@literal Promise}.
+	 * @return a {@link Promise.Builder}.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Promise.Builder<T> promise(T value) {
@@ -248,7 +259,7 @@ public abstract class Fn {
 	 *
 	 * @param supplier The value to use.
 	 * @param <T>      The type of the function result.
-	 * @return The new {@literal Promise}.
+	 * @return a {@link Promise.Builder}.
 	 */
 	public static <T> Promise.Builder<T> promise(Supplier<T> supplier) {
 		return new Promise.Builder<T>(supplier);
