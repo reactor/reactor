@@ -48,8 +48,6 @@ import static reactor.Fn.T;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Reactor implements Observable, Linkable<Observable> {
 
-	private static final Event<Void> NULL_EVENT = new Event<Void>(null);
-
 	private final Dispatcher                             dispatcher;
 	private final Converter                              converter;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
@@ -250,7 +248,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, NULL_EVENT, null);
+		return notify(key, Fn.nullEvent(), null);
 	}
 
 	@Override
@@ -441,7 +439,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 				Event<?> replyEv;
 				if (null == reply) {
-					replyEv = NULL_EVENT;
+					replyEv = Fn.nullEvent();
 				} else {
 					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Fn.event(reply));
 				}

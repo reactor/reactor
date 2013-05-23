@@ -113,6 +113,15 @@ public abstract class Fn {
 	}
 
 	/**
+	 * Return a null event
+	 *
+	 * @return The new {@link Event}.
+	 */
+	public static Event<Void> nullEvent() {
+		return new Event<Void>(null);
+	}
+
+	/**
 	 * Wrap the given {@link Runnable} and compose a new {@link reactor.fn.Consumer}.
 	 *
 	 * @param r The {@link Runnable}.

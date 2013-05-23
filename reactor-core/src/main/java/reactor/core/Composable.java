@@ -634,7 +634,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Builder<T> {
+	public static class Builder<T>{
 
 		protected final Iterable<T> values;
 		protected final Supplier<T> supplier;
