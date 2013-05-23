@@ -19,7 +19,6 @@ package reactor.core;
 import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import reactor.Fn;
-import reactor.config.ReactorBuilder;
 import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.Registry.LoadBalancingStrategy;

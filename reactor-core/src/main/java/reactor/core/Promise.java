@@ -19,7 +19,6 @@ package reactor.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
-import reactor.config.ReactorBuilder;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 

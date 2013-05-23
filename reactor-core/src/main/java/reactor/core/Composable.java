@@ -18,12 +18,10 @@ package reactor.core;
 
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
-import reactor.config.ReactorBuilder;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;

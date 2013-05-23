@@ -1,6 +1,5 @@
-package reactor.config;
+package reactor.core;
 
-import reactor.core.Reactor;
 import reactor.fn.Supplier;
 import reactor.fn.dispatch.*;
 
