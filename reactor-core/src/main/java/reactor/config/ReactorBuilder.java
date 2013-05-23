@@ -7,14 +7,14 @@ import reactor.fn.dispatch.*;
  * @author Stephane Maldini
  */
 @SuppressWarnings("unchecked")
-public abstract class ReactorBuilder<B extends ReactorBuilder<B, X>, X> {
+public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TARGET>, TARGET> {
 
 	protected Dispatcher dispatcher;
 	protected Reactor    reactor;
 
-	public B using(Reactor reactor) {
+	public BUILDER using(Reactor reactor) {
 		this.reactor = reactor;
-		return (B) this;
+		return (BUILDER) this;
 	}
 
 	protected Reactor configureReactor() {
@@ -31,39 +31,39 @@ public abstract class ReactorBuilder<B extends ReactorBuilder<B, X>, X> {
 		return reactor;
 	}
 
-	public B using(Dispatcher dispatcher) {
+	public BUILDER using(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public B sync() {
+	public BUILDER sync() {
 		this.dispatcher = new SynchronousDispatcher();
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public B threadPoolExecutor() {
+	public BUILDER threadPoolExecutor() {
 		this.dispatcher = new ThreadPoolExecutorDispatcher();
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public B eventLoop() {
+	public BUILDER eventLoop() {
 		this.dispatcher = new BlockingQueueDispatcher();
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public B ringBuffer() {
+	public BUILDER ringBuffer() {
 		this.dispatcher = new RingBufferDispatcher();
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public B dispatcher(Dispatcher dispatcher) {
+	public BUILDER dispatcher(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
-		return (B) this;
+		return (BUILDER) this;
 	}
 
-	public X build() {
+	public TARGET build() {
 		return doBuild(configureReactor());
 	}
 
-	public abstract X doBuild(final Reactor reactor);
+	public abstract TARGET doBuild(final Reactor reactor);
 }
