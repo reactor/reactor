@@ -41,7 +41,7 @@ public class LoadingCacheTests {
 		long end = System.currentTimeMillis();
 
 		assertThat("ByteBuffer was obtained despite cache exhaustion", b, is(notNullValue()));
-		assertThat("Cache miss timeout was exceeded", end - start, is(greaterThan(timeout)));
+		assertThat("Cache miss timeout was exceeded", end - start, is(greaterThanOrEqualTo(timeout)));
 	}
 
 }
