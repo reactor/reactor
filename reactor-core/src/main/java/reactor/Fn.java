@@ -16,12 +16,15 @@
 
 package reactor;
 
+import reactor.core.Composable;
+import reactor.core.Promise;
 import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
 import reactor.fn.selector.ClassSelector;
 import reactor.fn.selector.RegexSelector;
 import reactor.fn.selector.UriTemplateSelector;
 
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 /**
@@ -136,20 +139,6 @@ public abstract class Fn {
 		return new Event<Void>(null);
 	}
 
-	/**
-	 * Wrap the given {@link Runnable} and compose a new {@link reactor.fn.Consumer}.
-	 *
-	 * @param r The {@link Runnable}.
-	 * @return An {@link reactor.fn.Consumer} that executes the {@link Runnable}.
-	 */
-	public static <T> Consumer<T> compose(final Runnable r) {
-		return new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				r.run();
-			}
-		};
-	}
 
 	/**
 	 * Wrap the given {@link Callable} and compose a new {@link reactor.fn.Function}.
@@ -157,7 +146,7 @@ public abstract class Fn {
 	 * @param c The {@link Callable}.
 	 * @return An {@link reactor.fn.Consumer} that executes the {@link Callable}.
 	 */
-	public static <T> Function<? extends Event<T>, T> compose(final Callable<T> c) {
+	public static <T> Function<? extends Event<T>, T> function(final Callable<T> c) {
 		return new Function<Event<T>, T>() {
 			@Override
 			public T apply(Event<T> o) {
@@ -168,6 +157,101 @@ public abstract class Fn {
 				}
 			}
 		};
+	}
+
+
+	/**
+	 * Wrap the given {@link Runnable} and compose a new {@link reactor.fn.Consumer}.
+	 *
+	 * @param r The {@link Runnable}.
+	 * @return An {@link reactor.fn.Consumer} that executes the {@link Runnable}.
+	 */
+	public static <T> Consumer<T> consumer(final Runnable r) {
+		return new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				r.run();
+			}
+		};
+	}
+
+
+	/**
+	 * Create a delayed {@link Composable} with no initial state, ready to accept values.
+	 *
+	 * @return A {@link Composable.Builder} to further refine the {@link Composable} and then build it.
+	 */
+	public static <T> Composable.Builder<T> compose() {
+		return new Composable.Builder<T>();
+	}
+
+	/**
+	 * Create a {@link Composable} from the given value.
+	 *
+	 * @param value The value to use.
+	 * @param <T>   The type of the value.
+	 * @return A {@link Composable.Builder} to further refine the {@link Composable} and then build it.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Composable.Builder<T> compose(T value) {
+		return new Composable.Builder<T>(Arrays.asList(value));
+	}
+
+	/**
+	 * Create a {@link Composable} from the given list of values.
+	 *
+	 * @param values The values to use.
+	 * @param <T>    The type of the values.
+	 * @return A {@link Composable.Builder} to further refine the {@link Composable} and then build it.
+	 */
+	public static <T> Composable.Builder<T> compose(Iterable<T> values) {
+		return new Composable.Builder<T>(values);
+	}
+
+	/**
+	 * Create a {@link Composable} from the given {@link Supplier}.
+	 *
+	 * @param supplier The function to defer.
+	 * @param <T>      The type of the values.
+	 * @return A {@link Composable.Builder} to further refine the {@link Composable} and then build it.
+	 */
+	public static <T> Composable.Builder<T> compose(Supplier<T> supplier) {
+		return new Composable.Builder<T>(supplier);
+	}
+
+	/**
+	 * Create a {@literal Promise} based on the given exception.
+	 *
+	 * @param reason The exception to use as the value.
+	 * @param <T>    The type of the intended {@literal Promise} value.
+	 * @return The new {@literal Promise}.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Promise.Builder<T> promise(Throwable reason) {
+		return (Promise.Builder<T>) new Promise.Builder<Throwable>(reason);
+	}
+
+	/**
+	 * Create a {@literal Promise} based on the given value.
+	 *
+	 * @param value The value to use.
+	 * @param <T>   The type of the value.
+	 * @return The new {@literal Promise}.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Promise.Builder<T> promise(T value) {
+		return new Promise.Builder<T>(value);
+	}
+
+	/**
+	 * Create a {@literal Promise} based on the given supplier.
+	 *
+	 * @param supplier The value to use.
+	 * @param <T>      The type of the function result.
+	 * @return The new {@literal Promise}.
+	 */
+	public static <T> Promise.Builder<T> promise(Supplier<T> supplier) {
+		return new Promise.Builder<T>(supplier);
 	}
 
 }

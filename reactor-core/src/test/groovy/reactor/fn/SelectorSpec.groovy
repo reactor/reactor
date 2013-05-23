@@ -145,10 +145,10 @@ class SelectorSpec extends Specification {
 			called << 4
 			latch.countDown()
 		}
-		r.on(Fn.compose(a1))
-		r.on(Fn.compose(a2))
-		r.on(Fn.compose(a3))
-		r.on(Fn.compose(a4))
+		r.on(Fn.consumer(a1))
+		r.on(Fn.consumer(a2))
+		r.on(Fn.consumer(a3))
+		r.on(Fn.consumer(a4))
 
 		when: "events are triggered"
 		(1..4).each {
@@ -182,10 +182,10 @@ class SelectorSpec extends Specification {
 			called << 4
 			latch.countDown()
 		}
-		r.on(Fn.compose(a1))
-		r.on(Fn.compose(a2))
-		r.on(Fn.compose(a3))
-		r.on(Fn.compose(a4))
+		r.on(Fn.consumer(a1))
+		r.on(Fn.consumer(a2))
+		r.on(Fn.consumer(a3))
+		r.on(Fn.consumer(a4))
 
 		when: "events are triggered"
 

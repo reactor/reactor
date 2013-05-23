@@ -34,35 +34,17 @@ import reactor.groovy.support.ClosureSupplier
 class ReactorExtensions {
 
 	/**
-	 * Alias
-	 */
-
-	static <T,V> void call(final Function<T,V> selfType, final T value) {
-		selfType.apply value
-	}
-
-	static <T> void call(final Consumer<T> selfType, final T value) {
-		selfType.accept value
-	}
-
-	static <T> void call(final Supplier<T> selfType) {
-		selfType.get()
-	}
-
-	/**
 	 * Closure converters
 	 */
-
-	
-	static <T> void schedule(final R selfType, final T value, final Observable observable, final Closure closure) {
+	static <T> void schedule(final Fn selfType, final T value, final Observable observable, final Closure closure) {
 		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
-	static <T> Composable.Builder<T>  from(final Composable<T> selfType, Closure<T> callback) {
-		Composable.from new ClosureSupplier<T>(callback)
+	static <T> Composable.Builder<T> compose(final Fn selfType, Closure<T> callback) {
+		Fn.compose new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Builder<T>  from(final Promise<T> selfType, Closure<T> callback) {
-		Promise.when new ClosureSupplier<T>(callback)
+	static <T> Promise.Builder<T> promise(final Fn selfType, Closure<T> callback) {
+		Fn.promise new ClosureSupplier<T>(callback)
 	}
 }

@@ -18,6 +18,7 @@ package reactor.core;
 
 import org.hamcrest.Matcher;
 import org.junit.Test;
+import reactor.Fn;
 import reactor.fn.*;
 
 import java.util.Arrays;
@@ -40,7 +41,7 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Composable<String> c = Composable.from("Hello World!").build();
+		Composable<String> c = Fn.compose("Hello World!").get();
 
 		Deferred<String> d = c.map(new Function<String, String>() {
 			@Override
@@ -54,9 +55,9 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
 					int sum = 0;
@@ -73,9 +74,9 @@ public class ComposableTests {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.filter(new Function<Integer, Boolean>() {
 
@@ -91,9 +92,9 @@ public class ComposableTests {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
 					int sum = 0;
@@ -113,16 +114,16 @@ public class ComposableTests {
 
 	@Test
 	public void valueIsImmediatelyAvailable() throws InterruptedException {
-		Composable<String> c = Composable.from(Arrays.asList("1", "2", "3", "4", "5")).build();
+		Composable<String> c = Fn.compose(Arrays.asList("1", "2", "3", "4", "5")).get();
 
 		await(c, is("5"));
 	}
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.reduce(new Function<Composable.Reduce<Integer, Integer>, Integer>() {
 					@Override
@@ -136,9 +137,9 @@ public class ComposableTests {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER);
 
 		Deferred<Integer> first = c.first();
@@ -151,7 +152,7 @@ public class ComposableTests {
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
 		Reactor r = new Reactor();
-		Tuple2<Selector,Object> key = $();
+		Tuple2<Selector, Object> key = $();
 
 		final CountDownLatch latch = new CountDownLatch(5);
 		r.on(key.getT1(), new Consumer<Event<Integer>>() {
@@ -161,9 +162,9 @@ public class ComposableTests {
 			}
 		});
 
-		Composable<Integer> c = Composable
-				.from(Arrays.asList("1", "2", "3", "4", "5"))
-				.build()
+		Composable<Integer> c = Fn
+				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.consume(key.getT2(), r);
 
@@ -176,9 +177,9 @@ public class ComposableTests {
 
 	@Test
 	public void composableWithInitiallyUnknownNumberOfValues() throws InterruptedException {
-		final Composable<Integer> c = Composable
-				.from(new TestIterable<String>("1", "2", "3", "4", "5"))
-				.build()
+		final Composable<Integer> c = Fn
+				.compose(new TestIterable<String>("1", "2", "3", "4", "5"))
+				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
 					int sum = 0;

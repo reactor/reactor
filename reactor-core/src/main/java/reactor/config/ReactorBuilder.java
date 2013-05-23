@@ -1,13 +1,15 @@
 package reactor.config;
 
 import reactor.core.Reactor;
+import reactor.fn.Supplier;
 import reactor.fn.dispatch.*;
 
 /**
  * @author Stephane Maldini
  */
 @SuppressWarnings("unchecked")
-public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TARGET>, TARGET> {
+public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TARGET>,
+		TARGET> implements Supplier<TARGET> {
 
 	protected Dispatcher dispatcher;
 	protected Reactor    reactor;
@@ -61,7 +63,7 @@ public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TAR
 		return (BUILDER) this;
 	}
 
-	public TARGET build() {
+	public TARGET get() {
 		return doBuild(configureReactor());
 	}
 

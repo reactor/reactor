@@ -185,4 +185,20 @@ class ObservableExtensions {
 		selfType.notify obj.get()
 	}
 
+	/**
+	 * Alias
+	 */
+
+	static <T,V> void call(final Function<T,V> selfType, final T value) {
+		selfType.apply value
+	}
+
+	static <T> void call(final Consumer<T> selfType, final T value) {
+		selfType.accept value
+	}
+
+	static <T> void call(final Supplier<T> selfType) {
+		selfType.get()
+	}
+
 }

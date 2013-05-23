@@ -194,10 +194,10 @@ class ReactorSpec extends Specification {
 		r1.link(r2).link(r3)
 
 		when: "registering few handlers"
-		r1.on $('test'), Fn.compose({ d1 = true })
-		r2.on $('test'), Fn.compose({ d2 = true })
-		r3.on $('test'), Fn.compose({ d3 = true })
-		r4.on $('test'), Fn.compose({ d4 = true })
+		r1.on $('test'), Fn.consumer({ d1 = true })
+		r2.on $('test'), Fn.consumer({ d2 = true })
+		r3.on $('test'), Fn.consumer({ d3 = true })
+		r4.on $('test'), Fn.consumer({ d4 = true })
 
 		r1.notify 'test', new Event('bob')
 

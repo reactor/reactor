@@ -53,6 +53,16 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	/**
+	 * Create a {@literal Promise} based on the given {@link Promise#observable}.
+	 *
+	 * @param src The {@link Observable} to use when publishing events internally.
+	 */
+	public Promise(Composable src) {
+		super(src);
+		expectedAcceptCount.set(1);
+	}
+
+	/**
 	 * Create a {@literal Promise} with default behavior.
 	 */
 	public Promise() {
@@ -74,6 +84,47 @@ public class Promise<T> extends Composable<T> {
 				}
 			}
 		});
+	}
+
+	/**
+	 * Create a {@link Promise} from the given {@link Composable#observable} and consume it.
+	 *
+	 * @param src The promise to defer.
+	 * @param <T> The type of the values.
+	 * @return a new {@link Promise}
+	 */
+	public static <T> Promise<T> from(Composable<T> src) {
+		final Promise<T> p = new Promise<T>(src);
+		src.consume(new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				p.set(t);
+			}
+		});
+		return p;
+	}
+
+
+	/**
+	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
+	 * the given {@link Observable} until the returned {@link Composable}'s {@link Composable#await(long,
+	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
+	 *
+	 * @param key        The key to use when notifying the {@link Observable}.
+	 * @param ev         The {@literal Event}.
+	 * @param observable The {@link Observable} on which to invoke the notify method.
+	 * @param <T>        The type of the {@link Event} data.
+	 * @return The new {@literal Composable}.
+	 */
+	public static <T, E extends Event<T>> Composable<E> to(final Object key, E ev, final Observable observable) {
+		return new Builder<E>()
+				.get()
+				.consume(new Consumer<E>() {
+					@Override
+					public void accept(E e) {
+						observable.notify(key, e, null);
+					}
+				});
 	}
 
 	/**
@@ -118,40 +169,6 @@ public class Promise<T> extends Composable<T> {
 		return Promise.<T>sync().set(value);
 	}
 
-	/**
-	 * Create a {@literal Promise} based on the given exception.
-	 *
-	 * @param reason The exception to use as the value.
-	 * @param <T>    The type of the intended {@literal Promise} value.
-	 * @return The new {@literal Promise}.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Builder<T> when(Throwable reason) {
-		return (Promise.Builder<T>) new Promise.Builder<Throwable>(reason);
-	}
-
-	/**
-	 * Create a {@literal Promise} based on the given value.
-	 *
-	 * @param value The value to use.
-	 * @param <T>   The type of the value.
-	 * @return The new {@literal Promise}.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Builder<T> when(T value) {
-		return new Promise.Builder<T>(value);
-	}
-
-	/**
-	 * Create a {@literal Promise} based on the given supplier.
-	 *
-	 * @param supplier The value to use.
-	 * @param <T>      The type of the function result.
-	 * @return The new {@literal Promise}.
-	 */
-	public static <T> Builder<T> when(Supplier<T> supplier) {
-		return new Promise.Builder<T>(supplier);
-	}
 
 	/**
 	 * Set the value of the {@literal Promise} so that subsequent calls to {@link reactor.core.Promise#get()} will throw
@@ -440,15 +457,15 @@ public class Promise<T> extends Composable<T> {
 			this.supplier = supplier;
 		}
 
-		Builder(T value) {
+		public Builder(T value) {
 			this(value, null);
 		}
 
-		Builder(Supplier<T> supplier) {
+		public Builder(Supplier<T> supplier) {
 			this(null, supplier);
 		}
 
-		Builder() {
+		public Builder() {
 			this(null, null);
 		}
 
@@ -457,7 +474,7 @@ public class Promise<T> extends Composable<T> {
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
 			} else if (supplier != null) {
-				final Composable<T> composable = Composable.from(supplier).build();
+				final Composable<T> composable = Fn.compose(supplier).get();
 				Promise<T> result = new Promise<T>(reactor) {
 					@Override
 					public T get() {

@@ -103,16 +103,25 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	/**
-	 * Create a {@literal Composable} that uses the given {@link Reactor} for publishing events internally.
+	 * Create a {@literal Composable}.
 	 *
-	 * @param observable The {@link Reactor} to use.
+	 * @param <T> The type of the value.
+	 * @return The new {@literal Promise}.
 	 */
-	public Composable(Observable observable) {
-		this.observable = observable;
+	public static <T> Composable<T> create() {
+		return new Composable<T>();
 	}
 
+
+	/**
+	 * Create a {@link Composable} from the given {@link Composable#observable} and consume it.
+	 *
+	 * @param src The composable to defer.
+	 * @param <T> The type of the values.
+	 * @return a new {@link Composable}
+	 */
 	public static <T> Composable<T> from(Composable<T> src) {
-		final Composable<T> c = new Composable<T>(src.observable);
+		final Composable<T> c = new Composable<T>(src);
 		src.consume(new Consumer<T>() {
 			@Override
 			public void accept(T t) {
@@ -122,53 +131,11 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return c;
 	}
 
-	/**
-	 * Create a delayed {@literal Composable} with no initial state, ready to accept values.
-	 *
-	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
-	 */
-	public static <T> Builder<T> lazy() {
-		return new Builder<T>();
-	}
-
-	/**
-	 * Create a {@literal Composable} when the given value.
-	 *
-	 * @param value The value to use.
-	 * @param <T>   The type of the value.
-	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Builder<T> from(T value) {
-		return new Builder<T>(Arrays.asList(value));
-	}
-
-	/**
-	 * Create a {@literal Composable} when the given list of values.
-	 *
-	 * @param values The values to use.
-	 * @param <T>    The type of the values.
-	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
-	 */
-	public static <T> Builder<T> from(Iterable<T> values) {
-		return new Builder<T>(values);
-	}
-
-	/**
-	 * Create a {@literal Composable} when the given {@link Supplier}.
-	 *
-	 * @param supplier The function to defer.
-	 * @param <T>      The type of the values.
-	 * @return A {@link Builder} to further refine the {@link Composable} and then build it.
-	 */
-	public static <T> Builder<T> from(Supplier<T> supplier) {
-		return new Builder<T>(supplier);
-	}
 
 	/**
 	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
-	 * the given {@link Observable} until the returned {@link Composable}'s {@link #await(long,
-	 * java.util.concurrent.TimeUnit)} or {@link #get()} methods are called.
+	 * the given {@link Observable} until the returned {@link Composable}'s {@link Composable#await(long,
+	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
 	 *
 	 * @param key        The key to use when notifying the {@link Observable}.
 	 * @param ev         The {@literal Event}.
@@ -176,15 +143,34 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param <T>        The type of the {@link Event} data.
 	 * @return The new {@literal Composable}.
 	 */
-	public static <T, E extends Event<T>> Composable<E> from(final Object key, E ev, final Observable observable) {
-		return Composable.from(ev)
-				.build()
+	public static <T, E extends Event<T>> Composable<E> to(final Object key, E ev, final Observable observable) {
+		return new Builder<E>()
+				.get()
 				.consume(new Consumer<E>() {
 					@Override
 					public void accept(E e) {
 						observable.notify(key, e, null);
 					}
 				});
+	}
+
+	/**
+	 * Create a {@link Composable} that uses the given {@link Reactor} for publishing events internally.
+	 *
+	 * @param observable The {@link Reactor} to use.
+	 */
+	public Composable(Observable observable) {
+		this.observable = observable;
+	}
+
+
+	/**
+	 * Create a {@link Composable} that uses the given {@link Composable} {@link Observable} for publishing events internally.
+	 *
+	 * @param composable The {@link Composable} to use.
+	 */
+	public Composable(Composable composable) {
+		this.observable = composable.observable;
 	}
 
 	/**
@@ -645,15 +631,15 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			this.supplier = supplier;
 		}
 
-		Builder(Iterable<T> values) {
+		public Builder(Iterable<T> values) {
 			this(values, null);
 		}
 
-		Builder(Supplier<T> supplier) {
+		public Builder(Supplier<T> supplier) {
 			this(null, supplier);
 		}
 
-		Builder() {
+		public Builder() {
 			this(null, null);
 		}
 

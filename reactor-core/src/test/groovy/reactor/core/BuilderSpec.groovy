@@ -31,7 +31,7 @@ class BuilderSpec extends Specification {
 
 		given: "a plain Reactor"
 
-		def reactor = Reactor.create().sync().build()
+		def reactor = Reactor.create().sync().get()
 		def data = ""
 		Thread t = null
 		reactor.on($("test"), { ev ->
@@ -53,7 +53,7 @@ class BuilderSpec extends Specification {
 
 		given: "a plain Reactor"
 
-		def reactor = Reactor.create().sync().build()
+		def reactor = Reactor.create().sync().get()
 		def data = ""
 		Thread t = null
 		reactor.on($("test"), { ev ->
@@ -74,7 +74,7 @@ class BuilderSpec extends Specification {
 	def "Promise correctly built"() {
 
 		when: "a plain Promise"
-		def promise = Promise.when('test').sync().build()
+		def promise = Fn.compose('test').sync().get()
 
 		then:
 		promise.get() == 'test'

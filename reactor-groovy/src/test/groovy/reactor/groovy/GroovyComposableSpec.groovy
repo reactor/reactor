@@ -16,10 +16,9 @@
 
 package reactor.groovy
 
+import reactor.Fn
 import reactor.core.Composable
-import reactor.core.R
 import reactor.core.Reactor
-import reactor.fn.Consumer
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -34,7 +33,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from single value"() {
 		when: 'Defer a composition'
-		def c = Composable.from("Hello World!").build()
+		def c = Fn.compose("Hello World!").get()
 
 		and: 'apply a transformation'
 		def d = c.map {
@@ -48,7 +47,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from Closure"() {
 		when: 'Defer a composition'
-		def c = Composable.from { sleep 500; 1 } build()
+		def c = Fn.compose { sleep 500; 1 } get()
 
 		and: 'apply a transformation'
 		def d = c | { it + 1 }
@@ -60,7 +59,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation'
 		int sum = 0
@@ -73,7 +72,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from multiple filtered values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation that filters odd elements'
 		def d = (c | { Integer.parseInt it }) & { it % 2 == 0 }
@@ -85,7 +84,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Error handling with composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation that generates an exception for the last value'
 		int sum = 0
@@ -99,7 +98,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Value is immediately available"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		then:
 		c.get() == '5'
@@ -108,7 +107,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Reduce composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a reduction'
 		def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i }
@@ -121,7 +120,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "consume first and last with a composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation'
 		def d = c | { Integer.parseInt it }
@@ -169,7 +168,7 @@ class GroovyComposableSpec extends Specification {
 		}
 
 		and: 'prepare reduce and notify composition'
-		def c1 = Composable.lazy().using(r).build()
+		def c1 = Fn.compose().using(r).get()
 		def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
 		r.compose(key.t2, '1', c1)
@@ -191,7 +190,7 @@ class GroovyComposableSpec extends Specification {
 		}
 
 		and: 'Defer a composition'
-		def c = Composable.from(['1', '2', '3', '4', '5']).build()
+		def c = Fn.compose(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def d = (c | { Integer.parseInt it }).to(key.t2, r)
@@ -206,7 +205,7 @@ class GroovyComposableSpec extends Specification {
 	def "compose from unknown number of values"() {
 
 		when: 'Defer a composition'
-		def c = Composable.from(new TestIterable('1', '2', '3', '4', '5')).build()
+		def c = Fn.compose(new TestIterable('1', '2', '3', '4', '5')).get()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def sum = 0

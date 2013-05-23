@@ -16,6 +16,7 @@
 
 package reactor.groovy
 
+import reactor.Fn
 import reactor.core.Promise
 import spock.lang.Specification
 
@@ -28,7 +29,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
-		def p = Promise.when("Hello World!").build()
+		def p = Fn.promise("Hello World!").get()
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"
@@ -37,7 +38,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		def p = Promise.from{"Hello World!"}.build()
+		def p = Fn.promise{"Hello World!"}.get()
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"
@@ -45,7 +46,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		def p = Promise.when(new IllegalArgumentException("Bad code! Bad!")).build()
+		def p = Fn.promise(new IllegalArgumentException("Bad code! Bad!")).get()
 
 		and: "invoke result"
 		p.get()
