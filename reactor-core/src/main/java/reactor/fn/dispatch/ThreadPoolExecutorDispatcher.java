@@ -16,93 +16,79 @@
 
 package reactor.fn.dispatch;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-
+import reactor.fn.Cache;
 import reactor.fn.ConsumerInvoker;
+import reactor.fn.LoadingCache;
+import reactor.fn.Supplier;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
  *
  * @author Andy Wilkinson
+ * @author Jon Brisbin
  */
 public final class ThreadPoolExecutorDispatcher implements Dispatcher {
-	
+
 	private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-	
-	private static final int DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
+	private static final int DEFAULT_BACKLOG   = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
 
+	private final ExecutorService executor;
+	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	private final Cache<ThreadPoolTask> readyTasks;
 
-	private final Disruptor<RingBufferTask>  disruptor;
-	private final ExecutorService            executor;
-	
-	private volatile ConsumerInvoker            invoker = new ConverterAwareConsumerInvoker();	
-	private volatile RingBuffer<RingBufferTask> ringBuffer;
-	
 	/**
-	 * Creates a new {@literal ThreadPoolExecutorDispatcher} that will use the default backlog,
-	 * as configured by the {@code reactor.dispatcher.backlog} system property (if the property is not set,
-	 * a backlog of 128 is used), and the default pool size: the number of available processors.
-	 * 
+	 * Creates a new {@literal ThreadPoolExecutorDispatcher} that will use the default backlog, as configured by the {@code
+	 * reactor.dispatcher.backlog} system property (if the property is not set, a backlog of 128 is used), and the default
+	 * pool size: the number of available processors.
+	 *
 	 * @see Runtime#availableProcessors()
 	 */
 	public ThreadPoolExecutorDispatcher() {
 		this(DEFAULT_POOL_SIZE, DEFAULT_BACKLOG);
 	}
 
-	@SuppressWarnings("unchecked")
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
-	 * 
-	 * @param poolSize the pool size
-	 * @param backlog the backlog size
 	 *
+	 * @param poolSize the pool size
+	 * @param backlog  the backlog size
 	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
-		executor = Executors.newFixedThreadPool(poolSize, new NamedDaemonThreadFactory("thread-pool-executor-dispatcher"));
-
-		disruptor = new Disruptor<RingBufferTask>(
-				new EventFactory<RingBufferTask>() {
+		this.executor = Executors.newFixedThreadPool(
+				poolSize,
+				new NamedDaemonThreadFactory("thread-pool-executor-dispatcher")
+		);
+		this.readyTasks = new LoadingCache<ThreadPoolTask>(
+				new Supplier<ThreadPoolTask>() {
 					@Override
-					public RingBufferTask newInstance() {
-						return new RingBufferTask();
+					public ThreadPoolTask get() {
+						return new ThreadPoolTask();
 					}
 				},
 				backlog,
-				executor
+				200l
 		);
-		disruptor.handleEventsWith(new EventHandler<RingBufferTask>() {
-			@Override
-			public void onEvent(RingBufferTask task, long sequence, boolean endOfBatch) throws Exception {
-				task.reset();
-			}
-		});
 	}
 
 	@Override
 	public ThreadPoolExecutorDispatcher destroy() {
-		disruptor.halt();
 		return this;
 	}
 
 	@Override
 	public ThreadPoolExecutorDispatcher stop() {
-		disruptor.shutdown();
 		executor.shutdown();
 		return this;
 	}
 
 	@Override
 	public ThreadPoolExecutorDispatcher start() {
-		ringBuffer = disruptor.start();
 		return this;
 	}
 
@@ -112,22 +98,13 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public <T> Task<T> nextTask() {
-		long l = ringBuffer.next();
-		RingBufferTask t = ringBuffer.get(l);
-		t.setSequenceId(l);
-		return (Task<T>) t;
+		Task t = readyTasks.allocate();
+		return (null != t ? t : new ThreadPoolTask());
 	}
 
-	private class RingBufferTask extends Task<Object> implements Runnable {
-		private long sequenceId;
-
-		private RingBufferTask setSequenceId(long sequenceId) {
-			this.sequenceId = sequenceId;
-			return this;
-		}
-
+	private class ThreadPoolTask extends Task<Object> implements Runnable {
 		@Override
 		public void submit() {
 			executor.submit(this);
@@ -137,9 +114,8 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 		public void run() {
 			try {
 				execute(invoker);
-			}
-			finally {
-				ringBuffer.publish(sequenceId);
+			} finally {
+				readyTasks.deallocate(this);
 			}
 		}
 	}

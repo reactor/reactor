@@ -16,16 +16,18 @@
 
 package reactor.fn.dispatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.fn.Cache;
+import reactor.fn.ConsumerInvoker;
+import reactor.fn.LoadingCache;
+import reactor.fn.Supplier;
+import reactor.fn.support.ConverterAwareConsumerInvoker;
+import reactor.support.QueueFactory;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
-import reactor.support.QueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -34,22 +36,23 @@ import reactor.support.QueueFactory;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
+@SuppressWarnings("rawtypes")
 public class BlockingQueueDispatcher implements Dispatcher {
 
-	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
+	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "256"));
 	private static final AtomicInteger INSTANCE_COUNT  = new AtomicInteger();
 
 	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
 	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
 
-	private final BlockingQueue<Task<?>> readyTasks = QueueFactory.createQueue();
-	private final BlockingQueue<Task<?>> taskQueue = QueueFactory.createQueue();
-	private final Thread           taskExecutor;
+	private final Cache<Task> readyTasks;
+	private final BlockingQueue<Task> taskQueue = QueueFactory.createQueue();
+	private final Thread taskExecutor;
 
 	/**
-	 * Creates a new {@literal BlockingQueueDispatcher} named 'blocking-queue' that will use the default backlog,
-	 * as configured by the {@code reactor.dispatcher.backlog} system property. If the property is not set,
-	 * a backlog of 128 is used.
+	 * Creates a new {@literal BlockingQueueDispatcher} named 'blocking-queue' that will use the default backlog, as
+	 * configured by the {@code reactor.dispatcher.backlog} system property. If the property is not set, a backlog of 128
+	 * is used.
 	 */
 	public BlockingQueueDispatcher() {
 		this("blocking-queue", DEFAULT_BACKLOG);
@@ -58,33 +61,32 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	/**
 	 * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
 	 *
-	 * @param name The name
+	 * @param name    The name
 	 * @param backlog The backlog size
 	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
+		this.readyTasks = new LoadingCache<Task>(
+				new Supplier<Task>() {
+					@Override
+					public Task get() {
+						return new BlockingQueueTask();
+					}
+				},
+				backlog,
+				200l
+		);
 		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
 
 		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
 		this.taskExecutor.setDaemon(true);
 		this.taskExecutor.setPriority(Thread.MAX_PRIORITY);
-
-		for (int i = 0; i < Math.max(backlog, 64); i++) {
-			this.readyTasks.add(new BlockingQueueTask<Object>());
-		}
 	}
 
 	@Override
-	@SuppressWarnings({"unchecked"})
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public <T> Task<T> nextTask() {
-		Task<?> t;
-		try {
-			do {
-				t = readyTasks.poll(200, TimeUnit.MILLISECONDS);
-			} while (null == t);
-			return (Task<T>) t;
-		} catch (InterruptedException e) {
-			return new BlockingQueueTask<T>();
-		}
+		Task t = readyTasks.allocate();
+		return (null != t ? t : new BlockingQueueTask());
 	}
 
 	private class BlockingQueueTask<T> extends Task<T> {
@@ -119,10 +121,10 @@ public class BlockingQueueDispatcher implements Dispatcher {
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
-
+		@SuppressWarnings("rawtypes")
 		@Override
 		public void run() {
-			Task<?> t = null;
+			Task t = null;
 			while (true) {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
@@ -140,10 +142,11 @@ public class BlockingQueueDispatcher implements Dispatcher {
 				} finally {
 					if (null != t) {
 						t.reset();
-						readyTasks.add(t);
+						readyTasks.deallocate(t);
 					}
 				}
 			}
 		}
 	}
+
 }
