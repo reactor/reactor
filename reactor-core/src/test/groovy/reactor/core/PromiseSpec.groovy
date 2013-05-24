@@ -35,7 +35,7 @@ class PromiseSpec extends Specification {
 		def success = false
 
 		when: "we create a plain Promise"
-		def promise = R.promise(supplier { throw new Exception('bad')} ).build()
+		def promise = R.promise(supplier { throw new Exception('bad')} ).sync().build()
 
 		and:
 		promise.onError( consumer {latch.countDown()})
