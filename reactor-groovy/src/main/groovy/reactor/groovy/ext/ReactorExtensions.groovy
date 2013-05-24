@@ -47,4 +47,8 @@ class ReactorExtensions {
 	static <T> Promise.Builder<T> promise(final R selfType, Closure<T> callback) {
 		R.promise new ClosureSupplier<T>(callback)
 	}
+
+	static <T> Promise.Builder<T> from(final Promise<T> selfType, Closure<T> callback) {
+		promise null, callback
+	}
 }

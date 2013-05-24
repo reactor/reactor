@@ -65,6 +65,24 @@ class ComposableExtensions {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
+	static <T> Promise<T> onError(final Promise<T> selfType, final Closure closure) {
+		selfType.onError new ClosureConsumer<Throwable>(closure)
+	}
+
+	static <T> Promise<T> onComplete(final Promise<T> selfType, final Closure closure) {
+		selfType.onComplete new ClosureConsumer<Promise<T>>(closure)
+	}
+
+	static <T> Promise<T> onSuccess(final Promise<T> selfType, final Closure closure) {
+		selfType.onSuccess new ClosureConsumer<T>(closure)
+	}
+
+	static <T, E> Promise<E> then(final Promise<T> selfType, final Closure<E> closureSuccess,
+	                              final Closure closureError = null) {
+		selfType.then new ClosureFunction<T, E>(closureSuccess), closureError ?
+				new ClosureConsumer<Throwable>(closureError) : null
+	}
+
 	/**
 	 * Operator overloading
 	 */
@@ -73,7 +91,7 @@ class ComposableExtensions {
 		selfType.consume other
 	}
 
-	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Composable.Reduce<T, V>,V> other) {
+	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Composable.Reduce<T, V>, V> other) {
 		selfType.reduce other
 	}
 
