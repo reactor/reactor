@@ -42,6 +42,12 @@ class GroovyPromisesSpec extends Specification {
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"
+
+		when: "a deferred Promise"
+		p = Promise.from{"Hello World!"}.get()
+
+		then: 'Promise contains value'
+		p.await() == "Hello World!"
 	}
 
 	def "Promise notifies of Failure"() {
@@ -62,6 +68,16 @@ class GroovyPromisesSpec extends Specification {
 
 		when: "add a mapping closure"
 		def s = p | { Integer.parseInt it }
+
+		and: "setting a value"
+		p << '10'
+
+		then:
+		s.get() == 10
+
+		when: "add a mapping closure"
+		p = Promise.sync()
+		s = p.then { Integer.parseInt it }
 
 		and: "setting a value"
 		p << '10'

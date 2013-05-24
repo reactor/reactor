@@ -77,10 +77,10 @@ class ComposableExtensions {
 		selfType.onSuccess new ClosureConsumer<T>(closure)
 	}
 
-	static <T, E> Promise<E> then(final Promise<T> selfType, final Closure<E> closureSuccess,
+	static <T, V> Promise<V> then(final Promise<T> selfType, final Closure<V> closureSuccess,
 	                              final Closure closureError = null) {
-		selfType.then new ClosureFunction<T, E>(closureSuccess), closureError ?
-				new ClosureConsumer<Throwable>(closureError) : null
+		selfType.then(new ClosureFunction<T, V>(closureSuccess), closureError ?
+				new ClosureConsumer<Throwable>(closureError) : null)
 	}
 
 	/**
