@@ -24,6 +24,7 @@ import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.util.Assert;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -128,6 +129,45 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			}
 		});
 		return c;
+	}
+
+
+	/**
+	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 *
+	 * @param composables The composables to merge.
+	 * @param <T> The type of the values.
+	 * @return a new {@link Composable}
+	 */
+	public static <T> Composable<Collection<T>> from(Composable<T>... composables) {
+		return from(Arrays.asList(composables));
+	}
+
+	/**
+	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 *
+	 * @param composables The composables to merge.
+	 * @param <T> The type of the values.
+	 * @return a new {@link Composable}
+	 */
+	public static <T> Composable<Collection<T>> from(final Collection<Composable<T>> composables) {
+
+		final Composable<T> c = new DelayedAcceptComposable<T>(R.reactor().sync().build(), composables.size()){
+			@Override
+			protected void delayedAccept() {
+				for(Composable<T> composable : composables){
+					composable.get();
+				}
+				//super.delayedAccept();
+			}
+		};
+		final Composable<Collection<T>> r = c.reduce();
+
+		for(Composable<T> composable : composables){
+			composable.consume(c);
+		}
+
+		return r;
 	}
 
 
