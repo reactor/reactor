@@ -305,7 +305,7 @@ public class Promise<T> extends Composable<T> {
 	public Composable<T> consume(final Consumer<T> consumer) {
 		synchronized (monitor) {
 			if (isError()) {
-				throw new IllegalStateException(error);
+				return this;
 			} else if (acceptCountReached()) {
 				Fn.schedule(consumer, value, observable);
 				return this;
@@ -477,8 +477,17 @@ public class Promise<T> extends Composable<T> {
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
 			} else if (supplier != null) {
-				Promise<T> result = new Promise<T>(reactor);
-				R.compose(supplier).using(reactor).build().consume(result).get();
+				final Promise<T> result = new Promise<T>(reactor);
+				Fn.schedule(new Consumer<Object>() {
+					@Override
+					public void accept(Object o) {
+						try{
+							result.set(supplier.get());
+						}catch (Throwable t){
+							result.set(t);
+						}
+					}
+				},null, reactor);
 				return result;
 			} else {
 				return new Promise<T>(reactor).set(value);

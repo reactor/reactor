@@ -18,10 +18,7 @@ package reactor;
 
 import groovy.lang.Closure;
 import groovy.lang.GString;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Selector;
+import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
 
 /**
@@ -97,6 +94,17 @@ public abstract class GroovyTestUtils {
 				}
 
 				return cl.call(arg);
+			}
+		};
+	}
+
+	public static <V> Supplier<V> supplier(final Closure<V> cl) {
+		return new Supplier<V>() {
+
+			@Override
+			@SuppressWarnings({"unchecked"})
+			public V get() {
+				return cl.call();
 			}
 		};
 	}

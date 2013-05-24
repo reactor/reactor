@@ -263,16 +263,21 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param <E>           The type of exception.
 	 * @return {@literal this}
 	 */
+	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Composable<T> when(Class<E> exceptionType, final Consumer<E> onError) {
 		Assert.notNull(exceptionType);
 		Assert.notNull(onError);
 
-		observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
-			@Override
-			public void accept(Event<E> ev) {
-				onError.accept(ev.getData());
-			}
-		});
+		if (!isComplete()) {
+			observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
+				@Override
+				public void accept(Event<E> ev) {
+					onError.accept(ev.getData());
+				}
+			});
+		} else {
+			Fn.schedule(onError, (E)error, observable);
+		}
 		return this;
 	}
 

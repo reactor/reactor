@@ -18,41 +18,34 @@ package reactor.core
 
 import spock.lang.Specification
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+import static reactor.GroovyTestUtils.*
+
 /**
  * @author Stephane Maldini
  */
-class BuilderSpec extends Specification {
-
-	def "Reactor correctly built"() {
-
-		when: "we create a plain Reactor"
-		def reactor = R.reactor().sync().build()
-
-		then:
-		Reactor.isAssignableFrom(reactor.class)
-	}
+class PromiseSpec extends Specification {
 
 
-	def "Composable correctly built"() {
-
-		when: "we create a plain Composable"
-		def composable = R.compose('test').sync().build()
-
-		then:
-		Composable.isAssignableFrom(composable.class)
-		composable.get() == 'test'
-
-	}
-
-
-	def "Promise correctly built"() {
+	def "Promise error handling"() {
+		given:
+		def latch = new CountDownLatch(1)
+		def success = false
 
 		when: "we create a plain Promise"
-		def promise = R.promise('test').sync().build()
+		def promise = R.promise(supplier { throw new Exception('bad')} ).build()
+
+		and:
+		promise.onError( consumer {latch.countDown()})
+		promise.onSuccess( consumer {success = true})
+		//promise.get()
 
 		then:
-		Promise.isAssignableFrom(promise.class)
-		promise.get() == 'test'
+		latch.await(1,TimeUnit.SECONDS)
+		!success
+		latch.count == 0
 
 	}
 
