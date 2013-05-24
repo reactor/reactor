@@ -255,31 +255,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return c;
 	}
 
-	/**
-	 * Register a {@link Consumer} to be invoked whenever an exception that is assignable when the given exception type.
-	 *
-	 * @param exceptionType The type of exception to handle. Also matches an subclass of this type.
-	 * @param onError       The {@link Consumer} to invoke when this error occurs.
-	 * @param <E>           The type of exception.
-	 * @return {@literal this}
-	 */
-	@SuppressWarnings("unchecked")
-	public <E extends Throwable> Composable<T> when(Class<E> exceptionType, final Consumer<E> onError) {
-		Assert.notNull(exceptionType);
-		Assert.notNull(onError);
-
-		if (!isComplete()) {
-			observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
-				@Override
-				public void accept(Event<E> ev) {
-					onError.accept(ev.getData());
-				}
-			});
-		} else {
-			Fn.schedule(onError, (E)error, observable);
-		}
-		return this;
-	}
 
 	/**
 	 * Create a new {@link Composable} that is linked to the parent through the given {@link Function}. When the parent's
@@ -542,6 +517,32 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			}
 			return value;
 		}
+	}
+
+	/**
+	 * Register a {@link Consumer} to be invoked whenever an exception that is assignable when the given exception type.
+	 *
+	 * @param exceptionType The type of exception to handle. Also matches an subclass of this type.
+	 * @param onError       The {@link Consumer} to invoke when this error occurs.
+	 * @param <E>           The type of exception.
+	 * @return {@literal this}
+	 */
+	@SuppressWarnings("unchecked")
+	public <E extends Throwable> Composable<T> when(Class<E> exceptionType, final Consumer<E> onError) {
+		Assert.notNull(exceptionType);
+		Assert.notNull(onError);
+
+		if (!isComplete()) {
+			observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
+				@Override
+				public void accept(Event<E> ev) {
+					onError.accept(ev.getData());
+				}
+			});
+		} else if(isError()){
+			Fn.schedule(onError, (E)error, observable);
+		}
+		return this;
 	}
 
 	protected Registration<Consumer<Event<T>>> when(Selector sel, final Consumer<T> consumer) {
