@@ -115,10 +115,10 @@ public class Promise<T> extends Composable<T> {
 	 * @param <T>        The type of the {@link Event} data.
 	 * @return The new {@literal Composable}.
 	 */
-	public static <T, E extends Event<T>> Composable<E> to(final Object key, E ev, final Observable observable) {
+	public static <T, E extends Event<T>> Promise<E> to(final Object key, E ev, final Observable observable) {
 		return new Builder<E>()
 				.get()
-				.consume(new Consumer<E>() {
+				.onSuccess(new Consumer<E>() {
 					@Override
 					public void accept(E e) {
 						observable.notify(key, e, null);
