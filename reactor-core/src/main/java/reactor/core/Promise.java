@@ -478,9 +478,7 @@ public class Promise<T> extends Composable<T> {
 				return new Promise<T>(reactor).set((Throwable) value);
 			} else if (supplier != null) {
 				Promise<T> result = new Promise<T>(reactor);
-				final Composable<T> composable = R.compose(supplier).using(reactor).get().consume(result);
-				composable.consume(result);
-				result.get();
+				R.compose(supplier).using(reactor).build().consume(result).get();
 				return result;
 			} else {
 				return new Promise<T>(reactor).set(value);
