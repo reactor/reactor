@@ -35,18 +35,32 @@ class PromiseSpec extends Specification {
 		def success = false
 
 		when: "we create a plain Promise"
-		def promise = R.promise(supplier { throw new Exception('bad')} ).sync().build()
+		def promise = R.promise(supplier { throw new Exception('bad') }).sync().build()
 
 		and:
-		promise.onError( consumer {latch.countDown()})
-		promise.onSuccess( consumer {success = true})
+		promise.onSuccess(consumer { success = true })
+		promise.onError(consumer { latch.countDown() })
 		//promise.get()
 
 		then:
-		latch.await(1,TimeUnit.SECONDS)
+		latch.await(1, TimeUnit.SECONDS)
 		!success
 		latch.count == 0
 
+	}
+
+	def "Test promise chaining with exception"() {
+		when: "A promise is chained"
+		def promise = R.promise(supplier { 1 + 1 }).sync().build()
+		promise = promise.map function { it * 2 } map function { throw new RuntimeException("bad") } map function {
+			it + 6
+		}
+
+		def val = promise.get()
+
+		then: 'the chain is executed'
+		val == null
+		thrown RuntimeException
 	}
 
 }

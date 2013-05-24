@@ -22,6 +22,7 @@ package reactor.fn.selector;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public class ClassSelector extends BaseSelector<Class<?>> {
 
@@ -31,10 +32,7 @@ public class ClassSelector extends BaseSelector<Class<?>> {
 
 	@Override
 	public boolean matches(Object key) {
-		if (!(key instanceof Class)) {
-			return false;
-		}
-		return getObject().isAssignableFrom((Class<?>)key);
+		return key instanceof Class && getObject().isAssignableFrom((Class<?>) key);
 	}
 
 }

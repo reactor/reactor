@@ -207,7 +207,10 @@ public class ComposableTests {
 
 	<T> void await(Deferred<T> d, Matcher<T> expected) throws InterruptedException {
 		long startTime = System.currentTimeMillis();
-		T result = d.await(1, TimeUnit.SECONDS);
+		T result = null;
+		try{
+			result = d.await(1, TimeUnit.SECONDS);
+		}catch (Exception e){}
 		long duration = System.currentTimeMillis() - startTime;
 
 		assertThat(result, expected);

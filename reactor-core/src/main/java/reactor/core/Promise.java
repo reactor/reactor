@@ -268,7 +268,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return {@literal this}
 	 */
 	public <V> Promise<V> then(Function<T, V> onSuccess, Consumer<Throwable> onError) {
-		Promise<V> c = (Promise<V>) map(onSuccess);
+		Promise<V> c = map(onSuccess);
 		if (null != onError)
 			c.when(Throwable.class, onError);
 		return c;
@@ -302,7 +302,7 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	public Composable<T> consume(final Consumer<T> consumer) {
+	public Promise<T> consume(final Consumer<T> consumer) {
 		synchronized (monitor) {
 			if (isError()) {
 				return this;
@@ -310,87 +310,76 @@ public class Promise<T> extends Composable<T> {
 				Fn.schedule(consumer, value, observable);
 				return this;
 			} else {
-				return super.consume(consumer);
+				return (Promise<T>)super.consume(consumer);
 			}
 		}
 	}
 
 	@Override
-	public Composable<T> consume(Object key, Observable observable) {
+	public Promise<T> consume(Object key, Observable observable) {
 		synchronized (monitor) {
-			if (isError()) {
-				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {
+			if (acceptCountReached()) {
 				observable.notify(key, Fn.event(value));
 				return this;
 			} else {
-				return super.consume(key, observable);
+				return (Promise<T>)super.consume(key, observable);
 			}
 		}
 	}
 
 	@Override
-	public Composable<T> first() {
+	public Promise<T> first() {
 		synchronized (monitor) {
-			if (isError()) {
-				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {
-				Composable<T> c = super.first();
-				c.accept(value);
+			if (acceptCountReached()) {
+				Promise<T> c = (Promise<T>) super.first();
+				c.set(value);
 				return c;
 			} else {
-				return super.first();
+				return (Promise<T>) super.first();
 			}
 		}
 	}
 
 	@Override
-	public Composable<T> last() {
+	public Promise<T> last() {
 		synchronized (monitor) {
-			if (isError()) {
-				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {
-				Composable<T> c = super.last();
-				c.accept(value);
+			if (acceptCountReached()) {
+				Promise<T> c = (Promise<T>) super.last();
+				c.set(value);
 				return c;
 			} else {
-				return super.last();
+				return (Promise<T>) super.last();
 			}
 		}
 	}
 
 	@Override
-	public <V> Composable<V> map(final Function<T, V> fn) {
+	public <V> Promise<V> map(final Function<T, V> fn) {
 		synchronized (monitor) {
-			if (isError()) {
-				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {
-				final Composable<V> c = createComposable(createObservable(observable));
+			if (acceptCountReached()) {
+				final Promise<V> c = createComposable(createObservable(observable));
 				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
 						try {
 							c.accept(fn.apply(value));
 						} catch (Throwable t) {
-							c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-							c.decreaseAcceptLength();
+							handleError(c, t);
 						}
 					}
 				}, value, observable);
 				return c;
 			} else {
-				return super.map(fn);
+				return (Promise<V>)super.map(fn);
 			}
 		}
 	}
 
 	@Override
-	public Composable<T> filter(final Function<T, Boolean> fn) {
+	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
-			if (isError()) {
-				throw new IllegalStateException(error);
-			} else if (acceptCountReached()) {
-				final Composable<T> c = createComposable(createObservable(observable));
+			if (acceptCountReached()) {
+				final Promise<T> c = createComposable(createObservable(observable));
 				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -401,16 +390,20 @@ public class Promise<T> extends Composable<T> {
 								c.decreaseAcceptLength();
 							}
 						} catch (Throwable t) {
-							c.observable.notify(Fn.T(t.getClass()), Fn.event(t));
-							c.decreaseAcceptLength();
+							handleError(c, t);
 						}
 					}
 				}, value, observable);
 				return c;
 			} else {
-				return super.filter(fn);
+				return (Promise<T>)super.filter(fn);
 			}
 		}
+	}
+
+	@Override
+	protected <V> void handleError(Composable<V> c, Throwable t) {
+		c.accept(t);
 	}
 
 	public void accept(Throwable error) {
@@ -433,7 +426,7 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <U> Composable<U> createComposable(Observable src) {
+	protected <U> Promise<U> createComposable(Observable src) {
 		return new Promise<U>(src);
 	}
 
@@ -481,13 +474,13 @@ public class Promise<T> extends Composable<T> {
 				Fn.schedule(new Consumer<Object>() {
 					@Override
 					public void accept(Object o) {
-						try{
+						try {
 							result.set(supplier.get());
-						}catch (Throwable t){
+						} catch (Throwable t) {
 							result.set(t);
 						}
 					}
-				},null, reactor);
+				}, null, reactor);
 				return result;
 			} else {
 				return new Promise<T>(reactor).set(value);

@@ -446,7 +446,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				monitor.notifyAll();
 			}
 		}
-		observable.notify(Fn.T(error.getClass()), Fn.event(error));
+		observable.notify(error.getClass(), Fn.event(error));
 	}
 
 	/**
@@ -588,7 +588,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		}
 	}
 
-	private <V> void handleError(final Composable<V> c, Throwable t) {
+	protected <V> void handleError(final Composable<V> c, Throwable t) {
 		c.observable.notify(t.getClass(), Fn.event(t));
 		c.decreaseAcceptLength();
 	}
