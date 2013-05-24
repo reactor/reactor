@@ -16,6 +16,7 @@
 
 package reactor.groovy
 
+import reactor.Fn
 import reactor.core.R
 import reactor.core.Reactor
 import spock.lang.Specification
@@ -165,15 +166,29 @@ class GroovyComposableSpec extends Specification {
 			(Integer.parseInt(test)) * 100
 		}
 
+		r.receive(key.t1) { String test ->
+			(Integer.parseInt(test)) * 1000
+		}
+
 		and: 'prepare reduce and notify composition'
 		def c1 = R.compose().using(r).get()
 		def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
-		r.compose(key.t2, '1', c1)
+		r.compose(key.t2,'1', c1)
 
 		then:
 		c2.await(5, TimeUnit.SECONDS)
 		c2.get() == [1, 100]
+
+		when: 'using reduce() alias'
+		c1 = R.compose().using(r).get()
+		c2 = c1.reduce()
+
+		r.compose(key.t2,'1', c1)
+
+		then:
+		c2.await(5, TimeUnit.SECONDS)
+		c2.get() == [1, 100, 1000]
 	}
 
 	def "relay events to reactor"() {

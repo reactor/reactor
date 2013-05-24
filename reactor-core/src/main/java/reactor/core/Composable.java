@@ -23,6 +23,7 @@ import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.util.Assert;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -360,6 +361,25 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			}
 		});
 		return c;
+	}
+
+
+	/**
+	 * Accumulate a result until expected accept count has been reached - If this limit hasn't been set, each accumulated
+	 * result will notify the returned {@link Composable}. Will automatically generate a collection formed from
+	 * composable
+	 * streamed results, until accept count is reached.
+	 *
+	 * @return The new {@link Composable}.
+	 */
+	public Composable<Collection<T>> reduce() {
+		return reduce(new Function<Reduce<T, Collection<T>>, Collection<T>>() {
+			@Override
+			public Collection<T> apply(Reduce<T, Collection<T>> reducer) {
+				reducer.getLastValue().add(reducer.getNextValue());
+				return reducer.getLastValue();
+			}
+		}, new ArrayList<T>());
 	}
 
 	/**
