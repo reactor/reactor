@@ -21,6 +21,7 @@ import reactor.core.Composable
 import reactor.core.Promise
 import reactor.fn.Consumer
 import reactor.fn.Function
+import reactor.fn.Reduce
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureFunction
 import reactor.groovy.support.ClosureReduce
@@ -91,12 +92,20 @@ class ComposableExtensions {
 		selfType.consume other
 	}
 
-	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Composable.Reduce<T, V>, V> other) {
+	static <T> Promise<T> leftShift(final Promise<T> selfType, final Consumer<T> other) {
+		selfType.onSuccess other
+	}
+
+	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Reduce<T, V>, V> other) {
 		selfType.reduce other
 	}
 
 	static <T, V> Composable<V> or(final Composable<T> selfType, final Function<T, V> other) {
 		selfType.map other
+	}
+
+	static <T, V> Promise<V> or(final Promise<T> selfType, final Function<T, V> other) {
+		selfType.then other,(Consumer<Throwable>) null
 	}
 
 	static <T, V> Composable<V> and(final Composable<T> selfType, final Function<T, Boolean> other) {
@@ -107,12 +116,21 @@ class ComposableExtensions {
 		consume selfType, other
 	}
 
+	static <T> Promise<T> leftShift(final Promise<T> selfType, final Closure other) {
+		onSuccess selfType, other
+	}
+
 	static <T, V> Composable<V> mod(final Composable<T> selfType, final Closure<V> other) {
 		reduce selfType, other
 	}
 
 	static <T, V> Composable<V> or(final Composable<T> selfType, final Closure<V> other) {
 		map selfType, other
+	}
+
+
+	static <T, V> Promise<V> or(final Promise<T> selfType, final Closure<V> other) {
+		then selfType, other
 	}
 
 	static <T> Composable<T> and(final Composable<T> selfType, final Closure<Boolean> other) {

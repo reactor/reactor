@@ -21,8 +21,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
-
-import java.util.concurrent.TimeUnit;
+import reactor.util.Assert;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -110,12 +109,12 @@ public class Promise<T> extends Composable<T> {
 	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
 	 *
 	 * @param key        The key to use when notifying the {@link Observable}.
-	 * @param ev         The {@literal Event}.
 	 * @param observable The {@link Observable} on which to invoke the notify method.
 	 * @param <T>        The type of the {@link Event} data.
 	 * @return The new {@literal Composable}.
 	 */
-	public static <T, E extends Event<T>> Promise<E> to(final Object key, E ev, final Observable observable) {
+	public static <T, E extends Event<T>> Promise<E> to(final Object key, final Observable observable) {
+		Assert.notNull(observable);
 		return new Builder<E>()
 				.get()
 				.onSuccess(new Consumer<E>() {
@@ -206,6 +205,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Promise<T> onComplete(final Consumer<Promise<T>> onComplete) {
+		Assert.notNull(onComplete);
 		onSuccess(new Consumer<T>() {
 			@Override
 			public void accept(T t) {
@@ -228,6 +228,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Promise<T> onSuccess(Consumer<T> onSuccess) {
+		Assert.notNull(onSuccess);
 		consume(onSuccess);
 		return this;
 	}
@@ -239,6 +240,7 @@ public class Promise<T> extends Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Promise<T> onError(Consumer<Throwable> onError) {
+		Assert.notNull(onError);
 		when(Throwable.class, onError);
 		return this;
 	}
@@ -252,7 +254,8 @@ public class Promise<T> extends Composable<T> {
 	 */
 	public Promise<T> then(Consumer<T> onSuccess, Consumer<Throwable> onError) {
 		onSuccess(onSuccess);
-		onError(onError);
+		if (null != onError)
+			onError(onError);
 		return this;
 	}
 
@@ -266,7 +269,8 @@ public class Promise<T> extends Composable<T> {
 	 */
 	public <V> Promise<V> then(Function<T, V> onSuccess, Consumer<Throwable> onError) {
 		Promise<V> c = (Promise<V>) map(onSuccess);
-		c.when(Throwable.class, onError);
+		if (null != onError)
+			c.when(Throwable.class, onError);
 		return c;
 	}
 
@@ -473,21 +477,10 @@ public class Promise<T> extends Composable<T> {
 			if (Throwable.class.isInstance(value)) {
 				return new Promise<T>(reactor).set((Throwable) value);
 			} else if (supplier != null) {
-				final Composable<T> composable = R.compose(supplier).get();
-				Promise<T> result = new Promise<T>(reactor) {
-					@Override
-					public T get() {
-						composable.get();
-						return super.get();
-					}
-
-					@Override
-					public T await(long timeout, TimeUnit unit) throws InterruptedException {
-						composable.await(timeout, unit);
-						return super.await(timeout, unit);
-					}
-				};
+				Promise<T> result = new Promise<T>(reactor);
+				final Composable<T> composable = R.compose(supplier).using(reactor).get().consume(result);
 				composable.consume(result);
+				result.get();
 				return result;
 			} else {
 				return new Promise<T>(reactor).set(value);

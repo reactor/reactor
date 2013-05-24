@@ -62,17 +62,17 @@ public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TAR
 		return (BUILDER) this;
 	}
 
-	public BUILDER pubSub(){
+	public BUILDER broadcastLoadBalancing(){
 		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.NONE;
 		return (BUILDER) this;
 	}
 
-	public BUILDER randomDistribution(){
+	public BUILDER randomLoadBalancing(){
 		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.RANDOM;
 		return (BUILDER) this;
 	}
 
-	public BUILDER p2p(){
+	public BUILDER roundRobinLoadBalancing(){
 		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.ROUND_ROBIN;
 		return (BUILDER) this;
 	}
@@ -125,6 +125,10 @@ public abstract class ReactorBuilder<BUILDER extends ReactorBuilder<BUILDER, TAR
 	public BUILDER dispatcher(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
 		return (BUILDER) this;
+	}
+
+	public TARGET build() {
+		return get();
 	}
 
 	public TARGET get() {

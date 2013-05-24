@@ -24,6 +24,7 @@ import reactor.fn.selector.RegexSelector;
 import reactor.fn.selector.UriTemplateSelector;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 
 /**
  * Helper methods to provide syntax sugar for working with functional components in Reactor.
@@ -170,6 +171,45 @@ public abstract class Fn {
 			@Override
 			public void accept(T t) {
 				r.run();
+			}
+		};
+	}
+
+
+	/**
+	 * Wrap the given {@link Callable} and compose a new {@link reactor.fn.Supplier}.
+	 *
+	 * @param r The {@link Callable}.
+	 * @return An {@link reactor.fn.Supplier} that executes the {@link Callable}.
+	 */
+	public static <T> Supplier<T> supplier(final Callable<T> r) {
+		return new Supplier<T>() {
+			@Override
+			public T get() {
+				try {
+					return r.call();
+				} catch (Exception e) {
+					throw new IllegalStateException(e);
+				}
+			}
+		};
+	}
+
+	/**
+	 * Wrap the given {@link Future} and compose a new {@link reactor.fn.Supplier}.
+	 *
+	 * @param r The {@link Future}.
+	 * @return An {@link reactor.fn.Supplier} that fetch the {@link Future}.
+	 */
+	public static <T> Supplier<T> supplier(final Future<T> r) {
+		return new Supplier<T>() {
+			@Override
+			public T get() {
+				try {
+					return r.get();
+				} catch (Exception e) {
+					throw new IllegalStateException(e);
+				}
 			}
 		};
 	}

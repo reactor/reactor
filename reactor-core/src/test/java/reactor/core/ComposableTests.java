@@ -18,7 +18,6 @@ package reactor.core;
 
 import org.hamcrest.Matcher;
 import org.junit.Test;
-import reactor.Fn;
 import reactor.fn.*;
 
 import java.util.Arrays;
@@ -125,9 +124,9 @@ public class ComposableTests {
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
-				.reduce(new Function<Composable.Reduce<Integer, Integer>, Integer>() {
+				.reduce(new Function<Reduce<Integer, Integer>, Integer>() {
 					@Override
-					public Integer apply(Composable.Reduce<Integer, Integer> r) {
+					public Integer apply(Reduce<Integer, Integer> r) {
 						return ((null != r.getLastValue() ? r.getLastValue() : 1) * r.getNextValue());
 					}
 				});

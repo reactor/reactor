@@ -17,14 +17,14 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.core.Composable
 import reactor.fn.Function
+import reactor.fn.Reduce
 
 /**
  * @author Stephane Maldini
  */
 @CompileStatic
-class ClosureReduce<T,V> implements Function<Composable.Reduce<T,V>,V>  {
+class ClosureReduce<T,V> implements Function<Reduce<T, V>,V>  {
 
 	final Closure<V> callback
 
@@ -33,7 +33,7 @@ class ClosureReduce<T,V> implements Function<Composable.Reduce<T,V>,V>  {
 	}
 
 	@Override
-	V apply(Composable.Reduce<T,V> t) {
+	V apply(Reduce<T,V> t) {
 
 		if(t.lastValue)
 			callback t.nextValue, t.lastValue

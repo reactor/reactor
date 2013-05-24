@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Reduce;
 import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
@@ -64,9 +65,9 @@ public class ComposableThroughputTests {
 						return integer;
 					}
 				})
-				.reduce(new Function<Composable.Reduce<Integer, Integer>, Integer>() {
+				.reduce(new Function<Reduce<Integer, Integer>, Integer>() {
 					@Override
-					public Integer apply(Composable.Reduce<Integer, Integer> r) {
+					public Integer apply(Reduce<Integer, Integer> r) {
 						int last = (null != r.getLastValue() ? r.getLastValue() : 1);
 						return last + r.getNextValue();
 					}

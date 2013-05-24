@@ -21,6 +21,7 @@ import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.util.Assert;
 
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -110,7 +111,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return new Composable<T>();
 	}
 
-
 	/**
 	 * Create a {@link Composable} from the given {@link Composable#observable} and consume it.
 	 *
@@ -136,12 +136,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
 	 *
 	 * @param key        The key to use when notifying the {@link Observable}.
-	 * @param ev         The {@literal Event}.
 	 * @param observable The {@link Observable} on which to invoke the notify method.
 	 * @param <T>        The type of the {@link Event} data.
 	 * @return The new {@literal Composable}.
 	 */
-	public static <T, E extends Event<T>> Composable<E> to(final Object key, E ev, final Observable observable) {
+	public static <T, E extends Event<T>> Composable<E> to(final Object key, final Observable observable) {
+		Assert.notNull(observable);
 		return new Builder<E>()
 				.get()
 				.consume(new Consumer<E>() {
@@ -208,6 +208,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(final Object key, final Observable observable) {
+		Assert.notNull(observable);
 		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T event) {
@@ -263,6 +264,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return {@literal this}
 	 */
 	public <E extends Throwable> Composable<T> when(Class<E> exceptionType, final Consumer<E> onError) {
+		Assert.notNull(exceptionType);
+		Assert.notNull(onError);
+
 		observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
 			@Override
 			public void accept(Event<E> ev) {
@@ -282,6 +286,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public <V> Composable<V> map(final Function<T, V> fn) {
+		Assert.notNull(fn);
 		final Composable<V> c = createComposable(createObservable(observable));
 		when(acceptSelector, new Consumer<T>() {
 			@Override
@@ -308,6 +313,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public <V> Composable<V> map(final Object key, final Observable observable) {
+		Assert.notNull(observable);
 		final Composable<V> c = createComposable(createObservable(observable));
 		final Object replyTo = new Object();
 
@@ -349,6 +355,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public <V> Composable<V> reduce(final Function<Reduce<T, V>, V> fn, V initial) {
+		Assert.notNull(fn);
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
 		final Composable<V> c = createComposable(createObservable(observable));
 		c.setExpectedAcceptCount(1);
@@ -427,6 +434,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return The new {@link Composable}.
 	 */
 	public Composable<T> filter(final Function<T, Boolean> fn) {
+		Assert.notNull(fn);
 		final Composable<T> c = createComposable(createObservable(observable));
 		when(acceptSelector, new Consumer<T>() {
 			@Override
@@ -577,41 +585,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	private <V> void handleError(final Composable<V> c, Throwable t) {
 		c.observable.notify(t.getClass(), Fn.event(t));
 		c.decreaseAcceptLength();
-	}
-
-	/**
-	 * A {@link #reduce(reactor.fn.Function)} operation needs a stateful object to pass as the argument, which contains the
-	 * last accumulated value, as well as the next, just-accepted value.
-	 *
-	 * @param <NEXTVALUE> The type of the input value.
-	 * @param <LASTVALUE> The type of the accumulated or last value.
-	 */
-	public static class Reduce<NEXTVALUE, LASTVALUE> {
-		private final LASTVALUE lastValue;
-		private final NEXTVALUE nextValue;
-
-		public Reduce(LASTVALUE lastValue, NEXTVALUE nextValue) {
-			this.lastValue = lastValue;
-			this.nextValue = nextValue;
-		}
-
-		/**
-		 * Get the accumulated value.
-		 *
-		 * @return
-		 */
-		public LASTVALUE getLastValue() {
-			return lastValue;
-		}
-
-		/**
-		 * Get the next input value.
-		 *
-		 * @return
-		 */
-		public NEXTVALUE getNextValue() {
-			return nextValue;
-		}
 	}
 
 	/**
