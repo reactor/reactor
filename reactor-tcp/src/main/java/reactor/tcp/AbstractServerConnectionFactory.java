@@ -16,13 +16,12 @@
 
 package reactor.tcp;
 
+import java.net.ServerSocket;
+import java.net.Socket;
+
 import reactor.fn.Supplier;
 import reactor.tcp.codec.Codec;
 import reactor.util.Assert;
-
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
 
 /**
  * Base class for all server connection factories. Server connection factories listen on a port for incoming connections
@@ -97,20 +96,6 @@ public abstract class AbstractServerConnectionFactory<T>
 		TcpListener<T> listener = this.getListener();
 		if (listener != null) {
 			connection.registerListener(listener);
-		}
-		connection.setSingleUse(this.isSingleUse());
-		/*
-		 * If we are configured
-		 * for single use; need to enforce a timeout on the socket so we will close
-		 * if the client connects, but sends nothing. (Protect against DoS).
-		 * Behavior can be overridden by explicitly setting the timeout to zero.
-		 */
-		if (this.isSingleUse() && this.getSoTimeout() < 0) {
-			try {
-				socket.setSoTimeout(DEFAULT_REPLY_TIMEOUT);
-			} catch (SocketException e) {
-				logger.error("Error setting default reply timeout", e);
-			}
 		}
 		connection.publishConnectionOpenEvent();
 

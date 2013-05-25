@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import reactor.util.Assert;
 import reactor.tcp.TcpConnectionEvent.TcpConnectionEventType;
+import reactor.util.Assert;
 
 /**
  * Base class for TcpConnections. TcpConnections are established by
@@ -44,8 +44,6 @@ public abstract class TcpConnectionSupport<T> implements TcpConnection<T> {
 	private final ConnectionFactorySupport<T> connectionFactory;
 
 	private volatile TcpListener<T> listener;
-
-	private volatile boolean singleUse;
 
 	private final boolean server;
 
@@ -133,23 +131,6 @@ public abstract class TcpConnectionSupport<T> implements TcpConnection<T> {
 	@Override
 	public TcpListener<T> getListener() {
 		return this.listener;
-	}
-
-	/**
-	 * @param singleUse true if this socket is to used once and
-	 * discarded.
-	 */
-	public void setSingleUse(boolean singleUse) {
-		this.singleUse = singleUse;
-	}
-
-	/**
-	 *
-	 * @return True if connection is used once.
-	 */
-	@Override
-	public boolean isSingleUse() {
-		return this.singleUse;
 	}
 
 	@Override

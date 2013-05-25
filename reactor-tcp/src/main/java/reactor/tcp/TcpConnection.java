@@ -76,12 +76,6 @@ public interface TcpConnection<T> {
 	 *
 	 * @return True if connection is used once.
 	 */
-	boolean isSingleUse();
-
-	/**
-	 *
-	 * @return True if connection is used once.
-	 */
 	boolean isServer();
 
 	/**

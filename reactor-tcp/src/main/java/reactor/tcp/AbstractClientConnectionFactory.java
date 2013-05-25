@@ -47,15 +47,7 @@ public abstract class AbstractClientConnectionFactory<T> extends ConnectionFacto
 	 */
 	public TcpConnectionSupport<T> getConnection() throws Exception {
 		this.checkActive();
-		if (this.isSingleUse()) {
-			return obtainConnection();
-		} else {
-			synchronized(this) {
-				TcpConnectionSupport<T> connection = obtainConnection();
-				this.setTheConnection(connection);
-				return connection;
-			}
-		}
+		return obtainConnection();
 	}
 
 	protected abstract TcpConnectionSupport<T> obtainConnection() throws Exception;
@@ -74,7 +66,6 @@ public abstract class AbstractClientConnectionFactory<T> extends ConnectionFacto
 		if (listener != null) {
 			connection.registerListener(listener);
 		}
-		connection.setSingleUse(this.isSingleUse());
 		connection.publishConnectionOpenEvent();
 	}
 

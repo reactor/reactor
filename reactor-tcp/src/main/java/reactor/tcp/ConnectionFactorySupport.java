@@ -16,15 +16,7 @@
 
 package reactor.tcp;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.Fn;
-import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Supplier;
-import reactor.tcp.codec.Codec;
-import reactor.util.Assert;
+import static reactor.Fn.$;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -34,11 +26,29 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static reactor.Fn.$;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.Fn;
+import reactor.core.Reactor;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Supplier;
+import reactor.tcp.codec.Codec;
+import reactor.util.Assert;
 
 /**
  * Base class for all connection factories.
@@ -96,8 +106,6 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	private volatile Executor taskExecutor;
 
 	private volatile boolean privateExecutor;
-
-	private volatile boolean singleUse;
 
 	private volatile boolean active;
 
@@ -269,23 +277,6 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 	public void setTaskExecutor(Executor taskExecutor) {
 		this.taskExecutor = taskExecutor;
 	}
-
-	/**
-	 * @return the singleUse
-	 */
-	public boolean isSingleUse() {
-		return singleUse;
-	}
-
-	/**
-	 * If true, sockets created by this factory will be used once.
-	 *
-	 * @param singleUse
-	 */
-	public void setSingleUse(boolean singleUse) {
-		this.singleUse = singleUse;
-	}
-
 
 	/**
 	 * If true, DNS reverse lookup is done on the remote ip address. Default true.
