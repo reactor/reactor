@@ -131,7 +131,13 @@ public class PromiseTests {
 
 		p.set("Not A Number");
 
-		assertThat("Supplier is not populated", d.await(500, TimeUnit.MILLISECONDS), is(nullValue()));
+		boolean ex = false;
+		try{
+			d.await(500, TimeUnit.MILLISECONDS);
+		}catch (IllegalStateException nfe){
+			ex = true;
+		}
+		assertThat("Supplier is not populated", ex);
 		assertThat("Exception has been handled", exceptionHandled.getCount(), is(0L));
 	}
 

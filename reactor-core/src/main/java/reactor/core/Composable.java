@@ -152,8 +152,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public static <T, E extends Composable<T>> Composable<List<T>> merge(final Collection<E> composables) {
 
-		final Composable<T> c =
-				new DelayedAcceptComposable<T>(R.reactor().sync().build(), composables.size()) {
+		final Composable<Tuple2<T, Integer>> c =
+				new DelayedAcceptComposable<Tuple2<T, Integer>>(R.reactor().sync().build(), composables.size()) {
 					@Override
 					protected void delayedAccept() {
 						for (E composable : composables) {
@@ -161,14 +161,36 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 						}
 					}
 				};
-		final Composable<List<T>> r = c.reduce();
-		c.consumeError(r);
+		final Composable<List<T>> result = c.reduce().map(new Function<List<Tuple2<T, Integer>>, List<T>>() {
+			@Override
+			public List<T> apply(List<Tuple2<T, Integer>> collection) {
+				Collections.sort(collection, new Comparator<Tuple2<T, Integer>>() {
+					@Override
+					public int compare(Tuple2<T, Integer> o1, Tuple2<T, Integer> o2) {
+						return o1.getT2().compareTo(o2.getT2());
+					}
+				});
+				List<T> orderedResult = new ArrayList<T>();
+				for (Tuple2<T, Integer> element : collection) {
+					orderedResult.add(element.getT1());
+				}
+				return orderedResult;
+			}
+		});
 
+		int j = 0;
 		for (E composable : composables) {
-			composable.consume(c);
+			final int i = j;
+			composable.consumeError(c).when(composable.acceptSelector, new Consumer<T>() {
+				@Override
+				public void accept(T t) {
+					c.accept(Tuple2.of(t, i));
+				}
+			});
+			j++;
 		}
 
-		return r;
+		return result;
 	}
 
 
@@ -307,6 +329,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				c.accept(t);
 			}
 		});
+		consumeError(c);
 		return c;
 	}
 
@@ -326,6 +349,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				c.accept(t);
 			}
 		});
+		consumeError(c);
 		return c;
 	}
 
@@ -352,6 +376,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
+		consumeError(c);
 		return c;
 	}
 
@@ -433,6 +458,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
+		consumeError(c);
 		return c;
 	}
 
@@ -483,6 +509,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		}));
+		consumeError(c);
 		return c;
 	}
 
@@ -523,6 +550,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
+		consumeError(c);
 		return c;
 	}
 
