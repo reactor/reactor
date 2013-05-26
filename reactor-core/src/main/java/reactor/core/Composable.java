@@ -19,13 +19,12 @@ package reactor.core;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
+import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.util.Assert;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,6 +44,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	private static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
 	private static       long     DEFAULT_TIMEOUT               = 30l;
 	private static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
+	private static       String   SEQUENCE_HEADER               = "x-reactor-sequence";
 
 	protected static final SynchronousDispatcher SYNCHRONOUS_DISPATCHER = new SynchronousDispatcher();
 
@@ -133,37 +133,38 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 
 	/**
-	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 * Bind all {@link Composable} and merge them into a new -ordered- {@link Composable}
 	 *
 	 * @param composables The composables to merge.
-	 * @param <T> The type of the values.
+	 * @param <T>         The type of the values.
 	 * @return a new {@link Composable}
 	 */
-	public static <T> Composable<Collection<T>> from(Composable<T>... composables) {
-		return from(Arrays.asList(composables));
+	public static <T, E extends Composable<T>> Composable<List<T>> merge(E... composables) {
+		return merge(Arrays.asList(composables));
 	}
 
 	/**
-	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 * Bind all {@link Composable} and merge them into a new -ordered- {@link Composable}
 	 *
 	 * @param composables The composables to merge.
-	 * @param <T> The type of the values.
+	 * @param <T>         The type of the values.
 	 * @return a new {@link Composable}
 	 */
-	public static <T> Composable<Collection<T>> from(final Collection<Composable<T>> composables) {
+	public static <T, E extends Composable<T>> Composable<List<T>> merge(final Collection<E> composables) {
 
-		final Composable<T> c = new DelayedAcceptComposable<T>(R.reactor().sync().build(), composables.size()){
-			@Override
-			protected void delayedAccept() {
-				for(Composable<T> composable : composables){
-					composable.get();
-				}
-				//super.delayedAccept();
-			}
-		};
-		final Composable<Collection<T>> r = c.reduce();
+		final Composable<T> c =
+				new DelayedAcceptComposable<T>(R.reactor().sync().build(), composables.size()) {
+					@Override
+					protected void delayedAccept() {
+						for (E composable : composables) {
+							composable.get();
+						}
+					}
+				};
+		final Composable<List<T>> r = c.reduce();
+		c.consumeError(r);
 
-		for(Composable<T> composable : composables){
+		for (E composable : composables) {
 			composable.consume(c);
 		}
 
@@ -240,6 +241,38 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		when(acceptSelector, consumer);
 		return this;
 	}
+
+	/**
+	 * Register a {@link Composable} that will be invoked whenever {@link #accept(Object)} or {@link #accept
+	 * (Throwable)} are called.
+	 *
+	 * @param composable The composable to invoke.
+	 * @return {@literal this}
+	 * @see {@link #accept(Object)}
+	 */
+	public Composable<T> consume(final Composable<T> composable) {
+		when(acceptSelector, composable);
+		consumeError(composable);
+		return this;
+	}
+
+	/**
+	 * Register a {@link Composable} that will be invoked whenever {@link #accept(Throwable)} is called.
+	 *
+	 * @param composable The composable to invoke.
+	 * @return {@literal this}
+	 * @see {@link #accept(Object)}
+	 */
+	public Composable<T> consumeError(final Composable<?> composable) {
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				composable.accept(throwable);
+			}
+		});
+		return this;
+	}
+
 
 	/**
 	 * Register a {@code key} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is called.
@@ -412,10 +445,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @return The new {@link Composable}.
 	 */
-	public Composable<Collection<T>> reduce() {
-		return reduce(new Function<Reduce<T, Collection<T>>, Collection<T>>() {
+	public Composable<List<T>> reduce() {
+		return reduce(new Function<Reduce<T, List<T>>, List<T>>() {
 			@Override
-			public Collection<T> apply(Reduce<T, Collection<T>> reducer) {
+			public List<T> apply(Reduce<T, List<T>> reducer) {
 				reducer.getLastValue().add(reducer.getNextValue());
 				return reducer.getLastValue();
 			}
@@ -599,8 +632,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					onError.accept(ev.getData());
 				}
 			});
-		} else if(isError()){
-			Fn.schedule(onError, (E)error, observable);
+		} else if (isError()) {
+			Fn.schedule(onError, (E) error, observable);
 		}
 		return this;
 	}
@@ -739,18 +772,18 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			synchronized (monitor) {
 				this.value = value;
 			}
-			acceptedCount.incrementAndGet();
+			long _acceptCount = acceptedCount.incrementAndGet();
 
 			Event<T> ev = Fn.event(value);
 			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(expectedAcceptCount.get()));
 
-			if (acceptedCount.get() == 1) {
+			if (_acceptCount == 1) {
 				observable.notify(firstKey, ev);
 			}
 
 			observable.notify(acceptKey, ev);
 
-			if (acceptedCount.get() == expectedAcceptCount.get()) {
+			if (_acceptCount == expectedAcceptCount.get()) {
 				observable.notify(lastKey, ev);
 				synchronized (monitor) {
 					monitor.notifyAll();

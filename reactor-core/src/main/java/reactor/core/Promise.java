@@ -23,6 +23,10 @@ import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.util.Assert;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
  * type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error} and the error
@@ -100,6 +104,31 @@ public class Promise<T> extends Composable<T> {
 			}
 		});
 		return p;
+	}
+
+	/**
+	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 *
+	 * @param composables The composables to merge.
+	 * @param <T>         The type of the values.
+	 * @return a new {@link Promise}
+	 */
+	public static <T, E extends Composable<T>> Promise<List<T>> merge(E... composables) {
+		return merge(Arrays.asList(composables));
+	}
+
+	/**
+	 * Bind all {@link Composable} and merge them into a new {@link Composable}
+	 *
+	 * @param composables The composables to merge.
+	 * @param <T>         The type of the values.
+	 * @return a new {@link Promise}
+	 */
+	public static <T, E extends Composable<T>> Promise<List<T>> merge(final Collection<E> composables) {
+
+		final Promise<List<T>> r = Promise.create();
+		Composable.merge(composables).consume(r);
+		return r;
 	}
 
 

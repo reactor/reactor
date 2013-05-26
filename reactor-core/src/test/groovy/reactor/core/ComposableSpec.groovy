@@ -18,7 +18,6 @@ package reactor.core
 
 import spock.lang.Specification
 
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static reactor.GroovyTestUtils.*
@@ -35,7 +34,7 @@ class ComposableSpec extends Specification {
 		def c1 = R.compose(supplier { 'test' }).sync().build()
 		def c2 = R.compose(supplier { 'test2' }).sync().build()
 		def c3 = R.compose(supplier { 'test3' }).sync().build()
-		def result = Composable.from c1,c2,c3
+		def result = Composable.merge c1,c2,c3
 
 		then:
 		result.await(1, TimeUnit.SECONDS) == ['test','test2','test3']

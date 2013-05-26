@@ -63,5 +63,47 @@ class PromiseSpec extends Specification {
 		thrown RuntimeException
 	}
 
+
+	void "Test promise list handling"() {
+		when: "A promise list is created from two promises"
+		def result
+		def p1 = R.promise supplier { 1 + 1 } build()
+		def p2 = R.promise supplier { 2 + 2 } build()
+
+		Promise.merge p1, p2 onSuccess consumer { List<Integer> v -> result = v } await()
+
+		then: "The result is correct"
+		result == [2, 4]
+	}
+
+
+	def "Test promise list with an exception"() {
+		when: "A promise list with a promise that throws an exception"
+		def p1 = R.promise supplier { 1 + 1 } build()
+		def p2 = R.promise supplier { throw new Exception('bad') } build()
+		def p3 = R.promise supplier { 2 + 2 } build()
+
+		def latch = new CountDownLatch(1)
+		def res, err
+		def p4 = Promise.merge(p1, p2, p3).then(
+				consumer { List<Integer> v -> res = v },
+				consumer { Throwable t -> err = t; latch.countDown() }
+		)
+		def ex = false
+		try {
+			println p4.await()
+		} catch (e) {
+			ex = true
+		}
+
+		then: 'the onError handler is invoked with the exception'
+		latch.await(1, TimeUnit.SECONDS)
+		ex
+		err != null
+		err.message == "bad"
+		res == null
+
+	}
+
 }
 
