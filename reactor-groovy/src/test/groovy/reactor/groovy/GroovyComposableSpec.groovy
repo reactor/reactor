@@ -174,20 +174,20 @@ class GroovyComposableSpec extends Specification {
 		def c1 = R.compose().using(r).get()
 		def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
-		r.compose(key.t2,'1', c1)
+		r.compose(key.t2, '1', c1)
 
 		then:
-		c2.await(5, TimeUnit.SECONDS)
+		c2.await(1, TimeUnit.SECONDS)
 		c2.get() == [1, 100]
 
 		when: 'using reduce() alias'
 		c1 = R.compose().using(r).get()
-		c2 = c1.reduce()
+		c2 = c1.take(3).reduce()
 
-		r.compose(key.t2,'1', c1)
+		r.compose(key.t2, '1', c1)
 
 		then:
-		c2.await(5, TimeUnit.SECONDS)
+		c2.await(1, TimeUnit.SECONDS)
 		c2.get() == [1, 100, 1000]
 	}
 

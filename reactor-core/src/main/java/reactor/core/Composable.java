@@ -193,29 +193,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return result;
 	}
 
-
-	/**
-	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
-	 * the given {@link Observable} until the returned {@link Composable}'s {@link Composable#await(long,
-	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
-	 *
-	 * @param key        The key to use when notifying the {@link Observable}.
-	 * @param observable The {@link Observable} on which to invoke the notify method.
-	 * @param <T>        The type of the {@link Event} data.
-	 * @return The new {@literal Composable}.
-	 */
-	public static <T, E extends Event<T>> Composable<E> to(final Object key, final Observable observable) {
-		Assert.notNull(observable);
-		return new Builder<E>()
-				.get()
-				.consume(new Consumer<E>() {
-					@Override
-					public void accept(E e) {
-						observable.notify(key, e, null);
-					}
-				});
-	}
-
 	/**
 	 * Create a {@link Composable} that uses the given {@link Reactor} for publishing events internally.
 	 *
@@ -437,7 +414,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		Assert.notNull(fn);
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
 		final Composable<V> c = createComposable(createObservable(observable));
-		c.setExpectedAcceptCount(1);
+		final long _expectedAcceptCount = expectedAcceptCount.get();
+		c.setExpectedAcceptCount(_expectedAcceptCount < 0 ? _expectedAcceptCount : 1);
 		when(lastSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
@@ -450,7 +428,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				try {
 					Reduce<T, V> r = new Reduce<T, V>(lastValue.get(), value);
 					lastValue.set(fn.apply(r));
-					if (expectedAcceptCount.get() < 0) {
+					if (_expectedAcceptCount < 0) {
 						c.accept(lastValue.get());
 					}
 				} catch (Throwable t) {
@@ -800,10 +778,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			synchronized (monitor) {
 				this.value = value;
 			}
+
 			long _acceptCount = acceptedCount.incrementAndGet();
+			long _exceptedCount = expectedAcceptCount.get();
 
 			Event<T> ev = Fn.event(value);
-			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(expectedAcceptCount.get()));
+			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(_exceptedCount));
 
 			if (_acceptCount == 1) {
 				observable.notify(firstKey, ev);
@@ -811,7 +791,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 			observable.notify(acceptKey, ev);
 
-			if (_acceptCount == expectedAcceptCount.get()) {
+			if (_acceptCount == _exceptedCount) {
 				observable.notify(lastKey, ev);
 				synchronized (monitor) {
 					monitor.notifyAll();
