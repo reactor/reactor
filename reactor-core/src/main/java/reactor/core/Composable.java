@@ -44,7 +44,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	private static final String   EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
 	private static       long     DEFAULT_TIMEOUT               = 30l;
 	private static       TimeUnit DEFAULT_TIMEUNIT              = TimeUnit.SECONDS;
-	private static       String   SEQUENCE_HEADER               = "x-reactor-sequence";
 
 	protected static final SynchronousDispatcher SYNCHRONOUS_DISPATCHER = new SynchronousDispatcher();
 
