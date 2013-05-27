@@ -70,7 +70,7 @@ class PromiseSpec extends Specification {
 		def p1 = R.promise supplier { 1 + 1 } build()
 		def p2 = R.promise supplier { 2 + 2 } build()
 		def latch = new CountDownLatch(1)
-		Promise.merge p1, p2 onSuccess consumer { List<Integer> v -> latch.countDown(); result = v }
+		Promise.merge p1, p2 onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
 
 		latch.await(1, TimeUnit.SECONDS)
 
