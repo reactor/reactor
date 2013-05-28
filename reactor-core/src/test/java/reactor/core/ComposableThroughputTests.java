@@ -16,14 +16,12 @@
 
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
 import org.junit.Test;
-
+import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Reduce;
@@ -32,13 +30,15 @@ import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
-import com.lmax.disruptor.YieldingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jon Brisbin
  */
-public class ComposableThroughputTests {
+public class ComposableThroughputTests extends AbstractReactorTest {
 
 	static int length  = 500;
 	static int runs    = 1000;
@@ -58,13 +58,13 @@ public class ComposableThroughputTests {
 	}
 
 	private Composable<Integer> createComposable(Dispatcher dispatcher) {
-		Composable<Integer> cInt = new Composable<Integer>(dispatcher);
+		Composable<Integer> cInt = R.<Integer>compose().using(env).dispatcher(dispatcher).get();
 		cInt.map(new Function<Integer, Integer>() {
-					@Override
-					public Integer apply(Integer integer) {
-						return integer;
-					}
-				})
+			@Override
+			public Integer apply(Integer integer) {
+				return integer;
+			}
+		})
 				.reduce(new Function<Reduce<Integer, Integer>, Integer>() {
 					@Override
 					public Integer apply(Reduce<Integer, Integer> r) {
@@ -86,13 +86,14 @@ public class ComposableThroughputTests {
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {
+				System.out.println("starting run " + i);
 				for (int j = 0; j < length; j++) {
 					c.accept(j);
 				}
 			}
 		}
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(1, TimeUnit.SECONDS);
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
@@ -107,17 +108,17 @@ public class ComposableThroughputTests {
 
 	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new ThreadPoolExecutorDispatcher().start(), "thread pool");
+		doTest(env.getDispatcherSupplier(Environment.THREAD_POOL_EXECUTOR_DISPATCHER).get(), "thread pool");
 	}
 
 	@Test
 	public void testWorkerDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new BlockingQueueDispatcher().start(), "worker");
+		doTest(env.getDispatcherSupplier(Environment.EVENT_LOOP_DISPATCHER).get(), "event loop");
 	}
 
 	@Test
 	public void testRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher().start(), "root");
+		doTest(env.getDispatcherSupplier(Environment.RING_BUFFER_DISPATCHER).get(), "ring buffer");
 	}
 
 	@Test

@@ -21,12 +21,12 @@ import spock.lang.Specification
 /**
  * @author Stephane Maldini
  */
-class BuilderSpec extends Specification {
+class ComponentSpecSpec extends Specification {
 
 	def "Reactor correctly built"() {
 
 		when: "we create a plain Reactor"
-		def reactor = R.reactor().sync().build()
+		def reactor = R.reactor().sync().get()
 
 		then:
 		Reactor.isAssignableFrom(reactor.class)
@@ -36,7 +36,7 @@ class BuilderSpec extends Specification {
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
-		def composable = R.compose('test').sync().build()
+		def composable = R.compose('test').sync().get()
 
 		then:
 		Composable.isAssignableFrom(composable.class)
@@ -48,7 +48,7 @@ class BuilderSpec extends Specification {
 	def "Promise correctly built"() {
 
 		when: "we create a plain Promise"
-		def promise = R.promise('test').sync().build()
+		def promise = R.promise('test').sync().get()
 
 		then:
 		Promise.isAssignableFrom(promise.class)

@@ -17,6 +17,7 @@
 package reactor.core.dynamic;
 
 import org.junit.Test;
+import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.CountDownLatch;
@@ -27,11 +28,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * @author Jon Brisbin
  */
-public class DynamicReactorFactoryTests {
+public class DynamicReactorFactoryTests extends AbstractReactorTest {
 
 	@Test
 	public void testCreatesDynamicReactors() throws InterruptedException {
-		MyReactor myReactor = new DynamicReactorFactory<MyReactor>(MyReactor.class).create();
+		MyReactor myReactor = new DynamicReactorFactory<MyReactor>(env, MyReactor.class).create();
 
 		final CountDownLatch latch = new CountDownLatch(2);
 		myReactor.

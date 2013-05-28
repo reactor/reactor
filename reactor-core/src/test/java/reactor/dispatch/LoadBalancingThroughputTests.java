@@ -16,15 +16,12 @@
 
 package reactor.dispatch;
 
-import static reactor.Fn.$;
-
 import org.junit.Test;
-
+import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Registry.LoadBalancingStrategy;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
+
+import static reactor.Fn.$;
 
 /**
  * @author Jon Brisbin
@@ -62,21 +59,21 @@ public class LoadBalancingThroughputTests extends AbstractThroughputTests {
 
 	@Test
 	public void blockingQueueDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(new BlockingQueueDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(R.reactor().using(env).using(LoadBalancingStrategy.RANDOM).eventLoop().get());
 	}
 
 	@Test
 	public void threadPoolDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(new ThreadPoolExecutorDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(R.reactor().using(env).using(LoadBalancingStrategy.RANDOM).threadPoolExecutor().get());
 	}
 
 	@Test
 	public void rootDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(new RingBufferDispatcher().start(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(R.reactor().using(env).using(LoadBalancingStrategy.RANDOM).ringBuffer().get());
 	}
 
 	@Test
 	public void ringBufferDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(new Reactor(createRingBufferDispatcher(), LoadBalancingStrategy.RANDOM, null, null));
+		doTest(R.reactor().using(env).using(LoadBalancingStrategy.RANDOM).dispatcher(createRingBufferDispatcher()).get());
 	}
 }

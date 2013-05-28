@@ -25,6 +25,8 @@ import reactor.fn.support.ConverterAwareConsumerInvoker;
  */
 public class SynchronousDispatcher implements Dispatcher {
 
+	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
+
 	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
 	@Override

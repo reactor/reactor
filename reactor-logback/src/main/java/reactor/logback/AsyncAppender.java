@@ -5,14 +5,12 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
 import reactor.Fn;
+import reactor.core.Environment;
+import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
 
 import java.util.Iterator;
 
@@ -21,15 +19,15 @@ import java.util.Iterator;
  */
 public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> implements AppenderAttachable<ILoggingEvent> {
 
-	private static final Dispatcher dispatcher;
+	private final Environment                           env             = new Environment() {
+		@Override
+		protected String getDefaultProfile() {
+			return "logback";
+		}
+	};
 	private final AppenderAttachableImpl<ILoggingEvent> attachable      = new AppenderAttachableImpl<ILoggingEvent>();
 	private       boolean                               alreadyAttached = false;
 	private Reactor reactor;
-
-	static {
-		// We only need one thread for all appenders actually
-		dispatcher = new RingBufferDispatcher("log", 1, 1024, ProducerType.SINGLE, new BlockingWaitStrategy()).start();
-	}
 
 	public AsyncAppender() {
 	}
@@ -42,7 +40,6 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 
 	@Override
 	public void stop() {
-		dispatcher.stop();
 		super.stop();
 	}
 
@@ -93,7 +90,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 	}
 
 	private void init() {
-		reactor = new Reactor(dispatcher);
+		reactor = R.reactor().using(env).ringBuffer().get();
 		reactor.on(new Consumer<Event<ILoggingEvent>>() {
 			@Override
 			public void accept(Event<ILoggingEvent> ev) {

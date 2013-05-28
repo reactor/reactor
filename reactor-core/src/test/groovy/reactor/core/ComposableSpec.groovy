@@ -30,11 +30,11 @@ class ComposableSpec extends Specification {
 
 	def "Composable merge handling"() {
 
-		when: "we create a serie of Composable"
-		def c1 = R.compose(supplier { 'test' }).sync().build()
-		def c2 = R.compose(supplier { 'test2' }).sync().build()
-		def c3 = R.compose(supplier { 'test3' }).sync().build()
-		def result = Composable.merge c1,c2,c3
+		when: "we create a series of Composable"
+		def c1 = R.compose(supplier { 'test' }).sync().get()
+		def c2 = R.compose(supplier { 'test2' }).sync().get()
+		def c3 = R.compose(supplier { 'test3' }).sync().get()
+		def result = R.compose().merge([c1,c2,c3]).get()
 
 		then:
 		result.await(1, TimeUnit.SECONDS) == ['test','test2','test3']

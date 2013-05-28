@@ -1,6 +1,7 @@
 package reactor.core;
 
 import org.junit.Test;
+import reactor.AbstractReactorTest;
 import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
@@ -14,15 +15,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Jon Brisbin
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class AwaitTests {
+public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
 		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64).start();
-		Reactor reactor = new Reactor();
-		Reactor innerReactor = new Reactor(dispatcher);
+		Reactor reactor = R.reactor().get();
+		Reactor innerReactor = R.reactor().dispatcher(dispatcher).get();
 		for (int i = 0; i < 1000; i++) {
-			final Promise<String> promise = new Promise<String>(reactor);
+			final Promise<String> promise = R.<String>promise().using(env).using(reactor).get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			Fn.schedule(new Consumer() {

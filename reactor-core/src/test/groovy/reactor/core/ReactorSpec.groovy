@@ -16,19 +16,15 @@
 
 package reactor.core
 
-import static reactor.Fn.$
-import static reactor.Fn.R
-import static reactor.GroovyTestUtils.consumer
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
 import reactor.Fn
 import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.Function
-import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
+
+import static reactor.Fn.$
+import static reactor.Fn.R
+import static reactor.GroovyTestUtils.consumer
 
 /**
  * @author Jon Brisbin
@@ -39,7 +35,7 @@ class ReactorSpec extends Specification {
 	def "Reactor dispatches events properly"() {
 
 		given: "a plain Reactor"
-		def reactor = new Reactor(new SynchronousDispatcher())
+		def reactor = R.reactor().sync().get()
 		def data = ""
 		Thread t = null
 		reactor.on($("test"), { ev ->
@@ -59,7 +55,7 @@ class ReactorSpec extends Specification {
 	def "Registrations are pausable and cancellable"() {
 
 		given: "a simple reactor implementation"
-		def reactor = new Reactor(new SynchronousDispatcher())
+		def reactor = R.reactor().sync().get()
 		def data = ""
 		def reg = reactor.on($("test"), { ev ->
 			data = ev.data
@@ -85,18 +81,15 @@ class ReactorSpec extends Specification {
 	def "Reactors dispatch events based on a default selector"() {
 
 		given: "a simple consumer"
-		def reactor = new Reactor()
+		def reactor = R.reactor().sync().get()
 		def data = ""
-		def latch = new CountDownLatch(1)
 		def h = consumer { String s ->
 			data = s
-			latch.countDown()
 		}
 
 		when: "a consumer is assigned based on a type selector"
 		reactor.on h
 		reactor.notify new Event<String>('Hello World!')
-		latch.await(5, TimeUnit.SECONDS)
 
 		then: "the data is updated"
 		data == 'Hello World!'
@@ -105,20 +98,17 @@ class ReactorSpec extends Specification {
 
 	def "Reactors respond to events"() {
 
-		def r = new Reactor();
+		def r = R.reactor().sync().get()
 
 		given: "a simple consumer"
 		def data = ""
-		def latch = new CountDownLatch(1)
 		def a = { ev ->
 			data = ev.data
-			latch.countDown()
 		}
 
 		when: "an event is dispatched to the global reactor"
 		r.on($('say-hello'), a as Consumer<Event<String>>)
 		r.notify('say-hello', new Event<String>('Hello World!'))
-		latch.await(5, TimeUnit.SECONDS)
 
 		then: "the data is updated"
 		data == 'Hello World!'
@@ -128,7 +118,7 @@ class ReactorSpec extends Specification {
 	def "Reactors support send and receive"() {
 
 		given: "a simple Reactor and a response-producing Function"
-		def r = new Reactor(new SynchronousDispatcher())
+		def r = R.reactor().sync().get()
 		def f = { s ->
 			"Hello World!"
 		} as Function<Event<String>, String>
@@ -151,7 +141,7 @@ class ReactorSpec extends Specification {
 	def "Consumers can be unassigned"() {
 
 		given: "a normal reactor"
-		def r = new Reactor();
+		def r = R.reactor().sync().get()
 
 		when: "registering few handlers"
 		r.on R('t[a-z]st'), consumer { println 'test1' }
@@ -168,7 +158,7 @@ class ReactorSpec extends Specification {
 	def "Multiple consumers can use the same selector"() {
 
 		given: "a normal synchronous reactor"
-		def r = new Reactor(new SynchronousDispatcher())
+		def r = R.reactor().sync().get()
 		def d1, d2
 		def selector = $("test")
 
@@ -184,10 +174,10 @@ class ReactorSpec extends Specification {
 	def "Linking Reactors"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = new Reactor(new SynchronousDispatcher())
-		def r2 = new Reactor(new SynchronousDispatcher())
-		def r3 = new Reactor(new SynchronousDispatcher())
-		def r4 = new Reactor(new SynchronousDispatcher())
+		def r1 = R.reactor().sync().get()
+		def r2 = R.reactor().sync().get()
+		def r3 = R.reactor().sync().get()
+		def r4 = R.reactor().sync().get()
 
 		def d1, d2, d3, d4
 

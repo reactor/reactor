@@ -28,6 +28,6 @@ import java.lang.annotation.*;
 @Inherited
 public @interface Dispatcher {
 
-	DispatcherType value() default DispatcherType.WORKER;
+	DispatcherType value() default DispatcherType.EVENT_LOOP;
 
 }

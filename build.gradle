@@ -184,10 +184,10 @@ project('reactor-logback') {
 	}
 }
 
-project('reactor-tcp') {
-	description = 'Reactor TCP component'
-	dependencies {
-		compile project(':reactor-core')
-		testCompile "org.mockito:mockito-all:$mockitoVersion"
-	}
-}
+//project('reactor-tcp') {
+//	description = 'Reactor TCP component'
+//	dependencies {
+//		compile project(':reactor-core')
+//		testCompile "org.mockito:mockito-all:$mockitoVersion"
+//	}
+//}
