@@ -64,7 +64,7 @@ class PromiseSpec extends Specification {
 	}
 
 
-	void "Test promise list handling"() {
+	def "Test promise list handling"() {
 		when: "A promise list is created from two promises"
 		def result
 		def p1 = R.promise supplier { 1 + 1 } build()
@@ -87,20 +87,14 @@ class PromiseSpec extends Specification {
 
 		def latch = new CountDownLatch(1)
 		def res, err
-		def p4 = Promise.merge(p1, p2, p3).then(
+		Promise.merge(p1, p2, p3).then(
 				consumer { List<Integer> v -> res = v },
 				consumer { Throwable t -> err = t; latch.countDown() }
 		)
-		def ex = false
-		try {
-			println p4.await()
-		} catch (e) {
-			ex = true
-		}
+
 
 		then: 'the onError handler is invoked with the exception'
 		latch.await(1, TimeUnit.SECONDS)
-		ex
 		err != null
 		err.message == "bad"
 		res == null

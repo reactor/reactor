@@ -7,18 +7,18 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Stephane Maldini
  */
-public class Context {
+public class Environment {
 
 	private final int eventsLoops;
 	private final AtomicLong                               nextDispatcherCounter = new AtomicLong(Long.MIN_VALUE);
 	private final NonBlockingHashMap<String, ReactorEntry> reactors              = new NonBlockingHashMap<String,
 			ReactorEntry>();
 
-	public Context() {
+	public Environment() {
 		this(Runtime.getRuntime().availableProcessors());
 	}
 
-	public Context(int eventsLoops) {
+	public Environment(int eventsLoops) {
 		this.eventsLoops = eventsLoops > 0 ? eventsLoops : Runtime.getRuntime().availableProcessors();
 	}
 
