@@ -3,7 +3,8 @@ package reactor.core;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
-import reactor.fn.*;
+import reactor.fn.Registration;
+import reactor.fn.Registry;
 import reactor.fn.dispatch.*;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ import static reactor.Fn.$;
  * @author Stephane Maldini
  * @author Jon Brisbin
  */
-public class Environment implements Observable {
+public class Environment {
 
 	private static final ClassLoader CL = Environment.class.getClassLoader();
 
@@ -38,17 +39,16 @@ public class Environment implements Observable {
 
 	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-	private final Properties               env           = new Properties();
-	private final Registry<Reactor>        reactors      = new CachingRegistry<Reactor>(null, null);
-	private final AtomicReference<Reactor> globalReactor = new AtomicReference<Reactor>();
+	private final Properties                   env                 = new Properties();
+	private final Registry<Reactor>            reactors            = new CachingRegistry<Reactor>(
+			null, null
+	);
+	private final Registry<DispatcherSupplier> dispatcherSuppliers = new CachingRegistry<DispatcherSupplier>(
+			Registry.LoadBalancingStrategy.ROUND_ROBIN, null
+	);
+	private final AtomicReference<Reactor>     sharedReactor       = new AtomicReference<Reactor>();
 
 	public Environment() {
-		for (String prop : System.getProperties().stringPropertyNames()) {
-			if (prop.startsWith(REACTOR_PREFIX)) {
-				env.put(prop, System.getProperty(prop));
-			}
-		}
-
 		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
 		try {
 			Map<Object, Object> props = loadProfile(defaultProfileName);
@@ -73,8 +73,8 @@ public class Environment implements Observable {
 					size = PROCESSORS;
 				}
 				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-				env.put(String.format(DISPATCHERS, threadPoolExecutorName),
-								new SingletonDispatcherSupplier(new ThreadPoolExecutorDispatcher(size, backlog).start()));
+				dispatcherSuppliers.register($(threadPoolExecutorName),
+																		 new SingletonDispatcherSupplier(new ThreadPoolExecutorDispatcher(size, backlog).start()));
 			}
 
 			String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
@@ -84,12 +84,10 @@ public class Environment implements Observable {
 					size = PROCESSORS;
 				}
 				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-				Dispatcher[] dispatchers = new Dispatcher[size];
 				for (int i = 0; i < size; i++) {
-					dispatchers[i] = new BlockingQueueDispatcher(eventLoopName, backlog).start();
+					dispatcherSuppliers.register($(eventLoopName),
+																			 new SingletonDispatcherSupplier(new BlockingQueueDispatcher(eventLoopName, backlog).start()));
 				}
-				env.put(String.format(DISPATCHERS, eventLoopName),
-								new RoundRobinDispatcherSupplier(dispatchers));
 			}
 
 			String ringBufferName = env.getProperty(String.format(DISPATCHERS_NAME, RING_BUFFER_DISPATCHER));
@@ -99,15 +97,21 @@ public class Environment implements Observable {
 					size = PROCESSORS;
 				}
 				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
-				env.put(String.format(DISPATCHERS, ringBufferName),
-								new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
-																																				 size,
-																																				 backlog,
-																																				 ProducerType.MULTI,
-																																				 new BlockingWaitStrategy()).start()));
+				dispatcherSuppliers.register($(ringBufferName),
+																		 new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
+																																															size,
+																																															backlog,
+																																															ProducerType.MULTI,
+																																															new BlockingWaitStrategy()).start()));
 			}
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
+		}
+
+		for (String prop : System.getProperties().stringPropertyNames()) {
+			if (prop.startsWith(REACTOR_PREFIX)) {
+				env.put(prop, System.getProperty(prop));
+			}
 		}
 	}
 
@@ -132,12 +136,11 @@ public class Environment implements Observable {
 	}
 
 	public DispatcherSupplier getDispatcherSupplier(String name) {
-		String dispatcherName = String.format(DISPATCHERS, name);
-		DispatcherSupplier supplier = (DispatcherSupplier) env.get(dispatcherName);
-		if (null == supplier) {
+		Iterator<Registration<? extends DispatcherSupplier>> regs = dispatcherSuppliers.select(name).iterator();
+		if (!regs.hasNext()) {
 			throw new IllegalArgumentException("No DispatcherSupplier found for name '" + name + "'");
 		}
-		return supplier;
+		return regs.next().getObject();
 	}
 
 	public Registration<? extends Reactor> register(Reactor reactor) {
@@ -161,91 +164,17 @@ public class Environment implements Observable {
 		return r;
 	}
 
-	public Reactor remove(String id) {
-		return remove(UUID.fromString(id));
+	public boolean unregister(String id) {
+		return unregister(UUID.fromString(id));
 	}
 
-	public Reactor remove(UUID id) {
-		Iterator<Registration<? extends Reactor>> rs = reactors.select(id).iterator();
-		if (!rs.hasNext()) {
-			return null;
-		}
-
-		Registration<? extends Reactor> reg = rs.next();
-		Reactor r = reg.getObject();
-		reg.cancel();
-
-		return r;
+	public boolean unregister(UUID id) {
+		return reactors.unregister(id);
 	}
 
-	@Override
-	public boolean respondsToKey(Object key) {
-		return global().respondsToKey(key);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Registration<Consumer<E>> on(Selector sel, Consumer<E> consumer) {
-		return global().on(sel, consumer);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Registration<Consumer<E>> on(Consumer<E> consumer) {
-		return global().on(consumer);
-	}
-
-	@Override
-	public <T, E extends Event<T>, V> Registration<Consumer<E>> receive(Selector sel, Function<E, V> fn) {
-		return global().receive(sel, fn);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Observable notify(Object key, E ev, Consumer<E> onComplete) {
-		return global().notify(key, ev, onComplete);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Observable notify(Object key, E ev) {
-		return global().notify(key, ev);
-	}
-
-	@Override
-	public <T, S extends Supplier<Event<T>>> Observable notify(Object key, S supplier) {
-		return global().notify(key, supplier);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Observable notify(E ev) {
-		return global().notify(ev);
-	}
-
-	@Override
-	public <T, S extends Supplier<Event<T>>> Observable notify(S supplier) {
-		return global().notify(supplier);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Observable send(Object key, E ev) {
-		return global().send(key, ev);
-	}
-
-	@Override
-	public <T, S extends Supplier<Event<T>>> Observable send(Object key, S supplier) {
-		return global().send(key, supplier);
-	}
-
-	@Override
-	public <T, E extends Event<T>> Observable send(Object key, E ev, Observable replyTo) {
-		return global().send(key, ev, replyTo);
-	}
-
-	@Override
-	public <T, S extends Supplier<Event<T>>> Observable send(Object key, S supplier, Observable replyTo) {
-		return global().send(key, supplier, replyTo);
-	}
-
-	@Override
-	public Observable notify(Object key) {
-		return global().notify(key);
+	public Reactor getSharedReactor() {
+		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("env", 128).start()));
+		return sharedReactor.get();
 	}
 
 	protected String getDefaultProfile() {
@@ -256,11 +185,6 @@ public class Environment implements Observable {
 		Properties props = new Properties();
 		props.load(CL.getResourceAsStream(String.format("META-INF/reactor/%s.properties", name)));
 		return props;
-	}
-
-	private Reactor global() {
-		globalReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("env", 128).start()));
-		return globalReactor.get();
 	}
 
 }

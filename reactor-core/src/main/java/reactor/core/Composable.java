@@ -519,8 +519,14 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	protected <U> Composable<U> createComposable(Observable src) {
-		Composable<U> c = new Composable<U>(env, createReactor(src));
+		final Composable<U> c = new Composable<U>(env, createReactor(src));
 		c.expectedAcceptCount.set(expectedAcceptCount.get());
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable t) {
+				c.accept(t);
+			}
+		});
 		return c;
 	}
 
