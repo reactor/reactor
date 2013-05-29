@@ -54,7 +54,7 @@ public class LoadBalancingThroughputTests extends AbstractThroughputTests {
 			postRun(reactor);
 		}
 
-		reactor.getDispatcher().stop();
+		reactor.getDispatcher().halt();
 	}
 
 	@Test

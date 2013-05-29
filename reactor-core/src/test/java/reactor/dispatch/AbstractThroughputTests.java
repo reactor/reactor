@@ -76,6 +76,6 @@ public abstract class AbstractThroughputTests extends AbstractReactorTest {
 	}
 
 	protected Dispatcher createRingBufferDispatcher() {
-		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy()).start();
+		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy());
 	}
 }

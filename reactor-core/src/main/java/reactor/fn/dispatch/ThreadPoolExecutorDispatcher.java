@@ -17,24 +17,13 @@
 package reactor.fn.dispatch;
 
 import reactor.fn.Cache;
-import reactor.fn.ConsumerInvoker;
 import reactor.fn.LoadingCache;
 import reactor.fn.Supplier;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
-import reactor.support.NamedDaemonThreadFactory;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
@@ -43,25 +32,10 @@ import com.lmax.disruptor.dsl.Disruptor;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class ThreadPoolExecutorDispatcher implements Dispatcher {
+public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 
-	private static final int DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors();
-	private static final int DEFAULT_BACKLOG   = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "128"));
-
-	private final ExecutorService executor;
-	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	private final ExecutorService       executor;
 	private final Cache<ThreadPoolTask> readyTasks;
-
-	/**
-	 * Creates a new {@literal ThreadPoolExecutorDispatcher} that will use the default backlog, as configured by the {@code
-	 * reactor.dispatcher.backlog} system property (if the property is not set, a backlog of 128 is used), and the default
-	 * pool size: the number of available processors.
-	 *
-	 * @see Runtime#availableProcessors()
-	 */
-	public ThreadPoolExecutorDispatcher() {
-		this(DEFAULT_POOL_SIZE, DEFAULT_BACKLOG);
-	}
 
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
@@ -87,29 +61,20 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public ThreadPoolExecutorDispatcher destroy() {
-		return this;
-	}
-
-	@Override
-	public ThreadPoolExecutorDispatcher stop() {
+	public boolean shutdown() {
 		executor.shutdown();
-		return this;
+		return super.shutdown();
 	}
 
 	@Override
-	public ThreadPoolExecutorDispatcher start() {
-		return this;
+	public boolean halt() {
+		executor.shutdownNow();
+		return super.halt();
 	}
 
-	@Override
-	public boolean isAlive() {
-		return executor.isShutdown();
-	}
-
-	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public <T> Task<T> nextTask() {
+	@Override
+	protected <T> Task<T> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new ThreadPoolTask());
 	}
@@ -123,7 +88,8 @@ public final class ThreadPoolExecutorDispatcher implements Dispatcher {
 		@Override
 		public void run() {
 			try {
-				execute(invoker);
+				execute(getInvoker());
+				decrementTaskCount();
 			} finally {
 				readyTasks.deallocate(this);
 			}

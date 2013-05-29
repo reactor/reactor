@@ -29,10 +29,7 @@ import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.util.Assert;
 
@@ -248,19 +245,18 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 			if (dispatcherType != null) {
 				switch (dispatcherType.value()) {
 					case EVENT_LOOP:
-						dispatcher = new BlockingQueueDispatcher();
+						dispatcher = env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER);
 						break;
 					case THREAD_POOL:
-						dispatcher = new ThreadPoolExecutorDispatcher();
+						dispatcher = env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER);
 						break;
 					case RING_BUFFER:
-						dispatcher = new RingBufferDispatcher();
+						dispatcher = env.getDispatcher(Environment.RING_BUFFER_DISPATCHER);
 						break;
 					case SYNC:
-						dispatcher = new SynchronousDispatcher();
+						dispatcher = SynchronousDispatcher.INSTANCE;
 						break;
 				}
-				dispatcher.start();
 			}
 			return R.reactor().using(env).dispatcher(dispatcher).get();
 		}

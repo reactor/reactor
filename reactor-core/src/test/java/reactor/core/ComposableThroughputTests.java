@@ -101,7 +101,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 																		 elapsed,
 																		 Math.round((length * runs * samples) / (elapsed * 1.0 / 1000)) + "/sec"));
 
-		dispatcher.stop();
+		dispatcher.halt();
 	}
 
 	@Test
@@ -121,7 +121,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1, 1024, ProducerType.SINGLE, new YieldingWaitStrategy()).start(), "single-producer ring buffer");
+		doTest(new RingBufferDispatcher("test", 1, 1024, ProducerType.SINGLE, new YieldingWaitStrategy()), "single-producer ring buffer");
 	}
 
 }

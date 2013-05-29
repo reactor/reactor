@@ -20,6 +20,8 @@ import reactor.fn.ConsumerInvoker;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
 
 /**
+ * A {@link Dispatcher} implementation that executes a {@link Task} immediately in the calling thread.
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -36,23 +38,18 @@ public class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public SynchronousDispatcher destroy() {
-		return this;
-	}
-
-	@Override
-	public SynchronousDispatcher stop() {
-		return this;
-	}
-
-	@Override
-	public SynchronousDispatcher start() {
-		return this;
-	}
-
-	@Override
-	public boolean isAlive() {
+	public boolean alive() {
 		return true;
+	}
+
+	@Override
+	public boolean shutdown() {
+		return false;
+	}
+
+	@Override
+	public boolean halt() {
+		return false;
 	}
 
 	private class SyncTask extends Task<Object> {

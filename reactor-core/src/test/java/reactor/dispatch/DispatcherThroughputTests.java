@@ -53,7 +53,7 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 			postRun(reactor);
 		}
 
-		reactor.getDispatcher().stop();
+		reactor.getDispatcher().shutdown();
 	}
 
 	@Test

@@ -16,8 +16,6 @@
 
 package reactor.fn.dispatch;
 
-import reactor.fn.Lifecycle;
-
 /**
  * Implementations of this interface provide a {@link Task} holder which the called can fill in with the details of the
  * task execution it desires to have scheduled. Calling {@link reactor.fn.dispatch.Task#submit()} will cause the task to
@@ -25,7 +23,30 @@ import reactor.fn.Lifecycle;
  *
  * @author Jon Brisbin
  */
-public interface Dispatcher extends Lifecycle<Dispatcher> {
+public interface Dispatcher {
+
+	/**
+	 * Determine whether this {@code Dispatcher} can accept {@link Task} submissions.
+	 *
+	 * @return {@literal true} is this {@code Dispatcher} is alive, {@literal false} otherwise.
+	 */
+	boolean alive();
+
+	/**
+	 * Shutdown this object.
+	 *
+	 * @return {@literal true} if there are still active tasks in queues, waiting to be processed, {@literal false}
+	 *         otherwise.
+	 */
+	boolean shutdown();
+
+	/**
+	 * Shutdown this {@code Dispatcher} and forcibly halt any tasks currently executing, and clear the queues of any
+	 * submitted tasks not yet executed.
+	 *
+	 * @return {@literal true} if tasks have been cleared, {@literal false} otherwise.
+	 */
+	boolean halt();
 
 	/**
 	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of

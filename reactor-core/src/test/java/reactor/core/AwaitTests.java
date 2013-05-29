@@ -19,13 +19,20 @@ public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64).start();
-		Reactor reactor = R.reactor().get();
-		Reactor innerReactor = R.reactor().dispatcher(dispatcher).get();
+		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
+		Reactor reactor = R.reactor().using(env).threadPoolExecutor().get();
+		Reactor innerReactor = R.reactor().using(env).dispatcher(dispatcher).get();
 		for (int i = 0; i < 1000; i++) {
 			final Promise<String> promise = R.<String>promise().using(env).using(reactor).get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
+			promise.onSuccess(new Consumer<String>() {
+
+				@Override
+				public void accept(String t) {
+					latch.countDown();
+				}
+			});
 			Fn.schedule(new Consumer() {
 
 				@Override
@@ -36,15 +43,8 @@ public class AwaitTests extends AbstractReactorTest {
 
 			}, null, innerReactor);
 
-			promise.onSuccess(new Consumer<String>() {
-
-				@Override
-				public void accept(String t) {
-					latch.countDown();
-				}
-			});
-
 			assertThat("latch is counted down", latch.await(5, TimeUnit.SECONDS));
 		}
 	}
+
 }

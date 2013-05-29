@@ -76,7 +76,7 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			dispatcherSuppliers.register($(threadPoolExecutorName),
-																	 new ThreadPoolExecutorDispatcher(size, backlog).start());
+																	 new ThreadPoolExecutorDispatcher(size, backlog));
 		}
 
 		String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
@@ -88,7 +88,7 @@ public class Environment {
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			for (int i = 0; i < size; i++) {
 				dispatcherSuppliers.register($(eventLoopName),
-																		 new BlockingQueueDispatcher(eventLoopName, backlog).start());
+																		 new BlockingQueueDispatcher(eventLoopName, backlog));
 			}
 		}
 
@@ -104,7 +104,7 @@ public class Environment {
 																														size,
 																														backlog,
 																														ProducerType.MULTI,
-																														new BlockingWaitStrategy()).start());
+																														new BlockingWaitStrategy()));
 		}
 
 		this.dispatcherSuppliers = dispatcherSuppliers;
@@ -174,7 +174,7 @@ public class Environment {
 	}
 
 	public Reactor getSharedReactor() {
-		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("env", 128).start()));
+		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("shared", 128)));
 		return sharedReactor.get();
 	}
 
