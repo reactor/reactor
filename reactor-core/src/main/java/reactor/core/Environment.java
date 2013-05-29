@@ -100,12 +100,6 @@ public class Environment {
 							ProducerType.MULTI,
 							new BlockingWaitStrategy()));
 		}
-
-		DispatcherConfig defaultC = new DispatcherConfig(THREAD_POOL_EXECUTOR_DISPATCHER, 128);
-		if (threadPoolConfig.size > 0) {
-			addDispatcher(threadPoolConfig.dispatcherName,
-					new ThreadPoolExecutorDispatcher(threadPoolConfig.size, threadPoolConfig.backlog));
-		}
 	}
 
 	private class DispatcherConfig {
