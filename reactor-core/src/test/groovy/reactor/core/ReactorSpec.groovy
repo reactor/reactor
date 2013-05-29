@@ -20,6 +20,7 @@ import reactor.Fn
 import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.Function
+import reactor.fn.SingleUseConsumer
 import spock.lang.Specification
 
 import static reactor.Fn.$
@@ -219,6 +220,22 @@ class ReactorSpec extends Specification {
 
 		then: "only r2,r4 react"
 		d2 && d4 && !d1 && !d3
+
+	}
+
+	def "supports single-use Consumers"() {
+
+		given: "a synchronous Reactor and a single-use Consumer"
+		def r = R.reactor().get()
+		def count = 0
+		r.on(new SingleUseConsumer(consumer { count++ }))
+
+		when: "the consumer is invoked several times"
+		r.notify(Fn.event(null))
+		r.notify(Fn.event(null))
+
+		then: "the count is only 1"
+		count == 1
 
 	}
 
