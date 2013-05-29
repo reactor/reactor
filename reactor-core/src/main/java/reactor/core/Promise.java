@@ -297,6 +297,7 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	protected <V> void handleError(Composable<V> c, Throwable t) {
 		c.accept(t);
+		c.decreaseAcceptLength();
 	}
 
 	public void accept(Throwable error) {
@@ -356,15 +357,11 @@ public class Promise<T> extends Composable<T> {
 		@SuppressWarnings("unchecked")
 		protected Promise<T> configure(Reactor reactor) {
 			if (null != mergeWith) {
-				final Promise<Collection<T>> p = new Promise<Collection<T>>(env, reactor);
-				doMerge(new DelayedAcceptComposable<Tuple2<T, Integer>>(env, reactor, mergeWith.size())).consume(
-						new Consumer<Collection<T>>() {
-							@Override
-							public void accept(Collection<T> ts) {
-								p.accept(ts);
-							}
-						}
-				);
+				//TODO fix generic hell
+				final Promise<Collection<?>> p = (Promise) new Promise<Collection<?>>(env, reactor);
+				doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size()))
+						.consume(p);
+
 				return (Promise<T>) p;
 			} else {
 				final Promise<T> prom;
@@ -372,11 +369,16 @@ public class Promise<T> extends Composable<T> {
 					prom = new Promise<T>(env, reactor).set(error);
 				} else if (supplier != null) {
 					prom = new Promise<T>(env, reactor);
-					try {
-						prom.set(supplier.get());
-					} catch (Throwable t) {
-						prom.set(t);
-					}
+					Fn.schedule(new Consumer<Object>() {
+						@Override
+						public void accept(Object o) {
+							try {
+								prom.set(supplier.get());
+							} catch (Throwable t) {
+								prom.set(t);
+							}
+						}
+					}, null, reactor);
 				} else if (null != values) {
 					prom = new Promise<T>(env, reactor).set(getValue());
 				} else {

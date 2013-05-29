@@ -69,7 +69,7 @@ class PromiseSpec extends Specification {
 		def p1 = R.promise supplier { 1 + 1 } get()
 		def p2 = R.promise supplier { 2 + 2 } get()
 		def latch = new CountDownLatch(1)
-		R.<Integer>promise().merge([p1, p2]).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
+		R.promise().merge(p1, p2).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
 
 		latch.await(1, TimeUnit.SECONDS)
 
@@ -86,8 +86,8 @@ class PromiseSpec extends Specification {
 		def latch = new CountDownLatch(1)
 		def res, err
 		R.promise().merge(p1, p2, p3).get().then(
-				consumer { List<Integer> v -> res = v },
-				consumer { Throwable t -> err = t; latch.countDown() }
+				consumer { List<Integer> v -> println v; res = v },
+				consumer { Throwable t -> println 'test2';  err = t; latch.countDown() }
 		)
 
 		then: 'the onError handler is invoked with the exception'
