@@ -19,7 +19,6 @@ package reactor.core;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
@@ -100,7 +99,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 																		 elapsed,
 																		 Math.round((length * runs * samples) / (elapsed * 1.0 / 1000)) + "/sec"));
 
-		dispatcher.halt();
+		dispatcher.shutdown();
 	}
 
 	@Test
