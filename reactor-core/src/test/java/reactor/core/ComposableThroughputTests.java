@@ -36,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class ComposableThroughputTests extends AbstractReactorTest {
 
 	static int length  = 500;

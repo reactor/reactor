@@ -60,27 +60,6 @@ public class Promise<T> extends Composable<T> {
 		});
 	}
 
-	/**
-	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
-	 * the given {@link Observable} until the returned {@link Composable}'s {@link Composable#await(long,
-	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
-	 *
-	 * @param key        The key to use when notifying the {@link Observable}.
-	 * @param observable The {@link Observable} on which to invoke the notify method.
-	 * @param <T>        The type of the {@link Event} data.
-	 * @return The new {@literal Composable}.
-	 */
-//	public static <T, E extends Event<T>> Promise<E> to(final Object key, final Observable observable) {
-//		Assert.notNull(observable);
-//		return new Promise.Spec<E>()
-//				.get()
-//				.onSuccess(new Consumer<E>() {
-//					@Override
-//					public void accept(E e) {
-//						observable.notify(key, e, null);
-//					}
-//				});
-//	}
 
 	/**
 	 * Set the value of the {@literal Promise} so that subsequent calls to {@link reactor.core.Promise#get()} will throw
@@ -341,7 +320,7 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	protected <U> Promise<U> createComposable(Observable src) {
-		final Promise<U> p = new Promise<U>(env, createReactor(src));
+		final Promise<U> p = new Promise<U>(env, src);
 		forwardError(p);
 		return p;
 	}
@@ -378,7 +357,7 @@ public class Promise<T> extends Composable<T> {
 		protected Promise<T> configure(Reactor reactor) {
 			if (null != mergeWith) {
 				final Promise<Collection<T>> p = new Promise<Collection<T>>(env, reactor);
-				doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size())).consume(
+				doMerge(new DelayedAcceptComposable<Tuple2<T, Integer>>(env, reactor, mergeWith.size())).consume(
 						new Consumer<Collection<T>>() {
 							@Override
 							public void accept(Collection<T> ts) {

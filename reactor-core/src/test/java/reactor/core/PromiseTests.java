@@ -130,7 +130,13 @@ public class PromiseTests extends AbstractReactorTest {
 
 		p.set("Not A Number");
 
-		assertThat("Supplier is not populated", c.get(), is(nullValue()));
+		boolean ex = false;
+		try{
+			c.await(500, TimeUnit.MILLISECONDS);
+		}catch (IllegalStateException nfe){
+			ex = true;
+		}
+		assertThat("Supplier is not populated", ex);
 		assertThat("Exception has been handled", exceptionHandled.getCount(), is(0L));
 	}
 

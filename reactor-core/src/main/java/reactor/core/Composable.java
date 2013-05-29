@@ -579,41 +579,36 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		}
 
 		@SuppressWarnings({"rawtypes", "unchecked"})
-		protected Composable<Collection<T>> doMerge(final Composable<Tuple2<?, Integer>> reducer) {
+		protected Composable<Collection<T>> doMerge(final Composable<Tuple2<T, Integer>> reducer) {
 			Composable<Collection<T>> result = reducer
 					.reduce()
-					.map(new Function<List<Tuple2<?, Integer>>, Collection<T>>() {
-						@SuppressWarnings("unchecked")
+					.map(new Function<List<Tuple2<T, Integer>>, Collection<T>>() {
 						@Override
-						public Collection<T> apply(List<Tuple2<?, Integer>> collection) {
-							Collections.sort(collection, new Comparator<Tuple2<?, Integer>>() {
+						public Collection<T> apply(List<Tuple2<T, Integer>> collection) {
+							Collections.sort(collection, new Comparator<Tuple2<T, Integer>>() {
 								@Override
-								public int compare(Tuple2<?, Integer> o1, Tuple2<?, Integer> o2) {
+								public int compare(Tuple2<T, Integer> o1, Tuple2<T, Integer> o2) {
 									return o1.getT2().compareTo(o2.getT2());
 								}
 							});
 							List<T> orderedResult = new ArrayList<T>();
-							for (Tuple2<?, Integer> element : collection) {
-								orderedResult.add((T) element.getT1());
+							for (Tuple2<T, Integer> element : collection) {
+								orderedResult.add( element.getT1());
 							}
 							return orderedResult;
 						}
 					});
 
-			Consumer consumer = new Consumer() {
+			Consumer<T> consumer = new Consumer<T>() {
 				int i = 0;
 
 				@Override
-				public void accept(Object o) {
-					if (Throwable.class.isInstance(o)) {
-						reducer.accept((Throwable) o);
-					} else {
+				public void accept(T o) {
 						reducer.accept(Tuple.of(o, i++));
-					}
 				}
 			};
 			for (final Composable<T> c : mergeWith) {
-				c.when(Throwable.class, consumer).consume(consumer);
+				c.forwardError(reducer).consume(consumer);
 				if (DelayedAcceptComposable.class.isInstance(c)) {
 					((DelayedAcceptComposable) c).delayedAccept();
 				}
@@ -637,7 +632,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		@SuppressWarnings("unchecked")
 		protected Composable<T> configure(final Reactor reactor) {
 			if (null != mergeWith) {
-				return (Composable<T>) doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size()));
+				return (Composable<T>) doMerge(new DelayedAcceptComposable<Tuple2<T, Integer>>(env, reactor,
+						mergeWith.size()));
 			} else {
 				final Composable<T> comp;
 				if (values != null) {
