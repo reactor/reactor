@@ -16,16 +16,14 @@
 
 package reactor.groovy
 
-import static reactor.Fn.$
+import reactor.core.R
+import reactor.fn.Event
+import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import reactor.core.Reactor
-import reactor.fn.Event
-import reactor.fn.dispatch.SynchronousDispatcher
-import spock.lang.Specification
-
+import static reactor.Fn.$
 /**
  * @author Stephane Maldini (smaldini)
  */
@@ -34,8 +32,8 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor dispatches events properly"() {
 
 		given: "a simple reactor implementation"
-		def r1 = new Reactor()
-		def r2 = new Reactor()
+		def r1 = R.reactor().get()
+		def r2 = R.reactor().get()
 		def latch = new CountDownLatch(1)
 
 		when: 'Using simple arguments'
@@ -72,7 +70,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor provides Closure as Supplier on notify"() {
 
 		given: "a simple Reactor"
-		def r = new Reactor(new SynchronousDispatcher())
+		def r = R.reactor().get()
 		def result = ""
 		r.on('supplier') { String s ->
 			result = s
@@ -89,7 +87,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor enables Actor programming style"() {
 
 		given: "a simple reactor implementation"
-		def reactor = new Reactor(new SynchronousDispatcher())
+		def reactor = R.reactor().get()
 
 		when: 'Using simple arguments'
 		def data2 = ""
@@ -107,10 +105,10 @@ class GroovyReactorSpec extends Specification {
 	def "Simple reactors linking"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = new Reactor(new SynchronousDispatcher())
-		def r2 = new Reactor(new SynchronousDispatcher())
-		def r3 = new Reactor(new SynchronousDispatcher())
-		def r4 = new Reactor(new SynchronousDispatcher())
+		def r1 = R.reactor().get()
+		def r2 = R.reactor().get()
+		def r3 = R.reactor().get()
+		def r4 = R.reactor().get()
 
 		def d1, d2, d3, d4
 
