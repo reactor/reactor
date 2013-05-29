@@ -144,7 +144,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		switch (loadBalancingStrategy) {
 			case ROUND_ROBIN: {
-				int i = (int) (getUsageCount(key).incrementAndGet() % matchingRegistrations.size());
+				int size = matchingRegistrations.size();
+				int i = (int) (getUsageCount(key).incrementAndGet() % (size > 0 ? size : 1));
 				return Collections.<Registration<? extends T>>singletonList(matchingRegistrations.get(i));
 			}
 			case RANDOM: {

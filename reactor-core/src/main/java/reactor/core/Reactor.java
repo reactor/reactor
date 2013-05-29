@@ -18,15 +18,13 @@ package reactor.core;
 
 import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
+import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.Registry.LoadBalancingStrategy;
-import reactor.fn.SelectionStrategy;
-import reactor.fn.Selector;
-import reactor.fn.Supplier;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.util.Assert;
 
@@ -48,6 +46,7 @@ import static reactor.Fn.T;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Reactor implements Observable, Linkable<Observable> {
 
+	private final Environment                            env;
 	private final Dispatcher                             dispatcher;
 	private final Converter                              converter;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
@@ -71,8 +70,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param src The {@literal Reactor} when which to get the {@link SelectionStrategy}, {@link Converter}, and {@link
 	 *            Dispatcher}.
 	 */
-	public Reactor(Reactor src) {
-		this(src.getDispatcher(), src.consumerRegistry.getLoadBalancingStrategy(), src.consumerRegistry.getSelectionStrategy(), src.getConverter());
+	Reactor(Environment env,
+					Reactor src) {
+		this(env,
+				 src.getDispatcher(),
+				 src.consumerRegistry.getLoadBalancingStrategy(),
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getConverter());
 	}
 
 	/**
@@ -84,8 +88,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
-	public Reactor(Reactor src, Dispatcher dispatcher) {
-		this(dispatcher, src.consumerRegistry.getLoadBalancingStrategy(), src.consumerRegistry.getSelectionStrategy(), src.getConverter());
+	Reactor(Environment env,
+					Reactor src,
+					Dispatcher dispatcher) {
+		this(env,
+				 dispatcher,
+				 src.consumerRegistry.getLoadBalancingStrategy(),
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getConverter());
 	}
 
 	/**
@@ -95,8 +105,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
-	public Reactor(Dispatcher dispatcher) {
-		this(dispatcher, null, null, null);
+	Reactor(Environment env,
+					Dispatcher dispatcher) {
+		this(env,
+				 dispatcher,
+				 null,
+				 null,
+				 null);
 	}
 
 	/**
@@ -109,8 +124,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *                              {@code null} to use the default.
 	 * @param selectionStrategy     The custom {@link SelectionStrategy} to use. May be {@code null}.
 	 */
-	public Reactor(Dispatcher dispatcher, LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy, Converter converter) {
-		this.dispatcher = dispatcher == null ? createDispatcher() : dispatcher;
+	Reactor(Environment env,
+					Dispatcher dispatcher,
+					LoadBalancingStrategy loadBalancingStrategy,
+					SelectionStrategy selectionStrategy,
+					Converter converter) {
+		this.env = env;
+		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
 		this.converter = converter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(loadBalancingStrategy, selectionStrategy);
 
@@ -121,7 +141,11 @@ public class Reactor implements Observable, Linkable<Observable> {
 					Object consumer = ((Tuple2) event.getData()).getT1();
 					Object data = ((Tuple2) event.getData()).getT2();
 					if (Consumer.class.isInstance(consumer)) {
-						((Consumer) consumer).accept(data);
+						try {
+							((Consumer) consumer).accept(data);
+						} catch (Throwable t) {
+							LoggerFactory.getLogger(Reactor.class).error(t.getMessage(), t);
+						}
 					}
 				}
 			}
@@ -131,14 +155,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	/**
 	 * Create a new {@literal Reactor} with default configuration.
 	 */
-	public Reactor() {
-		this(null, null, null, null);
-	}
-
-	private static Dispatcher createDispatcher() {
-		Dispatcher dispatcher = new BlockingQueueDispatcher();
-		dispatcher.start();
-		return dispatcher;
+	public Reactor(Environment env) {
+		this(env,
+				 null,
+				 null,
+				 null,
+				 null);
 	}
 
 	/**
@@ -285,7 +307,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(sel, "Selector cannot be null.");
 		Assert.notNull(function, "Function cannot be null.");
 
-		final Composable<V> c = new Composable<V>(new Reactor(this));
+		final Composable<V> c = new Composable<V>(env, this);
 		on(sel, new Consumer<E>() {
 			@Override
 			public void accept(E event) {
@@ -451,30 +473,24 @@ public class Reactor implements Observable, Linkable<Observable> {
 		}
 	}
 
-	public static Reactor create() {
-		return new Reactor();
-	}
-
-	public static class Builder extends ReactorBuilder<Builder, Reactor> {
-
+	public static class Spec extends ComponentSpec<Reactor.Spec, Reactor> {
 		private boolean link;
 
-		public Builder(String id) {
+		public Spec() {
 		}
 
-		public Builder link() {
+		public Spec link() {
 			this.link = true;
 			return this;
 		}
 
 		@Override
-		public Reactor doBuild(Reactor reactor) {
-			if(link)
+		public Reactor configure(Reactor reactor) {
+			if (link)
 				this.reactor.link(reactor);
 
 			return reactor;
 		}
 	}
-
 
 }

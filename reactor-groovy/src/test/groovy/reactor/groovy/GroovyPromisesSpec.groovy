@@ -19,6 +19,8 @@ package reactor.groovy
 import reactor.core.Environment
 import reactor.core.Promise
 import reactor.core.R
+import reactor.fn.dispatch.BlockingQueueDispatcher
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -27,6 +29,13 @@ import java.util.concurrent.TimeUnit
  * @author Stephane Maldini
  */
 class GroovyPromisesSpec extends Specification {
+
+	@Shared def testEnv
+
+	void setupSpec(){
+		testEnv = new Environment()
+		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
+	}
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
@@ -120,7 +129,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		def p = R.promise().using(new Environment()).eventLoop().get()
+		def p = R.promise().using(testEnv).eventLoop().get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

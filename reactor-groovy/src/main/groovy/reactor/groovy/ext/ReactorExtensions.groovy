@@ -21,10 +21,7 @@ import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Promise
 import reactor.core.R
-import reactor.fn.Consumer
-import reactor.fn.Function
 import reactor.fn.Observable
-import reactor.fn.Supplier
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 /**
@@ -40,15 +37,15 @@ class ReactorExtensions {
 		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
-	static <T> Composable.Builder<T> compose(final R selfType, Closure<T> callback) {
+	static <T> Composable.Spec<T> compose(final R selfType, Closure<T> callback) {
 		R.compose new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Builder<T> promise(final R selfType, Closure<T> callback) {
+	static <T> Promise.Spec<T> promise(final R selfType, Closure<T> callback) {
 		R.promise new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Builder<T> from(final Promise<T> selfType, Closure<T> callback) {
+	static <T> Promise.Spec<T> from(final Promise<T> selfType, Closure<T> callback) {
 		promise null, callback
 	}
 }

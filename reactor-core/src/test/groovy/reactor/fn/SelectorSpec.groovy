@@ -16,6 +16,8 @@
 
 package reactor.fn
 
+import reactor.core.R
+
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.Fn.T
@@ -109,7 +111,7 @@ class SelectorSpec extends Specification {
 		given: "A UriTemplateSelector"
 		def sel1 = U("/path/to/{resource}")
 		def key = "/path/to/resourceId"
-		def r = new Reactor(new SynchronousDispatcher())
+		def r = R.reactor().sync().get()
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
 			resourceId = ev.headers["resource"]
@@ -126,24 +128,19 @@ class SelectorSpec extends Specification {
 	def "Selectors can be round-robin load balanced"() {
 
 		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
-		def r = new Reactor(new SynchronousDispatcher(), ROUND_ROBIN, null, null)
-		def latch = new CountDownLatch(4)
+		def r = R.reactor().sync().using(ROUND_ROBIN).get()
 		def called = []
 		def a1 = {
 			called << 1
-			latch.countDown()
 		}
 		def a2 = {
 			called << 2
-			latch.countDown()
 		}
 		def a3 = {
 			called << 3
-			latch.countDown()
 		}
 		def a4 = {
 			called << 4
-			latch.countDown()
 		}
 		r.on(Fn.consumer(a1))
 		r.on(Fn.consumer(a2))
@@ -163,24 +160,19 @@ class SelectorSpec extends Specification {
 
 		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
 
-		def r = new Reactor(new SynchronousDispatcher(), RANDOM, null, null)
-		def latch = new CountDownLatch(4)
+		def r = R.reactor().sync().using(RANDOM).get()
 		def called = []
 		def a1 = {
 			called << 1
-			latch.countDown()
 		}
 		def a2 = {
 			called << 2
-			latch.countDown()
 		}
 		def a3 = {
 			called << 3
-			latch.countDown()
 		}
 		def a4 = {
 			called << 4
-			latch.countDown()
 		}
 		r.on(Fn.consumer(a1))
 		r.on(Fn.consumer(a2))
@@ -196,4 +188,5 @@ class SelectorSpec extends Specification {
 		then: "random selection of consumers have been called"
 		assertThat(called, anyOf(hasItem(1), hasItem(2), hasItem(3), hasItem(4)))
 	}
+
 }

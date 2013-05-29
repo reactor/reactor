@@ -19,14 +19,15 @@ package reactor.convert;
 /**
  * @author Stephane Maldini (smaldini)
  * @date: 3/21/13
- *
+ * <p/>
  * Port when Spring org.springframework.core.convert.ConversionService
  */
 public interface Converter {
 
 	/**
-	 * Returns true if objects of sourceType can be converted to targetType.
-	 * If this method returns true, it means {@link #convert(Object, Class)} is capable of converting an instance of sourceType to targetType.
+	 * Returns true if objects of sourceType can be converted to targetType. If this method returns true, it means {@link
+	 * #convert(Object, Class)} is capable of converting an instance of sourceType to targetType.
+	 *
 	 * @param sourceType the source type to convert when (may be null if source is null)
 	 * @param targetType the target type to convert to (required)
 	 * @return true if a conversion can be performed, false if not
@@ -35,9 +36,11 @@ public interface Converter {
 
 	/**
 	 * Convert the source to targetType.
-	 * @param source the source object to convert (may be null)
+	 *
+	 * @param source     the source object to convert (may be null)
 	 * @param targetType the target type to convert to (required)
 	 * @return the converted object, an instance of targetType
 	 */
 	<T> T convert(Object source, Class<T> targetType);
+
 }

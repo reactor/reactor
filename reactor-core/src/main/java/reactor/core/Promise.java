@@ -25,7 +25,6 @@ import reactor.util.Assert;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -44,35 +43,8 @@ public class Promise<T> extends Composable<T> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	/**
-	 * Create a {@literal Promise} based on the given {@link Observable}.
-	 *
-	 * @param src The {@link Observable} to use when publishing events internally.
-	 */
-	public Promise(Observable src) {
-		super(src);
-		expectedAcceptCount.set(1);
-	}
-
-	/**
-	 * Create a {@literal Promise} based on the given {@link Promise#observable}.
-	 *
-	 * @param src The {@link Observable} to use when publishing events internally.
-	 */
-	public Promise(Composable src) {
-		super(src);
-		expectedAcceptCount.set(1);
-	}
-
-	/**
-	 * Create a {@literal Promise} with default behavior.
-	 */
-	public Promise() {
-		this((Dispatcher) null);
-	}
-
-	public Promise(Dispatcher dispatcher) {
-		super(dispatcher);
+	Promise(Environment env, Observable src) {
+		super(env, src);
 		expectedAcceptCount.set(1);
 		observable.on(Fn.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
@@ -86,114 +58,6 @@ public class Promise<T> extends Composable<T> {
 				}
 			}
 		});
-	}
-
-	/**
-	 * Create a {@link Promise} from the given {@link Composable#observable} and consume it.
-	 *
-	 * @param src The promise to defer.
-	 * @param <T> The type of the values.
-	 * @return a new {@link Promise}
-	 */
-	public static <T> Promise<T> from(Composable<T> src) {
-		final Promise<T> p = new Promise<T>(src);
-		src.consume(new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				p.set(t);
-			}
-		});
-		return p;
-	}
-
-	/**
-	 * Bind all {@link Composable} and merge them into a new {@link Composable}
-	 *
-	 * @param composables The composables to merge.
-	 * @param <T>         The type of the values.
-	 * @return a new {@link Promise}
-	 */
-	public static <T, E extends Composable<T>> Promise<List<T>> merge(E... composables) {
-		return merge(Arrays.asList(composables));
-	}
-
-	/**
-	 * Bind all {@link Composable} and merge them into a new {@link Composable}
-	 *
-	 * @param composables The composables to merge.
-	 * @param <T>         The type of the values.
-	 * @return a new {@link Promise}
-	 */
-	public static <T, E extends Composable<T>> Promise<List<T>> merge(final Collection<E> composables) {
-
-		final Promise<List<T>> r = Promise.create();
-		Composable.merge(composables).consume(r);
-		return r;
-	}
-
-
-	/**
-	 * Create a {@literal Composable} when the given {@code key} and {@link Event} and delay notification of the event on
-	 * the given {@link Observable} until the returned {@link Composable}'s {@link Composable#await(long,
-	 * java.util.concurrent.TimeUnit)} or {@link Composable#get()} methods are called.
-	 *
-	 * @param key        The key to use when notifying the {@link Observable}.
-	 * @param observable The {@link Observable} on which to invoke the notify method.
-	 * @param <T>        The type of the {@link Event} data.
-	 * @return The new {@literal Composable}.
-	 */
-	public static <T, E extends Event<T>> Promise<E> to(final Object key, final Observable observable) {
-		Assert.notNull(observable);
-		return new Builder<E>()
-				.get()
-				.onSuccess(new Consumer<E>() {
-					@Override
-					public void accept(E e) {
-						observable.notify(key, e, null);
-					}
-				});
-	}
-
-	/**
-	 * Create a {@literal Promise}.
-	 *
-	 * @param <T> The type of the value.
-	 * @return The new {@literal Promise}.
-	 */
-	public static <T> Promise<T> create() {
-		return new Promise<T>();
-	}
-
-	/**
-	 * Create a {@literal Promise} that uses a synchronous {@link Dispatcher}.
-	 *
-	 * @param <T> The type of the value.
-	 * @return The new {@literal Promise}.
-	 */
-	public static <T> Promise<T> sync() {
-		return new Promise<T>(SYNCHRONOUS_DISPATCHER);
-	}
-
-	/**
-	 * Create a {@literal Promise} that uses a synchronous {@link Dispatcher}.
-	 *
-	 * @param reason The error to set the value of this {@literal Promise} to.
-	 * @param <T>    The type of the value.
-	 * @return The new {@literal Promise}.
-	 */
-	public static <T> Promise<T> sync(Throwable reason) {
-		return Promise.<T>sync().set(reason);
-	}
-
-	/**
-	 * Create a {@literal Promise} using the given value which uses a synchronous {@link Dispatcher}.
-	 *
-	 * @param value The value of the {@literal Promise}.
-	 * @param <T>   The type of the value.
-	 * @return The new {@literal Promise}.
-	 */
-	public static <T> Promise<T> sync(T value) {
-		return Promise.<T>sync().set(value);
 	}
 
 
@@ -339,7 +203,7 @@ public class Promise<T> extends Composable<T> {
 				Fn.schedule(consumer, value, observable);
 				return this;
 			} else {
-				return (Promise<T>)super.consume(consumer);
+				return (Promise<T>) super.consume(consumer);
 			}
 		}
 	}
@@ -351,7 +215,7 @@ public class Promise<T> extends Composable<T> {
 				observable.notify(key, Fn.event(value));
 				return this;
 			} else {
-				return (Promise<T>)super.consume(key, observable);
+				return (Promise<T>) super.consume(key, observable);
 			}
 		}
 	}
@@ -386,7 +250,7 @@ public class Promise<T> extends Composable<T> {
 	public <V> Promise<V> map(final Function<T, V> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				final Promise<V> c = createComposable(createObservable(observable));
+				final Promise<V> c = createComposable(observable);
 				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -399,7 +263,7 @@ public class Promise<T> extends Composable<T> {
 				}, value, observable);
 				return c;
 			} else {
-				return (Promise<V>)super.map(fn);
+				return (Promise<V>) super.map(fn);
 			}
 		}
 	}
@@ -408,7 +272,7 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				final Promise<T> c = createComposable(createObservable(observable));
+				final Promise<T> c = createComposable(observable);
 				Fn.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -425,7 +289,7 @@ public class Promise<T> extends Composable<T> {
 				}, value, observable);
 				return c;
 			} else {
-				return (Promise<T>)super.filter(fn);
+				return (Promise<T>) super.filter(fn);
 			}
 		}
 	}
@@ -433,6 +297,7 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	protected <V> void handleError(Composable<V> c, Throwable t) {
 		c.accept(t);
+		c.decreaseAcceptLength();
 	}
 
 	public void accept(Throwable error) {
@@ -456,7 +321,9 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	protected <U> Promise<U> createComposable(Observable src) {
-		return new Promise<U>(src);
+		final Promise<U> p = new Promise<U>(env, src);
+		forwardError(p);
+		return p;
 	}
 
 	private void assertPending() {
@@ -472,47 +339,62 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Builder<T> extends ReactorBuilder<Builder<T>, Promise<T>> {
-
-		protected final T           value;
-		protected final Supplier<T> supplier;
-
-		Builder(T value, Supplier<T> supplier) {
-			this.value = value;
-			this.supplier = supplier;
+	public static class Spec<T> extends AbstractComposableSpec<T, Promise<T>, Spec<T>> {
+		@SuppressWarnings("unchecked")
+		public Spec(T value, Supplier<T> supplier, Throwable error) {
+			super((null != value ? Arrays.asList(value) : null), supplier, error);
 		}
 
-		public Builder(T value) {
-			this(value, null);
-		}
-
-		public Builder(Supplier<T> supplier) {
-			this(null, supplier);
-		}
-
-		public Builder() {
-			this(null, null);
+		private T getValue() {
+			if (null != values) {
+				return values.iterator().next();
+			} else {
+				return null;
+			}
 		}
 
 		@Override
-		public Promise<T> doBuild(final Reactor reactor) {
-			if (Throwable.class.isInstance(value)) {
-				return new Promise<T>(reactor).set((Throwable) value);
-			} else if (supplier != null) {
-				final Promise<T> result = new Promise<T>(reactor);
-				Fn.schedule(new Consumer<Object>() {
-					@Override
-					public void accept(Object o) {
-						try {
-							result.set(supplier.get());
-						} catch (Throwable t) {
-							result.set(t);
-						}
-					}
-				}, null, reactor);
-				return result;
+		@SuppressWarnings("unchecked")
+		protected Promise<T> configure(Reactor reactor) {
+			if (null != mergeWith) {
+				//TODO fix generic hell
+				final Promise<Collection<?>> p = (Promise) new Promise<Collection<?>>(env, reactor);
+				doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size()))
+						.consume(p);
+
+				return (Promise<T>) p;
 			} else {
-				return new Promise<T>(reactor).set(value);
+				final Promise<T> prom;
+				if (null != error) {
+					prom = new Promise<T>(env, reactor).set(error);
+				} else if (supplier != null) {
+					prom = new Promise<T>(env, reactor);
+					Fn.schedule(new Consumer<Object>() {
+						@Override
+						public void accept(Object o) {
+							try {
+								prom.set(supplier.get());
+							} catch (Throwable t) {
+								prom.set(t);
+							}
+						}
+					}, null, reactor);
+				} else if (null != values) {
+					prom = new Promise<T>(env, reactor).set(getValue());
+				} else {
+					prom = new Promise<T>(env, reactor);
+				}
+
+				if (null != src) {
+					src.consume(new Consumer<T>() {
+						@Override
+						public void accept(T t) {
+							prom.accept(t);
+						}
+					});
+				}
+
+				return prom;
 			}
 		}
 	}

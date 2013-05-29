@@ -39,8 +39,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 		def sameThread = new SynchronousDispatcher()
-		def diffThread = new ThreadPoolExecutorDispatcher()
-		diffThread.start()
+		def diffThread = new ThreadPoolExecutorDispatcher(1,128)
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>(null, null)
@@ -72,8 +71,7 @@ class DispatcherSpec extends Specification {
 
 		then: "the task thread should be different when the current thread"
 		taskThread != currentThread
-
-		diffThread.stop()
+		!diffThread.shutdown()
 
 	}
 

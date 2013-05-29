@@ -17,6 +17,7 @@
 package reactor.spring.dynamic;
 
 import org.springframework.beans.factory.FactoryBean;
+import reactor.core.Environment;
 import reactor.core.dynamic.DynamicReactor;
 import reactor.core.dynamic.DynamicReactorFactory;
 
@@ -25,20 +26,23 @@ import reactor.core.dynamic.DynamicReactorFactory;
  */
 public class DynamicReactorFactoryBean<T extends DynamicReactor> implements FactoryBean<T> {
 
+	private final Environment              env;
 	private final boolean                  singleton;
 	private final Class<T>                 type;
 	private final DynamicReactorFactory<T> reactorFactory;
 
-	public DynamicReactorFactoryBean(Class<T> type) {
+	public DynamicReactorFactoryBean(Environment env, Class<T> type) {
+		this.env = env;
 		this.singleton = false;
 		this.type = type;
-		this.reactorFactory = new DynamicReactorFactory<T>(type);
+		this.reactorFactory = new DynamicReactorFactory<T>(env, type);
 	}
 
-	public DynamicReactorFactoryBean(Class<T> type, boolean singleton) {
+	public DynamicReactorFactoryBean(Environment env, Class<T> type, boolean singleton) {
+		this.env = env;
 		this.singleton = singleton;
 		this.type = type;
-		this.reactorFactory = new DynamicReactorFactory<T>(type);
+		this.reactorFactory = new DynamicReactorFactory<T>(env, type);
 	}
 
 	@Override

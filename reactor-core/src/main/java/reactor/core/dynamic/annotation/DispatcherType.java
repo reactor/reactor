@@ -22,8 +22,8 @@ package reactor.core.dynamic.annotation;
 public enum DispatcherType {
 
 	THREAD_POOL,
-	WORKER,
-	ROOT,
+	EVENT_LOOP,
+	RING_BUFFER,
 	SYNC
 
 }

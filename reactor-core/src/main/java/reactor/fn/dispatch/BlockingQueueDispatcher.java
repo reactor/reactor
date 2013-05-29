@@ -19,11 +19,8 @@ package reactor.fn.dispatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.fn.Cache;
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.fn.LoadingCache;
 import reactor.fn.Supplier;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.support.QueueFactory;
 
 import java.util.concurrent.BlockingQueue;
@@ -38,26 +35,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Andy Wilkinson
  */
 @SuppressWarnings("rawtypes")
-public class BlockingQueueDispatcher implements Dispatcher {
+public final class BlockingQueueDispatcher extends AbstractDispatcher {
 
-	private static final int           DEFAULT_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.backlog", "256"));
-	private static final AtomicInteger INSTANCE_COUNT  = new AtomicInteger();
+	private static final AtomicInteger INSTANCE_COUNT = new AtomicInteger();
 
-	private final ThreadGroup     threadGroup = new ThreadGroup("reactor-dispatcher");
-	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
-
+	private final ThreadGroup         threadGroup = new ThreadGroup("eventloop");
+	private final BlockingQueue<Task> taskQueue   = QueueFactory.createQueue();
 	private final Cache<Task> readyTasks;
-	private final BlockingQueue<Task> taskQueue = QueueFactory.createQueue();
-	private final Thread taskExecutor;
-
-	/**
-	 * Creates a new {@literal BlockingQueueDispatcher} named 'blocking-queue' that will use the default backlog, as
-	 * configured by the {@code reactor.dispatcher.backlog} system property. If the property is not set, a backlog of 128
-	 * is used.
-	 */
-	public BlockingQueueDispatcher() {
-		this("blocking-queue", DEFAULT_BACKLOG);
-	}
+	private final Thread      taskExecutor;
 
 	/**
 	 * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
@@ -80,12 +65,25 @@ public class BlockingQueueDispatcher implements Dispatcher {
 
 		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
 		this.taskExecutor.setDaemon(true);
-		this.taskExecutor.setPriority(Thread.MAX_PRIORITY);
+		this.taskExecutor.setPriority(Thread.NORM_PRIORITY);
+		this.taskExecutor.start();
 	}
 
 	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	public <T> Task<T> nextTask() {
+	public boolean shutdown() {
+		taskExecutor.interrupt();
+		return super.shutdown();
+	}
+
+	@Override
+	public boolean halt() {
+		taskExecutor.interrupt();
+		return super.halt();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	protected <T> Task<T> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new BlockingQueueTask());
 	}
@@ -98,42 +96,19 @@ public class BlockingQueueDispatcher implements Dispatcher {
 		}
 	}
 
-	@Override
-	public BlockingQueueDispatcher destroy() {
-		taskExecutor.interrupt();
-		return this;
-	}
-
-	@Override
-	public BlockingQueueDispatcher stop() {
-		taskExecutor.interrupt();
-		return this;
-	}
-
-	@Override
-	public BlockingQueueDispatcher start() {
-		taskExecutor.start();
-		return this;
-	}
-
-	@Override
-	public boolean isAlive() {
-		return true;
-	}
-
 	private class TaskExecutingRunnable implements Runnable {
 		@SuppressWarnings("rawtypes")
 		@Override
 		public void run() {
 			Task t = null;
-			while (true) {
+			for (; ; ) {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
-						t.execute(invoker);
+						t.execute(getInvoker());
+						decrementTaskCount();
 					}
 				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
 					break;
 				} catch (Exception e) {
 					Logger log = LoggerFactory.getLogger(BlockingQueueDispatcher.class);
@@ -147,6 +122,7 @@ public class BlockingQueueDispatcher implements Dispatcher {
 					}
 				}
 			}
+			Thread.currentThread().interrupt();
 		}
 	}
 

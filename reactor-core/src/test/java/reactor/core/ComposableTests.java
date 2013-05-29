@@ -18,6 +18,7 @@ package reactor.core;
 
 import org.hamcrest.Matcher;
 import org.junit.Test;
+import reactor.AbstractReactorTest;
 import reactor.fn.*;
 
 import java.util.Arrays;
@@ -34,7 +35,7 @@ import static reactor.Fn.$;
 /**
  * @author Jon Brisbin
  */
-public class ComposableTests {
+public class ComposableTests extends AbstractReactorTest {
 
 	static final String2Integer STRING_2_INTEGER = new String2Integer();
 
@@ -93,6 +94,8 @@ public class ComposableTests {
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Composable<Integer> c = R
 				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+				.using(env)
+				.eventLoop()
 				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
@@ -150,7 +153,7 @@ public class ComposableTests {
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		Reactor r = new Reactor();
+		Reactor r = R.reactor().get();
 		Tuple2<Selector, Object> key = $();
 
 		final CountDownLatch latch = new CountDownLatch(5);
@@ -208,9 +211,10 @@ public class ComposableTests {
 	<T> void await(Deferred<T> d, Matcher<T> expected) throws InterruptedException {
 		long startTime = System.currentTimeMillis();
 		T result = null;
-		try{
+		try {
 			result = d.await(1, TimeUnit.SECONDS);
-		}catch (Exception e){}
+		} catch (Exception e) {
+		}
 		long duration = System.currentTimeMillis() - startTime;
 
 		assertThat(result, expected);

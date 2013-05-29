@@ -36,10 +36,11 @@ public class DelegatingConverter implements Converter {
 		this.delegateConverters = Arrays.asList(converters);
 	}
 
-	@Override public boolean canConvert(Class<?> sourceType, Class<?> targetType) {
-		if(delegateConverters != null && !delegateConverters.isEmpty()){
-			for(Converter c : delegateConverters) {
-				if(c.canConvert(sourceType, targetType)) {
+	@Override
+	public boolean canConvert(Class<?> sourceType, Class<?> targetType) {
+		if (delegateConverters != null && !delegateConverters.isEmpty()) {
+			for (Converter c : delegateConverters) {
+				if (c.canConvert(sourceType, targetType)) {
 					return true;
 				}
 			}
@@ -47,12 +48,13 @@ public class DelegatingConverter implements Converter {
 		return false;
 	}
 
-	@Override public <T> T convert(Object source, Class<T> targetType) {
-		if(null == source) {
+	@Override
+	public <T> T convert(Object source, Class<T> targetType) {
+		if (null == source) {
 			return null;
 		}
-		for(Converter c : delegateConverters) {
-			if(c.canConvert(source.getClass(), targetType)) {
+		for (Converter c : delegateConverters) {
+			if (c.canConvert(source.getClass(), targetType)) {
 				return c.convert(source, targetType);
 			}
 		}

@@ -16,24 +16,16 @@
 
 package reactor.fn.dispatch;
 
-import java.util.concurrent.Executors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.fn.Consumer;
-import reactor.fn.ConsumerInvoker;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
-import reactor.support.NamedDaemonThreadFactory;
-
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.fn.Consumer;
+import reactor.support.NamedDaemonThreadFactory;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Implementation of a {@link Dispatcher} that uses a <a href="http://github.com/lmax-exchange/disruptor">Disruptor
@@ -42,32 +34,18 @@ import com.lmax.disruptor.dsl.ProducerType;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher implements Dispatcher {
+public class RingBufferDispatcher extends AbstractDispatcher {
 
-	private static final int DEFAULT_RING_BUFFER_THREADS = Integer.parseInt(System.getProperty("reactor.dispatcher.ringbuffer.threads", "1"));
-    private static final int DEFAULT_RING_BUFFER_BACKLOG = Integer.parseInt(System.getProperty("reactor.dispatcher.ringbuffer.backlog", "512"));
-
-	private final    Disruptor<RingBufferTask>  disruptor;
-	private volatile ConsumerInvoker            invoker;
-	private volatile RingBuffer<RingBufferTask> ringBuffer;
-
-	/**
-	 * Creates a new {@literal RingBufferDispatcher} in its default configuration. The dispatcher will be named "ring-buffer". The number of
-	 * threads used is determined by the {@code reactor.dispatcher.ringbuffer.threads} system property. If the property is not set, one thread
-	 * will be used. The size of the backlog is determined by the {@code reactor dispatcher.ringbuffer.backlog} system property. If the
-	 * property is not set, a backlog of 512 will be used. The dispatcher's {@link RingBuffer} will configured to be used with
-	 * {@link ProducerType#MULTI multiple producers} and will use a {@link BlockingWaitStrategy blocking wait strategy}.
-	 */
-	public RingBufferDispatcher() {
-		this("ring-buffer", DEFAULT_RING_BUFFER_THREADS, DEFAULT_RING_BUFFER_BACKLOG, ProducerType.MULTI, new BlockingWaitStrategy());
-	}
+	private final ExecutorService            executor;
+	private final Disruptor<RingBufferTask>  disruptor;
+	private final RingBuffer<RingBufferTask> ringBuffer;
 
 	/**
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
 	 *
-	 * @param name The name of the dispatcher
-	 * @param poolSize The size of the thread pool used to remove items when the buffer
-	 * @param backlog The backlog size to configuration the ring buffer with
+	 * @param name         The name of the dispatcher
+	 * @param poolSize     The size of the thread pool used to remove items when the buffer
+	 * @param backlog      The backlog size to configuration the ring buffer with
 	 * @param producerType The producer type to configure the ring buffer with
 	 * @param waitStrategy The wait strategy to configure the ring buffer with
 	 */
@@ -77,7 +55,9 @@ public class RingBufferDispatcher implements Dispatcher {
 															int backlog,
 															ProducerType producerType,
 															WaitStrategy waitStrategy) {
-		disruptor = new Disruptor<RingBufferTask>(
+		this.executor = Executors.newFixedThreadPool(poolSize, new NamedDaemonThreadFactory(name + "-ringbuffer"));
+
+		this.disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
 					@Override
 					public RingBufferTask newInstance() {
@@ -85,15 +65,19 @@ public class RingBufferDispatcher implements Dispatcher {
 					}
 				},
 				backlog,
-				Executors.newFixedThreadPool(poolSize, new NamedDaemonThreadFactory(name + "-dispatcher")),
+				executor,
 				producerType,
 				waitStrategy
 		);
-
-		disruptor.handleEventsWith(new RingBufferTaskHandler());
+		// Create 1 task handler per thread
+		RingBufferTaskHandler[] taskHandlers = new RingBufferTaskHandler[poolSize];
+		for (int i = 0; i < poolSize; i++) {
+			taskHandlers[i] = new RingBufferTaskHandler();
+		}
+		disruptor.handleEventsWith(taskHandlers);
+		// Exceptions are handled by the errorConsumer
 		disruptor.handleExceptionsWith(
 				new ExceptionHandler() {
-
 					@Override
 					public void handleEventException(Throwable ex, long sequence, Object event) {
 						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
@@ -123,39 +107,30 @@ public class RingBufferDispatcher implements Dispatcher {
 					}
 				}
 		);
-		invoker = new ConverterAwareConsumerInvoker();
+		ringBuffer = disruptor.start();
 	}
 
 	@Override
-	@SuppressWarnings({"unchecked"})
-	public <T> Task<T> nextTask() {
+	public boolean shutdown() {
+		executor.shutdown();
+		disruptor.shutdown();
+		return super.shutdown();
+	}
+
+	@Override
+	public boolean halt() {
+		executor.shutdownNow();
+		disruptor.halt();
+		return super.halt();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	protected <T> Task<T> createTask() {
 		long l = ringBuffer.next();
 		RingBufferTask t = ringBuffer.get(l);
 		t.setSequenceId(l);
 		return (Task<T>) t;
-	}
-
-	@Override
-	public RingBufferDispatcher destroy() {
-		disruptor.shutdown();
-		return this;
-	}
-
-	@Override
-	public RingBufferDispatcher stop() {
-		disruptor.halt();
-		return this;
-	}
-
-	@Override
-	public RingBufferDispatcher start() {
-		ringBuffer = disruptor.start();
-		return this;
-	}
-
-	@Override
-	public boolean isAlive() {
-		return ringBuffer.remainingCapacity() > 0;
 	}
 
 	private class RingBufferTask extends Task<Object> {
@@ -175,7 +150,8 @@ public class RingBufferDispatcher implements Dispatcher {
 	private class RingBufferTaskHandler implements EventHandler<RingBufferTask> {
 		@Override
 		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
-			t.execute(invoker);
+			t.execute(getInvoker());
+			decrementTaskCount();
 		}
 	}
 

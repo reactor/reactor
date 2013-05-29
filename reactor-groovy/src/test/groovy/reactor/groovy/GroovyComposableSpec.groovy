@@ -18,6 +18,8 @@ package reactor.groovy
 
 import reactor.core.Environment
 import reactor.core.R
+import reactor.fn.dispatch.BlockingQueueDispatcher
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -29,7 +31,12 @@ import static reactor.Fn.$
  */
 class GroovyComposableSpec extends Specification {
 
-	def testEnv = new Environment()
+	@Shared def testEnv
+
+	void setupSpec(){
+		testEnv = new Environment()
+		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
+	}
 
 	def "Compose from single value"() {
 		when: 'Defer a composition'
@@ -91,7 +98,7 @@ class GroovyComposableSpec extends Specification {
 		def d = c | { Integer.parseInt it } | { if (it >= 5) throw new IllegalArgumentException() else sum += it }
 
 		then:
-		d.await 1, TimeUnit.SECONDS
+		d.await 100, TimeUnit.SECONDS
 		d.get() == 10
 	}
 
@@ -194,7 +201,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "relay events to reactor"() {
 		given: 'a reactor and a selector'
-		def r = R.reactor().eventLoop().using(testEnv).get()
+		def r = R.reactor().using(testEnv).eventLoop().get()
 		def key = $()
 
 		when: 'we consume when this reactor and key'

@@ -18,6 +18,8 @@ package reactor.core.dynamic;
 
 import reactor.Fn;
 import reactor.convert.Converter;
+import reactor.core.Environment;
+import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.core.dynamic.annotation.Dispatcher;
 import reactor.core.dynamic.annotation.Notify;
@@ -27,12 +29,9 @@ import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.util.Assert;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
+import reactor.util.Assert;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
@@ -52,6 +51,7 @@ import java.util.concurrent.Callable;
  */
 public class DynamicReactorFactory<T extends DynamicReactor> {
 
+	private final Environment                         env;
 	private final Class<T>                            type;
 	private final List<MethodSelectorResolver>        selectorResolvers;
 	private final List<MethodNotificationKeyResolver> notificationKeyResolvers;
@@ -59,14 +59,22 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	private volatile ConsumerInvoker            consumerInvoker = new ConverterAwareConsumerInvoker();
 	private volatile Converter converter;
 
-	public DynamicReactorFactory(Class<T> type, List<MethodSelectorResolver> selectorResolvers, List<MethodNotificationKeyResolver> notificationKeyResolvers) {
+	public DynamicReactorFactory(Environment env,
+															 Class<T> type,
+															 List<MethodSelectorResolver> selectorResolvers,
+															 List<MethodNotificationKeyResolver> notificationKeyResolvers) {
+		this.env = env;
 		this.type = type;
 		this.selectorResolvers = selectorResolvers;
 		this.notificationKeyResolvers = notificationKeyResolvers;
 	}
 
-	public DynamicReactorFactory(Class<T> type) {
-		this(type, Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()), Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
+	public DynamicReactorFactory(Environment env,
+															 Class<T> type) {
+		this(env,
+				 type,
+				 Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()),
+				 Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
 	}
 
 	/**
@@ -119,17 +127,13 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		return this;
 	}
 
-	public T create() {
-		return create(new Reactor());
-	}
-
 	/**
 	 * Generate a {@link Proxy} based on the given interface.
 	 *
 	 * @return A proxy based on {@link #type}.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public T create(Reactor reactor) {
+	public T create() {
 		return (T) Proxy.newProxyInstance(
 				DynamicReactorFactory.class.getClassLoader(),
 				new Class[]{type},
@@ -240,22 +244,21 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 			reactor.fn.dispatch.Dispatcher dispatcher = null;
 			if (dispatcherType != null) {
 				switch (dispatcherType.value()) {
-					case WORKER:
-						dispatcher = new BlockingQueueDispatcher();
+					case EVENT_LOOP:
+						dispatcher = env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER);
 						break;
 					case THREAD_POOL:
-						dispatcher = new ThreadPoolExecutorDispatcher();
+						dispatcher = env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER);
 						break;
-					case ROOT:
-						dispatcher = new RingBufferDispatcher();
+					case RING_BUFFER:
+						dispatcher = env.getDispatcher(Environment.RING_BUFFER_DISPATCHER);
 						break;
 					case SYNC:
-						dispatcher = new SynchronousDispatcher();
+						dispatcher = SynchronousDispatcher.INSTANCE;
 						break;
 				}
-				dispatcher.start();
 			}
-			return new Reactor(dispatcher);
+			return R.reactor().using(env).dispatcher(dispatcher).get();
 		}
 	}
 

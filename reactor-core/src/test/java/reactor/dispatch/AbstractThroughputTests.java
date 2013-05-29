@@ -16,14 +16,11 @@
 
 package reactor.dispatch;
 
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
+import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import reactor.AbstractReactorTest;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -31,17 +28,19 @@ import reactor.fn.Selector;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 
-import com.lmax.disruptor.YieldingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-public abstract class AbstractThroughputTests {
+import static org.junit.Assert.assertTrue;
 
-	protected final int                     selectors  = 250;
-	protected final int                     iterations = 7500;
-	protected final int                     testRuns   = 3;
-	protected final Object[]                objects = new Object[selectors];
-	protected final Selector[]              sels  = new Selector[selectors];
-	protected final Event<String>           hello = new Event<String>("Hello World!");
+public abstract class AbstractThroughputTests extends AbstractReactorTest {
+
+	protected final int                     selectors         = 250;
+	protected final int                     iterations        = 7500;
+	protected final int                     testRuns          = 3;
+	protected final Object[]                objects           = new Object[selectors];
+	protected final Selector[]              sels              = new Selector[selectors];
+	protected final Event<String>           hello             = new Event<String>("Hello World!");
 	protected final Consumer<Event<Object>> countDownConsumer = new CountDownConsumer();
 	protected final Logger                  log               = LoggerFactory.getLogger(getClass());
 
@@ -77,6 +76,6 @@ public abstract class AbstractThroughputTests {
 	}
 
 	protected Dispatcher createRingBufferDispatcher() {
-		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy()).start();
+		return new RingBufferDispatcher("test", 1, 512, ProducerType.SINGLE, new YieldingWaitStrategy());
 	}
 }

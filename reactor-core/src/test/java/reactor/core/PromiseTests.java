@@ -17,12 +17,11 @@
 package reactor.core;
 
 import org.junit.Test;
+import reactor.AbstractReactorTest;
 import reactor.Fn;
 import reactor.fn.Consumer;
-import reactor.fn.Deferred;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -36,7 +35,7 @@ import static org.junit.Assert.assertTrue;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class PromiseTests {
+public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testPromiseNotifiesOfValues() throws InterruptedException {
@@ -54,7 +53,7 @@ public class PromiseTests {
 
 	@Test
 	public void testPromisesCanBeMapped() {
-		Promise<String> p = Promise.sync();
+		Promise<String> p = R.<String>promise().sync().get();
 
 		Supplier<Integer> s = p.map(new Function<String, Integer>() {
 			@Override
@@ -70,7 +69,7 @@ public class PromiseTests {
 
 	@Test
 	public void testPromisesCanBeFiltered() {
-		Promise<String> p = Promise.sync();
+		Promise<String> p = R.<String>promise().sync().get();
 
 		Supplier<Integer> s = p
 				.map(new Function<String, Integer>() {
@@ -93,8 +92,8 @@ public class PromiseTests {
 
 	@Test
 	public void testPromiseAsConsumer() {
-		Promise<String> p1 = Promise.sync();
-		Promise<String> p2 = Promise.sync();
+		Promise<String> p1 = R.<String>promise().sync().get();
+		Promise<String> p2 = R.<String>promise().sync().get();
 
 		p1.consume(p2);
 
@@ -105,10 +104,10 @@ public class PromiseTests {
 
 	@Test
 	public void testErrorsStopCompositions() throws InterruptedException {
-		Promise<String> p = Promise.create();
+		Promise<String> p = R.<String>promise().get();
 		final CountDownLatch exceptionHandled = new CountDownLatch(1);
 
-		Deferred<Integer> d = p
+		Composable<Integer> c = p
 				.map(new Function<String, Integer>() {
 					@Override
 					public Integer apply(String s) {
@@ -133,7 +132,7 @@ public class PromiseTests {
 
 		boolean ex = false;
 		try{
-			d.await(500, TimeUnit.MILLISECONDS);
+			c.await(500, TimeUnit.MILLISECONDS);
 		}catch (IllegalStateException nfe){
 			ex = true;
 		}
@@ -143,7 +142,7 @@ public class PromiseTests {
 
 	@Test
 	public void testPromiseComposesAfterSet() {
-		Promise<String> p = Promise.sync("10");
+		Promise<String> p = R.promise("10").get();
 
 		Supplier<Integer> s = p
 				.map(new Function<String, Integer>() {
@@ -162,13 +161,13 @@ public class PromiseTests {
 		assertThat("Promise has provided the value to the composition", s.get(), is(100));
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Test
 	public void promiseCanBeFulfilledFromASeparateThread() throws InterruptedException {
-		Reactor reactor = new Reactor();
-		Reactor innerReactor = new Reactor(new ThreadPoolExecutorDispatcher(4, 64).start());
+		Reactor r1 = R.reactor().get();
+		Reactor r2 = R.reactor().using(env).threadPoolExecutor().get();
 
-		final Promise<String> promise = new Promise<String>(reactor);
+		final Promise<String> promise = R.<String>promise().using(r1).get();
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		Fn.schedule(new Consumer() {
@@ -178,7 +177,7 @@ public class PromiseTests {
 				promise.set("foo");
 			}
 
-		}, null, innerReactor);
+		}, null, r2);
 
 		promise.onSuccess(new Consumer<String>() {
 
@@ -190,4 +189,5 @@ public class PromiseTests {
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
 	}
+
 }

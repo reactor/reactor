@@ -1,6 +1,7 @@
 package reactor.core;
 
 import org.junit.Test;
+import reactor.AbstractReactorTest;
 import reactor.Fn;
 import reactor.fn.Consumer;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
@@ -14,17 +15,24 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Jon Brisbin
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class AwaitTests {
+public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64).start();
-		Reactor reactor = new Reactor();
-		Reactor innerReactor = new Reactor(dispatcher);
+		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
+		Reactor reactor = R.reactor().using(env).threadPoolExecutor().get();
+		Reactor innerReactor = R.reactor().using(env).dispatcher(dispatcher).get();
 		for (int i = 0; i < 1000; i++) {
-			final Promise<String> promise = new Promise<String>(reactor);
+			final Promise<String> promise = R.<String>promise().using(env).using(reactor).get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
+			promise.onSuccess(new Consumer<String>() {
+
+				@Override
+				public void accept(String t) {
+					latch.countDown();
+				}
+			});
 			Fn.schedule(new Consumer() {
 
 				@Override
@@ -35,15 +43,8 @@ public class AwaitTests {
 
 			}, null, innerReactor);
 
-			promise.onSuccess(new Consumer<String>() {
-
-				@Override
-				public void accept(String t) {
-					latch.countDown();
-				}
-			});
-
 			assertThat("latch is counted down", latch.await(5, TimeUnit.SECONDS));
 		}
 	}
+
 }
