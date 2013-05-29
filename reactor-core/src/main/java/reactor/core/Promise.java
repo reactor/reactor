@@ -365,8 +365,9 @@ public class Promise<T> extends Composable<T> {
 	 * @param <T> The type of the values.
 	 */
 	public static class Spec<T> extends AbstractComposableSpec<T, Promise<T>, Spec<T>> {
+		@SuppressWarnings("unchecked")
 		public Spec(T value, Supplier<T> supplier, Throwable error) {
-			super(Arrays.asList(value), supplier, error);
+			super((null != value ? Arrays.asList(value) : null), supplier, error);
 		}
 
 		private T getValue() {
