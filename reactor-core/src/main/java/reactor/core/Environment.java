@@ -78,7 +78,7 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			addDispatcher(threadPoolExecutorName,
-																	 new ThreadPoolExecutorDispatcher(size, backlog));
+										new ThreadPoolExecutorDispatcher(size, backlog));
 		}
 
 		String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
@@ -90,7 +90,7 @@ public class Environment {
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			for (int i = 0; i < size; i++) {
 				addDispatcher(eventLoopName,
-																		 new BlockingQueueDispatcher(eventLoopName, backlog));
+											new BlockingQueueDispatcher(eventLoopName, backlog));
 			}
 		}
 
@@ -102,11 +102,11 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
 			addDispatcher(ringBufferName,
-																	 new RingBufferDispatcher(ringBufferName,
-																														size,
-																														backlog,
-																														ProducerType.MULTI,
-																														new BlockingWaitStrategy()));
+										new RingBufferDispatcher(ringBufferName,
+																						 size,
+																						 backlog,
+																						 ProducerType.MULTI,
+																						 new BlockingWaitStrategy()));
 		}
 
 		for (String prop : System.getProperties().stringPropertyNames()) {
@@ -144,12 +144,12 @@ public class Environment {
 		return regs.next().getObject();
 	}
 
-	public Environment addDispatcher(String name, Dispatcher dispatcher){
+	public Environment addDispatcher(String name, Dispatcher dispatcher) {
 		dispatcherSuppliers.register($(name), dispatcher);
 		return this;
 	}
 
-	public Environment removeDispatcher(String name){
+	public Environment removeDispatcher(String name) {
 		dispatcherSuppliers.unregister(name);
 		return this;
 	}
@@ -195,13 +195,16 @@ public class Environment {
 
 	protected Properties loadProfile(String name) {
 		Properties props = new Properties();
-		URL propsUrl = CL.getResource(String.format("META-INF/reactor/%s.properties", name));
+		String propsName = String.format("META-INF/reactor/%s.properties", name);
+		URL propsUrl = CL.getResource(propsName);
 		if (null != propsUrl) {
 			try {
 				props.load(propsUrl.openStream());
 			} catch (IOException e) {
-				LoggerFactory.getLogger(Environment.class).error(e.getMessage(), e);
+				LoggerFactory.getLogger(getClass()).error(e.getMessage(), e);
 			}
+		} else {
+			LoggerFactory.getLogger(getClass()).debug("No properties file found in the classpath at " + propsName + " for profile '" + name + "'");
 		}
 		return props;
 	}
