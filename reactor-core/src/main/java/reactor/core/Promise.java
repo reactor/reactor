@@ -342,12 +342,7 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	protected <U> Promise<U> createComposable(Observable src) {
 		final Promise<U> p = new Promise<U>(env, createReactor(src));
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable t) {
-				p.accept(t);
-			}
-		});
+		forwardError(p);
 		return p;
 	}
 

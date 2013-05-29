@@ -70,7 +70,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	Composable(Environment env, Observable observable) {
 		Assert.notNull(observable, "Observable cannot be null.");
 		this.env = env;
-		this.observable = observable;
+		this.observable = createReactor(observable);
 	}
 
 	/**
@@ -112,6 +112,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public Composable<T> consume(final Composable<T> composable) {
 		when(acceptSelector, composable);
+		forwardError(composable);
 		return this;
 	}
 
@@ -507,6 +508,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return null;
 	}
 
+	protected Composable<T> forwardError(final Composable<?> composable){
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable t) {
+				composable.accept(t);
+			}
+		});
+		return this;
+	}
+
 	protected Reactor createReactor(Observable src) {
 		Reactor.Spec rspec = R.reactor().using(env);
 		Reactor r;
@@ -519,14 +530,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	}
 
 	protected <U> Composable<U> createComposable(Observable src) {
-		final Composable<U> c = new Composable<U>(env, createReactor(src));
+		final Composable<U> c = new Composable<U>(env, src);
 		c.expectedAcceptCount.set(expectedAcceptCount.get());
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable t) {
-				c.accept(t);
-			}
-		});
+		forwardError(c);
 		return c;
 	}
 
@@ -745,12 +751,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 					self.delayedAccept();
 				}
 			};
-			when(Throwable.class, new Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable t) {
-					c.accept(t);
-				}
-			});
+			forwardError(c);
 			return c;
 		}
 

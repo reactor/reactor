@@ -91,7 +91,7 @@ class GroovyComposableSpec extends Specification {
 		def d = c | { Integer.parseInt it } | { if (it >= 5) throw new IllegalArgumentException() else sum += it }
 
 		then:
-		d.await 1, TimeUnit.SECONDS
+		d.await 100, TimeUnit.SECONDS
 		d.get() == 10
 	}
 
