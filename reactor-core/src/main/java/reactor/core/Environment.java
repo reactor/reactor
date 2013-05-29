@@ -6,7 +6,10 @@ import org.slf4j.LoggerFactory;
 import reactor.convert.StandardConverters;
 import reactor.fn.Registration;
 import reactor.fn.Registry;
-import reactor.fn.dispatch.*;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 import java.io.IOException;
 import java.net.URL;
@@ -42,13 +45,13 @@ public class Environment {
 	private final Properties               env           = new Properties();
 	private final AtomicReference<Reactor> sharedReactor = new AtomicReference<Reactor>();
 	private final Registry<Reactor>        reactors      = new CachingRegistry<Reactor>(null, null);
-	private final Registry<DispatcherSupplier> dispatcherSuppliers;
+	private final Registry<Dispatcher> dispatcherSuppliers;
 
 	public Environment() {
-		this(new CachingRegistry<DispatcherSupplier>(Registry.LoadBalancingStrategy.ROUND_ROBIN, null));
+		this(new CachingRegistry<Dispatcher>(Registry.LoadBalancingStrategy.ROUND_ROBIN, null));
 	}
 
-	public Environment(Registry<DispatcherSupplier> dispatcherSuppliers) {
+	public Environment(Registry<Dispatcher> dispatcherSuppliers) {
 		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
 		Map<Object, Object> props = loadProfile(defaultProfileName);
 		if (null != props) {
@@ -73,7 +76,7 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			dispatcherSuppliers.register($(threadPoolExecutorName),
-																	 new SingletonDispatcherSupplier(new ThreadPoolExecutorDispatcher(size, backlog).start()));
+																	 new ThreadPoolExecutorDispatcher(size, backlog).start());
 		}
 
 		String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
@@ -85,7 +88,7 @@ public class Environment {
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			for (int i = 0; i < size; i++) {
 				dispatcherSuppliers.register($(eventLoopName),
-																		 new SingletonDispatcherSupplier(new BlockingQueueDispatcher(eventLoopName, backlog).start()));
+																		 new BlockingQueueDispatcher(eventLoopName, backlog).start());
 			}
 		}
 
@@ -97,11 +100,11 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
 			dispatcherSuppliers.register($(ringBufferName),
-																	 new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
-																																														size,
-																																														backlog,
-																																														ProducerType.MULTI,
-																																														new BlockingWaitStrategy()).start()));
+																	 new RingBufferDispatcher(ringBufferName,
+																														size,
+																														backlog,
+																														ProducerType.MULTI,
+																														new BlockingWaitStrategy()).start());
 		}
 
 		this.dispatcherSuppliers = dispatcherSuppliers;
@@ -133,8 +136,8 @@ public class Environment {
 		return defaultValue;
 	}
 
-	public DispatcherSupplier getDispatcherSupplier(String name) {
-		Iterator<Registration<? extends DispatcherSupplier>> regs = dispatcherSuppliers.select(name).iterator();
+	public Dispatcher getDispatcher(String name) {
+		Iterator<Registration<? extends Dispatcher>> regs = dispatcherSuppliers.select(name).iterator();
 		if (!regs.hasNext()) {
 			throw new IllegalArgumentException("No DispatcherSupplier found for name '" + name + "'");
 		}

@@ -100,21 +100,21 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	@SuppressWarnings("unchecked")
 	public SPEC threadPoolExecutor() {
 		Assert.notNull(env, "Cannot use a thread pool Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcherSupplier(Environment.THREAD_POOL_EXECUTOR_DISPATCHER).get();
+		this.dispatcher = env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER);
 		return (SPEC) this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public SPEC eventLoop() {
 		Assert.notNull(env, "Cannot use an event loop Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcherSupplier(Environment.EVENT_LOOP_DISPATCHER).get();
+		this.dispatcher = env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER);
 		return (SPEC) this;
 	}
 
 	@SuppressWarnings("unchecked")
 	public SPEC ringBuffer() {
 		Assert.notNull(env, "Cannot use an RingBuffer Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcherSupplier(Environment.RING_BUFFER_DISPATCHER).get();
+		this.dispatcher = env.getDispatcher(Environment.RING_BUFFER_DISPATCHER);
 		return (SPEC) this;
 	}
 

@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
@@ -26,10 +25,8 @@ import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Reduce;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,17 +106,17 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcherSupplier(Environment.THREAD_POOL_EXECUTOR_DISPATCHER).get(), "thread pool");
+		doTest(env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER), "thread pool");
 	}
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcherSupplier(Environment.EVENT_LOOP_DISPATCHER).get(), "event loop");
+		doTest(env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER), "event loop");
 	}
 
 	@Test
 	public void testRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcherSupplier(Environment.RING_BUFFER_DISPATCHER).get(), "ring buffer");
+		doTest(env.getDispatcher(Environment.RING_BUFFER_DISPATCHER), "ring buffer");
 	}
 
 	@Test
