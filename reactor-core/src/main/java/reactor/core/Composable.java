@@ -543,53 +543,37 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		c.decreaseAcceptLength();
 	}
 
-	/**
-	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
-	 *
-	 * @param <T> The type of the values.
-	 */
-	public static class Spec<T> extends ComponentSpec<Spec<T>, Composable<T>> {
+	protected static abstract class AbstractComposableSpec<T, C extends Composable<T>, S extends ComponentSpec<S, C>> extends ComponentSpec<S, C> {
+		protected final Throwable     error;
+		protected final Iterable<T>   values;
+		protected final Supplier<T>   supplier;
+		protected       C             src;
+		protected       Collection<C> mergeWith;
 
-		protected final Iterable<T>               values;
-		protected final Supplier<T>               supplier;
-		protected       Composable<T>             src;
-		protected       Collection<Composable<T>> mergeWith;
-
-		Spec(Iterable<T> values, Supplier<T> supplier) {
+		AbstractComposableSpec(Iterable<T> values, Supplier<T> supplier, Throwable error) {
 			this.values = values;
 			this.supplier = supplier;
+			this.error = error;
 		}
 
-		Spec(Iterable<T> values) {
-			this(values, null);
-		}
-
-		Spec(Supplier<T> supplier) {
-			this(null, supplier);
-		}
-
-		Spec() {
-			this(null, null);
-		}
-
-		public Spec<T> from(Composable<T> src) {
+		@SuppressWarnings("unchecked")
+		public S from(C src) {
 			this.src = src;
-			return this;
+			return (S) this;
 		}
 
-		public Spec<Collection<T>> merge(Composable<T>... mergeWith) {
+		public <S extends AbstractComposableSpec<Collection<T>,Composable<Collection<T>>,S>> S merge(C... mergeWith) {
 			return merge(Arrays.asList(mergeWith));
 		}
 
 		@SuppressWarnings("unchecked")
-		public Spec<Collection<T>> merge(Collection<Composable<T>> mergeWith) {
+		public <S extends AbstractComposableSpec<Collection<T>,Composable<Collection<T>>,S>> S merge(Collection<C> mergeWith) {
 			this.mergeWith = mergeWith;
-			return (Spec<Collection<T>>) this;
+			return (S) this;
 		}
 
 		@SuppressWarnings({"rawtypes", "unchecked"})
-		protected Composable<Collection<T>> doMerge(Reactor reactor) {
-			final Composable<Tuple2<?, Integer>> reducer = new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size());
+		protected Composable<Collection<T>> doMerge(final Composable<Tuple2<?, Integer>> reducer) {
 			Composable<Collection<T>> result = reducer
 					.reduce()
 					.map(new Function<List<Tuple2<?, Integer>>, Collection<T>>() {
@@ -631,12 +615,23 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 			return result;
 		}
+	}
+
+	/**
+	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
+	 *
+	 * @param <T> The type of the values.
+	 */
+	public static class Spec<T> extends AbstractComposableSpec<T, Composable<T>, Spec<T>> {
+		public Spec(Iterable<T> values, Supplier<T> supplier, Throwable error) {
+			super(values, supplier, error);
+		}
 
 		@Override
 		@SuppressWarnings("unchecked")
 		protected Composable<T> configure(final Reactor reactor) {
 			if (null != mergeWith) {
-				return (Composable<T>) doMerge(reactor);
+				return (Composable<T>) doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size()));
 			} else {
 				final Composable<T> comp;
 				if (values != null) {
@@ -676,7 +671,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		}
 	}
 
-	private static class DelayedAcceptComposable<T> extends Composable<T> {
+	protected static class DelayedAcceptComposable<T> extends Composable<T> {
 		private final Object stateMonitor = new Object();
 		protected final Iterable<T> values;
 		protected AcceptState acceptState = AcceptState.DELAYED;
@@ -744,12 +739,19 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		@Override
 		protected <U> Composable<U> createComposable(Observable src) {
 			final DelayedAcceptComposable<T> self = this;
-			return new DelayedAcceptComposable<U>(env, src, self.expectedAcceptCount.get()) {
+			final DelayedAcceptComposable<U> c = new DelayedAcceptComposable<U>(env, src, self.expectedAcceptCount.get()) {
 				@Override
 				protected void delayedAccept() {
 					self.delayedAccept();
 				}
 			};
+			when(Throwable.class, new Consumer<Throwable>() {
+				@Override
+				public void accept(Throwable t) {
+					c.accept(t);
+				}
+			});
+			return c;
 		}
 
 		protected void delayedAccept() {

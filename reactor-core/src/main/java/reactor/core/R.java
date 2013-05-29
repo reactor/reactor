@@ -44,7 +44,7 @@ public class R {
 	 * @return A {@link reactor.core.Composable.Spec} to further refine the {@link Composable} and then build it.
 	 */
 	public static <T> Composable.Spec<T> compose() {
-		return new Composable.Spec<T>();
+		return new Composable.Spec<T>(null, null, null);
 	}
 
 	/**
@@ -56,7 +56,7 @@ public class R {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Composable.Spec<T> compose(T value) {
-		return new Composable.Spec<T>(Arrays.asList(value));
+		return new Composable.Spec<T>(Arrays.asList(value), null, null);
 	}
 
 	/**
@@ -67,7 +67,7 @@ public class R {
 	 * @return A {@link reactor.core.Composable.Spec} to further refine the {@link Composable} and then build it.
 	 */
 	public static <T> Composable.Spec<T> compose(Iterable<T> values) {
-		return new Composable.Spec<T>(values);
+		return new Composable.Spec<T>(values, null, null);
 	}
 
 	/**
@@ -78,7 +78,7 @@ public class R {
 	 * @return A {@link reactor.core.Composable.Spec} to further refine the {@link Composable} and then build it.
 	 */
 	public static <T> Composable.Spec<T> compose(Supplier<T> supplier) {
-		return new Composable.Spec<T>(supplier);
+		return new Composable.Spec<T>(null, supplier, null);
 	}
 
 	/**
@@ -88,7 +88,7 @@ public class R {
 	 * @return The new {@link Promise}.
 	 */
 	public static <T> Promise.Spec<T> promise() {
-		return new Promise.Spec<T>();
+		return new Promise.Spec<T>(null, null, null);
 	}
 
 	/**
@@ -100,7 +100,7 @@ public class R {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Promise.Spec<T> promise(Throwable reason) {
-		return (Promise.Spec<T>) new Promise.Spec<Throwable>(reason);
+		return (Promise.Spec<T>) new Promise.Spec<Throwable>(null, null, reason);
 	}
 
 	/**
@@ -112,7 +112,7 @@ public class R {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Promise.Spec<T> promise(T value) {
-		return new Promise.Spec<T>(value);
+		return new Promise.Spec<T>(value, null, null);
 	}
 
 	/**
@@ -123,7 +123,7 @@ public class R {
 	 * @return a {@link reactor.core.Promise.Spec}.
 	 */
 	public static <T> Promise.Spec<T> promise(Supplier<T> supplier) {
-		return new Promise.Spec<T>(supplier);
+		return new Promise.Spec<T>(null, supplier, null);
 	}
 
 }

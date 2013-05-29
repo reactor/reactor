@@ -19,13 +19,12 @@ package reactor.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
-import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.util.Assert;
 
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -342,7 +341,14 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	protected <U> Promise<U> createComposable(Observable src) {
-		return new Promise<U>(env, createReactor(src));
+		final Promise<U> p = new Promise<U>(env, createReactor(src));
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable t) {
+				p.accept(t);
+			}
+		});
+		return p;
 	}
 
 	private void assertPending() {
@@ -358,142 +364,17 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Spec<T> extends Composable.Spec<T> {
-		private boolean valueSet = false;
-		private T value;
-
-		Spec(T value) {
-			this.value = value;
-			this.valueSet = true;
+	public static class Spec<T> extends AbstractComposableSpec<T, Promise<T>, Spec<T>> {
+		public Spec(T value, Supplier<T> supplier, Throwable error) {
+			super(Arrays.asList(value), supplier, error);
 		}
 
-		Spec(Supplier<T> supplier) {
-			super(supplier);
-			this.valueSet = true;
-		}
-
-		Spec() {
-		}
-
-		@Override
-		public Promise.Spec<T> using(Environment env) {
-			super.using(env);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(Reactor reactor) {
-			super.using(reactor);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(Converter converter) {
-			super.using(converter);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(SelectionStrategy selectionStrategy) {
-			super.using(selectionStrategy);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(Converter... converters) {
-			super.using(converters);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(List<Converter> converters) {
-			super.using(converters);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> using(Registry.LoadBalancingStrategy loadBalancingStrategy) {
-			super.using(loadBalancingStrategy);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> broadcastLoadBalancing() {
-			super.broadcastLoadBalancing();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> randomLoadBalancing() {
-			super.randomLoadBalancing();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> roundRobinLoadBalancing() {
-			super.roundRobinLoadBalancing();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> tagFiltering() {
-			super.tagFiltering();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> sync() {
-			super.sync();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> threadPoolExecutor() {
-			super.threadPoolExecutor();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> eventLoop() {
-			super.eventLoop();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> ringBuffer() {
-			super.ringBuffer();
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> dispatcher(Dispatcher dispatcher) {
-			super.dispatcher(dispatcher);
-			return this;
-		}
-
-		@Override
-		public Promise.Spec<T> from(Composable<T> src) {
-			super.from(src);
-			return this;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public Promise.Spec<Collection<T>> merge(Composable<T>... mergeWith) {
-			super.merge(mergeWith);
-			return (Spec<Collection<T>>) this;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public Promise.Spec<Collection<T>> merge(Collection<Composable<T>> mergeWith) {
-			super.merge(mergeWith);
-			return (Spec<Collection<T>>) this;
-		}
-
-		@Override
-		public Promise<T> get() {
-			return (Promise<T>) super.get();
+		private T getValue() {
+			if (null != values) {
+				return values.iterator().next();
+			} else {
+				return null;
+			}
 		}
 
 		@Override
@@ -501,7 +382,7 @@ public class Promise<T> extends Composable<T> {
 		protected Promise<T> configure(Reactor reactor) {
 			if (null != mergeWith) {
 				final Promise<Collection<T>> p = new Promise<Collection<T>>(env, reactor);
-				doMerge(reactor).consume(
+				doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size())).consume(
 						new Consumer<Collection<T>>() {
 							@Override
 							public void accept(Collection<T> ts) {
@@ -512,8 +393,8 @@ public class Promise<T> extends Composable<T> {
 				return (Promise<T>) p;
 			} else {
 				final Promise<T> prom;
-				if (Throwable.class.isInstance(value)) {
-					prom = new Promise<T>(env, reactor).set((Throwable) value);
+				if (null != error) {
+					prom = new Promise<T>(env, reactor).set(error);
 				} else if (supplier != null) {
 					prom = new Promise<T>(env, reactor);
 					try {
@@ -521,22 +402,8 @@ public class Promise<T> extends Composable<T> {
 					} catch (Throwable t) {
 						prom.set(t);
 					}
-//					Fn.schedule(
-//							new Consumer<Object>() {
-//								@Override
-//								public void accept(Object o) {
-//									try {
-//										prom.set(supplier.get());
-//									} catch (Throwable t) {
-//										prom.set(t);
-//									}
-//								}
-//							},
-//							null,
-//							reactor
-//					);
-				} else if (valueSet) {
-					prom = new Promise<T>(env, reactor).set(value);
+				} else if (null != values) {
+					prom = new Promise<T>(env, reactor).set(getValue());
 				} else {
 					prom = new Promise<T>(env, reactor);
 				}

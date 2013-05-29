@@ -2,12 +2,14 @@ package reactor.core;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.slf4j.LoggerFactory;
 import reactor.convert.StandardConverters;
 import reactor.fn.Registration;
 import reactor.fn.Registry;
 import reactor.fn.dispatch.*;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -27,7 +29,6 @@ public class Environment {
 	private static final String REACTOR_PREFIX      = "reactor.";
 	private static final String PROFILES_ACTIVE     = "reactor.profiles.active";
 	private static final String PROFILES_DEFAULT    = "reactor.profiles.default";
-	private static final String DISPATCHERS         = "reactor.dispatchers.%s";
 	private static final String DISPATCHERS_NAME    = "reactor.dispatchers.%s.name";
 	private static final String DISPATCHERS_SIZE    = "reactor.dispatchers.%s.size";
 	private static final String DISPATCHERS_BACKLOG = "reactor.dispatchers.%s.backlog";
@@ -35,78 +36,75 @@ public class Environment {
 	public static final String THREAD_POOL_EXECUTOR_DISPATCHER = "threadPoolExecutor";
 	public static final String EVENT_LOOP_DISPATCHER           = "eventLoop";
 	public static final String RING_BUFFER_DISPATCHER          = "ringBuffer";
-	public static final String REACTOR_START                   = "reactor.start";
 
 	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-	private final Properties                   env                 = new Properties();
-	private final Registry<Reactor>            reactors            = new CachingRegistry<Reactor>(
-			null, null
-	);
-	private final Registry<DispatcherSupplier> dispatcherSuppliers = new CachingRegistry<DispatcherSupplier>(
-			Registry.LoadBalancingStrategy.ROUND_ROBIN, null
-	);
-	private final AtomicReference<Reactor>     sharedReactor       = new AtomicReference<Reactor>();
+	private final Properties               env           = new Properties();
+	private final AtomicReference<Reactor> sharedReactor = new AtomicReference<Reactor>();
+	private final Registry<Reactor>        reactors      = new CachingRegistry<Reactor>(null, null);
+	private final Registry<DispatcherSupplier> dispatcherSuppliers;
 
 	public Environment() {
+		this(new CachingRegistry<DispatcherSupplier>(Registry.LoadBalancingStrategy.ROUND_ROBIN, null));
+	}
+
+	public Environment(Registry<DispatcherSupplier> dispatcherSuppliers) {
 		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
-		try {
-			Map<Object, Object> props = loadProfile(defaultProfileName);
-			if (null != props) {
-				env.putAll(props);
-			}
-
-			if (null != System.getProperty(PROFILES_ACTIVE)) {
-				String[] profiles = System.getProperty(PROFILES_ACTIVE).split(",");
-				for (String profile : profiles) {
-					props = loadProfile(profile);
-					if (null != props) {
-						env.putAll(props);
-					}
-				}
-			}
-
-			String threadPoolExecutorName = env.getProperty(String.format(DISPATCHERS_NAME, THREAD_POOL_EXECUTOR_DISPATCHER));
-			if (null != threadPoolExecutorName) {
-				int size = getProperty(String.format(DISPATCHERS_SIZE, threadPoolExecutorName), Integer.class, PROCESSORS);
-				if (size < 1) {
-					size = PROCESSORS;
-				}
-				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-				dispatcherSuppliers.register($(threadPoolExecutorName),
-																		 new SingletonDispatcherSupplier(new ThreadPoolExecutorDispatcher(size, backlog).start()));
-			}
-
-			String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
-			if (null != eventLoopName) {
-				int size = getProperty(String.format(DISPATCHERS_SIZE, eventLoopName), Integer.class, PROCESSORS);
-				if (size < 1) {
-					size = PROCESSORS;
-				}
-				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-				for (int i = 0; i < size; i++) {
-					dispatcherSuppliers.register($(eventLoopName),
-																			 new SingletonDispatcherSupplier(new BlockingQueueDispatcher(eventLoopName, backlog).start()));
-				}
-			}
-
-			String ringBufferName = env.getProperty(String.format(DISPATCHERS_NAME, RING_BUFFER_DISPATCHER));
-			if (null != ringBufferName) {
-				int size = getProperty(String.format(DISPATCHERS_SIZE, ringBufferName), Integer.class, PROCESSORS);
-				if (size < 1) {
-					size = PROCESSORS;
-				}
-				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
-				dispatcherSuppliers.register($(ringBufferName),
-																		 new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
-																																															size,
-																																															backlog,
-																																															ProducerType.MULTI,
-																																															new BlockingWaitStrategy()).start()));
-			}
-		} catch (IOException e) {
-			throw new IllegalStateException(e);
+		Map<Object, Object> props = loadProfile(defaultProfileName);
+		if (null != props) {
+			env.putAll(props);
 		}
+
+		if (null != System.getProperty(PROFILES_ACTIVE)) {
+			String[] profiles = System.getProperty(PROFILES_ACTIVE).split(",");
+			for (String profile : profiles) {
+				props = loadProfile(profile);
+				if (null != props) {
+					env.putAll(props);
+				}
+			}
+		}
+
+		String threadPoolExecutorName = env.getProperty(String.format(DISPATCHERS_NAME, THREAD_POOL_EXECUTOR_DISPATCHER));
+		if (null != threadPoolExecutorName) {
+			int size = getProperty(String.format(DISPATCHERS_SIZE, threadPoolExecutorName), Integer.class, PROCESSORS);
+			if (size < 1) {
+				size = PROCESSORS;
+			}
+			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
+			dispatcherSuppliers.register($(threadPoolExecutorName),
+																	 new SingletonDispatcherSupplier(new ThreadPoolExecutorDispatcher(size, backlog).start()));
+		}
+
+		String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
+		if (null != eventLoopName) {
+			int size = getProperty(String.format(DISPATCHERS_SIZE, eventLoopName), Integer.class, PROCESSORS);
+			if (size < 1) {
+				size = PROCESSORS;
+			}
+			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
+			for (int i = 0; i < size; i++) {
+				dispatcherSuppliers.register($(eventLoopName),
+																		 new SingletonDispatcherSupplier(new BlockingQueueDispatcher(eventLoopName, backlog).start()));
+			}
+		}
+
+		String ringBufferName = env.getProperty(String.format(DISPATCHERS_NAME, RING_BUFFER_DISPATCHER));
+		if (null != ringBufferName) {
+			int size = getProperty(String.format(DISPATCHERS_SIZE, ringBufferName), Integer.class, PROCESSORS);
+			if (size < 1) {
+				size = PROCESSORS;
+			}
+			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
+			dispatcherSuppliers.register($(ringBufferName),
+																	 new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
+																																														size,
+																																														backlog,
+																																														ProducerType.MULTI,
+																																														new BlockingWaitStrategy()).start()));
+		}
+
+		this.dispatcherSuppliers = dispatcherSuppliers;
 
 		for (String prop : System.getProperties().stringPropertyNames()) {
 			if (prop.startsWith(REACTOR_PREFIX)) {
@@ -181,9 +179,16 @@ public class Environment {
 		return "default";
 	}
 
-	protected Properties loadProfile(String name) throws IOException {
+	protected Properties loadProfile(String name) {
 		Properties props = new Properties();
-		props.load(CL.getResourceAsStream(String.format("META-INF/reactor/%s.properties", name)));
+		URL propsUrl = CL.getResource(String.format("META-INF/reactor/%s.properties", name));
+		if (null != propsUrl) {
+			try {
+				props.load(propsUrl.openStream());
+			} catch (IOException e) {
+				LoggerFactory.getLogger(Environment.class).error(e.getMessage(), e);
+			}
+		}
 		return props;
 	}
 
