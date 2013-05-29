@@ -16,6 +16,7 @@
 
 package reactor.groovy
 
+import reactor.core.Environment
 import reactor.core.Promise
 import reactor.core.R
 import spock.lang.Specification
@@ -64,7 +65,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be mapped"() {
 		given: "a synchronous promise"
-		def p = Promise.sync()
+		def p = R.promise().get()
 
 		when: "add a mapping closure"
 		def s = p | { Integer.parseInt it }
@@ -76,7 +77,7 @@ class GroovyPromisesSpec extends Specification {
 		s.get() == 10
 
 		when: "add a mapping closure"
-		p = Promise.sync()
+		p = R.promise().get()
 		s = p.then { Integer.parseInt it }
 
 		and: "setting a value"
@@ -88,7 +89,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be filtered"() {
 		given: "a synchronous promise"
-		def p = Promise.sync()
+		def p = R.promise().get()
 
 		when: "add a mapping closure and a filter"
 		def s = (p | { Integer.parseInt it }) & { it > 10 }
@@ -102,8 +103,8 @@ class GroovyPromisesSpec extends Specification {
 
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
-		def p1 = Promise.sync()
-		def p2 = Promise.sync()
+		def p1 = R.promise().get()
+		def p2 = R.promise().get()
 
 		when: "p1 is consumed by p2"
 		p1 << p2 //p1.consume p2
@@ -119,7 +120,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		def p = Promise.create()
+		def p = R.promise().using(new Environment()).eventLoop().get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
@@ -138,7 +139,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise compose after set"() {
 		given: "a synchronous promise"
-		def p = Promise.sync('10')
+		def p = R.promise('10').get()
 
 		when: "composing 2 functions"
 		def s = p | { Integer.parseInt it } | { it*10 }
