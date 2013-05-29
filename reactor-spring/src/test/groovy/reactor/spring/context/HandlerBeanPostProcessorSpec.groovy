@@ -18,18 +18,17 @@
 
 package reactor.spring.context
 
-import static reactor.Fn.$
-
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-
 import reactor.Fn
+import reactor.core.Environment
 import reactor.core.Reactor
-import reactor.fn.dispatch.SynchronousDispatcher
 import reactor.spring.context.annotation.On
 import spock.lang.Specification
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -47,17 +46,17 @@ class HandlerBeanPostProcessorSpec extends Specification {
 		reactor.notify('test', Fn.event("Hello World!"))
 
 		then: "the method has been invoked"
-		handlerBean.handled
+		handlerBean.latch.await(1, TimeUnit.SECONDS)
 	}
 
 }
 
 class HandlerBean {
-	def handled = false
+	def latch = new CountDownLatch(1)
 
-	@On(reactor = "@rootReactor", selector = "test")
+	@On(reactor = "@rootReactor", selector = '$("test")')
 	def handleTest() {
-		handled = true
+		latch.countDown()
 	}
 }
 
@@ -65,8 +64,14 @@ class HandlerBean {
 class AnnotatedHandlerConfig {
 
 	@Bean
+	Environment reactorSpringEnvironment() {
+		def env = new Environment()
+		env
+	}
+
+	@Bean
 	Reactor rootReactor() {
-		return new Reactor(new SynchronousDispatcher())
+		reactorSpringEnvironment().sharedReactor
 	}
 
 	@Bean
