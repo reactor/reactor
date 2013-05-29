@@ -68,6 +68,8 @@ public class Environment {
 			}
 		}
 
+		this.dispatcherSuppliers = dispatcherSuppliers;
+
 		String threadPoolExecutorName = env.getProperty(String.format(DISPATCHERS_NAME, THREAD_POOL_EXECUTOR_DISPATCHER));
 		if (null != threadPoolExecutorName) {
 			int size = getProperty(String.format(DISPATCHERS_SIZE, threadPoolExecutorName), Integer.class, PROCESSORS);
@@ -75,7 +77,7 @@ public class Environment {
 				size = PROCESSORS;
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-			dispatcherSuppliers.register($(threadPoolExecutorName),
+			addDispatcher(threadPoolExecutorName,
 																	 new ThreadPoolExecutorDispatcher(size, backlog));
 		}
 
@@ -87,7 +89,7 @@ public class Environment {
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
 			for (int i = 0; i < size; i++) {
-				dispatcherSuppliers.register($(eventLoopName),
+				addDispatcher(eventLoopName,
 																		 new BlockingQueueDispatcher(eventLoopName, backlog));
 			}
 		}
@@ -99,15 +101,13 @@ public class Environment {
 				size = PROCESSORS;
 			}
 			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
-			dispatcherSuppliers.register($(ringBufferName),
+			addDispatcher(ringBufferName,
 																	 new RingBufferDispatcher(ringBufferName,
 																														size,
 																														backlog,
 																														ProducerType.MULTI,
 																														new BlockingWaitStrategy()));
 		}
-
-		this.dispatcherSuppliers = dispatcherSuppliers;
 
 		for (String prop : System.getProperties().stringPropertyNames()) {
 			if (prop.startsWith(REACTOR_PREFIX)) {
@@ -144,6 +144,16 @@ public class Environment {
 		return regs.next().getObject();
 	}
 
+	public Environment addDispatcher(String name, Dispatcher dispatcher){
+		dispatcherSuppliers.register($(name), dispatcher);
+		return this;
+	}
+
+	public Environment removeDispatcher(String name){
+		dispatcherSuppliers.unregister(name);
+		return this;
+	}
+
 	public Registration<? extends Reactor> register(Reactor reactor) {
 		return reactors.register($(reactor.getId()), reactor);
 	}
@@ -172,6 +182,7 @@ public class Environment {
 	public boolean unregister(UUID id) {
 		return reactors.unregister(id);
 	}
+
 
 	public Reactor getSharedReactor() {
 		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("shared", 128)));

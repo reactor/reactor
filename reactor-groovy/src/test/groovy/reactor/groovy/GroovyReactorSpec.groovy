@@ -16,8 +16,11 @@
 
 package reactor.groovy
 
+import reactor.core.Environment
 import reactor.core.R
 import reactor.fn.Event
+import reactor.fn.dispatch.BlockingQueueDispatcher
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -28,6 +31,13 @@ import static reactor.Fn.$
  * @author Stephane Maldini (smaldini)
  */
 class GroovyReactorSpec extends Specification {
+
+	@Shared def testEnv
+
+	void setupSpec(){
+		testEnv = new Environment()
+		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
+	}
 
 	def "Groovy Reactor dispatches events properly"() {
 
