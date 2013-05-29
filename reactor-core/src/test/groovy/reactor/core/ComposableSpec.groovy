@@ -27,7 +27,6 @@ import static reactor.GroovyTestUtils.supplier
  */
 class ComposableSpec extends Specification {
 
-
 	def "Composable merge handling"() {
 
 		when: "we create a series of Composable"

@@ -32,7 +32,6 @@ class ComponentSpecSpec extends Specification {
 		Reactor.isAssignableFrom(reactor.class)
 	}
 
-
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
@@ -43,7 +42,6 @@ class ComponentSpecSpec extends Specification {
 		composable.get() == 'test'
 
 	}
-
 
 	def "Promise correctly built"() {
 
