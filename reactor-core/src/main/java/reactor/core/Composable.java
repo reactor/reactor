@@ -112,27 +112,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 */
 	public Composable<T> consume(final Composable<T> composable) {
 		when(acceptSelector, composable);
-		consumeError(composable);
 		return this;
 	}
-
-	/**
-	 * Register a {@link Composable} that will be invoked whenever {@link #accept(Throwable)} is called.
-	 *
-	 * @param composable The composable to invoke.
-	 * @return {@literal this}
-	 * @see {@link #accept(Object)}
-	 */
-	public Composable<T> consumeError(final Composable<?> composable) {
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				composable.accept(throwable);
-			}
-		});
-		return this;
-	}
-
 
 	/**
 	 * Register a {@code key} and {@link Reactor} on which to publish an event whenever {@link #accept(Object)} is called.
@@ -158,6 +139,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 *
 	 * @return A new {@link Composable} that is linked to the parent.
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> first() {
 		final Composable<T> c = createComposable(observable);
 		c.expectedAcceptCount.set(1);
@@ -167,7 +149,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				c.accept(t);
 			}
 		});
-		consumeError(c);
 		return c;
 	}
 
@@ -178,6 +159,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @return A new {@link Composable} that is linked to the parent.
 	 * @see {@link #setExpectedAcceptCount(long)}
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> last() {
 		final Composable<T> c = createComposable(observable);
 		c.expectedAcceptCount.set(1);
@@ -187,7 +169,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				c.accept(t);
 			}
 		});
-		consumeError(c);
 		return c;
 	}
 
@@ -201,6 +182,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param <V> The type of the object returned when the given {@link Function}.
 	 * @return The new {@link Composable}.
 	 */
+	@SuppressWarnings("unchecked")
 	public <V> Composable<V> map(final Function<T, V> fn) {
 		Assert.notNull(fn);
 		final Composable<V> c = createComposable(observable);
@@ -214,7 +196,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
-		consumeError(c);
 		return c;
 	}
 
@@ -229,6 +210,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param <V>        The type of the object returned by reactor reply.
 	 * @return The new {@link Composable}.
 	 */
+	@SuppressWarnings("unchecked")
 	public <V> Composable<V> map(final Object key, final Observable observable) {
 		Assert.notNull(observable);
 		final Composable<V> c = createComposable(observable);
@@ -258,6 +240,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
+
 		return c;
 	}
 
@@ -271,6 +254,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param <V>     The type of the object returned by reactor reply.
 	 * @return The new {@link Composable}.
 	 */
+	@SuppressWarnings("unchecked")
 	public <V> Composable<V> reduce(final Function<Reduce<T, V>, V> fn, V initial) {
 		Assert.notNull(fn);
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
@@ -297,10 +281,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
-		consumeError(c);
+
 		return c;
 	}
-
 
 	/**
 	 * Accumulate a result until expected accept count has been reached - If this limit hasn't been set, each accumulated
@@ -325,6 +308,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param count Number of values to accept
 	 * @return The new {@link Composable}.
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> take(final long count) {
 		final AtomicLong cursor = new AtomicLong(count);
 		final AtomicReference<Registration<Consumer<Event<T>>>> reg = new
@@ -347,7 +331,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		}));
-		consumeError(c);
+
 		return c;
 	}
 
@@ -371,6 +355,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 	 * @param fn The filter function, taking argument {@param <T>} and returning a {@link Boolean}
 	 * @return The new {@link Composable}.
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> filter(final Function<T, Boolean> fn) {
 		Assert.notNull(fn);
 		final Composable<T> c = createComposable(observable);
@@ -388,7 +373,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 				}
 			}
 		});
-		consumeError(c);
+
 		return c;
 	}
 
@@ -596,42 +581,46 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 			return (Spec<Collection<T>>) this;
 		}
 
+		@SuppressWarnings({"rawtypes", "unchecked"})
 		protected Composable<Collection<T>> doMerge(Reactor reactor) {
-			final Composable<Tuple2<T, Integer>> reducer = new DelayedAcceptComposable<Tuple2<T, Integer>>(env, reactor, mergeWith.size()) {
+			final Composable<Tuple2<?, Integer>> reducer = new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size());
+			Composable<Collection<T>> result = reducer
+					.reduce()
+					.map(new Function<List<Tuple2<?, Integer>>, Collection<T>>() {
+						@SuppressWarnings("unchecked")
+						@Override
+						public Collection<T> apply(List<Tuple2<?, Integer>> collection) {
+							Collections.sort(collection, new Comparator<Tuple2<?, Integer>>() {
+								@Override
+								public int compare(Tuple2<?, Integer> o1, Tuple2<?, Integer> o2) {
+									return o1.getT2().compareTo(o2.getT2());
+								}
+							});
+							List<T> orderedResult = new ArrayList<T>();
+							for (Tuple2<?, Integer> element : collection) {
+								orderedResult.add((T) element.getT1());
+							}
+							return orderedResult;
+						}
+					});
+
+			Consumer consumer = new Consumer() {
+				int i = 0;
+
 				@Override
-				protected void delayedAccept() {
-					for (Composable<T> composable : mergeWith) {
-						composable.get();
+				public void accept(Object o) {
+					if (Throwable.class.isInstance(o)) {
+						reducer.accept((Throwable) o);
+					} else {
+						reducer.accept(Tuple.of(o, i++));
 					}
 				}
 			};
-			Composable<Collection<T>> result = reducer.reduce().map(new Function<List<Tuple2<T, Integer>>, Collection<T>>() {
-				@Override
-				public Collection<T> apply(List<Tuple2<T, Integer>> collection) {
-					Collections.sort(collection, new Comparator<Tuple2<T, Integer>>() {
-						@Override
-						public int compare(Tuple2<T, Integer> o1, Tuple2<T, Integer> o2) {
-							return o1.getT2().compareTo(o2.getT2());
-						}
-					});
-					List<T> orderedResult = new ArrayList<T>();
-					for (Tuple2<T, Integer> element : collection) {
-						orderedResult.add(element.getT1());
-					}
-					return orderedResult;
+			for (final Composable<T> c : mergeWith) {
+				c.when(Throwable.class, consumer).consume(consumer);
+				if (DelayedAcceptComposable.class.isInstance(c)) {
+					((DelayedAcceptComposable) c).delayedAccept();
 				}
-			});
-
-			int j = 0;
-			for (Composable<T> composable : mergeWith) {
-				final int i = j;
-				composable.consumeError(reducer).when(composable.acceptSelector, new Consumer<T>() {
-					@Override
-					public void accept(T t) {
-						reducer.accept(Tuple2.of(t, i));
-					}
-				});
-				j++;
 			}
 
 			return result;

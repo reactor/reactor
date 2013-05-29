@@ -47,9 +47,9 @@ public class LoadingCache<T> implements Cache<T> {
 
 	@Override
 	public void deallocate(T obj) {
-		if (leases.decrementAndGet() < softMax) {
+		//if (leases.decrementAndGet() < softMax) {
 			cache.add(obj);
-		}
+		//}
 	}
 
 }

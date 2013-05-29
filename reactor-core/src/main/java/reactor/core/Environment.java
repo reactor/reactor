@@ -99,7 +99,7 @@ public class Environment implements Observable {
 					size = PROCESSORS;
 				}
 				int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
-				env.put(String.format(DISPATCHERS, threadPoolExecutorName),
+				env.put(String.format(DISPATCHERS, ringBufferName),
 								new SingletonDispatcherSupplier(new RingBufferDispatcher(ringBufferName,
 																																				 size,
 																																				 backlog,

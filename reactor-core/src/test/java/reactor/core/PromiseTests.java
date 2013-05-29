@@ -102,7 +102,7 @@ public class PromiseTests extends AbstractReactorTest {
 		assertThat("Second Promise is set", p2.get(), is("Hello World!"));
 	}
 
-	@Test(expected = IllegalStateException.class)
+	@Test
 	public void testErrorsStopCompositions() throws InterruptedException {
 		Promise<String> p = R.<String>promise().get();
 		final CountDownLatch exceptionHandled = new CountDownLatch(1);

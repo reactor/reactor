@@ -20,6 +20,7 @@ import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
@@ -38,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class ComposableThroughputTests extends AbstractReactorTest {
 
 	static int length  = 500;
@@ -86,7 +88,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {
-				System.out.println("starting run " + i);
 				for (int j = 0; j < length; j++) {
 					c.accept(j);
 				}
@@ -112,7 +113,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void testWorkerDispatcherComposableThroughput() throws InterruptedException {
+	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
 		doTest(env.getDispatcherSupplier(Environment.EVENT_LOOP_DISPATCHER).get(), "event loop");
 	}
 

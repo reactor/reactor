@@ -20,7 +20,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
 
-import static reactor.GroovyTestUtils.*
+import static reactor.GroovyTestUtils.supplier
 
 /**
  * @author Stephane Maldini
@@ -31,13 +31,13 @@ class ComposableSpec extends Specification {
 	def "Composable merge handling"() {
 
 		when: "we create a series of Composable"
-		def c1 = R.compose(supplier { 'test' }).sync().get()
-		def c2 = R.compose(supplier { 'test2' }).sync().get()
-		def c3 = R.compose(supplier { 'test3' }).sync().get()
-		def result = R.compose().merge([c1,c2,c3]).get()
+		def c1 = R.compose supplier { 'test' } get()
+		def c2 = R.compose supplier { 'test2' } get()
+		def c3 = R.compose supplier { 'test3' } get()
+		def result = R.compose().merge c1, c2, c3 get()
 
 		then:
-		result.await(1, TimeUnit.SECONDS) == ['test','test2','test3']
+		result.await(1, TimeUnit.SECONDS) == ['test', 'test2', 'test3']
 		c1.get() == 'test'
 		c2.get() == 'test2'
 		c3.get() == 'test3'

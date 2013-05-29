@@ -516,25 +516,25 @@ public class Promise<T> extends Composable<T> {
 					prom = new Promise<T>(env, reactor).set((Throwable) value);
 				} else if (supplier != null) {
 					prom = new Promise<T>(env, reactor);
-//					try {
-//						prom = new Promise<T>(env, reactor).set(supplier.get());
-//					} catch (Throwable t) {
-//						return new Promise<T>(env, reactor).set(t);
-//					}
-					Fn.schedule(
-							new Consumer<Object>() {
-								@Override
-								public void accept(Object o) {
-									try {
-										prom.set(supplier.get());
-									} catch (Throwable t) {
-										prom.set(t);
-									}
-								}
-							},
-							null,
-							reactor
-					);
+					try {
+						prom.set(supplier.get());
+					} catch (Throwable t) {
+						prom.set(t);
+					}
+//					Fn.schedule(
+//							new Consumer<Object>() {
+//								@Override
+//								public void accept(Object o) {
+//									try {
+//										prom.set(supplier.get());
+//									} catch (Throwable t) {
+//										prom.set(t);
+//									}
+//								}
+//							},
+//							null,
+//							reactor
+//					);
 				} else if (valueSet) {
 					prom = new Promise<T>(env, reactor).set(value);
 				} else {

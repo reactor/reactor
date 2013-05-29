@@ -87,7 +87,7 @@ class PromiseSpec extends Specification {
 
 		def latch = new CountDownLatch(1)
 		def res, err
-		R.promise().merge(p1, p2, p3).get().then(
+		R.promise().merge([p1, p2, p3]).get().then(
 				consumer { List<Integer> v -> res = v },
 				consumer { Throwable t -> err = t; latch.countDown() }
 		)
