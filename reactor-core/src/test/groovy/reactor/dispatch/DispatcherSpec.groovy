@@ -71,7 +71,7 @@ class DispatcherSpec extends Specification {
 
 		then: "the task thread should be different when the current thread"
 		taskThread != currentThread
-		!diffThread.shutdown()
+		//!diffThread.shutdown()
 
 	}
 

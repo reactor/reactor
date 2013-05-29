@@ -115,6 +115,9 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 
 	protected Reactor createReactor() {
 		final Reactor reactor;
+		if (null == this.dispatcher && env != null){
+			this.dispatcher = env.getDispatcher(Environment.DEFAULT_DISPATCHER);
+		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
 														dispatcher,

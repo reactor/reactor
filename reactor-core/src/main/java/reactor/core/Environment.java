@@ -39,6 +39,7 @@ public class Environment {
 	public static final String THREAD_POOL_EXECUTOR_DISPATCHER = "threadPoolExecutor";
 	public static final String EVENT_LOOP_DISPATCHER           = "eventLoop";
 	public static final String RING_BUFFER_DISPATCHER          = "ringBuffer";
+	public static final String DEFAULT_DISPATCHER              = "default";
 
 	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
@@ -46,12 +47,15 @@ public class Environment {
 	private final AtomicReference<Reactor> sharedReactor = new AtomicReference<Reactor>();
 	private final Registry<Reactor>        reactors      = new CachingRegistry<Reactor>(null, null);
 	private final Registry<Dispatcher> dispatcherSuppliers;
+	private final String               defaultDispatcher;
 
 	public Environment() {
 		this(new CachingRegistry<Dispatcher>(Registry.LoadBalancingStrategy.ROUND_ROBIN, null));
 	}
 
 	public Environment(Registry<Dispatcher> dispatcherSuppliers) {
+		this.dispatcherSuppliers = dispatcherSuppliers;
+
 		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
 		Map<Object, Object> props = loadProfile(defaultProfileName);
 		if (null != props) {
@@ -68,50 +72,56 @@ public class Environment {
 			}
 		}
 
-		this.dispatcherSuppliers = dispatcherSuppliers;
-
-		String threadPoolExecutorName = env.getProperty(String.format(DISPATCHERS_NAME, THREAD_POOL_EXECUTOR_DISPATCHER));
-		if (null != threadPoolExecutorName) {
-			int size = getProperty(String.format(DISPATCHERS_SIZE, threadPoolExecutorName), Integer.class, PROCESSORS);
-			if (size < 1) {
-				size = PROCESSORS;
-			}
-			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-			addDispatcher(threadPoolExecutorName,
-										new ThreadPoolExecutorDispatcher(size, backlog));
-		}
-
-		String eventLoopName = env.getProperty(String.format(DISPATCHERS_NAME, EVENT_LOOP_DISPATCHER));
-		if (null != eventLoopName) {
-			int size = getProperty(String.format(DISPATCHERS_SIZE, eventLoopName), Integer.class, PROCESSORS);
-			if (size < 1) {
-				size = PROCESSORS;
-			}
-			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, threadPoolExecutorName), Integer.class, 128);
-			for (int i = 0; i < size; i++) {
-				addDispatcher(eventLoopName,
-											new BlockingQueueDispatcher(eventLoopName, backlog));
-			}
-		}
-
-		String ringBufferName = env.getProperty(String.format(DISPATCHERS_NAME, RING_BUFFER_DISPATCHER));
-		if (null != ringBufferName) {
-			int size = getProperty(String.format(DISPATCHERS_SIZE, ringBufferName), Integer.class, PROCESSORS);
-			if (size < 1) {
-				size = PROCESSORS;
-			}
-			int backlog = getProperty(String.format(DISPATCHERS_BACKLOG, ringBufferName), Integer.class, 1024);
-			addDispatcher(ringBufferName,
-										new RingBufferDispatcher(ringBufferName,
-																						 size,
-																						 backlog,
-																						 ProducerType.MULTI,
-																						 new BlockingWaitStrategy()));
-		}
-
 		for (String prop : System.getProperties().stringPropertyNames()) {
 			if (prop.startsWith(REACTOR_PREFIX)) {
 				env.put(prop, System.getProperty(prop));
+			}
+		}
+
+		defaultDispatcher = env.getProperty(String.format(DISPATCHERS_NAME, DEFAULT_DISPATCHER), RING_BUFFER_DISPATCHER);
+
+		DispatcherConfig threadPoolConfig = new DispatcherConfig(THREAD_POOL_EXECUTOR_DISPATCHER, 128);
+		DispatcherConfig eventLoopConfig = new DispatcherConfig(EVENT_LOOP_DISPATCHER, 128);
+		DispatcherConfig ringBufferConfig = new DispatcherConfig(RING_BUFFER_DISPATCHER, 1024);
+
+		if (threadPoolConfig.size > 0) {
+			addDispatcher(threadPoolConfig.dispatcherName,
+					new ThreadPoolExecutorDispatcher(threadPoolConfig.size, threadPoolConfig.backlog));
+		}
+		if (eventLoopConfig.size > 0) {
+			addDispatcher(eventLoopConfig.dispatcherName,
+					new BlockingQueueDispatcher(eventLoopConfig.dispatcherName, eventLoopConfig.backlog));
+		}
+		if (ringBufferConfig.size > 0) {
+			addDispatcher(ringBufferConfig.dispatcherName,
+					new RingBufferDispatcher(ringBufferConfig.dispatcherName,
+							ringBufferConfig.size,
+							ringBufferConfig.backlog,
+							ProducerType.MULTI,
+							new BlockingWaitStrategy()));
+		}
+
+		DispatcherConfig defaultC = new DispatcherConfig(THREAD_POOL_EXECUTOR_DISPATCHER, 128);
+		if (threadPoolConfig.size > 0) {
+			addDispatcher(threadPoolConfig.dispatcherName,
+					new ThreadPoolExecutorDispatcher(threadPoolConfig.size, threadPoolConfig.backlog));
+		}
+	}
+
+	private class DispatcherConfig {
+		final int    size;
+		final int    backlog;
+		final String dispatcherName;
+
+		private DispatcherConfig(String dispatcherAlias, int defaultBacklog) {
+			dispatcherName = env.getProperty(String.format(DISPATCHERS_NAME, dispatcherAlias));
+			if (null != dispatcherName) {
+				int _size = getProperty(String.format(DISPATCHERS_SIZE, dispatcherName), Integer.class, PROCESSORS);
+				size = _size < 1 ? PROCESSORS : _size;
+				backlog = getProperty(String.format(DISPATCHERS_BACKLOG, dispatcherName), Integer.class, defaultBacklog);
+			} else {
+				size = -1;
+				backlog = -1;
 			}
 		}
 	}
@@ -145,6 +155,8 @@ public class Environment {
 	}
 
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
+		if (defaultDispatcher.equals(name))
+			dispatcherSuppliers.register($(DEFAULT_DISPATCHER), dispatcher);
 		dispatcherSuppliers.register($(name), dispatcher);
 		return this;
 	}

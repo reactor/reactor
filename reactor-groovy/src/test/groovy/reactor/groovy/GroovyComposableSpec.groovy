@@ -40,7 +40,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from single value"() {
 		when: 'Defer a composition'
-		def c = R.compose("Hello World!").get()
+		def c = R.compose("Hello World!").using(testEnv).get()
 
 		and: 'apply a transformation'
 		def d = c.map {
