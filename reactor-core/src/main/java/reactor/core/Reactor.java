@@ -22,13 +22,13 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.fn.*;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.routing.Linkable;
-import reactor.fn.registry.Registry;
-import reactor.fn.registry.Registry.LoadBalancingStrategy;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
+import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registry;
+import reactor.fn.registry.Registry.LoadBalancingStrategy;
+import reactor.fn.routing.Linkable;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
@@ -41,9 +41,9 @@ import static reactor.Fn.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
- * to the assigned {@link Dispatcher} which causes it to be executed on a thread based on the implementation of the
- * {@link Dispatcher} being used.
+ * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of
+ * that {@link Event}, a task is dispatched to the assigned {@link Dispatcher} which causes it to be executed on a
+ * thread based on the implementation of the {@link Dispatcher} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -73,16 +73,16 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given {@literal
 	 * Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link Converter}, and {@link
-	 *            Dispatcher}.
+	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 *            Converter}, and {@link Dispatcher}.
 	 */
 	Reactor(Environment env,
-	        Reactor src) {
+					Reactor src) {
 		this(env,
-				src.getDispatcher(),
-				src.consumerRegistry.getLoadBalancingStrategy(),
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getConverter());
+				 src.getDispatcher(),
+				 src.consumerRegistry.getLoadBalancingStrategy(),
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getConverter());
 	}
 
 	/**
@@ -90,18 +90,19 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
 	 * registered on the given {@literal Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link Converter}.
+	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 *                   Converter}.
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
 	Reactor(Environment env,
-	        Reactor src,
-	        Dispatcher dispatcher) {
+					Reactor src,
+					Dispatcher dispatcher) {
 		this(env,
-				dispatcher,
-				src.consumerRegistry.getLoadBalancingStrategy(),
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getConverter());
+				 dispatcher,
+				 src.consumerRegistry.getLoadBalancingStrategy(),
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getConverter());
 	}
 
 	/**
@@ -121,8 +122,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link reactor.fn.routing.SelectionStrategy}, {@link
-	 * LoadBalancingStrategy}, and {@link Converter}.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
+	 * reactor.fn.routing.SelectionStrategy}, {@link LoadBalancingStrategy}, and {@link Converter}.
 	 *
 	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a new worker
 	 *                              dispatcher is used.

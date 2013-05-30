@@ -18,7 +18,6 @@ package reactor.fn.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -34,7 +33,7 @@ import reactor.fn.registry.Registry;
  * @author Stephane Maldini
  */
 public abstract class Task<T> {
-	
+
 	private volatile Object                                 key;
 	private volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private volatile Event<T>                               event;
@@ -55,7 +54,7 @@ public abstract class Task<T> {
 		return consumerRegistry;
 	}
 
-	public Task<T> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {		
+	public Task<T> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 		this.consumerRegistry = consumerRegistry;
 		return this;
 	}
@@ -111,7 +110,7 @@ public abstract class Task<T> {
 	public abstract void submit();
 
 	protected void execute(ConsumerInvoker invoker) {
-		try {			
+		try {
 			for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
 				if (reg.isCancelled() || reg.isPaused()) {
 					continue;
