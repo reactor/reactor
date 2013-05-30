@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.support;
+package reactor.fn.selector;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -18,7 +18,7 @@ package reactor.fn
 
 import reactor.core.R
 import reactor.fn.routing.TagAwareSelectionStrategy
-import reactor.fn.selector.TaggableKey
+import reactor.fn.selector.key.TaggableKey
 
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat

@@ -84,7 +84,7 @@ public abstract class Fn {
 	 *
 	 * @param uriTemplate The URI template to compile.
 	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.support.UriTemplate}
+	 * @see {@link reactor.fn.selector.UriTemplate}
 	 * @see {@link reactor.fn.selector.UriTemplateSelector}
 	 */
 	public static Selector U(String uriTemplate) {

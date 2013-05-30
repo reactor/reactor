@@ -16,8 +16,6 @@
 
 package reactor.fn.selector;
 
-import reactor.fn.support.UriTemplate;
-
 import javax.annotation.Nullable;
 import java.util.Map;
 

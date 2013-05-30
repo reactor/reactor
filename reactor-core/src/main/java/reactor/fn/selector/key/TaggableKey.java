@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package reactor.fn.selector;
+package reactor.fn.selector.key;
+
+import reactor.fn.selector.Taggable;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * A helper class to make a notification key {@link Taggable}.
+ * A helper class to make a notification key {@link reactor.fn.selector.Taggable}.
  *
  * @author Andy Wilkinson
  */
