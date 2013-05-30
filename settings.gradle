@@ -3,5 +3,5 @@ rootProject.name = 'reactor'
 include 'reactor-core',
 		'reactor-groovy',
 		'reactor-spring',
-		'reactor-logback'
-//		'reactor-tcp'
+		'reactor-logback',
+		'reactor-tcp'

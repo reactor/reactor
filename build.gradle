@@ -187,11 +187,11 @@ project('reactor-logback') {
 	}
 }
 
-//project('reactor-tcp') {
-//	description = 'Reactor TCP component'
-//	dependencies {
-//		compile project(':reactor-core')
-//
-//		compile "io.netty:netty:$nettyVersion"
-//	}
-//}
+project('reactor-tcp') {
+	description = 'Reactor TCP component'
+	dependencies {
+		compile project(':reactor-core')
+
+		compile "io.netty:netty:$nettyVersion"
+	}
+}
