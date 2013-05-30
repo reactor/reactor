@@ -36,7 +36,7 @@ public class Event<T> {
 
 	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
-	private final UUID id = new UUID();
+	private UUID    id;
 	private Headers headers;
 	private Object  replyTo;
 	private T       data;
@@ -77,7 +77,10 @@ public class Event<T> {
 	 *
 	 * @return Unique {@link UUID} of this event.
 	 */
-	public UUID getId() {
+	public synchronized UUID getId() {
+		if (null == id) {
+			id = new UUID();
+		}
 		return id;
 	}
 
@@ -86,7 +89,7 @@ public class Event<T> {
 	 *
 	 * @return
 	 */
-	public Headers getHeaders() {
+	public synchronized Headers getHeaders() {
 		if (null == headers) {
 			headers = new Headers();
 		}

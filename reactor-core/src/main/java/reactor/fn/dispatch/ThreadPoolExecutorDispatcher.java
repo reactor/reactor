@@ -16,9 +16,9 @@
 
 package reactor.fn.dispatch;
 
+import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
-import reactor.fn.Supplier;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -61,15 +61,15 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 	}
 
 	@Override
-	public boolean shutdown() {
+	public void shutdown() {
 		executor.shutdown();
-		return super.shutdown();
+		super.shutdown();
 	}
 
 	@Override
-	public boolean halt() {
+	public void halt() {
 		executor.shutdownNow();
-		return super.halt();
+		super.halt();
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -89,7 +89,6 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 		public void run() {
 			try {
 				execute(getInvoker());
-				decrementTaskCount();
 			} finally {
 				readyTasks.deallocate(this);
 			}

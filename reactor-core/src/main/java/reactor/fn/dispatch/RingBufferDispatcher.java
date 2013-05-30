@@ -21,7 +21,6 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.fn.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -104,17 +103,17 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	}
 
 	@Override
-	public boolean shutdown() {
+	public void shutdown() {
 		executor.shutdown();
 		disruptor.shutdown();
-		return super.shutdown();
+		super.shutdown();
 	}
 
 	@Override
-	public boolean halt() {
+	public void halt() {
 		executor.shutdownNow();
 		disruptor.halt();
-		return super.halt();
+		super.halt();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -144,7 +143,6 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 		@Override
 		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
 			t.execute(getInvoker());
-			decrementTaskCount();
 		}
 	}
 

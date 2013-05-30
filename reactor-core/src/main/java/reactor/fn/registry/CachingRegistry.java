@@ -137,7 +137,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			readLock.unlock();
 		}
 
-		return Collections.unmodifiableList(matchingRegistrations);
+		return matchingRegistrations;
 	}
 
 	@Override
@@ -188,7 +188,7 @@ public class CachingRegistry<T> implements Registry<T> {
 				log.trace("No objects registered for key {}", object);
 			}
 		}
-		return regs;
+		return Collections.unmodifiableList(regs);
 	}
 
 	protected void cacheMiss(Object key) {
