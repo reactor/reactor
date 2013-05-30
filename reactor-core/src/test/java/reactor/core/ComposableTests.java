@@ -20,6 +20,8 @@ import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.fn.*;
+import reactor.fn.support.Reduce;
+import reactor.fn.tuples.Tuple2;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -43,7 +45,7 @@ public class ComposableTests extends AbstractReactorTest {
 	public void testComposeFromSingleValue() throws InterruptedException {
 		Composable<String> c = R.compose("Hello World!").get();
 
-		Deferred<String> d = c.map(new Function<String, String>() {
+		Composable<String> d = c.map(new Function<String, String>() {
 			@Override
 			public String apply(String s) {
 				return "Goodbye then!";
@@ -144,8 +146,8 @@ public class ComposableTests extends AbstractReactorTest {
 				.get()
 				.map(STRING_2_INTEGER);
 
-		Deferred<Integer> first = c.first();
-		Deferred<Integer> last = c.last();
+		Composable<Integer> first = c.first();
+		Composable<Integer> last = c.last();
 
 		await(first, is(1));
 		await(last, is(5));
@@ -208,7 +210,7 @@ public class ComposableTests extends AbstractReactorTest {
 		await(c, is(15));
 	}
 
-	<T> void await(Deferred<T> d, Matcher<T> expected) throws InterruptedException {
+	<T> void await(Composable<T> d, Matcher<T> expected) throws InterruptedException {
 		long startTime = System.currentTimeMillis();
 		T result = null;
 		try {

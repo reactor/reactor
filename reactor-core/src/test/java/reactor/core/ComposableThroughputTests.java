@@ -23,7 +23,7 @@ import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.Reduce;
+import reactor.fn.support.Reduce;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 

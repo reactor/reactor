@@ -14,25 +14,29 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.routing;
+
+
+import reactor.fn.Selector;
+import reactor.fn.support.Supports;
 
 /**
+ * A {@code SelectionStrategy} is used to provide custom {@link reactor.fn.Selector} matching behaviour.
+ *
  * @author Jon Brisbin
+ * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
-public class Tuple3<T1, T2, T3> extends Tuple2<T1, T2> {
-
-	public Tuple3(Object... values) {
-		super(values);
-	}
+public interface SelectionStrategy extends Supports<Object> {
 
 	/**
-	 * Type-safe way to get the third object of this {@link Tuple}.
+	 * Indicates whether or not the {@link reactor.fn.Selector} matches the {@code key}.
 	 *
-	 * @return The third object, cast to the correct type.
+	 * @param selector The selector to perform the match
+	 * @param key The object to match
+	 *
+	 * @return {@code true} if the Selector matches, otherwise {@code false}.
 	 */
-	@SuppressWarnings("unchecked")
-	public T3 getT3() {
-		return (T3) get(2);
-	}
+	boolean matches(Selector selector, Object key);
 
 }

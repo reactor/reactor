@@ -18,7 +18,7 @@ package reactor.groovy.support
 
 import groovy.transform.CompileStatic
 import reactor.fn.Function
-import reactor.fn.Reduce
+import reactor.fn.support.Reduce
 
 /**
  * @author Stephane Maldini

@@ -21,10 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
-import reactor.fn.ConsumerInvoker;
 import reactor.fn.Event;
 import reactor.fn.Registration;
-import reactor.fn.Registry;
+import reactor.fn.routing.Registry;
 
 /**
  * Abstract class that a {@link Dispatcher} will implement that provides a caller with a holder for the components of an
@@ -32,6 +31,7 @@ import reactor.fn.Registry;
  * executed.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class Task<T> {
 	

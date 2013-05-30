@@ -19,7 +19,7 @@ package reactor.dispatch;
 import org.junit.Test;
 import reactor.core.R;
 import reactor.core.Reactor;
-import reactor.fn.Registry.LoadBalancingStrategy;
+import reactor.fn.routing.Registry.LoadBalancingStrategy;
 
 import static reactor.Fn.$;
 

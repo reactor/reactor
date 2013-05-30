@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 /**
  * @author Jon Brisbin
@@ -26,7 +26,7 @@ public class Tuple6<T1, T2, T3, T4, T5, T6> extends Tuple5<T1, T2, T3, T4, T5> {
 	}
 
 	/**
-	 * Type-safe way to get the sixth object of this {@link reactor.fn.Tuple}.
+	 * Type-safe way to get the sixth object of this {@link Tuple}.
 	 *
 	 * @return The sixth object, cast to the correct type.
 	 */

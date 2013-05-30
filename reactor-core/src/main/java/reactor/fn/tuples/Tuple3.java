@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 /**
  * @author Jon Brisbin
  */
-public class Tuple5<T1, T2, T3, T4, T5> extends Tuple4<T1, T2, T3, T4> {
+public class Tuple3<T1, T2, T3> extends Tuple2<T1, T2> {
 
-	public Tuple5(Object... values) {
+	public Tuple3(Object... values) {
 		super(values);
 	}
 
 	/**
-	 * Type-safe way to get the fifth object of this {@link Tuple}.
+	 * Type-safe way to get the third object of this {@link Tuple}.
 	 *
-	 * @return The fifth object, cast to the correct type.
+	 * @return The third object, cast to the correct type.
 	 */
 	@SuppressWarnings("unchecked")
-	public T5 getT5() {
-		return (T5) get(4);
+	public T3 getT3() {
+		return (T3) get(2);
 	}
 
 }

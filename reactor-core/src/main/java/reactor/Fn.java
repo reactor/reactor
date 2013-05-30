@@ -16,12 +16,13 @@
 
 package reactor;
 
-import reactor.core.Reactor;
 import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
 import reactor.fn.selector.ClassSelector;
 import reactor.fn.selector.RegexSelector;
 import reactor.fn.selector.UriTemplateSelector;
+import reactor.fn.tuples.Tuple;
+import reactor.fn.tuples.Tuple2;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -39,7 +40,7 @@ public abstract class Fn {
 	/**
 	 * Creates an anonymous {@link Selector}.
 	 *
-	 * @return A {@link Tuple} containing the {@link Selector} and the object key.
+	 * @return A {@link reactor.fn.tuples.Tuple} containing the {@link Selector} and the object key.
 	 * @see {@link reactor.fn.selector.BaseSelector}
 	 */
 	public static Tuple2<Selector, Object> $() {

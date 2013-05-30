@@ -16,7 +16,6 @@
 
 package reactor.fn.selector;
 
-import reactor.fn.HeaderResolver;
 import reactor.fn.support.UriTemplate;
 
 import javax.annotation.Nullable;

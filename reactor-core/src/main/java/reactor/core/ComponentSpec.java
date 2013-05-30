@@ -2,10 +2,10 @@ package reactor.core;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
-import reactor.fn.Registry;
-import reactor.fn.SelectionStrategy;
+import reactor.fn.routing.Registry;
+import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.Supplier;
-import reactor.fn.TagAwareSelectionStrategy;
+import reactor.fn.routing.TagAwareSelectionStrategy;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.util.Assert;

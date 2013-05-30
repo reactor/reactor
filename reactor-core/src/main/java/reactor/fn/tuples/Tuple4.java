@@ -14,33 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 /**
- * Simple abstraction to provide linking components together.
- *
  * @author Jon Brisbin
  */
-public interface Linkable<T> {
+public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
+
+	public Tuple4(Object... values) {
+		super(values);
+	}
 
 	/**
-	 * Link components together.
+	 * Type-safe way to get the fourth object of this {@link Tuple}.
 	 *
-	 * @param t
-	 * 		Array of components to link to this parent.
-	 *
-	 * @return {@literal this}
+	 * @return The fourth object, cast to the correct type.
 	 */
-	Linkable<T> link(T t);
-
-	/**
-	 * Unlink components.
-	 *
-	 * @param t
-	 * 		Component to unlink when this parent.
-	 *
-	 * @return {@literal this}
-	 */
-	Linkable<T> unlink(T t);
+	@SuppressWarnings("unchecked")
+	public T4 getT4() {
+		return (T4) get(3);
+	}
 
 }

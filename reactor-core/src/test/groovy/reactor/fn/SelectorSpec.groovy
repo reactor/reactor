@@ -17,6 +17,8 @@
 package reactor.fn
 
 import reactor.core.R
+import reactor.fn.routing.TagAwareSelectionStrategy
+import reactor.fn.selector.TaggableKey
 
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
@@ -24,14 +26,10 @@ import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-import static reactor.fn.Registry.LoadBalancingStrategy.RANDOM
-import static reactor.fn.Registry.LoadBalancingStrategy.ROUND_ROBIN
-
-import java.util.concurrent.CountDownLatch
+import static reactor.fn.routing.Registry.LoadBalancingStrategy.RANDOM
+import static reactor.fn.routing.Registry.LoadBalancingStrategy.ROUND_ROBIN
 
 import reactor.Fn
-import reactor.core.Reactor
-import reactor.fn.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 
 /**

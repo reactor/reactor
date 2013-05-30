@@ -21,6 +21,9 @@ import reactor.fn.*;
 import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.fn.support.Reduce;
+import reactor.fn.tuples.Tuple;
+import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
 import java.util.*;
@@ -38,7 +41,7 @@ import static reactor.Fn.$;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
+public class Composable<T> implements Consumer<T>, Supplier<T> {
 
 	private static final String EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
 
@@ -247,7 +250,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 
 	/**
 	 * Accumulate a result until expected accept count has been reached - If this limit hasn't been set, each accumulated
-	 * result will notify the returned {@link Composable}. A {@link Function} taking a {@link Reduce} argument must be
+	 * result will notify the returned {@link Composable}. A {@link Function} taking a {@link reactor.fn.support.Reduce} argument must be
 	 * passed to process each pair formed of the last accumulated result and a new value to be processed.
 	 *
 	 * @param fn      The reduce function
@@ -410,7 +413,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		observable.notify(acceptKey, Fn.event(value));
 	}
 
-	@Override
 	public T await() throws InterruptedException {
 		long defaultTimeout = 30000L;
 		if (null != env) {
@@ -419,7 +421,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T>, Deferred<T> {
 		return await(defaultTimeout, TimeUnit.MILLISECONDS);
 	}
 
-	@Override
 	public T await(long timeout, TimeUnit unit) throws InterruptedException {
 		synchronized (monitor) {
 			if (isComplete()) {

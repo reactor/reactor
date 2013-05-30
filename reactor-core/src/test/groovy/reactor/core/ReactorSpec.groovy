@@ -20,7 +20,7 @@ import reactor.Fn
 import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.Function
-import reactor.fn.SingleUseConsumer
+import reactor.fn.support.SingleUseConsumer
 import spock.lang.Specification
 
 import static reactor.Fn.$

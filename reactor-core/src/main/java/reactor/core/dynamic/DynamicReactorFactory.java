@@ -29,6 +29,7 @@ import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
+import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
 import reactor.util.Assert;
@@ -60,9 +61,9 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	private volatile Converter converter;
 
 	public DynamicReactorFactory(Environment env,
-															 Class<T> type,
-															 List<MethodSelectorResolver> selectorResolvers,
-															 List<MethodNotificationKeyResolver> notificationKeyResolvers) {
+	                             Class<T> type,
+	                             List<MethodSelectorResolver> selectorResolvers,
+	                             List<MethodNotificationKeyResolver> notificationKeyResolvers) {
 		this.env = env;
 		this.type = type;
 		this.selectorResolvers = selectorResolvers;
@@ -70,11 +71,11 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	}
 
 	public DynamicReactorFactory(Environment env,
-															 Class<T> type) {
+	                             Class<T> type) {
 		this(env,
-				 type,
-				 Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()),
-				 Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
+				type,
+				Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()),
+				Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
 	}
 
 	/**

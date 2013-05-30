@@ -1,12 +1,14 @@
-package reactor.fn;
+package reactor.fn.support;
 
 /**
- * A {@link reactor.core.Composable#reduce(Function)} operation needs a stateful object to pass as the argument,
+ * A {@link reactor.core.Composable#reduce(reactor.fn.Function)} operation needs a stateful object to pass as the argument,
  * which contains the
  * last accumulated value, as well as the next, just-accepted value.
  *
  * @param <NEXTVALUE> The type of the input value.
  * @param <LASTVALUE> The type of the accumulated or last value.
+ *
+ * @author Stephane Maldini
  */
 public class Reduce<NEXTVALUE, LASTVALUE> {
 	private final LASTVALUE lastValue;

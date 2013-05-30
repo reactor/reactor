@@ -16,7 +16,6 @@
 
 package reactor.fn.dispatch;
 
-import reactor.fn.ConsumerInvoker;
 import reactor.fn.support.ConverterAwareConsumerInvoker;
 
 /**

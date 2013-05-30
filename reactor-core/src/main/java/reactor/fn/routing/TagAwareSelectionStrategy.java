@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.routing;
+
+import reactor.fn.Selector;
+import reactor.fn.selector.Taggable;
 
 import java.util.Set;
 
 /**
- * Matches a {@link Selector} and key like normal, but only if the key is {@link Taggable} and they have at least one tag in common.
+ * Matches a {@link reactor.fn.Selector} and key like normal, but only if the key is {@link reactor.fn.selector.Taggable} and they have at least one tag in common.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public class TagAwareSelectionStrategy implements SelectionStrategy {
 

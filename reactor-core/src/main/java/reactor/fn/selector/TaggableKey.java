@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.selector;
 
 import java.util.Collections;
 import java.util.Set;

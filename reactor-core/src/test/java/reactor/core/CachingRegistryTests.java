@@ -27,7 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import reactor.fn.Registration;
-import reactor.fn.SelectionStrategy;
+import reactor.fn.routing.CachingRegistry;
+import reactor.fn.routing.Registry;
+import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.Selector;
 
 public final class CachingRegistryTests {
@@ -134,7 +136,7 @@ public final class CachingRegistryTests {
 		private final AtomicInteger cacheMisses;
 
 		public CacheMissCountingCachingRegistry(
-				reactor.fn.Registry.LoadBalancingStrategy loadBalancingStrategy,
+				Registry.LoadBalancingStrategy loadBalancingStrategy,
 				SelectionStrategy selectionStrategy, AtomicInteger cacheMisses) {
 			super(loadBalancingStrategy, selectionStrategy);
 			this.cacheMisses = cacheMisses;

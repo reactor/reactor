@@ -17,9 +17,11 @@
 package reactor.fn;
 
 import com.eaio.uuid.UUID;
+import reactor.fn.selector.HeaderResolver;
+import reactor.fn.selector.Taggable;
 
 /**
- * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link Taggable} so that they can be
+ * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link reactor.fn.selector.Taggable} so that they can be
  * filtered based on their tags.
  *
  * @author Jon Brisbin
@@ -53,7 +55,7 @@ public interface Selector extends Taggable<Selector> {
 	/**
 	 * Return a component that can resolve headers when a given key.
 	 *
-	 * @return A {@link HeaderResolver} applicable to this {@link Selector} type.
+	 * @return A {@link reactor.fn.selector.HeaderResolver} applicable to this {@link Selector} type.
 	 */
 	HeaderResolver getHeaderResolver();
 

@@ -16,8 +16,6 @@
 
 package reactor.fn.selector;
 
-import reactor.fn.HeaderResolver;
-
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;

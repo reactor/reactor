@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import reactor.fn.HeaderResolver;
 import reactor.fn.Selector;
 
 import com.eaio.uuid.UUID;

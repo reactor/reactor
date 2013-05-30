@@ -1,5 +1,6 @@
-package reactor.fn;
+package reactor.fn.cache;
 
+import reactor.fn.Supplier;
 import reactor.support.QueueFactory;
 
 import javax.annotation.Nullable;
@@ -9,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class LoadingCache<T> implements Cache<T> {
 

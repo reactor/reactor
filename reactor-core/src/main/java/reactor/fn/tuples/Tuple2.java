@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 /**
  * @author Jon Brisbin
  */
-public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
+public class Tuple2<T1, T2> extends Tuple1<T1> {
 
-	public Tuple4(Object... values) {
+	public Tuple2(Object... values) {
 		super(values);
 	}
 
 	/**
-	 * Type-safe way to get the fourth object of this {@link reactor.fn.Tuple}.
+	 * Type-safe way to get the second object of this {@link Tuple}.
 	 *
-	 * @return The fourth object, cast to the correct type.
+	 * @return The second object, cast to the correct type.
 	 */
 	@SuppressWarnings("unchecked")
-	public T4 getT4() {
-		return (T4) get(3);
+	public T2 getT2() {
+		return (T2) get(1);
 	}
 
 }

@@ -19,7 +19,8 @@ package reactor.fn;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.CachingRegistry;
+import reactor.fn.routing.CachingRegistry;
+import reactor.fn.routing.Registry;
 
 import java.util.concurrent.atomic.AtomicLong;
 

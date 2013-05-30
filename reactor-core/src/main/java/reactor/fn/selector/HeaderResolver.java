@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.selector;
+
+import javax.annotation.Nullable;
+import java.util.Map;
 
 /**
+ * Responsible for extracting any applicable headers when a key.
+ *
  * @author Jon Brisbin
  */
-public class Tuple1<T1> extends Tuple {
-
-	public Tuple1(Object... values) {
-		super(values);
-	}
+public interface HeaderResolver {
 
 	/**
-	 * Type-safe way to get the first object of this {@link Tuple}.
+	 * Resolve the headers that might be encoded in a key.
 	 *
-	 * @return The first object, cast to the correct type.
+	 * @param key The key to match.
+	 * @return Any applicable headers. Might be {@literal null}.
 	 */
-	@SuppressWarnings("unchecked")
-	public T1 getT1() {
-		return (T1) get(0);
-	}
+	@Nullable
+	Map<String, String> resolve(Object key);
 
 }

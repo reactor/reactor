@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

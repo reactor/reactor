@@ -1,6 +1,7 @@
 package reactor.fn;
 
 import org.junit.Test;
+import reactor.fn.cache.LoadingCache;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

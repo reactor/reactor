@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.routing;
+
+import reactor.fn.Registration;
+import reactor.fn.Selector;
 
 /**
  * Implementations of this interface manage a registry of objects that works sort of like a Map, except Registries don't
- * use simple keys, they use {@link Selector}s to map their objects.
+ * use simple keys, they use {@link reactor.fn.Selector}s to map their objects.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public interface Registry<T> extends Iterable<Registration<? extends T>> {
 
@@ -30,7 +34,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	}
 
 	/**
-	 * Assign the given {@link Selector} with the given object.
+	 * Assign the given {@link reactor.fn.Selector} with the given object.
 	 *
 	 * @param sel The left-hand side of the {@literal Selector} comparison check.
 	 * @param obj The object to assign.
@@ -58,7 +62,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	/**
 	 * Returns the custom selection strategy, if any, that is being used by this {@literal Registry}
 	 *
-	 * @return the {@link SelectionStrategy}. May be {@code null}.
+	 * @return the {@link reactor.fn.routing.SelectionStrategy}. May be {@code null}.
 	 */
 	SelectionStrategy getSelectionStrategy();
 

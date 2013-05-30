@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.dispatch;
 
 import reactor.convert.Converter;
+import reactor.fn.Consumer;
+import reactor.fn.support.Supports;
 
 /**
- * Implementations of this interface are responsible for invoking a {@link Consumer} that may take into account
+ * Implementations of this interface are responsible for invoking a {@link reactor.fn.Consumer} that may take into account
  * automatic argument conversion, return values, and other situations that might be specific to a particular use-case.
  *
  * @author Jon Brisbin
@@ -27,11 +29,11 @@ import reactor.convert.Converter;
 public interface ConsumerInvoker extends Supports<Consumer<?>> {
 
 	/**
-	 * Invoke a {@link Consumer}.
+	 * Invoke a {@link reactor.fn.Consumer}.
 	 *
-	 * @param consumer     The {@link Consumer} to invoke.
+	 * @param consumer     The {@link reactor.fn.Consumer} to invoke.
 	 * @param converter    The {@link Converter} to be aware of. May be {@literal null}.
-	 * @param returnType   If the {@link Consumer} also implements a value-returning type, convert it to this type before
+	 * @param returnType   If the {@link reactor.fn.Consumer} also implements a value-returning type, convert it to this type before
 	 *                     returning.
 	 * @param possibleArgs An array of possible arguments that may or may not be used.
 	 * @param <T>          The return type.

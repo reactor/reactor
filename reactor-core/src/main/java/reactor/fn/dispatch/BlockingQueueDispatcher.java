@@ -18,8 +18,8 @@ package reactor.fn.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.fn.Cache;
-import reactor.fn.LoadingCache;
+import reactor.fn.cache.Cache;
+import reactor.fn.cache.LoadingCache;
 import reactor.fn.Supplier;
 import reactor.support.QueueFactory;
 

@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
-
+package reactor.fn.tuples;
 
 /**
- * A {@code SelectionStrategy} is used to provide custom {@link Selector} matching behaviour.
- *
  * @author Jon Brisbin
- * @uathor Andy Wilkinson
  */
-public interface SelectionStrategy extends Supports<Object> {
+public class Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> extends Tuple7<T1, T2, T3, T4, T5, T6, T7> {
+
+	public Tuple8(Object... values) {
+		super(values);
+	}
 
 	/**
-	 * Indicates whether or not the {@link Selector} matches the {@code key}.
+	 * Type-safe way to get the eighth object of this {@link Tuple}.
 	 *
-	 * @param selector The selector to perform the match
-	 * @param key The object to match
-	 *
-	 * @return {@code true} if the Selector matches, otherwise {@code false}.
+	 * @return The eighth object, cast to the correct type.
 	 */
-	boolean matches(Selector selector, Object key);
+	@SuppressWarnings("unchecked")
+	public T8 getT8() {
+		return (T8) get(7);
+	}
 
 }

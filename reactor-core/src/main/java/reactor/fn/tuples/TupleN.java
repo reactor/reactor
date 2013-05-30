@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.tuples;
 
 /**
  * @author Jon Brisbin
  */
-public class Tuple2<T1, T2> extends Tuple1<T1> {
+public class TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> extends Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> {
 
-	public Tuple2(Object... values) {
+	public TupleN(Object... values) {
 		super(values);
 	}
 
 	/**
-	 * Type-safe way to get the second object of this {@link Tuple}.
+	 * Type-safe way to get the remaining objects of this {@link Tuple}.
 	 *
-	 * @return The second object, cast to the correct type.
+	 * @return The remaining objects, as a Tuple.
 	 */
 	@SuppressWarnings("unchecked")
-	public T2 getT2() {
-		return (T2) get(1);
+	public TRest getTRest() {
+		return (TRest) get(8);
 	}
 
 }
