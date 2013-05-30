@@ -20,7 +20,6 @@ import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;
 import reactor.fn.tuples.Tuple;
@@ -74,7 +73,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	Composable(Environment env, Observable observable) {
 		Assert.notNull(observable, "Observable cannot be null.");
 		this.env = env;
-		this.observable = createReactor(observable);
+		this.observable = observable;
 	}
 
 	/**
@@ -250,8 +249,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 
 	/**
 	 * Accumulate a result until expected accept count has been reached - If this limit hasn't been set, each accumulated
-	 * result will notify the returned {@link Composable}. A {@link Function} taking a {@link reactor.fn.support.Reduce} argument must be
-	 * passed to process each pair formed of the last accumulated result and a new value to be processed.
+	 * result will notify the returned {@link Composable}. A {@link Function} taking a {@link reactor.fn.support.Reduce}
+	 * argument must be passed to process each pair formed of the last accumulated result and a new value to be processed.
 	 *
 	 * @param fn      The reduce function
 	 * @param initial The initial accumulated result value e.g. an empty list.
@@ -503,13 +502,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 					consumer.accept(ev.getData());
 				}
 			});
-		} else if(!isError()){
+		} else if (!isError()) {
 			Fn.schedule(consumer, value, observable);
 		}
 		return null;
 	}
 
-	protected Composable<T> forwardError(final Composable<?> composable){
+	protected Composable<T> forwardError(final Composable<?> composable) {
 		when(Throwable.class, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable t) {
@@ -522,17 +521,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 
 	protected Reactor createReactor(Observable src) {
 		Reactor.Spec rspec = R.reactor().using(env);
-		Reactor r;
-		if (null == src || !Reactor.class.isInstance(src)) {
-			r = rspec.get();
-		} else {
-			r = rspec.using((Reactor) src).dispatcher(SynchronousDispatcher.INSTANCE).get();
+
+		if (null != src && Reactor.class.isInstance(src)) {
+			rspec.using((Reactor) src);
 		}
-		return r;
+
+		return rspec.sync().get();
 	}
 
 	protected <U> Composable<U> createComposable(Observable src) {
-		final Composable<U> c = new Composable<U>(env, src);
+		final Composable<U> c = new Composable<U>(env, createReactor(src));
 		c.expectedAcceptCount.set(expectedAcceptCount.get());
 		forwardError(c);
 		return c;
@@ -570,12 +568,12 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			return (S) this;
 		}
 
-		public <S extends AbstractComposableSpec<Collection<T>,Composable<Collection<T>>,S>> S merge(C... mergeWith) {
+		public <S extends AbstractComposableSpec<Collection<T>, Composable<Collection<T>>, S>> S merge(C... mergeWith) {
 			return merge(Arrays.asList(mergeWith));
 		}
 
 		@SuppressWarnings("unchecked")
-		public <S extends AbstractComposableSpec<Collection<T>,Composable<Collection<T>>,S>> S merge(Collection<C> mergeWith) {
+		public <S extends AbstractComposableSpec<Collection<T>, Composable<Collection<T>>, S>> S merge(Collection<C> mergeWith) {
 			this.mergeWith = mergeWith;
 			return (S) this;
 		}
@@ -605,7 +603,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 
 				@Override
 				public void accept(T o) {
-						reducer.accept(Tuple.of(o, i++));
+					reducer.accept(Tuple.of(o, i++));
 				}
 			};
 
@@ -636,7 +634,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			if (null != mergeWith) {
 				//TODO generic hell here
 				return (Composable<T>) doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor,
-						mergeWith.size()));
+																																											 mergeWith.size()));
 			} else {
 				final Composable<T> comp;
 				if (values != null) {
@@ -743,7 +741,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		@Override
 		protected <U> Composable<U> createComposable(Observable src) {
 			final DelayedAcceptComposable<T> self = this;
-			final DelayedAcceptComposable<U> c = new DelayedAcceptComposable<U>(env, src, self.expectedAcceptCount.get()) {
+			final DelayedAcceptComposable<U> c = new DelayedAcceptComposable<U>(env, createReactor(src), self.expectedAcceptCount.get()) {
 				@Override
 				protected void delayedAccept() {
 					self.delayedAccept();
