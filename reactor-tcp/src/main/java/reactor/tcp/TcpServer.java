@@ -42,7 +42,7 @@ public class TcpServer<IN, OUT> {
 	private final Tuple2<Selector, Object>         start       = $();
 	private final Tuple2<Selector, Object>         shutdown    = $();
 	private final Tuple2<Selector, Object>         connection  = $();
-	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null, null);
+	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Environment            env;
 	private final Reactor                reactor;
@@ -106,7 +106,7 @@ public class TcpServer<IN, OUT> {
 
 					@Override
 					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-						TcpServer.this.reactor.notify(cause.getClass(), Fn.event(cause));
+						TcpServer.this.reactor.notify(cause.getClass(), Event.wrap(cause));
 					}
 				});
 	}
@@ -149,7 +149,7 @@ public class TcpServer<IN, OUT> {
 		);
 		connections.register($(ch), conn);
 
-		reactor.notify(connection.getT2(), Fn.event(conn));
+		reactor.notify(connection.getT2(), Event.wrap(conn));
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
@@ -159,7 +159,7 @@ public class TcpServer<IN, OUT> {
 				System.out.println("index: " + in.readerIndex());
 				System.out.println("capacity: " + in.capacity());
 
-				TcpServer.this.reactor.notify(conn.read.getT2(), Fn.event(new Buffer(in.nioBuffer())));
+				TcpServer.this.reactor.notify(conn.read.getT2(), Event.wrap(new Buffer(in.nioBuffer())));
 
 				System.out.println("buf: " + in);
 				System.out.println("readable: " + in.readableBytes());
