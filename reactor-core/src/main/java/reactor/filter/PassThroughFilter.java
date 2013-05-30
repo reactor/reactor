@@ -29,4 +29,5 @@ public final class PassThroughFilter extends AbstractFilter {
 	public <T> List<T> doFilter(List<T> items, Object key) {
 		return items;
 	}
+
 }

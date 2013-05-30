@@ -18,20 +18,19 @@ package reactor.fn.dispatch;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
-import reactor.fn.dispatch.ConsumerInvoker;
-import reactor.Event.wrap;
+import reactor.fn.Event;
 import reactor.fn.support.ConsumerUtils;
 
 import java.util.concurrent.Callable;
 
 /**
- * This implementation of a {@link reactor.fn.dispatch.ConsumerInvoker} will attempt to invoke a {@link reactor.fn.Consumer} as-is and, if that fails
- * with a {@link ClassCastException} because the argument declared in the {@literal Consumer} isn't of the correct type,
- * it tries to find an object of that type in the array of {@literal possibleArgs} passed to the invoker. If that fails,
- * it will attempt to use the given {@link Converter} to convert the argument into a form acceptable to the {@literal
- * Consumer}. If the argument is of type {@link reactor.Event.wrap} and the data inside that event is of a compatible type with the
- * argument to the consumer, this invoker will unwrap that {@literal Event} and try to invoke the consumer using the
- * data itself.
+ * This implementation of a {@link reactor.fn.dispatch.ConsumerInvoker} will attempt to invoke a {@link
+ * reactor.fn.Consumer} as-is and, if that fails with a {@link ClassCastException} because the argument declared in the
+ * {@literal Consumer} isn't of the correct type, it tries to find an object of that type in the array of {@literal
+ * possibleArgs} passed to the invoker. If that fails, it will attempt to use the given {@link Converter} to convert the
+ * argument into a form acceptable to the {@literal Consumer}. If the argument is of type {@link reactor.fn.Event} and
+ * the data inside that event is of a compatible type with the argument to the consumer, this invoker will unwrap that
+ * {@literal Event} and try to invoke the consumer using the data itself.
  * <p/>
  * Finally, if the {@literal Consumer} also implements {@link Callable}, then it will invoke the {@link
  * java.util.concurrent.Callable#call()} method to obtain a return value and return that. Otherwise it will return

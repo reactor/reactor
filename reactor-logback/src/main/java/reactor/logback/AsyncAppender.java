@@ -5,7 +5,6 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
-import reactor.Fn;
 import reactor.core.Environment;
 import reactor.core.R;
 import reactor.core.Reactor;
@@ -46,7 +45,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 	@Override
 	protected void append(ILoggingEvent loggingEvent) {
 		loggingEvent.prepareForDeferredProcessing();
-		reactor.notify(Fn.event(loggingEvent));
+		reactor.notify(Event.wrap(loggingEvent));
 	}
 
 	@Override
