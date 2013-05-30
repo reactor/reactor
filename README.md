@@ -54,6 +54,22 @@ When Reactor is released as a milestone or release, the artifacts will be genera
 
 Reactor is also designed to be friendly to [Java 8 lambdas](http://www.jcp.org/en/jsr/detail?id=335). Many components within Reactor can be drop-in replaced with lambdas or method references to make your Java code more succinct. We've also found that using Java 8 lambdas and method references results in slightly higher throughput. But even if you can't use Java 8 yet, Reactor will work fine in Java 6 and 7 (you'll just have to implement more anonymous inner classes).
 
+### Event Loops, Dispatchers, and RingBuffers
+
+Reactor provides three out-of-the-box `Dispatcher` implementations. The `ThreadPoolExecutorDispatcher` is designed to be used in situations where your tasks are longer-running, do blocking IO, or otherwise take longer to complete. It is backed by a standard JDK `ExecutorService`. The `BlockingQueueDispatcher` is analogous to an event loop. In the default configuration, one of these Dispatchers is created per CPU. They are handed out in a round-robin fashion, so when a new `Reactor` is created and the `eventLoop()` method is called on the `Reactor.Spec`, one of the event loop Dispatchers is handed back.
+
+The highest-throughput Dispatcher is the `RingBufferDispatcher` which is based on the [LMAX Disruptor RingBuffer](https://github.com/lmax-exchange/disruptor). It is a single-thread, RingBuffer-backed Dispatcher. It has the highest performance because there is no context switching required. Tasks are executed in order since their execution is managed by the RingBuffer. The CPU is also saturated when a large volume of tasks is submitted to the Dispatcher so although it might seem necessary to provide multiple threads to ensure the highest throughput, the RingBufferDispatcher provides significantly higher overall non-blocking task throughput than any other Dispatcher implementation with a single thread.
+
+### The Environment
+
+Each `Reactor` you create needs a `Dispatcher` to execute tasks. By default, with no configuration, you'll get a synchronous Dispatcher. This works fine for testing but is probably not what you want for a real application.
+
+Since it's not desirable to create too many threads in an asynchronous application and *something* has to keep track of those few Dispatchers that are divvyed out to the components that need them, you need to instaniate an Environment which will create those Dispatchers based on either the default configuration (provided in a properties file in the Reactor JAR file) or by providing your own configuration.
+
+There's no magic to it. You simply "new" up an instance of `Environment` and, when creating Reactors, Composables, and Promises, pass a reference to this Environment into the Specs (essentially a "builder" helper class). The Environment instance is where the `reactor.` system properties live and it's also the place where the small number of Dispatchers that are intended to be used by any component in your application that needs one reside.
+
+You can, of course, create Dispatchers directly in your code. There may be times in scenarios like embedding in other threading scenarios where that's desirable. But in general, you should refrain from directly instantiating your own Dispatchers and instead use those configured to be created by the Environment.
+
 ### Events, Selectors and Consumers
 
 Three of the most foundational components in Reactor’s `reactor-core` module are the `Selector`, the `Consumer`, and the `Event`. A `Consumer` can be assigned to a `Reactor` by using a `Selector`, which is a simple abstraction to provide flexibility when finding the `Consumer`s to invoke for an `Event`. A range of default selectors are available. From plain `String`s to regular expressions to Spring MVC-style URL templates.
@@ -67,15 +83,17 @@ But a `Selector` can also match another `Selector` based on `Class.isAssignableF
 Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // This helper method is like jQuery’s.
-    // It creates a Selector instance so you don’t have
-    // to do new Selector("parse”)
+    // It just creates a Selector instance so you don’t have to "new" one up.
     import static reactor.Fn.$;
 
-    Selector parse = $("parse”);
-    Reactor reactor = new Reactor();
+    // This factory call creates a Reactor.
+    Reactor reactor = R.reactor()
+      .using(env) // our current Environment
+      .eventLoop() // use one of the BlockingQueueDispatchers
+      .get(); // get the object when finished configuring
 
     // Wire an event to handle the data sent with the Event
-    reactor.on(parse, new Consumer<Event<String>>() {
+    reactor.on($("parse"), new Consumer<Event<String>>() {
       public void accept(Event<String> ev) {
         service.handleEvent(ev);
       }
