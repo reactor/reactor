@@ -28,7 +28,6 @@ import org.junit.Test;
 
 import reactor.fn.Registration;
 import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registry;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
@@ -36,7 +35,7 @@ public final class CachingRegistryTests {
 
 	private final AtomicInteger cacheMisses = new AtomicInteger();
 
-	private final CachingRegistry<Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(null, null, cacheMisses);
+	private final CachingRegistry<Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(null, cacheMisses);
 
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
@@ -135,10 +134,8 @@ public final class CachingRegistryTests {
 
 		private final AtomicInteger cacheMisses;
 
-		public CacheMissCountingCachingRegistry(
-				Registry.LoadBalancingStrategy loadBalancingStrategy,
-				SelectionStrategy selectionStrategy, AtomicInteger cacheMisses) {
-			super(loadBalancingStrategy, selectionStrategy);
+		public CacheMissCountingCachingRegistry(SelectionStrategy selectionStrategy, AtomicInteger cacheMisses) {
+			super(selectionStrategy);
 			this.cacheMisses = cacheMisses;
 		}
 

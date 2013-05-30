@@ -16,27 +16,34 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
-import org.slf4j.LoggerFactory;
-import reactor.convert.StandardConverters;
-import reactor.fn.Registration;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registry;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
+import static reactor.Fn.$;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static reactor.Fn.$;
+import org.slf4j.LoggerFactory;
+
+import reactor.convert.StandardConverters;
+import reactor.filter.Filter;
+import reactor.filter.RoundRobinFilter;
+import reactor.fn.Registration;
+import reactor.fn.dispatch.BlockingQueueDispatcher;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registry;
+
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * @author Stephane Maldini
@@ -60,18 +67,21 @@ public class Environment {
 
 	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-	private final Properties               env           = new Properties();
-	private final AtomicReference<Reactor> sharedReactor = new AtomicReference<Reactor>();
-	private final Registry<Reactor>        reactors      = new CachingRegistry<Reactor>(null, null);
-	private final Registry<Dispatcher> dispatcherSuppliers;
-	private final String               defaultDispatcher;
+	private final Properties               env              = new Properties();
+	private final AtomicReference<Reactor> sharedReactor    = new AtomicReference<Reactor>();
+	private final Registry<Reactor>        reactors         = new CachingRegistry<Reactor>(null);
+	private final Object                   monitor          = new Object();
+	private final Filter                   dispatcherFilter = new RoundRobinFilter();
+
+	private final Map<String, List<Dispatcher>>  dispatchers;
+	private final String                         defaultDispatcher;
 
 	public Environment() {
-		this(new CachingRegistry<Dispatcher>(Registry.LoadBalancingStrategy.ROUND_ROBIN, null));
+		this(new HashMap<String, List<Dispatcher>>());
 	}
 
-	public Environment(Registry<Dispatcher> dispatcherSuppliers) {
-		this.dispatcherSuppliers = dispatcherSuppliers;
+	public Environment(Map<String, List<Dispatcher>> dispatchers) {
+		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
 
 		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
 		Map<Object, Object> props = loadProfile(defaultProfileName);
@@ -158,22 +168,40 @@ public class Environment {
 	}
 
 	public Dispatcher getDispatcher(String name) {
-		Iterator<Registration<? extends Dispatcher>> regs = dispatcherSuppliers.select(name).iterator();
-		if (!regs.hasNext()) {
-			throw new IllegalArgumentException("No DispatcherSupplier found for name '" + name + "'");
+		synchronized(monitor) {
+			List<Dispatcher> dispatchers = this.dispatchers.get(name);
+			List<Dispatcher> filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
+			if (filteredDispatchers.isEmpty()) {
+				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "'");
+			} else {
+				return filteredDispatchers.get(0);
+			}
 		}
-		return regs.next().getObject();
 	}
 
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
-		if (defaultDispatcher.equals(name))
-			dispatcherSuppliers.register($(DEFAULT_DISPATCHER), dispatcher);
-		dispatcherSuppliers.register($(name), dispatcher);
+		synchronized(monitor) {
+			doAddDispatcher(name, dispatcher);
+			if (name.equals(defaultDispatcher)) {
+				doAddDispatcher(DEFAULT_DISPATCHER, dispatcher);
+			}
+		}
 		return this;
 	}
 
+	private void doAddDispatcher(String name, Dispatcher dispatcher) {
+		List<Dispatcher> dispatchers = this.dispatchers.get(name);
+		if (dispatchers == null) {
+			dispatchers = new ArrayList<Dispatcher>();
+			this.dispatchers.put(name,  dispatchers);
+		}
+		dispatchers.add(dispatcher);
+	}
+
 	public Environment removeDispatcher(String name) {
-		dispatcherSuppliers.unregister(name);
+		synchronized(monitor) {
+			dispatchers.remove(name);
+		}
 		return this;
 	}
 

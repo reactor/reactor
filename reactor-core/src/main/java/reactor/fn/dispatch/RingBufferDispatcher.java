@@ -80,14 +80,7 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 				new ExceptionHandler() {
 					@Override
 					public void handleEventException(Throwable ex, long sequence, Object event) {
-						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
-							log.error(ex.getMessage(), ex);
-						}
-						Consumer<Throwable> a;
-						if (null != (a = ((Task<?>) event).getErrorConsumer())) {
-							a.accept(ex);
-						}
+						// Handled by Task.execute
 					}
 
 					@Override
