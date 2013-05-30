@@ -13,26 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
 package reactor.fn
 
-
+import reactor.Fn
 import reactor.core.R
 import reactor.fn.routing.TagAwareSelectionStrategy
 import reactor.fn.selector.key.TaggableKey
+import spock.lang.Specification
 
-import static reactor.Fn.$
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-
-import reactor.Fn
-import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
@@ -118,7 +112,7 @@ class SelectorSpec extends Specification {
 		})
 
 		when: "The selector is matched"
-		r.notify key, Fn.event("")
+		r.notify key, Event.wrap("")
 
 		then: "The resourceId has been set when the headers"
 		resourceId
@@ -149,7 +143,7 @@ class SelectorSpec extends Specification {
 
 		when: "events are triggered"
 		(1..4).each {
-			r.notify('key', Fn.event("Hello World!"))
+			r.notify('key', Event.wrap("Hello World!"))
 		}
 
 		then: "all consumers should have been called once"
@@ -182,7 +176,7 @@ class SelectorSpec extends Specification {
 		when: "events are triggered"
 
 		(1..4).each {
-			r.notify(Fn.event("Hello World!"))
+			r.notify(Event.wrap("Hello World!"))
 		}
 
 		then: "random selection of consumers have been called"

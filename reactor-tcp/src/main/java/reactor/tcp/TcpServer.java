@@ -154,17 +154,7 @@ public class TcpServer<IN, OUT> {
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-				System.out.println("buf: " + in);
-				System.out.println("readable: " + in.readableBytes());
-				System.out.println("index: " + in.readerIndex());
-				System.out.println("capacity: " + in.capacity());
-
 				TcpServer.this.reactor.notify(conn.read.getT2(), Event.wrap(new Buffer(in.nioBuffer())));
-
-				System.out.println("buf: " + in);
-				System.out.println("readable: " + in.readableBytes());
-				System.out.println("index: " + in.readerIndex());
-				System.out.println("capacity: " + in.capacity());
 			}
 		};
 
