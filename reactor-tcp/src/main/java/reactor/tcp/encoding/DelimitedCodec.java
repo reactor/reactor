@@ -31,21 +31,45 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	public class DelimitedDecoder implements Function<Buffer, IN> {
-		final Function<Buffer, IN> decoder = delegate.decoder();
-		int start = 0;
+		private final Function<Buffer, IN> decoder = delegate.decoder();
+		private       int                  start   = 0;
+		private Buffer remainder;
 
 		@Override
 		public IN apply(Buffer bytes) {
+			if (null != remainder) {
+				remainder.append(bytes).flip();
+				bytes = remainder;
+			}
+
+			int limit = bytes.byteBuffer().limit();
 			while (bytes.remaining() > 0) {
+				int pos = bytes.position();
 				byte b;
 				if ((b = bytes.read()) == delimiter) {
-					IN in = decoder.apply(bytes.slice(start, (bytes.position() - 1) - start));
+					bytes.byteBuffer().position(start);
+					bytes.byteBuffer().limit((pos - 1) - start);
+
+					IN in = decoder.apply(bytes);
 					start = bytes.position();
+					remainder = null;
+
+					bytes.byteBuffer().limit(limit);
+					bytes.byteBuffer().position(pos);
+
 					return in;
-				} else if (b == '\0') {
-					return null;
+				} else if (b == '\0' || pos == limit) {
+					break;
 				}
 			}
+
+			int pos = bytes.position();
+			if ((pos - start) > 0) {
+				bytes.byteBuffer().position(start);
+				remainder = bytes;
+			}
+
+			start = 0;
 			return null;
 		}
 	}
