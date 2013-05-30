@@ -18,6 +18,9 @@ package reactor.io;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 
 /**
  * @author Jon Brisbin <jon@jbrisbin.com>
@@ -25,11 +28,14 @@ import java.nio.ByteBuffer;
 public class Buffer implements Comparable<Buffer> {
 
 	public static int SMALL_BUFFER_SIZE = Integer.parseInt(
-			System.getProperty("reactor.small_buffer_size", "" + 1024 * 16)
+			System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
 	);
 	public static int MAX_BUFFER_SIZE   = Integer.parseInt(
-			System.getProperty("reactor.max_buffer_size", "" + 1024 * 1000)
+			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000)
 	);
+
+	private final Charset        utf8    = Charset.forName("UTF-8");
+	private final CharsetDecoder decoder = utf8.newDecoder();
 	private final boolean    dynamic;
 	private       ByteBuffer buffer;
 
@@ -165,10 +171,13 @@ public class Buffer implements Comparable<Buffer> {
 	public String asString() {
 		if (null != buffer) {
 			buffer.mark();
-			byte[] b = new byte[buffer.remaining()];
-			buffer.get(b);
-			buffer.reset();
-			return new String(b);
+			try {
+				return decoder.decode(buffer).toString();
+			} catch (CharacterCodingException e) {
+				throw new IllegalStateException(e.getMessage(), e);
+			} finally {
+				buffer.reset();
+			}
 		} else {
 			return null;
 		}
@@ -192,7 +201,7 @@ public class Buffer implements Comparable<Buffer> {
 		buffer.position(start);
 		buffer.get(bytes);
 		buffer.position(pos);
-		return new Buffer(len, true).append(bytes).flip();
+		return new Buffer(len, false).append(bytes).flip();
 	}
 
 	public Buffer append(String s) {
@@ -223,7 +232,7 @@ public class Buffer implements Comparable<Buffer> {
 		int pos = buffer.position();
 		int len = b.remaining();
 		ensureCapacity(len);
-		buffer.put(b.asByteBuffer());
+		buffer.put(b.byteBuffer());
 		buffer.position(pos + len);
 		return this;
 	}
@@ -240,7 +249,7 @@ public class Buffer implements Comparable<Buffer> {
 		return this;
 	}
 
-	public ByteBuffer asByteBuffer() {
+	public ByteBuffer byteBuffer() {
 		return buffer;
 	}
 
@@ -256,7 +265,7 @@ public class Buffer implements Comparable<Buffer> {
 
 	private void ensureCapacity(int atLeast) {
 		if (null == buffer) {
-			buffer = ByteBuffer.allocateDirect(SMALL_BUFFER_SIZE);
+			buffer = ByteBuffer.allocate(SMALL_BUFFER_SIZE);
 			return;
 		}
 		if (dynamic && buffer.remaining() < atLeast) {
