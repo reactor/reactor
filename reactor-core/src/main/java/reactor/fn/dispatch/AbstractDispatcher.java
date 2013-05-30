@@ -17,16 +17,14 @@
 package reactor.fn.dispatch;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Jon Brisbin
  */
 public abstract class AbstractDispatcher implements Dispatcher {
 
-	private final AtomicInteger   queuedTasks = new AtomicInteger();
-	private final AtomicBoolean   alive       = new AtomicBoolean(true);
-	private final ConsumerInvoker invoker     = new ConverterAwareConsumerInvoker();
+	private final AtomicBoolean   alive   = new AtomicBoolean(true);
+	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
 
 	@Override
 	public boolean alive() {
@@ -34,15 +32,13 @@ public abstract class AbstractDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public boolean shutdown() {
+	public void shutdown() {
 		alive.compareAndSet(true, false);
-		return queuedTasks.get() > 0;
 	}
 
 	@Override
-	public boolean halt() {
+	public void halt() {
 		alive.compareAndSet(true, false);
-		return queuedTasks.get() > 0;
 	}
 
 	@Override
@@ -50,20 +46,11 @@ public abstract class AbstractDispatcher implements Dispatcher {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown and cannot accept new tasks.");
 		}
-		incrementTaskCount();
 		return createTask();
 	}
 
 	protected ConsumerInvoker getInvoker() {
 		return invoker;
-	}
-
-	protected void incrementTaskCount() {
-		queuedTasks.incrementAndGet();
-	}
-
-	protected void decrementTaskCount() {
-		queuedTasks.decrementAndGet();
 	}
 
 	protected abstract <T> Task<T> createTask();

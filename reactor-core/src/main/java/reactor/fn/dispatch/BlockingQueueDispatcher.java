@@ -18,9 +18,9 @@ package reactor.fn.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
-import reactor.fn.Supplier;
 import reactor.support.QueueFactory;
 
 import java.util.concurrent.BlockingQueue;
@@ -70,15 +70,15 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 	}
 
 	@Override
-	public boolean shutdown() {
+	public void shutdown() {
 		taskExecutor.interrupt();
-		return super.shutdown();
+		super.shutdown();
 	}
 
 	@Override
-	public boolean halt() {
+	public void halt() {
 		taskExecutor.interrupt();
-		return super.halt();
+		super.halt();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -106,7 +106,6 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
 						t.execute(getInvoker());
-						decrementTaskCount();
 					}
 				} catch (InterruptedException e) {
 					break;

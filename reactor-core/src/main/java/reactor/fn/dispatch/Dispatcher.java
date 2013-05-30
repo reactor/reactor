@@ -34,19 +34,14 @@ public interface Dispatcher {
 
 	/**
 	 * Shutdown this object.
-	 *
-	 * @return {@literal true} if there are still active tasks in queues, waiting to be processed, {@literal false}
-	 *         otherwise.
 	 */
-	boolean shutdown();
+	void shutdown();
 
 	/**
 	 * Shutdown this {@code Dispatcher} and forcibly halt any tasks currently executing, and clear the queues of any
 	 * submitted tasks not yet executed.
-	 *
-	 * @return {@literal true} if tasks have been cleared, {@literal false} otherwise.
 	 */
-	boolean halt();
+	void halt();
 
 	/**
 	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of

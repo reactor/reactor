@@ -40,13 +40,11 @@ public class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public boolean shutdown() {
-		return false;
+	public void shutdown() {
 	}
 
 	@Override
-	public boolean halt() {
-		return false;
+	public void halt() {
 	}
 
 	private class SyncTask extends Task<Object> {
