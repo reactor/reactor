@@ -19,7 +19,7 @@ package reactor.core.dynamic.reflect;
 import java.lang.reflect.Method;
 
 import reactor.fn.Function;
-import reactor.fn.support.Supports;
+import reactor.support.Supports;
 
 /**
  * When given a {@link Method}, a {@code MethodNotificationKeyResolver} will attempt to return

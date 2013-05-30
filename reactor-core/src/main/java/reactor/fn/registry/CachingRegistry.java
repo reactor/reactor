@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package reactor.fn.routing;
+package reactor.fn.registry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.fn.Registration;
+import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
 import java.util.*;

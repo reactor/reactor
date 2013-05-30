@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package reactor.fn.routing;
+package reactor.fn.registry;
 
 import reactor.fn.Registration;
+import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
 /**

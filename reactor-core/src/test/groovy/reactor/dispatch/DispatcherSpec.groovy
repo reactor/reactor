@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+
+
 package reactor.dispatch
 
 import static reactor.GroovyTestUtils.$
@@ -23,7 +25,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.Fn
-import reactor.fn.routing.CachingRegistry
+import reactor.fn.registry.CachingRegistry
 import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.dispatch.SynchronousDispatcher

@@ -22,10 +22,10 @@ import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.fn.*;
-import reactor.fn.routing.CachingRegistry;
+import reactor.fn.registry.CachingRegistry;
 import reactor.fn.routing.Linkable;
-import reactor.fn.routing.Registry;
-import reactor.fn.routing.Registry.LoadBalancingStrategy;
+import reactor.fn.registry.Registry;
+import reactor.fn.registry.Registry.LoadBalancingStrategy;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
@@ -41,7 +41,7 @@ import static reactor.Fn.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link reactor.fn.selector.Selector ) {@link reactor.fn.routing.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
+ * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
  * to the assigned {@link Dispatcher} which causes it to be executed on a thread based on the implementation of the
  * {@link Dispatcher} being used.
  *

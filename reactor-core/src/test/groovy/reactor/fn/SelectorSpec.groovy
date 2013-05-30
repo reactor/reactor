@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+
+
 package reactor.fn
 
 import reactor.core.R
@@ -26,8 +28,8 @@ import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-import static reactor.fn.routing.Registry.LoadBalancingStrategy.RANDOM
-import static reactor.fn.routing.Registry.LoadBalancingStrategy.ROUND_ROBIN
+import static reactor.fn.registry.Registry.LoadBalancingStrategy.RANDOM
+import static reactor.fn.registry.Registry.LoadBalancingStrategy.ROUND_ROBIN
 
 import reactor.Fn
 import spock.lang.Specification

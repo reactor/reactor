@@ -18,7 +18,7 @@ package reactor.fn.routing;
 
 
 import reactor.fn.selector.Selector;
-import reactor.fn.support.Supports;
+import reactor.support.Supports;
 
 /**
  * A {@code SelectionStrategy} is used to provide custom {@link reactor.fn.selector.Selector} matching behaviour.

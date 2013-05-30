@@ -18,7 +18,7 @@ package reactor.fn.dispatch;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
-import reactor.fn.support.Supports;
+import reactor.support.Supports;
 
 /**
  * Implementations of this interface are responsible for invoking a {@link reactor.fn.Consumer} that may take into account
