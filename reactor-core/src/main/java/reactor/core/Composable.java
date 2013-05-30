@@ -238,7 +238,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				try {
 					Event<?> event = Event.class.isAssignableFrom(value.getClass()) ? (Event<?>) value : Event.wrap(value);
 					event.setReplyTo(replyTo);
-					//event.getHeaders().setOrigin(reactor.getId());
 					observable.send(key, event);
 				} catch (Throwable t) {
 					handleError(c, t);
@@ -714,7 +713,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			long _exceptedCount = expectedAcceptCount.get();
 
 			Event<T> ev = Event.wrap(value);
-			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(_exceptedCount));
 
 			if (_acceptCount == 1) {
 				observable.notify(firstKey, ev);
