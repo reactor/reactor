@@ -16,12 +16,8 @@
 
 package reactor.fn.dispatch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Registration;
 import reactor.fn.registry.Registry;
 
 /**
@@ -37,21 +33,13 @@ public abstract class Task<T> {
 	private volatile Object                                 key;
 	private volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private volatile Event<T>                               event;
-	private volatile Converter                              converter;
 	private volatile Consumer<Event<T>>                     completionConsumer;
 	private volatile Consumer<Throwable>                    errorConsumer;
-
-	public Object getKey() {
-		return key;
-	}
+	private volatile EventRouter                            eventRouter;
 
 	public Task<T> setKey(Object key) {
 		this.key = key;
 		return this;
-	}
-
-	public Registry<Consumer<? extends Event<?>>> getConsumerRegistry() {
-		return consumerRegistry;
 	}
 
 	public Task<T> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
@@ -59,26 +47,9 @@ public abstract class Task<T> {
 		return this;
 	}
 
-	public Event<T> getEvent() {
-		return event;
-	}
-
 	public Task<T> setEvent(Event<T> event) {
 		this.event = event;
 		return this;
-	}
-
-	public Converter getConverter() {
-		return converter;
-	}
-
-	public Task<T> setConverter(Converter converter) {
-		this.converter = converter;
-		return this;
-	}
-
-	public Consumer<Event<T>> getCompletionConsumer() {
-		return completionConsumer;
 	}
 
 	public Task<T> setCompletionConsumer(Consumer<Event<T>> completionConsumer) {
@@ -86,12 +57,13 @@ public abstract class Task<T> {
 		return this;
 	}
 
-	public Consumer<Throwable> getErrorConsumer() {
-		return errorConsumer;
-	}
-
 	public Task<T> setErrorConsumer(Consumer<Throwable> errorConsumer) {
 		this.errorConsumer = errorConsumer;
+		return this;
+	}
+
+	public Task<T> setEventRouter(EventRouter eventRouter) {
+		this.eventRouter = eventRouter;
 		return this;
 	}
 
@@ -110,31 +82,7 @@ public abstract class Task<T> {
 	public abstract void submit();
 
 	protected void execute(ConsumerInvoker invoker) {
-		try {
-			for (Registration<? extends Consumer<? extends Event<?>>> reg : getConsumerRegistry().select(getKey())) {
-				if (reg.isCancelled() || reg.isPaused()) {
-					continue;
-				}
-				if (null != reg.getSelector().getHeaderResolver()) {
-					getEvent().getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(getKey()));
-				}
-				invoker.invoke(reg.getObject(), getConverter(), Void.TYPE, getEvent());
-				if (reg.isCancelAfterUse()) {
-					reg.cancel();
-				}
-			}
-			if (null != getCompletionConsumer()) {
-				invoker.invoke(getCompletionConsumer(), getConverter(), Void.TYPE, getEvent());
-			}
-		} catch (Throwable x) {
-			Logger log = LoggerFactory.getLogger(Task.class);
-			if (log.isErrorEnabled()) {
-				log.error(x.getMessage(), x);
-			}
-			if (null != getErrorConsumer()) {
-				getErrorConsumer().accept(x);
-			}
-		}
+		eventRouter.route(key, event, consumerRegistry.select(key), completionConsumer, errorConsumer);
 	}
 
 }

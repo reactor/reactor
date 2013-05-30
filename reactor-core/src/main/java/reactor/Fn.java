@@ -33,12 +33,11 @@ import java.util.concurrent.Future;
  */
 public abstract class Fn {
 
-
 	/**
 	 * Creates an anonymous {@link reactor.fn.selector.Selector}.
 	 *
 	 * @return A {@link reactor.fn.tuples.Tuple} containing the {@link reactor.fn.selector.Selector} and the object key.
-	 * @see {@link reactor.fn.selector.BaseSelector}
+	 * @see {@link reactor.fn.selector.ObjectSelector}
 	 */
 	public static Tuple2<Selector, Object> $() {
 		Object obj = new Object();
@@ -50,10 +49,10 @@ public abstract class Fn {
 	 *
 	 * @param obj Can be anything.
 	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.BaseSelector}
+	 * @see {@link reactor.fn.selector.ObjectSelector}
 	 */
 	public static <T> Selector $(T obj) {
-		return new BaseSelector<T>(obj);
+		return new ObjectSelector<T>(obj);
 	}
 
 	/**
@@ -71,12 +70,12 @@ public abstract class Fn {
 	 * Creates a {@link Selector} based on the given class type and only matches if the other Selector against which this
 	 * is compared is assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
-	 * @param type The supertype to compare.
+	 * @param supertype The supertype to compare.
 	 * @return The new {@link Selector}.
 	 * @see {@link reactor.fn.selector.ClassSelector}
 	 */
-	public static Selector T(Class<?> type) {
-		return new ClassSelector(type);
+	public static Selector T(Class<?> supertype) {
+		return new ClassSelector(supertype);
 	}
 
 	/**
@@ -92,29 +91,6 @@ public abstract class Fn {
 	}
 
 	/**
-	 * Wrap the given object with an {@link Event}.
-	 *
-	 * @param obj The object to wrap.
-	 * @return The new {@link Event}.
-	 */
-	public static <T> Event<T> event(T obj) {
-		return new Event<T>(obj);
-	}
-
-	/**
-	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@code key}.
-	 *
-	 * @param obj        The object to wrap.
-	 * @param replyToKey The key to use as a {@literal replyTo}.
-	 * @param <T>        The type of the given object.
-	 * @return The new {@link Event}.
-	 */
-	public static <T> Event<T> event(T obj, Object replyToKey) {
-		return new Event<T>(obj).setReplyTo(replyToKey);
-	}
-
-
-	/**
 	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link Observable}, passing the given {@link
 	 * Event}.
 	 *
@@ -124,19 +100,8 @@ public abstract class Fn {
 	 * @param <T>        The type of the data.
 	 */
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		observable.notify(Fn.event(Tuple.of(consumer, data)));
+		observable.notify(Event.wrap(Tuple.of(consumer, data)));
 	}
-
-
-	/**
-	 * Return a null event
-	 *
-	 * @return The new {@link Event}.
-	 */
-	public static Event<Void> nullEvent() {
-		return new Event<Void>(null);
-	}
-
 
 	/**
 	 * Wrap the given {@link Callable} and compose a new {@link reactor.fn.Function}.
@@ -157,7 +122,6 @@ public abstract class Fn {
 		};
 	}
 
-
 	/**
 	 * Wrap the given {@link Runnable} and compose a new {@link reactor.fn.Consumer}.
 	 *
@@ -172,7 +136,6 @@ public abstract class Fn {
 			}
 		};
 	}
-
 
 	/**
 	 * Wrap the given {@link Callable} and compose a new {@link reactor.fn.Supplier}.

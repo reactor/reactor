@@ -16,20 +16,24 @@
 
 package reactor.fn.registry;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import reactor.fn.Registration;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 /**
- * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks
- * Events dispatching strategy can be tuned through its {@link LoadBalancingStrategy} .
+ * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -37,30 +41,22 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final Random                                       random            = new Random();
 	private final ReentrantReadWriteLock                       readWriteLock     = new ReentrantReadWriteLock(true);
 	private final Lock                                         readLock          = readWriteLock.readLock();
 	private final Lock                                         writeLock         = readWriteLock.writeLock();
 	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
 	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
-	private final Map<Object, AtomicLong>                      usageCounts       = new HashMap<Object, AtomicLong>();
 
-	private final LoadBalancingStrategy loadBalancingStrategy;
 	private final SelectionStrategy     selectionStrategy;
 
 	private boolean refreshRequired;
 
-	public CachingRegistry(LoadBalancingStrategy loadBalancingStrategy, SelectionStrategy selectionStrategy) {
-		this.loadBalancingStrategy = loadBalancingStrategy == null ? LoadBalancingStrategy.NONE : loadBalancingStrategy;
+	public CachingRegistry(SelectionStrategy selectionStrategy) {
 		this.selectionStrategy = selectionStrategy;
 	}
 
 	public SelectionStrategy getSelectionStrategy() {
 		return selectionStrategy;
-	}
-
-	public LoadBalancingStrategy getLoadBalancingStrategy() {
-		return loadBalancingStrategy;
 	}
 
 	@Override
@@ -102,7 +98,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public Iterable<Registration<? extends T>> select(Object key) {
+	public List<Registration<? extends T>> select(Object key) {
 		List<Registration<? extends T>> matchingRegistrations;
 
 		readLock.lock();
@@ -141,42 +137,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			readLock.unlock();
 		}
 
-		switch (loadBalancingStrategy) {
-			case ROUND_ROBIN: {
-				int size = matchingRegistrations.size();
-				int i = (int) (getUsageCount(key).incrementAndGet() % (size > 0 ? size : 1));
-				return Collections.<Registration<? extends T>>singletonList(matchingRegistrations.get(i));
-			}
-			case RANDOM: {
-				int i = random.nextInt(matchingRegistrations.size());
-				return Collections.<Registration<? extends T>>singletonList(matchingRegistrations.get(i));
-			}
-			default:
-				return matchingRegistrations;
-		}
-	}
-
-	private AtomicLong getUsageCount(Object key) {
-		readLock.lock();
-		try {
-			AtomicLong usageCount = this.usageCounts.get(key);
-			if (usageCount == null) {
-				readLock.unlock();
-				writeLock.lock();
-				try {
-					if (usageCount == null) {
-						usageCount = new AtomicLong();
-						this.usageCounts.put(key, usageCount);
-					}
-				} finally {
-					writeLock.unlock();
-					readLock.lock();
-				}
-			}
-			return usageCount;
-		} finally {
-			readLock.unlock();
-		}
+		return Collections.unmodifiableList(matchingRegistrations);
 	}
 
 	@Override

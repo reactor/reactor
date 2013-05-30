@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 the original author or authors.
+ * Copyright (c) 2013 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
-package reactor.core.dynamic;
+package reactor.filter;
+
+import java.util.List;
 
 /**
- * A {@literal DynamicReactor} is an arbitrary interface that a proxy generator can use to wire calls to the interface
- * to appropriate {@link reactor.core.Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer)} and {@link
- * reactor.core.Reactor#notify(Object, reactor.Event.wrap)} calls.
+ * A {@link Filter} implementation that performs no filtering, returning the {@code items} as-is.
  *
- * @author Jon Brisbin
+ * @author Andy Wilkinson
  */
-public interface DynamicReactor {
+public final class PassThroughFilter extends AbstractFilter {
+
+	@Override
+	public <T> List<T> doFilter(List<T> items, Object key) {
+		return items;
+	}
 }

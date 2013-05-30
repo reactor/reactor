@@ -16,21 +16,21 @@
 
 package reactor.fn.selector;
 
+import com.eaio.uuid.UUID;
+
 import java.util.Collections;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.eaio.uuid.UUID;
-
 /**
- * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of
- * the internal object to determine a match.
+ * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of the internal
+ * object to determine a match.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public class BaseSelector<T> implements Selector {
+public class ObjectSelector<T> implements Selector {
 
 	private final UUID   uuid    = new UUID();
 	private final Object monitor = new Object();
@@ -38,8 +38,24 @@ public class BaseSelector<T> implements Selector {
 	private final T                 object;
 	private       SortedSet<String> tags;
 
-	public BaseSelector(T object) {
+	/**
+	 * Create a new {@link Selector} instance from the given object.
+	 *
+	 * @param object The object to wrap.
+	 */
+	public ObjectSelector(T object) {
 		this.object = object;
+	}
+
+	/**
+	 * Helper method to create a {@link Selector} from the given object.
+	 *
+	 * @param obj The object to wrap.
+	 * @param <T> The type of the object.
+	 * @return The new {@link Selector}.
+	 */
+	public static <T> Selector objectSelector(T obj) {
+		return new ObjectSelector<T>(obj);
 	}
 
 	@Override
@@ -54,7 +70,7 @@ public class BaseSelector<T> implements Selector {
 
 	@Override
 	public Selector setTags(String... tags) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			this.tags = new TreeSet<String>();
 			Collections.addAll(this.tags, tags);
 		}
@@ -63,7 +79,7 @@ public class BaseSelector<T> implements Selector {
 
 	@Override
 	public Set<String> getTags() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			return (null == tags ? Collections.<String>emptySet() : Collections.<String>unmodifiableSet(tags));
 		}
 	}
@@ -85,12 +101,12 @@ public class BaseSelector<T> implements Selector {
 
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
-		return new BaseSelector<T>(object);
+		return new ObjectSelector<T>(object);
 	}
 
 	@Override
 	public String toString() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			return "Selector{" +
 					"object=" + object +
 					", uuid=" + uuid +

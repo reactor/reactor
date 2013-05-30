@@ -16,17 +16,24 @@
 
 package reactor.core;
 
+import java.util.List;
+
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
-import reactor.fn.registry.Registry;
-import reactor.fn.routing.SelectionStrategy;
+import reactor.filter.Filter;
+import reactor.filter.PassThroughFilter;
+import reactor.filter.RandomFilter;
+import reactor.filter.RoundRobinFilter;
 import reactor.fn.Supplier;
-import reactor.fn.routing.TagAwareSelectionStrategy;
+import reactor.fn.dispatch.ConsumerFilteringEventRouter;
+import reactor.fn.dispatch.ConsumerInvoker;
+import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.fn.routing.SelectionStrategy;
+import reactor.fn.routing.TagAwareSelectionStrategy;
 import reactor.util.Assert;
-
-import java.util.List;
 
 /**
  * @author Stephane Maldini
@@ -39,7 +46,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	protected Dispatcher                     dispatcher;
 	protected Reactor                        reactor;
 	protected Converter                      converter;
-	protected Registry.LoadBalancingStrategy loadBalancingStrategy;
+	protected EventRoutingStrategy           eventRoutingStrategy;
 	protected SelectionStrategy              selectionStrategy;
 
 	public SPEC using(Environment env) {
@@ -72,23 +79,19 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-	public SPEC using(Registry.LoadBalancingStrategy loadBalancingStrategy) {
-		this.loadBalancingStrategy = loadBalancingStrategy;
+	public SPEC broadcastEventRouting() {
+
+		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
 		return (SPEC) this;
 	}
 
-	public SPEC broadcastLoadBalancing() {
-		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.NONE;
+	public SPEC randomEventRouting() {
+		this.eventRoutingStrategy = EventRoutingStrategy.RANDOM;
 		return (SPEC) this;
 	}
 
-	public SPEC randomLoadBalancing() {
-		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.RANDOM;
-		return (SPEC) this;
-	}
-
-	public SPEC roundRobinLoadBalancing() {
-		this.loadBalancingStrategy = Registry.LoadBalancingStrategy.ROUND_ROBIN;
+	public SPEC roundRobinEventRouting() {
+		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
 		return (SPEC) this;
 	}
 
@@ -137,21 +140,51 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
 														dispatcher,
-														loadBalancingStrategy,
 														selectionStrategy,
-														converter);
+														createEventRouter());
 		} else {
 			reactor = new Reactor(
 					env,
 					null == dispatcher ? this.reactor.getDispatcher() : dispatcher,
-					null == loadBalancingStrategy ? this.reactor.getConsumerRegistry().getLoadBalancingStrategy() : loadBalancingStrategy,
 					null == selectionStrategy ? this.reactor.getConsumerRegistry().getSelectionStrategy() : selectionStrategy,
-					null == converter ? this.reactor.getConverter() : converter
-			);
+					createEventRouter(this.reactor));
 		}
 		return reactor;
 	}
 
+	private EventRouter createEventRouter(Reactor reactor) {
+		if (converter == null && eventRoutingStrategy == null) {
+			return reactor.getEventRouter();
+		} else {
+			ConsumerInvoker consumerInvoker = new ConverterAwareConsumerInvoker();
+			Filter filter = getFilter(((ConsumerFilteringEventRouter) reactor.getEventRouter()).getFilter());
+			return new ConsumerFilteringEventRouter(filter, consumerInvoker, converter);
+		}
+	}
+
+	private EventRouter createEventRouter() {
+		return new ConsumerFilteringEventRouter(getFilter(null), new ConverterAwareConsumerInvoker(), converter);
+	}
+
+	private Filter getFilter(Filter existingFilter) {
+		Filter filter;
+		if (EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
+			filter = new RoundRobinFilter();
+		} else if (EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
+			filter = new RandomFilter();
+		} else {
+			if (null == existingFilter) {
+				filter = new PassThroughFilter();
+			} else {
+				filter = existingFilter;
+			}
+		}
+		return filter;
+	}
+
 	protected abstract TARGET configure(Reactor reactor);
 
+	private enum EventRoutingStrategy {
+		BROADCAST, RANDOM, ROUND_ROBIN;
+	}
 }

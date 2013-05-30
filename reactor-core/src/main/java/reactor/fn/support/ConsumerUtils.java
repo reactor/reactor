@@ -16,7 +16,7 @@
 
 package reactor.fn.support;
 
-import reactor.fn.Event;
+import reactor.Event.wrap;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;

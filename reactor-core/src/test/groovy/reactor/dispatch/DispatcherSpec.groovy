@@ -25,11 +25,14 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.Fn
-import reactor.fn.registry.CachingRegistry
+import reactor.filter.PassThroughFilter
 import reactor.fn.Consumer
 import reactor.fn.Event
+import reactor.fn.dispatch.ConsumerFilteringEventRouter
+import reactor.fn.dispatch.ConverterAwareConsumerInvoker
 import reactor.fn.dispatch.SynchronousDispatcher
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher
+import reactor.fn.registry.CachingRegistry
 import spock.lang.Specification
 
 /**
@@ -44,7 +47,8 @@ class DispatcherSpec extends Specification {
 		def diffThread = new ThreadPoolExecutorDispatcher(1,128)
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
-		def registry = new CachingRegistry<Consumer<Event>>(null, null)
+		def registry = new CachingRegistry<Consumer<Event>>(null)
+		def eventRouter = new ConsumerFilteringEventRouter(new PassThroughFilter(), new ConverterAwareConsumerInvoker(), null);
 		def sel = $('test')
 		registry.register(sel, consumer {
 			taskThread = Thread.currentThread()
@@ -55,6 +59,7 @@ class DispatcherSpec extends Specification {
 		t.key = 'test'
 		t.event = Fn.event("Hello World!")
 		t.consumerRegistry = registry
+		t.eventRouter = eventRouter;
 		t.submit()
 
 		then: "the task thread should be the current thread"
@@ -66,6 +71,7 @@ class DispatcherSpec extends Specification {
 		t.key = 'test'
 		t.event = Fn.event("Hello World!")
 		t.consumerRegistry = registry
+		t.eventRouter = eventRouter;
 		t.setCompletionConsumer({ Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)
 		t.submit()
 

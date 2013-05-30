@@ -19,7 +19,7 @@ package reactor;
 import groovy.lang.Closure;
 import groovy.lang.GString;
 import reactor.fn.*;
-import reactor.fn.selector.BaseSelector;
+import reactor.fn.selector.ObjectSelector;
 import reactor.fn.selector.Selector;
 
 /**
@@ -32,15 +32,15 @@ public abstract class GroovyTestUtils {
 	}
 
 	public static Selector $(long l) {
-		return new BaseSelector<Long>(l);
+		return new ObjectSelector<Long>(l);
 	}
 
 	public static Selector $(String s) {
-		return new BaseSelector<String>(s);
+		return new ObjectSelector<String>(s);
 	}
 
 	public static Selector $(GString s) {
-		return new BaseSelector<String>(s.toString());
+		return new ObjectSelector<String>(s.toString());
 	}
 
 	@SuppressWarnings({"rawtypes"})

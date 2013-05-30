@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 the original author or authors.
+ * Copyright (c) 2013 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,28 @@
  * limitations under the License.
  */
 
-package reactor.core.dynamic.annotation;
+package reactor.filter;
 
-import java.lang.annotation.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 /**
- * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#notify(Object, reactor.Event.wrap))}.
+ * A {@link Filter} implementation that returns a single, randomly selected item.
  *
- * @author Jon Brisbin
  * @author Andy Wilkinson
+ *
  */
-@Target({
-						ElementType.METHOD
-				})
-@Retention(RetentionPolicy.RUNTIME)
-@Inherited
-public @interface Notify {
+public final class RandomFilter extends AbstractFilter {
 
-	/**
-	 * The string to use as a key.
-	 *
-	 * @return
-	 */
-	String value() default "";
+	private final Random random = new Random();
 
+	@Override
+	public <T> List<T> doFilter(List<T> items, Object key) {
+		if (items.isEmpty()) {
+			return items;
+		} else {
+			return Collections.singletonList(items.get(random.nextInt(items.size())));
+		}
+	}
 }

@@ -21,13 +21,11 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.convert.Converter;
+import reactor.filter.PassThroughFilter;
 import reactor.fn.*;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.Task;
+import reactor.fn.dispatch.*;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
-import reactor.fn.registry.Registry.LoadBalancingStrategy;
 import reactor.fn.routing.Linkable;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
@@ -54,8 +52,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	private final Environment                            env;
 	private final Dispatcher                             dispatcher;
-	private final Converter                              converter;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
+	private final EventRouter                            eventRouter;
 
 	private final Object              defaultKey      = new Object();
 	private final Selector            defaultSelector = $(defaultKey);
@@ -63,7 +61,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Consumer<Throwable> errorHandler    = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
-			Reactor.this.notify(T(t.getClass()), Fn.event(t));
+			Reactor.this.notify(T(t.getClass()), Event.wrap(t));
 		}
 	};
 	private final Set<Observable>     linkedReactors  = new NonBlockingHashSet<Observable>();
@@ -80,9 +78,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 					Reactor src) {
 		this(env,
 				 src.getDispatcher(),
-				 src.consumerRegistry.getLoadBalancingStrategy(),
 				 src.consumerRegistry.getSelectionStrategy(),
-				 src.getConverter());
+				 src.getEventRouter());
 	}
 
 	/**
@@ -100,14 +97,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 					Dispatcher dispatcher) {
 		this(env,
 				 dispatcher,
-				 src.consumerRegistry.getLoadBalancingStrategy(),
 				 src.consumerRegistry.getSelectionStrategy(),
-				 src.getConverter());
+				 src.getEventRouter());
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy},
-	 * {@link reactor.fn.routing.SelectionStrategy}, and {@link Converter} will be used.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
+	 * reactor.fn.routing.SelectionStrategy}, and {@link Converter} will be used.
 	 *
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
@@ -117,29 +113,25 @@ public class Reactor implements Observable, Linkable<Observable> {
 		this(env,
 				 dispatcher,
 				 null,
-				 null,
 				 null);
 	}
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
-	 * reactor.fn.routing.SelectionStrategy}, {@link LoadBalancingStrategy}, and {@link Converter}.
+	 * reactor.fn.routing.SelectionStrategy}, {@link EventRouter}, and {@link Converter}.
 	 *
-	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a new worker
-	 *                              dispatcher is used.
-	 * @param loadBalancingStrategy The {@link LoadBalancingStrategy} to use when dispatching events to consumers. May be
-	 *                              {@code null} to use the default.
-	 * @param selectionStrategy     The custom {@link reactor.fn.routing.SelectionStrategy} to use. May be {@code null}.
+	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is
+	 *                          used.
+	 * @param selectionStrategy The custom {@link reactor.fn.routing.SelectionStrategy} to use. May be {@code null}.
 	 */
 	Reactor(Environment env,
 					Dispatcher dispatcher,
-					LoadBalancingStrategy loadBalancingStrategy,
 					SelectionStrategy selectionStrategy,
-					Converter converter) {
+					EventRouter eventRouter) {
 		this.env = env;
 		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
-		this.converter = converter;
-		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(loadBalancingStrategy, selectionStrategy);
+		this.eventRouter = eventRouter == null ? new ConsumerFilteringEventRouter(new PassThroughFilter(), new ConverterAwareConsumerInvoker(), null) : eventRouter;
+		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
 
 		this.on(new Consumer<Event>() {
 			@Override
@@ -164,7 +156,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 */
 	public Reactor(Environment env) {
 		this(env,
-				 null,
 				 null,
 				 null,
 				 null);
@@ -199,12 +190,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Get the {@link Converter} in use for converting arguments to {@link Consumer}s.
+	 * Get the {@link EventRouter} used to route events to {@link Consumer Consumers}.
 	 *
-	 * @return The {@link Converter} in use.
+	 * @return The {@link EventRouter}.
 	 */
-	public Converter getConverter() {
-		return converter;
+	public EventRouter getEventRouter() {
+		return eventRouter;
 	}
 
 	@Override
@@ -240,9 +231,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Task<T> task = dispatcher.nextTask();
 		task.setKey(key);
 		task.setEvent(ev);
-		task.setConverter(converter);
 		task.setConsumerRegistry(consumerRegistry);
 		task.setErrorConsumer(errorHandler);
+		task.setEventRouter(eventRouter);
 		task.setCompletionConsumer((Consumer<Event<T>>) onComplete);
 		task.submit();
 
@@ -277,7 +268,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, Fn.nullEvent(), null);
+		return notify(key, Event.NULL_EVENT, null);
 	}
 
 	@Override
@@ -468,14 +459,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 				Event<?> replyEv;
 				if (null == reply) {
-					replyEv = Fn.nullEvent();
+					replyEv = Event.NULL_EVENT;
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Fn.event(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
 			} catch (Throwable x) {
-				replyToObservable.notify(T(x.getClass()), Fn.event(x));
+				replyToObservable.notify(T(x.getClass()), Event.wrap(x));
 			}
 		}
 	}
