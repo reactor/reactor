@@ -16,9 +16,9 @@ import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Function;
+import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
-import reactor.fn.support.CachingRegistry;
-import reactor.fn.support.Registry;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -40,7 +40,7 @@ public class TcpServer<IN, OUT> {
 	private final Event<TcpServer<IN, OUT>>        selfEvent   = new Event<TcpServer<IN, OUT>>(this);
 	private final Tuple2<Selector, Object>         start       = $();
 	private final Tuple2<Selector, Object>         connection  = $();
-	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null, null);
+	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Environment            env;
 	private final Reactor                reactor;
@@ -100,7 +100,7 @@ public class TcpServer<IN, OUT> {
 
 					@Override
 					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-						TcpServer.this.reactor.notify(cause.getClass(), Fn.event(cause));
+						TcpServer.this.reactor.notify(cause.getClass(), Event.wrap(cause));
 					}
 				});
 	}
@@ -137,12 +137,12 @@ public class TcpServer<IN, OUT> {
 		);
 		connections.register($(ch), conn);
 
-		reactor.notify(connection.getT2(), Fn.event(conn));
+		reactor.notify(connection.getT2(), Event.wrap(conn));
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-				TcpServer.this.reactor.notify(conn.read.getT2(), Fn.event(new Buffer(in.nioBuffer())));
+				TcpServer.this.reactor.notify(conn.read.getT2(), Event.wrap(new Buffer(in.nioBuffer())));
 			}
 		};
 

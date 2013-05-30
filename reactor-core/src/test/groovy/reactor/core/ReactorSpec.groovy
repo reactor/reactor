@@ -47,7 +47,7 @@ class ReactorSpec extends Specification {
 		} as Consumer<Event<String>>)
 
 		when:
-		reactor.notify("test", Fn.event("Hello World!"))
+		reactor.notify("test", Event.wrap("Hello World!"))
 
 		then:
 		data == "Hello World!"
@@ -66,14 +66,14 @@ class ReactorSpec extends Specification {
 		reg.pause()
 
 		when: "event is triggered"
-		reactor.notify("test", Fn.event("Hello World!"))
+		reactor.notify("test", Event.wrap("Hello World!"))
 
 		then: "data should not have updated"
 		data == ""
 
 		when: "registration is cancelled"
 		reg.cancel()
-		reactor.notify("test", Fn.event("Hello World!"))
+		reactor.notify("test", Event.wrap("Hello World!"))
 
 		then: "it shouldn't be found any more"
 		data == ""
@@ -134,7 +134,7 @@ class ReactorSpec extends Specification {
 
 		when: "a Function is assigned that produces a Response and an Event is triggered"
 		r.receive(sel, f)
-		r.send("hello", Fn.event("Hello World!", replyTo.t2))
+		r.send("hello", Event.wrap("Hello World!", replyTo.t2))
 
 		then: "the result should have been updated"
 		result == "Hello World!"
@@ -150,7 +150,7 @@ class ReactorSpec extends Specification {
 		r.on R('t[a-z]st'), consumer { println 'test1' }
 		r.on R('t[a-z]st'), consumer { println 'test2' }
 
-		r.notify "test", Fn.event("test")
+		r.notify "test", Event.wrap("test")
 
 		then: "will report false when asked whether it responds to an unmatched key"
 		r.respondsToKey 'test'
@@ -233,8 +233,8 @@ class ReactorSpec extends Specification {
 		r.on(new SingleUseConsumer(consumer { count++ }))
 
 		when: "the consumer is invoked several times"
-		r.notify(Fn.event(null))
-		r.notify(Fn.event(null))
+		r.notify(Event.wrap(null))
+		r.notify(Event.wrap(null))
 
 		then: "the count is only 1"
 		count == 1

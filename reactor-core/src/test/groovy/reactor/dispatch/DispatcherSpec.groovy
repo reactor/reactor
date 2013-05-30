@@ -57,7 +57,7 @@ class DispatcherSpec extends Specification {
 		when: "a task is submitted"
 		def t = sameThread.nextTask()
 		t.key = 'test'
-		t.event = Fn.event("Hello World!")
+		t.event = Event.wrap("Hello World!")
 		t.consumerRegistry = registry
 		t.eventRouter = eventRouter;
 		t.submit()
@@ -69,7 +69,7 @@ class DispatcherSpec extends Specification {
 		def latch = new CountDownLatch(1)
 		t = diffThread.nextTask()
 		t.key = 'test'
-		t.event = Fn.event("Hello World!")
+		t.event = Event.wrap("Hello World!")
 		t.consumerRegistry = registry
 		t.eventRouter = eventRouter;
 		t.setCompletionConsumer({ Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)

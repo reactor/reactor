@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
 package reactor.spring.context
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import reactor.Fn
+import reactor.fn.Event
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.spring.context.annotation.On
@@ -29,6 +26,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -43,7 +41,7 @@ class HandlerBeanPostProcessorSpec extends Specification {
 		def reactor = appCtx.getBean(Reactor)
 
 		when: "an Event is emitted onto the Reactor in context"
-		reactor.notify('test', Fn.event("Hello World!"))
+		reactor.notify('test', Event.wrap("Hello World!"))
 
 		then: "the method has been invoked"
 		handlerBean.latch.await(1, TimeUnit.SECONDS)

@@ -29,7 +29,6 @@ import reactor.groovy.support.ClosureEventConsumer
 import reactor.groovy.support.ClosureEventFunction
 
 import static reactor.Fn.$
-import static reactor.core.R.get
 
 /**
  * Extensions for providing syntax suger for working with {@link reactor.fn.Observable}s.
@@ -96,7 +95,7 @@ class ObservableExtensions {
 	                           T obj,
 	                           @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
 	                           Closure handler) {
-		selfType.compose key, Fn.event(obj), new ClosureConsumer<T>(handler)
+		selfType.compose key, Event.wrap(obj), new ClosureConsumer<T>(handler)
 	}
 
 	static <T> Reactor compose(Reactor selfType,
@@ -114,7 +113,7 @@ class ObservableExtensions {
 	static <T, V> Composable<V> compose(Reactor selfType,
 	                                    Object key,
 	                                    T obj) {
-		selfType.compose key, Fn.event(obj)
+		selfType.compose key, Event.wrap(obj)
 	}
 
 
@@ -122,14 +121,14 @@ class ObservableExtensions {
 	                                    Object key,
 	                                    T obj,
 	                                    Consumer<T> consumer) {
-		selfType.compose key, Fn.event(obj), consumer
+		selfType.compose key, Event.wrap(obj), consumer
 	}
 
 
 	static <T> Observable notify(Observable selfType,
 	                             Object key,
 	                             T obj) {
-		selfType.notify key, Fn.<T> event(obj)
+		selfType.notify key, Event.<T>wrap(obj)
 	}
 
 	static <T> Observable notify(Observable selfType,
@@ -140,13 +139,13 @@ class ObservableExtensions {
 
 	static Observable notify(Observable selfType,
 	                         Object key) {
-		selfType.notify key, Fn.<Void> event(null)
+		selfType.notify key, Event.<Void>wrap(null)
 	}
 
 	static <T> Observable notify(Observable selfType,
 	                             String key,
 	                             Closure<T> closure) {
-		selfType.notify key, Fn.event((T) closure.call())
+		selfType.notify key, Event.wrap((T) closure.call())
 	}
 
 	static Observable notify(final Observable selfType, final Map<String, ?> params) {
@@ -171,7 +170,7 @@ class ObservableExtensions {
 	 */
 
 	static <T> Observable leftShift(final Observable selfType, final T obj) {
-		selfType.notify Fn.event(obj)
+		selfType.notify Event.wrap(obj)
 	}
 
 	static <T> Observable leftShift(final Observable selfType, final Event<T> obj) {
@@ -179,7 +178,7 @@ class ObservableExtensions {
 	}
 
 	static <T> Observable leftShift(final Observable selfType, final Closure<T> obj) {
-		selfType.notify Fn.event((T) obj.call())
+		selfType.notify Event.wrap((T) obj.call())
 	}
 
 	static <T> Observable leftShift(final Observable selfType, final Supplier<Event<T>> obj) {

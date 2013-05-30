@@ -16,7 +16,7 @@
 
 package reactor.fn.support;
 
-import reactor.Event.wrap;
+import reactor.fn.Event;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -51,7 +51,7 @@ public abstract class ConsumerUtils {
 			CACHE_READ_LOCK.unlock();
 		}
 
-		if (obj instanceof Event && null != ((Event<?>) obj).getData()) {
+		if (Event.class.isInstance(obj) && null != ((Event<?>) obj).getData()) {
 			return (Class<? extends T>) ((Event<?>) obj).getData().getClass();
 		}
 
