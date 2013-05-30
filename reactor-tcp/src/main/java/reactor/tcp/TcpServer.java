@@ -39,31 +39,28 @@ import static reactor.Fn.$;
 public class TcpServer<IN, OUT> {
 
 	private final Event<TcpServer<IN, OUT>>        selfEvent   = new Event<TcpServer<IN, OUT>>(this);
-	private final Tuple2<Selector, Object>         start       = $();
-	private final Tuple2<Selector, Object>         shutdown    = $();
-	private final Tuple2<Selector, Object>         connection  = $();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
-	private final Environment            env;
-	private final Reactor                reactor;
-	private final InetSocketAddress      listenAddress;
 	private final Codec<Buffer, IN, OUT> codec;
+	private final ServerBootstrap        bootstrap;
 
-	private final ServerBootstrap bootstrap;
+	protected final Tuple2<Selector, Object> shutdown   = $();
+	protected final Tuple2<Selector, Object> connection = $();
+	protected final Environment env;
+	protected final Reactor     reactor;
 
-	private TcpServer(Environment env,
-										Reactor reactor,
-										InetSocketAddress listenAddress,
-										int backlog,
-										int rcvbuf,
-										int sndbuf,
-										Codec<Buffer, IN, OUT> codec,
-										Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
+	protected TcpServer(Environment env,
+											Reactor reactor,
+											InetSocketAddress listenAddress,
+											int backlog,
+											int rcvbuf,
+											int sndbuf,
+											Codec<Buffer, IN, OUT> codec,
+											Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		Assert.notNull(env, "A TcpServer cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpServer cannot be created without a properly-configured Reactor.");
 		this.env = env;
 		this.reactor = reactor;
-		this.listenAddress = (null == listenAddress ? new InetSocketAddress(3000) : listenAddress);
 		this.codec = codec;
 
 		for (final Consumer<TcpConnection<IN, OUT>> consumer : connectionConsumers) {
@@ -86,7 +83,7 @@ public class TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_BACKLOG, backlog)
 				.option(ChannelOption.SO_RCVBUF, rcvbuf)
 				.option(ChannelOption.SO_SNDBUF, sndbuf)
-				.localAddress(listenAddress)
+				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
 				.handler(new LoggingHandler())
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 
@@ -116,21 +113,15 @@ public class TcpServer<IN, OUT> {
 	}
 
 	public TcpServer<IN, OUT> start(final Consumer<Void> started) {
+		ChannelFuture bindFuture = bootstrap.bind();
 		if (null != started) {
-			reactor.on(start.getT1(), new Consumer<Event<TcpServer<IN, OUT>>>() {
+			bindFuture.addListener(new ChannelFutureListener() {
 				@Override
-				public void accept(Event<TcpServer<IN, OUT>> ev) {
-					started.accept(null);
+				public void operationComplete(ChannelFuture future) throws Exception {
+					Fn.schedule(started, null, reactor);
 				}
-			}).cancelAfterUse();
+			});
 		}
-
-		bootstrap.bind().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				reactor.notify(start, selfEvent);
-			}
-		});
 
 		return this;
 	}
@@ -141,40 +132,62 @@ public class TcpServer<IN, OUT> {
 		return this;
 	}
 
-	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		final NettyTcpConnection<IN, OUT> conn = new NettyTcpConnection<IN, OUT>(
+	protected Registration<? extends TcpConnection<IN, OUT>> register(SocketChannel ch, TcpConnection<IN, OUT> conn) {
+		return connections.register($(ch), conn);
+	}
+
+	protected NettyTcpConnection<IN, OUT> registerConnection(SocketChannel ch) {
+		NettyTcpConnection<IN, OUT> conn = new NettyTcpConnection<IN, OUT>(
 				ch,
 				null != codec ? codec.decoder() : null,
 				null != codec ? codec.encoder() : null
 		);
-		connections.register($(ch), conn);
 
+		register(ch, conn);
 		reactor.notify(connection.getT2(), Event.wrap(conn));
+
+		return conn;
+	}
+
+	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
+		final NettyTcpConnection<IN, OUT> conn = registerConnection(ch);
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-				TcpServer.this.reactor.notify(conn.read.getT2(), Event.wrap(new Buffer(in.nioBuffer())));
+				int len = in.readableBytes();
+				Buffer b = new Buffer(len, true);
+				in.readBytes(b.byteBuffer());
+				b.flip();
+				TcpServer.this.reactor.notify(conn.getReadKey(), Event.wrap(b));
 			}
 		};
 
 		return new ChannelHandler[]{readHandler};
 	}
 
-	private class NettyTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
-		final long                     created = System.currentTimeMillis();
-		final Tuple2<Selector, Object> read    = $();
+	protected class NettyTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
+		private final long                     created = System.currentTimeMillis();
+		private final Tuple2<Selector, Object> read    = $();
 
 		private final SocketChannel         channel;
 		private final Function<Buffer, IN>  decoder;
 		private final Function<OUT, Buffer> encoder;
 
-		private NettyTcpConnection(final SocketChannel channel,
-															 final Function<Buffer, IN> decoder,
-															 final Function<OUT, Buffer> encoder) {
+		public NettyTcpConnection(final SocketChannel channel,
+															final Function<Buffer, IN> decoder,
+															final Function<OUT, Buffer> encoder) {
 			this.channel = channel;
 			this.decoder = decoder;
 			this.encoder = encoder;
+		}
+
+		public Selector getReadSelector() {
+			return read.getT1();
+		}
+
+		public Object getReadKey() {
+			return read.getT2();
 		}
 
 		@Override
