@@ -16,8 +16,6 @@
 
 package reactor.fn.dispatch;
 
-import reactor.fn.support.ConverterAwareConsumerInvoker;
-
 /**
  * A {@link Dispatcher} implementation that executes a {@link Task} immediately in the calling thread.
  *

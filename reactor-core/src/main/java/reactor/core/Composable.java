@@ -21,6 +21,7 @@ import reactor.fn.*;
 import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;

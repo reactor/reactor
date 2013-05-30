@@ -17,10 +17,7 @@
 package reactor;
 
 import reactor.fn.*;
-import reactor.fn.selector.BaseSelector;
-import reactor.fn.selector.ClassSelector;
-import reactor.fn.selector.RegexSelector;
-import reactor.fn.selector.UriTemplateSelector;
+import reactor.fn.selector.*;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 
@@ -38,9 +35,9 @@ public abstract class Fn {
 
 
 	/**
-	 * Creates an anonymous {@link Selector}.
+	 * Creates an anonymous {@link reactor.fn.selector.Selector}.
 	 *
-	 * @return A {@link reactor.fn.tuples.Tuple} containing the {@link Selector} and the object key.
+	 * @return A {@link reactor.fn.tuples.Tuple} containing the {@link reactor.fn.selector.Selector} and the object key.
 	 * @see {@link reactor.fn.selector.BaseSelector}
 	 */
 	public static Tuple2<Selector, Object> $() {

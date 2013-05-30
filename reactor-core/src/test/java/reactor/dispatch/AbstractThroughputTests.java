@@ -24,7 +24,7 @@ import reactor.AbstractReactorTest;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 

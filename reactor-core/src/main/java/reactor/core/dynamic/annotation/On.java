@@ -19,7 +19,7 @@ package reactor.core.dynamic.annotation;
 import java.lang.annotation.*;
 
 /**
- * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#on(reactor.fn.Selector, reactor.fn.Consumer))}.
+ * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer))}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -32,7 +32,7 @@ import java.lang.annotation.*;
 public @interface On {
 
 	/**
-	 * The string to use as a {@link reactor.fn.Selector}.
+	 * The string to use as a {@link reactor.fn.selector.Selector}.
 	 *
 	 * @return
 	 */

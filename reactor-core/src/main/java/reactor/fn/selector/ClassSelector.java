@@ -18,7 +18,7 @@ package reactor.fn.selector;
 
 
 /**
- * Implementation of {@link reactor.fn.Selector} that uses {@link Class#isAssignableFrom(Class)} to determine a match.
+ * Implementation of {@link Selector} that uses {@link Class#isAssignableFrom(Class)} to determine a match.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

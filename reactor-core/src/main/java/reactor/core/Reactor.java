@@ -30,6 +30,7 @@ import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.fn.routing.SelectionStrategy;
+import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
@@ -40,7 +41,7 @@ import static reactor.Fn.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link Selector) {@link reactor.fn.routing.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
+ * {@link reactor.fn.selector.Selector ) {@link reactor.fn.routing.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
  * to the assigned {@link Dispatcher} which causes it to be executed on a thread based on the implementation of the
  * {@link Dispatcher} being used.
  *

@@ -20,6 +20,7 @@ import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.fn.*;
+import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;
 import reactor.fn.tuples.Tuple2;
 

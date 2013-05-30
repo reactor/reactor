@@ -16,15 +16,17 @@
 
 package reactor.fn;
 
+import reactor.fn.selector.Selector;
+
 /**
- * Implementations of this interface provide the ability to manage a {@link Selector} to {@link Consumer} registration.
+ * Implementations of this interface provide the ability to manage a {@link reactor.fn.selector.Selector} to {@link Consumer} registration.
  *
  * @author Jon Brisbin
  */
 public interface Registration<T> {
 
 	/**
-	 * The {@link Selector} being used in this assignment.
+	 * The {@link reactor.fn.selector.Selector} being used in this assignment.
 	 *
 	 * @return {@literal this}
 	 */

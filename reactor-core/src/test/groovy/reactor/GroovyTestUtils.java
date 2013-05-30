@@ -20,6 +20,7 @@ import groovy.lang.Closure;
 import groovy.lang.GString;
 import reactor.fn.*;
 import reactor.fn.selector.BaseSelector;
+import reactor.fn.selector.Selector;
 
 /**
  * @author Jon Brisbin

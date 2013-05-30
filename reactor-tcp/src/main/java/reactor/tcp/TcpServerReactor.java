@@ -17,7 +17,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Lifecycle;
 import reactor.fn.Registration;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 import reactor.fn.Supplier;
 import reactor.tcp.codec.Codec;
 

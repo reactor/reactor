@@ -31,7 +31,8 @@ import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
 import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.support.ConverterAwareConsumerInvoker;
+import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
+import reactor.fn.selector.Selector;
 import reactor.util.Assert;
 
 import java.lang.annotation.Annotation;
@@ -43,7 +44,7 @@ import java.util.concurrent.Callable;
 
 /**
  * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based on the given interface, that
- * intercepts calls to the interface and translates them into the appropriate {@link Reactor#on(reactor.fn.Selector,
+ * intercepts calls to the interface and translates them into the appropriate {@link Reactor#on(reactor.fn.selector.Selector,
  * reactor.fn.Consumer)} or {@link Reactor#notify(Object, Event)} calls.
  *
  * @author Jon Brisbin
@@ -165,7 +166,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				if (isOn(m)) {
 					for (MethodSelectorResolver msr : selectorResolvers) {
 						if (msr.supports(m)) {
-							reactor.fn.Selector sel = msr.apply(m);
+							Selector sel = msr.apply(m);
 							if (null != sel) {
 								selectors.put(m, sel);
 								dynamicMethods.put(m, dm);

@@ -63,19 +63,19 @@ public abstract class ConnectionFactorySupport<T> implements ConnectionFactory {
 
 	protected static final Object READ_KEY = new Object();
 
-	protected static final reactor.fn.Selector READ = $(READ_KEY);
+	protected static final reactor.fn.selector.Selector READ = $(READ_KEY);
 
 	protected static final Object WRITE_KEY = new Object();
 
-	protected static final reactor.fn.Selector WRITE = $(WRITE_KEY);
+	protected static final reactor.fn.selector.Selector WRITE = $(WRITE_KEY);
 
 	protected static final Object HARVEST_KEY = new Object();
 
-	protected static final reactor.fn.Selector HARVEST = $(HARVEST_KEY);
+	protected static final reactor.fn.selector.Selector HARVEST = $(HARVEST_KEY);
 
 	protected static final Object DECODE_KEY = new Object();
 
-	protected static final reactor.fn.Selector DECODE = $(DECODE_KEY);
+	protected static final reactor.fn.selector.Selector DECODE = $(DECODE_KEY);
 
 	private final Reactor ioReactor = new Reactor();
 

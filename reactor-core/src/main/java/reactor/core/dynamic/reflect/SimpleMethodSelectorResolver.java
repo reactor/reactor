@@ -23,7 +23,7 @@ import java.lang.reflect.Method;
 
 import reactor.core.dynamic.annotation.On;
 import reactor.core.dynamic.reflect.support.AnnotationUtils;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 
 /**
  * An implementation of {@link MethodSelectorResolver} that looks for an {@link On} annotation

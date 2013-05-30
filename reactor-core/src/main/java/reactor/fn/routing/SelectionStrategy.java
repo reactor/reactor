@@ -17,11 +17,11 @@
 package reactor.fn.routing;
 
 
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 import reactor.fn.support.Supports;
 
 /**
- * A {@code SelectionStrategy} is used to provide custom {@link reactor.fn.Selector} matching behaviour.
+ * A {@code SelectionStrategy} is used to provide custom {@link reactor.fn.selector.Selector} matching behaviour.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -30,7 +30,7 @@ import reactor.fn.support.Supports;
 public interface SelectionStrategy extends Supports<Object> {
 
 	/**
-	 * Indicates whether or not the {@link reactor.fn.Selector} matches the {@code key}.
+	 * Indicates whether or not the {@link reactor.fn.selector.Selector} matches the {@code key}.
 	 *
 	 * @param selector The selector to perform the match
 	 * @param key The object to match

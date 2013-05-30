@@ -30,7 +30,7 @@ import reactor.fn.Registration;
 import reactor.fn.routing.CachingRegistry;
 import reactor.fn.routing.Registry;
 import reactor.fn.routing.SelectionStrategy;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 
 public final class CachingRegistryTests {
 

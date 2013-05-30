@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package reactor.fn.support;
+package reactor.fn.dispatch;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.Event;
+import reactor.fn.support.ConsumerUtils;
 
 import java.util.concurrent.Callable;
 

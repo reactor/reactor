@@ -19,7 +19,7 @@ package reactor.fn.routing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.fn.Registration;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;

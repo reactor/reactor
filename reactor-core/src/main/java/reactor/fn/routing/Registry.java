@@ -17,11 +17,11 @@
 package reactor.fn.routing;
 
 import reactor.fn.Registration;
-import reactor.fn.Selector;
+import reactor.fn.selector.Selector;
 
 /**
  * Implementations of this interface manage a registry of objects that works sort of like a Map, except Registries don't
- * use simple keys, they use {@link reactor.fn.Selector}s to map their objects.
+ * use simple keys, they use {@link reactor.fn.selector.Selector}s to map their objects.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -34,7 +34,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	}
 
 	/**
-	 * Assign the given {@link reactor.fn.Selector} with the given object.
+	 * Assign the given {@link reactor.fn.selector.Selector} with the given object.
 	 *
 	 * @param sel The left-hand side of the {@literal Selector} comparison check.
 	 * @param obj The object to assign.

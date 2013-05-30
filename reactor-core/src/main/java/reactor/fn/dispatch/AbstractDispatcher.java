@@ -1,7 +1,5 @@
 package reactor.fn.dispatch;
 
-import reactor.fn.support.ConverterAwareConsumerInvoker;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 

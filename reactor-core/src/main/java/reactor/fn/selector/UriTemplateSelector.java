@@ -22,7 +22,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * A {@link reactor.fn.Selector} implementation based on the given string that is compiled into a {@link UriTemplate}.
+ * A {@link Selector} implementation based on the given string that is compiled into a {@link UriTemplate}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

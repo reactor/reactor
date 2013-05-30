@@ -37,7 +37,7 @@ public @interface On {
 	String reactor() default "";
 
 	/**
-	 * An expression that evaluates to a {@link reactor.fn.Selector} to register this handler with the {@link
+	 * An expression that evaluates to a {@link reactor.fn.selector.Selector} to register this handler with the {@link
 	 * reactor.core.Reactor}.
 	 *
 	 * @return An expression to be evaluated.

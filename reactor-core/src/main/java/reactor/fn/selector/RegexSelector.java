@@ -23,7 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A {@link reactor.fn.Selector} implementation based on the given regular expression. Parses it into a {@link Pattern}
+ * A {@link Selector} implementation based on the given regular expression. Parses it into a {@link Pattern}
  * for efficient matching against keys.
  * <p/>
  * An example of creating a regex Selector would be:
@@ -59,7 +59,7 @@ public class RegexSelector extends BaseSelector<Pattern> {
 	};
 
 	/**
-	 * Create a {@link reactor.fn.Selector} when the given regex pattern.
+	 * Create a {@link Selector} when the given regex pattern.
 	 *
 	 * @param pattern The regex String that will be compiled into a {@link Pattern}.
 	 */

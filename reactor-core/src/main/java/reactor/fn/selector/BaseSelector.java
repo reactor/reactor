@@ -21,12 +21,10 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import reactor.fn.Selector;
-
 import com.eaio.uuid.UUID;
 
 /**
- * {@link reactor.fn.Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of
+ * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of
  * the internal object to determine a match.
  *
  * @author Jon Brisbin

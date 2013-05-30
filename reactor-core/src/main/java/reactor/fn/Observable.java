@@ -16,6 +16,8 @@
 
 package reactor.fn;
 
+import reactor.fn.selector.Selector;
+
 /**
  * Basic unit of event handling in Reactor.
  *
@@ -26,17 +28,17 @@ package reactor.fn;
 public interface Observable {
 
 	/**
-	 * Are there any {@link Registration}s with {@link Selector}s that match the given {@code key}.
+	 * Are there any {@link Registration}s with {@link reactor.fn.selector.Selector}s that match the given {@code key}.
 	 *
-     * @param key The key to be matched by the {@link Selector}s.
+     * @param key The key to be matched by the {@link reactor.fn.selector.Selector}s.
 	 * @return {@literal true} if there are any matching {@literal Registration}s, {@literal false} otherwise.
 	 */
 	boolean respondsToKey(Object key);
 
 	/**
-	 * Register a {@link Consumer} to be triggered when a notification matches the given {@link Selector}.
+	 * Register a {@link Consumer} to be triggered when a notification matches the given {@link reactor.fn.selector.Selector}.
 	 *
-	 * @param sel      The {@link Selector} to be used for matching
+	 * @param sel      The {@link reactor.fn.selector.Selector} to be used for matching
 	 * @param consumer The {@literal Consumer} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
