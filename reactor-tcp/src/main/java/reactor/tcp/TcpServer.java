@@ -16,9 +16,10 @@ import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Function;
+import reactor.fn.Registration;
+import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
-import reactor.fn.support.CachingRegistry;
-import reactor.fn.support.Registry;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -39,6 +40,7 @@ public class TcpServer<IN, OUT> {
 
 	private final Event<TcpServer<IN, OUT>>        selfEvent   = new Event<TcpServer<IN, OUT>>(this);
 	private final Tuple2<Selector, Object>         start       = $();
+	private final Tuple2<Selector, Object>         shutdown    = $();
 	private final Tuple2<Selector, Object>         connection  = $();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null, null);
 
@@ -47,14 +49,14 @@ public class TcpServer<IN, OUT> {
 	private final InetSocketAddress      listenAddress;
 	private final Codec<Buffer, IN, OUT> codec;
 
-	private final EventLoopGroup  selectorGroup;
-	private final EventLoopGroup  ioGroup;
 	private final ServerBootstrap bootstrap;
 
 	private TcpServer(Environment env,
 										Reactor reactor,
 										InetSocketAddress listenAddress,
 										int backlog,
+										int rcvbuf,
+										int sndbuf,
 										Codec<Buffer, IN, OUT> codec,
 										Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		Assert.notNull(env, "A TcpServer cannot be created without a properly-configured Environment.");
@@ -73,15 +75,17 @@ public class TcpServer<IN, OUT> {
 			});
 		}
 
-		int selectThreads = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS);
-		int ioThreads = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		this.selectorGroup = new NioEventLoopGroup(selectThreads, new NamedDaemonThreadFactory("reactor-tcp-select"));
-		this.ioGroup = new NioEventLoopGroup(ioThreads, new NamedDaemonThreadFactory("reactor-tcp-io"));
+		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS);
+		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
+		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 
 		this.bootstrap = new ServerBootstrap()
 				.group(selectorGroup, ioGroup)
 				.channel(NioServerSocketChannel.class)
 				.option(ChannelOption.SO_BACKLOG, backlog)
+				.option(ChannelOption.SO_RCVBUF, rcvbuf)
+				.option(ChannelOption.SO_SNDBUF, sndbuf)
 				.localAddress(listenAddress)
 				.handler(new LoggingHandler())
 				.childHandler(new ChannelInitializer<SocketChannel>() {
@@ -92,8 +96,10 @@ public class TcpServer<IN, OUT> {
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
-								System.out.println("channel close: " + ch);
-								System.out.println("conn: " + connections.select(ch));
+								for (Registration<? extends TcpConnection<IN, OUT>> reg : connections.select(ch)) {
+									reg.getObject().close();
+									reg.cancel();
+								}
 							}
 						});
 					}
@@ -109,12 +115,12 @@ public class TcpServer<IN, OUT> {
 		return start(null);
 	}
 
-	public TcpServer<IN, OUT> start(final Consumer<TcpServer<IN, OUT>> startConsumer) {
-		if (null != startConsumer) {
+	public TcpServer<IN, OUT> start(final Consumer<Void> started) {
+		if (null != started) {
 			reactor.on(start.getT1(), new Consumer<Event<TcpServer<IN, OUT>>>() {
 				@Override
 				public void accept(Event<TcpServer<IN, OUT>> ev) {
-					startConsumer.accept(ev.getData());
+					started.accept(null);
 				}
 			}).cancelAfterUse();
 		}
@@ -126,6 +132,12 @@ public class TcpServer<IN, OUT> {
 			}
 		});
 
+		return this;
+	}
+
+	public TcpServer<IN, OUT> shutdown() {
+		bootstrap.shutdown();
+		reactor.notify(shutdown.getT2(), Event.NULL_EVENT);
 		return this;
 	}
 
@@ -142,7 +154,17 @@ public class TcpServer<IN, OUT> {
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+				System.out.println("buf: " + in);
+				System.out.println("readable: " + in.readableBytes());
+				System.out.println("index: " + in.readerIndex());
+				System.out.println("capacity: " + in.capacity());
+
 				TcpServer.this.reactor.notify(conn.read.getT2(), Fn.event(new Buffer(in.nioBuffer())));
+
+				System.out.println("buf: " + in);
+				System.out.println("readable: " + in.readableBytes());
+				System.out.println("index: " + in.readerIndex());
+				System.out.println("capacity: " + in.capacity());
 			}
 		};
 
@@ -182,20 +204,7 @@ public class TcpServer<IN, OUT> {
 
 		@Override
 		public TcpConnection<IN, OUT> consume(final Consumer<IN> consumer) {
-			reactor.on(read.getT1(), new Consumer<Event<Buffer>>() {
-				@SuppressWarnings("unchecked")
-				@Override
-				public void accept(Event<Buffer> event) {
-					if (null != decoder) {
-						IN in;
-						while (null != (in = decoder.apply(event.getData()))) {
-							consumer.accept(in);
-						}
-					} else {
-						consumer.accept((IN) event.getData());
-					}
-				}
-			});
+			reactor.on(read.getT1(), new ReadConsumer<IN>(decoder, consumer));
 			return this;
 		}
 
@@ -242,6 +251,30 @@ public class TcpServer<IN, OUT> {
 		}
 	}
 
+	private static class ReadConsumer<IN> implements Consumer<Event<Buffer>> {
+		private final Function<Buffer, IN> decoder;
+		private final Consumer<IN>         consumer;
+
+		private ReadConsumer(Function<Buffer, IN> decoder,
+												 Consumer<IN> consumer) {
+			this.decoder = decoder;
+			this.consumer = consumer;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public void accept(Event<Buffer> ev) {
+			if (null != decoder) {
+				IN in;
+				while (null != (in = decoder.apply(ev.getData()))) {
+					consumer.accept(in);
+				}
+			} else {
+				consumer.accept((IN) ev.getData());
+			}
+		}
+	}
+
 	private static class LoggingHandler extends ChannelHandlerAdapter {
 		private final Logger LOG = LoggerFactory.getLogger(TcpServer.class);
 
@@ -265,11 +298,19 @@ public class TcpServer<IN, OUT> {
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpServer<IN, OUT>> {
 		private InetSocketAddress listenAddress = new InetSocketAddress(3000);
 		private int               backlog       = 512;
+		private int               rcvbuf        = 8 * 1024;
+		private int               sndbuf        = 8 * 1024;
 		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
 		private Codec<Buffer, IN, OUT>                       codec;
 
 		public Spec<IN, OUT> backlog(int backlog) {
 			this.backlog = backlog;
+			return this;
+		}
+
+		public Spec<IN, OUT> bufferSize(int rcvbuf, int sndbuf) {
+			this.rcvbuf = rcvbuf;
+			this.sndbuf = sndbuf;
 			return this;
 		}
 
@@ -305,6 +346,8 @@ public class TcpServer<IN, OUT> {
 					reactor,
 					listenAddress,
 					backlog,
+					rcvbuf,
+					sndbuf,
 					codec,
 					connectionConsumers
 			);
