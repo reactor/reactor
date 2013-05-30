@@ -26,7 +26,7 @@ import java.util.Map;
  * @author Andy Wilkinson
  * @see {@link UriTemplate}
  */
-public class UriTemplateSelector extends BaseSelector<UriTemplate> {
+public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
@@ -47,6 +47,18 @@ public class UriTemplateSelector extends BaseSelector<UriTemplate> {
 	 */
 	public UriTemplateSelector(String tmpl) {
 		super(new UriTemplate(tmpl));
+	}
+
+	/**
+	 * Creates a {@link Selector} based on a URI template.
+	 *
+	 * @param uriTemplate The URI template to compile.
+	 * @return The new {@link Selector}.
+	 * @see {@link reactor.fn.selector.UriTemplate}
+	 * @see {@link reactor.fn.selector.UriTemplateSelector}
+	 */
+	public static Selector uriTemplateSelector(String uriTemplate) {
+		return new UriTemplateSelector(uriTemplate);
 	}
 
 	@Override

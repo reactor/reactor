@@ -63,7 +63,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Consumer<Throwable> errorHandler    = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
-			Reactor.this.notify(T(t.getClass()), Fn.event(t));
+			Reactor.this.notify(T(t.getClass()), Event.wrap(t));
 		}
 	};
 	private final Set<Observable>     linkedReactors  = new NonBlockingHashSet<Observable>();
@@ -470,12 +470,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 				if (null == reply) {
 					replyEv = Fn.nullEvent();
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Fn.event(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
 			} catch (Throwable x) {
-				replyToObservable.notify(T(x.getClass()), Fn.event(x));
+				replyToObservable.notify(T(x.getClass()), Event.wrap(x));
 			}
 		}
 	}

@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
-import reactor.fn.Event;
+import reactor.Event.wrap;
 import reactor.fn.Registration;
 import reactor.fn.registry.Registry;
 

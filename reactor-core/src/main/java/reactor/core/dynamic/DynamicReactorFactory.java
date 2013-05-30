@@ -231,7 +231,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 				if (args.length == 0) {
 					reactor.notify(key);
 				} else if (args.length == 1) {
-					reactor.notify(key, (Event.class.isInstance(args[0]) ? (Event) args[0] : Fn.event(args[0])));
+					reactor.notify(key, (Event.class.isInstance(args[0]) ? (Event) args[0] : Event.wrap(args[0])));
 				} else {
 					// TODO: handle multiple args
 				}

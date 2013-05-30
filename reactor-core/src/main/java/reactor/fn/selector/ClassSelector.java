@@ -24,15 +24,27 @@ package reactor.fn.selector;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ClassSelector extends BaseSelector<Class<?>> {
+public class ClassSelector extends ObjectSelector<Class<?>> {
 
 	public ClassSelector(Class<?> type) {
 		super(type);
 	}
 
+	/**
+	 * Creates a {@link Selector} based on the given class type and only matches if the other Selector against which this
+	 * is compared is assignable according to {@link Class#isAssignableFrom(Class)}.
+	 *
+	 * @param supertype The supertype to compare.
+	 * @return The new {@link Selector}.
+	 * @see {@link reactor.fn.selector.ClassSelector}
+	 */
+	public static Selector typeSelector(Class<?> supertype) {
+		return new ClassSelector(supertype);
+	}
+
 	@Override
 	public boolean matches(Object key) {
-		return key instanceof Class && getObject().isAssignableFrom((Class<?>) key);
+		return Class.class.isInstance(key) && getObject().isAssignableFrom((Class<?>) key);
 	}
 
 }
