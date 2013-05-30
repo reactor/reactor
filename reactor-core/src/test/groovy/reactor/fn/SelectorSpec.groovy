@@ -18,18 +18,18 @@
 
 package reactor.fn
 
+
 import reactor.core.R
 import reactor.fn.routing.TagAwareSelectionStrategy
 import reactor.fn.selector.key.TaggableKey
 
+import static reactor.Fn.$
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.Fn.T
 import static reactor.Fn.U
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-import static reactor.fn.registry.Registry.LoadBalancingStrategy.RANDOM
-import static reactor.fn.registry.Registry.LoadBalancingStrategy.ROUND_ROBIN
 
 import reactor.Fn
 import spock.lang.Specification
@@ -125,10 +125,10 @@ class SelectorSpec extends Specification {
 
 	}
 
-	def "Selectors can be round-robin load balanced"() {
+	def "Consumers can be called using round-robin routing"() {
 
-		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
-		def r = R.reactor().sync().using(ROUND_ROBIN).get()
+		given: "A Reactor using round-robin routing and a set of consumers assigned to the same selector"
+		def r = R.reactor().sync().roundRobinEventRouting().get()
 		def called = []
 		def a1 = {
 			called << 1
@@ -142,25 +142,25 @@ class SelectorSpec extends Specification {
 		def a4 = {
 			called << 4
 		}
-		r.on(Fn.consumer(a1))
-		r.on(Fn.consumer(a2))
-		r.on(Fn.consumer(a3))
-		r.on(Fn.consumer(a4))
+		r.on($('key'), Fn.consumer(a1))
+		r.on($('key'), Fn.consumer(a2))
+		r.on($('key'), Fn.consumer(a3))
+		r.on($('key'), Fn.consumer(a4))
 
 		when: "events are triggered"
 		(1..4).each {
-			r.notify(Fn.event("Hello World!"))
+			r.notify('key', Fn.event("Hello World!"))
 		}
 
 		then: "all consumers should have been called once"
 		assertThat(called, hasItems(1, 2, 3, 4))
 	}
 
-	def "Selectors can be randomly load balanced"() {
+	def "Consumers can be routed to randomly"() {
 
-		given: "A Reactor using round-robin load balancing and a set of consumers assigned to the same selector"
+		given: "A Reactor using random routing and a set of consumers assigned to the same selector"
 
-		def r = R.reactor().sync().using(RANDOM).get()
+		def r = R.reactor().sync().randomEventRouting().get()
 		def called = []
 		def a1 = {
 			called << 1

@@ -141,9 +141,9 @@ Reactor really just provides a foundation upon which you can build a very powerf
 
 Beyond implementing a `Selector`, there is also a `SelectionStrategy` interface that can be provided to a `Reactor` which will be used to match `Selector`s rather than by using the `matches()` methods on the `Selector` itself. One could implement consistent hashing of consumers by implementing a `ConsistentHashingSelectionStrategy`.
 
-### Load-balancing
+### Routing
 
-Reactor includes two kinds of built-in load-balancing for assigned consumers: ROUND_ROBIN and RANDOM. This means that, of the given `Consumer`s assigned to the same `Selector`, the `LoadBalancingStrategy` is checked to determine whether to execute all consumers, one of them randomly selected, or in a round robin fashion. The default is `NONE`, which means execute all assigned consumers.
+Reactor includes three different kinds of routing for assigned consumers: broadcast, random, and round-robin. This means that, of the given `Consumer`s assigned to the same `Selector`, the routing will determine whether to execute all the consumers, one of them randomly selected, or one of them selected in a round robin fashion. The default is to use broadcast routing.
 
 ---
 

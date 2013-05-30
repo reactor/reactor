@@ -16,6 +16,8 @@
 
 package reactor.fn.registry;
 
+import java.util.List;
+
 import reactor.fn.Registration;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
@@ -29,10 +31,6 @@ import reactor.fn.selector.Selector;
  * @author Stephane Maldini
  */
 public interface Registry<T> extends Iterable<Registration<? extends T>> {
-
-	public enum LoadBalancingStrategy {
-		NONE, ROUND_ROBIN, RANDOM
-	}
 
 	/**
 	 * Assign the given {@link reactor.fn.selector.Selector} with the given object.
@@ -56,9 +54,9 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * Select {@link Registration}s whose {@link Selector} {@link Selector#matches(Object)} the given {@code key}.
 	 *
 	 * @param key The key for the Selectors to match
-	 * @return An {@link Iterable} of {@link Registration}s whose {@link Selector} matches the given key.
+	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
 	 */
-	Iterable<Registration<? extends T>> select(Object key);
+	List<Registration<? extends T>> select(Object key);
 
 	/**
 	 * Returns the custom selection strategy, if any, that is being used by this {@literal Registry}
@@ -66,12 +64,4 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @return the {@link reactor.fn.routing.SelectionStrategy}. May be {@code null}.
 	 */
 	SelectionStrategy getSelectionStrategy();
-
-	/**
-	 * Returns the load balancing strategy that is being used by this {@literal Registry}.
-	 *
-	 * @return the {@link LoadBalancingStrategy}.
-	 */
-	LoadBalancingStrategy getLoadBalancingStrategy();
-
 }
