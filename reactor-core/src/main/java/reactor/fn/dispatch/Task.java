@@ -16,13 +16,8 @@
 
 package reactor.fn.dispatch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Registration;
 import reactor.fn.registry.Registry;
 
 /**
@@ -89,4 +84,5 @@ public abstract class Task<T> {
 	protected void execute(ConsumerInvoker invoker) {
 		eventRouter.route(key, event, consumerRegistry.select(key), completionConsumer, errorConsumer);
 	}
+
 }

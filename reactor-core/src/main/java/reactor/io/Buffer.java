@@ -187,13 +187,12 @@ public class Buffer implements Comparable<Buffer> {
 	}
 
 	public Buffer slice(int start, int len) {
-		buffer.mark();
+		int pos = buffer.position();
 		byte[] bytes = new byte[len];
 		buffer.position(start);
 		buffer.get(bytes);
-		buffer.reset();
-		//buffer.limit(buffer.capacity());
-		return new Buffer(len, true).append(bytes);
+		buffer.position(pos);
+		return new Buffer(len, true).append(bytes).flip();
 	}
 
 	public Buffer append(String s) {

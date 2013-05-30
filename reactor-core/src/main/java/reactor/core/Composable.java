@@ -86,7 +86,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	public Composable<T> setExpectedAcceptCount(long expectedAcceptCount) {
 		this.expectedAcceptCount.set(expectedAcceptCount);
 		if (this.acceptedCount.get() >= expectedAcceptCount) {
-			observable.notify(lastKey, Fn.event(value));
+			observable.notify(lastKey, Event.wrap(value));
 			synchronized (monitor) {
 				monitor.notifyAll();
 			}
@@ -132,7 +132,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T event) {
-				observable.notify(key, Event.class.isAssignableFrom(event.getClass()) ? (Event<?>) event : Fn.event(event));
+				observable.notify(key, Event.class.isAssignableFrom(event.getClass()) ? (Event<?>) event : Event.wrap(event));
 			}
 		});
 		return this;
@@ -207,7 +207,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	/**
 	 * Create a new {@link Composable} that is linked to the parent through the given {@code key} and {@link Observable}.
 	 * When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and passed to
-	 * {@link Observable#notify (reactor.fn.Event)} along with the given {@code key}. After the event is being propagated
+	 * {@link Observable#notify (reactor.Event.wrap)} along with the given {@code key}. After the event is being propagated
 	 * to the reactor consumers, the new composition expects {@param <V>} replies to be returned.
 	 *
 	 * @param key        The key to notify
@@ -236,7 +236,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			@Override
 			public void accept(T value) {
 				try {
-					Event<?> event = Event.class.isAssignableFrom(value.getClass()) ? (Event<?>) value : Fn.event(value);
+					Event<?> event = Event.class.isAssignableFrom(value.getClass()) ? (Event<?>) value : Event.wrap(value);
 					event.setReplyTo(replyTo);
 					//event.getHeaders().setOrigin(reactor.getId());
 					observable.send(key, event);
@@ -395,7 +395,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				monitor.notifyAll();
 			}
 		}
-		observable.notify(error.getClass(), Fn.event(error));
+		observable.notify(error.getClass(), Event.wrap(error));
 	}
 
 	/**
@@ -411,7 +411,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			}
 		}
 		acceptedCount.incrementAndGet();
-		observable.notify(acceptKey, Fn.event(value));
+		observable.notify(acceptKey, Event.wrap(value));
 	}
 
 	public T await() throws InterruptedException {
@@ -548,7 +548,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	}
 
 	protected <V> void handleError(final Composable<V> c, Throwable t) {
-		c.observable.notify(t.getClass(), Fn.event(t));
+		c.observable.notify(t.getClass(), Event.wrap(t));
 		c.decreaseAcceptLength();
 	}
 
@@ -701,7 +701,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			synchronized (monitor) {
 				this.error = error;
 			}
-			observable.notify(error.getClass(), Fn.event(error));
+			observable.notify(error.getClass(), Event.wrap(error));
 		}
 
 		@Override
@@ -713,7 +713,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			long _acceptCount = acceptedCount.incrementAndGet();
 			long _exceptedCount = expectedAcceptCount.get();
 
-			Event<T> ev = Fn.event(value);
+			Event<T> ev = Event.wrap(value);
 			ev.getHeaders().set(EXPECTED_ACCEPT_LENGTH_HEADER, String.valueOf(_exceptedCount));
 
 			if (_acceptCount == 1) {

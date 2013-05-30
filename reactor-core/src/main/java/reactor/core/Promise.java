@@ -213,7 +213,7 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> consume(Object key, Observable observable) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				observable.notify(key, Fn.event(value));
+				observable.notify(key, Event.wrap(value));
 				return this;
 			} else {
 				return (Promise<T>) super.consume(key, observable);

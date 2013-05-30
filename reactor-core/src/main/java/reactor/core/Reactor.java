@@ -16,29 +16,14 @@
 
 package reactor.core;
 
-import static reactor.Fn.$;
-import static reactor.Fn.T;
-
-import java.util.Set;
-
+import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
-
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.filter.PassThroughFilter;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Observable;
-import reactor.fn.Registration;
-import reactor.fn.Supplier;
-import reactor.fn.dispatch.ConsumerFilteringEventRouter;
-import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.EventRouter;
-import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.Task;
+import reactor.fn.*;
+import reactor.fn.dispatch.*;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
 import reactor.fn.routing.Linkable;
@@ -47,13 +32,16 @@ import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import com.eaio.uuid.UUID;
+import java.util.Set;
+
+import static reactor.Fn.$;
+import static reactor.Fn.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of that {@link Event}, a task is dispatched
- * to the assigned {@link Dispatcher} which causes it to be executed on a thread based on the implementation of the
- * {@link Dispatcher} being used.
+ * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of
+ * that {@link Event}, a task is dispatched to the assigned {@link Dispatcher} which causes it to be executed on a
+ * thread based on the implementation of the {@link Dispatcher} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -73,7 +61,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Consumer<Throwable> errorHandler    = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
-			Reactor.this.notify(T(t.getClass()), Fn.event(t));
+			Reactor.this.notify(T(t.getClass()), Event.wrap(t));
 		}
 	};
 	private final Set<Observable>     linkedReactors  = new NonBlockingHashSet<Observable>();
@@ -83,15 +71,15 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given {@literal
 	 * Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link Converter}, and {@link
-	 *            Dispatcher}.
+	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 *            Converter}, and {@link Dispatcher}.
 	 */
 	Reactor(Environment env,
-	        Reactor src) {
+					Reactor src) {
 		this(env,
-				src.getDispatcher(),
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getEventRouter());
+				 src.getDispatcher(),
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getEventRouter());
 	}
 
 	/**
@@ -99,22 +87,23 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
 	 * registered on the given {@literal Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link Converter}.
+	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 *                   Converter}.
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
 	Reactor(Environment env,
-	        Reactor src,
-	        Dispatcher dispatcher) {
+					Reactor src,
+					Dispatcher dispatcher) {
 		this(env,
-				dispatcher,
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getEventRouter());
+				 dispatcher,
+				 src.consumerRegistry.getSelectionStrategy(),
+				 src.getEventRouter());
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link LoadBalancingStrategy},
-	 * {@link reactor.fn.routing.SelectionStrategy}, and {@link Converter} will be used.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
+	 * reactor.fn.routing.SelectionStrategy}, and {@link Converter} will be used.
 	 *
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
@@ -128,12 +117,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link reactor.fn.routing.SelectionStrategy}, {@link
-	 * LoadBalancingStrategy}, and {@link Converter}.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
+	 * reactor.fn.routing.SelectionStrategy}, {@link EventRouter}, and {@link Converter}.
 	 *
-	 * @param dispatcher            The {@link Dispatcher} to use. May be {@code null} in which case a new worker
-	 *                              dispatcher is used.
-	 * @param selectionStrategy     The custom {@link reactor.fn.routing.SelectionStrategy} to use. May be {@code null}.
+	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is
+	 *                          used.
+	 * @param selectionStrategy The custom {@link reactor.fn.routing.SelectionStrategy} to use. May be {@code null}.
 	 */
 	Reactor(Environment env,
 					Dispatcher dispatcher,
@@ -279,7 +268,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, Fn.nullEvent(), null);
+		return notify(key, Event.NULL_EVENT, null);
 	}
 
 	@Override
@@ -470,14 +459,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 				Event<?> replyEv;
 				if (null == reply) {
-					replyEv = Fn.nullEvent();
+					replyEv = Event.NULL_EVENT;
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Fn.event(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
 			} catch (Throwable x) {
-				replyToObservable.notify(T(x.getClass()), Fn.event(x));
+				replyToObservable.notify(T(x.getClass()), Event.wrap(x));
 			}
 		}
 	}

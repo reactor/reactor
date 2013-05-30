@@ -34,6 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Event<T> {
 
+	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
+
 	private final UUID id = new UUID();
 	private Headers headers;
 	private Object  replyTo;
@@ -46,6 +48,28 @@ public class Event<T> {
 
 	public Event(T data) {
 		this.data = data;
+	}
+
+	/**
+	 * Wrap the given object with an {@link Event}.
+	 *
+	 * @param obj The object to wrap.
+	 * @return The new {@link Event}.
+	 */
+	public static <T> Event<T> wrap(T obj) {
+		return new Event<T>(obj);
+	}
+
+	/**
+	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@code key}.
+	 *
+	 * @param obj        The object to wrap.
+	 * @param replyToKey The key to use as a {@literal replyTo}.
+	 * @param <T>        The type of the given object.
+	 * @return The new {@link Event}.
+	 */
+	public static <T> Event<T> wrap(T obj, Object replyToKey) {
+		return new Event<T>(obj).setReplyTo(replyToKey);
 	}
 
 	/**
