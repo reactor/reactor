@@ -509,6 +509,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	}
 
 	protected Composable<T> forwardError(final Composable<?> composable) {
+		if (composable.observable == observable) {
+			return this;
+		}
 		when(Throwable.class, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable t) {
