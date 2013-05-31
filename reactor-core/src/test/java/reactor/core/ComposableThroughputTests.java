@@ -55,7 +55,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Composable<Integer> createComposable(Dispatcher dispatcher) {
-		Composable<Integer> cInt = R.<Integer>compose().using(env).dispatcher(dispatcher).get();
+		Composable<Integer> cInt = R.<Integer>compose().using(env).using(dispatcher).get();
 		cInt.map(new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer integer) {

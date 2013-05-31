@@ -74,6 +74,6 @@ public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 
 	@Test
 	public void ringBufferDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(R.reactor().using(env).randomEventRouting().dispatcher(createRingBufferDispatcher()).get());
+		doTest(R.reactor().using(env).randomEventRouting().using(createRingBufferDispatcher()).get());
 	}
 }

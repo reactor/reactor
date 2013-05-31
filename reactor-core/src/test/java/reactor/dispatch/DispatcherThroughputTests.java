@@ -77,7 +77,7 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void singleProducerRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting single-producer, yielding RingBuffer test...");
-		doTest(R.reactor().using(env).dispatcher(createRingBufferDispatcher()).get());
+		doTest(R.reactor().using(env).using(createRingBufferDispatcher()).get());
 	}
 
 }

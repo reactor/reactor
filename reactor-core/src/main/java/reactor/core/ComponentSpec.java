@@ -59,6 +59,11 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
+	public SPEC using(Dispatcher dispatcher) {
+		this.dispatcher = dispatcher;
+		return (SPEC) this;
+	}
+
 	public SPEC using(Converter converter) {
 		this.converter = converter;
 		return (SPEC) this;
@@ -123,8 +128,10 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-	public SPEC dispatcher(Dispatcher dispatcher) {
-		this.dispatcher = dispatcher;
+
+	public SPEC dispatcher(String name) {
+		Assert.notNull(env, "Cannot use an "+name+" Dispatcher without a properly-configured Environment.");
+		this.dispatcher = env.getDispatcher(name);
 		return (SPEC) this;
 	}
 

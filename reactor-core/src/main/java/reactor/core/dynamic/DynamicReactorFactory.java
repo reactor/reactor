@@ -260,7 +260,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 						break;
 				}
 			}
-			return R.reactor().using(env).dispatcher(dispatcher).get();
+			return R.reactor().using(env).using(dispatcher).get();
 		}
 	}
 
