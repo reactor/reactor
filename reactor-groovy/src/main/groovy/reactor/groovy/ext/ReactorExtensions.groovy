@@ -21,7 +21,6 @@ import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Composables
 import reactor.core.Promise
-import reactor.core.Promises
 import reactor.core.R
 import reactor.fn.Observable
 import reactor.groovy.support.ClosureConsumer
@@ -44,7 +43,7 @@ class ReactorExtensions {
 	}
 
 	static <T> Promise.Spec<T> promise(final R selfType, Closure<T> callback) {
-		Promises.task new ClosureSupplier<T>(callback)
+		R.task new ClosureSupplier<T>(callback)
 	}
 
 	static <T> Promise.Spec<T> from(final Promise<T> selfType, Closure<T> callback) {

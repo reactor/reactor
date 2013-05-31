@@ -18,7 +18,6 @@ package reactor.groovy
 
 import reactor.core.Environment
 import reactor.core.Promise
-import reactor.core.Promises
 import reactor.core.R
 import reactor.fn.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
@@ -40,7 +39,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
-		def p = Promises.success("Hello World!").get()
+		def p = R.success("Hello World!").get()
 
 		then: 'Promise contains value'
 		p.get() == "Hello World!"
@@ -63,7 +62,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		def p = Promises.error(new IllegalArgumentException("Bad code! Bad!")).get()
+		def p = R.error(new IllegalArgumentException("Bad code! Bad!")).get()
 
 		and: "invoke result"
 		p.get()
@@ -75,7 +74,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be mapped"() {
 		given: "a synchronous promise"
-		def p = Promises.defer().get()
+		def p = R.promise().get()
 
 		when: "add a mapping closure"
 		def s = p | { Integer.parseInt it }
@@ -87,7 +86,7 @@ class GroovyPromisesSpec extends Specification {
 		s.get() == 10
 
 		when: "add a mapping closure"
-		p = Promises.defer().get()
+		p = R.promise().get()
 		s = p.then { Integer.parseInt it }
 
 		and: "setting a value"
@@ -99,7 +98,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be filtered"() {
 		given: "a synchronous promise"
-		def p = Promises.defer().get()
+		def p = R.promise().get()
 
 		when: "add a mapping closure and a filter"
 		def s = (p | { Integer.parseInt it }) & { it > 10 }
@@ -113,8 +112,8 @@ class GroovyPromisesSpec extends Specification {
 
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
-		def p1 = Promises.defer().get()
-		def p2 = Promises.defer().get()
+		def p1 = R.promise().get()
+		def p2 = R.promise().get()
 
 		when: "p1 is consumed by p2"
 		p1 << p2 //p1.consume p2
@@ -130,7 +129,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		def p = Promises.defer().using(testEnv).eventLoop().get()
+		def p = R.promise().using(testEnv).eventLoop().get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
@@ -149,7 +148,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise compose after set"() {
 		given: "a synchronous promise"
-		def p = Promises.success('10').get()
+		def p = R.success('10').get()
 
 		when: "composing 2 functions"
 		def s = p | { Integer.parseInt it } | { it*10 }

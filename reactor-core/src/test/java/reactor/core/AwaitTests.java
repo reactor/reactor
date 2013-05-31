@@ -39,7 +39,7 @@ public class AwaitTests extends AbstractReactorTest {
 		Reactor reactor = R.reactor().using(env).threadPoolExecutor().get();
 		Reactor innerReactor = R.reactor().using(env).using(dispatcher).get();
 		for (int i = 0; i < 1000; i++) {
-			final Promise<String> promise = Promises.<String>defer().using(env).using(reactor).get();
+			final Promise<String> promise = R.<String>promise().using(env).using(reactor).get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			promise.onSuccess(new Consumer<String>() {
