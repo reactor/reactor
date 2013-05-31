@@ -32,16 +32,14 @@ public class LoadingCache<T> implements Cache<T> {
 
 	private final BlockingQueue<T> cache = QueueFactory.createQueue();
 	private final Supplier<T> supplier;
-	private final int         softMax;
 	private final long        cacheMissTimeout;
 	private final AtomicLong leases = new AtomicLong();
 
-	public LoadingCache(Supplier<T> supplier, int softMax, long cacheMissTimeout) {
+	public LoadingCache(Supplier<T> supplier, int initial, long cacheMissTimeout) {
 		this.supplier = supplier;
-		this.softMax = softMax;
 		this.cacheMissTimeout = cacheMissTimeout;
 
-		for (int i = 0; i < softMax; i++) {
+		for (int i = 0; i < initial; i++) {
 			this.cache.add(supplier.get());
 		}
 	}
@@ -65,9 +63,7 @@ public class LoadingCache<T> implements Cache<T> {
 
 	@Override
 	public void deallocate(T obj) {
-		//if (leases.decrementAndGet() < softMax) {
-			cache.add(obj);
-		//}
+		cache.add(obj);
 	}
 
 }
