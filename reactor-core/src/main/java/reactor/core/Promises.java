@@ -61,8 +61,8 @@ public class Promises {
 	 * @param <T>         The type of the function result.
 	 * @return a {@link reactor.core.Promise.Spec}.
 	 */
-	public static <T> Promise.Spec<Collection<T>> all(Composable<T>... composables) {
-		return all(Arrays.asList(composables));
+	public static <T> Promise.Spec<Collection<T>> when(Composable<T>... composables) {
+		return whenAll(Arrays.asList(composables));
 	}
 
 	/**
@@ -72,7 +72,7 @@ public class Promises {
 	 * @param <T>         The type of the function result.
 	 * @return a {@link reactor.core.Promise.Spec}.
 	 */
-	public static <T> Promise.Spec<Collection<T>> all(Collection<? extends Composable<T>> composables) {
+	public static <T> Promise.Spec<Collection<T>> whenAll(Collection<? extends Composable<T>> composables) {
 		return new Promise.Spec<Collection<T>>(null, null, null, composables);
 	}
 }

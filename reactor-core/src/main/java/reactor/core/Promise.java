@@ -20,12 +20,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.fn.*;
+import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -333,6 +334,63 @@ public class Promise<T> extends Composable<T> {
 				throw new IllegalStateException("This Promise has already completed.");
 			}
 		}
+	}
+
+
+	@SuppressWarnings("unchecked")
+	protected Promise<T> merge(Collection<? extends Composable<?>> composables) {
+
+		final int size = composables.size();
+		if (size < 1) {
+			return this;
+		} else if (composables.size() == 1) {
+			composables.iterator().next().consume(new Consumer() {
+				@Override
+				public void accept(Object t) {
+					Promise.this.accept((T) Arrays.asList(t));
+				}
+			});
+			return this;
+		}
+
+		final Composable<Tuple2<?, Integer>> reducer =
+				new DelayedAcceptComposable<Tuple2<?, Integer>>(env, observable, size);
+		reducer
+				.reduce()
+				.map(new Function<List<Tuple2<?, Integer>>, T>() {
+					@Override
+					public T apply(List<Tuple2<?, Integer>> collection) {
+						Collections.sort(collection, new Comparator<Tuple2<?, Integer>>() {
+							@Override
+							public int compare(Tuple2<?, Integer> o1, Tuple2<?, Integer> o2) {
+								return o1.getT2().compareTo(o2.getT2());
+							}
+						});
+						List<Object> orderedResult = new ArrayList<Object>();
+						for (Tuple2<?, Integer> element : collection) {
+							orderedResult.add(element.getT1());
+						}
+						return (T) orderedResult;
+					}
+				}).consume(this);
+
+		Consumer<Object> consumer = new Consumer<Object>() {
+			int i = 0;
+
+			@Override
+			public void accept(Object o) {
+				reducer.accept(Tuple.of(o, i++));
+			}
+		};
+
+		for (final Composable c : composables) {
+			c.forwardError(reducer).consume(consumer);
+			if (DelayedAcceptComposable.class.isInstance(c)) {
+				((DelayedAcceptComposable) c).delayedAccept();
+			}
+		}
+
+		return this;
 	}
 
 	/**

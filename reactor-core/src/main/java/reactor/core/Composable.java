@@ -18,15 +18,14 @@ package reactor.core;
 
 import reactor.Fn;
 import reactor.fn.*;
-import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;
-import reactor.fn.tuples.Tuple;
-import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -551,64 +550,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		c.decreaseAcceptLength();
 	}
 
-
-	@SuppressWarnings("unchecked")
-	protected Composable<T> merge(Collection<? extends Composable<?>> composables) {
-
-		final int size = composables.size();
-		if (size < 1) {
-			return this;
-		} else if (composables.size() == 1) {
-			composables.iterator().next().consume(new Consumer() {
-				@Override
-				public void accept(Object t) {
-					Composable.this.accept((T) Arrays.asList(t));
-				}
-			});
-			return this;
-		}
-
-		final Composable<Tuple2<?, Integer>> reducer =
-				new DelayedAcceptComposable<Tuple2<?, Integer>>(env, observable, size);
-		reducer
-				.reduce()
-				.map(new Function<List<Tuple2<?, Integer>>, T>() {
-					@Override
-					public T apply(List<Tuple2<?, Integer>> collection) {
-						Collections.sort(collection, new Comparator<Tuple2<?, Integer>>() {
-							@Override
-							public int compare(Tuple2<?, Integer> o1, Tuple2<?, Integer> o2) {
-								return o1.getT2().compareTo(o2.getT2());
-							}
-						});
-						List<Object> orderedResult = new ArrayList<Object>();
-						for (Tuple2<?, Integer> element : collection) {
-							orderedResult.add(element.getT1());
-						}
-						return (T) orderedResult;
-					}
-				}).consume(this);
-
-		Consumer<Object> consumer = new Consumer<Object>() {
-			int i = 0;
-
-			@Override
-			public void accept(Object o) {
-				reducer.accept(Tuple.of(o, i++));
-			}
-		};
-
-		for (final Composable c : composables) {
-			c.forwardError(reducer).consume(consumer);
-			if (DelayedAcceptComposable.class.isInstance(c)) {
-				((DelayedAcceptComposable) c).delayedAccept();
-			}
-		}
-
-		return this;
-	}
-
-
 	/**
 	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
 	 *
@@ -616,14 +557,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 */
 	public static class Spec<T> extends ComponentSpec<Spec<T>, Composable<T>> {
 
-		protected final Iterable<T>                         values;
-		protected final Supplier<T>                         supplier;
-		protected final Collection<? extends Composable<?>> mergeWith;
+		protected final Iterable<T> values;
 
-		public Spec(Iterable<T> values, Supplier<T> supplier, Collection<? extends Composable<?>> composables) {
+		public Spec(Iterable<T> values) {
 			this.values = values;
-			this.supplier = supplier;
-			this.mergeWith = composables;
 		}
 
 		@Override
@@ -633,28 +570,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			final Composable<T> comp;
 			if (values != null) {
 				comp = new DelayedAcceptComposable<T>(env, reactor, values);
-			} else if (supplier != null) {
-				comp = new DelayedAcceptComposable<T>(env, reactor, 1) {
-					@Override
-					protected void delayedAccept() {
-						final DelayedAcceptComposable<T> self = this;
-						Fn.schedule(new Consumer<Object>() {
-							@Override
-							public void accept(Object o) {
-								try {
-									self.doAccept(null, null, supplier.get());
-								} catch (Throwable t) {
-									self.doAccept(t, null, null);
-								}
-							}
-						}, null, reactor);
-					}
-				};
 			} else {
 				comp = new DelayedAcceptComposable<T>(env, reactor, -1);
-				if (null != mergeWith) {
-					comp.merge(mergeWith);
-				}
 			}
 			return comp;
 		}

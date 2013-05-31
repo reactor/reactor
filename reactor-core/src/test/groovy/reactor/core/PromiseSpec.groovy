@@ -71,7 +71,7 @@ class PromiseSpec extends Specification {
 		def p1 = Promises.task supplier { 1 + 1 } get()
 		def p2 = Promises.task supplier { 2 + 2 } get()
 		def latch = new CountDownLatch(1)
-		Promises.all(p1, p2).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
+		Promises.when(p1, p2).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
 
 		latch.await(1, TimeUnit.SECONDS)
 
@@ -87,7 +87,7 @@ class PromiseSpec extends Specification {
 
 		def latch = new CountDownLatch(1)
 		def res, err
-		Promises.all(p1, p2, p3).get().then(
+		Promises.when(p1, p2, p3).get().then(
 				consumer { List<Integer> v -> println v; res = v },
 				consumer { Throwable t -> println 'test2';  err = t; latch.countDown() }
 		)
