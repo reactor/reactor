@@ -37,7 +37,7 @@ class ComponentSpecSpec extends Specification {
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
-		def composable = R.compose('test').sync().get()
+		def composable = Composables.init('test').sync().get()
 
 		then:
 		Composable.isAssignableFrom(composable.class)
@@ -48,7 +48,7 @@ class ComponentSpecSpec extends Specification {
 	def "Promise correctly built"() {
 
 		when: "we create a plain Promise"
-		def promise = R.promise('test').sync().get()
+		def promise = Promises.success('test').sync().get()
 
 		then:
 		Promise.isAssignableFrom(promise.class)

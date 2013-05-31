@@ -19,7 +19,6 @@ package reactor.core;
 import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
-import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.filter.PassThroughFilter;
 import reactor.fn.*;
@@ -344,7 +343,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @return {@link Composable}
 	 */
 	public <T, E extends Event<T>, V> Composable<V> compose(Object key, E ev) {
-		return R.compose(ev).using(this).get().map(key, this);
+		return Composables.init(ev).using(this).get().map(key, this);
 	}
 
 	/**
@@ -357,7 +356,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @return {@literal this}
 	 */
 	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
-		Composable<E> composable = R.compose(ev).using(this).get();
+		Composable<E> composable = Composables.init(ev).using(this).get();
 		composable.<V>map(key, this).consume(consumer);
 		composable.accept(ev);
 

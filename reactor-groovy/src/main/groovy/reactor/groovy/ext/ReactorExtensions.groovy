@@ -19,7 +19,9 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.Fn
 import reactor.core.Composable
+import reactor.core.Composables
 import reactor.core.Promise
+import reactor.core.Promises
 import reactor.core.R
 import reactor.fn.Observable
 import reactor.groovy.support.ClosureConsumer
@@ -38,11 +40,11 @@ class ReactorExtensions {
 	}
 
 	static <T> Composable.Spec<T> compose(final R selfType, Closure<T> callback) {
-		R.compose new ClosureSupplier<T>(callback)
+		Composables.task new ClosureSupplier<T>(callback)
 	}
 
 	static <T> Promise.Spec<T> promise(final R selfType, Closure<T> callback) {
-		R.promise new ClosureSupplier<T>(callback)
+		Promises.task new ClosureSupplier<T>(callback)
 	}
 
 	static <T> Promise.Spec<T> from(final Promise<T> selfType, Closure<T> callback) {

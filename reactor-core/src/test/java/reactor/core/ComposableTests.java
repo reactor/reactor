@@ -44,7 +44,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Composable<String> c = R.compose("Hello World!").get();
+		Composable<String> c = Composables.init("Hello World!").get();
 
 		Composable<String> d = c.map(new Function<String, String>() {
 			@Override
@@ -58,8 +58,8 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
@@ -77,8 +77,8 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
 				.filter(new Function<Integer, Boolean>() {
@@ -95,8 +95,8 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.using(env)
 				.eventLoop()
 				.get()
@@ -119,15 +119,15 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void valueIsImmediatelyAvailable() throws InterruptedException {
-		Composable<String> c = R.compose(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Composable<String> c = Composables.each(Arrays.asList("1", "2", "3", "4", "5")).get();
 
 		await(c, is("5"));
 	}
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
 				.reduce(new Function<Reduce<Integer, Integer>, Integer>() {
@@ -142,8 +142,8 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER);
 
@@ -167,8 +167,8 @@ public class ComposableTests extends AbstractReactorTest {
 			}
 		});
 
-		Composable<Integer> c = R
-				.compose(Arrays.asList("1", "2", "3", "4", "5"))
+		Composable<Integer> c = Composables
+				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
 				.consume(key.getT2(), r);
@@ -182,8 +182,8 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void composableWithInitiallyUnknownNumberOfValues() throws InterruptedException {
-		final Composable<Integer> c = R
-				.compose(new TestIterable<String>("1", "2", "3", "4", "5"))
+		final Composable<Integer> c = Composables
+				.each(new TestIterable<String>("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {
