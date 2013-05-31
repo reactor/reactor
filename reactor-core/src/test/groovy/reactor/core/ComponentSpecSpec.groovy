@@ -37,7 +37,8 @@ class ComponentSpecSpec extends Specification {
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
-		def composable = Composables.init('test').sync().get()
+		def composable = Composables.defer().sync().get()
+		composable.accept('test')
 
 		then:
 		Composable.isAssignableFrom(composable.class)

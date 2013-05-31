@@ -39,20 +39,6 @@ class GroovyComposableSpec extends Specification {
 		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
 	}
 
-	def "Compose from single value"() {
-		when: 'Defer a composition'
-		def c = Composables.init("Hello World!").using(testEnv).get()
-
-		and: 'apply a transformation'
-		def d = c.map {
-			'Goodbye then!'
-		}
-
-		then: 'Composition contains value'
-		d.await 1, TimeUnit.SECONDS
-		d.get() == 'Goodbye then!'
-	}
-
 	def "Compose from Closure"() {
 		when: 'Defer a composition'
 		def c = R.compose { sleep 500; 1 } get()
