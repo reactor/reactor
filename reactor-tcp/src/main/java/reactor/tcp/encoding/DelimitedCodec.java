@@ -3,10 +3,15 @@ package reactor.tcp.encoding;
 import reactor.fn.Function;
 import reactor.io.Buffer;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * @author Jon Brisbin
  */
-public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Collection<OUT>> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 	private final char                   delimiter;
@@ -21,67 +26,75 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder() {
+	public Function<Buffer, Collection<IN>> decoder() {
 		return new DelimitedDecoder();
 	}
 
 	@Override
-	public Function<OUT, Buffer> encoder() {
+	public Function<Collection<OUT>, Buffer> encoder() {
 		return new DelimitedEncoder();
 	}
 
-	public class DelimitedDecoder implements Function<Buffer, IN> {
-		private final Function<Buffer, IN> decoder = delegate.decoder();
-		private       int                  start   = 0;
-		private Buffer remainder;
+	public class DelimitedDecoder implements Function<Buffer, Collection<IN>> {
+		private final Function<Buffer, IN> decoder   = delegate.decoder();
+		private final Buffer               remainder = new Buffer();
+		private final List<IN>             objs      = new ArrayList<IN>();
+		private final List<Integer>        positions = new ArrayList<Integer>();
 
 		@Override
-		public IN apply(Buffer bytes) {
-			if (null != remainder) {
-				remainder.append(bytes).flip();
-				bytes = remainder;
+		public Collection<IN> apply(Buffer bytes) {
+			if (bytes.remaining() == 0) {
+				return null;
 			}
+			objs.clear();
+			positions.clear();
 
-			int limit = bytes.byteBuffer().limit();
 			while (bytes.remaining() > 0) {
-				int pos = bytes.position();
-				byte b;
-				if ((b = bytes.read()) == delimiter) {
+				if (bytes.read() == delimiter) {
+					positions.add(bytes.position() - 1);
+				}
+			}
+			int end = bytes.position();
+
+			if (!positions.isEmpty()) {
+				int start = 0;
+				for (Integer pos : positions) {
+					bytes.byteBuffer().limit(pos);
 					bytes.byteBuffer().position(start);
-					bytes.byteBuffer().limit((pos - 1) - start);
-
 					IN in = decoder.apply(bytes);
-					start = bytes.position();
-					remainder = null;
-
-					bytes.byteBuffer().limit(limit);
-					bytes.byteBuffer().position(pos);
-
-					return in;
-				} else if (b == '\0' || pos == limit) {
-					break;
+					if (null != in) {
+						objs.add(in);
+					}
+					start = pos + 1;
 				}
 			}
 
-			int pos = bytes.position();
-			if ((pos - start) > 0) {
-				bytes.byteBuffer().position(start);
-				remainder = bytes;
+			if (bytes.position() + 1 < end) {
+				remainder.append(bytes);
 			}
 
-			start = 0;
-			return null;
+			return (objs.isEmpty() ? null : Collections.unmodifiableList(objs));
 		}
 	}
 
-	public class DelimitedEncoder implements Function<OUT, Buffer> {
+	public class DelimitedEncoder implements Function<Collection<OUT>, Buffer> {
 		Function<OUT, Buffer> encoder = delegate.encoder();
 
 		@Override
-		public Buffer apply(OUT out) {
-			Buffer bytes = encoder.apply(out);
-			bytes.append(delimiter);
-			return bytes.flip();
+		public Buffer apply(Collection<OUT> out) {
+			if (out.isEmpty()) {
+				return null;
+			}
+
+			Buffer buffer = new Buffer();
+			for (OUT o : out) {
+				Buffer encoded = encoder.apply(o);
+				if (null != encoded && encoded.remaining() > 0) {
+					buffer.append(encoded).append(delimiter);
+				}
+			}
+
+			return buffer.flip();
 		}
 	}
 

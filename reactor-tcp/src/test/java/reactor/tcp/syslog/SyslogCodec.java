@@ -13,8 +13,7 @@ import java.nio.charset.CharsetDecoder;
  */
 public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 
-	private final Charset        utf8    = Charset.forName("UTF-8");
-	private final CharsetDecoder decoder = utf8.newDecoder();
+	private final Charset utf8 = Charset.forName("UTF-8");
 
 	@Override
 	public Function<Buffer, SyslogMessage> decoder() {
@@ -32,6 +31,8 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 	}
 
 	private class SyslogMessageDecoder implements Function<Buffer, SyslogMessage> {
+		private final CharsetDecoder decoder = utf8.newDecoder();
+
 		@Override
 		public SyslogMessage apply(Buffer buffer) {
 			try {

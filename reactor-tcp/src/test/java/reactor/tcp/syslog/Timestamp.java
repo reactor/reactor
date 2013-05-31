@@ -6,15 +6,14 @@ import java.util.List;
 
 public final class Timestamp {
 
-	private static final Calendar     instance = Calendar.getInstance();
-	private static final List<String> MONTHS   = Arrays.asList("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
+	private static final List<String> MONTHS = Arrays.asList("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
 	private final int month;
 	private final int day;
 	private final int hours;
 	private final int minutes;
 	private final int seconds;
 
-	Timestamp() {
+	Timestamp(Calendar instance) {
 		month = instance.get(Calendar.MONTH);
 		day = instance.get(Calendar.DAY_OF_MONTH);
 		hours = instance.get(Calendar.HOUR_OF_DAY);

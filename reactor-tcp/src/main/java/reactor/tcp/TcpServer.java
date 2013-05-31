@@ -154,12 +154,11 @@ public class TcpServer<IN, OUT> {
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
 			@Override
-			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
-				int len = in.readableBytes();
-				Buffer b = new Buffer(len, true);
-				in.readBytes(b.byteBuffer());
-				b.flip();
-				TcpServer.this.reactor.notify(conn.getReadKey(), Event.wrap(b));
+			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
+				while (data.readableBytes() > 0) {
+					Event<Buffer> ev = Event.wrap(new Buffer(data.nioBuffer()));
+					TcpServer.this.reactor.notify(conn.getReadKey(), ev);
+				}
 			}
 		};
 
@@ -180,10 +179,6 @@ public class TcpServer<IN, OUT> {
 			this.channel = channel;
 			this.decoder = decoder;
 			this.encoder = encoder;
-		}
-
-		public Selector getReadSelector() {
-			return read.getT1();
 		}
 
 		public Object getReadKey() {
@@ -258,8 +253,7 @@ public class TcpServer<IN, OUT> {
 		private final Function<Buffer, IN> decoder;
 		private final Consumer<IN>         consumer;
 
-		private ReadConsumer(Function<Buffer, IN> decoder,
-												 Consumer<IN> consumer) {
+		private ReadConsumer(Function<Buffer, IN> decoder, Consumer<IN> consumer) {
 			this.decoder = decoder;
 			this.consumer = consumer;
 		}
@@ -267,13 +261,14 @@ public class TcpServer<IN, OUT> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void accept(Event<Buffer> ev) {
+			Buffer b = ev.getData();
+			IN in;
 			if (null != decoder) {
-				IN in;
-				while (null != (in = decoder.apply(ev.getData()))) {
+				while (null != (in = decoder.apply(b))) {
 					consumer.accept(in);
 				}
 			} else {
-				consumer.accept((IN) ev.getData());
+				consumer.accept((IN) b);
 			}
 		}
 	}

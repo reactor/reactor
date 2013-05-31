@@ -6,6 +6,8 @@ import reactor.core.Environment;
 import reactor.fn.Consumer;
 import reactor.tcp.encoding.StandardCodecs;
 
+import java.util.Collection;
+
 /**
  * @author Jon Brisbin
  */
@@ -20,17 +22,17 @@ public class TcpServerTests {
 
 	@Test
 	public void testTcpServer() throws InterruptedException {
-		TcpServer<String, String> server = new TcpServer.Spec<String, String>()
+		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>()
 				.using(env)
 				.ringBuffer()
 				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.consume(new Consumer<TcpConnection<String, String>>() {
+				.consume(new Consumer<TcpConnection<Collection<String>, Collection<String>>>() {
 					@Override
-					public void accept(TcpConnection<String, String> conn) {
-						conn.consume(new Consumer<String>() {
+					public void accept(TcpConnection<Collection<String>, Collection<String>> conn) {
+						conn.consume(new Consumer<Collection<String>>() {
 							@Override
-							public void accept(String s) {
-								System.out.println("got data: " + s);
+							public void accept(Collection<String> data) {
+								System.out.println("got data: " + data);
 							}
 						});
 					}
