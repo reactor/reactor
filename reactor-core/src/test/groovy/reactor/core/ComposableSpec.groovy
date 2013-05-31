@@ -35,7 +35,7 @@ class ComposableSpec extends Specification {
 		def c1 = R.compose supplier { 'test' } get()
 		def c2 = R.compose supplier { 'test2' } get()
 		def c3 = R.compose supplier { 'test3' } get()
-		def result = R.compose().merge c1, c2, c3 get()
+		def result = R.compose c1, c2, c3 get()
 
 		then:
 		result.await(1, TimeUnit.SECONDS) == ['test', 'test2', 'test3']

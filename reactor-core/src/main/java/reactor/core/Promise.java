@@ -340,64 +340,46 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @param <T> The type of the values.
 	 */
-	public static class Spec<T> extends AbstractComposableSpec<T, Promise<T>, Spec<T>> {
-		@SuppressWarnings("unchecked")
-		public Spec(T value, Supplier<T> supplier, Throwable error) {
-			super((null != value ? Arrays.asList(value) : null), supplier, error);
-		}
+	public static class Spec<T> extends ComponentSpec<Spec<T>, Promise<T>> {
 
-		private T getValue() {
-			if (null != values) {
-				return values.iterator().next();
-			} else {
-				return null;
-			}
+		protected final T                                   value;
+		protected final Throwable                           error;
+		protected final Supplier<T>                         supplier;
+		protected final Collection<? extends Composable<?>> mergeWith;
+
+		public Spec(T value, Supplier<T> supplier, Throwable error, Collection<? extends Composable<?>> composables) {
+			this.value = value;
+			this.supplier = supplier;
+			this.error = error;
+			this.mergeWith = composables;
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
 		protected Promise<T> configure(Reactor reactor) {
-			if (null != mergeWith) {
-				//TODO fix generic hell
-				final Promise<Collection<?>> p = (Promise) new Promise<Collection<?>>(env, reactor);
-				doMerge(new DelayedAcceptComposable<Tuple2<?, Integer>>(env, reactor, mergeWith.size()))
-						.consume(p);
-
-				return (Promise<T>) p;
+			final Promise<T> prom;
+			if (null != error) {
+				prom = new Promise<T>(env, reactor).set(error);
+			} else if (supplier != null) {
+				prom = new Promise<T>(env, reactor);
+				Fn.schedule(new Consumer<Object>() {
+					@Override
+					public void accept(Object o) {
+						try {
+							prom.set(supplier.get());
+						} catch (Throwable t) {
+							prom.set(t);
+						}
+					}
+				}, null, reactor);
+			} else if (null != value) {
+				prom = new Promise<T>(env, reactor).set(value);
 			} else {
-				final Promise<T> prom;
-				if (null != error) {
-					prom = new Promise<T>(env, reactor).set(error);
-				} else if (supplier != null) {
-					prom = new Promise<T>(env, reactor);
-					Fn.schedule(new Consumer<Object>() {
-						@Override
-						public void accept(Object o) {
-							try {
-								prom.set(supplier.get());
-							} catch (Throwable t) {
-								prom.set(t);
-							}
-						}
-					}, null, reactor);
-				} else if (null != values) {
-					prom = new Promise<T>(env, reactor).set(getValue());
-				} else {
-					prom = new Promise<T>(env, reactor);
+				prom = new Promise<T>(env, reactor);
+				if (null != mergeWith) {
+					prom.merge(mergeWith);
 				}
-
-				if (null != src) {
-					src.consume(new Consumer<T>() {
-						@Override
-						public void accept(T t) {
-							prom.accept(t);
-						}
-					});
-				}
-
-				return prom;
 			}
+			return prom;
 		}
 	}
-
 }
