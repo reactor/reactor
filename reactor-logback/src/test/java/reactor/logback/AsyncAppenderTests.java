@@ -1,12 +1,13 @@
 package reactor.logback;
 
+import ch.qos.logback.classic.Logger;
 import org.junit.Test;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThan;
 
 /**
@@ -30,13 +31,12 @@ public class AsyncAppenderTests {
 
 	@Test
 	public void asyncAppenderLogsAsynchronously() {
-		Logger log = LoggerFactory.getLogger(AsyncAppenderTests.class);
+		Logger log = (Logger)LoggerFactory.getLogger(AsyncAppenderTests.class);
 
-		long start = System.currentTimeMillis();
 		log.info(MSG);
-		long end = System.currentTimeMillis();
 
-		assertThat("Time for call is too short to have done blocking IO", (end - start), lessThan(25L));
+
+		assertThat("Appender is not set", log.iteratorForAppenders().next(), instanceOf(AsyncAppender.class));
 	}
 
 }
