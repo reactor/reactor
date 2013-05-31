@@ -16,6 +16,7 @@
 
 package reactor.groovy
 
+import reactor.core.Composables
 import reactor.core.Environment
 import reactor.core.R
 import reactor.fn.dispatch.BlockingQueueDispatcher
@@ -52,7 +53,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from multiple values"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation'
 		int sum = 0
@@ -65,7 +66,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from multiple filtered values"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation that filters odd elements'
 		def d = (c | { Integer.parseInt it }) & { it % 2 == 0 }
@@ -77,7 +78,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Error handling with composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation that generates an exception for the last value'
 		int sum = 0
@@ -91,7 +92,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Value is immediately available"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		then:
 		c.get() == '5'
@@ -100,7 +101,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Reduce composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a reduction'
 		def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i }
@@ -113,7 +114,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "consume first and last with a composition from multiple values"() {
 		when: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation'
 		def d = c | { Integer.parseInt it }
@@ -165,7 +166,7 @@ class GroovyComposableSpec extends Specification {
 		}
 
 		and: 'prepare reduce and notify composition'
-		def c1 = R.defer().using(r).get()
+		def c1 = Composables.defer().using(r).get()
 		def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
 		r.compose(key.t2, '1', c1)
@@ -175,7 +176,7 @@ class GroovyComposableSpec extends Specification {
 		c2.get() == [1, 100]
 
 		when: 'using reduce() alias'
-		c1 = R.defer().using(r).get()
+		c1 = Composables.defer().using(r).get()
 		c2 = c1.take(3).reduce()
 
 		r.compose(key.t2, '1', c1)
@@ -197,7 +198,7 @@ class GroovyComposableSpec extends Specification {
 		}
 
 		and: 'Defer a composition'
-		def c = R.each(['1', '2', '3', '4', '5']).get()
+		def c = Composables.each(['1', '2', '3', '4', '5']).get()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def d = (c | { Integer.parseInt it }).to(key.t2, r)
@@ -212,7 +213,7 @@ class GroovyComposableSpec extends Specification {
 	def "compose from unknown number of values"() {
 
 		when: 'Defer a composition'
-		def c = R.each(new TestIterable('1', '2', '3', '4', '5')).get()
+		def c = Composables.each(new TestIterable('1', '2', '3', '4', '5')).get()
 
 		and: 'apply a transformation and call an explicit reactor'
 		def sum = 0

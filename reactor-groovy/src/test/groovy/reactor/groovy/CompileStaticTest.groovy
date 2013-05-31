@@ -2,7 +2,7 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.Environment
-import reactor.core.R
+import reactor.core.Promises
 import reactor.fn.Supplier
 
 /**
@@ -28,7 +28,7 @@ class CompileStaticTest {
 			}
 		}
 
-		R.task(supplier).using(env)
+		Promises.task(supplier).using(env)
 	}
 
 	static void main(String[] args) {
