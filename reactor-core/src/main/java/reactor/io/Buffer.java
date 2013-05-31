@@ -20,7 +20,6 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 
 /**
  * @author Jon Brisbin <jon@jbrisbin.com>
@@ -34,26 +33,25 @@ public class Buffer implements Comparable<Buffer> {
 			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000)
 	);
 
-	private final Charset        utf8    = Charset.forName("UTF-8");
-	private final CharsetDecoder decoder = utf8.newDecoder();
+	private final Charset utf8 = Charset.forName("UTF-8");
 	private final boolean    dynamic;
 	private       ByteBuffer buffer;
 
 	public Buffer() {
-		dynamic = true;
+		this.dynamic = true;
 	}
 
 	public Buffer(int atLeast, boolean fixed) {
 		if (fixed) {
 			if (atLeast <= MAX_BUFFER_SIZE) {
-				buffer = ByteBuffer.allocate(atLeast);
+				this.buffer = ByteBuffer.allocate(atLeast);
 			} else {
 				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE + ")");
 			}
 		} else {
 			ensureCapacity(atLeast);
 		}
-		dynamic = !fixed;
+		this.dynamic = !fixed;
 	}
 
 	public Buffer(Buffer bufferToCopy) {
@@ -172,7 +170,7 @@ public class Buffer implements Comparable<Buffer> {
 		if (null != buffer) {
 			buffer.mark();
 			try {
-				return decoder.decode(buffer).toString();
+				return utf8.newDecoder().decode(buffer).toString();
 			} catch (CharacterCodingException e) {
 				throw new IllegalStateException(e.getMessage(), e);
 			} finally {
@@ -229,7 +227,7 @@ public class Buffer implements Comparable<Buffer> {
 	}
 
 	public Buffer append(Buffer b) {
-		int pos = buffer.position();
+		int pos = (null == buffer ? 0 : buffer.position());
 		int len = b.remaining();
 		ensureCapacity(len);
 		buffer.put(b.byteBuffer());
