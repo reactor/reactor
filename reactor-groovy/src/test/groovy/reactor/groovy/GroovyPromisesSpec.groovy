@@ -49,7 +49,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		def p = R.promise{"Hello World!"}.get()
+		def p = P.task{"Hello World!"}.get()
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"

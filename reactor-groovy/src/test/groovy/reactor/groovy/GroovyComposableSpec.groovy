@@ -18,6 +18,7 @@ package reactor.groovy
 
 import reactor.core.C
 import reactor.core.Environment
+import reactor.core.Promises
 import reactor.core.R
 import reactor.fn.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
@@ -41,7 +42,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose from Closure"() {
 		when: 'Defer a composition'
-		def c = R.compose { sleep 500; 1 } get()
+		def c = Promises.task { sleep 500; 1 } get()
 
 		and: 'apply a transformation'
 		def d = c | { it + 1 }

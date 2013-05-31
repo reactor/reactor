@@ -43,6 +43,20 @@ public class ComposableTests extends AbstractReactorTest {
 	static final String2Integer STRING_2_INTEGER = new String2Integer();
 
 	@Test
+	public void testComposeFromSingleValue() throws InterruptedException {
+		Composable<String> c = Composables.defer("Hello World!").get();
+
+		Composable<String> d = c.map(new Function<String, String>() {
+			@Override
+			public String apply(String s) {
+				return "Goodbye then!";
+			}
+		});
+
+		await(d, is("Goodbye then!"));
+	}
+
+	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
 		Composable<Integer> c = C
 				.each(Arrays.asList("1", "2", "3", "4", "5"))

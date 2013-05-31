@@ -16,6 +16,8 @@
 
 package reactor.core;
 
+import java.util.Arrays;
+
 /**
  * @author Stephane Maldini
  */
@@ -27,6 +29,15 @@ public class Composables {
 	 */
 	public static <T> Composable.Spec<T> defer() {
 		return new Composable.Spec<T>(null);
+	}
+
+	/**
+	 * Create a delayed {@link reactor.core.Composable} with initial state, ready to accept values.
+	 *
+	 * @return A {@link reactor.core.Composable.Spec} to further refine the {@link reactor.core.Composable} and then build it.
+	 */
+	public static <T> Composable.Spec<T> defer(T value) {
+		return new Composable.Spec<T>(Arrays.asList(value));
 	}
 
 	/**
