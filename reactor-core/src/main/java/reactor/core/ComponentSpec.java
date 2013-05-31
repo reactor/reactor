@@ -138,7 +138,6 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-
 	public SPEC dispatcher(String name) {
 		Assert.notNull(env, "Cannot use an " + name + " Dispatcher without a properly-configured Environment.");
 		this.dispatcher = env.getDispatcher(name);

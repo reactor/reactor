@@ -16,21 +16,9 @@
 
 package reactor.core;
 
-import static reactor.Fn.$;
-
-import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
-
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.LoggerFactory;
-
 import reactor.convert.StandardConverters;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
@@ -41,9 +29,14 @@ import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
+import com.eaio.uuid.UUID;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.io.IOException;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static reactor.Fn.$;
 
 /**
  * @author Stephane Maldini
@@ -73,8 +66,8 @@ public class Environment {
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
 
-	private final Map<String, List<Dispatcher>>  dispatchers;
-	private final String                         defaultDispatcher;
+	private final Map<String, List<Dispatcher>> dispatchers;
+	private final String                        defaultDispatcher;
 
 	public Environment() {
 		this(new HashMap<String, List<Dispatcher>>());
@@ -168,7 +161,7 @@ public class Environment {
 	}
 
 	public Dispatcher getDispatcher(String name) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			List<Dispatcher> dispatchers = this.dispatchers.get(name);
 			List<Dispatcher> filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
 			if (filteredDispatchers.isEmpty()) {
@@ -180,7 +173,7 @@ public class Environment {
 	}
 
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			doAddDispatcher(name, dispatcher);
 			if (name.equals(defaultDispatcher)) {
 				doAddDispatcher(DEFAULT_DISPATCHER, dispatcher);
@@ -193,13 +186,13 @@ public class Environment {
 		List<Dispatcher> dispatchers = this.dispatchers.get(name);
 		if (dispatchers == null) {
 			dispatchers = new ArrayList<Dispatcher>();
-			this.dispatchers.put(name,  dispatchers);
+			this.dispatchers.put(name, dispatchers);
 		}
 		dispatchers.add(dispatcher);
 	}
 
 	public Environment removeDispatcher(String name) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			dispatchers.remove(name);
 		}
 		return this;
@@ -208,6 +201,7 @@ public class Environment {
 	public Registration<? extends Reactor> register(Reactor reactor) {
 		return register("", reactor);
 	}
+
 	public Registration<? extends Reactor> register(String id, Reactor reactor) {
 		return reactors.register($(id.isEmpty() ? reactor.getId().toString() : id), reactor);
 	}
@@ -228,6 +222,11 @@ public class Environment {
 		}
 		return r;
 	}
+
+	public boolean unregister(Reactor reactor) {
+		return unregister(reactor.getId());
+	}
+
 
 	public boolean unregister(UUID id) {
 		return unregister(id.toString());
