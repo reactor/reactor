@@ -81,7 +81,7 @@ public class SyslogTcpServerTests {
 		 });
 
 		// Bind and start to accept incoming connections.
-		b.bind().awaitUninterruptibly();
+		ChannelFuture channelFuture = b.bind().awaitUninterruptibly();
 
 		for (int i = 0; i < threads; i++) {
 			new SyslogMessageWriter().start();
@@ -95,6 +95,8 @@ public class SyslogTcpServerTests {
 		double elapsed = (end.get() - start.get()) * 1.0;
 		System.out.println("elapsed: " + (int) elapsed + "ms");
 		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
+
+		channelFuture.channel().close().awaitUninterruptibly();
 	}
 
 	@Test
