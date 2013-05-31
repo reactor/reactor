@@ -17,23 +17,10 @@
 package reactor.core;
 
 /**
- * Base class to encapsulate commonly-used functionality around Reactors.
+ * Alias for Reactors
  *
- * @author Jon Brisbin
  * @author Stephane Maldini
- * @author Andy Wilkinson
  */
-public class R {
-
-	/**
-	 * Create a {@literal Reactor} based on the given id.
-	 *
-	 * @return The new {@link Reactor}.
-	 */
-	public static Reactor.Spec reactor() {
-		return new Reactor.Spec();
-	}
-
-}
+public class R extends Reactors{}
 
 

@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-package reactor.filter;
-
-import java.util.List;
+package reactor.core;
 
 /**
- * A {@link Filter} implementation that performs no filtering, returning the {@code items} as-is.
+ * Alias for Composables
  *
- * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
-public final class PassThroughFilter extends AbstractFilter {
-
-	@Override
-	public <T> List<T> doFilter(List<T> items, Object key) {
-		return items;
-	}
-}
+public class C extends Composables {}

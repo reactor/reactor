@@ -14,19 +14,23 @@
  * limitations under the License.
  */
 
-package reactor.filter;
-
-import java.util.List;
+package reactor.core;
 
 /**
- * A {@link Filter} implementation that performs no filtering, returning the {@code items} as-is.
+ * Base class to encapsulate commonly-used functionality around Reactors.
  *
+ * @author Jon Brisbin
+ * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public final class PassThroughFilter extends AbstractFilter {
+public class Reactors {
 
-	@Override
-	public <T> List<T> doFilter(List<T> items, Object key) {
-		return items;
+	/**
+	 * Create a {@literal Reactor} based on the given id.
+	 *
+	 * @return The new {@link Reactor}.
+	 */
+	public static Reactor.Spec reactor() {
+		return new Reactor.Spec();
 	}
 }

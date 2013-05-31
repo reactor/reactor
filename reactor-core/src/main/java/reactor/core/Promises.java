@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2011-2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package reactor.core;
 
 import reactor.fn.Supplier;
@@ -6,6 +22,8 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
+ * Alias for P
+ *
  * @author Stephane Maldini
  */
 public class Promises {
@@ -62,7 +80,7 @@ public class Promises {
 	 * @return a {@link reactor.core.Promise.Spec}.
 	 */
 	public static <T> Promise.Spec<Collection<T>> when(Composable<T>... composables) {
-		return whenAll(Arrays.asList(composables));
+		return when(Arrays.asList(composables));
 	}
 
 	/**
@@ -72,7 +90,7 @@ public class Promises {
 	 * @param <T>         The type of the function result.
 	 * @return a {@link reactor.core.Promise.Spec}.
 	 */
-	public static <T> Promise.Spec<Collection<T>> whenAll(Collection<? extends Composable<T>> composables) {
+	public static <T> Promise.Spec<Collection<T>> when(Collection<? extends Composable<T>> composables) {
 		return new Promise.Spec<Collection<T>>(null, null, null, composables);
 	}
 }

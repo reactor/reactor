@@ -16,6 +16,8 @@
 
 
 
+
+
 package reactor.core
 
 import spock.lang.Specification
@@ -35,7 +37,7 @@ class PromiseSpec extends Specification {
 		def success = false
 
 		when: "we create a plain Promise"
-		def promise = Promises.task(supplier { throw new Exception('bad') }).sync().get()
+		def promise = P.task(supplier { throw new Exception('bad') }).sync().get()
 
 		and:
 		promise.onSuccess(consumer { success = true })
@@ -51,7 +53,7 @@ class PromiseSpec extends Specification {
 
 	def "Test promise chaining with exception"() {
 		when: "A promise is chained"
-		def promise = Promises.task(supplier { 1 + 1 }).sync().get()
+		def promise = P.task(supplier { 1 + 1 }).sync().get()
 		promise = promise.map function { it * 2 } map function { throw new RuntimeException("bad") } map function {
 			it + 6
 		}
@@ -68,10 +70,10 @@ class PromiseSpec extends Specification {
 
 		when: "A promise list is created from two promises"
 		def result
-		def p1 = Promises.task supplier { 1 + 1 } get()
-		def p2 = Promises.task supplier { 2 + 2 } get()
+		def p1 = P.task supplier { 1 + 1 } get()
+		def p2 = P.task supplier { 2 + 2 } get()
 		def latch = new CountDownLatch(1)
-		Promises.when(p1, p2).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
+		P.when(p1, p2).get().onSuccess consumer { List<Integer> v -> result = v; latch.countDown(); }
 
 		latch.await(1, TimeUnit.SECONDS)
 
@@ -81,13 +83,13 @@ class PromiseSpec extends Specification {
 
 	def "Test promise list with an exception"() {
 		when: "A promise list with a promise that throws an exception"
-		def p1 = Promises.task supplier { 1 + 1 } get()
-		def p2 = Promises.task supplier { throw new Exception('bad') } get()
-		def p3 = Promises.task supplier { 2 + 2 } get()
+		def p1 = P.task supplier { 1 + 1 } get()
+		def p2 = P.task supplier { throw new Exception('bad') } get()
+		def p3 = P.task supplier { 2 + 2 } get()
 
 		def latch = new CountDownLatch(1)
 		def res, err
-		Promises.when(p1, p2, p3).get().then(
+		P.when(p1, p2, p3).get().then(
 				consumer { List<Integer> v -> println v; res = v },
 				consumer { Throwable t -> println 'test2';  err = t; latch.countDown() }
 		)

@@ -39,21 +39,21 @@ public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testPromiseNotifiesOfValues() throws InterruptedException {
-		Promise<String> p = Promises.success("Hello World!").get();
+		Promise<String> p = P.success("Hello World!").get();
 		assertThat("Promise is in success state", p.isSuccess(), is(true));
 		assertThat("Promise contains value", p.get(), is("Hello World!"));
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testPromiseNotifiesOfFailures() throws InterruptedException {
-		Promise<String> p = Promises.<String>error(new IllegalArgumentException("Bad code! Bad!")).get();
+		Promise<String> p = P.<String>error(new IllegalArgumentException("Bad code! Bad!")).get();
 		assertThat("Promise is in failed state", p.isError(), is(true));
 		assertThat("Promise has exploded", p.get(), is(nullValue()));
 	}
 
 	@Test
 	public void testPromisesCanBeMapped() {
-		Promise<String> p = Promises.<String>defer().sync().get();
+		Promise<String> p = P.<String>defer().sync().get();
 
 		Supplier<Integer> s = p.map(new Function<String, Integer>() {
 			@Override
@@ -69,7 +69,7 @@ public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testPromisesCanBeFiltered() {
-		Promise<String> p = Promises.<String>defer().sync().get();
+		Promise<String> p = P.<String>defer().sync().get();
 
 		Supplier<Integer> s = p
 				.map(new Function<String, Integer>() {
@@ -92,8 +92,8 @@ public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testPromiseAsConsumer() {
-		Promise<String> p1 = Promises.<String>defer().sync().get();
-		Promise<String> p2 = Promises.<String>defer().sync().get();
+		Promise<String> p1 = P.<String>defer().sync().get();
+		Promise<String> p2 = P.<String>defer().sync().get();
 
 		p1.consume(p2);
 
@@ -104,7 +104,7 @@ public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testErrorsStopCompositions() throws InterruptedException {
-		Promise<String> p = Promises.<String>defer().get();
+		Promise<String> p = P.<String>defer().get();
 		final CountDownLatch exceptionHandled = new CountDownLatch(1);
 
 		Composable<Integer> c = p
@@ -142,7 +142,7 @@ public class PromiseTests extends AbstractReactorTest {
 
 	@Test
 	public void testPromiseComposesAfterSet() {
-		Promise<String> p = Promises.success("10").get();
+		Promise<String> p = P.success("10").get();
 
 		Supplier<Integer> s = p
 				.map(new Function<String, Integer>() {
@@ -167,7 +167,7 @@ public class PromiseTests extends AbstractReactorTest {
 		Reactor r1 = R.reactor().get();
 		Reactor r2 = R.reactor().using(env).threadPoolExecutor().get();
 
-		final Promise<String> promise = Promises.<String>defer().using(r1).get();
+		final Promise<String> promise = P.<String>defer().using(r1).get();
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		Fn.schedule(new Consumer() {
