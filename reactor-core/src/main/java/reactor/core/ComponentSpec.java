@@ -42,12 +42,23 @@ import reactor.util.Assert;
 @SuppressWarnings("unchecked")
 public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TARGET> implements Supplier<TARGET> {
 
-	protected Environment                    env;
-	protected Dispatcher                     dispatcher;
-	protected Reactor                        reactor;
-	protected Converter                      converter;
-	protected EventRoutingStrategy           eventRoutingStrategy;
-	protected SelectionStrategy              selectionStrategy;
+	protected Environment          env;
+	protected Dispatcher           dispatcher;
+	protected Reactor              reactor;
+	protected Converter            converter;
+	protected EventRoutingStrategy eventRoutingStrategy;
+	protected SelectionStrategy    selectionStrategy;
+	protected String               reactorId;
+
+	public SPEC register() {
+		return register("");
+	}
+
+	public SPEC register(String id) {
+		Assert.notNull(env, "Cannot register reactor without a properly-configured Environment.");
+		this.reactorId = id;
+		return (SPEC) this;
+	}
 
 	public SPEC using(Environment env) {
 		this.env = env;
@@ -85,7 +96,6 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	}
 
 	public SPEC broadcastEventRouting() {
-
 		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
 		return (SPEC) this;
 	}
@@ -130,7 +140,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 
 
 	public SPEC dispatcher(String name) {
-		Assert.notNull(env, "Cannot use an "+name+" Dispatcher without a properly-configured Environment.");
+		Assert.notNull(env, "Cannot use an " + name + " Dispatcher without a properly-configured Environment.");
 		this.dispatcher = env.getDispatcher(name);
 		return (SPEC) this;
 	}
@@ -141,14 +151,14 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 
 	protected Reactor createReactor() {
 		final Reactor reactor;
-		if (null == this.dispatcher && env != null){
+		if (null == this.dispatcher && env != null) {
 			this.dispatcher = env.getDispatcher(Environment.DEFAULT_DISPATCHER);
 		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
-														dispatcher,
-														selectionStrategy,
-														createEventRouter());
+					dispatcher,
+					selectionStrategy,
+					createEventRouter());
 		} else {
 			reactor = new Reactor(
 					env,
@@ -156,6 +166,10 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 					null == selectionStrategy ? this.reactor.getConsumerRegistry().getSelectionStrategy() : selectionStrategy,
 					createEventRouter(this.reactor));
 		}
+		if (null != reactorId && env != null){
+			env.register(reactorId, reactor);
+		}
+
 		return reactor;
 	}
 

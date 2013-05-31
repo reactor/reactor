@@ -206,14 +206,17 @@ public class Environment {
 	}
 
 	public Registration<? extends Reactor> register(Reactor reactor) {
-		return reactors.register($(reactor.getId()), reactor);
+		return register("", reactor);
 	}
-
-	public Reactor find(String id) {
-		return find(UUID.fromString(id));
+	public Registration<? extends Reactor> register(String id, Reactor reactor) {
+		return reactors.register($(id.isEmpty() ? reactor.getId().toString() : id), reactor);
 	}
 
 	public Reactor find(UUID id) {
+		return find(id.toString());
+	}
+
+	public Reactor find(String id) {
 		Iterator<Registration<? extends Reactor>> rs = reactors.select(id).iterator();
 		if (!rs.hasNext()) {
 			return null;
@@ -226,11 +229,11 @@ public class Environment {
 		return r;
 	}
 
-	public boolean unregister(String id) {
-		return unregister(UUID.fromString(id));
+	public boolean unregister(UUID id) {
+		return unregister(id.toString());
 	}
 
-	public boolean unregister(UUID id) {
+	public boolean unregister(String id) {
 		return reactors.unregister(id);
 	}
 
