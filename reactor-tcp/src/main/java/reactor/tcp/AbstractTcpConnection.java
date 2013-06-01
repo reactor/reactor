@@ -1,9 +1,10 @@
 package reactor.tcp;
 
+import reactor.C;
 import reactor.Fn;
+import reactor.R;
 import reactor.core.Composable;
 import reactor.core.Environment;
-import reactor.core.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -62,7 +63,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Composable<IN> in() {
-		Composable<IN> c = R.<IN>compose()
+		Composable<IN> c = C.<IN>defer()
 												.using(env)
 												.using(eventsReactor.getDispatcher())
 												.get();
@@ -72,7 +73,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Composable<OUT> out() {
-		return R.<OUT>compose()
+		return C.<OUT>defer()
 						.using(env)
 						.using(eventsReactor.getDispatcher())
 						.get();

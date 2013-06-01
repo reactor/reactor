@@ -10,6 +10,7 @@ import reactor.fn.dispatch.Task;
 /**
  * @author Jon Brisbin
  */
+@SuppressWarnings({"rawtypes"})
 public class NettyEventLoopDispatcher extends AbstractDispatcher {
 
 	private final EventLoop   eventLoop;
