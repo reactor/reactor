@@ -21,6 +21,7 @@
 package reactor.core
 
 import reactor.Fn
+import reactor.R
 import reactor.fn.Consumer
 import reactor.fn.Event
 import reactor.fn.Function

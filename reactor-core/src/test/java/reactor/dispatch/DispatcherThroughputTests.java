@@ -17,7 +17,7 @@
 package reactor.dispatch;
 
 import org.junit.Test;
-import reactor.core.R;
+import reactor.R;
 import reactor.core.Reactor;
 
 import static reactor.Fn.$;

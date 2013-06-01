@@ -18,7 +18,7 @@ package reactor.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Fn;
+import reactor.fn.Functions;
 import reactor.fn.*;
 import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
@@ -48,7 +48,7 @@ public class Promise<T> extends Composable<T> {
 	Promise(Environment env, Observable src) {
 		super(env, src);
 		expectedAcceptCount.set(1);
-		observable.on(Fn.T(Throwable.class), new Consumer<Event<Throwable>>() {
+		observable.on(Functions.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
 			public void accept(Event<Throwable> throwableEvent) {
 				synchronized (monitor) {
@@ -202,7 +202,7 @@ public class Promise<T> extends Composable<T> {
 			if (isError()) {
 				return this;
 			} else if (acceptCountReached()) {
-				Fn.schedule(consumer, value, observable);
+				Functions.schedule(consumer, value, observable);
 				return this;
 			} else {
 				return (Promise<T>) super.consume(consumer);
@@ -253,7 +253,7 @@ public class Promise<T> extends Composable<T> {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
 				final Promise<V> c = createComposable(observable);
-				Fn.schedule(new Consumer<T>() {
+				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
 						try {
@@ -275,7 +275,7 @@ public class Promise<T> extends Composable<T> {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
 				final Promise<T> c = createComposable(observable);
-				Fn.schedule(new Consumer<T>() {
+				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
 						try {
@@ -419,7 +419,7 @@ public class Promise<T> extends Composable<T> {
 				prom = new Promise<T>(env, reactor).set(error);
 			} else if (supplier != null) {
 				prom = new Promise<T>(env, reactor);
-				Fn.schedule(new Consumer<Object>() {
+				Functions.schedule(new Consumer<Object>() {
 					@Override
 					public void accept(Object o) {
 						try {

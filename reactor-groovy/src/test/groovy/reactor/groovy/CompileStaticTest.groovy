@@ -2,7 +2,7 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.Environment
-import reactor.core.P
+import reactor.P
 import reactor.fn.Supplier
 
 /**

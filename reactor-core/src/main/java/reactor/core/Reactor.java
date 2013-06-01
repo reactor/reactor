@@ -33,8 +33,8 @@ import reactor.util.Assert;
 
 import java.util.Set;
 
-import static reactor.Fn.$;
-import static reactor.Fn.T;
+import static reactor.fn.Functions.$;
+import static reactor.fn.Functions.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its

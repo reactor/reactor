@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package reactor.core;
+package reactor;
+
+import reactor.core.Reactors;
 
 /**
  * Alias for Reactors
  *
  * @author Stephane Maldini
  */
-public class R extends Reactors{}
+public class R extends Reactors {}
 
 

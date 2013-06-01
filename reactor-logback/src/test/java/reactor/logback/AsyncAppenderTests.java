@@ -35,7 +35,6 @@ public class AsyncAppenderTests {
 
 		log.info(MSG);
 
-
 		assertThat("Appender is not set", log.iteratorForAppenders().next(), instanceOf(AsyncAppender.class));
 	}
 

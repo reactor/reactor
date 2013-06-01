@@ -20,6 +20,9 @@
 
 package reactor.core
 
+import reactor.C
+import reactor.P
+import reactor.R
 import spock.lang.Specification
 
 /**

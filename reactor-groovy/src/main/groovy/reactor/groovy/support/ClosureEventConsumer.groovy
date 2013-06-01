@@ -17,9 +17,6 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.core.R
-import reactor.core.R
 import reactor.fn.Consumer
 import reactor.fn.Event
 

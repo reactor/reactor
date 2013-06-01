@@ -19,6 +19,8 @@ package reactor.core;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.C;
+import reactor.R;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;

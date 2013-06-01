@@ -18,7 +18,7 @@ package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
 import reactor.Fn
-import reactor.core.P
+import reactor.P
 import reactor.core.Promise
 import reactor.core.Promises
 import reactor.fn.Observable

@@ -16,7 +16,7 @@
 
 package reactor.core;
 
-import reactor.Fn;
+import reactor.fn.Functions;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.selector.Selector;
@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static reactor.Fn.$;
+import static reactor.fn.Functions.$;
 
 /**
  * A {@literal Composable} is a way to provide components when other threads to act on incoming data and provide new
@@ -480,14 +480,14 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		Assert.notNull(onError);
 
 		if (!isComplete()) {
-			observable.on(Fn.T(exceptionType), new Consumer<Event<E>>() {
+			observable.on(Functions.T(exceptionType), new Consumer<Event<E>>() {
 				@Override
 				public void accept(Event<E> ev) {
 					onError.accept(ev.getData());
 				}
 			});
 		} else if (isError()) {
-			Fn.schedule(onError, (E) error, observable);
+			Functions.schedule(onError, (E) error, observable);
 		}
 		return this;
 	}
@@ -501,7 +501,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				}
 			});
 		} else if (!isError()) {
-			Fn.schedule(consumer, value, observable);
+			Functions.schedule(consumer, value, observable);
 		}
 		return null;
 	}
@@ -521,7 +521,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	}
 
 	protected Reactor createReactor(Observable src) {
-		Reactor.Spec rspec = R.reactor().using(env);
+		Reactor.Spec rspec = Reactors.reactor().using(env);
 
 		if (null != src && Reactor.class.isInstance(src)) {
 			rspec.using((Reactor) src);

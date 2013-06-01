@@ -19,7 +19,7 @@ package reactor.core.dynamic;
 import reactor.Fn;
 import reactor.convert.Converter;
 import reactor.core.Environment;
-import reactor.core.R;
+import reactor.R;
 import reactor.core.Reactor;
 import reactor.core.dynamic.annotation.Dispatcher;
 import reactor.core.dynamic.annotation.Notify;

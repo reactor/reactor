@@ -6,7 +6,7 @@ import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
 import reactor.core.Environment;
-import reactor.core.R;
+import reactor.R;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;

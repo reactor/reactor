@@ -16,10 +16,10 @@
 
 package reactor.groovy
 
-import reactor.core.C
+import reactor.C
 import reactor.core.Environment
 import reactor.core.Promises
-import reactor.core.R
+import reactor.R
 import reactor.fn.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
 import spock.lang.Specification

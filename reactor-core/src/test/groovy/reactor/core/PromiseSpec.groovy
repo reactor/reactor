@@ -20,6 +20,7 @@
 
 package reactor.core
 
+import reactor.P
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch

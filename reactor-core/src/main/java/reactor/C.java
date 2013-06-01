@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package reactor.core;
+package reactor;
+
+import reactor.core.Composables;
 
 /**
- * Alias for Promises
+ * Alias for Composables
  *
  * @author Stephane Maldini
  */
-public class P extends Promises {}
+public class C extends Composables {}

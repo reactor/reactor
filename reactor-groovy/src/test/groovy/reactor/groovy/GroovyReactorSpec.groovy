@@ -17,7 +17,7 @@
 package reactor.groovy
 
 import reactor.core.Environment
-import reactor.core.R
+import reactor.R
 import reactor.fn.Event
 import reactor.fn.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared

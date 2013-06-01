@@ -36,7 +36,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static reactor.Fn.$;
+import static reactor.fn.Functions.$;
 
 /**
  * @author Stephane Maldini

@@ -19,6 +19,8 @@ package reactor.core;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.Fn;
+import reactor.P;
+import reactor.R;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
