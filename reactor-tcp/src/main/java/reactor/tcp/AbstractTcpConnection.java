@@ -142,15 +142,17 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		return this;
 	}
 
-	public void read(Buffer data) {
+	public boolean read(Buffer data) {
 		IN in;
 		if (null != decoder) {
-			while (null != (in = decoder.apply(data))) {
+			while ((null != data.byteBuffer() && data.byteBuffer().hasRemaining()) && null != (in = decoder.apply(data))) {
 				eventsReactor.notify(read.getT2(), Event.wrap(in));
 			}
 		} else {
 			eventsReactor.notify(read.getT2(), Event.wrap(data));
 		}
+
+		return data.remaining() > 0;
 	}
 
 	protected abstract void write(Buffer data, Consumer<Boolean> onComplete);

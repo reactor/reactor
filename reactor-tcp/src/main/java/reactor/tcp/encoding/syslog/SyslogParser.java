@@ -1,6 +1,5 @@
 package reactor.tcp.encoding.syslog;
 
-import org.joda.time.DateTime;
 import reactor.io.Buffer;
 import reactor.util.Assert;
 
@@ -11,7 +10,6 @@ public class SyslogParser {
 
 	private static final int BUFFER_SIZE = 16 * 1024;
 
-	private int    year  = DateTime.now().getYear();
 	private char[] chars = new char[BUFFER_SIZE];
 
 	private enum Token {

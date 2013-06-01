@@ -412,10 +412,18 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
+			if (null == buffer) {
+				return -1;
+			}
 			Assert.state((off + len) > buffer.limit(), "Requested offset + length (" + off + " + " + len + ") larger than Buffer limit (" + buffer.limit() + ")");
 
 			buffer.position(off);
-			buffer.get(b);
+			for (int i = 0; i < len; i++) {
+				if (buffer.remaining() == 0) {
+					break;
+				}
+				b[i] = buffer.get();
+			}
 
 			return buffer.position() - off;
 		}
@@ -435,7 +443,7 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public void close() throws IOException {
-			clear();
+			buffer.position(buffer.limit());
 		}
 
 		@Override

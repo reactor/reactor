@@ -4,10 +4,8 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
-import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.encoding.json.JsonCodec;
 import reactor.tcp.netty.NettyTcpServer;
-
-import java.util.Collection;
 
 /**
  * @author Jon Brisbin
@@ -23,16 +21,16 @@ public class TcpServerTests {
 
 	@Test
 	public void testTcpServer() throws InterruptedException {
-		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>(NettyTcpServer.class)
+		TcpServer<Pojo, Pojo> server = new TcpServer.Spec<Pojo, Pojo>(NettyTcpServer.class)
 				.using(env)
 				.ringBuffer()
-				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.consume(new Consumer<TcpConnection<Collection<String>, Collection<String>>>() {
+				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class, Pojo.class))
+				.consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
 					@Override
-					public void accept(TcpConnection<Collection<String>, Collection<String>> conn) {
-						conn.consume(new Consumer<Collection<String>>() {
+					public void accept(TcpConnection<Pojo, Pojo> conn) {
+						conn.consume(new Consumer<Pojo>() {
 							@Override
-							public void accept(Collection<String> data) {
+							public void accept(Pojo data) {
 								System.out.println("got data: " + data);
 							}
 						});
@@ -43,6 +41,32 @@ public class TcpServerTests {
 
 		while (true) {
 			Thread.sleep(5000);
+		}
+	}
+
+	private static class Pojo {
+		String name;
+
+		private Pojo() {
+		}
+
+		private Pojo(String name) {
+			this.name = name;
+		}
+
+		private String getName() {
+			return name;
+		}
+
+		private void setName(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public String toString() {
+			return "Pojo{" +
+					"name='" + name + '\'' +
+					'}';
 		}
 	}
 
