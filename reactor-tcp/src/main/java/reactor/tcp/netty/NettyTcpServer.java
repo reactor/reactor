@@ -57,7 +57,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
 				.handler(new LoggingHandler())
 				.childHandler(new ChannelInitializer<SocketChannel>() {
-
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.pipeline().addLast(createChannelHandlers(ch));
