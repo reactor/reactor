@@ -1,53 +1,43 @@
 package reactor.tcp;
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.Fn;
 import reactor.core.ComponentSpec;
-import reactor.core.Composable;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Function;
 import reactor.fn.Registration;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
-import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
 
+import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 
 import static reactor.Fn.$;
 
 /**
  * @author Jon Brisbin
  */
-public class TcpServer<IN, OUT> {
+public abstract class TcpServer<IN, OUT> {
 
-	private final Event<TcpServer<IN, OUT>>        selfEvent   = new Event<TcpServer<IN, OUT>>(this);
+	private final Event<TcpServer<IN, OUT>>        selfEvent   = Event.wrap(this);
+	private final Tuple2<Selector, Object>         start       = $();
+	private final Tuple2<Selector, Object>         shutdown    = $();
+	private final Tuple2<Selector, Object>         open        = $();
+	private final Tuple2<Selector, Object>         close       = $();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
+	private final Reactor                reactor;
 	private final Codec<Buffer, IN, OUT> codec;
-	private final ServerBootstrap        bootstrap;
 
-	protected final Tuple2<Selector, Object> shutdown   = $();
-	protected final Tuple2<Selector, Object> connection = $();
 	protected final Environment env;
-	protected final Reactor     reactor;
 
 	protected TcpServer(Environment env,
 											Reactor reactor,
@@ -64,242 +54,132 @@ public class TcpServer<IN, OUT> {
 		this.codec = codec;
 
 		for (final Consumer<TcpConnection<IN, OUT>> consumer : connectionConsumers) {
-			this.reactor.on(connection.getT1(), new Consumer<Event<TcpConnection<IN, OUT>>>() {
+			this.reactor.on(open.getT1(), new Consumer<Event<TcpConnection<IN, OUT>>>() {
 				@Override
 				public void accept(Event<TcpConnection<IN, OUT>> ev) {
 					consumer.accept(ev.getData());
 				}
 			});
 		}
-
-		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS);
-		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
-		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
-
-		this.bootstrap = new ServerBootstrap()
-				.group(selectorGroup, ioGroup)
-				.channel(NioServerSocketChannel.class)
-				.option(ChannelOption.SO_BACKLOG, backlog)
-				.option(ChannelOption.SO_RCVBUF, rcvbuf)
-				.option(ChannelOption.SO_SNDBUF, sndbuf)
-				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
-				.handler(new LoggingHandler())
-				.childHandler(new ChannelInitializer<SocketChannel>() {
-
-					@Override
-					public void initChannel(final SocketChannel ch) throws Exception {
-						ch.pipeline().addLast(createChannelHandlers(ch));
-						ch.closeFuture().addListener(new ChannelFutureListener() {
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								for (Registration<? extends TcpConnection<IN, OUT>> reg : connections.select(ch)) {
-									reg.getObject().close();
-									reg.cancel();
-								}
-							}
-						});
-					}
-
-					@Override
-					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-						TcpServer.this.reactor.notify(cause.getClass(), Event.wrap(cause));
-					}
-				});
 	}
 
 	public TcpServer<IN, OUT> start() {
 		return start(null);
 	}
 
-	public TcpServer<IN, OUT> start(final Consumer<Void> started) {
-		ChannelFuture bindFuture = bootstrap.bind();
-		if (null != started) {
-			bindFuture.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					Fn.schedule(started, null, reactor);
-				}
-			});
-		}
-
-		return this;
-	}
+	public abstract TcpServer<IN, OUT> start(Consumer<Void> started);
 
 	public TcpServer<IN, OUT> shutdown() {
-		bootstrap.shutdown();
-		reactor.notify(shutdown.getT2(), Event.NULL_EVENT);
-		return this;
+		return shutdown(null);
 	}
 
-	protected Registration<? extends TcpConnection<IN, OUT>> register(SocketChannel ch, TcpConnection<IN, OUT> conn) {
-		return connections.register($(ch), conn);
+	public abstract TcpServer<IN, OUT> shutdown(Consumer<Void> stopped);
+
+	protected <C> Registration<? extends TcpConnection<IN, OUT>> register(C channel, TcpConnection<IN, OUT> connection) {
+		return connections.register($(channel), connection);
 	}
 
-	protected NettyTcpConnection<IN, OUT> registerConnection(SocketChannel ch) {
-		NettyTcpConnection<IN, OUT> conn = new NettyTcpConnection<IN, OUT>(
-				ch,
-				null != codec ? codec.decoder() : null,
-				null != codec ? codec.encoder() : null
-		);
-
-		register(ch, conn);
-		reactor.notify(connection.getT2(), Event.wrap(conn));
-
-		return conn;
+	protected <C> TcpConnection<IN, OUT> select(C channel) {
+		Iterator<Registration<? extends TcpConnection<IN, OUT>>> conns = connections.select(channel).iterator();
+		if (conns.hasNext()) {
+			return conns.next().getObject();
+		} else {
+			TcpConnection<IN, OUT> conn = createConnection(channel);
+			register(channel, conn);
+			notifyOpen(conn);
+			return conn;
+		}
 	}
 
-	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		final NettyTcpConnection<IN, OUT> conn = registerConnection(ch);
-
-		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
-			@Override
-			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
-				while (data.readableBytes() > 0) {
-					Event<Buffer> ev = Event.wrap(new Buffer(data.nioBuffer()));
-					TcpServer.this.reactor.notify(conn.getReadKey(), ev);
-				}
-			}
-		};
-
-		return new ChannelHandler[]{readHandler};
+	protected <C> void close(C channel) {
+		for (Registration<? extends TcpConnection<IN, OUT>> reg : connections.select(channel)) {
+			TcpConnection<IN, OUT> conn = reg.getObject();
+			reg.getObject().close();
+			notifyClose(conn);
+			reg.cancel();
+		}
 	}
 
-	protected class NettyTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
-		private final long                     created = System.currentTimeMillis();
-		private final Tuple2<Selector, Object> read    = $();
+	protected abstract <C> TcpConnection<IN, OUT> createConnection(C channel);
 
-		private final SocketChannel         channel;
-		private final Function<Buffer, IN>  decoder;
-		private final Function<OUT, Buffer> encoder;
+	protected void notifyError(Throwable error) {
+		reactor.notify(error.getClass(), Event.wrap(error));
+	}
 
-		public NettyTcpConnection(final SocketChannel channel,
-															final Function<Buffer, IN> decoder,
-															final Function<OUT, Buffer> encoder) {
-			this.channel = channel;
-			this.decoder = decoder;
-			this.encoder = encoder;
-		}
-
-		public Object getReadKey() {
-			return read.getT2();
-		}
-
-		@Override
-		public void close() {
-			reactor.getConsumerRegistry().unregister(read.getT2());
-		}
-
-		@Override
-		public boolean consumable() {
-			return !channel.isInputShutdown();
-		}
-
-		@Override
-		public boolean writable() {
-			return !channel.isOutputShutdown();
-		}
-
-		@Override
-		public TcpConnection<IN, OUT> consume(final Consumer<IN> consumer) {
-			reactor.on(read.getT1(), new ReadConsumer<IN>(decoder, consumer));
-			return this;
-		}
-
-		@Override
-		public TcpConnection<IN, OUT> send(OUT data, final Consumer<Boolean> onComplete) {
-			Fn.schedule(
-					new Consumer<OUT>() {
-						@Override
-						public void accept(OUT data) {
-							ChannelFuture writeFuture = null;
-							if (null != encoder) {
-								Buffer bytes;
-								while (null != (bytes = encoder.apply(data)) && bytes.remaining() > 0) {
-									writeFuture = channel.write(bytes.asBytes());
-								}
-							} else {
-								writeFuture = channel.write(data);
-							}
-							if (null != onComplete && null != writeFuture) {
-								writeFuture.addListener(new ChannelFutureListener() {
-									@Override
-									public void operationComplete(ChannelFuture future) throws Exception {
-										onComplete.accept(future.isSuccess());
-									}
-								});
-							}
-						}
-					},
-					data,
-					reactor
-			);
-			return this;
-		}
-
-		@Override
-		public TcpConnection<IN, OUT> send(Composable<OUT> data) {
-			data.consume(new Consumer<OUT>() {
+	protected void notifyStart(final Consumer<Void> started) {
+		if (null != started) {
+			reactor.on(start.getT1(), new Consumer<Event<Void>>() {
 				@Override
-				public void accept(OUT data) {
-					send(data, null);
+				public void accept(Event<Void> ev) {
+					started.accept(null);
 				}
 			});
-			return this;
 		}
+		reactor.notify(start.getT2(), selfEvent);
 	}
 
-	private static class ReadConsumer<IN> implements Consumer<Event<Buffer>> {
-		private final Function<Buffer, IN> decoder;
-		private final Consumer<IN>         consumer;
-
-		private ReadConsumer(Function<Buffer, IN> decoder, Consumer<IN> consumer) {
-			this.decoder = decoder;
-			this.consumer = consumer;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public void accept(Event<Buffer> ev) {
-			Buffer b = ev.getData();
-			IN in;
-			if (null != decoder) {
-				while (null != (in = decoder.apply(b))) {
-					consumer.accept(in);
+	protected void notifyShutdown(final Consumer<Void> stopped) {
+		if (null != stopped) {
+			reactor.on(shutdown.getT1(), new Consumer<Event<Void>>() {
+				@Override
+				public void accept(Event<Void> ev) {
+					stopped.accept(null);
 				}
-			} else {
-				consumer.accept((IN) b);
-			}
+			});
 		}
+		reactor.notify(shutdown.getT2(), selfEvent);
 	}
 
-	private static class LoggingHandler extends ChannelHandlerAdapter {
-		private final Logger LOG = LoggerFactory.getLogger(TcpServer.class);
+	protected void notifyOpen(TcpConnection<IN, OUT> conn) {
+		reactor.notify(open.getT2(), Event.wrap(conn));
+	}
 
-		@Override
-		public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelFuture future) throws Exception {
-			if (LOG.isInfoEnabled()) {
-				LOG.info("BIND {}", localAddress);
-			}
-			super.bind(ctx, localAddress, future);
-		}
+	protected void notifyClose(TcpConnection<IN, OUT> conn) {
+		reactor.notify(close.getT2(), Event.wrap(conn));
+	}
 
-		@Override
-		public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelFuture future) throws Exception {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("CONNECT {}", remoteAddress);
-			}
-			super.connect(ctx, remoteAddress, localAddress, future);
-		}
+	protected Codec<Buffer, IN, OUT> getCodec() {
+		return codec;
 	}
 
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpServer<IN, OUT>> {
+		private final Class<? extends TcpServer<IN, OUT>>       serverImpl;
+		private final Constructor<? extends TcpServer<IN, OUT>> serverImplConstructor;
+
 		private InetSocketAddress listenAddress = new InetSocketAddress(3000);
 		private int               backlog       = 512;
 		private int               rcvbuf        = 8 * 1024;
 		private int               sndbuf        = 8 * 1024;
-		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
 		private Codec<Buffer, IN, OUT>                       codec;
+		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
+
+		@SuppressWarnings({"rawtypes"})
+		public Spec(Class<? extends TcpServer> serverImpl,
+								Codec<Buffer, IN, OUT> codec) {
+			this(serverImpl);
+			this.codec = codec;
+		}
+
+		@SuppressWarnings({"unchecked", "rawtypes"})
+		public Spec(Class<? extends TcpServer> serverImpl) {
+			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
+			this.serverImpl = (Class<? extends TcpServer<IN, OUT>>) serverImpl;
+			try {
+				this.serverImplConstructor = (Constructor<? extends TcpServer<IN, OUT>>) serverImpl.getDeclaredConstructor(
+						Environment.class,
+						Reactor.class,
+						InetSocketAddress.class,
+						int.class,
+						int.class,
+						int.class,
+						Codec.class,
+						Collection.class
+				);
+				this.serverImplConstructor.setAccessible(true);
+			} catch (NoSuchMethodException e) {
+				throw new IllegalArgumentException("No public constructor found that matches the signature of the one found in the TcpServer class.");
+			}
+		}
 
 		public Spec<IN, OUT> backlog(int backlog) {
 			this.backlog = backlog;
@@ -313,11 +193,13 @@ public class TcpServer<IN, OUT> {
 		}
 
 		public Spec<IN, OUT> listen(int port) {
+			Assert.isNull(listenAddress, "Listen address is already set.");
 			this.listenAddress = new InetSocketAddress(port);
 			return this;
 		}
 
 		public Spec<IN, OUT> listen(String host, int port) {
+			Assert.isNull(listenAddress, "Listen address is already set.");
 			this.listenAddress = new InetSocketAddress(host, port);
 			return this;
 		}
@@ -339,16 +221,20 @@ public class TcpServer<IN, OUT> {
 
 		@Override
 		protected TcpServer<IN, OUT> configure(Reactor reactor) {
-			return new TcpServer<IN, OUT>(
-					env,
-					reactor,
-					listenAddress,
-					backlog,
-					rcvbuf,
-					sndbuf,
-					codec,
-					connectionConsumers
-			);
+			try {
+				return serverImplConstructor.newInstance(
+						env,
+						reactor,
+						listenAddress,
+						backlog,
+						rcvbuf,
+						sndbuf,
+						codec,
+						connectionConsumers
+				);
+			} catch (Throwable t) {
+				throw new IllegalStateException(t);
+			}
 		}
 	}
 

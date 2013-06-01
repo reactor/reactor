@@ -13,9 +13,13 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
+import reactor.io.Buffer;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
-import reactor.tcp.encoding.DelimitedCodec;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.encoding.syslog.SyslogMessage;
+import reactor.tcp.encoding.syslog.SyslogParser;
+import reactor.tcp.netty.NettyTcpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -35,8 +39,8 @@ public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n".getBytes();
 
-	final int msgs    = 2000000;
-	final int threads = 1;
+	final int msgs    = 10000000;
+	final int threads = 2;
 
 	Environment    env;
 	CountDownLatch latch;
@@ -52,8 +56,8 @@ public class SyslogTcpServerTests {
 
 	@Test
 	public void testSyslogServer() throws InterruptedException {
-		EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-		EventLoopGroup workerGroup = new NioEventLoopGroup();
+		EventLoopGroup bossGroup = new NioEventLoopGroup(2);
+		EventLoopGroup workerGroup = new NioEventLoopGroup(4);
 
 		ServerBootstrap b = new ServerBootstrap();
 		b.group(bossGroup, workerGroup)
@@ -66,9 +70,11 @@ public class SyslogTcpServerTests {
 				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 				 pipeline.addLast("decoder", new StringDecoder());
 				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, SyslogMessage>() {
+					 SyslogParser parser = new SyslogParser();
+
 					 @Override
 					 public SyslogMessage decode(ChannelHandlerContext ctx, String msg) throws Exception {
-						 return SyslogMessageParser.parse(msg);
+						 return parser.parse(Buffer.wrap(msg));
 					 }
 				 });
 				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<SyslogMessage>() {
@@ -101,16 +107,16 @@ public class SyslogTcpServerTests {
 
 	@Test
 	public void testTcpSyslogServer() throws InterruptedException {
-		TcpServer<Collection<SyslogMessage>, Collection<Void>> server = new TcpServer.Spec<Collection<SyslogMessage>, Collection<Void>>()
+		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>(NettyTcpServer.class)
 				.using(env)
-				.sync()
-				.codec(new DelimitedCodec<SyslogMessage, Void>(new SyslogCodec()))
-				.consume(new Consumer<TcpConnection<Collection<SyslogMessage>, Collection<Void>>>() {
+				.eventLoop()
+				.codec(StandardCodecs.LINE_FEED_CODEC)
+				.consume(new Consumer<TcpConnection<Collection<String>, Collection<String>>>() {
 					@Override
-					public void accept(TcpConnection<Collection<SyslogMessage>, Collection<Void>> conn) {
-						conn.consume(new Consumer<Collection<SyslogMessage>>() {
+					public void accept(TcpConnection<Collection<String>, Collection<String>> conn) {
+						conn.consume(new Consumer<Collection<String>>() {
 							@Override
-							public void accept(Collection<SyslogMessage> msgs) {
+							public void accept(Collection<String> msgs) {
 								count.addAndGet(msgs.size());
 							}
 						});

@@ -1,4 +1,4 @@
-package reactor.tcp.syslog;
+package reactor.tcp.syslog.test;
 
 import reactor.fn.Function;
 import reactor.io.Buffer;
@@ -35,6 +35,7 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 
 		@Override
 		public SyslogMessage apply(Buffer buffer) {
+			SyslogMessageParser.parse(buffer);
 			try {
 				String s = decoder.decode(buffer.byteBuffer()).toString();
 				return SyslogMessageParser.parse(s);

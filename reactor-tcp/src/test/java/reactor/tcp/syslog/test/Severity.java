@@ -1,4 +1,4 @@
-package reactor.tcp.syslog;
+package reactor.tcp.syslog.test;
 
 /**
  * The possible severities of a syslog message

@@ -5,7 +5,6 @@ import reactor.io.Buffer;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -38,7 +37,6 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 	public class DelimitedDecoder implements Function<Buffer, Collection<IN>> {
 		private final Function<Buffer, IN> decoder   = delegate.decoder();
 		private final Buffer               remainder = new Buffer();
-		private final List<IN>             objs      = new ArrayList<IN>();
 		private final List<Integer>        positions = new ArrayList<Integer>();
 
 		@Override
@@ -46,7 +44,6 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 			if (bytes.remaining() == 0) {
 				return null;
 			}
-			objs.clear();
 			positions.clear();
 
 			while (bytes.remaining() > 0) {
@@ -56,7 +53,9 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 			}
 			int end = bytes.position();
 
+			List<IN> objs = null;
 			if (!positions.isEmpty()) {
+				objs = new ArrayList<IN>(positions.size());
 				int start = 0;
 				for (Integer pos : positions) {
 					bytes.byteBuffer().limit(pos);
@@ -73,7 +72,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 				remainder.append(bytes);
 			}
 
-			return (objs.isEmpty() ? null : Collections.unmodifiableList(objs));
+			return (null == objs || objs.isEmpty() ? null : objs);
 		}
 	}
 

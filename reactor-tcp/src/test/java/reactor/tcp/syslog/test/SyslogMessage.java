@@ -1,4 +1,4 @@
-package reactor.tcp.syslog;
+package reactor.tcp.syslog.test;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

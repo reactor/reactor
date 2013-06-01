@@ -5,6 +5,7 @@ import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
 import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyTcpServer;
 
 import java.util.Collection;
 
@@ -22,7 +23,7 @@ public class TcpServerTests {
 
 	@Test
 	public void testTcpServer() throws InterruptedException {
-		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>()
+		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>(NettyTcpServer.class)
 				.using(env)
 				.ringBuffer()
 				.codec(StandardCodecs.LINE_FEED_CODEC)

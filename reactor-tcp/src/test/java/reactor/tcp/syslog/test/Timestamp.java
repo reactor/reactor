@@ -1,4 +1,4 @@
-package reactor.tcp.syslog;
+package reactor.tcp.syslog.test;
 
 import java.util.Arrays;
 import java.util.Calendar;
