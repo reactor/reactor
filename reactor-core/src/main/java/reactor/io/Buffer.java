@@ -16,15 +16,28 @@
 
 package reactor.io;
 
+import reactor.util.Assert;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author Jon Brisbin <jon@jbrisbin.com>
  */
-public class Buffer implements Comparable<Buffer> {
+public class Buffer implements Comparable<Buffer>,
+															 Iterable<Byte>,
+															 ReadableByteChannel,
+															 WritableByteChannel {
 
 	public static int SMALL_BUFFER_SIZE = Integer.parseInt(
 			System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
@@ -117,6 +130,72 @@ public class Buffer implements Comparable<Buffer> {
 		return this;
 	}
 
+	public Buffer append(String s) {
+		ensureCapacity(s.length());
+		buffer.put(s.getBytes());
+		return this;
+	}
+
+	public Buffer append(int i) {
+		ensureCapacity(4);
+		buffer.putInt(i);
+		return this;
+	}
+
+	public Buffer append(long l) {
+		ensureCapacity(8);
+		buffer.putLong(l);
+		return this;
+	}
+
+	public Buffer append(ByteBuffer b) {
+		ensureCapacity(b.remaining());
+		buffer.put(b);
+		return this;
+	}
+
+	public Buffer append(Buffer b) {
+		int pos = (null == buffer ? 0 : buffer.position());
+		int len = b.remaining();
+		ensureCapacity(len);
+		buffer.put(b.byteBuffer());
+		buffer.position(pos + len);
+		return this;
+	}
+
+	public Buffer append(byte b) {
+		ensureCapacity(1);
+		buffer.put(b);
+		return this;
+	}
+
+	public Buffer append(byte[] b) {
+		ensureCapacity(b.length);
+		buffer.put(b);
+		return this;
+	}
+
+	public byte first() {
+		int pos = buffer.position();
+		if (pos > 0) {
+			buffer.position(0); // got to the 1st position
+		}
+		byte b = buffer.get(); // get the 1st byte
+		buffer.position(pos); // go back to original pos
+		return b;
+	}
+
+	public byte last() {
+		int pos = buffer.position();
+		int limit = buffer.limit();
+		if (pos < limit - 1) {
+			buffer.position(limit - 1); // go to right before last position
+		}
+		byte b = buffer.get(); // get the last byte
+		buffer.position(pos); // go back to original pos
+		return b;
+	}
+
 	public byte read() {
 		if (null != buffer) {
 			return buffer.get();
@@ -166,6 +245,50 @@ public class Buffer implements Comparable<Buffer> {
 		throw new BufferUnderflowException();
 	}
 
+	@Override
+	public Iterator<Byte> iterator() {
+		return new Iterator<Byte>() {
+			@Override
+			public boolean hasNext() {
+				return buffer.remaining() > 0;
+			}
+
+			@Override
+			public Byte next() {
+				return buffer.get();
+			}
+
+			@Override
+			public void remove() {
+				// NO-OP
+			}
+		};
+	}
+
+	@Override
+	public int read(ByteBuffer dst) throws IOException {
+		int pos = dst.position();
+		dst.put(buffer);
+		return dst.position() - pos;
+	}
+
+	@Override
+	public int write(ByteBuffer src) throws IOException {
+		int pos = src.position();
+		append(src);
+		return src.position() - pos;
+	}
+
+	@Override
+	public boolean isOpen() {
+		return isDynamic();
+	}
+
+	@Override
+	public void close() throws IOException {
+		clear();
+	}
+
 	public String asString() {
 		if (null != buffer) {
 			buffer.mark();
@@ -193,58 +316,59 @@ public class Buffer implements Comparable<Buffer> {
 		}
 	}
 
+	public InputStream inputStream() {
+		return new BufferInputStream();
+	}
+
 	public Buffer slice(int start, int len) {
 		int pos = buffer.position();
+		ByteBuffer bb = ByteBuffer.allocate(len);
 		byte[] bytes = new byte[len];
 		buffer.position(start);
-		buffer.get(bytes);
+		bb.put(buffer);
 		buffer.position(pos);
-		return new Buffer(len, false).append(bytes).flip();
+		bb.flip();
+		return new Buffer(bb);
 	}
 
-	public Buffer append(String s) {
-		ensureCapacity(s.length());
-		buffer.put(s.getBytes());
-		return this;
+	public Iterable<Buffer> split(int delimiter) {
+		return split(delimiter, false);
 	}
 
-	public Buffer append(int i) {
-		ensureCapacity(4);
-		buffer.putInt(i);
-		return this;
-	}
+	public Iterable<Buffer> split(int delimiter, boolean stripDelimiter) {
+		int origPos = buffer.position();
+		int origLimit = buffer.limit();
 
-	public Buffer append(long l) {
-		ensureCapacity(8);
-		buffer.putLong(l);
-		return this;
-	}
+		List<Integer> positions = new ArrayList<Integer>();
+		for (byte b : this) {
+			if (b == delimiter) {
+				positions.add((stripDelimiter ? buffer.position() - 1 : buffer.position()));
+			}
+		}
+		int end = buffer.position();
 
-	public Buffer append(ByteBuffer b) {
-		ensureCapacity(b.remaining());
-		buffer.put(b);
-		return this;
-	}
+		List<Buffer> buffers = new ArrayList<Buffer>(positions.size());
+		int start = 0;
+		if (!positions.isEmpty()) {
+			for (Integer pos : positions) {
+				buffer.limit(pos);
+				buffer.position(start);
+				ByteBuffer bb = buffer.duplicate();
+				buffers.add(new Buffer(bb));
+				start = (stripDelimiter ? pos + 1 : pos);
+			}
+		}
 
-	public Buffer append(Buffer b) {
-		int pos = (null == buffer ? 0 : buffer.position());
-		int len = b.remaining();
-		ensureCapacity(len);
-		buffer.put(b.byteBuffer());
-		buffer.position(pos + len);
-		return this;
-	}
+		if (buffer.position() + 1 < end) {
+			buffer.limit(end);
+			buffer.position(start);
+			buffers.add(new Buffer(buffer.duplicate()));
+		}
 
-	public Buffer append(byte b) {
-		ensureCapacity(1);
-		buffer.put(b);
-		return this;
-	}
+		buffer.limit(origLimit);
+		buffer.position(origPos);
 
-	public Buffer append(byte[] b) {
-		ensureCapacity(b.length);
-		buffer.put(b);
-		return this;
+		return buffers;
 	}
 
 	public ByteBuffer byteBuffer() {
@@ -273,8 +397,69 @@ public class Buffer implements Comparable<Buffer> {
 				newBuff.put(buffer);
 				buffer = newBuff;
 			} else {
-				throw new IllegalStateException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE + ")");
+				throw new BufferOverflowException();
 			}
+		}
+	}
+
+	private class BufferInputStream extends InputStream {
+		@Override
+		public int read(byte[] b) throws IOException {
+			int pos = buffer.position();
+			buffer.get(b);
+			return buffer.position() - pos;
+		}
+
+		@Override
+		public int read(byte[] b, int off, int len) throws IOException {
+			Assert.state((off + len) > buffer.limit(), "Requested offset + length (" + off + " + " + len + ") larger than Buffer limit (" + buffer.limit() + ")");
+
+			buffer.position(off);
+			buffer.get(b);
+
+			return buffer.position() - off;
+		}
+
+		@Override
+		public long skip(long n) throws IOException {
+			Assert.state(n < buffer.remaining(), "Requested skip length larger than remaining available bytes.");
+			int pos = buffer.position();
+			buffer.position((int) (pos + n));
+			return buffer.position() - pos;
+		}
+
+		@Override
+		public int available() throws IOException {
+			return buffer.remaining();
+		}
+
+		@Override
+		public void close() throws IOException {
+			clear();
+		}
+
+		@Override
+		public synchronized void mark(int readlimit) {
+			buffer.mark();
+			int pos = buffer.position();
+			int max = buffer.capacity() - pos;
+			int newLimit = Math.min(max, pos + readlimit);
+			buffer.limit(newLimit);
+		}
+
+		@Override
+		public synchronized void reset() throws IOException {
+			buffer.reset();
+		}
+
+		@Override
+		public boolean markSupported() {
+			return true;
+		}
+
+		@Override
+		public int read() throws IOException {
+			return buffer.get();
 		}
 	}
 
