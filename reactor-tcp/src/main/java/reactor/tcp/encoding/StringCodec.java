@@ -3,35 +3,54 @@ package reactor.tcp.encoding;
 import reactor.fn.Function;
 import reactor.io.Buffer;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CharsetEncoder;
+
 /**
  * @author Jon Brisbin
  */
 public class StringCodec implements Codec<Buffer, String, String> {
 
-	public static final Function<Buffer, String> DECODER = new StringDecoder();
-	public static final Function<String, Buffer> ENCODER = new StringEncoder();
+	private final Charset utf8 = Charset.forName("UTF-8");
 
 	@Override
 	public Function<Buffer, String> decoder() {
-		return DECODER;
+		return new StringDecoder();
 	}
 
 	@Override
 	public Function<String, Buffer> encoder() {
-		return ENCODER;
+		return new StringEncoder();
 	}
 
-	private static class StringDecoder implements Function<Buffer, String> {
+	private class StringDecoder implements Function<Buffer, String> {
+		private final CharsetDecoder decoder = utf8.newDecoder();
+
 		@Override
 		public String apply(Buffer bytes) {
-			return bytes.asString();
+			try {
+				return decoder.decode(bytes.byteBuffer()).toString();
+			} catch (CharacterCodingException e) {
+				throw new IllegalStateException(e);
+			}
 		}
 	}
 
-	private static class StringEncoder implements Function<String, Buffer> {
+	private class StringEncoder implements Function<String, Buffer> {
+		private final CharsetEncoder encoder = utf8.newEncoder();
+
 		@Override
 		public Buffer apply(String s) {
-			return Buffer.wrap(s);
+			try {
+				ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
+				return new Buffer(bb);
+			} catch (CharacterCodingException e) {
+				throw new IllegalStateException(e);
+			}
 		}
 	}
 

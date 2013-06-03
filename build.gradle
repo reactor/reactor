@@ -32,6 +32,7 @@ ext {
 	disruptorVersion = '3.0.1'
 	springVersion = '3.2.3.RELEASE'
 	nettyVersion = '4.0.0.Alpha8'
+	jacksonDatabindVersion = '2.2.1'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -187,11 +188,12 @@ project('reactor-logback') {
 	}
 }
 
-//project('reactor-tcp') {
-//	description = 'Reactor TCP component'
-//	dependencies {
-//		compile project(':reactor-core')
-//
-//		compile "io.netty:netty:$nettyVersion"
-//	}
-//}
+project('reactor-tcp') {
+	description = 'Reactor TCP component'
+	dependencies {
+		compile project(':reactor-core')
+
+		compile "io.netty:netty:$nettyVersion"
+		compile("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion", optional)
+	}
+}
