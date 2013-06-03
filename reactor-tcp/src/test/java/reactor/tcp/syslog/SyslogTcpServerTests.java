@@ -17,8 +17,6 @@ import reactor.io.Buffer;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.encoding.syslog.SyslogMessage;
-import reactor.tcp.encoding.syslog.SyslogParser;
 import reactor.tcp.netty.NettyTcpServer;
 
 import java.io.IOException;
@@ -70,11 +68,11 @@ public class SyslogTcpServerTests {
 				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 				 pipeline.addLast("decoder", new StringDecoder());
 				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, SyslogMessage>() {
-					 SyslogParser parser = new SyslogParser();
+					 SyslogMessageParser parser = new SyslogMessageParser();
 
 					 @Override
 					 public SyslogMessage decode(ChannelHandlerContext ctx, String msg) throws Exception {
-						 return parser.parse(Buffer.wrap(msg));
+						 return parser.parse(msg);
 					 }
 				 });
 				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<SyslogMessage>() {
