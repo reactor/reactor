@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
 

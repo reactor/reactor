@@ -23,6 +23,7 @@ import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Reactor
 import reactor.fn.*
+import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureEventConsumer

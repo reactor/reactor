@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
-import reactor.fn.Registration;
 import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registration;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 

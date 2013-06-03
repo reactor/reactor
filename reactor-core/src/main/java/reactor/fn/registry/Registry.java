@@ -18,7 +18,6 @@ package reactor.fn.registry;
 
 import java.util.List;
 
-import reactor.fn.Registration;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 

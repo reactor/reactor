@@ -20,7 +20,7 @@ import java.util.List;
 
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Registration;
+import reactor.fn.registry.Registration;
 
 /**
  * An {@code EventRouter} is used to route an {@code Event} to {@link Consumer Consumers}.

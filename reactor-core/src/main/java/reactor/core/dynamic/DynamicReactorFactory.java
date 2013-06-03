@@ -33,6 +33,7 @@ import reactor.fn.*;
 import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
+import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector;
 import reactor.util.Assert;
 

@@ -35,13 +35,13 @@ import reactor.core.configuration.PropertiesConfigurationReader;
 import reactor.core.configuration.ReactorConfiguration;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
-import reactor.fn.Registration;
 import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
 
 import com.eaio.uuid.UUID;

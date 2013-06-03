@@ -25,7 +25,7 @@ import reactor.convert.Converter;
 import reactor.filter.Filter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Registration;
+import reactor.fn.registry.Registration;
 import reactor.util.Assert;
 
 /**

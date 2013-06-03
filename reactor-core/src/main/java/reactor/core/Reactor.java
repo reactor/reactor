@@ -24,6 +24,7 @@ import reactor.filter.PassThroughFilter;
 import reactor.fn.*;
 import reactor.fn.dispatch.*;
 import reactor.fn.registry.CachingRegistry;
+import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
 import reactor.fn.routing.Linkable;
 import reactor.fn.routing.SelectionStrategy;

@@ -19,9 +19,9 @@ package reactor.dispatch
 import reactor.filter.PassThroughFilter
 import reactor.fn.Consumer
 import reactor.fn.Event
-import reactor.fn.Registration
 import reactor.fn.dispatch.ConsumerFilteringEventRouter
 import reactor.fn.dispatch.ConsumerInvoker
+import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector;
 import spock.lang.Specification
 

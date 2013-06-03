@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package reactor.fn;
+package reactor.fn.registry;
 
+import reactor.fn.Consumer;
 import reactor.fn.selector.Selector;
 
 /**

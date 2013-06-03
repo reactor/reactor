@@ -16,6 +16,7 @@
 
 package reactor.fn;
 
+import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector;
 
 /**

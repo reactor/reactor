@@ -18,6 +18,7 @@ package reactor.core;
 
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.Reduce;
 import reactor.util.Assert;
