@@ -120,30 +120,24 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-	public SPEC threadPoolExecutor() {
-		Assert.notNull(env, "Cannot use a thread pool Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER);
+	public SPEC dispatcher(String dispatcherName) {
+		Assert.notNull(env, "Cannot reference a Dispatcher by name without a properly-configured Environment.");
+		this.dispatcher = env.getDispatcher(dispatcherName);
 		return (SPEC) this;
 	}
 
-	public SPEC eventLoop() {
-		Assert.notNull(env, "Cannot use an event loop Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER);
+	public SPEC dispatcher(Dispatcher dispatcher) {
+		this.dispatcher = dispatcher;
 		return (SPEC) this;
 	}
 
-	public SPEC ringBuffer() {
-		Assert.notNull(env, "Cannot use an RingBuffer Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.RING_BUFFER_DISPATCHER);
+	public SPEC defaultDispatcher() {
+		Assert.notNull(env, "Cannot use the default Dispatcher without a properly-configured Environment.");
+		this.dispatcher = env.getDefaultDispatcher();
 		return (SPEC) this;
 	}
 
-	public SPEC dispatcher(String name) {
-		Assert.notNull(env, "Cannot use an " + name + " Dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(name);
-		return (SPEC) this;
-	}
-
+	@Override
 	public TARGET get() {
 		return configure(createReactor());
 	}
@@ -151,7 +145,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	protected Reactor createReactor() {
 		final Reactor reactor;
 		if (null == this.dispatcher && env != null) {
-			this.dispatcher = env.getDispatcher(Environment.DEFAULT_DISPATCHER);
+			this.dispatcher = env.getDefaultDispatcher();
 		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,

@@ -21,6 +21,7 @@ import reactor.convert.Converter;
 import reactor.core.Environment;
 import reactor.R;
 import reactor.core.Reactor;
+import reactor.core.Reactor.Spec;
 import reactor.core.dynamic.annotation.Dispatcher;
 import reactor.core.dynamic.annotation.Notify;
 import reactor.core.dynamic.annotation.On;
@@ -242,25 +243,12 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 			}
 		}
 
-		private Reactor createReactor(Dispatcher dispatcherType) {
-			reactor.fn.dispatch.Dispatcher dispatcher = null;
-			if (dispatcherType != null) {
-				switch (dispatcherType.value()) {
-					case EVENT_LOOP:
-						dispatcher = env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER);
-						break;
-					case THREAD_POOL:
-						dispatcher = env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER);
-						break;
-					case RING_BUFFER:
-						dispatcher = env.getDispatcher(Environment.RING_BUFFER_DISPATCHER);
-						break;
-					case SYNC:
-						dispatcher = SynchronousDispatcher.INSTANCE;
-						break;
-				}
+		private Reactor createReactor(Dispatcher dispatcherAnnotation) {
+			Spec reactorSpec = R.reactor().using(env);
+			if (dispatcherAnnotation != null) {
+				reactorSpec = reactorSpec.dispatcher(dispatcherAnnotation.value());
 			}
-			return R.reactor().using(env).using(dispatcher).get();
+			return reactorSpec.get();
 		}
 	}
 

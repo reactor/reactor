@@ -100,7 +100,7 @@ public class ComposableTests extends AbstractReactorTest {
 		Composable<Integer> c = C
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.using(env)
-				.eventLoop()
+				.dispatcher("eventLoop")
 				.get()
 				.map(STRING_2_INTEGER)
 				.map(new Function<Integer, Integer>() {

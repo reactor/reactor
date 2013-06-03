@@ -24,7 +24,7 @@ import reactor.fn.Consumer;
 /**
  * @author Jon Brisbin
  */
-@Dispatcher(DispatcherType.THREAD_POOL)
+@Dispatcher("threadPoolExecutor")
 public interface MyReactor extends DynamicReactor {
 
 	@On("test.test")

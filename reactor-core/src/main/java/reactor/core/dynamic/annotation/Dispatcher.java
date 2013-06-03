@@ -27,7 +27,5 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface Dispatcher {
-
-	DispatcherType value() default DispatcherType.EVENT_LOOP;
-
+	String value();
 }

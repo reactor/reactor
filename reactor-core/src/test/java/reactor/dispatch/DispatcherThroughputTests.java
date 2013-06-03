@@ -59,19 +59,19 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void blockingQueueDispatcherThroughput() throws InterruptedException {
 		log.info("Starting blocking queue test...");
-		doTest(R.reactor().using(env).eventLoop().get());
+		doTest(R.reactor().using(env).dispatcher("eventLoop").get());
 	}
 
 	@Test
 	public void threadPoolDispatcherThroughput() throws InterruptedException {
 		log.info("Starting thread pool test...");
-		doTest(R.reactor().using(env).threadPoolExecutor().get());
+		doTest(R.reactor().using(env).dispatcher("threadPoolExecutor").get());
 	}
 
 	@Test
 	public void defaultRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting root RingBuffer test...");
-		doTest(R.reactor().using(env).ringBuffer().get());
+		doTest(R.reactor().using(env).dispatcher("ringBuffer").get());
 	}
 
 	@Test

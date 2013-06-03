@@ -8,6 +8,7 @@ import ch.qos.logback.core.spi.AppenderAttachableImpl;
 import reactor.core.Environment;
 import reactor.R;
 import reactor.core.Reactor;
+import reactor.core.configuration.PropertiesConfigurationReader;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 
@@ -18,12 +19,7 @@ import java.util.Iterator;
  */
 public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> implements AppenderAttachable<ILoggingEvent> {
 
-	private final Environment                           env             = new Environment() {
-		@Override
-		protected String getDefaultProfile() {
-			return "logback";
-		}
-	};
+	private final Environment                           env             = new Environment(new LogbackPropertiesConfigurationReader());
 	private final AppenderAttachableImpl<ILoggingEvent> attachable      = new AppenderAttachableImpl<ILoggingEvent>();
 	private       boolean                               alreadyAttached = false;
 	private Reactor reactor;
@@ -89,7 +85,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 	}
 
 	private void init() {
-		reactor = R.reactor().using(env).ringBuffer().get();
+		reactor = R.reactor().using(env).defaultDispatcher().get();
 		reactor.on(new Consumer<Event<ILoggingEvent>>() {
 			@Override
 			public void accept(Event<ILoggingEvent> ev) {
@@ -98,4 +94,10 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 		});
 	}
 
+	private static final class LogbackPropertiesConfigurationReader extends PropertiesConfigurationReader {
+
+		public LogbackPropertiesConfigurationReader() {
+			super("logback");
+		}
+	}
 }
