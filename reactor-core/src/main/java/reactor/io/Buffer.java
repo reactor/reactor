@@ -16,8 +16,6 @@
 
 package reactor.io;
 
-import reactor.util.Assert;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.BufferOverflowException;
@@ -127,6 +125,76 @@ public class Buffer implements Comparable<Buffer>,
 		if (null != buffer) {
 			buffer.rewind();
 		}
+		return this;
+	}
+
+	public Buffer prepend(Buffer b) {
+		if (null == b) {
+			return this;
+		}
+		return prepend(b.byteBuffer());
+	}
+
+	public Buffer prepend(byte b) {
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(1 + currentBuffer.remaining());
+		this.buffer.put(b);
+		this.buffer.put(currentBuffer);
+		return this;
+	}
+
+	public Buffer prepend(byte[] bytes) {
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(bytes.length + currentBuffer.remaining());
+		this.buffer.put(bytes);
+		this.buffer.put(currentBuffer);
+		return this;
+	}
+
+	public Buffer prepend(ByteBuffer b) {
+		if (null == b) {
+			return this;
+		}
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(b.remaining() + currentBuffer.remaining());
+		this.buffer.put(b);
+		this.buffer.put(currentBuffer);
+		return this;
+
+	}
+
+	public Buffer prepend(char c) {
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(1 + currentBuffer.remaining());
+		this.buffer.putChar(c);
+		this.buffer.put(currentBuffer);
+		return this;
+	}
+
+	public Buffer prepend(int i) {
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(4 + currentBuffer.remaining());
+		this.buffer.putInt(i);
+		this.buffer.put(currentBuffer);
+		return this;
+	}
+
+	public Buffer prepend(long l) {
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(8 + currentBuffer.remaining());
+		this.buffer.putLong(l);
+		this.buffer.put(currentBuffer);
+		return this;
+	}
+
+	public Buffer prepend(String s) {
+		if (null == s) {
+			return this;
+		}
+		ByteBuffer currentBuffer = buffer.duplicate();
+		ensureCapacity(s.length() + currentBuffer.remaining());
+		this.buffer.put(s.getBytes());
+		this.buffer.put(currentBuffer);
 		return this;
 	}
 
@@ -248,6 +316,8 @@ public class Buffer implements Comparable<Buffer>,
 	@Override
 	public Iterator<Byte> iterator() {
 		return new Iterator<Byte>() {
+			ByteBuffer buffer = Buffer.this.buffer.duplicate();
+
 			@Override
 			public boolean hasNext() {
 				return buffer.remaining() > 0;
@@ -403,6 +473,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	private class BufferInputStream extends InputStream {
+		ByteBuffer buffer = Buffer.this.buffer.duplicate();
+
 		@Override
 		public int read(byte[] b) throws IOException {
 			int pos = buffer.position();
@@ -415,7 +487,9 @@ public class Buffer implements Comparable<Buffer>,
 			if (null == buffer) {
 				return -1;
 			}
-			Assert.state((off + len) > buffer.limit(), "Requested offset + length (" + off + " + " + len + ") larger than Buffer limit (" + buffer.limit() + ")");
+			if ((off + len) > buffer.limit()) {
+				throw new BufferUnderflowException();
+			}
 
 			buffer.position(off);
 			for (int i = 0; i < len; i++) {
@@ -430,7 +504,9 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public long skip(long n) throws IOException {
-			Assert.state(n < buffer.remaining(), "Requested skip length larger than remaining available bytes.");
+			if (n < buffer.remaining()) {
+				throw new BufferUnderflowException();
+			}
 			int pos = buffer.position();
 			buffer.position((int) (pos + n));
 			return buffer.position() - pos;
