@@ -126,10 +126,27 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-	public SPEC dispatcher(Dispatcher dispatcher) {
-		this.dispatcher = dispatcher;
+
+		public SPEC ringBuffer() {
+		Assert.notNull(env, "Cannot reference ringBuffer dispatcher without a properly-configured Environment.");
+		this.dispatcher = env.getDispatcher(Environment.RING_BUFFER);
 		return (SPEC) this;
 	}
+
+
+		public SPEC eventLoop() {
+		Assert.notNull(env, "Cannot reference eventLoop dispatcher without a properly-configured Environment.");
+		this.dispatcher = env.getDispatcher(Environment.EVENT_LOOP);
+		return (SPEC) this;
+	}
+
+
+		public SPEC threadPoolExecutor() {
+		Assert.notNull(env, "Cannot reference threadPoolExecutor dispatcher a properly-configured Environment.");
+		this.dispatcher = env.getDispatcher(Environment.THREAD_POOL);
+		return (SPEC) this;
+	}
+
 
 	public SPEC defaultDispatcher() {
 		Assert.notNull(env, "Cannot use the default Dispatcher without a properly-configured Environment.");

@@ -790,7 +790,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		}
 
 		private static enum AcceptState {
-			DELAYED, ACCEPTING, ACCEPTED
+			DELAYED, ACCEPTING, ACCEPTED;
 		}
 	}
 
