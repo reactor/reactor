@@ -129,7 +129,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		def p = P.defer().using(testEnv).eventLoop().get()
+		def p = P.defer().using(testEnv).dispatcher('eventLoop').get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

@@ -105,17 +105,17 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcher(Environment.THREAD_POOL_EXECUTOR_DISPATCHER), "thread pool");
+		doTest(env.getDispatcher("threadPoolExecutor"), "thread pool");
 	}
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcher(Environment.EVENT_LOOP_DISPATCHER), "event loop");
+		doTest(env.getDispatcher("eventLoop"), "event loop");
 	}
 
 	@Test
 	public void testRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcher(Environment.RING_BUFFER_DISPATCHER), "ring buffer");
+		doTest(env.getDispatcher("ringBuffer"), "ring buffer");
 	}
 
 	@Test

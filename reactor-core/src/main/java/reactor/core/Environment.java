@@ -16,51 +16,66 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
-import org.slf4j.LoggerFactory;
+import static reactor.fn.Functions.$;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
+
 import reactor.convert.StandardConverters;
+import reactor.core.configuration.ConfigurationReader;
+import reactor.core.configuration.DispatcherConfiguration;
+import reactor.core.configuration.DispatcherType;
+import reactor.core.configuration.PropertiesConfigurationReader;
+import reactor.core.configuration.ReactorConfiguration;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.fn.Registration;
 import reactor.fn.dispatch.BlockingQueueDispatcher;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
+
 import com.eaio.uuid.UUID;
-
-import java.io.IOException;
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static reactor.fn.Functions.$;
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
- * @author Stephane Maldini
  * @author Jon Brisbin
+ * @author Stephane Maldini
+ * @author Andy Wilkinson
  */
 public class Environment {
 
-	private static final ClassLoader CL = Environment.class.getClassLoader();
+	/**
+	 * The name of the default event loop dispatcher
+	 */
+	public static final String EVENT_LOOP = "eventLoop";
 
-	private static final String REACTOR_PREFIX      = "reactor.";
-	private static final String PROFILES_ACTIVE     = "reactor.profiles.active";
-	private static final String PROFILES_DEFAULT    = "reactor.profiles.default";
-	private static final String DISPATCHERS_NAME    = "reactor.dispatchers.%s.name";
-	private static final String DISPATCHERS_SIZE    = "reactor.dispatchers.%s.size";
-	private static final String DISPATCHERS_BACKLOG = "reactor.dispatchers.%s.backlog";
+	/**
+	 * The name of the default ring buffer dispatcher
+	 */
+	public static final String RING_BUFFER = "ringBuffer";
 
-	public static final String THREAD_POOL_EXECUTOR_DISPATCHER = "threadPoolExecutor";
-	public static final String EVENT_LOOP_DISPATCHER           = "eventLoop";
-	public static final String RING_BUFFER_DISPATCHER          = "ringBuffer";
-	public static final String DEFAULT_DISPATCHER              = "default";
+	/**
+	 * The name of the default thread pool dispatcher
+	 */
+	public static final String THREAD_POOL = "threadPoolExecutor";
 
-	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
+	private static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-	private final Properties               env              = new Properties();
+	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
+
+	private final Properties               env;
+
 	private final AtomicReference<Reactor> sharedReactor    = new AtomicReference<Reactor>();
 	private final Registry<Reactor>        reactors         = new CachingRegistry<Reactor>(null);
 	private final Object                   monitor          = new Object();
@@ -70,74 +85,74 @@ public class Environment {
 	private final String                        defaultDispatcher;
 
 	public Environment() {
-		this(new HashMap<String, List<Dispatcher>>());
+		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
+	}
+
+	public Environment(ConfigurationReader configurationReader) {
+		this(Collections.<String, List<Dispatcher>>emptyMap(), configurationReader);
 	}
 
 	public Environment(Map<String, List<Dispatcher>> dispatchers) {
+		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
+	}
+
+	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
+
 		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
 
-		String defaultProfileName = System.getProperty(PROFILES_DEFAULT, getDefaultProfile());
-		Map<Object, Object> props = loadProfile(defaultProfileName);
-		if (null != props) {
-			env.putAll(props);
-		}
+		ReactorConfiguration configuration = configurationReader.read();
+		defaultDispatcher = configuration.getDefaultDispatcherName();
+		env = configuration.getAdditionalProperties();
 
-		if (null != System.getProperty(PROFILES_ACTIVE)) {
-			String[] profiles = System.getProperty(PROFILES_ACTIVE).split(",");
-			for (String profile : profiles) {
-				props = loadProfile(profile);
-				if (null != props) {
-					env.putAll(props);
-				}
+		for (DispatcherConfiguration dispatcherConfiguration: configuration.getDispatcherConfigurations()) {
+			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
+			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
+			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
+			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
 			}
-		}
-
-		for (String prop : System.getProperties().stringPropertyNames()) {
-			if (prop.startsWith(REACTOR_PREFIX)) {
-				env.put(prop, System.getProperty(prop));
-			}
-		}
-
-		defaultDispatcher = env.getProperty(String.format(DISPATCHERS_NAME, DEFAULT_DISPATCHER), RING_BUFFER_DISPATCHER);
-
-		DispatcherConfig threadPoolConfig = new DispatcherConfig(THREAD_POOL_EXECUTOR_DISPATCHER, 128);
-		DispatcherConfig eventLoopConfig = new DispatcherConfig(EVENT_LOOP_DISPATCHER, 128);
-		DispatcherConfig ringBufferConfig = new DispatcherConfig(RING_BUFFER_DISPATCHER, 1024);
-
-		if (threadPoolConfig.size > 0) {
-			addDispatcher(threadPoolConfig.dispatcherName,
-					new ThreadPoolExecutorDispatcher(threadPoolConfig.size, threadPoolConfig.backlog));
-		}
-		if (eventLoopConfig.size > 0) {
-			addDispatcher(eventLoopConfig.dispatcherName,
-					new BlockingQueueDispatcher(eventLoopConfig.dispatcherName, eventLoopConfig.backlog));
-		}
-		if (ringBufferConfig.size > 0) {
-			addDispatcher(ringBufferConfig.dispatcherName,
-					new RingBufferDispatcher(ringBufferConfig.dispatcherName,
-							ringBufferConfig.size,
-							ringBufferConfig.backlog,
-							ProducerType.MULTI,
-							new BlockingWaitStrategy()));
 		}
 	}
 
-	private class DispatcherConfig {
-		final int    size;
-		final int    backlog;
-		final String dispatcherName;
+	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int size = getSize(dispatcherConfiguration, 0);
+		int backlog = getBacklog(dispatcherConfiguration, 128);
 
-		private DispatcherConfig(String dispatcherAlias, int defaultBacklog) {
-			dispatcherName = env.getProperty(String.format(DISPATCHERS_NAME, dispatcherAlias));
-			if (null != dispatcherName) {
-				int _size = getProperty(String.format(DISPATCHERS_SIZE, dispatcherName), Integer.class, PROCESSORS);
-				size = _size < 1 ? PROCESSORS : _size;
-				backlog = getProperty(String.format(DISPATCHERS_BACKLOG, dispatcherName), Integer.class, defaultBacklog);
-			} else {
-				size = -1;
-				backlog = -1;
-			}
+		return new ThreadPoolExecutorDispatcher(size, backlog);
+	}
+
+	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int backlog = getBacklog(dispatcherConfiguration, 1024);
+		int size = getSize(dispatcherConfiguration, 0);
+		return new RingBufferDispatcher(dispatcherConfiguration.getName(), size, backlog, ProducerType.MULTI, new BlockingWaitStrategy());
+	}
+
+	private BlockingQueueDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int backlog = getBacklog(dispatcherConfiguration, 128);
+
+		return new BlockingQueueDispatcher(dispatcherConfiguration.getName(), backlog);
+	}
+
+	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
+		Integer backlog = dispatcherConfiguration.getBacklog();
+		if (null == backlog) {
+			backlog = defaultBacklog;
 		}
+		return backlog;
+	}
+
+	private int getSize(DispatcherConfiguration dispatcherConfiguration, int defaultSize) {
+		Integer size = dispatcherConfiguration.getSize();
+		if (null == size) {
+			size = defaultSize;
+		}
+		if (size < 1) {
+			size = PROCESSORS;
+		}
+		return size;
 	}
 
 	public String getProperty(String key, String defaultValue) {
@@ -160,6 +175,10 @@ public class Environment {
 		return defaultValue;
 	}
 
+	public Dispatcher getDefaultDispatcher() {
+		return getDispatcher(DEFAULT_DISPATCHER_NAME);
+	}
+
 	public Dispatcher getDispatcher(String name) {
 		synchronized (monitor) {
 			List<Dispatcher> dispatchers = this.dispatchers.get(name);
@@ -176,7 +195,7 @@ public class Environment {
 		synchronized (monitor) {
 			doAddDispatcher(name, dispatcher);
 			if (name.equals(defaultDispatcher)) {
-				doAddDispatcher(DEFAULT_DISPATCHER, dispatcher);
+				doAddDispatcher(DEFAULT_DISPATCHER_NAME, dispatcher);
 			}
 		}
 		return this;
@@ -227,7 +246,6 @@ public class Environment {
 		return unregister(reactor.getId());
 	}
 
-
 	public boolean unregister(UUID id) {
 		return unregister(id.toString());
 	}
@@ -236,30 +254,8 @@ public class Environment {
 		return reactors.unregister(id);
 	}
 
-
 	public Reactor getSharedReactor() {
 		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("shared", 128)));
 		return sharedReactor.get();
 	}
-
-	protected String getDefaultProfile() {
-		return "default";
-	}
-
-	protected Properties loadProfile(String name) {
-		Properties props = new Properties();
-		String propsName = String.format("META-INF/reactor/%s.properties", name);
-		URL propsUrl = CL.getResource(propsName);
-		if (null != propsUrl) {
-			try {
-				props.load(propsUrl.openStream());
-			} catch (IOException e) {
-				LoggerFactory.getLogger(getClass()).error(e.getMessage(), e);
-			}
-		} else {
-			LoggerFactory.getLogger(getClass()).debug("No properties file found in the classpath at " + propsName + " for profile '" + name + "'");
-		}
-		return props;
-	}
-
 }

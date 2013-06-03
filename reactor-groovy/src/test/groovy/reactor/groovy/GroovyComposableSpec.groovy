@@ -132,7 +132,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose events (Request/Reply)"() {
 		given: 'a reactor and a selector'
-		def r = R.reactor().using(testEnv).eventLoop().get()
+		def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
 		def key = $()
 
 		when: 'register a Reply Consumer'
@@ -151,7 +151,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "Compose events (Request/ N Replies)"() {
 		given: 'a reactor and a selector'
-		def r = R.reactor().using(testEnv).eventLoop().get()
+		def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
 		def key = $()
 
 		when: 'register a Reply Consumer'
@@ -189,7 +189,7 @@ class GroovyComposableSpec extends Specification {
 
 	def "relay events to reactor"() {
 		given: 'a reactor and a selector'
-		def r = R.reactor().using(testEnv).eventLoop().get()
+		def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
 		def key = $()
 
 		when: 'we consume when this reactor and key'

@@ -167,7 +167,7 @@ public class PromiseTests extends AbstractReactorTest {
 	@Test
 	public void promiseCanBeFulfilledFromASeparateThread() throws InterruptedException {
 		Reactor r1 = R.reactor().get();
-		Reactor r2 = R.reactor().using(env).threadPoolExecutor().get();
+		Reactor r2 = R.reactor().using(env).dispatcher("threadPoolExecutor").get();
 
 		final Promise<String> promise = P.<String>defer().using(r1).get();
 		final CountDownLatch latch = new CountDownLatch(1);
