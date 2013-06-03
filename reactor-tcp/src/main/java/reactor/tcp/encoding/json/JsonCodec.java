@@ -16,8 +16,9 @@ import java.io.IOException;
 public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private final Class<IN>    inputType;
+	private final boolean      inputJsonNode;
 	private final Class<OUT>   outputType;
-	private final Module       customModule;
+	private final boolean      outputJsonNode;
 	private final ObjectMapper mapper;
 
 	public JsonCodec() {
@@ -35,8 +36,9 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Class<OUT> outputType, Module customModule) {
 		this.inputType = (null == inputType ? (Class<IN>) JsonNode.class : inputType);
+		this.inputJsonNode = JsonNode.class.isAssignableFrom(inputType);
 		this.outputType = (null == outputType ? (Class<OUT>) JsonNode.class : outputType);
-		this.customModule = customModule;
+		this.outputJsonNode = JsonNode.class.isAssignableFrom(outputType);
 
 		this.mapper = new ObjectMapper();
 		if (null != customModule) {
@@ -55,10 +57,15 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	private class JsonDecoder implements Function<Buffer, IN> {
+		@SuppressWarnings("unchecked")
 		@Override
 		public IN apply(Buffer buffer) {
 			try {
-				return mapper.readValue(buffer.inputStream(), inputType);
+				if (JsonNode.class.isAssignableFrom(inputType)) {
+					return (IN) mapper.readTree(buffer.inputStream());
+				} else {
+					return mapper.readValue(buffer.inputStream(), inputType);
+				}
 			} catch (IOException e) {
 				throw new IllegalStateException(e);
 			}
@@ -68,10 +75,8 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private class JsonEncoder implements Function<OUT, Buffer> {
 		@Override
 		public Buffer apply(OUT out) {
-			byte[] bytes = new byte[0];
 			try {
-				bytes = mapper.writeValueAsBytes(out);
-				return Buffer.wrap(bytes);
+				return Buffer.wrap(mapper.writeValueAsBytes(out));
 			} catch (JsonProcessingException e) {
 				throw new IllegalStateException(e);
 			}
