@@ -42,8 +42,6 @@ import static reactor.fn.Functions.$;
  */
 public class Composable<T> implements Consumer<T>, Supplier<T> {
 
-	private static final String EXPECTED_ACCEPT_LENGTH_HEADER = "x-reactor-expectedAcceptCount";
-
 	protected final Object monitor = new Object();
 
 	protected final Object   acceptKey      = new Object();
@@ -217,6 +215,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	public <V> Composable<V> map(final Object key, final Observable observable) {
 		Assert.notNull(observable);
 		final Composable<V> c = createComposable(observable);
+		c.setExpectedAcceptCount(-1);
 		final Object replyTo = new Object();
 
 		observable.on($(replyTo), new Consumer<Event<V>>() {
@@ -601,7 +600,14 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			synchronized (monitor) {
 				this.error = error;
 			}
-			observable.notify(error.getClass(), Event.wrap(error));
+
+			long _acceptCount = acceptedCount.incrementAndGet();
+			long _exceptedCount = expectedAcceptCount.get();
+
+			if (_exceptedCount > 0 && _acceptCount < _exceptedCount) {
+				observable.notify(error.getClass(), Event.wrap(error));
+			}
+
 		}
 
 		@Override
@@ -619,7 +625,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				observable.notify(firstKey, ev);
 			}
 
-			observable.notify(acceptKey, ev);
+			if (_exceptedCount < 0 || _acceptCount <= _exceptedCount) {
+				observable.notify(acceptKey, ev);
+			}
 
 			if (_acceptCount == _exceptedCount) {
 				observable.notify(lastKey, ev);
@@ -644,12 +652,13 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		@Override
 		protected <U> Composable<U> createComposable(Observable src) {
 			final DelayedAcceptComposable<T> self = this;
-			final DelayedAcceptComposable<U> c = new DelayedAcceptComposable<U>(env, createReactor(src), self.expectedAcceptCount.get()) {
-				@Override
-				protected void delayedAccept() {
-					self.delayedAccept();
-				}
-			};
+			final DelayedAcceptComposable<U> c =
+					new DelayedAcceptComposable<U>(env, createReactor(src), self.expectedAcceptCount.get()) {
+						@Override
+						protected void delayedAccept() {
+							self.delayedAccept();
+						}
+					};
 			forwardError(c);
 			return c;
 		}
@@ -705,7 +714,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		}
 
 		private static enum AcceptState {
-			DELAYED, ACCEPTING, ACCEPTED;
+			DELAYED, ACCEPTING, ACCEPTED
 		}
 	}
 
