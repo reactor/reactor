@@ -1,100 +1,121 @@
 package reactor.tcp.encoding.syslog;
 
 import reactor.io.Buffer;
-import reactor.util.Assert;
+
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author Jon Brisbin
  */
 public class SyslogParser {
 
-	private static final int BUFFER_SIZE = 16 * 1024;
+	private static final int MAXIMUM_SEVERITY = 7;
+	private static final int MAXIMUM_FACILITY = 23;
+	private static final int MINIMUM_PRI      = 0;
+	private static final int MAXIMUM_PRI      = (MAXIMUM_FACILITY * 8) + MAXIMUM_SEVERITY;
+	private static final int DEFAULT_PRI      = 13;
 
-	private char[] chars = new char[BUFFER_SIZE];
+	private final Charset        utf8    = Charset.forName("UTF-8");
+	private final CharsetDecoder decoder = utf8.newDecoder();
+	private final Pattern        pattern = Pattern.compile("^(<(\\d{1,3})>)?(\\w{3}[\\s]+[\\d]{1,2}[\\s]+\\d\\d:\\d\\d:\\d\\d)?[\\s]*(\\w*)[\\s]*(.+)\n");
+	private Matcher matcher;
 
-	private enum Token {
-		PRIORITY, TIMESTAMP, HOSTNAME, MESSAGE
-	}
+//	public SyslogMessage parse(Buffer buffer) {
+//		if (null == buffer || buffer.remaining() == 0) {
+//			return null;
+//		}
+//
+//		int priority = DEFAULT_PRI;
+//		int facility = -1;
+//		int severity = -1;
+//		String timestamp = null;
+//		String host = "localhost";
+//		String msg = null;
+//
+//		String syslogMsg;
+//		try {
+//			syslogMsg = decoder.decode(buffer.byteBuffer()).toString();
+//		} catch (CharacterCodingException e) {
+//			throw new IllegalArgumentException(e.getMessage(), e);
+//		}
+//
+//		if (null == matcher) {
+//			matcher = pattern.matcher(syslogMsg);
+//		} else {
+//			matcher.reset(syslogMsg);
+//		}
+//		if (matcher.matches()) {
+//			if (null != matcher.group(2)) {
+//				int i = Integer.valueOf(matcher.group(2));
+//				if (i > MINIMUM_PRI && i <= MAXIMUM_PRI) {
+//					priority = i;
+//				}
+//			}
+//			facility = priority / 8;
+//			severity = priority % 8;
+//
+//			timestamp = matcher.group(3);
+//			host = matcher.group(4);
+//			msg = matcher.group(5);
+//		}
+//
+//		return new SyslogMessage(priority, facility, severity, timestamp, host, msg);
+//	}
 
 	public SyslogMessage parse(Buffer buffer) {
-		int priority = -1;
+		if (null == buffer || buffer.remaining() == 0) {
+			return null;
+		}
+
+		int priority = DEFAULT_PRI;
 		int facility = -1;
 		int severity = -1;
 		String timestamp = null;
 		String host = "localhost";
 		String msg = null;
 
-		Token t = Token.PRIORITY;
-		int start = 0;
-		int pos = 0;
-		while (buffer.remaining() > 0) {
-			if (pos + 1 > BUFFER_SIZE) {
-				return null;
-			}
-			switch ((chars[pos++] = (char) buffer.read())) {
-				case '<': {
-					// start priority
-					start = pos;
-					break;
-				}
-				case '>': {
-					priority = Integer.parseInt(new String(chars, start, (pos - 1) - start));
-					facility = priority / 8;
-					severity = priority % 8;
+		String syslogMsg;
+		try {
+			syslogMsg = decoder.decode(buffer.byteBuffer()).toString();
+		} catch (CharacterCodingException e) {
+			throw new IllegalArgumentException(e.getMessage(), e);
+		}
 
-					t = Token.TIMESTAMP;
-					start = pos;
+		int pos;
+		if (syslogMsg.indexOf('<') != 0) {
+			throw new IllegalStateException("Invalid syslog message format: " + syslogMsg.substring(0, 10) + "...");
+		}
+		int endPri = syslogMsg.indexOf('>');
+		if (endPri >= 2 && endPri <= 4) {
+			int candidatePri = Integer.parseInt(syslogMsg.substring(1, endPri));
+			if (candidatePri >= MINIMUM_PRI && candidatePri <= MAXIMUM_PRI) {
+				priority = candidatePri;
+				facility = priority / 8;
+				severity = priority % 8;
 
-					switch ((chars[pos++] = (char) buffer.read())) {
-						case '-':
-							// now()
-							break;
-						case 'J': // Jan, Jun, Jul
-						case 'F': // Feb
-						case 'M': // Mar, May
-						case 'A': // Apr, Aug
-						case 'S': // Sep
-						case 'O': // Oct
-						case 'N': // Nov
-						case 'D': { // Dec
-							// RFC3164
-							Assert.state(buffer.remaining() > 15);
-							for (int i = 0; i < 15; i++) {
-								chars[pos++] = (char) buffer.read();
-							}
+				pos = endPri + 1;
+				timestamp = syslogMsg.substring(pos, pos + 15);
+				pos += 16;
 
-							timestamp = new String(chars, start, (pos - 1) - start);
-
-							start = pos;
-							break;
-						}
-					}
-
-					break;
-				}
-				case ' ': {
-					// whitespace
-					switch (t) {
-						case PRIORITY:
-							t = Token.TIMESTAMP;
-							break;
-						case TIMESTAMP:
-							t = Token.HOSTNAME;
-
-							host = new String(chars, start, (pos - 1) - start).trim();
-							start = pos;
-							break;
-						case HOSTNAME:
-							t = Token.MESSAGE;
-							break;
-					}
-					break;
-				}
+				int endHostnameIndex = syslogMsg.indexOf(' ', pos);
+				host = syslogMsg.substring(pos, endHostnameIndex);
 			}
 		}
-		msg = new String(chars, start, pos - start);
 
-		return new SyslogMessage(priority, facility, severity, timestamp, host, msg);
+		if (host == null) {
+			// TODO Need a way to populate host with client's IP address
+		}
+
+
+		if (timestamp == null) {
+			//timestamp = new Timestamp(Calendar.getInstance());
+		}
+
+		return null;
 	}
 
 }
