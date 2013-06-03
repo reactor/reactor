@@ -74,6 +74,7 @@ public class SyslogMessage {
 		return severity;
 	}
 
+	@SuppressWarnings("deprecation")
 	public Date getTimestamp() {
 		if (null == timestamp) {
 			if (tstampStart >= 0) {

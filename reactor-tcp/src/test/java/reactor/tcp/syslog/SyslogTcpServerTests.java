@@ -41,8 +41,8 @@ public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n".getBytes();
 
-	final int msgs    = 10000000;
-	final int threads = 2;
+	final int msgs    = 4000000;
+	final int threads = 4;
 
 	Environment    env;
 	CountDownLatch latch;

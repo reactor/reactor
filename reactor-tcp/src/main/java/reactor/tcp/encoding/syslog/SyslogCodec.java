@@ -5,11 +5,11 @@ import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 
 /**
@@ -35,10 +35,10 @@ public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Voi
 	}
 
 	private class SyslogMessageDecoder implements Function<Buffer, Collection<SyslogMessage>> {
-		private final Charset        utf8    = Charset.forName("UTF-8");
-		private final CharsetDecoder decoder = utf8.newDecoder();
-		private final CharBuffer     cb      = CharBuffer.allocate(Buffer.MAX_BUFFER_SIZE);
-		private Buffer remainder;
+		private final CharsetDecoder charDecoder = Charset.forName("UTF-8").newDecoder();
+		private final Calendar       calendar    = Calendar.getInstance();
+		private final int            year        = calendar.get(Calendar.YEAR);
+		private ByteBuffer remainder;
 
 		@Override
 		public Collection<SyslogMessage> apply(Buffer buffer) {
@@ -46,81 +46,93 @@ public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Voi
 		}
 
 		private Collection<SyslogMessage> parse(Buffer buffer) {
-			cb.rewind();
-			cb.limit(cb.capacity());
-
 			boolean hasRemainder = (buffer.last() != '\n');
-			ByteBuffer bb = buffer.byteBuffer();
+			int lastLf = -1;
 
 			Collection<SyslogMessage> msgs = new ArrayList<SyslogMessage>();
 
-			int limit = bb.limit();
-			int start = bb.position();
-			int pos = start;
-
-			while (bb.hasRemaining()) {
-				byte b = bb.get();
-				pos++;
-				if (b == '\n') {
-					if (pos >= limit) {
-						break;
-					}
-					bb.position(start);
-					bb.limit(pos);
-
-					String s;
-					try {
-						s = decoder.decode(bb).toString();
-					} catch (CharacterCodingException e) {
-						throw new IllegalStateException(e);
-					}
-
-					int priStart = -1,
-							priEnd = -1,
-							tstampStart = -1,
-							tstampEnd = -1,
-							hostStart = -1,
-							hostEnd = -1,
-							msgStart = 0;
-					int len = s.length();
-					for (int i = 0; i < len; i++) {
-						char c = s.charAt(i);
-						if (i == 0 && c == '<') {
-							// start priority
-							priStart = 1;
-							continue;
-						} else if (priStart > 0 && c == '>') {
-							// end priority
-							priEnd = i;
-							continue;
-						}
-
-						if (c >= 'A' && c <= 'Z') {
-							// start tstamp
-							tstampStart = i;
-							tstampEnd = i + 15;
-							// skip past timstamp + space
-							hostStart = (i += 16);
-							continue;
-						}
-
-						if (c == ' ') {
-							// end of hostname
-							hostEnd = i;
-							msgStart = ++i;
+			ByteBuffer bb = (null != remainder ? remainder : buffer.byteBuffer());
+			while (null != bb) {
+				int limit = bb.limit();
+				int start = bb.position();
+				int pos = start;
+				while (bb.hasRemaining()) {
+					byte b = bb.get();
+					pos++;
+					if (b == '\n') {
+						lastLf = pos;
+						if (pos >= limit) {
 							break;
 						}
+						bb.position(start);
+						bb.limit(pos);
+						int len = pos - start;
+
+						String s;
+						try {
+							s = charDecoder.decode(bb).toString();
+						} catch (CharacterCodingException e) {
+							throw new IllegalStateException(e);
+						}
+						int priStart = -1,
+								priEnd = -1,
+								tstampStart = -1,
+								tstampEnd = -1,
+								hostStart = -1,
+								hostEnd = -1,
+								msgStart = 0;
+						boolean inMsg = false;
+						for (int i = 0; i < len; i++) {
+							char c = s.charAt(i);
+
+							if (i == 0 && c == '<') {
+								// start priority
+								priStart = 1;
+								while (s.charAt(++i) != '>') {
+								}
+								priEnd = i;
+								continue;
+							}
+
+							if (c >= 'A' && c <= 'Z') {
+								// start tstamp
+								tstampStart = i;
+								tstampEnd = i + 15;
+								// skip past timestamp + space
+								hostStart = (i += 16);
+								// get hostname
+								while (s.charAt(++i) != ' ') {
+								}
+								hostEnd = i;
+								continue;
+							}
+
+							msgStart = i;
+							break;
+						}
+
+						msgs.add(new SyslogMessage(s,
+																			 priStart, priEnd,
+																			 tstampStart, tstampEnd,
+																			 hostStart, hostEnd,
+																			 msgStart));
+
+						bb.limit(limit);
+						start = pos;
 					}
+				}
 
-					msgs.add(new SyslogMessage(s, priStart, priEnd, tstampStart, tstampEnd, hostStart, hostEnd, msgStart));
-
-					bb.limit(limit);
-					start = pos;
+				if (bb == remainder) {
+					bb = buffer.byteBuffer();
+					remainder = null;
+				} else {
+					bb = null;
 				}
 			}
 
-			if (hasRemainder) {
-				remainder = buffer;
+			if (hasRemainder && lastLf > 0 && lastLf < buffer.byteBuffer().limit()) {
+				buffer.byteBuffer().position(lastLf);
+				remainder = buffer.byteBuffer().duplicate();
 			} else {
 				remainder = null;
 			}
