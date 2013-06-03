@@ -109,7 +109,8 @@ public class Buffer implements Comparable<Buffer>,
 
 	public Buffer clear() {
 		if (null != buffer) {
-			buffer = null;
+			buffer.position(0);
+			buffer.limit(buffer.capacity());
 		}
 		return this;
 	}
@@ -256,9 +257,7 @@ public class Buffer implements Comparable<Buffer>,
 	public byte last() {
 		int pos = buffer.position();
 		int limit = buffer.limit();
-		if (pos < limit - 1) {
-			buffer.position(limit - 1); // go to right before last position
-		}
+		buffer.position(limit - 1); // go to right before last position
 		byte b = buffer.get(); // get the last byte
 		buffer.position(pos); // go back to original pos
 		return b;
@@ -316,8 +315,6 @@ public class Buffer implements Comparable<Buffer>,
 	@Override
 	public Iterator<Byte> iterator() {
 		return new Iterator<Byte>() {
-			ByteBuffer buffer = Buffer.this.buffer.duplicate();
-
 			@Override
 			public boolean hasNext() {
 				return buffer.remaining() > 0;
