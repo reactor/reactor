@@ -10,13 +10,16 @@ import io.netty.handler.codec.Delimiters;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.io.Buffer;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
-import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.encoding.syslog.SyslogCodec;
+import reactor.tcp.encoding.syslog.SyslogMessage;
 import reactor.tcp.netty.NettyTcpServer;
 
 import java.io.IOException;
@@ -33,6 +36,7 @@ import static org.hamcrest.Matchers.is;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n".getBytes();
@@ -67,18 +71,20 @@ public class SyslogTcpServerTests {
 				 ChannelPipeline pipeline = ch.pipeline();
 				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 				 pipeline.addLast("decoder", new StringDecoder());
-				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, SyslogMessage>() {
-					 SyslogMessageParser parser = new SyslogMessageParser();
+				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, Collection<SyslogMessage>>() {
+					 Function<Buffer, Collection<SyslogMessage>> decoder = new SyslogCodec().decoder();
 
 					 @Override
-					 public SyslogMessage decode(ChannelHandlerContext ctx, String msg) throws Exception {
-						 return parser.parse(msg);
+					 public Collection<SyslogMessage> decode(ChannelHandlerContext ctx, String msg) throws Exception {
+						 return decoder.apply(Buffer.wrap(msg));
 					 }
 				 });
-				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<SyslogMessage>() {
+				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<Collection<SyslogMessage>>() {
 					 @Override
-					 public void messageReceived(ChannelHandlerContext ctx, SyslogMessage msg) throws Exception {
-						 latch.countDown();
+					 public void messageReceived(ChannelHandlerContext ctx, Collection<SyslogMessage> msgs) throws Exception {
+						 for (SyslogMessage msg : msgs) {
+							 latch.countDown();
+						 }
 					 }
 				 });
 			 }
@@ -105,16 +111,16 @@ public class SyslogTcpServerTests {
 
 	@Test
 	public void testTcpSyslogServer() throws InterruptedException {
-		TcpServer<Collection<String>, Collection<String>> server = new TcpServer.Spec<Collection<String>, Collection<String>>(NettyTcpServer.class)
+		TcpServer<Collection<SyslogMessage>, Void> server = new TcpServer.Spec<Collection<SyslogMessage>, Void>(NettyTcpServer.class)
 				.using(env)
-				.eventLoop()
-				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.consume(new Consumer<TcpConnection<Collection<String>, Collection<String>>>() {
+				.dispatcher(Environment.EVENT_LOOP)
+				.codec(new SyslogCodec())
+				.consume(new Consumer<TcpConnection<Collection<SyslogMessage>, Void>>() {
 					@Override
-					public void accept(TcpConnection<Collection<String>, Collection<String>> conn) {
-						conn.consume(new Consumer<Collection<String>>() {
+					public void accept(TcpConnection<Collection<SyslogMessage>, Void> conn) {
+						conn.consume(new Consumer<Collection<SyslogMessage>>() {
 							@Override
-							public void accept(Collection<String> msgs) {
+							public void accept(Collection<SyslogMessage> msgs) {
 								count.addAndGet(msgs.size());
 							}
 						});

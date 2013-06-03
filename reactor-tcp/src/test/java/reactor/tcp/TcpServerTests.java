@@ -1,6 +1,7 @@
 package reactor.tcp;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
@@ -10,6 +11,7 @@ import reactor.tcp.netty.NettyTcpServer;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class TcpServerTests {
 
 	Environment env;
