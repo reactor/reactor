@@ -40,7 +40,7 @@ public class AwaitTests extends AbstractReactorTest {
 		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
 
 		Reactor reactor = R.reactor().using(env).dispatcher("threadPoolExecutor").get();
-		Reactor innerReactor = R.reactor().using(env).dispatcher(dispatcher).get();
+		Reactor innerReactor = R.reactor().using(env).using(dispatcher).get();
 		
 		for (int i = 0; i < 1000; i++) {
 			final Promise<String> promise = P.<String>defer().using(env).using(reactor).get();
