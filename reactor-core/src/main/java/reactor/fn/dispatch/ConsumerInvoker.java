@@ -16,7 +16,6 @@
 
 package reactor.fn.dispatch;
 
-import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.support.Supports;
 
@@ -32,7 +31,6 @@ public interface ConsumerInvoker extends Supports<Consumer<?>> {
 	 * Invoke a {@link reactor.fn.Consumer}.
 	 *
 	 * @param consumer     The {@link reactor.fn.Consumer} to invoke.
-	 * @param converter    The {@link Converter} to be aware of. May be {@literal null}.
 	 * @param returnType   If the {@link reactor.fn.Consumer} also implements a value-returning type, convert it to this type before
 	 *                     returning.
 	 * @param possibleArgs An array of possible arguments that may or may not be used.
@@ -41,7 +39,6 @@ public interface ConsumerInvoker extends Supports<Consumer<?>> {
 	 * @throws Exception
 	 */
 	<T> T invoke(Consumer<?> consumer,
-							 Converter converter,
 							 Class<? extends T> returnType,
 							 Object... possibleArgs) throws Exception;
 

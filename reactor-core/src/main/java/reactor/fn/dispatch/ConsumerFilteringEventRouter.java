@@ -21,7 +21,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import reactor.convert.Converter;
 import reactor.filter.Filter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -42,24 +41,20 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 
 	private final ConsumerInvoker consumerInvoker;
 
-	private final Converter converter;
-
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use {@code filter} to filter consumers.
 	 *
 	 * @param filter The filter to use. Must not be {@code null}.
 	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
-	 * @param converter Used to convert arguments passed to consumers. May be {@code null}.
 	 *
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
-	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker, Converter converter) {
+	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
 		Assert.notNull(filter, "'filter' must not be null");
 		Assert.notNull(consumerInvoker, "'consumerInvoker' must not be null");
 
 		this.filter = filter;
 		this.consumerInvoker = consumerInvoker;
-		this.converter = converter;
 	}
 
 	@Override
@@ -68,7 +63,7 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 			for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
 				invokeConsumer(key, event, consumer);
 				if (null != completionConsumer) {
-					consumerInvoker.invoke(completionConsumer, converter, Void.TYPE, event);
+					consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
 				}
 			}
 		} catch (Exception e) {
@@ -84,7 +79,7 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 			if (null != registeredConsumer.getSelector().getHeaderResolver()) {
 				event.getHeaders().setAll(registeredConsumer.getSelector().getHeaderResolver().resolve(key));
 			}
-			consumerInvoker.invoke(registeredConsumer.getObject(), converter, Void.TYPE, event);
+			consumerInvoker.invoke(registeredConsumer.getObject(), Void.TYPE, event);
 			if (registeredConsumer.isCancelAfterUse()) {
 				registeredConsumer.cancel();
 			}
@@ -101,6 +96,15 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	 */
 	public Filter getFilter() {
 		return filter;
+	}
+
+	/**
+	 * Returns the {@code ConsumerInvoker} being used by the event router
+	 *
+	 * @return The {@code ConsumerInvoker}.
+	 */
+	public ConsumerInvoker getConsumerInvoker() {
+		return consumerInvoker;
 	}
 
 }

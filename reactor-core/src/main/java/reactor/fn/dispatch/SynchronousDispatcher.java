@@ -26,7 +26,7 @@ public class SynchronousDispatcher implements Dispatcher {
 
 	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
 
-	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	private final ConsumerInvoker invoker = new ArgumentConvertingConsumerInvoker(null);
 
 	@Override
 	@SuppressWarnings({"unchecked"})

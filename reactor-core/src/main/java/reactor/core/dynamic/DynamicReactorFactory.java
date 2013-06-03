@@ -32,7 +32,7 @@ import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
 import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
+import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector;
 import reactor.util.Assert;
@@ -60,7 +60,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	private final List<MethodSelectorResolver>        selectorResolvers;
 	private final List<MethodNotificationKeyResolver> notificationKeyResolvers;
 	private final    Map<Method, DynamicMethod> dynamicMethods  = new HashMap<Method, DynamicMethod>();
-	private volatile ConsumerInvoker            consumerInvoker = new ConverterAwareConsumerInvoker();
+	private volatile ConsumerInvoker            consumerInvoker = new ArgumentConvertingConsumerInvoker(null);
 	private volatile Converter converter;
 
 	public DynamicReactorFactory(Environment env,

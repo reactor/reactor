@@ -27,7 +27,7 @@ import reactor.filter.RoundRobinFilter;
 import reactor.fn.Supplier;
 import reactor.fn.dispatch.ConsumerFilteringEventRouter;
 import reactor.fn.dispatch.ConsumerInvoker;
-import reactor.fn.dispatch.ConverterAwareConsumerInvoker;
+import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
@@ -170,14 +170,19 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		if (converter == null && eventRoutingStrategy == null) {
 			return reactor.getEventRouter();
 		} else {
-			ConsumerInvoker consumerInvoker = new ConverterAwareConsumerInvoker();
+			ConsumerInvoker consumerInvoker;
+			if (converter == null) {
+				consumerInvoker = ((ConsumerFilteringEventRouter)reactor.getEventRouter()).getConsumerInvoker();
+			} else {
+				consumerInvoker = new ArgumentConvertingConsumerInvoker(converter);
+			}
 			Filter filter = getFilter(((ConsumerFilteringEventRouter) reactor.getEventRouter()).getFilter());
-			return new ConsumerFilteringEventRouter(filter, consumerInvoker, converter);
+			return new ConsumerFilteringEventRouter(filter, consumerInvoker);
 		}
 	}
 
 	private EventRouter createEventRouter() {
-		return new ConsumerFilteringEventRouter(getFilter(null), new ConverterAwareConsumerInvoker(), converter);
+		return new ConsumerFilteringEventRouter(getFilter(null), new ArgumentConvertingConsumerInvoker(converter));
 	}
 
 	private Filter getFilter(Filter existingFilter) {

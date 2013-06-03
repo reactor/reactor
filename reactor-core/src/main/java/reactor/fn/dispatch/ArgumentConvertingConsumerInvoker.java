@@ -38,12 +38,17 @@ import java.util.concurrent.Callable;
  *
  * @author Jon Brisbin
  */
-public class ConverterAwareConsumerInvoker implements ConsumerInvoker {
+public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker {
+
+	private final Converter converter;
+
+	public ArgumentConvertingConsumerInvoker(Converter converter) {
+		this.converter = converter;
+	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
 	public <T> T invoke(Consumer<?> consumer,
-											Converter converter,
 											Class<? extends T> returnType,
 											Object... possibleArgs) throws Exception {
 		try {
@@ -62,21 +67,21 @@ public class ConverterAwareConsumerInvoker implements ConsumerInvoker {
 				}
 				if (argType.isInstance(o)) {
 					// arg type matches a possible arg
-					return invoke(consumer, converter, returnType, o);
+					return invoke(consumer, returnType, o);
 				} else if (null != converter && converter.canConvert(o.getClass(), argType)) {
 					// arg is convertible
-					return invoke(consumer, converter, returnType, converter.convert(o, argType));
+					return invoke(consumer, returnType, converter.convert(o, argType));
 				} else if (Event.class.isInstance(o)
 						&& null != ((Event<?>) o).getData()
 						&& argType.isInstance(((Event<?>) o).getData())) {
 					// Try unwrapping the Event data
-					return invoke(consumer, converter, returnType, ((Event<?>) o).getData());
+					return invoke(consumer, returnType, ((Event<?>) o).getData());
 				}
 			}
 
 			// Try unwrapping the Event data
 			if (possibleArgs.length == 1 && Event.class.isInstance(possibleArgs[0])) {
-				return invoke(consumer, converter, returnType, ((Event) possibleArgs[0]).getData());
+				return invoke(consumer, returnType, ((Event) possibleArgs[0]).getData());
 			}
 
 			throw e;

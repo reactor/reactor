@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class AbstractDispatcher implements Dispatcher {
 
 	private final AtomicBoolean   alive   = new AtomicBoolean(true);
-	private final ConsumerInvoker invoker = new ConverterAwareConsumerInvoker();
+	private final ConsumerInvoker invoker = new ArgumentConvertingConsumerInvoker(null);
 
 	@Override
 	public boolean alive() {

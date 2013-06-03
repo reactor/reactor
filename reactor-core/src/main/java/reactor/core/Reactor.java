@@ -16,13 +16,27 @@
 
 package reactor.core;
 
-import com.eaio.uuid.UUID;
+import static reactor.fn.Functions.$;
+import static reactor.fn.Functions.T;
+
+import java.util.Set;
+
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
+
 import reactor.convert.Converter;
 import reactor.filter.PassThroughFilter;
-import reactor.fn.*;
-import reactor.fn.dispatch.*;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Observable;
+import reactor.fn.Supplier;
+import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
+import reactor.fn.dispatch.ConsumerFilteringEventRouter;
+import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.EventRouter;
+import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.fn.dispatch.Task;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
@@ -32,10 +46,7 @@ import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import java.util.Set;
-
-import static reactor.fn.Functions.$;
-import static reactor.fn.Functions.T;
+import com.eaio.uuid.UUID;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -118,11 +129,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
-	 * reactor.fn.routing.SelectionStrategy}, {@link EventRouter}, and {@link Converter}.
+	 * reactor.fn.routing.SelectionStrategy}, {@link EventRouter}
 	 *
-	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is
-	 *                          used.
-	 * @param selectionStrategy The custom {@link reactor.fn.routing.SelectionStrategy} to use. May be {@code null}.
+	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a
+	 *                          new synchronous dispatcher is used.
+	 * @param selectionStrategy The custom {@link SelectionStrategy} to use. May be {@code null}.
+	 * @param eventRouter       The {@link EventRouter} used to route events to {@link Consumer
+	 *                          Consumers}. May be {@code null} in which case a default event
+	 *                          router is used.
 	 */
 	Reactor(Environment env,
 					Dispatcher dispatcher,
@@ -130,7 +144,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 					EventRouter eventRouter) {
 		this.env = env;
 		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
-		this.eventRouter = eventRouter == null ? new ConsumerFilteringEventRouter(new PassThroughFilter(), new ConverterAwareConsumerInvoker(), null) : eventRouter;
+		this.eventRouter = eventRouter == null ? new ConsumerFilteringEventRouter(new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)) : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
 
 		this.on(new Consumer<Event>() {
@@ -490,5 +504,4 @@ public class Reactor implements Observable, Linkable<Observable> {
 			return reactor;
 		}
 	}
-
 }
