@@ -274,7 +274,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public <T, E extends Event<T>> Reactor notify(E ev) {
-		return notify(defaultKey, ev, null);
+		return notify(defaultKey, ev, null, eventRouter);
 	}
 
 	@Override

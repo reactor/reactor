@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
-
-
 package reactor.core
 
 import reactor.Fn
@@ -31,7 +26,6 @@ import spock.lang.Specification
 import static reactor.Fn.$
 import static reactor.Fn.R
 import static reactor.GroovyTestUtils.consumer
-import static reactor.fn.Functions.consumer
 
 /**
  * @author Jon Brisbin

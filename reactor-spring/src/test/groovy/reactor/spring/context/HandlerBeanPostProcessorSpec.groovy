@@ -69,7 +69,7 @@ class AnnotatedHandlerConfig {
 
 	@Bean
 	Reactor rootReactor() {
-		reactorSpringEnvironment().sharedReactor
+		reactorSpringEnvironment().rootReactor
 	}
 
 	@Bean

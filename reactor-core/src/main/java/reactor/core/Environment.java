@@ -74,9 +74,9 @@ public class Environment {
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 
-	private final Properties               env;
+	private final Properties env;
 
-	private final AtomicReference<Reactor> sharedReactor    = new AtomicReference<Reactor>();
+	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Registry<Reactor>        reactors         = new CachingRegistry<Reactor>(null);
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -92,10 +92,6 @@ public class Environment {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), configurationReader);
 	}
 
-	public Environment(Map<String, List<Dispatcher>> dispatchers) {
-		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
-	}
-
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
 
 		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
@@ -104,7 +100,7 @@ public class Environment {
 		defaultDispatcher = configuration.getDefaultDispatcherName();
 		env = configuration.getAdditionalProperties();
 
-		for (DispatcherConfiguration dispatcherConfiguration: configuration.getDispatcherConfigurations()) {
+		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
 			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
 			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
@@ -253,8 +249,8 @@ public class Environment {
 		return reactors.unregister(id);
 	}
 
-	public Reactor getSharedReactor() {
-		sharedReactor.compareAndSet(null, new Reactor(this, new BlockingQueueDispatcher("shared", 128)));
-		return sharedReactor.get();
+	public Reactor getRootReactor() {
+		rootReactor.compareAndSet(null, new Reactor(this, getDefaultDispatcher()));
+		return rootReactor.get();
 	}
 }
