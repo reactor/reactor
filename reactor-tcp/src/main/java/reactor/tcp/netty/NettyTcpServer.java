@@ -129,7 +129,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	protected class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
-		private final SocketChannel channel;
+		private final SocketChannel     channel;
+		private final InetSocketAddress remoteAddress;
 
 		public NettyTcpConnection(Environment env,
 															Function<Buffer, IN> decoder,
@@ -139,6 +140,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 															SocketChannel channel) {
 			super(env, decoder, encoder, ioDispatcher, eventsReactor);
 			this.channel = channel;
+			this.remoteAddress = channel.remoteAddress();
 		}
 
 		@Override
@@ -149,6 +151,11 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		@Override
 		public boolean writable() {
 			return !channel.isOutputShutdown();
+		}
+
+		@Override
+		public InetSocketAddress remoteAddress() {
+			return remoteAddress;
 		}
 
 		@Override

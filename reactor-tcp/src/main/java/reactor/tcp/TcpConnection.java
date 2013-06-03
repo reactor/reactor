@@ -4,6 +4,8 @@ import reactor.core.Composable;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
+import java.net.InetSocketAddress;
+
 /**
  * @author Jon Brisbin
  */
@@ -14,6 +16,8 @@ public interface TcpConnection<IN, OUT> {
 	boolean consumable();
 
 	boolean writable();
+
+	InetSocketAddress remoteAddress();
 
 	Composable<IN> in();
 
