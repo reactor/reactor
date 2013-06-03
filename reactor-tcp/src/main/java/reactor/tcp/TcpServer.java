@@ -146,10 +146,10 @@ public abstract class TcpServer<IN, OUT> {
 		private final Class<? extends TcpServer<IN, OUT>>       serverImpl;
 		private final Constructor<? extends TcpServer<IN, OUT>> serverImplConstructor;
 
-		private InetSocketAddress listenAddress = new InetSocketAddress(3000);
-		private int               backlog       = 512;
-		private int               rcvbuf        = 8 * 1024;
-		private int               sndbuf        = 8 * 1024;
+		private InetSocketAddress listenAddress;
+		private int backlog = 512;
+		private int rcvbuf  = 8 * 1024;
+		private int sndbuf  = 8 * 1024;
 		private Codec<Buffer, IN, OUT>                       codec;
 		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
 

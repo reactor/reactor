@@ -35,44 +35,30 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 	}
 
 	public class DelimitedDecoder implements Function<Buffer, Collection<IN>> {
-		private final Function<Buffer, IN> decoder   = delegate.decoder();
-		private final Buffer               remainder = new Buffer();
-		private final List<Integer>        positions = new ArrayList<Integer>();
+		private final Function<Buffer, IN> decoder = delegate.decoder();
+		private Buffer remainder;
 
 		@Override
 		public Collection<IN> apply(Buffer bytes) {
 			if (bytes.remaining() == 0) {
 				return null;
 			}
-			positions.clear();
 
-			while (bytes.remaining() > 0) {
-				if (bytes.read() == delimiter) {
-					positions.add(bytes.position() - 1);
-				}
+			if (null != remainder) {
+				bytes.prepend(remainder);
 			}
-			int end = bytes.position();
 
-			List<IN> objs = null;
-			if (!positions.isEmpty()) {
-				objs = new ArrayList<IN>(positions.size());
-				int start = 0;
-				for (Integer pos : positions) {
-					bytes.byteBuffer().limit(pos);
-					bytes.byteBuffer().position(start);
-					IN in = decoder.apply(bytes);
-					if (null != in) {
-						objs.add(in);
-					}
-					start = pos + 1;
+			List<IN> objs = new ArrayList<IN>();
+			for (Buffer b : bytes.split(delimiter, false)) {
+				if (b.last() == delimiter) {
+					objs.add(decoder.apply(b));
+				} else {
+					// remainder
+					remainder = new Buffer(b.byteBuffer().duplicate());
 				}
 			}
 
-			if (bytes.position() + 1 < end) {
-				remainder.append(bytes);
-			}
-
-			return (null == objs || objs.isEmpty() ? null : objs);
+			return (objs.isEmpty() ? null : objs);
 		}
 	}
 
