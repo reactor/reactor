@@ -22,18 +22,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import reactor.filter.Filter;
+import reactor.filter.PassThroughFilter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.registry.Registration;
+import reactor.fn.routing.EventRouter;
 import reactor.util.Assert;
 
 /**
- * An {@link EventRouter} that {@link Filter#filter filters} consumers before routing events to them.
+ * An {@link reactor.fn.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to them.
  *
  * @author Andy Wilkinson
- *
+ * @author Stephane Maldini
  */
 public final class ConsumerFilteringEventRouter implements EventRouter {
+
+	public static final ConsumerFilteringEventRouter DEFAULT = new ConsumerFilteringEventRouter(
+			PassThroughFilter.INSTANCE,
+			ArgumentConvertingConsumerInvoker.DEFAULT
+	);
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -44,9 +51,8 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use {@code filter} to filter consumers.
 	 *
-	 * @param filter The filter to use. Must not be {@code null}.
+	 * @param filter          The filter to use. Must not be {@code null}.
 	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
-	 *
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
@@ -92,6 +98,7 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 
 	/**
 	 * Returns the {@code Filter} being used
+	 *
 	 * @return The {@code Filter}.
 	 */
 	public Filter getFilter() {

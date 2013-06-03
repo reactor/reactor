@@ -39,6 +39,7 @@ import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class DispatcherSpec extends Specification {
 
@@ -50,7 +51,8 @@ class DispatcherSpec extends Specification {
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>(null)
-		def eventRouter = new ConsumerFilteringEventRouter(new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null));
+		def eventRouter = new ConsumerFilteringEventRouter(new PassThroughFilter(), ArgumentConvertingConsumerInvoker
+				.DEFAULT)
 		def sel = $('test')
 		registry.register(sel, consumer {
 			taskThread = Thread.currentThread()

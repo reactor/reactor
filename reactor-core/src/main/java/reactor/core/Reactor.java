@@ -25,16 +25,14 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
 
 import reactor.convert.Converter;
-import reactor.filter.PassThroughFilter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Function;
 import reactor.fn.Observable;
 import reactor.fn.Supplier;
-import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.dispatch.ConsumerFilteringEventRouter;
 import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.EventRouter;
+import reactor.fn.routing.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.fn.registry.CachingRegistry;
@@ -66,16 +64,20 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
 
-	private final Object              defaultKey      = new Object();
-	private final Selector            defaultSelector = $(defaultKey);
-	private final UUID                id              = new UUID();
-	private final Consumer<Throwable> errorHandler    = new Consumer<Throwable>() {
+	private final Object   defaultKey      = new Object();
+	private final Selector defaultSelector = $(defaultKey);
+
+	private final Object   registerKey      = new Object();
+	private final Selector registerSelector = $(registerKey);
+
+	private final UUID                id             = new UUID();
+	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
 			Reactor.this.notify(T(t.getClass()), Event.wrap(t));
 		}
 	};
-	private final Set<Observable>     linkedReactors  = new NonBlockingHashSet<Observable>();
+	private final Set<Observable>     linkedReactors = new NonBlockingHashSet<Observable>();
 
 	/**
 	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry}. Each {@literal
@@ -86,11 +88,11 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *            Converter}, and {@link Dispatcher}.
 	 */
 	Reactor(Environment env,
-					Reactor src) {
+	        Reactor src) {
 		this(env,
-				 src.getDispatcher(),
-				 src.consumerRegistry.getSelectionStrategy(),
-				 src.getEventRouter());
+				src.getDispatcher(),
+				src.consumerRegistry.getSelectionStrategy(),
+				src.getEventRouter());
 	}
 
 	/**
@@ -104,12 +106,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *                   dispatcher is used
 	 */
 	Reactor(Environment env,
-					Reactor src,
-					Dispatcher dispatcher) {
+	        Reactor src,
+	        Dispatcher dispatcher) {
 		this(env,
-				 dispatcher,
-				 src.consumerRegistry.getSelectionStrategy(),
-				 src.getEventRouter());
+				dispatcher,
+				src.consumerRegistry.getSelectionStrategy(),
+				src.getEventRouter());
 	}
 
 	/**
@@ -120,11 +122,11 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *                   dispatcher is used
 	 */
 	Reactor(Environment env,
-					Dispatcher dispatcher) {
+	        Dispatcher dispatcher) {
 		this(env,
-				 dispatcher,
-				 null,
-				 null);
+				dispatcher,
+				null,
+				null);
 	}
 
 	/**
@@ -139,12 +141,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *                          router is used.
 	 */
 	Reactor(Environment env,
-					Dispatcher dispatcher,
-					SelectionStrategy selectionStrategy,
-					EventRouter eventRouter) {
+	        Dispatcher dispatcher,
+	        SelectionStrategy selectionStrategy,
+	        EventRouter eventRouter) {
 		this.env = env;
 		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
-		this.eventRouter = eventRouter == null ? new ConsumerFilteringEventRouter(new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)) : eventRouter;
+		this.eventRouter = eventRouter == null ? ConsumerFilteringEventRouter.DEFAULT : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
 
 		this.on(new Consumer<Event>() {
@@ -170,9 +172,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 */
 	public Reactor(Environment env) {
 		this(env,
-				 null,
-				 null,
-				 null);
+				null,
+				null,
+				null);
 	}
 
 	/**
@@ -222,13 +224,15 @@ public class Reactor implements Observable, Linkable<Observable> {
 	public <T, E extends Event<T>> Registration<Consumer<E>> on(Selector selector, final Consumer<E> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
-		return consumerRegistry.register(selector, consumer);
+		Registration<Consumer<E>> reg = consumerRegistry.register(selector, consumer);
+		notify(registerKey, Event.wrap(reg), null, ConsumerFilteringEventRouter.DEFAULT);
+		return reg;
 	}
 
 	@Override
 	public <T, E extends Event<T>> Registration<Consumer<E>> on(Consumer<E> consumer) {
 		Assert.notNull(consumer, "Consumer cannot be null.");
-		return consumerRegistry.register(defaultSelector, consumer);
+		return on(defaultSelector, consumer);
 	}
 
 	@Override
@@ -236,9 +240,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return on(sel, new ReplyToConsumer<T, E, V>(fn));
 	}
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
+	private <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete, EventRouter eventRouter) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
@@ -256,18 +258,24 @@ public class Reactor implements Observable, Linkable<Observable> {
 				r.notify(key, ev);
 			}
 		}
+		return this;
+	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
+		notify(key, ev, onComplete, eventRouter);
 		return this;
 	}
 
 	@Override
 	public <T, E extends Event<T>> Reactor notify(Object key, E ev) {
-		return notify(key, ev, null);
+		return notify(key, ev, null, eventRouter);
 	}
 
 	@Override
 	public <T, S extends Supplier<Event<T>>> Reactor notify(Object key, S supplier) {
-		return notify(key, supplier.get(), null);
+		return notify(key, supplier.get(), null, eventRouter);
 	}
 
 	@Override
@@ -305,6 +313,19 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return notify(key, new ReplyToEvent<T>(supplier.get(), replyTo));
 	}
 
+
+	/**
+	 * Register a {@link Consumer} to be triggered when {@link #on} has been completed.
+	 *
+	 * @param registrationConsumer The {@literal Consumer} to be triggered.
+	 * @param <E>                  The type of the event passed to the registrationConsumer.
+	 * @return A {@link Registration} object that allows the caller to interact with consumer state.
+	 */
+	public <E extends Event<Registration<?>>> Registration<Consumer<E>> onRegistration(Consumer<E>
+			                                                                                   registrationConsumer) {
+		return on(registerSelector, registrationConsumer);
+	}
+
 	/**
 	 * Register a {@link Function} to be triggered using the given {@link Selector}. The return value is automatically
 	 * handled and replied to the origin reactor/replyTo key set within an incoming event
@@ -313,7 +334,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param function The {@literal Function} to be triggered.
 	 * @param <T>      The type of the data in the {@link Event}.
 	 * @param <V>      The type of the return value when the given {@link Function}.
-	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
+	 * @return A {@link Composable} object that allows the caller to interact with the given mapping.
 	 */
 	public <T, E extends Event<T>, V> Composable<V> map(Selector sel, final Function<E, V> function) {
 		Assert.notNull(sel, "Selector cannot be null.");

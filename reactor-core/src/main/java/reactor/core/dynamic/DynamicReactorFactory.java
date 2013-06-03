@@ -60,7 +60,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	private final List<MethodSelectorResolver>        selectorResolvers;
 	private final List<MethodNotificationKeyResolver> notificationKeyResolvers;
 	private final    Map<Method, DynamicMethod> dynamicMethods  = new HashMap<Method, DynamicMethod>();
-	private volatile ConsumerInvoker            consumerInvoker = new ArgumentConvertingConsumerInvoker(null);
+	private volatile ConsumerInvoker            consumerInvoker = ArgumentConvertingConsumerInvoker.DEFAULT;
 	private volatile Converter converter;
 
 	public DynamicReactorFactory(Environment env,

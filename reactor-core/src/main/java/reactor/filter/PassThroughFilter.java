@@ -22,8 +22,11 @@ import java.util.List;
  * A {@link Filter} implementation that performs no filtering, returning the {@code items} as-is.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public final class PassThroughFilter extends AbstractFilter {
+
+	public static final PassThroughFilter INSTANCE = new PassThroughFilter();
 
 	@Override
 	public <T> List<T> doFilter(List<T> items, Object key) {

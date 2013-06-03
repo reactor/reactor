@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.dispatch;
+package reactor.fn.routing;
 
 import java.util.List;
 

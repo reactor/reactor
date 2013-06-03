@@ -58,7 +58,7 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 		@Override
 		public void run() {
 			try {
-				execute(getInvoker());
+				execute();
 			} finally {
 				readyTasks.deallocate(this);
 			}

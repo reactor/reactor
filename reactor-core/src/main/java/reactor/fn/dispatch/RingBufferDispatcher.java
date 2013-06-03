@@ -43,7 +43,6 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
 	 *
 	 * @param name         The name of the dispatcher
-	 * @param poolSize     The size of the thread pool used to remove items when the buffer
 	 * @param backlog      The backlog size to configuration the ring buffer with
 	 * @param producerType The producer type to configure the ring buffer with
 	 * @param waitStrategy The wait strategy to configure the ring buffer with
@@ -136,7 +135,7 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	private class RingBufferTaskHandler implements EventHandler<RingBufferTask> {
 		@Override
 		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
-			t.execute(getInvoker());
+			t.execute();
 		}
 	}
 

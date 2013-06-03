@@ -29,7 +29,7 @@ import reactor.fn.dispatch.ConsumerFilteringEventRouter;
 import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.EventRouter;
+import reactor.fn.routing.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.routing.TagAwareSelectionStrategy;
@@ -210,7 +210,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 			filter = new RandomFilter();
 		} else {
 			if (null == existingFilter) {
-				filter = new PassThroughFilter();
+				filter = PassThroughFilter.INSTANCE;
 			} else {
 				filter = existingFilter;
 			}

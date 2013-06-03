@@ -88,7 +88,7 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 		@Override
 		public void run() {
 			try {
-				execute(getInvoker());
+				execute();
 			} finally {
 				readyTasks.deallocate(this);
 			}

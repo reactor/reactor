@@ -20,11 +20,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractDispatcher implements Dispatcher {
 
 	private final AtomicBoolean   alive   = new AtomicBoolean(true);
-	private final ConsumerInvoker invoker = new ArgumentConvertingConsumerInvoker(null);
 
 	@Override
 	public boolean alive() {
@@ -47,10 +47,6 @@ public abstract class AbstractDispatcher implements Dispatcher {
 			throw new IllegalStateException("This Dispatcher has been shutdown and cannot accept new tasks.");
 		}
 		return createTask();
-	}
-
-	protected ConsumerInvoker getInvoker() {
-		return invoker;
 	}
 
 	protected abstract <T> Task<T> createTask();

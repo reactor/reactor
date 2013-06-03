@@ -37,8 +37,11 @@ import java.util.concurrent.Callable;
  * {@literal null} or throw any raised exceptions.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker {
+
+	public static final ArgumentConvertingConsumerInvoker DEFAULT = new ArgumentConvertingConsumerInvoker(null);
 
 	private final Converter converter;
 

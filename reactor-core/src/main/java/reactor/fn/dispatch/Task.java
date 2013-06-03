@@ -19,6 +19,7 @@ package reactor.fn.dispatch;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.registry.Registry;
+import reactor.fn.routing.EventRouter;
 
 /**
  * Abstract class that a {@link Dispatcher} will implement that provides a caller with a holder for the components of an
@@ -81,7 +82,7 @@ public abstract class Task<T> {
 	 */
 	public abstract void submit();
 
-	protected void execute(ConsumerInvoker invoker) {
+	protected void execute() {
 		eventRouter.route(key, event, consumerRegistry.select(key), completionConsumer, errorConsumer);
 	}
 

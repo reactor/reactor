@@ -26,8 +26,6 @@ public class SynchronousDispatcher implements Dispatcher {
 
 	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
 
-	private final ConsumerInvoker invoker = new ArgumentConvertingConsumerInvoker(null);
-
 	@Override
 	@SuppressWarnings({"unchecked"})
 	public <T> Task<T> nextTask() {
@@ -50,7 +48,7 @@ public class SynchronousDispatcher implements Dispatcher {
 	private class SyncTask extends Task<Object> {
 		@Override
 		public void submit() {
-			execute(invoker);
+			execute();
 		}
 	}
 

@@ -105,7 +105,7 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
-						t.execute(getInvoker());
+						t.execute();
 					}
 				} catch (InterruptedException e) {
 					break;
