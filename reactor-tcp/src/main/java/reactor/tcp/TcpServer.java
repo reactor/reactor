@@ -5,7 +5,7 @@ import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.fn.Registration;
+import reactor.fn.registry.Registration;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
