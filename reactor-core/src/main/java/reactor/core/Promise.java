@@ -47,8 +47,8 @@ public class Promise<T> extends Composable<T> {
 
 	Promise(Environment env, Observable src) {
 		super(env, src);
-		expectedAcceptCount.set(1);
-		observable.on(Functions.T(Throwable.class), new Consumer<Event<Throwable>>() {
+		setExpectedAcceptCount(1);
+		getObservable().on(Functions.T(Throwable.class), new Consumer<Event<Throwable>>() {
 			@Override
 			public void accept(Event<Throwable> throwableEvent) {
 				synchronized (monitor) {
@@ -183,6 +183,7 @@ public class Promise<T> extends Composable<T> {
 	 *
 	 * @return {@literal true} if the promise completed in error, otherwise {@literal false}.
 	 */
+	@Override
 	public boolean isError() {
 		return super.isError();
 	}
@@ -202,7 +203,7 @@ public class Promise<T> extends Composable<T> {
 			if (isError()) {
 				return this;
 			} else if (acceptCountReached()) {
-				Functions.schedule(consumer, value, observable);
+				Functions.schedule(consumer, getValue(), getObservable());
 				return this;
 			} else {
 				return (Promise<T>) super.consume(consumer);
@@ -214,7 +215,7 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> consume(Object key, Observable observable) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				observable.notify(key, Event.wrap(value));
+				observable.notify(key, Event.wrap(getValue()));
 				return this;
 			} else {
 				return (Promise<T>) super.consume(key, observable);
@@ -227,7 +228,7 @@ public class Promise<T> extends Composable<T> {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
 				Promise<T> c = (Promise<T>) super.first();
-				c.set(value);
+				c.set(getValue());
 				return c;
 			} else {
 				return (Promise<T>) super.first();
@@ -240,7 +241,7 @@ public class Promise<T> extends Composable<T> {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
 				Promise<T> c = (Promise<T>) super.last();
-				c.set(value);
+				c.set(getValue());
 				return c;
 			} else {
 				return (Promise<T>) super.last();
@@ -252,7 +253,7 @@ public class Promise<T> extends Composable<T> {
 	public <V> Promise<V> map(final Function<T, V> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				final Promise<V> c = createComposable(observable);
+				final Promise<V> c = createComposable(getObservable());
 				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -262,7 +263,7 @@ public class Promise<T> extends Composable<T> {
 							handleError(c, t);
 						}
 					}
-				}, value, observable);
+				}, getValue(), getObservable());
 				return c;
 			} else {
 				return (Promise<V>) super.map(fn);
@@ -274,7 +275,7 @@ public class Promise<T> extends Composable<T> {
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				final Promise<T> c = createComposable(observable);
+				final Promise<T> c = createComposable(getObservable());
 				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -288,7 +289,7 @@ public class Promise<T> extends Composable<T> {
 							handleError(c, t);
 						}
 					}
-				}, value, observable);
+				}, getValue(), getObservable());
 				return c;
 			} else {
 				return (Promise<T>) super.filter(fn);
@@ -302,6 +303,7 @@ public class Promise<T> extends Composable<T> {
 		c.decreaseAcceptLength();
 	}
 
+	@Override
 	public void accept(Throwable error) {
 		set(error);
 	}
@@ -315,7 +317,7 @@ public class Promise<T> extends Composable<T> {
 	public T get() {
 		synchronized (this.monitor) {
 			if (isError()) {
-				throw new IllegalStateException(error);
+				throw new IllegalStateException(getError());
 			}
 			return super.get();
 		}
@@ -323,7 +325,7 @@ public class Promise<T> extends Composable<T> {
 
 	@Override
 	protected <U> Promise<U> createComposable(Observable src) {
-		final Promise<U> p = new Promise<U>(env, src);
+		final Promise<U> p = new Promise<U>(getEnvironment(), src);
 		forwardError(p);
 		return p;
 	}
@@ -354,7 +356,7 @@ public class Promise<T> extends Composable<T> {
 		}
 
 		final Composable<Tuple2<?, Integer>> reducer =
-				new DelayedAcceptComposable<Tuple2<?, Integer>>(env, observable, size);
+				new DelayedAcceptComposable<Tuple2<?, Integer>>(getEnvironment(), getObservable(), size);
 		reducer
 				.reduce()
 				.map(new Function<List<Tuple2<?, Integer>>, T>() {

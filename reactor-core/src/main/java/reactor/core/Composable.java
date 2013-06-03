@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import reactor.fn.Functions;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.selector.Selector;
@@ -44,23 +43,24 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 
 	protected final Object monitor = new Object();
 
-	protected final Object   acceptKey      = new Object();
-	protected final Selector acceptSelector = $(acceptKey);
+	private final Object   acceptKey      = new Object();
+	private final Selector acceptSelector = $(acceptKey);
 
-	protected final Object   firstKey      = new Object();
-	protected final Selector firstSelector = $(firstKey);
+	private final Object   firstKey      = new Object();
+	private final Selector firstSelector = $(firstKey);
 
-	protected final Object   lastKey      = new Object();
-	protected final Selector lastSelector = $(lastKey);
+	private final Object   lastKey      = new Object();
+	private final Selector lastSelector = $(lastKey);
 
-	protected final AtomicLong acceptedCount       = new AtomicLong(0);
-	protected final AtomicLong expectedAcceptCount = new AtomicLong(-1);
+	private final Environment env;
+	private final Observable  observable;
 
-	protected final Environment env;
-	protected final Observable  observable;
-	protected boolean hasBlockers = false;
-	protected T         value;
-	protected Throwable error;
+	private long      acceptedCount       = 0L;
+	private long      expectedAcceptCount = -1L;
+	private boolean   hasBlockers         = false;
+
+	private T         value;
+	private Throwable error;
 
 	/**
 	 * Create a {@link Composable} that uses the given {@link Reactor} for publishing events internally.
@@ -80,13 +80,19 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> setExpectedAcceptCount(long expectedAcceptCount) {
-		this.expectedAcceptCount.set(expectedAcceptCount);
-		if (this.acceptedCount.get() >= expectedAcceptCount) {
-			observable.notify(lastKey, Event.wrap(value));
-			synchronized (monitor) {
+		boolean notifyLast = false;
+		synchronized (monitor) {
+			doSetExpectedAcceptCount(expectedAcceptCount);
+			if (acceptCountReached()) {
 				monitor.notifyAll();
+				notifyLast = true;
 			}
 		}
+
+		if (notifyLast) {
+			observable.notify(lastKey, Event.wrap(value));
+		}
+
 		return this;
 	}
 
@@ -110,7 +116,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @return {@literal this}
 	 * @see {@link #accept(Object)}
 	 */
-	public Composable<T> consume(final Composable<T> composable) {
+	public Composable<T> consume(Composable<T> composable) {
 		when(acceptSelector, composable);
 		forwardError(composable);
 		return this;
@@ -140,16 +146,17 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 *
 	 * @return A new {@link Composable} that is linked to the parent.
 	 */
-	@SuppressWarnings("unchecked")
 	public Composable<T> first() {
 		final Composable<T> c = createComposable(observable);
-		c.expectedAcceptCount.set(1);
+		c.doSetExpectedAcceptCount(1);
+
 		when(firstSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
 				c.accept(t);
 			}
 		});
+
 		return c;
 	}
 
@@ -160,10 +167,10 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @return A new {@link Composable} that is linked to the parent.
 	 * @see {@link #setExpectedAcceptCount(long)}
 	 */
-	@SuppressWarnings("unchecked")
 	public Composable<T> last() {
 		final Composable<T> c = createComposable(observable);
-		c.expectedAcceptCount.set(1);
+		c.doSetExpectedAcceptCount(1);
+
 		when(lastSelector, new Consumer<T>() {
 			@Override
 			public void accept(T t) {
@@ -183,7 +190,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @param <V> The type of the object returned when the given {@link Function}.
 	 * @return The new {@link Composable}.
 	 */
-	@SuppressWarnings("unchecked")
 	public <V> Composable<V> map(final Function<T, V> fn) {
 		Assert.notNull(fn);
 		final Composable<V> c = createComposable(observable);
@@ -211,7 +217,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @param <V>        The type of the object returned by reactor reply.
 	 * @return The new {@link Composable}.
 	 */
-	@SuppressWarnings("unchecked")
 	public <V> Composable<V> map(final Object key, final Observable observable) {
 		Assert.notNull(observable);
 		final Composable<V> c = createComposable(observable);
@@ -255,12 +260,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @param <V>     The type of the object returned by reactor reply.
 	 * @return The new {@link Composable}.
 	 */
-	@SuppressWarnings("unchecked")
 	public <V> Composable<V> reduce(final Function<Reduce<T, V>, V> fn, V initial) {
 		Assert.notNull(fn);
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
 		final Composable<V> c = createComposable(observable);
-		final long _expectedAcceptCount = expectedAcceptCount.get();
+
+		final long _expectedAcceptCount;
+		synchronized(monitor) {
+			_expectedAcceptCount = expectedAcceptCount;
+		}
+
 		c.setExpectedAcceptCount(_expectedAcceptCount < 0 ? _expectedAcceptCount : 1);
 		when(lastSelector, new Consumer<T>() {
 			@Override
@@ -268,6 +277,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				c.accept(lastValue.get());
 			}
 		});
+
 		when(acceptSelector, new Consumer<T>() {
 			@Override
 			public void accept(T value) {
@@ -309,8 +319,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @param count Number of values to accept
 	 * @return The new {@link Composable}.
 	 */
-	@SuppressWarnings("unchecked")
-	public Composable<T> take(final long count) {
+	public Composable<T> take(long count) {
 		final AtomicLong cursor = new AtomicLong(count);
 		final AtomicReference<Registration<Consumer<Event<T>>>> reg = new
 				AtomicReference<Registration<Consumer<Event<T>>>>();
@@ -356,7 +365,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 * @param fn The filter function, taking argument {@param <T>} and returning a {@link Boolean}
 	 * @return The new {@link Composable}.
 	 */
-	@SuppressWarnings("unchecked")
 	public Composable<T> filter(final Function<T, Boolean> fn) {
 		Assert.notNull(fn);
 		final Composable<T> c = createComposable(observable);
@@ -398,15 +406,16 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	 *
 	 * @param value The exception
 	 */
+	@Override
 	public void accept(T value) {
 		synchronized (monitor) {
+			setValue(value);
 			this.value = value;
 			if (hasBlockers) {
 				monitor.notifyAll();
 			}
 		}
-		acceptedCount.incrementAndGet();
-		observable.notify(acceptKey, Event.wrap(value));
+		notifyAccept(Event.wrap(value));
 	}
 
 	public T await() throws InterruptedException {
@@ -451,8 +460,9 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	}
 
 	protected boolean acceptCountReached() {
-		long expectedAcceptCount = this.expectedAcceptCount.get();
-		return expectedAcceptCount >= 0 && acceptedCount.get() >= expectedAcceptCount;
+		synchronized(monitor) {
+			return expectedAcceptCount >= 0 && acceptedCount >= expectedAcceptCount;
+		}
 	}
 
 	@Override
@@ -530,23 +540,94 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 	}
 
 	protected <U> Composable<U> createComposable(Observable src) {
-		final Composable<U> c = new Composable<U>(env, createReactor(src));
-		c.expectedAcceptCount.set(expectedAcceptCount.get());
+		Composable<U> c = new Composable<U>(env, createReactor(src));
+		synchronized(monitor) {
+			c.doSetExpectedAcceptCount(expectedAcceptCount);
+		}
 		forwardError(c);
 		return c;
 	}
 
 	protected void decreaseAcceptLength() {
-		if (expectedAcceptCount.decrementAndGet() <= acceptedCount.get()) {
-			synchronized (monitor) {
+		synchronized (monitor) {
+			if (--expectedAcceptCount <= acceptedCount) {
 				monitor.notifyAll();
 			}
 		}
 	}
 
-	protected <V> void handleError(final Composable<V> c, Throwable t) {
+	protected <V> void handleError(Composable<V> c, Throwable t) {
 		c.observable.notify(t.getClass(), Event.wrap(t));
 		c.decreaseAcceptLength();
+	}
+
+	protected final T getValue() {
+		synchronized (this.monitor) {
+			return this.value;
+		}
+	}
+
+	protected final void setValue(T value) {
+		synchronized (monitor) {
+			this.value = value;
+			acceptedCount++;
+		}
+	}
+
+	protected final boolean isFirst() {
+		synchronized (monitor) {
+			return acceptedCount == 1;
+		}
+	}
+
+	protected final Throwable getError() {
+		synchronized (monitor) {
+			return this.error;
+		}
+	}
+
+	protected final void setError(Throwable error) {
+		synchronized (monitor) {
+			this.error = error;
+		}
+	}
+
+	protected final void notifyError(Throwable error) {
+		synchronized (monitor) {
+			observable.notify(error.getClass(), Event.wrap(error));
+		}
+	}
+
+	protected final void notifyFirst(Event<?> event) {
+		observable.notify(firstKey, event);
+	}
+
+	protected final void notifyAccept(Event<?> event) {
+		observable.notify(acceptKey, event);
+	}
+
+	protected final void notifyLast(Event<?> event) {
+		observable.notify(lastKey, event);
+	}
+
+	protected final Environment getEnvironment() {
+		return env;
+	}
+
+	protected final void doSetExpectedAcceptCount(long expectedAcceptCount) {
+		synchronized (monitor) {
+			this.expectedAcceptCount = expectedAcceptCount;
+		}
+	}
+
+	protected long getExpectedAcceptCount() {
+		synchronized (monitor) {
+			return expectedAcceptCount;
+		}
+	}
+
+	protected final Observable getObservable() {
+		return this.observable;
 	}
 
 	/**
@@ -563,7 +644,6 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
 		protected Composable<T> configure(final Reactor reactor) {
 
 			final Composable<T> comp;
@@ -585,55 +665,50 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 			super(env, src);
 			this.values = values;
 			if (values instanceof Collection) {
-				expectedAcceptCount.set(((Collection<?>) values).size());
+				setExpectedAcceptCount((((Collection<?>) values).size()));
 			}
 		}
 
 		protected DelayedAcceptComposable(Environment env, Observable src, long length) {
 			super(env, src);
-			expectedAcceptCount.set(length);
 			this.values = null;
+			setExpectedAcceptCount(length);
 		}
 
 		@Override
 		public void accept(Throwable error) {
-			synchronized (monitor) {
-				this.error = error;
-			}
-
-			long _acceptCount = acceptedCount.incrementAndGet();
-			long _exceptedCount = expectedAcceptCount.get();
-
-			if (_exceptedCount > 0 && _acceptCount < _exceptedCount) {
-				observable.notify(error.getClass(), Event.wrap(error));
-			}
-
+			setError(error);
+			notifyError(error);
 		}
 
 		@Override
 		public void accept(T value) {
-			synchronized (monitor) {
-				this.value = value;
-			}
+			boolean notifyFirst = false;
+			boolean notifyLast = false;
 
-			long _acceptCount = acceptedCount.incrementAndGet();
-			long _exceptedCount = expectedAcceptCount.get();
+			synchronized(monitor) {
+				setValue(value);
+
+				if (isFirst()) {
+					notifyFirst = true;
+				}
+
+				if (acceptCountReached()) {
+					notifyLast = true;
+					monitor.notifyAll();
+				}
+			}
 
 			Event<T> ev = Event.wrap(value);
 
-			if (_acceptCount == 1) {
-				observable.notify(firstKey, ev);
+			if (notifyFirst) {
+				notifyFirst(ev);
 			}
 
-			if (_exceptedCount < 0 || _acceptCount <= _exceptedCount) {
-				observable.notify(acceptKey, ev);
-			}
+			notifyAccept(ev);
 
-			if (_acceptCount == _exceptedCount) {
-				observable.notify(lastKey, ev);
-				synchronized (monitor) {
-					monitor.notifyAll();
-				}
+			if (notifyLast) {
+				notifyLast(ev);
 			}
 		}
 
@@ -653,7 +728,7 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 		protected <U> Composable<U> createComposable(Observable src) {
 			final DelayedAcceptComposable<T> self = this;
 			final DelayedAcceptComposable<U> c =
-					new DelayedAcceptComposable<U>(env, createReactor(src), self.expectedAcceptCount.get()) {
+					new DelayedAcceptComposable<U>(getEnvironment(), createReactor(src), self.getExpectedAcceptCount()) {
 						@Override
 						protected void delayedAccept() {
 							self.delayedAccept();
@@ -677,8 +752,8 @@ public class Composable<T> implements Consumer<T>, Supplier<T> {
 				} else if (acceptState == AcceptState.DELAYED) {
 					if (localError == null && localValue == null && localValues == null) {
 						synchronized (this.monitor) {
-							localError = error;
-							localValue = value;
+							localError = getError();
+							localValue = getValue();
 							localValues = values;
 						}
 					}
