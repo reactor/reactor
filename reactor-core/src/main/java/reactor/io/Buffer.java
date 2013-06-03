@@ -41,7 +41,7 @@ public class Buffer implements Comparable<Buffer>,
 			System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
 	);
 	public static int MAX_BUFFER_SIZE   = Integer.parseInt(
-			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000)
+			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
 	);
 
 	private final Charset utf8 = Charset.forName("UTF-8");
