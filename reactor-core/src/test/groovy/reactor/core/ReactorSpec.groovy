@@ -31,6 +31,7 @@ import spock.lang.Specification
 import static reactor.Fn.$
 import static reactor.Fn.R
 import static reactor.GroovyTestUtils.consumer
+import static reactor.fn.Functions.consumer
 
 /**
  * @author Jon Brisbin
@@ -241,6 +242,34 @@ class ReactorSpec extends Specification {
 
 		then: "the count is only 1"
 		count == 1
+
+	}
+
+
+	def "Listen for registrations"() {
+
+		given: "a synchronous Reactor and a registration consumer"
+		def r = R.reactor().get()
+		def count = 0
+		r.onRegistration(consumer { count++ })
+
+		when: "a consumer is registered"
+		r.on(consumer{})
+
+		then: "the count should be 1 as we had a single registration"
+		count == 1
+
+		when: "a synchronous RoundRobin Reactor and 2 registration consumers"
+		r = R.reactor().roundRobinEventRouting().get()
+		count = 0
+		r.onRegistration(consumer { count++ })
+		r.onRegistration(consumer { count++ })
+
+		and:
+		r.on(consumer {})
+
+		then: "the count should be 2 as we had 2 registrations consumers called"
+		count == 2
 
 	}
 

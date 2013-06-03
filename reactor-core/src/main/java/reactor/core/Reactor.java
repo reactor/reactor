@@ -16,35 +16,29 @@
 
 package reactor.core;
 
-import static reactor.fn.Functions.$;
-import static reactor.fn.Functions.T;
-
-import java.util.Set;
-
+import com.eaio.uuid.UUID;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
-
 import reactor.convert.Converter;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Observable;
-import reactor.fn.Supplier;
+import reactor.fn.*;
 import reactor.fn.dispatch.ConsumerFilteringEventRouter;
 import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.routing.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
+import reactor.fn.routing.EventRouter;
 import reactor.fn.routing.Linkable;
 import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import com.eaio.uuid.UUID;
+import java.util.Set;
+
+import static reactor.fn.Functions.$;
+import static reactor.fn.Functions.T;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -323,7 +317,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 */
 	public <E extends Event<Registration<?>>> Registration<Consumer<E>> onRegistration(Consumer<E>
 			                                                                                   registrationConsumer) {
-		return on(registerSelector, registrationConsumer);
+		return consumerRegistry.register(registerSelector, registrationConsumer);
 	}
 
 	/**
