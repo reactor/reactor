@@ -17,7 +17,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		configuration.defaultDispatcherName == 'ringBuffer'
 		dispatchers.size() == 3
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 1024)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 	}
 
@@ -51,7 +51,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "it contains the expected dispatchers"
 		dispatchers.size() == 4
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 1024)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.SYNCHRONOUS, null, null)
 	}
@@ -70,7 +70,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the later profile overrides the earlier profile"
 		dispatchers.size() == 4
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 1024)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.RING_BUFFER, null, null)
 	}
@@ -89,7 +89,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the active profile overrides the default profile"
 		dispatchers.size() == 3
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 512)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 	}
 
@@ -109,7 +109,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the system property takes precedence"
 		dispatchers.size() == 4
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 512)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.EVENT_LOOP, null, null)
 	}
@@ -128,7 +128,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "its absence is tolerated"
 		dispatchers.size() == 3
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 1024)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 	}
 
@@ -163,7 +163,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the unrecognized dispatcher type is tolerated"
 		dispatchers.size() == 3
 		matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, 1, 1024)
+		matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
 		matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
 	}
 

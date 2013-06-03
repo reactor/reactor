@@ -126,8 +126,7 @@ public class Environment {
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
-		int size = getSize(dispatcherConfiguration, 0);
-		return new RingBufferDispatcher(dispatcherConfiguration.getName(), size, backlog, ProducerType.MULTI, new BlockingWaitStrategy());
+		return new RingBufferDispatcher(dispatcherConfiguration.getName(), backlog, ProducerType.MULTI, new BlockingWaitStrategy());
 	}
 
 	private BlockingQueueDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {

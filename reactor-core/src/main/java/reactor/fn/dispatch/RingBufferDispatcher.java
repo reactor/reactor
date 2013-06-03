@@ -50,11 +50,10 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-															int poolSize,
 															int backlog,
 															ProducerType producerType,
 															WaitStrategy waitStrategy) {
-		this.executor = Executors.newFixedThreadPool(poolSize, new NamedDaemonThreadFactory(name + "-ringbuffer"));
+		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
 		this.disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
@@ -68,12 +67,7 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 				producerType,
 				waitStrategy
 		);
-		// Create 1 task handler per thread
-		RingBufferTaskHandler[] taskHandlers = new RingBufferTaskHandler[poolSize];
-		for (int i = 0; i < poolSize; i++) {
-			taskHandlers[i] = new RingBufferTaskHandler();
-		}
-		disruptor.handleEventsWith(taskHandlers);
+		disruptor.handleEventsWith(new RingBufferTaskHandler());
 		// Exceptions are handled by the errorConsumer
 		disruptor.handleExceptionsWith(
 				new ExceptionHandler() {
