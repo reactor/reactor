@@ -70,7 +70,7 @@ public class Environment {
 	 */
 	public static final String THREAD_POOL = "threadPoolExecutor";
 
-	private static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
+	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 
