@@ -30,11 +30,11 @@ import reactor.Fn
 import reactor.filter.PassThroughFilter
 import reactor.fn.Consumer
 import reactor.fn.Event
-import reactor.fn.dispatch.ConsumerFilteringEventRouter
-import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker
 import reactor.fn.dispatch.SynchronousDispatcher
 import reactor.fn.dispatch.ThreadPoolExecutorDispatcher
 import reactor.fn.registry.CachingRegistry
+import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
+import reactor.fn.routing.ConsumerFilteringEventRouter;
 import spock.lang.Specification
 
 /**

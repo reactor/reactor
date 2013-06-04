@@ -28,7 +28,7 @@ import org.junit.Test;
 
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
-import reactor.fn.routing.SelectionStrategy;
+import reactor.fn.registry.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
 public final class CachingRegistryTests {

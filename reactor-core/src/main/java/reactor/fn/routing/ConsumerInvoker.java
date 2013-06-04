@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.dispatch;
+package reactor.fn.routing;
 
 import reactor.fn.Consumer;
 import reactor.support.Supports;

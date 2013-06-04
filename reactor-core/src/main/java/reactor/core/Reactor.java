@@ -21,16 +21,16 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
 import reactor.convert.Converter;
 import reactor.fn.*;
-import reactor.fn.dispatch.ConsumerFilteringEventRouter;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.dispatch.Task;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
+import reactor.fn.registry.SelectionStrategy;
+import reactor.fn.routing.ConsumerFilteringEventRouter;
 import reactor.fn.routing.EventRouter;
 import reactor.fn.routing.Linkable;
-import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
@@ -78,7 +78,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given {@literal
 	 * Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.registry.SelectionStrategy}, {@link
 	 *            Converter}, and {@link Dispatcher}.
 	 */
 	Reactor(Environment env,
@@ -94,7 +94,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
 	 * registered on the given {@literal Reactor} when being triggered on the new {@literal Reactor}.
 	 *
-	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.routing.SelectionStrategy}, {@link
+	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.registry.SelectionStrategy}, {@link
 	 *                   Converter}.
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
@@ -110,7 +110,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
-	 * reactor.fn.routing.SelectionStrategy}, and {@link Converter} will be used.
+	 * reactor.fn.registry.SelectionStrategy}, and {@link Converter} will be used.
 	 *
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
@@ -125,7 +125,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
-	 * reactor.fn.routing.SelectionStrategy}, {@link EventRouter}
+	 * reactor.fn.registry.SelectionStrategy}, {@link EventRouter}
 	 *
 	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a
 	 *                          new synchronous dispatcher is used.

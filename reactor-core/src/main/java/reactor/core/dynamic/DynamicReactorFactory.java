@@ -30,10 +30,10 @@ import reactor.core.dynamic.reflect.MethodSelectorResolver;
 import reactor.core.dynamic.reflect.SimpleMethodNotificationKeyResolver;
 import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.*;
-import reactor.fn.dispatch.ConsumerInvoker;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.registry.Registration;
+import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
+import reactor.fn.routing.ConsumerInvoker;
 import reactor.fn.selector.Selector;
 import reactor.util.Assert;
 

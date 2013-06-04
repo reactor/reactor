@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.dispatch;
+package reactor.fn.routing;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
@@ -24,7 +24,7 @@ import reactor.fn.support.ConsumerUtils;
 import java.util.concurrent.Callable;
 
 /**
- * This implementation of a {@link reactor.fn.dispatch.ConsumerInvoker} will attempt to invoke a {@link
+ * This implementation of a {@link reactor.fn.routing.ConsumerInvoker} will attempt to invoke a {@link
  * reactor.fn.Consumer} as-is and, if that fails with a {@link ClassCastException} because the argument declared in the
  * {@literal Consumer} isn't of the correct type, it tries to find an object of that type in the array of {@literal
  * possibleArgs} passed to the invoker. If that fails, it will attempt to use the given {@link Converter} to convert the

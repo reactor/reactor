@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.routing;
+package reactor.fn.registry;
 
 import reactor.fn.selector.Selector;
 import reactor.fn.selector.Taggable;

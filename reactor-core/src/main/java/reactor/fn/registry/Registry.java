@@ -18,7 +18,6 @@ package reactor.fn.registry;
 
 import java.util.List;
 
-import reactor.fn.routing.SelectionStrategy;
 import reactor.fn.selector.Selector;
 
 /**
@@ -60,7 +59,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	/**
 	 * Returns the custom selection strategy, if any, that is being used by this {@literal Registry}
 	 *
-	 * @return the {@link reactor.fn.routing.SelectionStrategy}. May be {@code null}.
+	 * @return the {@link reactor.fn.registry.SelectionStrategy}. May be {@code null}.
 	 */
 	SelectionStrategy getSelectionStrategy();
 }

@@ -19,7 +19,7 @@ package reactor.fn
 
 import reactor.Fn
 import reactor.R
-import reactor.fn.routing.TagAwareSelectionStrategy
+import reactor.fn.registry.TagAwareSelectionStrategy;
 import reactor.fn.selector.key.TaggableKey
 import spock.lang.Specification
 

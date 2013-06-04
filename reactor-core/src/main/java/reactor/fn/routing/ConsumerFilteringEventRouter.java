@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.fn.dispatch;
+package reactor.fn.routing;
 
 import java.util.List;
 
@@ -26,7 +26,6 @@ import reactor.filter.PassThroughFilter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.registry.Registration;
-import reactor.fn.routing.EventRouter;
 import reactor.util.Assert;
 
 /**

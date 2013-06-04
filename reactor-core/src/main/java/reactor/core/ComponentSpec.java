@@ -25,14 +25,14 @@ import reactor.filter.PassThroughFilter;
 import reactor.filter.RandomFilter;
 import reactor.filter.RoundRobinFilter;
 import reactor.fn.Supplier;
-import reactor.fn.dispatch.ConsumerFilteringEventRouter;
-import reactor.fn.dispatch.ConsumerInvoker;
-import reactor.fn.dispatch.ArgumentConvertingConsumerInvoker;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.registry.SelectionStrategy;
+import reactor.fn.registry.TagAwareSelectionStrategy;
+import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
+import reactor.fn.routing.ConsumerFilteringEventRouter;
+import reactor.fn.routing.ConsumerInvoker;
 import reactor.fn.routing.EventRouter;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.routing.SelectionStrategy;
-import reactor.fn.routing.TagAwareSelectionStrategy;
 import reactor.util.Assert;
 
 /**
