@@ -16,8 +16,6 @@
 
 package reactor.core;
 
-import java.util.List;
-
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.filter.Filter;
@@ -26,14 +24,16 @@ import reactor.filter.RandomFilter;
 import reactor.filter.RoundRobinFilter;
 import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
+import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.registry.SelectionStrategy;
 import reactor.fn.registry.TagAwareSelectionStrategy;
 import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
 import reactor.fn.routing.ConsumerFilteringEventRouter;
 import reactor.fn.routing.ConsumerInvoker;
 import reactor.fn.routing.EventRouter;
-import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.util.Assert;
+
+import java.util.List;
 
 /**
  * @author Stephane Maldini
@@ -126,28 +126,6 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
-
-		public SPEC ringBuffer() {
-		Assert.notNull(env, "Cannot reference ringBuffer dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.RING_BUFFER);
-		return (SPEC) this;
-	}
-
-
-		public SPEC eventLoop() {
-		Assert.notNull(env, "Cannot reference eventLoop dispatcher without a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.EVENT_LOOP);
-		return (SPEC) this;
-	}
-
-
-		public SPEC threadPoolExecutor() {
-		Assert.notNull(env, "Cannot reference threadPoolExecutor dispatcher a properly-configured Environment.");
-		this.dispatcher = env.getDispatcher(Environment.THREAD_POOL);
-		return (SPEC) this;
-	}
-
-
 	public SPEC defaultDispatcher() {
 		Assert.notNull(env, "Cannot use the default Dispatcher without a properly-configured Environment.");
 		this.dispatcher = env.getDefaultDispatcher();
@@ -166,9 +144,9 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
-					dispatcher,
-					selectionStrategy,
-					createEventRouter());
+														dispatcher,
+														selectionStrategy,
+														createEventRouter());
 		} else {
 			reactor = new Reactor(
 					env,
@@ -176,7 +154,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 					null == selectionStrategy ? this.reactor.getConsumerRegistry().getSelectionStrategy() : selectionStrategy,
 					createEventRouter(this.reactor));
 		}
-		if (null != reactorId && env != null){
+		if (null != reactorId && env != null) {
 			env.register(reactorId, reactor);
 		}
 
@@ -189,7 +167,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		} else {
 			ConsumerInvoker consumerInvoker;
 			if (converter == null) {
-				consumerInvoker = ((ConsumerFilteringEventRouter)reactor.getEventRouter()).getConsumerInvoker();
+				consumerInvoker = ((ConsumerFilteringEventRouter) reactor.getEventRouter()).getConsumerInvoker();
 			} else {
 				consumerInvoker = new ArgumentConvertingConsumerInvoker(converter);
 			}
