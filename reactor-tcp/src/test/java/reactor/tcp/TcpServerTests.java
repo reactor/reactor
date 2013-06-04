@@ -25,7 +25,7 @@ public class TcpServerTests {
 	public void testTcpServer() throws InterruptedException {
 		TcpServer<Pojo, Pojo> server = new TcpServer.Spec<Pojo, Pojo>(NettyTcpServer.class)
 				.using(env)
-				.ringBuffer()
+				.dispatcher(Environment.EVENT_LOOP)
 				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class, Pojo.class))
 				.consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
 					@Override
