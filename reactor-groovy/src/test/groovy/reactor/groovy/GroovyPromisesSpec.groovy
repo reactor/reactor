@@ -106,8 +106,8 @@ class GroovyPromisesSpec extends Specification {
 		and: "setting a value"
 		p << '10'
 
-		then: 'No value'
-		!s.get()
+		then: 'Promise is rejected due to filter rejecting the value'
+		s.error
 	}
 
 	def "A promise can be be consumed by another promise"() {
