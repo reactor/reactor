@@ -1,15 +1,13 @@
 package reactor.logback;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
-
-import java.util.Random;
-
-import org.junit.Before;
+import ch.qos.logback.classic.Logger;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-import ch.qos.logback.classic.Logger;
+import java.util.Random;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 
 /**
  * @author Jon Brisbin
@@ -30,19 +28,9 @@ public class AsyncAppenderTests {
 		MSG = new String(chars);
 	}
 
-	@Before
-	public void enableProfile() {
-		System.setProperty("reactor.profile.default",  "logback");
-	}
-
-	@Before
-	public void disableProfile() {
-		System.clearProperty("reactor.profile.default");
-	}
-
 	@Test
 	public void asyncAppenderLogsAsynchronously() {
-		Logger log = (Logger)LoggerFactory.getLogger(AsyncAppenderTests.class);
+		Logger log = (Logger) LoggerFactory.getLogger(AsyncAppenderTests.class);
 
 		log.info(MSG);
 

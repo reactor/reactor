@@ -5,43 +5,71 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
-import reactor.core.Environment;
-import reactor.R;
-import reactor.core.Reactor;
-import reactor.core.configuration.PropertiesConfigurationReader;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * @author Jon Brisbin
  */
 public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> implements AppenderAttachable<ILoggingEvent> {
 
-	private final Environment                           env             = new Environment(new LogbackPropertiesConfigurationReader());
 	private final AppenderAttachableImpl<ILoggingEvent> attachable      = new AppenderAttachableImpl<ILoggingEvent>();
 	private       boolean                               alreadyAttached = false;
-	private Reactor reactor;
+	private final Disruptor<LogEvent>  disruptor;
+	private       RingBuffer<LogEvent> ringBuffer;
 
 	public AsyncAppender() {
+		disruptor = new Disruptor<LogEvent>(
+				new EventFactory<LogEvent>() {
+					@Override
+					public LogEvent newInstance() {
+						return new LogEvent();
+					}
+				},
+				512,
+				Executors.newFixedThreadPool(1, new ThreadFactory() {
+					@Override
+					public Thread newThread(Runnable r) {
+						Thread t = new Thread(r);
+						t.setName("logback-ringbuffer-appender");
+						t.setPriority(Thread.NORM_PRIORITY);
+						t.setDaemon(true);
+						return t;
+					}
+				}),
+				ProducerType.MULTI,
+				new BlockingWaitStrategy()
+		);
+
+		disruptor.handleEventsWith(new LoggingEventHandler());
 	}
 
 	@Override
 	public void start() {
-		init();
+		ringBuffer = disruptor.start();
 		super.start();
 	}
 
 	@Override
 	public void stop() {
+		disruptor.shutdown();
 		super.stop();
 	}
 
 	@Override
 	protected void append(ILoggingEvent loggingEvent) {
 		loggingEvent.prepareForDeferredProcessing();
-		reactor.notify(Event.wrap(loggingEvent));
+		long seq = ringBuffer.next();
+		ringBuffer.get(seq).event = loggingEvent;
+		ringBuffer.publish(seq);
 	}
 
 	@Override
@@ -84,20 +112,15 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 		return attachable.detachAppender(name);
 	}
 
-	private void init() {
-		reactor = R.reactor().using(env).defaultDispatcher().get();
-		reactor.on(new Consumer<Event<ILoggingEvent>>() {
-			@Override
-			public void accept(Event<ILoggingEvent> ev) {
-				attachable.appendLoopOnAppenders(ev.getData());
-			}
-		});
+	private static class LogEvent {
+		ILoggingEvent event;
 	}
 
-	private static final class LogbackPropertiesConfigurationReader extends PropertiesConfigurationReader {
-
-		public LogbackPropertiesConfigurationReader() {
-			super("logback");
+	private class LoggingEventHandler implements EventHandler<LogEvent> {
+		@Override
+		public void onEvent(LogEvent logEvent, long l, boolean b) throws Exception {
+			attachable.appendLoopOnAppenders(logEvent.event);
 		}
 	}
+
 }

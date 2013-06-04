@@ -180,10 +180,12 @@ project('reactor-spring') {
 }
 
 project('reactor-logback') {
-	description = 'Reactor async Logback appender implementation'
+	description = 'Disruptor-based Logback async appender implementation'
 	dependencies {
-		compile project(':reactor-core')
+		// High-speed Dispatching
+		compile "com.lmax:disruptor:$disruptorVersion"
 
+		// Logback
 		compile "ch.qos.logback:logback-classic:$logbackVersion"
 	}
 }
