@@ -59,25 +59,14 @@ class DispatcherSpec extends Specification {
 		})
 
 		when: "a task is submitted"
-		def t = sameThread.nextTask()
-		t.key = 'test'
-		t.event = Event.wrap("Hello World!")
-		t.consumerRegistry = registry
-		t.eventRouter = eventRouter;
-		t.submit()
+		sameThread.dispatch('test', Event.wrap('Hello World!'), registry, null, eventRouter, null)
 
 		then: "the task thread should be the current thread"
 		currentThread == taskThread
 
 		when: "a task is submitted to the thread pool dispatcher"
 		def latch = new CountDownLatch(1)
-		t = diffThread.nextTask()
-		t.key = 'test'
-		t.event = Event.wrap("Hello World!")
-		t.consumerRegistry = registry
-		t.eventRouter = eventRouter;
-		t.setCompletionConsumer({ Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)
-		t.submit()
+		diffThread.dispatch('test', Event.wrap('Hello World!'), registry, null, eventRouter, { Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)
 
 		latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 

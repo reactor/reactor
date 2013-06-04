@@ -16,15 +16,22 @@
 
 package reactor.fn.dispatch;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.support.NamedDaemonThreadFactory;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import reactor.fn.Event;
+import reactor.support.NamedDaemonThreadFactory;
+
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.ExceptionHandler;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * Implementation of a {@link Dispatcher} that uses a <a href="http://github.com/lmax-exchange/disruptor">Disruptor
@@ -36,8 +43,8 @@ import java.util.concurrent.Executors;
 public class RingBufferDispatcher extends AbstractDispatcher {
 
 	private final ExecutorService            executor;
-	private final Disruptor<RingBufferTask>  disruptor;
-	private final RingBuffer<RingBufferTask> ringBuffer;
+	private final Disruptor<RingBufferTask<?, ?>>  disruptor;
+	private final RingBuffer<RingBufferTask<?, ?>> ringBuffer;
 
 	/**
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
@@ -54,10 +61,11 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 															WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
-		this.disruptor = new Disruptor<RingBufferTask>(
-				new EventFactory<RingBufferTask>() {
+		this.disruptor = new Disruptor<RingBufferTask<?, ?>>(
+				new EventFactory<RingBufferTask<?, ?>>() {
+					@SuppressWarnings("rawtypes")
 					@Override
-					public RingBufferTask newInstance() {
+					public RingBufferTask<?, ?> newInstance() {
 						return new RingBufferTask();
 					}
 				},
@@ -111,17 +119,17 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T> Task<T> createTask() {
+	protected <T, E extends Event<T>> Task<T, E> createTask() {
 		long l = ringBuffer.next();
-		RingBufferTask t = ringBuffer.get(l);
+		RingBufferTask<?, ?> t = ringBuffer.get(l);
 		t.setSequenceId(l);
-		return (Task<T>) t;
+		return (Task<T, E>) t;
 	}
 
-	private class RingBufferTask extends Task<Object> {
+	private class RingBufferTask<T, E extends Event<T>> extends Task<T, E> {
 		private long sequenceId;
 
-		private RingBufferTask setSequenceId(long sequenceId) {
+		private RingBufferTask<T, E> setSequenceId(long sequenceId) {
 			this.sequenceId = sequenceId;
 			return this;
 		}
@@ -132,9 +140,9 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 		}
 	}
 
-	private class RingBufferTaskHandler implements EventHandler<RingBufferTask> {
+	private class RingBufferTaskHandler implements EventHandler<RingBufferTask<?, ?>> {
 		@Override
-		public void onEvent(RingBufferTask t, long sequence, boolean endOfBatch) throws Exception {
+		public void onEvent(RingBufferTask<?, ?> t, long sequence, boolean endOfBatch) throws Exception {
 			t.execute();
 		}
 	}

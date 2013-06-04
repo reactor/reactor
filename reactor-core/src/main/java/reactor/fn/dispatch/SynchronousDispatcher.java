@@ -16,21 +16,17 @@
 
 package reactor.fn.dispatch;
 
+import reactor.fn.Event;
+
 /**
  * A {@link Dispatcher} implementation that executes a {@link Task} immediately in the calling thread.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class SynchronousDispatcher implements Dispatcher {
+public class SynchronousDispatcher extends BaseDispatcher {
 
 	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
-
-	@Override
-	@SuppressWarnings({"unchecked"})
-	public <T> Task<T> nextTask() {
-		return (Task<T>) new SyncTask();
-	}
 
 	@Override
 	public boolean alive() {
@@ -45,11 +41,16 @@ public class SynchronousDispatcher implements Dispatcher {
 	public void halt() {
 	}
 
-	private class SyncTask extends Task<Object> {
+	@SuppressWarnings({ "unchecked" })
+	@Override
+	protected <T, E extends Event<T>> Task<T, E> createTask() {
+		return (Task<T, E>) new SyncTask();
+	}
+
+	private final class SyncTask extends Task<Object, Event<Object>> {
 		@Override
 		public void submit() {
 			execute();
 		}
 	}
-
 }

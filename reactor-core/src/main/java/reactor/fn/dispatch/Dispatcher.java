@@ -16,24 +16,32 @@
 
 package reactor.fn.dispatch;
 
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.registry.Registry;
+import reactor.fn.routing.EventRouter;
+
 /**
- * Implementations of this interface provide a {@link Task} holder which the called can fill in with the details of the
- * task execution it desires to have scheduled. Calling {@link reactor.fn.dispatch.Task#submit()} will cause the task to
- * be submitted for execution using whatever method the implementation chooses to use.
+ * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Event, Registry, Consumer,
+ * EventRouter, Consumer) dispatch} {@link Event Events} to {@link Consumer Consumers}. The
+ * details of how the dispatching is performed, for example on the same thread or using a different
+ * thread, are determined by the implementation.
  *
  * @author Jon Brisbin
+ * @author Andy Wilkinson
  */
 public interface Dispatcher {
 
 	/**
-	 * Determine whether this {@code Dispatcher} can accept {@link Task} submissions.
+	 * Determine whether this {@code Dispatcher} can be used for
+	 * {@link Dispatcher#dispatch(Object, Event, Registry, Consumer, EventRouter, Consumer) dispatching}.
 	 *
-	 * @return {@literal true} is this {@code Dispatcher} is alive, {@literal false} otherwise.
+	 * @return {@literal true} is this {@code Dispatcher} is alive and can be used, {@literal false} otherwise.
 	 */
 	boolean alive();
 
 	/**
-	 * Shutdown this object.
+	 * Shutdown this {@code Dispatcher} such that it can no longer be used.
 	 */
 	void shutdown();
 
@@ -44,10 +52,20 @@ public interface Dispatcher {
 	void halt();
 
 	/**
-	 * Return to the caller a {@link Task} object that holds the information required to dispatch an event to a set of
-	 * consumers.
+	 * Instruct the {@code Dispatcher} to dispatch the {@code event} that has the given {@code key}.
+	 * The {@link Consumer Consumers} that will receive the event are selected from the
+	 * {@code consumerRegistry}, and the event is routed to them using the {@code eventRouter}.
+	 * In the event of an error during dispatcher, the {@code errorConsumer} will be called. In the
+	 * event of successful dispatcher, the {@code completionConsumer} will be called.
 	 *
-	 * @return A {@link Task} object, probably when a pool, used to hold the various parts of a dispatch event.
+	 * @param key The key associated with the event
+	 * @param event The event
+	 * @param consumerRegistry The registry from which consumer's are selected
+	 * @param errorConsumer The consumer that is driven if dispatch fails
+	 * @param eventRouter Used to route the event to the selected consumers
+	 * @param completionConsumer The consumer that is driven if dispatch succeeds
+	 *
+	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
 	 */
-	<T> Task<T> nextTask();
+	<T, E extends Event<T>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer);
 }

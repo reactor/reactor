@@ -1,11 +1,11 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
+import reactor.fn.Event;
 import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
 import reactor.fn.dispatch.AbstractDispatcher;
-import reactor.fn.dispatch.Task;
 
 /**
  * @author Jon Brisbin
@@ -44,12 +44,12 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T> Task<T> createTask() {
+	protected <T, E extends Event<T>> Task<T, E> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new NettyEventLoopTask());
 	}
 
-	private final class NettyEventLoopTask extends Task<Object> implements Runnable {
+	private final class NettyEventLoopTask extends Task<Object, Event<Object>> implements Runnable {
 		@Override
 		public void submit() {
 			eventLoop.execute(this);

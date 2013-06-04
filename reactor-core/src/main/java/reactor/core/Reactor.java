@@ -16,14 +16,22 @@
 
 package reactor.core;
 
-import com.eaio.uuid.UUID;
+import static reactor.fn.Functions.$;
+import static reactor.fn.Functions.T;
+
+import java.util.Set;
+
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.LoggerFactory;
+
 import reactor.convert.Converter;
-import reactor.fn.*;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Observable;
+import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.Task;
 import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
@@ -35,10 +43,7 @@ import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
-import java.util.Set;
-
-import static reactor.fn.Functions.$;
-import static reactor.fn.Functions.T;
+import com.eaio.uuid.UUID;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -238,14 +243,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
-		Task<T> task = dispatcher.nextTask();
-		task.setKey(key);
-		task.setEvent(ev);
-		task.setConsumerRegistry(consumerRegistry);
-		task.setErrorConsumer(errorHandler);
-		task.setEventRouter(eventRouter);
-		task.setCompletionConsumer((Consumer<Event<T>>) onComplete);
-		task.submit();
+		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
 
 		if (!linkedReactors.isEmpty()) {
 			for (Observable r : linkedReactors) {

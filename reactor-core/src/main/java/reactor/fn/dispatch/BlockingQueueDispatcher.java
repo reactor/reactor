@@ -16,16 +16,18 @@
 
 package reactor.fn.dispatch;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.fn.Event;
 import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
 import reactor.support.QueueFactory;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -83,12 +85,12 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T> Task<T> createTask() {
+	protected <T, E extends Event<T>> Task<T, E> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
-	private class BlockingQueueTask<T> extends Task<T> {
+	private class BlockingQueueTask<T, E extends Event<T>> extends Task<T, E> {
 
 		@Override
 		public void submit() {
@@ -97,7 +99,6 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
-		@SuppressWarnings("rawtypes")
 		@Override
 		public void run() {
 			Task t = null;

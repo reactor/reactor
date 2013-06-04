@@ -16,14 +16,15 @@
 
 package reactor.fn.dispatch;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import reactor.fn.Event;
 import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
 import reactor.support.NamedDaemonThreadFactory;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
@@ -72,14 +73,14 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 		super.halt();
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	@Override
-	protected <T> Task<T> createTask() {
-		Task t = readyTasks.allocate();
-		return (null != t ? t : new ThreadPoolTask());
+	protected <T, E extends Event<T>> Task<T, E> createTask() {
+		Task<T, E> t = (Task<T, E>) readyTasks.allocate();
+		return (null != t ? t : (Task<T, E>) new ThreadPoolTask());
 	}
 
-	private class ThreadPoolTask extends Task<Object> implements Runnable {
+	private class ThreadPoolTask extends Task<Object, Event<Object>> implements Runnable {
 		@Override
 		public void submit() {
 			executor.submit(this);

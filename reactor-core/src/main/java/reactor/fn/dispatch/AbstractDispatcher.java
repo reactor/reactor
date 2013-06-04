@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class AbstractDispatcher implements Dispatcher {
+public abstract class AbstractDispatcher extends BaseDispatcher {
 
 	private final AtomicBoolean   alive   = new AtomicBoolean(true);
 
@@ -40,15 +40,4 @@ public abstract class AbstractDispatcher implements Dispatcher {
 	public void halt() {
 		alive.compareAndSet(true, false);
 	}
-
-	@Override
-	public <T> Task<T> nextTask() {
-		if (!alive()) {
-			throw new IllegalStateException("This Dispatcher has been shutdown and cannot accept new tasks.");
-		}
-		return createTask();
-	}
-
-	protected abstract <T> Task<T> createTask();
-
 }
