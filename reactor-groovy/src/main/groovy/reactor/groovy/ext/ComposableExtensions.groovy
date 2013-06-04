@@ -19,6 +19,7 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.core.Composable
 import reactor.core.Promise
+import reactor.core.Stream
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.support.Reduce
@@ -54,11 +55,11 @@ class ComposableExtensions {
 		selfType.consume new ClosureConsumer<T>(closure)
 	}
 
-	static <T> Composable<T> filter(final Composable<T> selfType, final Closure<Boolean> closure) {
+	static <T> Stream<T> filter(final Stream<T> selfType, final Closure<Boolean> closure) {
 		selfType.filter new ClosureFunction<T, Boolean>(closure)
 	}
 
-	static <T, V> Composable<V> reduce(final Composable<T> selfType, final Closure<V> closure, V initial = null) {
+	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, V initial = null) {
 		selfType.reduce new ClosureReduce<T, V>(closure), initial
 	}
 
@@ -88,7 +89,7 @@ class ComposableExtensions {
 	 * Operator overloading
 	 */
 
-	static <T> Composable<T> leftShift(final Composable<T> selfType, final Consumer<T> other) {
+	static <T> Stream<T> leftShift(final Stream<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 
@@ -96,7 +97,7 @@ class ComposableExtensions {
 		selfType.onSuccess other
 	}
 
-	static <T, V> Composable<V> mod(final Composable<T> selfType, final Function<Reduce<T, V>, V> other) {
+	static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Reduce<T, V>, V> other) {
 		selfType.reduce other
 	}
 
@@ -108,7 +109,7 @@ class ComposableExtensions {
 		selfType.then other,(Consumer<Throwable>) null
 	}
 
-	static <T, V> Composable<V> and(final Composable<T> selfType, final Function<T, Boolean> other) {
+	static <T, V> Stream<V> and(final Stream<T> selfType, final Function<T, Boolean> other) {
 		selfType.filter other
 	}
 
@@ -120,7 +121,7 @@ class ComposableExtensions {
 		onSuccess selfType, other
 	}
 
-	static <T, V> Composable<V> mod(final Composable<T> selfType, final Closure<V> other) {
+	static <T, V> Stream<V> mod(final Stream<T> selfType, final Closure<V> other) {
 		reduce selfType, other
 	}
 
@@ -133,7 +134,7 @@ class ComposableExtensions {
 		then selfType, other
 	}
 
-	static <T> Composable<T> and(final Composable<T> selfType, final Closure<Boolean> other) {
+	static <T> Stream<T> and(final Stream<T> selfType, final Closure<Boolean> other) {
 		filter selfType, other
 	}
 

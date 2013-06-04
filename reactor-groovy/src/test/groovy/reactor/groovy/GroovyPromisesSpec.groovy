@@ -96,20 +96,6 @@ class GroovyPromisesSpec extends Specification {
 		s.get() == 10
 	}
 
-	def "Promises can be filtered"() {
-		given: "a synchronous promise"
-		def p = P.defer().get()
-
-		when: "add a mapping closure and a filter"
-		def s = (p | { Integer.parseInt it }) & { it > 10 }
-
-		and: "setting a value"
-		p << '10'
-
-		then: 'Promise is rejected due to filter rejecting the value'
-		s.error
-	}
-
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
 		def p1 = P.defer().get()
@@ -133,9 +119,9 @@ class GroovyPromisesSpec extends Specification {
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		def s = p.map{ Integer.parseInt it }.
+		def s = p.then{ Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
-				filter{ println('not in log'); true }
+				then{ println('not in log'); true }
 
 		and: "setting a value"
 		p << 'not a number'

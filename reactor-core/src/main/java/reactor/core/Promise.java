@@ -26,19 +26,14 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Functions;
-import reactor.fn.Observable;
-import reactor.fn.Supplier;
+import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
 /**
- * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
+ * A {@literal Promise} is a {@link Stream} that can only be used once. When created, it is pending. If a value of
  * type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error} and the error
  * handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead, the {@literal Promise} is completed
  * {@link #isSuccess successfully}.
@@ -70,6 +65,8 @@ public class Promise<T> extends Composable<T> {
 			}
 		});
 	}
+
+
 
 
 	/**
@@ -219,7 +216,7 @@ public class Promise<T> extends Composable<T> {
 				Functions.schedule(consumer, getValue(), getObservable());
 				return this;
 			} else {
-				return (Promise<T>) super.consume(consumer);
+				return (Promise<T>)super.consume(consumer);
 			}
 		}
 	}
@@ -231,42 +228,16 @@ public class Promise<T> extends Composable<T> {
 				observable.notify(key, Event.wrap(getValue()));
 				return this;
 			} else {
-				return (Promise<T>) super.consume(key, observable);
+				return (Promise<T>)super.consume(key, observable);
 			}
 		}
 	}
 
 	@Override
-	public Promise<T> first() {
+	public <V> Promise<V> map(final Function<T,V> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				Promise<T> c = (Promise<T>) super.first();
-				c.set(getValue());
-				return c;
-			} else {
-				return (Promise<T>) super.first();
-			}
-		}
-	}
-
-	@Override
-	public Promise<T> last() {
-		synchronized (monitor) {
-			if (acceptCountReached()) {
-				Promise<T> c = (Promise<T>) super.last();
-				c.set(getValue());
-				return c;
-			} else {
-				return (Promise<T>) super.last();
-			}
-		}
-	}
-
-	@Override
-	public <V> Promise<V> map(final Function<T, V> fn) {
-		synchronized (monitor) {
-			if (acceptCountReached()) {
-				final Promise<V> c = createComposable(getObservable());
+				final Promise<V> c = (Promise<V>) this.assignComposable(getObservable());
 				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -279,42 +250,13 @@ public class Promise<T> extends Composable<T> {
 				}, getValue(), getObservable());
 				return c;
 			} else {
-				return (Promise<V>) super.map(fn);
+				return (Promise<V>)super.map(fn);
 			}
 		}
 	}
 
 	@Override
-	public Promise<T> filter(final Function<T, Boolean> fn) {
-		synchronized (monitor) {
-			final Promise<T> p = createComposable(getObservable());
-
-			Consumer<T> consumer = new Consumer<T>() {
-				@Override
-				public void accept(T value) {
-					try {
-						if (fn.apply(value)) {
-							p.accept(value);
-						} else {
-							p.accept(new FilterException());
-						}
-					} catch (Throwable t) {
-						handleError(p, t);
-					}
-				}
-			};
-
-			if (acceptCountReached()) {
-				Functions.schedule(consumer, getValue(), getObservable());
-			} else {
-				consume(consumer);
-			}
-			return p;
-		}
-	}
-
-	@Override
-	protected <V> void handleError(Composable<V> c, Throwable t) {
+	protected void handleError(Composable<?> c, Throwable t) {
 		c.accept(t);
 		c.decreaseAcceptLength();
 	}
@@ -330,8 +272,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <U> Promise<U> createComposable(Observable src) {
-		final Promise<U> p = new Promise<U>(getEnvironment(), src);
+	protected Promise createComposable(Observable src) {
+		final Promise p = new Promise(getEnvironment(), src);
 		forwardError(p);
 		return p;
 	}
@@ -361,8 +303,8 @@ public class Promise<T> extends Composable<T> {
 			return this;
 		}
 
-		final Composable<Tuple2<?, Integer>> reducer =
-				new DelayedAcceptComposable<Tuple2<?, Integer>>(getEnvironment(), getObservable(), size);
+		final Stream<Tuple2<?, Integer>> reducer =
+				new Stream.DeferredStream<Tuple2<?, Integer>>(getEnvironment(), getObservable(), size);
 		reducer
 				.reduce()
 				.map(new Function<List<Tuple2<?, Integer>>, T>() {
@@ -393,8 +335,8 @@ public class Promise<T> extends Composable<T> {
 
 		for (final Composable c : composables) {
 			c.forwardError(reducer).consume(consumer);
-			if (DelayedAcceptComposable.class.isInstance(c)) {
-				((DelayedAcceptComposable) c).delayedAccept();
+			if (Stream.DeferredStream.class.isInstance(c)) {
+				((Stream.DeferredStream) c).delayedAccept();
 			}
 		}
 
@@ -402,15 +344,15 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	/**
-	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
+	 * Build a {@link Stream} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
 	 *
 	 * @param <T> The type of the values.
 	 */
 	public static class Spec<T> extends ComponentSpec<Spec<T>, Promise<T>> {
 
-		protected final T                                   value;
-		protected final Throwable                           error;
-		protected final Supplier<T>                         supplier;
+		protected final T                               value;
+		protected final Throwable                       error;
+		protected final Supplier<T>                     supplier;
 		protected final Collection<? extends Composable<?>> mergeWith;
 
 		public Spec(T value, Supplier<T> supplier, Throwable error, Collection<? extends Composable<?>> composables) {
@@ -447,18 +389,5 @@ public class Promise<T> extends Composable<T> {
 			}
 			return prom;
 		}
-	}
-
-	/**
-	 * A {@code FilteredException} is used to {@link Promise#set(Throwable) complete} a {@link Promise#filter(Function)
-	 * filtered promise} when the filter rejects the value.
-	 *
-	 * @author Andy Wilkinson
-	 *
-	 */
-	public static final class FilterException extends RuntimeException {
-
-		private static final long serialVersionUID = 1244572252678542067L;
-
 	}
 }

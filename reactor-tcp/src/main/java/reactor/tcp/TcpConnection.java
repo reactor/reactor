@@ -1,6 +1,6 @@
 package reactor.tcp;
 
-import reactor.core.Composable;
+import reactor.core.Stream;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
@@ -19,15 +19,15 @@ public interface TcpConnection<IN, OUT> {
 
 	InetSocketAddress remoteAddress();
 
-	Composable<IN> in();
+	Stream<IN> in();
 
 	Consumer<OUT> out();
 
 	TcpConnection<IN, OUT> consume(Consumer<IN> consumer);
 
-	Composable<OUT> receive(Function<IN, OUT> fn);
+	Stream<OUT> receive(Function<IN, OUT> fn);
 
-	TcpConnection<IN, OUT> send(Composable<OUT> data);
+	TcpConnection<IN, OUT> send(Stream<OUT> data);
 
 	TcpConnection<IN, OUT> send(OUT data);
 
