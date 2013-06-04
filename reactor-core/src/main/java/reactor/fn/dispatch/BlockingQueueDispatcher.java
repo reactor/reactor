@@ -85,12 +85,12 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T, E extends Event<T>> Task<T, E> createTask() {
+	protected <E extends Event<?>> Task<E> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
-	private class BlockingQueueTask<T, E extends Event<T>> extends Task<T, E> {
+	private class BlockingQueueTask<E extends Event<?>> extends Task<E> {
 
 		@Override
 		public void submit() {

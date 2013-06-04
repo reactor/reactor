@@ -75,12 +75,12 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T, E extends Event<T>> Task<T, E> createTask() {
-		Task<T, E> t = (Task<T, E>) readyTasks.allocate();
-		return (null != t ? t : (Task<T, E>) new ThreadPoolTask());
+	protected <E extends Event<?>> Task<E> createTask() {
+		Task<E> t = (Task<E>) readyTasks.allocate();
+		return (null != t ? t : (Task<E>) new ThreadPoolTask());
 	}
 
-	private class ThreadPoolTask extends Task<Object, Event<Object>> implements Runnable {
+	private class ThreadPoolTask extends Task<Event<Object>> implements Runnable {
 		@Override
 		public void submit() {
 			executor.submit(this);

@@ -44,12 +44,12 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T, E extends Event<T>> Task<T, E> createTask() {
+	protected <E extends Event<?>> Task<E> createTask() {
 		Task t = readyTasks.allocate();
 		return (null != t ? t : new NettyEventLoopTask());
 	}
 
-	private final class NettyEventLoopTask extends Task<Object, Event<Object>> implements Runnable {
+	private final class NettyEventLoopTask extends Task<Event<Object>> implements Runnable {
 		@Override
 		public void submit() {
 			eventLoop.execute(this);

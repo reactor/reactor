@@ -67,5 +67,5 @@ public interface Dispatcher {
 	 *
 	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
 	 */
-	<T, E extends Event<T>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer);
+	<E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer);
 }

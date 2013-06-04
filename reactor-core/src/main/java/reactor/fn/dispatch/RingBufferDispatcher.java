@@ -43,8 +43,8 @@ import com.lmax.disruptor.dsl.ProducerType;
 public class RingBufferDispatcher extends AbstractDispatcher {
 
 	private final ExecutorService            executor;
-	private final Disruptor<RingBufferTask<?, ?>>  disruptor;
-	private final RingBuffer<RingBufferTask<?, ?>> ringBuffer;
+	private final Disruptor<RingBufferTask<?>>  disruptor;
+	private final RingBuffer<RingBufferTask<?>> ringBuffer;
 
 	/**
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
@@ -61,11 +61,11 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 															WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
-		this.disruptor = new Disruptor<RingBufferTask<?, ?>>(
-				new EventFactory<RingBufferTask<?, ?>>() {
+		this.disruptor = new Disruptor<RingBufferTask<?>>(
+				new EventFactory<RingBufferTask<?>>() {
 					@SuppressWarnings("rawtypes")
 					@Override
-					public RingBufferTask<?, ?> newInstance() {
+					public RingBufferTask<?> newInstance() {
 						return new RingBufferTask();
 					}
 				},
@@ -119,17 +119,17 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <T, E extends Event<T>> Task<T, E> createTask() {
+	protected <E extends Event<?>> Task<E> createTask() {
 		long l = ringBuffer.next();
-		RingBufferTask<?, ?> t = ringBuffer.get(l);
+		RingBufferTask<?> t = ringBuffer.get(l);
 		t.setSequenceId(l);
-		return (Task<T, E>) t;
+		return (Task<E>) t;
 	}
 
-	private class RingBufferTask<T, E extends Event<T>> extends Task<T, E> {
+	private class RingBufferTask<E extends Event<?>> extends Task<E> {
 		private long sequenceId;
 
-		private RingBufferTask<T, E> setSequenceId(long sequenceId) {
+		private RingBufferTask<E> setSequenceId(long sequenceId) {
 			this.sequenceId = sequenceId;
 			return this;
 		}
@@ -140,9 +140,9 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 		}
 	}
 
-	private class RingBufferTaskHandler implements EventHandler<RingBufferTask<?, ?>> {
+	private class RingBufferTaskHandler implements EventHandler<RingBufferTask<?>> {
 		@Override
-		public void onEvent(RingBufferTask<?, ?> t, long sequence, boolean endOfBatch) throws Exception {
+		public void onEvent(RingBufferTask<?> t, long sequence, boolean endOfBatch) throws Exception {
 			t.execute();
 		}
 	}

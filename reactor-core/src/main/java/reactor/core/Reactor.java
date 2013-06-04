@@ -220,7 +220,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <T, E extends Event<T>> Registration<Consumer<E>> on(Selector selector, final Consumer<E> consumer) {
+	public <E extends Event<?>> Registration<Consumer<E>> on(Selector selector, final Consumer<E> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		Registration<Consumer<E>> reg = consumerRegistry.register(selector, consumer);
@@ -229,17 +229,17 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <T, E extends Event<T>> Registration<Consumer<E>> on(Consumer<E> consumer) {
+	public <E extends Event<?>> Registration<Consumer<E>> on(Consumer<E> consumer) {
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		return on(defaultSelector, consumer);
 	}
 
 	@Override
-	public <T, E extends Event<T>, V> Registration<Consumer<E>> receive(Selector sel, Function<E, V> fn) {
-		return on(sel, new ReplyToConsumer<T, E, V>(fn));
+	public <E extends Event<?>, V> Registration<Consumer<E>> receive(Selector sel, Function<E, V> fn) {
+		return on(sel, new ReplyToConsumer<E, V>(fn));
 	}
 
-	private <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete, EventRouter eventRouter) {
+	private <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete, EventRouter eventRouter) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
@@ -254,29 +254,28 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <T, E extends Event<T>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
+	public <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
 		notify(key, ev, onComplete, eventRouter);
 		return this;
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor notify(Object key, E ev) {
+	public <E extends Event<?>> Reactor notify(Object key, E ev) {
 		return notify(key, ev, null, eventRouter);
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor notify(Object key, S supplier) {
+	public <S extends Supplier<Event<?>>> Reactor notify(Object key, S supplier) {
 		return notify(key, supplier.get(), null, eventRouter);
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor notify(E ev) {
+	public <E extends Event<?>> Reactor notify(E ev) {
 		return notify(defaultKey, ev, null, eventRouter);
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor notify(S supplier) {
+	public <S extends Supplier<Event<?>>> Reactor notify(S supplier) {
 		return notify(defaultKey, supplier.get(), null);
 	}
 
@@ -286,23 +285,23 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor send(Object key, E ev) {
-		return notify(key, new ReplyToEvent<T>(ev, this));
+	public <E extends Event<?>> Reactor send(Object key, E ev) {
+		return notify(key, new ReplyToEvent(ev, this));
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor send(Object key, S supplier) {
-		return notify(key, new ReplyToEvent<T>(supplier.get(), this));
+	public <S extends Supplier<Event<?>>> Reactor send(Object key, S supplier) {
+		return notify(key, new ReplyToEvent(supplier.get(), this));
 	}
 
 	@Override
-	public <T, E extends Event<T>> Reactor send(Object key, E ev, Observable replyTo) {
-		return notify(key, new ReplyToEvent<T>(ev, replyTo));
+	public <E extends Event<?>> Reactor send(Object key, E ev, Observable replyTo) {
+		return notify(key, new ReplyToEvent(ev, replyTo));
 	}
 
 	@Override
-	public <T, S extends Supplier<Event<T>>> Reactor send(Object key, S supplier, Observable replyTo) {
-		return notify(key, new ReplyToEvent<T>(supplier.get(), replyTo));
+	public <S extends Supplier<Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
+		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
 	}
 
 
@@ -463,7 +462,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		}
 	}
 
-	private class ReplyToConsumer<T, E extends Event<T>, V> implements Consumer<E> {
+	private class ReplyToConsumer<E extends Event<?>, V> implements Consumer<E> {
 		private final Function<E, V> fn;
 
 		private ReplyToConsumer(Function<E, V> fn) {

@@ -43,11 +43,11 @@ public class SynchronousDispatcher extends BaseDispatcher {
 
 	@SuppressWarnings({ "unchecked" })
 	@Override
-	protected <T, E extends Event<T>> Task<T, E> createTask() {
-		return (Task<T, E>) new SyncTask();
+	protected <E extends Event<?>> Task<E> createTask() {
+		return (Task<E>) new SyncTask();
 	}
 
-	private final class SyncTask extends Task<Object, Event<Object>> {
+	private final class SyncTask extends Task<Event<?>> {
 		@Override
 		public void submit() {
 			execute();

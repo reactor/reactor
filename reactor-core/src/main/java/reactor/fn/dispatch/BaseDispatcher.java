@@ -8,12 +8,12 @@ import reactor.fn.routing.EventRouter;
 abstract class BaseDispatcher implements Dispatcher {
 
 	@Override
-	public <T, E extends Event<T>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
+	public <E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}
 
-		Task<T, E> task = createTask();
+		Task<E> task = createTask();
 
 		task.setKey(key);
 		task.setEvent(event);
@@ -25,43 +25,43 @@ abstract class BaseDispatcher implements Dispatcher {
 		task.submit();
 	}
 
-	protected abstract <T, E extends Event<T>> Task<T, E> createTask();
+	protected abstract <E extends Event<?>> Task<E> createTask();
 
-	protected abstract class Task<T, E extends Event<T>> {
+	protected abstract class Task<E extends Event<?>> {
 
 		private volatile Object                                 key;
 		private volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
-		private volatile Event<T>                               event;
+		private volatile E                                      event;
 		private volatile Consumer<E>                            completionConsumer;
 		private volatile Consumer<Throwable>                    errorConsumer;
 		private volatile EventRouter                            eventRouter;
 
-		public Task<T, E> setKey(Object key) {
+		public Task<E> setKey(Object key) {
 			this.key = key;
 			return this;
 		}
 
-		public Task<T, E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		public Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 			this.consumerRegistry = consumerRegistry;
 			return this;
 		}
 
-		public Task<T, E> setEvent(Event<T> event) {
+		public Task<E> setEvent(E event) {
 			this.event = event;
 			return this;
 		}
 
-		public Task<T, E> setCompletionConsumer(Consumer<E> completionConsumer) {
+		public Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
 			this.completionConsumer = completionConsumer;
 			return this;
 		}
 
-		public Task<T, E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
+		public Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
 			this.errorConsumer = errorConsumer;
 			return this;
 		}
 
-		public Task<T, E> setEventRouter(EventRouter eventRouter) {
+		public Task<E> setEventRouter(EventRouter eventRouter) {
 			this.eventRouter = eventRouter;
 			return this;
 		}
