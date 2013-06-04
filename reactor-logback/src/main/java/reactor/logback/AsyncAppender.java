@@ -5,10 +5,7 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 
@@ -34,7 +31,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 						return new LogEvent();
 					}
 				},
-				512,
+				1024,
 				Executors.newFixedThreadPool(1, new ThreadFactory() {
 					@Override
 					public Thread newThread(Runnable r) {
@@ -45,7 +42,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 						return t;
 					}
 				}),
-				ProducerType.MULTI,
+				ProducerType.SINGLE,
 				new BlockingWaitStrategy()
 		);
 

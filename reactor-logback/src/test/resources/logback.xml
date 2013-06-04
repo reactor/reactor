@@ -1,6 +1,6 @@
 <configuration debug="true">
 
-  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+  <appender name="stdout" class="ch.qos.logback.core.3">
     <encoder>
       <pattern>
         %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
