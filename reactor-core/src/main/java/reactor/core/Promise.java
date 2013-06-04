@@ -16,17 +16,26 @@
 
 package reactor.core;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
 import reactor.fn.Functions;
-import reactor.fn.*;
 import reactor.fn.Observable;
+import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
-
-import java.util.*;
 
 /**
  * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
@@ -148,9 +157,12 @@ public class Promise<T> extends Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Promise<T> then(Consumer<T> onSuccess, Consumer<Throwable> onError) {
-		onSuccess(onSuccess);
-		if (null != onError)
+		if (null != onSuccess) {
+			onSuccess(onSuccess);
+		}
+		if (null != onError) {
 			onError(onError);
+		}
 		return this;
 	}
 
@@ -164,8 +176,9 @@ public class Promise<T> extends Composable<T> {
 	 */
 	public <V> Promise<V> then(Function<T, V> onSuccess, Consumer<Throwable> onError) {
 		Promise<V> c = map(onSuccess);
-		if (null != onError)
-			c.when(Throwable.class, onError);
+		if (null != onError) {
+			onError(onError);
+		}
 		return c;
 	}
 
@@ -274,26 +287,29 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
-			if (acceptCountReached()) {
-				final Promise<T> c = createComposable(getObservable());
-				Functions.schedule(new Consumer<T>() {
-					@Override
-					public void accept(T value) {
-						try {
-							if (fn.apply(value)) {
-								c.accept(value);
-							} else {
-								c.decreaseAcceptLength();
-							}
-						} catch (Throwable t) {
-							handleError(c, t);
+			final Promise<T> p = createComposable(getObservable());
+
+			Consumer<T> consumer = new Consumer<T>() {
+				@Override
+				public void accept(T value) {
+					try {
+						if (fn.apply(value)) {
+							p.accept(value);
+						} else {
+							p.accept(new FilterException());
 						}
+					} catch (Throwable t) {
+						handleError(p, t);
 					}
-				}, getValue(), getObservable());
-				return c;
+				}
+			};
+
+			if (acceptCountReached()) {
+				Functions.schedule(consumer, getValue(), getObservable());
 			} else {
-				return (Promise<T>) super.filter(fn);
+				consume(consumer);
 			}
+			return p;
 		}
 	}
 
@@ -311,16 +327,6 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	public void accept(T value) {
 		set(value);
-	}
-
-	@Override
-	public T get() {
-		synchronized (this.monitor) {
-			if (isError()) {
-				throw new IllegalStateException(getError());
-			}
-			return super.get();
-		}
 	}
 
 	@Override
@@ -441,5 +447,18 @@ public class Promise<T> extends Composable<T> {
 			}
 			return prom;
 		}
+	}
+
+	/**
+	 * A {@code FilteredException} is used to {@link Promise#set(Throwable) complete} a {@link Promise#filter(Function)
+	 * filtered promise} when the filter rejects the value.
+	 *
+	 * @author Andy Wilkinson
+	 *
+	 */
+	public static final class FilterException extends RuntimeException {
+
+		private static final long serialVersionUID = 1244572252678542067L;
+
 	}
 }
