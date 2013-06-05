@@ -287,7 +287,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(sel, "Selector cannot be null.");
 		Assert.notNull(function, "Function cannot be null.");
 
-		final Stream<V> c = Streams.<V>defer().using(env).using(this).get();
 		final Composable<V> c = new Composable<V>(env, this);
 		on(sel, new Consumer<E>() {
 			@Override
