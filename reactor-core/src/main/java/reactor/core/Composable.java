@@ -41,7 +41,7 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		this.observable = observable;
 	}
 
-	protected <U> Composable<U> assignComposable(Observable src){
+	protected <U> Composable<U> assignComposable(Observable src) {
 		Composable<U> c = this.createComposable(src);
 		synchronized (monitor) {
 			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
@@ -136,6 +136,34 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		});
 		return c;
 	}
+
+	/**
+	 * Selectively call the returned {@link Stream} depending on the predicate {@link Function} argument
+	 *
+	 * @param fn The filter function, taking argument {@param <T>} and returning a {@link Boolean}
+	 * @return The new {@link Stream}.
+	 */
+	public Composable<T> filter(final Function<T, Boolean> fn) {
+		Assert.notNull(fn);
+		final Composable<T> c = this.assignComposable(observable);
+		consume(new Consumer<T>() {
+			@Override
+			public void accept(T value) {
+				try {
+					if (fn.apply(value)) {
+						c.accept(value);
+					} else {
+						c.decreaseAcceptLength();
+					}
+				} catch (Throwable t) {
+					handleError(c, t);
+				}
+			}
+		});
+
+		return c;
+	}
+
 
 	/**
 	 * Trigger composition with an exception to be processed by dedicated consumers

@@ -212,35 +212,6 @@ public class Stream<T> extends Composable<T> {
 		return reduce(fn, null);
 	}
 
-
-	/**
-	 * Selectively call the returned {@link Stream} depending on the predicate {@link Function} argument
-	 *
-	 * @param fn The filter function, taking argument {@param <T>} and returning a {@link Boolean}
-	 * @return The new {@link Stream}.
-	 */
-	public Stream<T> filter(final Function<T, Boolean> fn) {
-		Assert.notNull(fn);
-		final Stream<T> c = (Stream<T>)this.assignComposable(getObservable());
-		consume(new Consumer<T>() {
-			@Override
-			public void accept(T value) {
-				try {
-					if (fn.apply(value)) {
-						c.accept(value);
-					} else {
-						c.decreaseAcceptLength();
-					}
-				} catch (Throwable t) {
-					handleError(c, t);
-				}
-			}
-		});
-
-		return c;
-	}
-
-
 	/**
 	 * Create a new {@link Stream} that is linked to the parent through the given {@code key} and {@link Observable}.
 	 * When the parent's {@link #accept(Object)} is invoked, its value is wrapped into an {@link Event} and passed to
@@ -322,6 +293,11 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public <V> Stream<V> map(Function<T, V> fn) {
 		return (Stream<V>)super.map(fn);
+	}
+
+	@Override
+	public Stream<T> filter(Function<T, Boolean> fn) {
+		return (Stream<T>)super.filter(fn);
 	}
 
 	/**

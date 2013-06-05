@@ -67,8 +67,6 @@ public class Promise<T> extends Composable<T> {
 	}
 
 
-
-
 	/**
 	 * Set the value of the {@literal Promise} so that subsequent calls to {@link reactor.core.Promise#get()} will throw
 	 * this exception instead of returning a value.
@@ -216,7 +214,7 @@ public class Promise<T> extends Composable<T> {
 				Functions.schedule(consumer, getValue(), getObservable());
 				return this;
 			} else {
-				return (Promise<T>)super.consume(consumer);
+				return (Promise<T>) super.consume(consumer);
 			}
 		}
 	}
@@ -228,13 +226,13 @@ public class Promise<T> extends Composable<T> {
 				observable.notify(key, Event.wrap(getValue()));
 				return this;
 			} else {
-				return (Promise<T>)super.consume(key, observable);
+				return (Promise<T>) super.consume(key, observable);
 			}
 		}
 	}
 
 	@Override
-	public <V> Promise<V> map(final Function<T,V> fn) {
+	public <V> Promise<V> map(final Function<T, V> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
 				final Promise<V> c = (Promise<V>) this.assignComposable(getObservable());
@@ -250,8 +248,37 @@ public class Promise<T> extends Composable<T> {
 				}, getValue(), getObservable());
 				return c;
 			} else {
-				return (Promise<V>)super.map(fn);
+				return (Promise<V>) super.map(fn);
 			}
+		}
+	}
+
+	@Override
+	public Promise<T> filter(final Function<T, Boolean> fn) {
+		synchronized (monitor) {
+			final Promise<T> p = createComposable(getObservable());
+
+			Consumer<T> consumer = new Consumer<T>() {
+				@Override
+				public void accept(T value) {
+					try {
+						if (fn.apply(value)) {
+							p.accept(value);
+						} else {
+							p.accept(new FilterException());
+						}
+					} catch (Throwable t) {
+						handleError(p, t);
+					}
+				}
+			};
+
+			if (acceptCountReached()) {
+				Functions.schedule(consumer, getValue(), getObservable());
+			} else {
+				consume(consumer);
+			}
+			return p;
 		}
 	}
 
@@ -350,9 +377,9 @@ public class Promise<T> extends Composable<T> {
 	 */
 	public static class Spec<T> extends ComponentSpec<Spec<T>, Promise<T>> {
 
-		protected final T                               value;
-		protected final Throwable                       error;
-		protected final Supplier<T>                     supplier;
+		protected final T                                   value;
+		protected final Throwable                           error;
+		protected final Supplier<T>                         supplier;
 		protected final Collection<? extends Composable<?>> mergeWith;
 
 		public Spec(T value, Supplier<T> supplier, Throwable error, Collection<? extends Composable<?>> composables) {
@@ -389,5 +416,18 @@ public class Promise<T> extends Composable<T> {
 			}
 			return prom;
 		}
+	}
+
+
+	/**
+	 * A {@code FilteredException} is used to {@link Promise#set(Throwable) complete} a {@link Promise#filter(Function)
+	 * filtered promise} when the filter rejects the value.
+	 *
+	 * @author Andy Wilkinson
+	 */
+	public static final class FilterException extends RuntimeException {
+
+		private static final long serialVersionUID = 1244572252678542067L;
+
 	}
 }
