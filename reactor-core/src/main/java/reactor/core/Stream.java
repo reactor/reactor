@@ -37,7 +37,7 @@ import static reactor.fn.Functions.$;
  * A {@literal Stream} may be triggered several times, e.g. by processing a collection,
  * and have dedicated data group processing methods.
  *
- * @param <T> The Stream output type.
+ * @param <T> The  {@link Stream} output type.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
