@@ -1,6 +1,6 @@
 <configuration debug="true">
 
-  <appender name="stdout" class="ch.qos.logback.core.3">
+  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>
         %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
@@ -12,7 +12,7 @@
     <appender-ref ref="stdout"/>
   </appender>
 
-  <logger name="reactor" level="debug"/>
+  <logger name="reactor.dummy.Test" level="warn"/>
   <logger name="reactor.logback.AsyncAppenderTests" level="warn">
     <appender-ref ref="async"/>
   </logger>
