@@ -26,7 +26,7 @@ import java.util.Collection;
  *
  * @author Stephane Maldini
  */
-public class Promises {
+public abstract class Promises {
 	/**
 	 * Create an empty {@link reactor.core.Promise}.
 	 *

@@ -17,7 +17,6 @@
 package reactor.core;
 
 import static reactor.fn.Functions.$;
-import static reactor.fn.Functions.T;
 
 import java.util.Set;
 

@@ -16,19 +16,13 @@
 
 package reactor.fn.registry;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.fn.selector.Selector;
+
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks.
@@ -44,8 +38,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final Lock                                         writeLock         = readWriteLock.writeLock();
 	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
 	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
+	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
 
-	private final SelectionStrategy     selectionStrategy;
+	private final SelectionStrategy selectionStrategy;
 
 	private boolean refreshRequired;
 
@@ -181,7 +176,6 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		}
 		if (regs.isEmpty()) {
-			Logger log = LoggerFactory.getLogger(CachingRegistry.class);
 			if (log.isTraceEnabled()) {
 				log.trace("No objects registered for key {}", object);
 			}

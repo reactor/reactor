@@ -23,4 +23,4 @@ import reactor.core.Streams;
  *
  * @author Stephane Maldini
  */
-public class S extends Streams {}
+public abstract class S extends Streams {}

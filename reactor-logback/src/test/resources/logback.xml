@@ -12,7 +12,7 @@
     <appender-ref ref="stdout"/>
   </appender>
 
-  <logger name="reactor" level="debug"/>
+  <logger name="reactor.dummy.Test" level="warn"/>
   <logger name="reactor.logback.AsyncAppenderTests" level="warn">
     <appender-ref ref="async"/>
   </logger>

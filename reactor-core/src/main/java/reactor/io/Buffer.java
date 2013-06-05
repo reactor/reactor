@@ -16,6 +16,8 @@
 
 package reactor.io;
 
+import reactor.util.Assert;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.BufferOverflowException;
@@ -25,9 +27,8 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.nio.charset.CharsetDecoder;
+import java.util.*;
 
 /**
  * @author Jon Brisbin <jon@jbrisbin.com>
@@ -44,9 +45,10 @@ public class Buffer implements Comparable<Buffer>,
 			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
 	);
 
-	private final Charset utf8 = Charset.forName("UTF-8");
-	private final boolean    dynamic;
-	private       ByteBuffer buffer;
+	private static final Charset UTF8 = Charset.forName("UTF-8");
+	private       CharsetDecoder charDecoder;
+	private final boolean        dynamic;
+	private       ByteBuffer     buffer;
 
 	public Buffer() {
 		this.dynamic = true;
@@ -91,12 +93,88 @@ public class Buffer implements Comparable<Buffer>,
 		return wrap(str, true);
 	}
 
+	public static Integer parseInt(Buffer b, int start, int end) {
+		int origPos = b.buffer.position();
+		int origLimit = b.buffer.limit();
+
+		b.buffer.position(start);
+		b.buffer.limit(end);
+
+		Integer i = parseInt(b);
+
+		b.buffer.position(origPos);
+		b.buffer.limit(origLimit);
+
+		return i;
+	}
+
+	public static Integer parseInt(Buffer b) {
+		if (b.remaining() == 0) {
+			return null;
+		}
+		ByteBuffer bb = b.buffer;
+		int origPos = bb.position();
+		int len = bb.remaining();
+
+		int num = 0;
+		int dec = 1;
+		for (int i = (origPos + len); i > origPos; ) {
+			char c = (char) bb.get(--i);
+			num += Character.getNumericValue(c) * dec;
+			dec *= 10;
+		}
+
+		bb.position(origPos);
+
+		return num;
+	}
+
+	public static Long parseLong(Buffer b, int start, int end) {
+		int origPos = b.buffer.position();
+		int origLimit = b.buffer.limit();
+
+		b.buffer.position(start);
+		b.buffer.limit(end);
+
+		Long l = parseLong(b);
+
+		b.buffer.position(origPos);
+		b.buffer.limit(origLimit);
+
+		return l;
+	}
+
+	public static Long parseLong(Buffer b) {
+		if (b.remaining() == 0) {
+			return null;
+		}
+		ByteBuffer bb = b.buffer;
+		int origPos = bb.position();
+		int len = bb.remaining();
+
+		long num = 0;
+		int dec = 1;
+		for (int i = len; i > 0; ) {
+			char c = (char) bb.get(--i);
+			num += Character.getNumericValue(c) * dec;
+			dec *= 10;
+		}
+
+		bb.position(origPos);
+
+		return num;
+	}
+
 	public boolean isDynamic() {
 		return dynamic;
 	}
 
 	public int position() {
 		return (null == buffer ? 0 : buffer.position());
+	}
+
+	public int limit() {
+		return (null == buffer ? 0 : buffer.limit());
 	}
 
 	public int capacity() {
@@ -133,7 +211,7 @@ public class Buffer implements Comparable<Buffer>,
 		if (null == b) {
 			return this;
 		}
-		return prepend(b.byteBuffer());
+		return prepend(b.buffer);
 	}
 
 	public Buffer prepend(byte b) {
@@ -192,10 +270,15 @@ public class Buffer implements Comparable<Buffer>,
 		if (null == s) {
 			return this;
 		}
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(s.length() + currentBuffer.remaining());
-		this.buffer.put(s.getBytes());
-		this.buffer.put(currentBuffer);
+		ByteBuffer currentBuffer = buffer.slice();
+		int len = currentBuffer.remaining();
+		ensureCapacity(s.length() + len);
+		int origPos = buffer.position();
+		buffer.position(origPos + len);
+		buffer.put(currentBuffer);
+		buffer.position(origPos);
+		buffer.put(s.getBytes());
+		buffer.position(origPos);
 		return this;
 	}
 
@@ -214,6 +297,12 @@ public class Buffer implements Comparable<Buffer>,
 	public Buffer append(long l) {
 		ensureCapacity(8);
 		buffer.putLong(l);
+		return this;
+	}
+
+	public Buffer append(char c) {
+		ensureCapacity(1);
+		buffer.putChar(c);
 		return this;
 	}
 
@@ -358,14 +447,7 @@ public class Buffer implements Comparable<Buffer>,
 
 	public String asString() {
 		if (null != buffer) {
-			buffer.mark();
-			try {
-				return utf8.newDecoder().decode(buffer).toString();
-			} catch (CharacterCodingException e) {
-				throw new IllegalStateException(e.getMessage(), e);
-			} finally {
-				buffer.reset();
-			}
+			return decode();
 		} else {
 			return null;
 		}
@@ -373,10 +455,10 @@ public class Buffer implements Comparable<Buffer>,
 
 	public byte[] asBytes() {
 		if (null != buffer) {
-			buffer.mark();
+			int origPos = buffer.position();
 			byte[] b = new byte[buffer.remaining()];
 			buffer.get(b);
-			buffer.reset();
+			buffer.position(origPos);
 			return b;
 		} else {
 			return null;
@@ -438,6 +520,40 @@ public class Buffer implements Comparable<Buffer>,
 		return buffers;
 	}
 
+	public List<Buffer> slice(Integer... positions) {
+		return slice(Arrays.<Integer>asList(positions));
+	}
+
+	public List<Buffer> slice(Collection<Integer> positions) {
+		Assert.notNull(positions, "Positions cannot be null.");
+		if (positions.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		int origPos = buffer.position();
+		int origLimit = buffer.limit();
+
+		List<Buffer> buffers = new ArrayList<Buffer>();
+		Iterator<Integer> ipos = positions.iterator();
+		while (ipos.hasNext()) {
+			Integer start = ipos.next();
+			Integer end = (ipos.hasNext() ? ipos.next() : null);
+			buffer.position(start);
+			if (null == end) {
+				buffer.limit(origLimit);
+			} else {
+				buffer.limit(end);
+			}
+			buffers.add(new Buffer(buffer.duplicate()));
+			buffer.limit(origLimit);
+		}
+
+		buffer.position(origPos);
+		buffer.limit(origLimit);
+
+		return buffers;
+	}
+
 	public ByteBuffer byteBuffer() {
 		return buffer;
 	}
@@ -457,15 +573,41 @@ public class Buffer implements Comparable<Buffer>,
 			buffer = ByteBuffer.allocate(SMALL_BUFFER_SIZE);
 			return;
 		}
+		int pos = buffer.position();
+		int cap = buffer.capacity();
 		if (dynamic && buffer.remaining() < atLeast) {
-			if (buffer.capacity() + SMALL_BUFFER_SIZE <= MAX_BUFFER_SIZE) {
-				ByteBuffer newBuff = ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE);
-				buffer.flip();
-				newBuff.put(buffer);
-				buffer = newBuff;
-			} else {
-				throw new BufferOverflowException();
+			if (buffer.limit() < cap) {
+				if (pos + atLeast > cap) {
+					expand();
+				} else {
+					buffer.limit(Math.min(pos + atLeast, cap));
+				}
 			}
+		} else if (pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
+			throw new BufferOverflowException();
+		}
+	}
+
+	private void expand() {
+		int pos = buffer.position();
+		ByteBuffer newBuff = ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE);
+		buffer.flip();
+		newBuff.put(buffer);
+		buffer = newBuff;
+		buffer.position(pos);
+	}
+
+	private String decode() {
+		if (null == charDecoder) {
+			charDecoder = UTF8.newDecoder();
+		}
+		int origPos = buffer.position();
+		try {
+			return charDecoder.decode(buffer).toString();
+		} catch (CharacterCodingException e) {
+			throw new IllegalStateException(e);
+		} finally {
+			buffer.position(origPos);
 		}
 	}
 
