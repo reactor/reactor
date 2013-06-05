@@ -41,6 +41,8 @@ import reactor.util.Assert;
  * Calls to {@link reactor.core.Promise#get()} are always non-blocking. If it is desirable to block the calling thread
  * until a result is available, though, call the {@link Promise#await(long, java.util.concurrent.TimeUnit)} method.
  *
+ * @param <T> The Stream output type.
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson

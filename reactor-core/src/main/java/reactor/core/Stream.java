@@ -34,8 +34,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import static reactor.fn.Functions.$;
 
 /**
- * A {@literal Stream} is a way to provide components when other threads to act on incoming data and provide new
- * data to other components that must wait on the data to become available.
+ * A {@literal Stream} may be triggered several times, e.g. by processing a collection,
+ * and have dedicated data group processing methods.
+ *
+ * @param <T> The Stream output type.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

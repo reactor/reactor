@@ -10,6 +10,11 @@ import java.util.concurrent.TimeUnit;
 import static reactor.fn.Functions.$;
 
 /**
+ * A {@literal Composable} is a way to provide components when other threads to act on incoming data and provide new
+ * data to other components that must wait on the data to become available.
+ *
+ * @param <T> The Stream output type.
+ *
  * @author Stephane Maldini
  */
 public abstract class Composable<T> implements Consumer<T>, Supplier<T> {

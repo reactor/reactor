@@ -19,6 +19,8 @@ package reactor.core;
 import java.util.Arrays;
 
 /**
+ * A public factory to build {@link Stream}
+ *
  * @author Stephane Maldini
  */
 public class Streams {
