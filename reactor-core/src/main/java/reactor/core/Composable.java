@@ -41,17 +41,6 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		this.observable = observable;
 	}
 
-	protected <U> Composable<U> assignComposable(Observable src) {
-		Composable<U> c = this.createComposable(src);
-		synchronized (monitor) {
-			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
-		}
-		forwardError(c);
-		return c;
-	}
-
-	abstract protected <U> Composable<U> createComposable(Observable src);
-
 	/**
 	 * Set the number of times to expect {@link #accept(Object)} to be called.
 	 *
@@ -228,31 +217,6 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		return get();
 	}
 
-	protected boolean isComplete() {
-		return isError() || acceptCountReached();
-	}
-
-	protected boolean isError() {
-		synchronized (monitor) {
-			return null != error;
-		}
-	}
-
-	protected boolean acceptCountReached() {
-		synchronized (monitor) {
-			return expectedAcceptCount >= 0 && acceptedCount >= expectedAcceptCount;
-		}
-	}
-
-	@Override
-	public T get() {
-		synchronized (this.monitor) {
-			if (null != error) {
-				throw new IllegalStateException(error);
-			}
-			return value;
-		}
-	}
 
 	/**
 	 * Register a {@link Consumer} to be invoked whenever an exception that is assignable when the given exception type.
@@ -280,6 +244,7 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		return this;
 	}
 
+
 	protected Registration<Consumer<Event<T>>> when(Selector sel, final Consumer<T> consumer) {
 		if (!isComplete()) {
 			return observable.on(sel, new Consumer<Event<T>>() {
@@ -293,6 +258,44 @@ public abstract class Composable<T> implements Consumer<T>, Supplier<T> {
 		}
 		return null;
 	}
+
+
+	protected boolean isComplete() {
+		return isError() || acceptCountReached();
+	}
+
+	protected boolean isError() {
+		synchronized (monitor) {
+			return null != error;
+		}
+	}
+
+	protected boolean acceptCountReached() {
+		synchronized (monitor) {
+			return expectedAcceptCount >= 0 && acceptedCount >= expectedAcceptCount;
+		}
+	}
+
+	@Override
+	public T get() {
+		synchronized (this.monitor) {
+			if (null != error) {
+				throw new IllegalStateException(error);
+			}
+			return value;
+		}
+	}
+
+	protected <U> Composable<U> assignComposable(Observable src) {
+		Composable<U> c = this.createComposable(src);
+		synchronized (monitor) {
+			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
+		}
+		forwardError(c);
+		return c;
+	}
+
+	abstract protected <U> Composable<U> createComposable(Observable src);
 
 	protected Composable<T> forwardError(final Composable<?> composable) {
 		if (composable.observable == observable) {
