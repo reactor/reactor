@@ -103,7 +103,7 @@ class BufferSpec extends Specification {
 
 	def "A Buffer prepends Strings to an existing Buffer"() {
 		given: "an full Buffer"
-		def buff = Buffer.wrap("World!")
+		def buff = Buffer.wrap("World!", false)
 
 		when: "a String is prepended"
 		buff.prepend("Hello ")

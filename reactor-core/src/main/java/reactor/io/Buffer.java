@@ -118,7 +118,7 @@ public class Buffer implements Comparable<Buffer>,
 
 		int num = 0;
 		int dec = 1;
-		for (int i = len; i > 0; ) {
+		for (int i = (origPos + len); i > origPos; ) {
 			char c = (char) bb.get(--i);
 			num += Character.getNumericValue(c) * dec;
 			dec *= 10;
@@ -270,10 +270,15 @@ public class Buffer implements Comparable<Buffer>,
 		if (null == s) {
 			return this;
 		}
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(s.length() + currentBuffer.remaining());
-		this.buffer.put(s.getBytes());
-		this.buffer.put(currentBuffer);
+		ByteBuffer currentBuffer = buffer.slice();
+		int len = currentBuffer.remaining();
+		ensureCapacity(s.length() + len);
+		int origPos = buffer.position();
+		buffer.position(origPos + len);
+		buffer.put(currentBuffer);
+		buffer.position(origPos);
+		buffer.put(s.getBytes());
+		buffer.position(origPos);
 		return this;
 	}
 
@@ -515,7 +520,11 @@ public class Buffer implements Comparable<Buffer>,
 		return buffers;
 	}
 
-	public Iterable<Buffer> slice(Collection<Integer> positions) {
+	public List<Buffer> slice(Integer... positions) {
+		return slice(Arrays.<Integer>asList(positions));
+	}
+
+	public List<Buffer> slice(Collection<Integer> positions) {
 		Assert.notNull(positions, "Positions cannot be null.");
 		if (positions.isEmpty()) {
 			return Collections.emptyList();
