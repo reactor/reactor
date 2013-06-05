@@ -23,7 +23,7 @@ import java.util.Arrays;
  *
  * @author Stephane Maldini
  */
-public class Streams {
+public abstract class Streams {
 	/**
 	 * Create a delayed {@link Stream} with no initial state, ready to accept values.
 	 *
