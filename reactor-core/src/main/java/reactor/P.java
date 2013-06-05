@@ -23,4 +23,4 @@ import reactor.core.Promises;
  *
  * @author Stephane Maldini
  */
-public class P extends Promises {}
+public abstract class P extends Promises {}

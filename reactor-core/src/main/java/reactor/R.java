@@ -23,6 +23,6 @@ import reactor.core.Reactors;
  *
  * @author Stephane Maldini
  */
-public class R extends Reactors {}
+public abstract class R extends Reactors {}
 
 

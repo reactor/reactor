@@ -21,7 +21,7 @@ import java.util.Arrays;
 /**
  * @author Stephane Maldini
  */
-public class Composables {
+public abstract class Composables {
 	/**
 	 * Create a delayed {@link reactor.core.Composable} with no initial state, ready to accept values.
 	 *
