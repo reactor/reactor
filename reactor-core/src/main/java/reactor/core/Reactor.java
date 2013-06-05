@@ -17,12 +17,10 @@
 package reactor.core;
 
 import static reactor.fn.Functions.$;
-import static reactor.fn.Functions.T;
 
 import java.util.Set;
 
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
-import org.slf4j.LoggerFactory;
 
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
@@ -73,45 +71,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
-			Reactor.this.notify(T(t.getClass()), Event.wrap(t));
+			//avoid passing itself as error handler
+			dispatcher.dispatch(t.getClass(), Event.wrap(t), consumerRegistry, null, eventRouter, null);
 		}
 	};
 	private final Set<Observable>     linkedReactors = new NonBlockingHashSet<Observable>();
 
-	/**
-	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry}. Each {@literal
-	 * Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s registered on the given {@literal
-	 * Reactor} when being triggered on the new {@literal Reactor}.
-	 *
-	 * @param src The {@literal Reactor} when which to get the {@link reactor.fn.registry.SelectionStrategy}, {@link
-	 *            Converter}, and {@link Dispatcher}.
-	 */
-	Reactor(Environment env,
-	        Reactor src) {
-		this(env,
-				src.getDispatcher(),
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getEventRouter());
-	}
-
-	/**
-	 * Copy constructor that creates a shallow copy of the given {@link Reactor} minus the {@link Registry} and {@link
-	 * Dispatcher}. Each {@literal Reactor} needs to maintain its own {@link Registry} to keep the {@link Consumer}s
-	 * registered on the given {@literal Reactor} when being triggered on the new {@literal Reactor}.
-	 *
-	 * @param src        The {@literal Reactor} when which to get the {@link reactor.fn.registry.SelectionStrategy}, {@link
-	 *                   Converter}.
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
-	 *                   dispatcher is used
-	 */
-	Reactor(Environment env,
-	        Reactor src,
-	        Dispatcher dispatcher) {
-		this(env,
-				dispatcher,
-				src.consumerRegistry.getSelectionStrategy(),
-				src.getEventRouter());
-	}
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
@@ -158,22 +123,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 						try {
 							((Consumer) consumer).accept(data);
 						} catch (Throwable t) {
-							LoggerFactory.getLogger(Reactor.class).error(t.getMessage(), t);
+							//LoggerFactory.getLogger(Reactor.class).error(t.getMessage(), t);
+							Reactor.this.notify(t.getClass(), Event.wrap(t));
 						}
 					}
 				}
 			}
 		});
-	}
-
-	/**
-	 * Create a new {@literal Reactor} with default configuration.
-	 */
-	public Reactor(Environment env) {
-		this(env,
-				null,
-				null,
-				null);
 	}
 
 	/**
@@ -276,12 +232,12 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public <S extends Supplier<Event<?>>> Reactor notify(S supplier) {
-		return notify(defaultKey, supplier.get(), null);
+		return notify(defaultKey, supplier.get(), null, eventRouter);
 	}
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, Event.NULL_EVENT, null);
+		return notify(key, Event.NULL_EVENT, null, eventRouter);
 	}
 
 	@Override
@@ -331,6 +287,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(sel, "Selector cannot be null.");
 		Assert.notNull(function, "Function cannot be null.");
 
+		final Stream<V> c = Streams.<V>defer().using(env).using(this).get();
 		final Composable<V> c = new Composable<V>(env, this);
 		on(sel, new Consumer<E>() {
 			@Override
@@ -492,7 +449,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
 			} catch (Throwable x) {
-				replyToObservable.notify(T(x.getClass()), Event.wrap(x));
+				replyToObservable.notify(x.getClass(), Event.wrap(x));
 			}
 		}
 	}
