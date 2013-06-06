@@ -25,11 +25,12 @@ import java.io.InputStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -56,9 +57,10 @@ public class Buffer implements Comparable<Buffer>,
 	);
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
-	private       CharsetDecoder charDecoder;
 	private final boolean        dynamic;
 	private       ByteBuffer     buffer;
+	private       CharsetDecoder decoder;
+	private       CharBuffer     chars;
 	private       int            position;
 	private       int            limit;
 
@@ -852,7 +854,6 @@ public class Buffer implements Comparable<Buffer>,
 	public Iterable<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
 		snapshot();
 
-		views.clear();
 		int start = this.position;
 		for (byte b : this) {
 			if (b == delimiter) {
@@ -877,7 +878,7 @@ public class Buffer implements Comparable<Buffer>,
 	 */
 	public View createView(int start, int end) {
 		snapshot();
-		return new View(this, start, end);
+		return new View(start, end);
 	}
 
 	/**
@@ -959,14 +960,24 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	private String decode() {
-		if (null == charDecoder) {
-			charDecoder = UTF8.newDecoder();
+		if (null == decoder) {
+			decoder = UTF8.newDecoder();
 		}
 		snapshot();
 		try {
-			return charDecoder.decode(buffer).toString();
-		} catch (CharacterCodingException e) {
-			throw new IllegalStateException(e);
+			if (null == chars || chars.remaining() < buffer.remaining()) {
+				chars = CharBuffer.allocate(buffer.remaining());
+			} else {
+				chars.rewind();
+			}
+			decoder.reset();
+			CoderResult cr = decoder.decode(buffer, chars, true);
+			if (cr.isUnderflow()) {
+				decoder.flush(chars);
+			}
+			chars.flip();
+
+			return chars.toString();
 		} finally {
 			reset();
 		}
@@ -1073,13 +1084,11 @@ public class Buffer implements Comparable<Buffer>,
 	 * of the caller to {@link #reset()} the buffer if more manipulation is required. Otherwise, multiple views can be
 	 * created from a single buffer and used consecutively to extract portions of a buffer without expensive substrings.
 	 */
-	public static class View implements Supplier<Buffer> {
-		private final Buffer buffer;
-		private final int    start;
-		private final int    end;
+	public class View implements Supplier<Buffer> {
+		private final int start;
+		private final int end;
 
-		private View(Buffer buffer, int start, int end) {
-			this.buffer = buffer;
+		private View(int start, int end) {
 			this.start = start;
 			this.end = end;
 		}
@@ -1104,9 +1113,9 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public Buffer get() {
-			buffer.buffer.limit(end);
-			buffer.buffer.position(start);
-			return buffer;
+			buffer.limit(end);
+			buffer.position(start);
+			return Buffer.this;
 		}
 	}
 
