@@ -49,7 +49,8 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 			}
 
 			List<IN> objs = new ArrayList<IN>();
-			for (Buffer b : bytes.split(delimiter, false)) {
+			for (Buffer.View view : bytes.split(delimiter, false)) {
+				Buffer b = view.get();
 				if (b.last() == delimiter) {
 					objs.add(decoder.apply(b));
 				} else {
