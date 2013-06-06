@@ -23,7 +23,7 @@ package reactor.core;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Reactors {
+public abstract class Reactors {
 
 	/**
 	 * Create a {@literal Reactor} based on the given id.

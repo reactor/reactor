@@ -23,4 +23,4 @@ import reactor.core.Composables;
  *
  * @author Stephane Maldini
  */
-public class C extends Composables {}
+public abstract class C extends Composables {}
