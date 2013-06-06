@@ -3,6 +3,7 @@ package reactor.logback;
 import ch.qos.logback.classic.Logger;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -12,9 +13,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
 
 /**
  * @author Jon Brisbin
@@ -49,15 +47,6 @@ public class AsyncAppenderTests {
 	}
 
 	@Test
-	public void asyncAppenderLogsAsynchronously() {
-		Logger log = (Logger) LoggerFactory.getLogger(AsyncAppenderTests.class);
-
-		log.info(MSG);
-
-		assertThat("Appender is not set", log.iteratorForAppenders().next(), instanceOf(AsyncAppender.class));
-	}
-
-	@Test
 	public void clockAsyncAppender() throws InterruptedException {
 		long n = benchmarkThread((Logger) LoggerFactory.getLogger("reactor"), timeout);
 		System.out.println("async: " + (n / timeout) + "/sec");
@@ -69,6 +58,7 @@ public class AsyncAppenderTests {
 		System.out.println("sync: " + (m / timeout) + "/sec");
 	}
 
+	@Ignore
 	@Test
 	public void clockBothAppenders() throws InterruptedException {
 		clockSyncAppender();
