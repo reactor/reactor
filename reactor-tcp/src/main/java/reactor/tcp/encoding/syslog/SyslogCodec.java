@@ -4,18 +4,18 @@ import reactor.fn.Function;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * @author Jon Brisbin
  */
 public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Void> {
+
+	private static final int MAXIMUM_SEVERITY = 7;
+	private static final int MAXIMUM_FACILITY = 23;
+	private static final int MINIMUM_PRI      = 0;
+	private static final int MAXIMUM_PRI      = (MAXIMUM_FACILITY * 8) + MAXIMUM_SEVERITY;
+	private static final int DEFAULT_PRI      = 13;
 
 	private static final Function<Void, Buffer> ENDCODER = new Function<Void, Buffer>() {
 		@Override
@@ -23,6 +23,9 @@ public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Voi
 			return null;
 		}
 	};
+
+	private Calendar cal  = Calendar.getInstance();
+	private int      year = cal.get(Calendar.YEAR);
 
 	@Override
 	public Function<Buffer, Collection<SyslogMessage>> decoder() {
@@ -35,10 +38,8 @@ public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Voi
 	}
 
 	private class SyslogMessageDecoder implements Function<Buffer, Collection<SyslogMessage>> {
-		private final CharsetDecoder charDecoder = Charset.forName("UTF-8").newDecoder();
-		private final Calendar       calendar    = Calendar.getInstance();
-		private final int            year        = calendar.get(Calendar.YEAR);
-		private ByteBuffer remainder;
+		private final List<Buffer.View> views = new ArrayList<Buffer.View>();
+		private Buffer.View remainder;
 
 		@Override
 		public Collection<SyslogMessage> apply(Buffer buffer) {
@@ -51,93 +52,170 @@ public class SyslogCodec implements Codec<Buffer, Collection<SyslogMessage>, Voi
 
 			Collection<SyslogMessage> msgs = new ArrayList<SyslogMessage>();
 
-			ByteBuffer bb = (null != remainder ? remainder : buffer.byteBuffer());
-			while (null != bb) {
-				int limit = bb.limit();
-				int start = bb.position();
-				int pos = start;
-				while (bb.hasRemaining()) {
-					byte b = bb.get();
-					pos++;
-					if (b == '\n') {
-						lastLf = pos;
-						if (pos >= limit) {
-							break;
-						}
-						bb.position(start);
-						bb.limit(pos);
-						int len = pos - start;
-
-						String s;
-						try {
-							s = charDecoder.decode(bb).toString();
-						} catch (CharacterCodingException e) {
-							throw new IllegalStateException(e);
-						}
-						int priStart = -1,
-								priEnd = -1,
-								tstampStart = -1,
-								tstampEnd = -1,
-								hostStart = -1,
-								hostEnd = -1,
-								msgStart = 0;
-						boolean inMsg = false;
-						for (int i = 0; i < len; i++) {
-							char c = s.charAt(i);
-
-							if (i == 0 && c == '<') {
-								// start priority
-								priStart = 1;
-								while (s.charAt(++i) != '>') {
-								}
-								priEnd = i;
-								continue;
-							}
-
-							if (c >= 'A' && c <= 'Z') {
-								// start tstamp
-								tstampStart = i;
-								tstampEnd = i + 15;
-								// skip past timestamp + space
-								hostStart = (i += 16);
-								// get hostname
-								while (s.charAt(++i) != ' ') {
-								}
-								hostEnd = i;
-								continue;
-							}
-
-							msgStart = i;
-							break;
-						}
-
-						msgs.add(new SyslogMessage(s,
-																			 priStart, priEnd,
-																			 tstampStart, tstampEnd,
-																			 hostStart, hostEnd,
-																			 msgStart));
-
-						bb.limit(limit);
-						start = pos;
-					}
-				}
-
-				if (bb == remainder) {
-					bb = buffer.byteBuffer();
-					remainder = null;
-				} else {
-					bb = null;
-				}
+			String line = null;
+			if (null != remainder) {
+				line = remainder.get().asString();
 			}
 
-			if (hasRemainder && lastLf > 0 && lastLf < buffer.byteBuffer().limit()) {
-				buffer.byteBuffer().position(lastLf);
-				remainder = buffer.byteBuffer().duplicate();
+			int start = 0;
+			for (Buffer.View view : buffer.split(views, '\n', false)) {
+				Buffer b = view.get();
+				String s = b.asString();
+				if (null != line) {
+					line += s;
+				} else {
+					line = s;
+				}
+
+				int priority = DEFAULT_PRI;
+				int facility = priority / 8;
+				int severity = priority % 8;
+
+				int priStart = line.indexOf('<', start);
+				int priEnd = line.indexOf('>', start + 1);
+				if (priStart == 0) {
+					int pri = Buffer.parseInt(b, 1, priEnd);
+					if (pri >= MINIMUM_PRI && pri <= MAXIMUM_PRI) {
+						priority = pri;
+						facility = priority / 8;
+						severity = priority % 8;
+					}
+					start = 4;
+				}
+
+//				Date tstamp = parseRfc3414Date(b, start, start + 15);
+				String host = null;
+//				if (null != tstamp) {
+				start += 16;
+				int end = line.indexOf(' ', start);
+				host = line.substring(start, end);
+				if (null != host) {
+					start += host.length() + 1;
+				}
+//				}
+
+				String msg = line.substring(start);
+
+				msgs.add(new SyslogMessage(priority, facility, severity, null, host, msg));
+			}
+
+			if (hasRemainder && lastLf > 0 && lastLf < buffer.limit()) {
+				remainder = buffer.createView(lastLf, buffer.limit());
 			} else {
 				remainder = null;
 			}
 
 			return msgs;
+		}
+	}
+
+	private Date parseRfc3414Date(Buffer b, int start, int end) {
+		int origPos = b.position();
+		int origLimit = b.limit();
+
+		b.byteBuffer().position(start);
+		b.byteBuffer().limit(end);
+
+		int month = -1;
+		int day = -1;
+		int hr = -1;
+		int min = -1;
+		int sec = -1;
+
+		switch (b.read()) {
+			case 'A': // Apr, Aug
+				switch (b.read()) {
+					case 'p':
+						month = Calendar.APRIL;
+						b.read();
+						break;
+					default:
+						month = Calendar.AUGUST;
+						b.read();
+				}
+				break;
+			case 'D': // Dec
+				month = Calendar.DECEMBER;
+				b.read();
+				b.read();
+				break;
+			case 'F': // Feb
+				month = Calendar.FEBRUARY;
+				b.read();
+				b.read();
+				break;
+			case 'J': // Jan, Jun, Jul
+				switch (b.read()) {
+					case 'a':
+						month = Calendar.JANUARY;
+						b.read();
+						break;
+					default:
+						switch (b.read()) {
+							case 'n':
+								month = Calendar.JUNE;
+								break;
+							default:
+								month = Calendar.JULY;
+						}
+				}
+				break;
+			case 'M': // Mar, May
+				b.read();
+				switch (b.read()) {
+					case 'r':
+						month = Calendar.MARCH;
+						break;
+					default:
+						month = Calendar.MAY;
+				}
+				break;
+			case 'N': // Nov
+				month = Calendar.NOVEMBER;
+				b.read();
+				b.read();
+				break;
+			case 'O': // Oct
+				month = Calendar.OCTOBER;
+				b.read();
+				b.read();
+				break;
+			case 'S': // Sep
+				month = Calendar.SEPTEMBER;
+				b.read();
+				b.read();
+				break;
+			default:
+				return null;
+		}
+
+		while (b.read() == ' ') {
+		}
+
+		int dayStart = b.position() - 1;
+		while (b.read() != ' ') {
+		}
+		int dayEnd = b.position() - 1;
+		day = Buffer.parseInt(b, dayStart, dayEnd);
+
+		while (b.read() == ' ') {
+		}
+
+		int timeStart = b.position() - 1;
+		hr = Buffer.parseInt(b, timeStart, timeStart + 2);
+		min = Buffer.parseInt(b, timeStart + 3, timeStart + 5);
+		sec = Buffer.parseInt(b, timeStart + 6, timeStart + 8);
+
+		try {
+			if (month < 0 || day < 0 || hr < 0 || min < 0 || sec < 0) {
+				return null;
+			} else {
+				cal.set(year, month, day, hr, min, sec);
+				return cal.getTime();
+			}
+		} finally {
+			b.byteBuffer().limit(origLimit);
+			b.byteBuffer().position(origPos);
 		}
 	}
 
