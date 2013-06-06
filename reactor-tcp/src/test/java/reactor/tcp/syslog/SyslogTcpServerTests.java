@@ -41,8 +41,8 @@ public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n".getBytes();
 
-	final int msgs    = 4000000;
-	final int threads = 4;
+	final int msgs    = 2000000;
+	final int threads = 2;
 
 	Environment    env;
 	CountDownLatch latch;
@@ -76,7 +76,7 @@ public class SyslogTcpServerTests {
 
 					 @Override
 					 public Collection<SyslogMessage> decode(ChannelHandlerContext ctx, String msg) throws Exception {
-						 return decoder.apply(Buffer.wrap(msg));
+						 return decoder.apply(Buffer.wrap(msg + "\n"));
 					 }
 				 });
 				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<Collection<SyslogMessage>>() {
@@ -113,7 +113,9 @@ public class SyslogTcpServerTests {
 	public void testTcpSyslogServer() throws InterruptedException {
 		TcpServer<Collection<SyslogMessage>, Void> server = new TcpServer.Spec<Collection<SyslogMessage>, Void>(NettyTcpServer.class)
 				.using(env)
-				.dispatcher(Environment.EVENT_LOOP)
+						//.using(SynchronousDispatcher.INSTANCE)
+						//.dispatcher(Environment.EVENT_LOOP)
+				.dispatcher(Environment.RING_BUFFER)
 				.codec(new SyslogCodec())
 				.consume(new Consumer<TcpConnection<Collection<SyslogMessage>, Void>>() {
 					@Override
