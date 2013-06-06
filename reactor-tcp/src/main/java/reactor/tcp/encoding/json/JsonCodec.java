@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.fn.Event;
 import reactor.fn.Function;
+import reactor.fn.Observable;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
@@ -47,8 +49,8 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder() {
-		return new JsonDecoder();
+	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
+		return new JsonDecoder(notifyKey, observable);
 	}
 
 	@Override
@@ -57,14 +59,29 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	private class JsonDecoder implements Function<Buffer, IN> {
+		private final Object     notifyKey;
+		private final Observable observable;
+
+		private JsonDecoder(Object notifyKey, Observable observable) {
+			this.notifyKey = notifyKey;
+			this.observable = observable;
+		}
+
 		@SuppressWarnings("unchecked")
 		@Override
 		public IN apply(Buffer buffer) {
+			IN in;
 			try {
 				if (JsonNode.class.isAssignableFrom(inputType)) {
-					return (IN) mapper.readTree(buffer.inputStream());
+					in = (IN) mapper.readTree(buffer.inputStream());
 				} else {
-					return mapper.readValue(buffer.inputStream(), inputType);
+					in = mapper.readValue(buffer.inputStream(), inputType);
+				}
+				if (null != notifyKey && null != observable) {
+					observable.notify(notifyKey, Event.wrap(in));
+					return null;
+				} else {
+					return in;
 				}
 			} catch (IOException e) {
 				throw new IllegalStateException(e);

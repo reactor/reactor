@@ -1,6 +1,8 @@
 package reactor.tcp.encoding;
 
+import reactor.fn.Event;
 import reactor.fn.Function;
+import reactor.fn.Observable;
 import reactor.io.Buffer;
 
 import java.nio.ByteBuffer;
@@ -18,8 +20,8 @@ public class StringCodec implements Codec<Buffer, String, String> {
 	private final Charset utf8 = Charset.forName("UTF-8");
 
 	@Override
-	public Function<Buffer, String> decoder() {
-		return new StringDecoder();
+	public Function<Buffer, String> decoder(Object notifyKey, Observable observable) {
+		return new StringDecoder(notifyKey, observable);
 	}
 
 	@Override
@@ -28,12 +30,25 @@ public class StringCodec implements Codec<Buffer, String, String> {
 	}
 
 	private class StringDecoder implements Function<Buffer, String> {
+		private final Object     notifyKey;
+		private final Observable observable;
 		private final CharsetDecoder decoder = utf8.newDecoder();
+
+		private StringDecoder(Object notifyKey, Observable observable) {
+			this.notifyKey = notifyKey;
+			this.observable = observable;
+		}
 
 		@Override
 		public String apply(Buffer bytes) {
 			try {
-				return decoder.decode(bytes.byteBuffer()).toString();
+				String s = decoder.decode(bytes.byteBuffer()).toString();
+				if (null != notifyKey && null != observable) {
+					observable.notify(notifyKey, Event.wrap(s));
+					return null;
+				} else {
+					return s;
+				}
 			} catch (CharacterCodingException e) {
 				throw new IllegalStateException(e);
 			}

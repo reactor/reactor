@@ -1,16 +1,13 @@
 package reactor.tcp.encoding;
 
 import reactor.fn.Function;
+import reactor.fn.Observable;
 import reactor.io.Buffer;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
 /**
  * @author Jon Brisbin
  */
-public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Collection<OUT>> {
+public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 	private final char                   delimiter;
@@ -25,21 +22,25 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 	}
 
 	@Override
-	public Function<Buffer, Collection<IN>> decoder() {
-		return new DelimitedDecoder();
+	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
+		return new DelimitedDecoder(notifyKey, observable);
 	}
 
 	@Override
-	public Function<Collection<OUT>, Buffer> encoder() {
+	public Function<OUT, Buffer> encoder() {
 		return new DelimitedEncoder();
 	}
 
-	public class DelimitedDecoder implements Function<Buffer, Collection<IN>> {
-		private final Function<Buffer, IN> decoder = delegate.decoder();
-		private Buffer remainder;
+	public class DelimitedDecoder implements Function<Buffer, IN> {
+		private final Function<Buffer, IN> decoder;
+		private       Buffer               remainder;
+
+		public DelimitedDecoder(Object notifyKey, Observable observable) {
+			this.decoder = delegate.decoder(notifyKey, observable);
+		}
 
 		@Override
-		public Collection<IN> apply(Buffer bytes) {
+		public IN apply(Buffer bytes) {
 			if (bytes.remaining() == 0) {
 				return null;
 			}
@@ -48,38 +49,30 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, Collection<IN>, Co
 				bytes.prepend(remainder);
 			}
 
-			List<IN> objs = new ArrayList<IN>();
 			for (Buffer.View view : bytes.split(delimiter, false)) {
 				Buffer b = view.get();
 				if (b.last() == delimiter) {
-					objs.add(decoder.apply(b));
+					decoder.apply(b);
 				} else {
 					// remainder
 					remainder = new Buffer(b.byteBuffer().duplicate());
 				}
 			}
 
-			return (objs.isEmpty() ? null : objs);
+			return null;
 		}
 	}
 
-	public class DelimitedEncoder implements Function<Collection<OUT>, Buffer> {
+	public class DelimitedEncoder implements Function<OUT, Buffer> {
 		Function<OUT, Buffer> encoder = delegate.encoder();
 
 		@Override
-		public Buffer apply(Collection<OUT> out) {
-			if (out.isEmpty()) {
-				return null;
-			}
-
+		public Buffer apply(OUT out) {
 			Buffer buffer = new Buffer();
-			for (OUT o : out) {
-				Buffer encoded = encoder.apply(o);
-				if (null != encoded && encoded.remaining() > 0) {
-					buffer.append(encoded).append(delimiter);
-				}
+			Buffer encoded = encoder.apply(out);
+			if (null != encoded && encoded.remaining() > 0) {
+				buffer.append(encoded).append(delimiter);
 			}
-
 			return buffer.flip();
 		}
 	}
