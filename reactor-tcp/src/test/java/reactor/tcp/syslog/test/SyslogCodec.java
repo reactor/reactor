@@ -11,16 +11,16 @@ import java.nio.charset.CharsetDecoder;
 /**
  * @author Jon Brisbin
  */
-public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
+public class SyslogCodec  {
 
 	private final Charset utf8 = Charset.forName("UTF-8");
 
-	@Override
+	//@Override
 	public Function<Buffer, SyslogMessage> decoder() {
 		return new SyslogMessageDecoder();
 	}
 
-	@Override
+	//@Override
 	public Function<Void, Buffer> encoder() {
 		return new Function<Void, Buffer>() {
 			@Override
