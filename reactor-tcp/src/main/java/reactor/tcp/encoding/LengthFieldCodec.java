@@ -1,6 +1,7 @@
 package reactor.tcp.encoding;
 
 import reactor.fn.Function;
+import reactor.fn.Observable;
 import reactor.io.Buffer;
 import reactor.util.Assert;
 
@@ -23,8 +24,8 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder() {
-		return new LengthFieldDecoder();
+	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
+		return new LengthFieldDecoder(notifyKey, observable);
 	}
 
 	@Override
@@ -33,8 +34,12 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	private class LengthFieldDecoder implements Function<Buffer, IN> {
-		private final Function<Buffer, IN> decoder   = delegate.decoder();
-		private final Buffer               remainder = new Buffer();
+		private final Function<Buffer, IN> decoder;
+		private final Buffer remainder = new Buffer();
+
+		private LengthFieldDecoder(Object notifyKey, Observable observable) {
+			this.decoder = delegate.decoder(notifyKey, observable);
+		}
 
 		@Override
 		public IN apply(Buffer buffer) {

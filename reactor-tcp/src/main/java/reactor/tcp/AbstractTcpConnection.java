@@ -13,6 +13,7 @@ import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
+import reactor.tcp.encoding.Codec;
 
 import static reactor.Fn.$;
 
@@ -32,19 +33,18 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	protected final Environment env;
 
 	protected AbstractTcpConnection(Environment env,
-																	Function<Buffer, IN> decoder,
-																	Function<OUT, Buffer> encoder,
+																	Codec<Buffer, IN, OUT> codec,
 																	Dispatcher ioDispatcher,
 																	Reactor eventsReactor) {
 		this.env = env;
-		this.decoder = decoder;
-		this.encoder = encoder;
 		this.ioDispatcher = ioDispatcher;
 		this.ioReactor = R.reactor()
 											.using(env)
 											.using(ioDispatcher)
 											.get();
 		this.eventsReactor = eventsReactor;
+		this.decoder = codec.decoder(read.getT2(), eventsReactor);
+		this.encoder = codec.encoder();
 	}
 
 	public long getCreated() {
@@ -143,10 +143,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	public boolean read(Buffer data) {
-		IN in;
 		if (null != decoder) {
-			while ((null != data.byteBuffer() && data.byteBuffer().hasRemaining()) && null != (in = decoder.apply(data))) {
-				eventsReactor.notify(read.getT2(), Event.wrap(in));
+			while ((null != data.byteBuffer() && data.byteBuffer().hasRemaining()) && null != decoder.apply(data)) {
 			}
 		} else {
 			eventsReactor.notify(read.getT2(), Event.wrap(data));

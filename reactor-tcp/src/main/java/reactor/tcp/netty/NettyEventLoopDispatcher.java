@@ -26,7 +26,7 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 					}
 				},
 				backlog,
-				200
+				500
 		);
 	}
 
@@ -60,6 +60,7 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 			try {
 				execute();
 			} finally {
+				reset();
 				readyTasks.deallocate(this);
 			}
 		}

@@ -1,5 +1,14 @@
 <configuration debug="true">
 
+  <appender name="file" class="ch.qos.logback.core.FileAppender">
+    <file>test.log</file>
+    <encoder>
+      <pattern>
+        %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+      </pattern>
+    </encoder>
+  </appender>
+
   <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>
@@ -9,16 +18,19 @@
   </appender>
 
   <appender name="async" class="reactor.logback.AsyncAppender">
-    <appender-ref ref="stdout"/>
+    <backlog>1024</backlog>
+    <appender-ref ref="file"/>
   </appender>
 
-  <logger name="reactor.dummy.Test" level="warn"/>
-  <logger name="reactor.logback.AsyncAppenderTests" level="warn">
+  <logger name="reactor" level="warn">
     <appender-ref ref="async"/>
+  </logger>
+  <logger name="sync" level="warn">
+    <appender-ref ref="file"/>
   </logger>
 
   <root level="warn">
-    <appender-ref ref="stdout"/>
+    <appender-ref ref="async"/>
   </root>
 
 </configuration>

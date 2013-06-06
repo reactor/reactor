@@ -25,7 +25,6 @@ import reactor.tcp.netty.NettyTcpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,7 +40,7 @@ public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n".getBytes();
 
-	final int msgs    = 4000000;
+	final int msgs    = 5000000;
 	final int threads = 4;
 
 	Environment    env;
@@ -71,20 +70,18 @@ public class SyslogTcpServerTests {
 				 ChannelPipeline pipeline = ch.pipeline();
 				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 				 pipeline.addLast("decoder", new StringDecoder());
-				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, Collection<SyslogMessage>>() {
-					 Function<Buffer, Collection<SyslogMessage>> decoder = new SyslogCodec().decoder();
+				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, SyslogMessage>() {
+					 Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null, null);
 
 					 @Override
-					 public Collection<SyslogMessage> decode(ChannelHandlerContext ctx, String msg) throws Exception {
-						 return decoder.apply(Buffer.wrap(msg));
+					 public SyslogMessage decode(ChannelHandlerContext ctx, String msg) throws Exception {
+						 return decoder.apply(Buffer.wrap(msg + "\n"));
 					 }
 				 });
-				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<Collection<SyslogMessage>>() {
+				 pipeline.addLast("handler", new ChannelInboundMessageHandlerAdapter<SyslogMessage>() {
 					 @Override
-					 public void messageReceived(ChannelHandlerContext ctx, Collection<SyslogMessage> msgs) throws Exception {
-						 for (SyslogMessage msg : msgs) {
-							 latch.countDown();
-						 }
+					 public void messageReceived(ChannelHandlerContext ctx, SyslogMessage msg) throws Exception {
+						 latch.countDown();
 					 }
 				 });
 			 }
@@ -97,7 +94,7 @@ public class SyslogTcpServerTests {
 			new SyslogMessageWriter().start();
 		}
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(60, TimeUnit.SECONDS);
 		end.set(System.currentTimeMillis());
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
@@ -111,17 +108,19 @@ public class SyslogTcpServerTests {
 
 	@Test
 	public void testTcpSyslogServer() throws InterruptedException {
-		TcpServer<Collection<SyslogMessage>, Void> server = new TcpServer.Spec<Collection<SyslogMessage>, Void>(NettyTcpServer.class)
+		TcpServer<SyslogMessage, Void> server = new TcpServer.Spec<SyslogMessage, Void>(NettyTcpServer.class)
 				.using(env)
-				.dispatcher(Environment.EVENT_LOOP)
+						//.using(SynchronousDispatcher.INSTANCE)
+						//.dispatcher(Environment.EVENT_LOOP)
+				.dispatcher(Environment.RING_BUFFER)
 				.codec(new SyslogCodec())
-				.consume(new Consumer<TcpConnection<Collection<SyslogMessage>, Void>>() {
+				.consume(new Consumer<TcpConnection<SyslogMessage, Void>>() {
 					@Override
-					public void accept(TcpConnection<Collection<SyslogMessage>, Void> conn) {
-						conn.consume(new Consumer<Collection<SyslogMessage>>() {
+					public void accept(TcpConnection<SyslogMessage, Void> conn) {
+						conn.consume(new Consumer<SyslogMessage>() {
 							@Override
-							public void accept(Collection<SyslogMessage> msgs) {
-								count.addAndGet(msgs.size());
+							public void accept(SyslogMessage msg) {
+								count.incrementAndGet();
 							}
 						});
 					}

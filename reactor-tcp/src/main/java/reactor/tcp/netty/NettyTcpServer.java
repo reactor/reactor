@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -23,6 +22,7 @@ import reactor.tcp.encoding.Codec;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Jon Brisbin
@@ -31,6 +31,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	private final ServerBootstrap bootstrap;
 	private final Reactor         eventsReactor;
+	private final int             memReclaimRatio;
 
 	protected NettyTcpServer(Environment env,
 													 Reactor reactor,
@@ -43,6 +44,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		super(env, reactor, listenAddress, backlog, rcvbuf, sndbuf, codec, connectionConsumers);
 		this.eventsReactor = reactor;
 
+		memReclaimRatio = env.getProperty("reactor.tcp.memReclaimRatio", Integer.class, 15);
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
@@ -100,12 +102,11 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	protected <C> NettyTcpConnection<IN, OUT> createConnection(C channel) {
 		SocketChannel ch = (SocketChannel) channel;
-		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 512);
+		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		return new NettyTcpConnection<IN, OUT>(
 				env,
-				null != getCodec() ? getCodec().decoder() : null,
-				null != getCodec() ? getCodec().encoder() : null,
+				getCodec(),
 				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
 				eventsReactor,
 				ch
@@ -116,12 +117,16 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
+			AtomicInteger counter = new AtomicInteger();
+
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
-				while (data.readableBytes() > 0) {
-					if (!conn.read(new Buffer(data.nioBuffer()))) {
-						return;
-					}
+				int len = data.readableBytes();
+				Buffer b = new Buffer(data.nioBuffer());
+				conn.read(b);
+
+				if (counter.incrementAndGet() % memReclaimRatio == 0) {
+					data.clear();
 				}
 			}
 		};
@@ -133,12 +138,11 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		private final InetSocketAddress remoteAddress;
 
 		public NettyTcpConnection(Environment env,
-															Function<Buffer, IN> decoder,
-															Function<OUT, Buffer> encoder,
+															Codec<Buffer, IN, OUT> codec,
 															Dispatcher ioDispatcher,
 															Reactor eventsReactor,
 															SocketChannel channel) {
-			super(env, decoder, encoder, ioDispatcher, eventsReactor);
+			super(env, codec, ioDispatcher, eventsReactor);
 			this.channel = channel;
 			this.remoteAddress = channel.remoteAddress();
 		}

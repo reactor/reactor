@@ -16,23 +16,34 @@
 
 package reactor.io;
 
+import reactor.fn.Supplier;
 import reactor.util.Assert;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-import java.util.*;
+import java.nio.charset.CoderResult;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * @author Jon Brisbin <jon@jbrisbin.com>
+ * A {@literal Buffer} is a general-purpose IO utility class that wraps a {@link ByteBuffer}. It provides optional
+ * dynamic expansion of the buffer to accommodate additional content. It also provides convenience methods for operating
+ * on buffers.
+ *
+ * @author Jon Brisbin
  */
+@NotThreadSafe
 public class Buffer implements Comparable<Buffer>,
 															 Iterable<Byte>,
 															 ReadableByteChannel,
@@ -46,14 +57,27 @@ public class Buffer implements Comparable<Buffer>,
 	);
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
-	private       CharsetDecoder charDecoder;
 	private final boolean        dynamic;
 	private       ByteBuffer     buffer;
+	private       CharsetDecoder decoder;
+	private       CharBuffer     chars;
+	private       int            position;
+	private       int            limit;
 
+	/**
+	 * Create an empty {@literal Buffer} that is dynamic.
+	 */
 	public Buffer() {
 		this.dynamic = true;
 	}
 
+	/**
+	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size and optional make
+	 * this buffer fixed-length.
+	 *
+	 * @param atLeast Allocate this many bytes immediately.
+	 * @param fixed   {@literal true} to make this buffer fixed-length, {@literal false} otherwise.
+	 */
 	public Buffer(int atLeast, boolean fixed) {
 		if (fixed) {
 			if (atLeast <= MAX_BUFFER_SIZE) {
@@ -67,68 +91,123 @@ public class Buffer implements Comparable<Buffer>,
 		this.dynamic = !fixed;
 	}
 
+	/**
+	 * Copy constructor that creates a shallow copy of the given {@literal Buffer} by calling {@link
+	 * java.nio.ByteBuffer#duplicate()} on the underlying {@link ByteBuffer}.
+	 *
+	 * @param bufferToCopy The {@literal Buffer} to copy.
+	 */
 	public Buffer(Buffer bufferToCopy) {
 		this.dynamic = bufferToCopy.dynamic;
 		this.buffer = bufferToCopy.buffer.duplicate();
 	}
 
+	/**
+	 * Create a {@literal Buffer} using the given {@link ByteBuffer} as the inital source.
+	 *
+	 * @param bufferToStartWith The {@link ByteBuffer} to start with.
+	 */
 	public Buffer(ByteBuffer bufferToStartWith) {
 		this.dynamic = true;
 		this.buffer = bufferToStartWith;
 	}
 
+	/**
+	 * Convenience method to create a new, fixed-length {@literal Buffer} and putting the given byte array into the
+	 * buffer.
+	 *
+	 * @param bytes The bytes to create a buffer from.
+	 * @return The new {@literal Buffer}.
+	 */
 	public static Buffer wrap(byte[] bytes) {
 		return new Buffer(bytes.length, true)
 				.append(bytes)
 				.flip();
 	}
 
+	/**
+	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify whether the new
+	 * {@literal Buffer} should be a fixed length or not.
+	 *
+	 * @param str   The String to create a buffer from.
+	 * @param fixed {@literal true} to create a fixed-length {@literal Buffer}, {@literal false} otherwise.
+	 * @return The new {@literal Buffer}.
+	 */
 	public static Buffer wrap(String str, boolean fixed) {
 		return new Buffer(str.length(), fixed)
 				.append(str)
 				.flip();
 	}
 
+	/**
+	 * Convenience method to create a new, fixed-length {@literal Buffer} from the given String.
+	 *
+	 * @param str The String to create a buffer from.
+	 * @return The new fixed-length {@literal Buffer}.
+	 */
 	public static Buffer wrap(String str) {
 		return wrap(str, true);
 	}
 
+	/**
+	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much faster than {@link
+	 * Integer#parseInt(String)}.
+	 *
+	 * @param b     The {@literal Buffer} to slice.
+	 * @param start start of the range.
+	 * @param end   end of the range.
+	 * @return The int value or {@literal null} if the {@literal Buffer} could not be read.
+	 */
 	public static Integer parseInt(Buffer b, int start, int end) {
-		int origPos = b.buffer.position();
-		int origLimit = b.buffer.limit();
+		b.snapshot();
 
-		b.buffer.position(start);
 		b.buffer.limit(end);
+		b.buffer.position(start);
 
 		Integer i = parseInt(b);
 
-		b.buffer.position(origPos);
-		b.buffer.limit(origLimit);
+		b.reset();
 
 		return i;
 	}
 
+	/**
+	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer}. Much faster than {@link
+	 * Integer#parseInt(String)}.
+	 *
+	 * @param b The {@literal Buffer} to slice.
+	 * @return The int value or {@literal null} if the {@literal Buffer} could not be read.
+	 */
 	public static Integer parseInt(Buffer b) {
 		if (b.remaining() == 0) {
 			return null;
 		}
-		ByteBuffer bb = b.buffer;
-		int origPos = bb.position();
-		int len = bb.remaining();
+
+		b.snapshot();
+		int len = b.remaining();
 
 		int num = 0;
 		int dec = 1;
-		for (int i = (origPos + len); i > origPos; ) {
-			char c = (char) bb.get(--i);
+		for (int i = (b.position + len); i > b.position; ) {
+			char c = (char) b.buffer.get(--i);
 			num += Character.getNumericValue(c) * dec;
 			dec *= 10;
 		}
 
-		bb.position(origPos);
+		b.reset();
 
 		return num;
 	}
 
+	/**
+	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer} range. Much faster than {@link
+	 * Long#parseLong(String)}.
+	 *
+	 * @param b     The {@literal Buffer} to slice.
+	 * @param start start of the range.
+	 * @param end   end of the range.
+	 * @return The long value or {@literal null} if the {@literal Buffer} could not be read.
+	 */
 	public static Long parseLong(Buffer b, int start, int end) {
 		int origPos = b.buffer.position();
 		int origLimit = b.buffer.limit();
@@ -144,6 +223,13 @@ public class Buffer implements Comparable<Buffer>,
 		return l;
 	}
 
+	/**
+	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer}. Much faster than {@link
+	 * Long#parseLong(String)}.
+	 *
+	 * @param b The {@literal Buffer} to slice.
+	 * @return The long value or {@literal null} if the {@literal Buffer} could not be read.
+	 */
 	public static Long parseLong(Buffer b) {
 		if (b.remaining() == 0) {
 			return null;
@@ -165,26 +251,58 @@ public class Buffer implements Comparable<Buffer>,
 		return num;
 	}
 
+	/**
+	 * Whether this {@literal Buffer} is fixed-length or not.
+	 *
+	 * @return {@literal true} if this {@literal Buffer} is not fixed-length, {@literal false} otherwise.
+	 */
 	public boolean isDynamic() {
 		return dynamic;
 	}
 
+	/**
+	 * Provides the current position in the internal {@link ByteBuffer}.
+	 *
+	 * @return The current position.
+	 */
 	public int position() {
 		return (null == buffer ? 0 : buffer.position());
 	}
 
+	/**
+	 * Provides the current limit of the internal {@link ByteBuffer}.
+	 *
+	 * @return The current limit.
+	 */
 	public int limit() {
 		return (null == buffer ? 0 : buffer.limit());
 	}
 
+	/**
+	 * Provides the current capacity of the internal {@link ByteBuffer}.
+	 *
+	 * @return The current capacity.
+	 */
 	public int capacity() {
 		return (null == buffer ? SMALL_BUFFER_SIZE : buffer.capacity());
 	}
 
+	/**
+	 * How many bytes available in this {@literal Buffer}. If reading, it is the number of bytes available to read. If
+	 * writing, it is the number of bytes available for writing.
+	 *
+	 * @return The number of bytes available in this {@literal Buffer}.
+	 */
 	public int remaining() {
 		return (null == buffer ? SMALL_BUFFER_SIZE : buffer.remaining());
 	}
 
+	/**
+	 * Clear the internal {@link ByteBuffer} by setting the {@link ByteBuffer#position(int)} to 0 and the limit to the
+	 * current capacity.
+	 *
+	 * @return {@literal this}
+	 */
 	public Buffer clear() {
 		if (null != buffer) {
 			buffer.position(0);
@@ -193,6 +311,23 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Compact the underlying {@link ByteBuffer}.
+	 *
+	 * @return {@literal this}
+	 */
+	public Buffer compact() {
+		if (null != buffer) {
+			buffer.compact();
+		}
+		return this;
+	}
+
+	/**
+	 * Flip this {@literal Buffer}. Used after a write to prepare this {@literal Buffer} for reading.
+	 *
+	 * @return {@literal this}
+	 */
 	public Buffer flip() {
 		if (null != buffer) {
 			buffer.flip();
@@ -200,6 +335,11 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Rewind this {@literal Buffer} to the beginning. Prepares the {@literal Buffer} for reuse.
+	 *
+	 * @return {@literal this}
+	 */
 	public Buffer rewind() {
 		if (null != buffer) {
 			buffer.rewind();
@@ -207,6 +347,12 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Prepend the given {@link Buffer} to this {@literal Buffer}.
+	 *
+	 * @param b The {@link Buffer} to prepend.
+	 * @return {@literal this}
+	 */
 	public Buffer prepend(Buffer b) {
 		if (null == b) {
 			return this;
@@ -214,104 +360,167 @@ public class Buffer implements Comparable<Buffer>,
 		return prepend(b.buffer);
 	}
 
-	public Buffer prepend(byte b) {
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(1 + currentBuffer.remaining());
-		this.buffer.put(b);
-		this.buffer.put(currentBuffer);
-		return this;
-	}
-
-	public Buffer prepend(byte[] bytes) {
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(bytes.length + currentBuffer.remaining());
-		this.buffer.put(bytes);
-		this.buffer.put(currentBuffer);
-		return this;
-	}
-
-	public Buffer prepend(ByteBuffer b) {
-		if (null == b) {
-			return this;
-		}
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(b.remaining() + currentBuffer.remaining());
-		this.buffer.put(b);
-		this.buffer.put(currentBuffer);
-		return this;
-
-	}
-
-	public Buffer prepend(char c) {
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(1 + currentBuffer.remaining());
-		this.buffer.putChar(c);
-		this.buffer.put(currentBuffer);
-		return this;
-	}
-
-	public Buffer prepend(int i) {
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(4 + currentBuffer.remaining());
-		this.buffer.putInt(i);
-		this.buffer.put(currentBuffer);
-		return this;
-	}
-
-	public Buffer prepend(long l) {
-		ByteBuffer currentBuffer = buffer.duplicate();
-		ensureCapacity(8 + currentBuffer.remaining());
-		this.buffer.putLong(l);
-		this.buffer.put(currentBuffer);
-		return this;
-	}
-
+	/**
+	 * Prepend the given {@link String } to this {@literal Buffer}.
+	 *
+	 * @param s The {@link String} to prepend.
+	 * @return {@literal this}
+	 */
 	public Buffer prepend(String s) {
 		if (null == s) {
 			return this;
 		}
-		ByteBuffer currentBuffer = buffer.slice();
-		int len = currentBuffer.remaining();
-		ensureCapacity(s.length() + len);
-		int origPos = buffer.position();
-		buffer.position(origPos + len);
-		buffer.put(currentBuffer);
-		buffer.position(origPos);
-		buffer.put(s.getBytes());
-		buffer.position(origPos);
+		return prepend(s.getBytes());
+	}
+
+	/**
+	 * Prepend the given {@code byte[]} array to this {@literal Buffer}.
+	 *
+	 * @param bytes The {@code byte[]} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(byte[] bytes) {
+		shift(bytes.length);
+		buffer.put(bytes);
+		reset();
 		return this;
 	}
 
+	/**
+	 * Prepend the given {@link ByteBuffer} to this {@literal Buffer}.
+	 *
+	 * @param b The {@link ByteBuffer} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(ByteBuffer b) {
+		if (null == b) {
+			return this;
+		}
+		shift(b.remaining());
+		this.buffer.put(b);
+		reset();
+		return this;
+
+	}
+
+	/**
+	 * Prepend the given {@code byte} to this {@literal Buffer}.
+	 *
+	 * @param b The {@code byte} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(byte b) {
+		shift(1);
+		this.buffer.put(b);
+		reset();
+		return this;
+	}
+
+	/**
+	 * Prepend the given {@code char} to this existing {@literal Buffer}.
+	 *
+	 * @param c The {@code char} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(char c) {
+		shift(2);
+		this.buffer.putChar(c);
+		reset();
+		return this;
+	}
+
+	/**
+	 * Prepend the given {@code int} to this {@literal Buffer}.
+	 *
+	 * @param i The {@code int} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(int i) {
+		shift(4);
+		this.buffer.putInt(i);
+		reset();
+		return this;
+	}
+
+	/**
+	 * Prepend the given {@code long} to this {@literal Buffer}.
+	 *
+	 * @param l The {@code long} to prepend.
+	 * @return {@literal this}
+	 */
+	public Buffer prepend(long l) {
+		shift(8);
+		this.buffer.putLong(l);
+		reset();
+		return this;
+	}
+
+	/**
+	 * Append the given String to this {@literal Buffer}.
+	 *
+	 * @param s The String to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(String s) {
 		ensureCapacity(s.length());
 		buffer.put(s.getBytes());
 		return this;
 	}
 
+	/**
+	 * Append the given {@code int} to this {@literal Buffer}.
+	 *
+	 * @param i The {@code int} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(int i) {
 		ensureCapacity(4);
 		buffer.putInt(i);
 		return this;
 	}
 
+	/**
+	 * Append the given {@code long} to this {@literal Buffer}.
+	 *
+	 * @param l The {@code long} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(long l) {
 		ensureCapacity(8);
 		buffer.putLong(l);
 		return this;
 	}
 
+	/**
+	 * Append the given {@code char} to this {@literal Buffer}.
+	 *
+	 * @param c The {@code char} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(char c) {
-		ensureCapacity(1);
+		ensureCapacity(2);
 		buffer.putChar(c);
 		return this;
 	}
 
+	/**
+	 * Append the given {@link ByteBuffer} to this {@literal Buffer}.
+	 *
+	 * @param b The {@link ByteBuffer} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(ByteBuffer b) {
 		ensureCapacity(b.remaining());
 		buffer.put(b);
 		return this;
 	}
 
+	/**
+	 * Append the given {@link Buffer} to this {@literal Buffer}.
+	 *
+	 * @param b The {@link Buffer} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(Buffer b) {
 		int pos = (null == buffer ? 0 : buffer.position());
 		int len = b.remaining();
@@ -321,28 +530,50 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Append the given {@code byte} to this {@literal Buffer}.
+	 *
+	 * @param b The {@code byte} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(byte b) {
 		ensureCapacity(1);
 		buffer.put(b);
 		return this;
 	}
 
+	/**
+	 * Append the given {@code byte[]} to this {@literal Buffer}.
+	 *
+	 * @param b The {@code byte[]} to append.
+	 * @return {@literal this}
+	 */
 	public Buffer append(byte[] b) {
 		ensureCapacity(b.length);
 		buffer.put(b);
 		return this;
 	}
 
+	/**
+	 * Get the first {@code byte} from this {@literal Buffer}.
+	 *
+	 * @return The first {@code byte}.
+	 */
 	public byte first() {
-		int pos = buffer.position();
-		if (pos > 0) {
+		snapshot();
+		if (this.position > 0) {
 			buffer.position(0); // got to the 1st position
 		}
 		byte b = buffer.get(); // get the 1st byte
-		buffer.position(pos); // go back to original pos
+		reset(); // go back to original pos
 		return b;
 	}
 
+	/**
+	 * Get the last {@code byte} from this {@literal Buffer}.
+	 *
+	 * @return The last {@code byte}.
+	 */
 	public byte last() {
 		int pos = buffer.position();
 		int limit = buffer.limit();
@@ -352,6 +583,11 @@ public class Buffer implements Comparable<Buffer>,
 		return b;
 	}
 
+	/**
+	 * Read a single {@code byte} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code byte}.
+	 */
 	public byte read() {
 		if (null != buffer) {
 			return buffer.get();
@@ -359,6 +595,12 @@ public class Buffer implements Comparable<Buffer>,
 		throw new BufferUnderflowException();
 	}
 
+	/**
+	 * Read at least {@code b.length} bytes from the underlying {@link ByteBuffer}.
+	 *
+	 * @param b The buffer to fill.
+	 * @return {@literal this}
+	 */
 	public Buffer read(byte[] b) {
 		if (null != buffer) {
 			buffer.get(b);
@@ -366,6 +608,11 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Read the next {@code int} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code int}.
+	 */
 	public int readInt() {
 		if (null != buffer) {
 			return buffer.getInt();
@@ -373,6 +620,11 @@ public class Buffer implements Comparable<Buffer>,
 		throw new BufferUnderflowException();
 	}
 
+	/**
+	 * Read the next {@code float} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code float}.
+	 */
 	public float readFloat() {
 		if (null != buffer) {
 			return buffer.getFloat();
@@ -380,6 +632,11 @@ public class Buffer implements Comparable<Buffer>,
 		throw new BufferUnderflowException();
 	}
 
+	/**
+	 * Read the next {@code double} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code double}.
+	 */
 	public double readDouble() {
 		if (null != buffer) {
 			return buffer.getDouble();
@@ -387,6 +644,11 @@ public class Buffer implements Comparable<Buffer>,
 		throw new BufferUnderflowException();
 	}
 
+	/**
+	 * Read the next {@code long} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code long}.
+	 */
 	public long readLong() {
 		if (null != buffer) {
 			return buffer.getLong();
@@ -394,11 +656,35 @@ public class Buffer implements Comparable<Buffer>,
 		throw new BufferUnderflowException();
 	}
 
+	/**
+	 * Read the next {@code char} from the underlying {@link ByteBuffer}.
+	 *
+	 * @return The next {@code char}.
+	 */
 	public char readChar() {
 		if (null != buffer) {
 			return buffer.getChar();
 		}
 		throw new BufferUnderflowException();
+	}
+
+	/**
+	 * Save the current buffer position and limit.
+	 */
+	public void snapshot() {
+		this.position = buffer.position();
+		this.limit = buffer.limit();
+	}
+
+	/**
+	 * Reset the buffer to the previously-saved position and limit.
+	 *
+	 * @return {@literal this}
+	 */
+	public Buffer reset() {
+		buffer.limit(limit);
+		buffer.position(position);
+		return this;
 	}
 
 	@Override
@@ -423,8 +709,13 @@ public class Buffer implements Comparable<Buffer>,
 
 	@Override
 	public int read(ByteBuffer dst) throws IOException {
+		snapshot();
+		if (dst.remaining() < this.limit) {
+			buffer.limit(dst.remaining());
+		}
 		int pos = dst.position();
 		dst.put(buffer);
+		buffer.limit(this.limit);
 		return dst.position() - pos;
 	}
 
@@ -445,6 +736,11 @@ public class Buffer implements Comparable<Buffer>,
 		clear();
 	}
 
+	/**
+	 * Convert the contents of this buffer into a String using a UTF-8 {@link CharsetDecoder}.
+	 *
+	 * @return The contents of this {@literal Buffer} as a String.
+	 */
 	public String asString() {
 		if (null != buffer) {
 			return decode();
@@ -453,107 +749,170 @@ public class Buffer implements Comparable<Buffer>,
 		}
 	}
 
+	/**
+	 * Slice a portion of this buffer and convert it to a String.
+	 *
+	 * @param start start of the range.
+	 * @param end   end of the range.
+	 * @return The contents of the given range as a String.
+	 */
+	public String substring(int start, int end) {
+		snapshot();
+
+		buffer.limit((end > start ? end : this.limit));
+		buffer.position(start);
+		String s = asString();
+
+		reset();
+		return s;
+	}
+
+	/**
+	 * Return the contents of this buffer copied into a {@code byte[]}.
+	 *
+	 * @return The contents of this buffer as a {@code byte[]}.
+	 */
 	public byte[] asBytes() {
 		if (null != buffer) {
-			int origPos = buffer.position();
+			snapshot();
 			byte[] b = new byte[buffer.remaining()];
 			buffer.get(b);
-			buffer.position(origPos);
+			reset();
 			return b;
 		} else {
 			return null;
 		}
 	}
 
+	/**
+	 * Create an {@link InputStream} capable of reading the bytes from the internal {@link ByteBuffer}.
+	 *
+	 * @return A new {@link InputStream}.
+	 */
 	public InputStream inputStream() {
 		return new BufferInputStream();
 	}
 
+	/**
+	 * Create a copy of the given range.
+	 *
+	 * @param start start of the range.
+	 * @param len   end of the range.
+	 * @return A new {@link Buffer}, constructed from the contents of the given range.
+	 */
 	public Buffer slice(int start, int len) {
-		int pos = buffer.position();
+		snapshot();
 		ByteBuffer bb = ByteBuffer.allocate(len);
-		byte[] bytes = new byte[len];
 		buffer.position(start);
 		bb.put(buffer);
-		buffer.position(pos);
+		reset();
 		bb.flip();
 		return new Buffer(bb);
 	}
 
-	public Iterable<Buffer> split(int delimiter) {
-		return split(delimiter, false);
+	/**
+	 * Split this buffer on the given delimiter.
+	 *
+	 * @param delimiter The delimiter on which to split this buffer.
+	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 */
+	public Iterable<View> split(int delimiter) {
+		return split(new ArrayList<View>(), delimiter, false);
 	}
 
-	public Iterable<Buffer> split(int delimiter, boolean stripDelimiter) {
-		int origPos = buffer.position();
-		int origLimit = buffer.limit();
+	/**
+	 * Split this buffer on the given delimiter but save memory by reusing the given {@link List}.
+	 *
+	 * @param views     The list to store {@link View Views} in.
+	 * @param delimiter The delimiter on which to split this buffer.
+	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 */
+	public Iterable<View> split(List<View> views, int delimiter) {
+		return split(views, delimiter, false);
+	}
 
-		List<Integer> positions = new ArrayList<Integer>();
+	/**
+	 * Split this buffer on the given delimiter and optionally leave the delimiter intact rather than stripping it.
+	 *
+	 * @param delimiter      The delimiter on which to split this buffer.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 */
+	public Iterable<View> split(int delimiter, boolean stripDelimiter) {
+		return split(new ArrayList<View>(), delimiter, stripDelimiter);
+	}
+
+	/**
+	 * Split this buffer on the given delimiter, save memory by reusing the given {@link List}, and optionally leave the
+	 * delimiter intact rather than stripping it.
+	 *
+	 * @param views          The list to store {@link View Views} in.
+	 * @param delimiter      The delimiter on which to split this buffer.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 */
+	public Iterable<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
+		snapshot();
+
+		int start = this.position;
 		for (byte b : this) {
 			if (b == delimiter) {
-				positions.add((stripDelimiter ? buffer.position() - 1 : buffer.position()));
+				int end = stripDelimiter ? buffer.position() - 1 : buffer.position();
+				views.add(createView(start, end));
+				start = end;
 			}
 		}
-		int end = buffer.position();
+		views.add(createView(start, buffer.position()));
 
-		List<Buffer> buffers = new ArrayList<Buffer>(positions.size());
-		int start = 0;
-		if (!positions.isEmpty()) {
-			for (Integer pos : positions) {
-				buffer.limit(pos);
-				buffer.position(start);
-				ByteBuffer bb = buffer.duplicate();
-				buffers.add(new Buffer(bb));
-				start = (stripDelimiter ? pos + 1 : pos);
-			}
-		}
+		reset();
 
-		if (buffer.position() + 1 < end) {
-			buffer.limit(end);
-			buffer.position(start);
-			buffers.add(new Buffer(buffer.duplicate()));
-		}
-
-		buffer.limit(origLimit);
-		buffer.position(origPos);
-
-		return buffers;
+		return views;
 	}
 
-	public List<Buffer> slice(Integer... positions) {
-		return slice(Arrays.<Integer>asList(positions));
+	/**
+	 * Create a {@link View} of the given range of this {@literal Buffer}.
+	 *
+	 * @param start start of the range.
+	 * @param end   end of the range.
+	 * @return A new {@link View} object that represents the given range.
+	 */
+	public View createView(int start, int end) {
+		snapshot();
+		return new View(start, end);
 	}
 
-	public List<Buffer> slice(Collection<Integer> positions) {
+	/**
+	 * Slice this buffer at the given positions. Useful for extracting multiple segments of data from a buffer when the
+	 * exact indices of that data is already known.
+	 *
+	 * @param positions The start and end positions of the slices.
+	 * @return A list of {@link View Views} pointing to the slices.
+	 */
+	public List<View> slice(int... positions) {
 		Assert.notNull(positions, "Positions cannot be null.");
-		if (positions.isEmpty()) {
+		if (positions.length == 0) {
 			return Collections.emptyList();
 		}
 
-		int origPos = buffer.position();
-		int origLimit = buffer.limit();
+		snapshot();
 
-		List<Buffer> buffers = new ArrayList<Buffer>();
-		Iterator<Integer> ipos = positions.iterator();
-		while (ipos.hasNext()) {
-			Integer start = ipos.next();
-			Integer end = (ipos.hasNext() ? ipos.next() : null);
-			buffer.position(start);
-			if (null == end) {
-				buffer.limit(origLimit);
-			} else {
-				buffer.limit(end);
-			}
-			buffers.add(new Buffer(buffer.duplicate()));
-			buffer.limit(origLimit);
+		List<View> views = new ArrayList<View>();
+		int len = positions.length;
+		for (int i = 0; i < len; i++) {
+			int start = positions[i];
+			int end = (i + 1 < len ? positions[++i] : this.limit);
+			views.add(createView(start, end));
+			reset();
 		}
 
-		buffer.position(origPos);
-		buffer.limit(origLimit);
-
-		return buffers;
+		return views;
 	}
 
+	/**
+	 * Return the underlying {@link ByteBuffer}.
+	 *
+	 * @return The {@link ByteBuffer} in use.
+	 */
 	public ByteBuffer byteBuffer() {
 		return buffer;
 	}
@@ -577,11 +936,14 @@ public class Buffer implements Comparable<Buffer>,
 		int cap = buffer.capacity();
 		if (dynamic && buffer.remaining() < atLeast) {
 			if (buffer.limit() < cap) {
+				// there's remaining capacity that hasn't been used yet
 				if (pos + atLeast > cap) {
 					expand();
 				} else {
 					buffer.limit(Math.min(pos + atLeast, cap));
 				}
+			} else {
+				expand();
 			}
 		} else if (pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
 			throw new BufferOverflowException();
@@ -589,30 +951,60 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	private void expand() {
-		int pos = buffer.position();
+		snapshot();
 		ByteBuffer newBuff = ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE);
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;
-		buffer.position(pos);
+		reset();
 	}
 
 	private String decode() {
-		if (null == charDecoder) {
-			charDecoder = UTF8.newDecoder();
+		if (null == decoder) {
+			decoder = UTF8.newDecoder();
 		}
-		int origPos = buffer.position();
+		snapshot();
 		try {
-			return charDecoder.decode(buffer).toString();
-		} catch (CharacterCodingException e) {
-			throw new IllegalStateException(e);
+			if (null == chars || chars.remaining() < buffer.remaining()) {
+				chars = CharBuffer.allocate(buffer.remaining());
+			} else {
+				chars.rewind();
+			}
+			decoder.reset();
+			CoderResult cr = decoder.decode(buffer, chars, true);
+			if (cr.isUnderflow()) {
+				decoder.flush(chars);
+			}
+			chars.flip();
+
+			return chars.toString();
 		} finally {
-			buffer.position(origPos);
+			reset();
 		}
 	}
 
+	private void shift(int right) {
+		ByteBuffer currentBuffer;
+		if (null == buffer) {
+			ensureCapacity(right);
+			currentBuffer = buffer;
+		} else {
+			currentBuffer = buffer.slice();
+		}
+
+		int len = buffer.remaining();
+		int pos = buffer.position();
+		ensureCapacity(right + len);
+
+		buffer.position(pos + right);
+		buffer.put(currentBuffer);
+		buffer.position(pos);
+
+		snapshot();
+	}
+
 	private class BufferInputStream extends InputStream {
-		ByteBuffer buffer = Buffer.this.buffer.duplicate();
+		ByteBuffer buffer = Buffer.this.buffer.slice();
 
 		@Override
 		public int read(byte[] b) throws IOException {
@@ -683,6 +1075,47 @@ public class Buffer implements Comparable<Buffer>,
 		@Override
 		public int read() throws IOException {
 			return buffer.get();
+		}
+	}
+
+	/**
+	 * A {@literal View} represents a segment of a buffer. When {@link #get()} is called, the {@literal Buffer} is set to
+	 * the correct start and end points as given at creation time. After the view has been used, it is the responsibility
+	 * of the caller to {@link #reset()} the buffer if more manipulation is required. Otherwise, multiple views can be
+	 * created from a single buffer and used consecutively to extract portions of a buffer without expensive substrings.
+	 */
+	public class View implements Supplier<Buffer> {
+		private final int start;
+		private final int end;
+
+		private View(int start, int end) {
+			this.start = start;
+			this.end = end;
+		}
+
+		/**
+		 * Get the start of this range.
+		 *
+		 * @return start of the range.
+		 */
+		public int getStart() {
+			return start;
+		}
+
+		/**
+		 * Get the end of this range.
+		 *
+		 * @return end of the range.
+		 */
+		public int getEnd() {
+			return end;
+		}
+
+		@Override
+		public Buffer get() {
+			buffer.limit(end);
+			buffer.position(start);
+			return Buffer.this;
 		}
 	}
 

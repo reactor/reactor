@@ -22,7 +22,6 @@ import reactor.support.QueueFactory;
 import javax.annotation.Nullable;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Jon Brisbin
@@ -33,7 +32,6 @@ public class LoadingCache<T> implements Cache<T> {
 	private final BlockingQueue<T> cache = QueueFactory.createQueue();
 	private final Supplier<T> supplier;
 	private final long        cacheMissTimeout;
-	private final AtomicLong leases = new AtomicLong();
 
 	public LoadingCache(Supplier<T> supplier, int initial, long cacheMissTimeout) {
 		this.supplier = supplier;
@@ -53,7 +51,6 @@ public class LoadingCache<T> implements Cache<T> {
 			do {
 				obj = cache.poll(cacheMissTimeout, TimeUnit.MILLISECONDS);
 			} while (null == obj && (System.currentTimeMillis() - start) < cacheMissTimeout);
-			leases.incrementAndGet();
 			return (null != obj ? obj : supplier.get());
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
