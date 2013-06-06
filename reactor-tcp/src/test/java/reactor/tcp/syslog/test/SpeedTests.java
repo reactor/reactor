@@ -1,5 +1,6 @@
 package reactor.tcp.syslog.test;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.fn.Consumer;
 import reactor.io.Buffer;
@@ -15,10 +16,10 @@ import java.util.regex.Pattern;
 /**
  * @author Jon Brisbin
  */
-//@Ignore
+@Ignore
 public class SpeedTests {
 
-	final static int runs       = 40000000;
+	final static int runs       = 100000000;
 	final static int iterations = 3;
 
 	@Test
@@ -73,21 +74,21 @@ public class SpeedTests {
 	public void clockManualDateExtraction() {
 		final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 		final Buffer date = Buffer.wrap("Oct 11 22:14:15");
-		final Iterable<Buffer> slices = date.slice(Arrays.<Integer>asList(0, 3, 4, 6, 7, 9, 10, 12, 13));
+		final Iterable<Buffer.View> slices = date.slice(0, 3, 4, 6, 7, 9, 10, 12, 13);
 
 		Consumer<Integer> test = new Consumer<Integer>() {
 			Calendar cal = Calendar.getInstance();
 
 			@Override
 			public void accept(Integer integer) {
-				Iterator<Buffer> iter = slices.iterator();
+				Iterator<Buffer.View> iter = slices.iterator();
 
-				Buffer b = iter.next();
+				Buffer b = iter.next().get();
 				int month = Arrays.binarySearch(months, b.asString());
-				int day = Buffer.parseInt(iter.next());
-				int hr = Buffer.parseInt(iter.next());
-				int min = Buffer.parseInt(iter.next());
-				int sec = Buffer.parseInt(iter.next());
+				int day = Buffer.parseInt(iter.next().get());
+				int hr = Buffer.parseInt(iter.next().get());
+				int min = Buffer.parseInt(iter.next().get());
+				int sec = Buffer.parseInt(iter.next().get());
 
 				cal.set(2013, month, day, hr, min, sec);
 				cal.getTime();
