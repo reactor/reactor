@@ -18,7 +18,6 @@
   </appender>
 
   <appender name="async" class="reactor.logback.AsyncAppender">
-    <backlog>1024</backlog>
     <appender-ref ref="file"/>
   </appender>
 
