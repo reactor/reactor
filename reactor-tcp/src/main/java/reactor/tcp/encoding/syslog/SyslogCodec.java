@@ -60,7 +60,6 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 	private class SyslogMessageDecoder implements Function<Buffer, SyslogMessage> {
 		private final Calendar cal  = Calendar.getInstance();
 		private final int      year = cal.get(Calendar.YEAR);
-		//private final List<Buffer.View> views = new ArrayList<Buffer.View>();
 		private final Object      notifyKey;
 		private final Observable  observable;
 		private       Buffer.View remainder;
@@ -81,79 +80,78 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 				line = remainder.get().asString();
 			}
 
-//			List<Buffer.View> views = viewsCache.allocate();
-			try {
-				int start = 0;
-				for (Buffer.View view : buffer.split('\n', false)) {
-					Buffer b = view.get();
-					if (b.last() != '\n') {
-						remainder = view;
-						return null;
-					}
-					String s = b.asString();
-					if (null != line) {
-						line += s;
-					} else {
-						line = s;
-					}
-					if (line.isEmpty()) {
-						continue;
-					}
+			int start = 0;
+			for (Buffer.View view : buffer.split('\n', false)) {
+				Buffer b = view.get();
+				if (b.last() != '\n') {
+					remainder = view;
+					return null;
+				}
+				String s = b.asString();
+				if (null != line) {
+					line += s;
+				} else {
+					line = s;
+				}
+				if (line.isEmpty()) {
+					continue;
+				}
 
-					int priority = DEFAULT_PRI;
-					int facility = priority / 8;
-					int severity = priority % 8;
+				int priority = DEFAULT_PRI;
+				int facility = priority / 8;
+				int severity = priority % 8;
 
-					int priStart = line.indexOf('<', start);
-					int priEnd = line.indexOf('>', start + 1);
-					if (priStart == 0) {
-						int pri = Buffer.parseInt(b, 1, priEnd);
-						if (pri >= MINIMUM_PRI && pri <= MAXIMUM_PRI) {
-							priority = pri;
-							facility = priority / 8;
-							severity = priority % 8;
-						}
-						start = 4;
+				int priStart = line.indexOf('<', start);
+				int priEnd = line.indexOf('>', start + 1);
+				if (priStart == 0) {
+					int pri = Buffer.parseInt(b, 1, priEnd);
+					if (pri >= MINIMUM_PRI && pri <= MAXIMUM_PRI) {
+						priority = pri;
+						facility = priority / 8;
+						severity = priority % 8;
 					}
+					start = 4;
+				}
 
-//				Date tstamp = parseRfc3414Date(b, start, start + 15);
-					String host = null;
-//				if (null != tstamp) {
+				Date tstamp = parseRfc3414Date(b, start, start + 15);
+				String host = null;
+				if (null != tstamp) {
 					start += 16;
 					int end = line.indexOf(' ', start);
 					host = line.substring(start, end);
 					if (null != host) {
 						start += host.length() + 1;
 					}
-//				}
-
-					String msg = line.substring(start);
-
-					SyslogMessage syslogMsg = new SyslogMessage(priority, facility, severity, null, host, msg);
-					if (null != observable) {
-						Event<SyslogMessage> ev = Event.wrap(syslogMsg);
-						observable.notify(notifyKey, ev);
-					} else {
-						return syslogMsg;
-					}
-
-					line = null;
-					start = 0;
 				}
-			} finally {
-//				views.clear();
-//				viewsCache.deallocate(views);
+
+				String msg = line.substring(start);
+
+				SyslogMessage syslogMsg = new SyslogMessage(line,
+																										priority,
+																										facility,
+																										severity,
+																										null,
+																										host,
+																										msg);
+				if (null != observable) {
+					Event<SyslogMessage> ev = Event.wrap(syslogMsg);
+					observable.notify(notifyKey, ev);
+				} else {
+					return syslogMsg;
+				}
+
+				line = null;
+				start = 0;
 			}
 
 			return null;
 		}
 
 		private Date parseRfc3414Date(Buffer b, int start, int end) {
-			int origPos = b.position();
-			int origLimit = b.limit();
+			b.snapshot();
 
-			b.byteBuffer().position(start);
 			b.byteBuffer().limit(end);
+			b.byteBuffer().position(start);
 
 			int month = -1;
 			int day = -1;
@@ -253,8 +251,7 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 					return cal.getTime();
 				}
 			} finally {
-				b.byteBuffer().limit(origLimit);
-				b.byteBuffer().position(origPos);
+				b.reset();
 			}
 		}
 	}

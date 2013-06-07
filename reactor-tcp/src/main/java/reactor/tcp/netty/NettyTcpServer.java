@@ -44,7 +44,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		super(env, reactor, listenAddress, backlog, rcvbuf, sndbuf, codec, connectionConsumers);
 		this.eventsReactor = reactor;
 
-		memReclaimRatio = env.getProperty("reactor.tcp.memReclaimRatio", Integer.class, 15);
+		memReclaimRatio = env.getProperty("reactor.tcp.memReclaimRatio", Integer.class, 12);
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));

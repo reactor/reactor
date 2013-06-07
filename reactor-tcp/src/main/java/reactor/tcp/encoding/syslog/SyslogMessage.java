@@ -7,6 +7,7 @@ import java.util.Date;
  */
 public class SyslogMessage {
 
+	private final String raw;
 	private final int    priority;
 	private final int    facility;
 	private final int    severity;
@@ -14,7 +15,14 @@ public class SyslogMessage {
 	private final String host;
 	private final String message;
 
-	public SyslogMessage(int priority, int facility, int severity, Date timestamp, String host, String message) {
+	public SyslogMessage(String raw,
+											 int priority,
+											 int facility,
+											 int severity,
+											 Date timestamp,
+											 String host,
+											 String message) {
+		this.raw = raw;
 		this.priority = priority;
 		this.facility = facility;
 		this.severity = severity;
@@ -45,6 +53,11 @@ public class SyslogMessage {
 
 	public String getMessage() {
 		return message;
+	}
+
+	@Override
+	public String toString() {
+		return raw;
 	}
 
 }

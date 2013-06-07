@@ -26,7 +26,7 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 					}
 				},
 				backlog,
-				500
+				150L
 		);
 	}
 
