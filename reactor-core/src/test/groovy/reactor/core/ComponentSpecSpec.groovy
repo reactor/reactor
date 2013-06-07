@@ -18,11 +18,13 @@
 
 
 
+
+
 package reactor.core
 
-import reactor.C
 import reactor.P
 import reactor.R
+import reactor.S
 import spock.lang.Specification
 
 /**
@@ -42,11 +44,11 @@ class ComponentSpecSpec extends Specification {
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
-		def composable = C.defer().sync().get()
+		def composable = S.defer().sync().get()
 		composable.accept('test')
 
 		then:
-		Composable.isAssignableFrom(composable.class)
+		Stream.isAssignableFrom(composable.class)
 		composable.get() == 'test'
 
 	}

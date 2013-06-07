@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * Alias for P
+ * A public factory to build {@link Promise}
  *
  * @author Stephane Maldini
  */

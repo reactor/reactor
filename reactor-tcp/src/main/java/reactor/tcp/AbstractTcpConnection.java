@@ -1,9 +1,9 @@
 package reactor.tcp;
 
-import reactor.C;
+import reactor.S;
 import reactor.Fn;
 import reactor.R;
-import reactor.core.Composable;
+import reactor.core.Stream;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
@@ -62,8 +62,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 
 	@Override
-	public Composable<IN> in() {
-		Composable<IN> c = C.<IN>defer()
+	public Stream<IN> in() {
+		Stream<IN> c = S.<IN>defer()
 												.using(env)
 												.using(eventsReactor.getDispatcher())
 												.get();
@@ -72,8 +72,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public Composable<OUT> out() {
-		return C.<OUT>defer()
+	public Stream<OUT> out() {
+		return S.<OUT>defer()
 						.using(env)
 						.using(eventsReactor.getDispatcher())
 						.get();
@@ -91,8 +91,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public Composable<OUT> receive(final Function<IN, OUT> fn) {
-		final Composable<OUT> c = out();
+	public Stream<OUT> receive(final Function<IN, OUT> fn) {
+		final Stream<OUT> c = out();
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -105,7 +105,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public TcpConnection<IN, OUT> send(Composable<OUT> data) {
+	public TcpConnection<IN, OUT> send(Stream<OUT> data) {
 		data.consume(new Consumer<OUT>() {
 			@Override
 			public void accept(OUT out) {

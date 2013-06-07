@@ -16,35 +16,27 @@
 
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Functions;
+import reactor.fn.*;
 import reactor.fn.Observable;
-import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
+import java.util.*;
+
 /**
- * A {@literal Promise} is a {@link Composable} that can only be used once. When created, it is pending. If a value of
+ * A {@literal Promise} is a {@link Stream} that can only be used once. When created, it is pending. If a value of
  * type {@link Throwable} is set, then the {@literal Promise} is completed {@link #isError in error} and the error
  * handlers are called. If a value of type <code>&lt;T&gt;</code> is set instead, the {@literal Promise} is completed
  * {@link #isSuccess successfully}.
  * <p/>
  * Calls to {@link reactor.core.Promise#get()} are always non-blocking. If it is desirable to block the calling thread
  * until a result is available, though, call the {@link Promise#await(long, java.util.concurrent.TimeUnit)} method.
+ *
+ * @param <T> The {@link Promise} output type.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -237,36 +229,10 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	public Promise<T> first() {
-		synchronized (monitor) {
-			if (acceptCountReached()) {
-				Promise<T> c = (Promise<T>) super.first();
-				c.set(getValue());
-				return c;
-			} else {
-				return (Promise<T>) super.first();
-			}
-		}
-	}
-
-	@Override
-	public Promise<T> last() {
-		synchronized (monitor) {
-			if (acceptCountReached()) {
-				Promise<T> c = (Promise<T>) super.last();
-				c.set(getValue());
-				return c;
-			} else {
-				return (Promise<T>) super.last();
-			}
-		}
-	}
-
-	@Override
 	public <V> Promise<V> map(final Function<T, V> fn) {
 		synchronized (monitor) {
 			if (acceptCountReached()) {
-				final Promise<V> c = createComposable(getObservable());
+				final Promise<V> c = (Promise<V>) this.assignComposable(getObservable());
 				Functions.schedule(new Consumer<T>() {
 					@Override
 					public void accept(T value) {
@@ -284,10 +250,12 @@ public class Promise<T> extends Composable<T> {
 		}
 	}
 
+
+
 	@Override
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
-			final Promise<T> p = createComposable(getObservable());
+			final Promise<T> p = createComposableConsumer(getObservable());
 
 			Consumer<T> consumer = new Consumer<T>() {
 				@Override
@@ -314,8 +282,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <V> void handleError(Composable<V> c, Throwable t) {
-		c.accept(t);
+	protected void handleError(Future<?> c, Throwable t) {
+		c.internalAccept(t);
 		c.decreaseAcceptLength();
 	}
 
@@ -330,7 +298,7 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <U> Promise<U> createComposable(Observable src) {
+	protected <U> Promise<U> createComposableConsumer(Observable src) {
 		final Promise<U> p = new Promise<U>(getEnvironment(), src);
 		forwardError(p);
 		return p;
@@ -361,8 +329,8 @@ public class Promise<T> extends Composable<T> {
 			return this;
 		}
 
-		final Composable<Tuple2<?, Integer>> reducer =
-				new DelayedAcceptComposable<Tuple2<?, Integer>>(getEnvironment(), getObservable(), size);
+		final Stream<Tuple2<?, Integer>> reducer =
+				new Stream.DeferredStream<Tuple2<?, Integer>>(getEnvironment(), getObservable(), size);
 		reducer
 				.reduce()
 				.map(new Function<List<Tuple2<?, Integer>>, T>() {
@@ -393,8 +361,8 @@ public class Promise<T> extends Composable<T> {
 
 		for (final Composable c : composables) {
 			c.forwardError(reducer).consume(consumer);
-			if (DelayedAcceptComposable.class.isInstance(c)) {
-				((DelayedAcceptComposable) c).delayedAccept();
+			if (Stream.DeferredStream.class.isInstance(c)) {
+				((Stream.DeferredStream) c).delayedAccept();
 			}
 		}
 
@@ -402,7 +370,7 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	/**
-	 * Build a {@link Composable} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
+	 * Build a {@link Stream} based on the given values, {@link Dispatcher dispatcher}, and {@link Reactor reactor}.
 	 *
 	 * @param <T> The type of the values.
 	 */
@@ -449,12 +417,12 @@ public class Promise<T> extends Composable<T> {
 		}
 	}
 
+
 	/**
 	 * A {@code FilteredException} is used to {@link Promise#set(Throwable) complete} a {@link Promise#filter(Function)
 	 * filtered promise} when the filter rejects the value.
 	 *
 	 * @author Andy Wilkinson
-	 *
 	 */
 	public static final class FilterException extends RuntimeException {
 

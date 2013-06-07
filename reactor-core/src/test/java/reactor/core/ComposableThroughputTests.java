@@ -21,7 +21,7 @@ import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.C;
+import reactor.S;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Reduce;
@@ -55,8 +55,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		latch = new CountDownLatch(length * runs * samples);
 	}
 
-	private Composable<Integer> createComposable(Dispatcher dispatcher) {
-		Composable<Integer> cInt = C.<Integer>defer().using(env).using(dispatcher).get();
+	private Stream<Integer> createComposable(Dispatcher dispatcher) {
+		Stream<Integer> cInt = S.<Integer>defer().using(env).using(dispatcher).get();
 		cInt.map(new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer integer) {
@@ -80,7 +80,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
-		Composable<Integer> c = createComposable(dispatcher);
+		Stream<Integer> c = createComposable(dispatcher);
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {

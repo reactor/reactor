@@ -17,7 +17,7 @@
 package reactor.fn.support;
 
 /**
- * A {@link reactor.core.Composable#reduce(reactor.fn.Function)} operation needs a stateful object to pass as the argument,
+ * A {@link reactor.core.Stream#reduce(reactor.fn.Function)} operation needs a stateful object to pass as the argument,
  * which contains the
  * last accumulated value, as well as the next, just-accepted value.
  *

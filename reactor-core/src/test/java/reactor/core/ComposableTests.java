@@ -19,7 +19,7 @@ package reactor.core;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.C;
+import reactor.S;
 import reactor.R;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
@@ -46,9 +46,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Composable<String> c = Composables.defer("Hello World!").get();
+		Stream<String> c = Streams.defer("Hello World!").get();
 
-		Composable<String> d = c.map(new Function<String, String>() {
+		Stream<String> d = c.map(new Function<String, String>() {
 			@Override
 			public String apply(String s) {
 				return "Goodbye then!";
@@ -60,7 +60,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -79,7 +79,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -97,7 +97,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.using(env)
 				.dispatcher("eventLoop")
@@ -121,14 +121,14 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void valueIsImmediatelyAvailable() throws InterruptedException {
-		Composable<String> c = C.each(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> c = S.each(Arrays.asList("1", "2", "3", "4", "5")).get();
 
 		await(c, is("5"));
 	}
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -144,13 +144,13 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER);
 
-		Composable<Integer> first = c.first();
-		Composable<Integer> last = c.last();
+		Stream<Integer> first = c.first();
+		Stream<Integer> last = c.last();
 
 		await(first, is(1));
 		await(last, is(5));
@@ -169,7 +169,7 @@ public class ComposableTests extends AbstractReactorTest {
 			}
 		});
 
-		Composable<Integer> c = C
+		Stream<Integer> c = S
 				.each(Arrays.asList("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -184,7 +184,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void composableWithInitiallyUnknownNumberOfValues() throws InterruptedException {
-		final Composable<Integer> c = C
+		final Stream<Integer> c = S
 				.each(new TestIterable<String>("1", "2", "3", "4", "5"))
 				.get()
 				.map(STRING_2_INTEGER)
@@ -213,7 +213,7 @@ public class ComposableTests extends AbstractReactorTest {
 		await(c, is(15));
 	}
 
-	<T> void await(Composable<T> d, Matcher<T> expected) throws InterruptedException {
+	<T> void await(Stream<T> d, Matcher<T> expected) throws InterruptedException {
 		long startTime = System.currentTimeMillis();
 		T result = null;
 		try {

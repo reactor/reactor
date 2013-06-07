@@ -16,11 +16,11 @@
 
 package reactor;
 
-import reactor.core.Composables;
+import reactor.core.Streams;
 
 /**
  * Alias for Composables
  *
  * @author Stephane Maldini
  */
-public abstract class C extends Composables {}
+public abstract class S extends Streams {}

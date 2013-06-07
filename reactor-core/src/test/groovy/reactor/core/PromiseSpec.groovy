@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+
+
 package reactor.core
 
 import static reactor.GroovyTestUtils.*
@@ -218,7 +220,7 @@ class PromiseSpec extends Specification {
 		promise.set 'test'
 
 		then: "the observable is notified"
-		1 * observable.notify('key', { event -> event.data == 'test'})
+		1 * observable.notify('key', { event -> event.data == 'test' })
 	}
 
 	def "An Observable can be used to consume the value of an already-fulfilled promise"() {
@@ -230,7 +232,7 @@ class PromiseSpec extends Specification {
 		promise.consume('key', observable)
 
 		then: "the observable is notified"
-		1 * observable.notify('key', { event -> event.data == 'test'})
+		1 * observable.notify('key', { event -> event.data == 'test' })
 	}
 
 	def "A function can be used to map a Promise's value when it's fulfilled"() {
@@ -256,72 +258,12 @@ class PromiseSpec extends Specification {
 		mappedPromise.get() == 2
 	}
 
-	def "A filtered promise is rejected if the filter does not allow the value to pass through"() {
-		given: "a promise with a filter that only accepts even values"
-		def promise = Promises.defer().sync().get()
-		def filteredPromise = promise.filter(function { it % 2 == 0})
-
-		when: "the promise is fulfilled with an odd value"
-		promise.set 1
-
-		then: "the filtered promise is rejected"
-		filteredPromise.error
-	}
-
-	def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
-		given: "a promise with a filter that only accepts even values"
-		def promise = Promises.defer().sync().get()
-		def filteredPromise = promise.filter(function { it % 2 == 0})
-
-		when: "the promise is fulfilled with an even value"
-		promise.set 2
-
-		then: "the filtered promise is fulfilled"
-		filteredPromise.success
-		filteredPromise.get() == 2
-	}
-
-	def "If a filter throws an exception the filtered promise is rejected"() {
-		given: "a promise with a filter that throws an exception"
-		def promise = Promises.defer().sync().get()
-		def e = new RuntimeException()
-		def filteredPromise = promise.filter(function { throw e})
-
-		when: "the promise is fulfilled"
-		promise.set 2
-
-		then: "the filtered promise is rejected"
-		filteredPromise.error
-	}
-
-	def "If a promise is already fulfilled with a value accepted by a filter the filtered promise is fulfilled"() {
-		given: "a promise that is already fulfilled with an even value"
-		def promise = Promises.success(2).sync().get()
-
-		when: "the promise is filtered with a filter that only accepts even values"
-		def filteredPromise = promise.filter(function { it % 2 == 0})
-
-		then: "the filtered promise is fulfilled"
-		filteredPromise.success
-		filteredPromise.get() == 2
-	}
-
-	def "If a promise is already fulfilled with a value rejected by a filter, the filtered promise is rejected"() {
-		given: "a promise that is already fulfilled with an odd value"
-		def promise = Promises.success(1).sync().get()
-
-		when: "the promise is filtered with a filter that only accepts even values"
-		def filteredPromise = promise.filter(function { it % 2 == 0})
-
-		then: "the filtered promise is rejected"
-		filteredPromise.error
-	}
 
 	def "An onSuccess consumer registered via then is called when the promise is fulfilled"() {
 		given: "A promise with an onSuccess consumer registered using then"
-		def promise = Promises.defer().sync().get()
-		def value
-		promise.then(consumer {value = it}, null)
+		Promise<String> promise = Promises.<String> defer().sync().get()
+		def value = null
+		promise.then(consumer { value = it }, null)
 
 		when: "The promise is fulfilled"
 		promise.set 'test'
@@ -332,9 +274,9 @@ class PromiseSpec extends Specification {
 
 	def "An onError consumer registered via then is called when the promise is rejected"() {
 		given: "A promise with an onError consumer registered using then"
-		def promise = Promises.defer().sync().get()
+		Promise<String> promise = Promises.<String> defer().sync().get()
 		def value
-		promise.then(null, consumer {value = it})
+		promise.then(null, consumer { value = it })
 
 		when: "The promise is rejected"
 		def e = new Exception()
@@ -347,11 +289,11 @@ class PromiseSpec extends Specification {
 	def "An onError consumer registered via then is called when the promise is already rejected"() {
 		given: "A promise that has been rejected"
 		def e = new Exception()
-		def promise = Promises.error(e).sync().get()
+		Promise<String> promise = Promises.<String> error(e).sync().get()
 
 		when: "An onError consumer is registered via then"
 		def value
-		promise.then(null, consumer {value = it})
+		promise.then(null, consumer { value = it })
 
 		then: "The consumer is called"
 		value == e
@@ -363,7 +305,7 @@ class PromiseSpec extends Specification {
 
 		when: "An onSuccess consumer is registered via then"
 		def value
-		promise.then(consumer {value = it}, null)
+		promise.then(consumer { value = it }, null)
 
 		then: "The consumer is called"
 		value == 'test'
@@ -371,8 +313,8 @@ class PromiseSpec extends Specification {
 
 	def "An onSuccess function registered via then is called when the promise is fulfilled"() {
 		given: "a promise with an onSuccess function registered using then"
-		def promise = Promises.defer().sync().get()
-		def transformed = promise.then(function {it * 2}, null)
+		Promise<String> promise = Promises.<String> defer().sync().get()
+		def transformed = promise.then(function { it * 2 }, null)
 
 		when: "the promise is fulfilled"
 		promise.set 1
@@ -387,7 +329,7 @@ class PromiseSpec extends Specification {
 
 		when: "An onSuccess function is registered via then"
 		def value
-		def transformed = promise.then(function {it * 2}, null)
+		def transformed = promise.then(function { it * 2 }, null)
 
 		then: "The function is called and the transformed promise is fulfilled"
 		transformed.success
@@ -396,9 +338,9 @@ class PromiseSpec extends Specification {
 
 	def "When a promise is fulfilled, if a mapping function throws an exception the mapped promise is rejected"() {
 		given: "a promise with a filter that throws an exception"
-		def promise = Promises.defer().sync().get()
+		Promise<String> promise = Promises.<String> defer().sync().get()
 		def e = new RuntimeException()
-		def mapped = promise.map(function { throw e})
+		def mapped = promise.map(function { throw e })
 
 		when: "the promise is fulfilled"
 		promise.set 2
@@ -413,7 +355,7 @@ class PromiseSpec extends Specification {
 
 		when: "a mapping function that throws an exception is added"
 		def e = new RuntimeException()
-		def mapped = promise.map(function { throw e})
+		def mapped = promise.map(function { throw e })
 
 		then: "the mapped promise is rejected"
 		mapped.error
@@ -564,6 +506,67 @@ class PromiseSpec extends Specification {
 
 		then: "it is rejected"
 		promise.error
+	}
+
+	def "A filtered promise is rejected if the filter does not allow the value to pass through"() {
+		given: "a promise with a filter that only accepts even values"
+		def promise = Promises.defer().sync().get()
+		def filteredPromise = promise.filter(function { it % 2 == 0 })
+
+		when: "the promise is fulfilled with an odd value"
+		promise.set 1
+
+		then: "the filtered promise is rejected"
+		filteredPromise.error
+	}
+
+	def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
+		given: "a promise with a filter that only accepts even values"
+		def promise = Promises.defer().sync().get()
+		def filteredPromise = promise.filter(function { it % 2 == 0 })
+
+		when: "the promise is fulfilled with an even value"
+		promise.set 2
+
+		then: "the filtered promise is fulfilled"
+		filteredPromise.success
+		filteredPromise.get() == 2
+	}
+
+	def "If a filter throws an exception the filtered promise is rejected"() {
+		given: "a promise with a filter that throws an exception"
+		def promise = Promises.defer().sync().get()
+		def e = new RuntimeException()
+		def filteredPromise = promise.filter(function { throw e })
+
+		when: "the promise is fulfilled"
+		promise.set 2
+
+		then: "the filtered promise is rejected"
+		filteredPromise.error
+	}
+
+	def "If a promise is already fulfilled with a value accepted by a filter the filtered promise is fulfilled"() {
+		given: "a promise that is already fulfilled with an even value"
+		def promise = Promises.success(2).sync().get()
+
+		when: "the promise is filtered with a filter that only accepts even values"
+		def filteredPromise = promise.filter(function { it % 2 == 0 })
+
+		then: "the filtered promise is fulfilled"
+		filteredPromise.success
+		filteredPromise.get() == 2
+	}
+
+	def "If a promise is already fulfilled with a value rejected by a filter, the filtered promise is rejected"() {
+		given: "a promise that is already fulfilled with an odd value"
+		def promise = Promises.success(1).sync().get()
+
+		when: "the promise is filtered with a filter that only accepts even values"
+		def filteredPromise = promise.filter(function { it % 2 == 0 })
+
+		then: "the filtered promise is rejected"
+		filteredPromise.error
 	}
 }
 

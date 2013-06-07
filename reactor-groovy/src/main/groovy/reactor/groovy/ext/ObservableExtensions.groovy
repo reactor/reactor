@@ -19,9 +19,8 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.core.Composable
 import reactor.core.Reactor
+import reactor.core.Stream
 import reactor.fn.*
 import reactor.fn.registry.Registration;
 import reactor.fn.selector.Selector
@@ -71,21 +70,21 @@ class ObservableExtensions {
 		selfType.on new ClosureEventConsumer(handler)
 	}
 
-	static <V> Composable<V> map(Reactor selfType,
+	static <V> Stream<V> map(Reactor selfType,
 	                             final String key,
 	                             @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
 	                             Closure<V> handler) {
 		selfType.map $(key), new ClosureEventFunction<?, V>(handler)
 	}
 
-	static <V> Composable<V> map(Reactor selfType,
+	static <V> Stream<V> map(Reactor selfType,
 	                             final Selector key,
 	                             @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
 	                             Closure<V> handler) {
 		selfType.map key, new ClosureEventFunction<?, V>(handler)
 	}
 
-	static <V> Composable<V> map(Reactor selfType,
+	static <V> Stream<V> map(Reactor selfType,
 	                             @DelegatesTo(value = ClosureEventFunction, strategy = Closure.DELEGATE_FIRST)
 	                             Closure<V> handler) {
 		selfType.map new ClosureEventFunction(handler)
@@ -111,7 +110,7 @@ class ObservableExtensions {
 	 * Alias and Misc. Helpers
 	 */
 
-	static <T, V> Composable<V> compose(Reactor selfType,
+	static <T, V> Stream<V> compose(Reactor selfType,
 	                                    Object key,
 	                                    T obj) {
 		selfType.compose key, Event.wrap(obj)

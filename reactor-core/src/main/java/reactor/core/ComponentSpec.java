@@ -36,6 +36,10 @@ import reactor.util.Assert;
 import java.util.List;
 
 /**
+ * A generic environment-aware builder for reactor-based components such as {@link Promise},
+ * {@link Stream} or {@link Reactor} itself.
+ *
+ *
  * @author Stephane Maldini
  * @author Jon Brisbin
  */
