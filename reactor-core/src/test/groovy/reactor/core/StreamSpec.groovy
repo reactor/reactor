@@ -34,6 +34,17 @@ class StreamSpec extends Specification {
 		values == [1, 2]
 	}
 
+	def 'A deferred Stream with an initial value with Future read only supplier'() {
+		given: 'a composable with an initial value'
+		Stream composable = Streams.defer(1).sync().get()
+
+		when: 'a value is accepted'
+		def f = composable.future()
+
+		then: 'the future has been passed the values'
+		f.get() == 1
+	}
+
 	def 'A Stream with a known set of values makes those values available immediately'() {
 		given: 'a composable with values 1 to 5 inclusive'
 		Stream composable = Streams.each([1, 2, 3, 4, 5]).sync().get()
@@ -296,7 +307,7 @@ class StreamSpec extends Specification {
 		// get(). The behaviour needs to be consistent irrespective of whether the known number of values is provided up
 		// front or via accept.
 
-		// reduced.get()
+		reduced.get()
 
 		then: 'the consumer only receives the final value'
 		values == [120]

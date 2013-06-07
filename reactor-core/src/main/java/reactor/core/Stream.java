@@ -258,8 +258,8 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	protected Stream createComposable(Observable src) {
-		return new Stream(getEnvironment(), createReactor(src));
+	protected <U> Future<U> createComposableConsumer(Observable src) {
+		return new Stream<U>(getEnvironment(), createReactor(src));
 	}
 
 
@@ -421,29 +421,10 @@ public class Stream<T> extends Composable<T> {
 		}
 
 		@Override
-		protected boolean isComplete() {
-			if (values != null) {
-				boolean init;
-				synchronized (this.stateMonitor) {
-					init = acceptState == AcceptState.DELAYED;
-				}
-				if (init) {
-					acceptValues(values);
-					synchronized (this.stateMonitor) {
-						acceptState = AcceptState.ACCEPTED;
-						stateMonitor.notifyAll();
-					}
-				}
-
-			}
-			return super.isComplete();
-		}
-
-		@Override
-		protected Stream createComposable(Observable src) {
+		protected <U> Stream<U> createComposableConsumer(Observable src) {
 			final DeferredStream<T> self = this;
-			final DeferredStream c =
-					new DeferredStream(getEnvironment(), createReactor(src), self.getExpectedAcceptCount()) {
+			final DeferredStream<U> c =
+					new DeferredStream<U>(getEnvironment(), createReactor(src), self.getExpectedAcceptCount()) {
 						@Override
 						protected void delayedAccept() {
 							self.delayedAccept();
@@ -502,7 +483,7 @@ public class Stream<T> extends Composable<T> {
 		}
 
 		private static enum AcceptState {
-			DELAYED, ACCEPTING, ACCEPTED;
+			DELAYED, ACCEPTING, ACCEPTED
 		}
 	}
 

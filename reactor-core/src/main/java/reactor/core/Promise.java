@@ -16,21 +16,16 @@
 
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.fn.*;
+import reactor.fn.Observable;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
+
+import java.util.*;
 
 /**
  * A {@literal Promise} is a {@link Stream} that can only be used once. When created, it is pending. If a value of
@@ -255,10 +250,12 @@ public class Promise<T> extends Composable<T> {
 		}
 	}
 
+
+
 	@Override
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
-			final Promise<T> p = createComposable(getObservable());
+			final Promise<T> p = createComposableConsumer(getObservable());
 
 			Consumer<T> consumer = new Consumer<T>() {
 				@Override
@@ -285,8 +282,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected void handleError(Composable<?> c, Throwable t) {
-		c.accept(t);
+	protected void handleError(Future<?> c, Throwable t) {
+		c.internalAccept(t);
 		c.decreaseAcceptLength();
 	}
 
@@ -301,8 +298,8 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected Promise createComposable(Observable src) {
-		final Promise p = new Promise(getEnvironment(), src);
+	protected <U> Promise<U> createComposableConsumer(Observable src) {
+		final Promise<U> p = new Promise<U>(getEnvironment(), src);
 		forwardError(p);
 		return p;
 	}
