@@ -33,6 +33,7 @@ ext {
 	springVersion = '3.2.3.RELEASE'
 	nettyVersion = '4.0.0.Alpha8'
 	jacksonDatabindVersion = '2.2.1'
+	hadoopVersion = '1.1.2'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -197,5 +198,9 @@ project('reactor-tcp') {
 
 		compile "io.netty:netty:$nettyVersion"
 		compile("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion", optional)
+		compile("org.apache.hadoop:hadoop-client:$hadoopVersion", optional)
+
+		testRuntime project(':reactor-logback')
+		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}
 }
