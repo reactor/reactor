@@ -49,7 +49,7 @@ public abstract class Composable<T> extends Future<T> implements Consumer<T> {
 	 * @see {@link #accept(Object)}
 	 */
 	public Composable<T> consume(Composable<T> composable) {
-		consume((Consumer<T>)composable);
+		consume((Consumer<T>) composable);
 		forwardError(composable);
 		return this;
 	}
@@ -62,24 +62,25 @@ public abstract class Composable<T> extends Future<T> implements Consumer<T> {
 		final Future<T> c = super.createComposableConsumer(getObservable());
 		synchronized (monitor) {
 			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
-			if(null != getValue()){
+			if (null != getValue()) {
 				c.setValue(getValue());
 			}
-			if(null != getError()){
+			if (null != getError()) {
 				c.setError(getError());
 			}
 		}
-		when(Throwable.class, new Consumer<Throwable>(){
+		when(Throwable.class, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
 				c.internalAccept(throwable);
 			}
-		}).consume(new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				c.internalAccept(t);
-			}
-		});
+		})
+				.consume(new Consumer<T>() {
+					@Override
+					public void accept(T t) {
+						c.internalAccept(t);
+					}
+				});
 		return c;
 	}
 

@@ -144,20 +144,13 @@ public class Stream<T> extends Composable<T> {
 		}
 
 		c.setExpectedAcceptCount(_expectedAcceptCount < 0 ? _expectedAcceptCount : 1);
-		when(lastSelector, new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				c.accept(lastValue.get());
-			}
-		});
-
 		consume(new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
 					Reduce<T, V> r = new Reduce<T, V>(lastValue.get(), value);
 					lastValue.set(fn.apply(r));
-					if (_expectedAcceptCount < 0) {
+					if (acceptCountReached()) {
 						c.accept(lastValue.get());
 					}
 				} catch (Throwable t) {
@@ -255,6 +248,45 @@ public class Stream<T> extends Composable<T> {
 		});
 
 		return c;
+	}
+
+	/**
+	 * Trigger composition with a value to be processed by dedicated consumers
+	 *
+	 * @param value The exception
+	 */
+	@Override
+	public void accept(T value) {
+		internalAccept(value);
+		notifyAccept(Event.wrap(value));
+	}
+
+	@Override
+	protected void internalAccept(T value) {
+		boolean notifyFirst = false;
+		boolean notifyLast = false;
+
+		synchronized (monitor) {
+			super.internalAccept(value);
+			if (isFirst()) {
+				notifyFirst = true;
+			}
+
+			if (acceptCountReached()) {
+				notifyLast = true;
+				monitor.notifyAll();
+			}
+
+			Event<T> ev = Event.wrap(value);
+
+			if (notifyFirst) {
+				notifyFirst(ev);
+			}
+
+			if (notifyLast) {
+				notifyLast(ev);
+			}
+		}
 	}
 
 	@Override

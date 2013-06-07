@@ -40,6 +40,7 @@ class StreamSpec extends Specification {
 
 		when: 'a value is accepted'
 		def f = composable.future()
+		composable.get()
 
 		then: 'the future has been passed the values'
 		f.get() == 1

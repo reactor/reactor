@@ -125,6 +125,7 @@ public class Future<T> implements Supplier<T> {
 			public void accept(T value) {
 				try {
 					c.internalAccept(fn.apply(value));
+					c.notifyAccept(Event.wrap(c.getValue()));
 				} catch (Throwable t) {
 					handleError(c, t);
 				}
@@ -148,6 +149,7 @@ public class Future<T> implements Supplier<T> {
 				try {
 					if (fn.apply(value)) {
 						c.internalAccept(value);
+						c.notifyAccept(Event.wrap(c.getValue()));
 					} else {
 						c.decreaseAcceptLength();
 					}
@@ -318,7 +320,7 @@ public class Future<T> implements Supplier<T> {
 		}
 	}
 
-	protected final void internalAccept(T value) {
+	protected void internalAccept(T value) {
 		synchronized (monitor) {
 			setValue(value);
 			if (hasBlockers) {
@@ -328,7 +330,7 @@ public class Future<T> implements Supplier<T> {
 		}
 	}
 
-	protected final void internalAccept(Throwable value) {
+	protected void internalAccept(Throwable value) {
 		synchronized (monitor) {
 			setError(value);
 			if (hasBlockers) {
@@ -366,15 +368,12 @@ public class Future<T> implements Supplier<T> {
 		observable.notify(acceptKey, event);
 	}
 
-
-	protected void handleError(Future<?> c, Throwable t) {
-		c.getObservable().notify(t.getClass(), Event.wrap(t));
-		c.decreaseAcceptLength();
+	protected final void notifyError(Throwable error) {
+		observable.notify(error.getClass(), Event.wrap(error));
 	}
 
-	protected final void notifyError(Throwable error) {
-		synchronized (monitor) {
-			observable.notify(error.getClass(), Event.wrap(error));
-		}
+	protected void handleError(Future<?> c, Throwable t) {
+		c.notifyError(t);
+		c.decreaseAcceptLength();
 	}
 }

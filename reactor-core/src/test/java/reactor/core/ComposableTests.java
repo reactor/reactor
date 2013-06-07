@@ -73,7 +73,6 @@ public class ComposableTests extends AbstractReactorTest {
 						return sum;
 					}
 				});
-
 		await(c, is(15));
 	}
 
@@ -228,7 +227,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	static class String2Integer implements Function<String, Integer> {
 		@Override
-		public Integer apply(String s) {
+		public Integer apply(String s){
 			return Integer.parseInt(s);
 		}
 	}
