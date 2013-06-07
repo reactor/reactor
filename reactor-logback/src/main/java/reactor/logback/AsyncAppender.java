@@ -5,14 +5,10 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import ch.qos.logback.core.spi.AppenderAttachableImpl;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
+import com.lmax.disruptor.*;
 
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,55 +20,67 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 
 	private final AppenderAttachableImpl<ILoggingEvent>    aai      = new AppenderAttachableImpl<ILoggingEvent>();
 	private final AtomicReference<Appender<ILoggingEvent>> delegate = new AtomicReference<Appender<ILoggingEvent>>();
-	private       int                                      backlog  = 8 * 1024;
-	private Disruptor<LogEvent>  disruptor;
+	private ExecutorService      threadPool;
 	private RingBuffer<LogEvent> ringBuffer;
+	private WorkerPool<LogEvent> workerPool;
 
 	public AsyncAppender() {
 	}
 
-	public void setBacklog(int backlog) {
-		this.backlog = backlog;
-	}
-
 	@Override
 	public void start() {
-		disruptor = new Disruptor<LogEvent>(
+		this.threadPool = Executors.newCachedThreadPool(
+				new ThreadFactory() {
+					@Override
+					public Thread newThread(Runnable r) {
+						Thread t = new Thread(r);
+						t.setName("logback-ringbuffer-appender");
+						t.setPriority(Thread.MAX_PRIORITY);
+						t.setDaemon(true);
+						return t;
+					}
+				}
+		);
+
+		this.workerPool = new WorkerPool<LogEvent>(
 				new EventFactory<LogEvent>() {
 					@Override
 					public LogEvent newInstance() {
 						return new LogEvent();
 					}
 				},
-				backlog,
-				Executors.newFixedThreadPool(
-						1,
-						new ThreadFactory() {
-							@Override
-							public Thread newThread(Runnable r) {
-								Thread t = new Thread(r);
-								t.setName("logback-ringbuffer-appender");
-								t.setPriority(Thread.MAX_PRIORITY);
-								t.setDaemon(true);
-								return t;
-							}
-						}
-				),
-				ProducerType.MULTI,
-				new BlockingWaitStrategy()
+				new ExceptionHandler() {
+					@Override
+					public void handleEventException(Throwable throwable, long l, Object o) {
+						addError(throwable.getMessage(), throwable);
+					}
+
+					@Override
+					public void handleOnStartException(Throwable throwable) {
+						addError(throwable.getMessage(), throwable);
+					}
+
+					@Override
+					public void handleOnShutdownException(Throwable throwable) {
+						addError(throwable.getMessage(), throwable);
+					}
+				},
+				new LogEventHandler()
 		);
-		disruptor.handleEventsWith(new LoggingEventHandler());
-		ringBuffer = disruptor.start();
+		this.ringBuffer = workerPool.start(threadPool);
 
 		super.start();
 	}
 
 	@Override
 	public void stop() {
-		disruptor.shutdown();
+		workerPool.halt();
+		threadPool.shutdown();
+
 		if (null != delegate.get()) {
 			delegate.get().stop();
 		}
+
 		super.stop();
 	}
 
@@ -129,9 +137,9 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 		ILoggingEvent event;
 	}
 
-	private class LoggingEventHandler implements EventHandler<LogEvent> {
+	private class LogEventHandler implements WorkHandler<LogEvent> {
 		@Override
-		public void onEvent(LogEvent logEvent, long l, boolean b) throws Exception {
+		public void onEvent(LogEvent logEvent) throws Exception {
 			aai.appendLoopOnAppenders(logEvent.event);
 			logEvent.event = null;
 		}
