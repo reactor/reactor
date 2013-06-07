@@ -21,7 +21,7 @@ import reactor.fn.Event;
 import reactor.fn.Observable;
 
 /**
- * A {@literal Composable} is an specific type of {@link Future} implementing {@link Consumer} in order to provide
+ * A {@literal Composable} is a specific type of {@link Future} implementing {@link Consumer} in order to provide
  * public scoped accept methods. A Composable can push and pull datat o other components that must wait on the data to
  * become available.
  *
