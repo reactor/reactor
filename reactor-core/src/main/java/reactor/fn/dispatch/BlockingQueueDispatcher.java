@@ -61,7 +61,7 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 					}
 				},
 				backlog,
-				200l
+				150l
 		);
 		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
 
