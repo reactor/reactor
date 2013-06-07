@@ -144,13 +144,20 @@ public class Stream<T> extends Composable<T> {
 		}
 
 		c.setExpectedAcceptCount(_expectedAcceptCount < 0 ? _expectedAcceptCount : 1);
+		when(lastSelector, new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				c.accept(lastValue.get());
+			}
+		});
+
 		consume(new Consumer<T>() {
 			@Override
 			public void accept(T value) {
 				try {
 					Reduce<T, V> r = new Reduce<T, V>(lastValue.get(), value);
 					lastValue.set(fn.apply(r));
-					if (_expectedAcceptCount < 0 || _expectedAcceptCount >= getAcceptedCount()) {
+					if (_expectedAcceptCount < 0) {
 						c.accept(lastValue.get());
 					}
 				} catch (Throwable t) {
@@ -258,7 +265,6 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public void accept(T value) {
 		internalAccept(value);
-		notifyAccept(Event.wrap(value));
 	}
 
 	@Override
@@ -267,7 +273,7 @@ public class Stream<T> extends Composable<T> {
 		boolean notifyLast = false;
 
 		synchronized (monitor) {
-			super.internalAccept(value);
+			setValue(value);
 			if (isFirst()) {
 				notifyFirst = true;
 			}
@@ -278,6 +284,7 @@ public class Stream<T> extends Composable<T> {
 			}
 
 			Event<T> ev = Event.wrap(value);
+			notifyAccept(ev);
 
 			if (notifyFirst) {
 				notifyFirst(ev);

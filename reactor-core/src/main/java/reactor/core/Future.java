@@ -125,7 +125,6 @@ public class Future<T> implements Supplier<T> {
 			public void accept(T value) {
 				try {
 					c.internalAccept(fn.apply(value));
-					c.notifyAccept(Event.wrap(c.getValue()));
 				} catch (Throwable t) {
 					handleError(c, t);
 				}
@@ -149,7 +148,6 @@ public class Future<T> implements Supplier<T> {
 				try {
 					if (fn.apply(value)) {
 						c.internalAccept(value);
-						c.notifyAccept(Event.wrap(c.getValue()));
 					} else {
 						c.decreaseAcceptLength();
 					}
@@ -323,6 +321,7 @@ public class Future<T> implements Supplier<T> {
 	protected void internalAccept(T value) {
 		synchronized (monitor) {
 			setValue(value);
+			notifyAccept(Event.wrap(value));
 			if (hasBlockers) {
 				monitor.notifyAll();
 			}
@@ -332,19 +331,13 @@ public class Future<T> implements Supplier<T> {
 
 	protected void internalAccept(Throwable value) {
 		synchronized (monitor) {
+			notifyAccept(Event.wrap(value));
 			setError(value);
 			if (hasBlockers) {
 				monitor.notifyAll();
 			}
 		}
 	}
-
-	public long getAcceptedCount() {
-		synchronized (monitor) {
-			return acceptedCount;
-		}
-	}
-
 	protected final void setValue(T value) {
 		synchronized (monitor) {
 			this.value = value;
