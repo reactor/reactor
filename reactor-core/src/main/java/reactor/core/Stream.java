@@ -38,7 +38,6 @@ import static reactor.fn.Functions.$;
  * and have dedicated data group processing methods.
  *
  * @param <T> The  {@link Stream} output type.
- *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -91,7 +90,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return A new {@link Composable} that is linked to the parent.
 	 */
 	public Stream<T> first() {
-		final Stream<T> c = (Stream<T>)this.assignComposable(getObservable());
+		final Stream<T> c = (Stream<T>) this.assignComposable(getObservable());
 		c.doSetExpectedAcceptCount(1);
 
 		when(firstSelector, new Consumer<T>() {
@@ -112,7 +111,7 @@ public class Stream<T> extends Composable<T> {
 	 * @see {@link #setExpectedAcceptCount(long)}
 	 */
 	public Stream<T> last() {
-		final Stream<T> c = (Stream<T>)this.assignComposable(getObservable());
+		final Stream<T> c = (Stream<T>) this.assignComposable(getObservable());
 		c.doSetExpectedAcceptCount(1);
 
 		when(lastSelector, new Consumer<T>() {
@@ -137,7 +136,7 @@ public class Stream<T> extends Composable<T> {
 	public <V> Stream<V> reduce(final Function<Reduce<T, V>, V> fn, V initial) {
 		Assert.notNull(fn);
 		final AtomicReference<V> lastValue = new AtomicReference<V>(initial);
-		final Stream<V> c = (Stream<V>)this.assignComposable(getObservable());
+		final Stream<V> c = (Stream<V>) this.assignComposable(getObservable());
 
 		final long _expectedAcceptCount;
 		synchronized (monitor) {
@@ -194,7 +193,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return The new {@link Stream}.
 	 */
 	public Stream<T> take(long count) {
-		final Stream<T> c = (Stream<T>)this.assignComposable(getObservable());
+		final Stream<T> c = (Stream<T>) this.assignComposable(getObservable());
 		c.setExpectedAcceptCount(count);
 		consume(c);
 
@@ -227,7 +226,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public <V> Stream<V> map(final Object key, final Observable observable) {
 		Assert.notNull(observable);
-		final Stream<V> c = (Stream<V>)this.assignComposable(observable);
+		final Stream<V> c = (Stream<V>) this.assignComposable(observable);
 		c.setExpectedAcceptCount(-1);
 		final Object replyTo = new Object();
 
@@ -274,32 +273,32 @@ public class Stream<T> extends Composable<T> {
 
 	@Override
 	public <E extends Throwable> Stream<T> when(Class<E> exceptionType, Consumer<E> onError) {
-		return (Stream<T>)super.when(exceptionType, onError);
+		return (Stream<T>) super.when(exceptionType, onError);
 	}
 
 	@Override
 	public Stream<T> consume(Consumer<T> consumer) {
-		return (Stream<T>)super.consume(consumer);
+		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(Object key, Observable observable) {
-		return (Stream<T>)super.consume(key, observable);
+		return (Stream<T>) super.consume(key, observable);
 	}
 
 	@Override
 	public Stream<T> consume(Composable<T> composable) {
-		return (Stream<T>)super.consume(composable);
+		return (Stream<T>) super.consume(composable);
 	}
 
 	@Override
 	public <V> Stream<V> map(Function<T, V> fn) {
-		return (Stream<V>)super.map(fn);
+		return (Stream<V>) super.map(fn);
 	}
 
 	@Override
 	public Stream<T> filter(Function<T, Boolean> fn) {
-		return (Stream<T>)super.filter(fn);
+		return (Stream<T>) super.filter(fn);
 	}
 
 	/**
@@ -353,10 +352,30 @@ public class Stream<T> extends Composable<T> {
 			notifyError(error);
 		}
 
+		private void acceptValues(Iterable<T> values) {
+			for (T initValue : values) {
+				accept(initValue);
+			}
+		}
+
 		@Override
 		public void accept(T value) {
 			boolean notifyFirst = false;
 			boolean notifyLast = false;
+			boolean init = false;
+
+			if (values != null) {
+				synchronized (this.stateMonitor) {
+					if (acceptState == AcceptState.DELAYED) {
+						acceptState = AcceptState.ACCEPTING;
+						init = true;
+					}
+				}
+
+				if (init) {
+					acceptValues(values);
+				}
+			}
 
 			synchronized (monitor) {
 				setValue(value);
@@ -382,6 +401,11 @@ public class Stream<T> extends Composable<T> {
 			if (notifyLast) {
 				notifyLast(ev);
 			}
+
+			synchronized (this.stateMonitor) {
+				acceptState = AcceptState.ACCEPTED;
+			}
+
 		}
 
 		@Override
@@ -394,6 +418,25 @@ public class Stream<T> extends Composable<T> {
 		public T get() {
 			delayedAccept();
 			return super.get();
+		}
+
+		@Override
+		protected boolean isComplete() {
+			if (values != null) {
+				boolean init;
+				synchronized (this.stateMonitor) {
+					init = acceptState == AcceptState.DELAYED;
+				}
+				if (init) {
+					acceptValues(values);
+					synchronized (this.stateMonitor) {
+						acceptState = AcceptState.ACCEPTED;
+						stateMonitor.notifyAll();
+					}
+				}
+
+			}
+			return super.isComplete();
 		}
 
 		@Override
@@ -447,9 +490,7 @@ public class Stream<T> extends Composable<T> {
 				if (null != localError) {
 					accept(localError);
 				} else if (null != localValues) {
-					for (T t : localValues) {
-						accept(t);
-					}
+					acceptValues(localValues);
 				} else if (null != localValue) {
 					accept(localValue);
 				}

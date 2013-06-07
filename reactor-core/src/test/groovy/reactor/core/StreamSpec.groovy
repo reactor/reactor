@@ -25,7 +25,7 @@ class StreamSpec extends Specification {
 	def 'A deferred Stream with an initial value passes the value to a consumer'() {
 		given: 'a composable with an initial value'
 		def values = []
-		Stream composable = Streams.defer(1).sync().get().consume(consumer{ values << it})
+		Stream composable = Streams.defer(1).sync().get().consume(consumer { values << it })
 
 		when: 'a value is accepted'
 		composable.accept(2)
@@ -63,30 +63,31 @@ class StreamSpec extends Specification {
 
 		when: 'a Consumer is registered'
 		def values = []
-		composable.consume(consumer { values << it})
+		composable.consume(consumer { values << it })
 
 		then: 'it is not called with the initial values'
 		values == []
+
+		when: 'get is called'
+		composable.get()
+
+		then: 'the initial values are passed'
+		values == [1, 2, 3, 4, 5]
 
 		when: 'a subsequent value is accepted'
 		composable.accept(6)
 
 		then: 'it is passed to the consumer'
-		values == [6]
+		values == [1, 2, 3, 4, 5, 6]
 
-		when: 'get is called'
-		composable.get()
 
-		// TODO These values should not get out of order
-		then: 'the initial values are passed'
-		values == [6, 1, 2, 3, 4, 5]
 	}
 
 	def 'Accepted values are passed to a registered Consumer'() {
 		given: 'a composable with a registered consumer'
 		Stream composable = Streams.defer().sync().get()
 		def value
-		composable.consume(consumer { value = it} )
+		composable.consume(consumer { value = it })
 
 		when: 'a value is accepted'
 		composable.accept(1)
@@ -142,9 +143,9 @@ class StreamSpec extends Specification {
 
 	def 'A Stream can consume values from another Stream'() {
 		given: 'a deferred composable with a consuming Stream'
-		Stream parent = Streams.defer().sync().get()
-		Stream child = Streams.defer().sync().get()
-		parent.consume((Stream)child)
+		Stream<Integer> parent = Streams.<Integer>defer().sync().get()
+		Stream<Integer> child = Streams.<Integer>defer().sync().get()
+		parent.consume((Composable<Integer>)child)
 
 		when: 'the parent accepts a value'
 		parent.accept(1)
@@ -217,7 +218,7 @@ class StreamSpec extends Specification {
 	def "A Stream's values can be mapped"() {
 		given: 'a source composable with a mapping function'
 		Stream source = Streams.defer().get()
-		Stream mapped = source.map(function {it * 2})
+		Stream mapped = source.map(function { it * 2 })
 
 		when: 'the source accepts a value'
 		source.accept(1)
@@ -229,7 +230,7 @@ class StreamSpec extends Specification {
 	def "A Stream's values can be filtered"() {
 		given: 'a source composable with a filter that rejects odd values'
 		Stream source = Streams.defer().get()
-		Stream filtered = source.filter(function {it % 2 == 0})
+		Stream filtered = source.filter(function { it % 2 == 0 })
 
 		when: 'the source accepts an even value'
 		source.accept(2)
@@ -249,7 +250,7 @@ class StreamSpec extends Specification {
 		Stream source = Streams.defer().get()
 		Stream mapped = source.map(function { throw new RuntimeException() })
 		def errors = 0
-		mapped.when(Exception, consumer { errors++} )
+		mapped.when(Exception, consumer { errors++ })
 
 		when: 'the source accepts a value'
 		source.accept(1)
@@ -263,7 +264,7 @@ class StreamSpec extends Specification {
 		Stream source = Streams.defer().get()
 		Stream filtered = source.filter(function { throw new RuntimeException() })
 		def errors = 0
-		filtered.when(Exception, consumer { errors++} )
+		filtered.when(Exception, consumer { errors++ })
 
 		when: 'the source accepts a value'
 		source.accept(1)
@@ -289,7 +290,7 @@ class StreamSpec extends Specification {
 
 		when: 'a consumer is registered'
 		def values = []
-		reduced.consume(consumer {values << it})
+		reduced.consume(consumer { values << it })
 
 		// TODO This will pass if get is called, but it shouldn't be necessary. The following test passes without calling
 		// get(). The behaviour needs to be consistent irrespective of whether the known number of values is provided up
@@ -307,7 +308,7 @@ class StreamSpec extends Specification {
 		source.setExpectedAcceptCount(5)
 		Stream reduced = source.reduce(new Reduction())
 		def values = []
-		reduced.consume(consumer {values << it})
+		reduced.consume(consumer { values << it })
 
 		when: 'the expected number of values is accepted'
 		source.accept(1)
@@ -373,7 +374,7 @@ class StreamSpec extends Specification {
 		source.accept(2)
 
 		then: 'the updated reduction is available'
-		reduced.get() == 3
+		reduced.get() == 2
 	}
 
 	def 'When an unknown number of values is being reduced, each reduction is passed to a consumer'() {
@@ -381,7 +382,7 @@ class StreamSpec extends Specification {
 		Stream source = Streams.defer().sync().get()
 		Stream reduced = source.reduce(new Reduction())
 		def value
-		reduced.consume(consumer{ value = it})
+		reduced.consume(consumer { value = it })
 
 		when: 'the first value is accepted'
 		source.accept(1)
@@ -393,7 +394,7 @@ class StreamSpec extends Specification {
 		source.accept(2)
 
 		then: 'the updated reduction is available'
-		value == 3
+		value == 2
 	}
 
 	def 'Reduce will accumulate a list of accepted values'() {
@@ -413,7 +414,7 @@ class StreamSpec extends Specification {
 		Stream source = Streams.defer().sync().get()
 		Stream reduced = source.reduce()
 		def value
-		reduced.consume(consumer { value = it})
+		reduced.consume(consumer { value = it })
 
 		when: 'the first value is accepted on the source'
 		source.accept(1)
@@ -434,14 +435,14 @@ class StreamSpec extends Specification {
 
 		Reactor reactor = Reactors.reactor().sync().get()
 
-		reactor.map($('key'), function({Integer.toString(it.data)}))
+		reactor.receive($('key'), function({ Integer.toString(it.data) }))
 		def value
-		reactor.on($('key'), consumer {value = it.data})
+		reactor.on($('key'), consumer { value = it.data })
 
 		Stream<String> mapped = source.map('key', reactor)
 
 		def mappedValue
-		mapped.consume(consumer{value = it})
+		mapped.consume(consumer { mappedValue = it })
 
 		when: 'the source accepts a value'
 		source.accept(1)
@@ -477,7 +478,7 @@ class StreamSpec extends Specification {
 		when: 'a composable consumer is registerd'
 		composable.consume('key', observable)
 
-		// composable.get() TODO This will pass if get is called, but I don't think it should be necessary
+		composable.get()//  TODO This will pass if get is called, but I don't think it should be necessary
 
 		then: 'the observable is notified of the values'
 		3 * observable.notify('key', _)
@@ -487,7 +488,7 @@ class StreamSpec extends Specification {
 		@Override
 		public Integer apply(Reduce<Integer, Integer> reduce) {
 			def result = reduce.lastValue == null ? reduce.nextValue : reduce.lastValue * reduce.nextValue
-			println "#{reduce.last} #{reduce.next} reduced to #{result}"
+			println "${reduce?.lastValue} ${reduce?.nextValue} reduced to ${result}"
 			return result
 		}
 	}
