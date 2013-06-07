@@ -339,6 +339,12 @@ public class Future<T> implements Supplier<T> {
 		}
 	}
 
+	public long getAcceptedCount() {
+		synchronized (monitor) {
+			return acceptedCount;
+		}
+	}
+
 	protected final void setValue(T value) {
 		synchronized (monitor) {
 			this.value = value;

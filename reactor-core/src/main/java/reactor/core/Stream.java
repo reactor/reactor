@@ -150,7 +150,7 @@ public class Stream<T> extends Composable<T> {
 				try {
 					Reduce<T, V> r = new Reduce<T, V>(lastValue.get(), value);
 					lastValue.set(fn.apply(r));
-					if (acceptCountReached()) {
+					if (_expectedAcceptCount < 0 || _expectedAcceptCount >= getAcceptedCount()) {
 						c.accept(lastValue.get());
 					}
 				} catch (Throwable t) {
