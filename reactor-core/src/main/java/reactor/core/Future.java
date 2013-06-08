@@ -336,8 +336,8 @@ public class Future<T> implements Supplier<T> {
 
 	protected void internalAccept(Throwable value) {
 		synchronized (monitor) {
-			setError(value);
 			notifyError(value);
+			setError(value);
 			if (hasBlockers) {
 				monitor.notifyAll();
 			}
@@ -378,7 +378,7 @@ public class Future<T> implements Supplier<T> {
 	}
 
 	protected void handleError(Future<?> c, Throwable t) {
-		c.setError(t);
+		c.notifyError(t);
 		c.decreaseAcceptLength();
 	}
 }
