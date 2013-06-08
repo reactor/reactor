@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+  <bean id="latch" class="java.util.concurrent.CountDownLatch">
+    <constructor-arg value="1"/>
+  </bean>
+
+  <bean id="env" class="reactor.core.Environment"/>
+  <bean id="reactor" class="reactor.spring.context.ReactorFactoryBean">
+    <constructor-arg ref="env"/>
+  </bean>
+
+  <int:channel id="channel">
+    <int:queue/>
+  </int:channel>
+  <int:service-activator ref="latch" method="countDown" input-channel="channel">
+    <int:poller fixed-rate="1000"/>
+  </int:service-activator>
+
+  <bean class="reactor.spring.integration.ReactorInboundChannelAdapter">
+    <constructor-arg ref="reactor"/>
+    <property name="outputChannel" ref="channel"/>
+  </bean>
+
+</beans>
