@@ -56,9 +56,9 @@ Reactor is also designed to be friendly to [Java 8 lambdas](http://www.jcp.org/e
 
 ### Event Loops, Dispatchers, and RingBuffers
 
-Reactor provides three out-of-the-box `Dispatcher` implementations. The `ThreadPoolExecutorDispatcher` is designed to be used in situations where your tasks are longer-running, do blocking IO, or otherwise take longer to complete. It is backed by a standard JDK `ExecutorService`. The `BlockingQueueDispatcher` is analogous to an event loop. In the default configuration, one of these Dispatchers is created per CPU. They are handed out in a round-robin fashion, so when a new `Reactor` is created and the `eventLoop()` method is called on the `Reactor.Spec`, one of the event loop Dispatchers is handed back.
+Reactor provides three out-of-the-box `Dispatcher` implementations. The `ThreadPoolExecutorDispatcher` is designed to be used in situations where your tasks are longer-running, do blocking IO, or otherwise take longer to complete. It is backed by a standard JDK `ExecutorService`. The `BlockingQueueDispatcher` is analogous to an event loop. In the default configuration, one of these Dispatchers is created per CPU. They are handed out in a round-robin fashion, so when a new `Reactor` is created and the `dispatcher(Environment.EVENT_LOOP)` method is called on the `Reactor.Spec`, one of the event loop Dispatchers is handed back.
 
-The highest-throughput Dispatcher is the `RingBufferDispatcher` which is based on the [LMAX Disruptor RingBuffer](https://github.com/lmax-exchange/disruptor). It is a single-thread, RingBuffer-backed Dispatcher. It has the highest performance because there is no context switching required. Tasks are executed in order since their execution is managed by the RingBuffer. The CPU is also saturated when a large volume of tasks is submitted to the Dispatcher so although it might seem necessary to provide multiple threads to ensure the highest throughput, the RingBufferDispatcher provides significantly higher overall non-blocking task throughput than any other Dispatcher implementation with a single thread.
+The highest-throughput Dispatcher is the `RingBufferDispatcher` which is based on the [LMAX Disruptor RingBuffer](https://github.com/lmax-exchange/disruptor). It is a single-thread, RingBuffer-backed Dispatcher. It usually has the highest performance because there is no context switching required. Tasks are executed in order since their execution is managed by the RingBuffer. The CPU is also saturated when a large volume of tasks is submitted to the Dispatcher so although it might seem necessary to provide multiple threads to ensure the highest throughput, the RingBufferDispatcher provides significantly higher overall non-blocking task throughput than any other Dispatcher implementation with a single thread.
 
 ### The Environment
 
@@ -89,7 +89,7 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
     // This factory call creates a Reactor.
     Reactor reactor = R.reactor()
       .using(env) // our current Environment
-      .eventLoop() // use one of the BlockingQueueDispatchers
+      .dispatcher(Environment.EVENT_LOOP) // use one of the BlockingQueueDispatchers
       .get(); // get the object when finished configuring
 
     // Wire an event to handle the data sent with the Event
