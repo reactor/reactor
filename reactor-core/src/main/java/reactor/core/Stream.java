@@ -452,8 +452,10 @@ public class Stream<T> extends Composable<T> {
 							localValues = values;
 						}
 					}
-					acceptState = AcceptState.ACCEPTING;
-					acceptRequired = true;
+					if (localError != null || localValue != null || localValues != null) {
+						acceptState = AcceptState.ACCEPTING;
+						acceptRequired = true;
+					}
 				} else {
 					while (acceptState == AcceptState.ACCEPTING) {
 						try {
@@ -471,7 +473,7 @@ public class Stream<T> extends Composable<T> {
 					accept(localError);
 				} else if (null != localValues) {
 					acceptValues(localValues);
-				} else if (null != localValue) {
+				} else  {
 					accept(localValue);
 				}
 				synchronized (stateMonitor) {

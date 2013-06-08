@@ -125,9 +125,9 @@ class GroovyPromisesSpec extends Specification {
 
 		and: "setting a value"
 		p << 'not a number'
+		s.await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
-		s.await(2000, TimeUnit.MILLISECONDS)
 		thrown(IllegalStateException)
 		latch.count == 0
 	}

@@ -287,12 +287,6 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected void handleError(Future<?> c, Throwable t) {
-		c.internalAccept(t);
-		c.decreaseAcceptLength();
-	}
-
-	@Override
 	public void accept(Throwable error) {
 		set(error);
 	}

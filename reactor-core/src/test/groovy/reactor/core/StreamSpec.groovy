@@ -140,10 +140,9 @@ class StreamSpec extends Specification {
 	}
 
 	def 'Await will time out if a value is not available'() {
-		given: 'a deferred composable'
+		when: 'a deferred composable'
 		Stream composable = Streams.defer().sync().get()
 
-		when: 'its value is awaited'
 		def start = System.currentTimeMillis()
 		def value = composable.await(500, TimeUnit.MILLISECONDS)
 		def duration = System.currentTimeMillis() - start
