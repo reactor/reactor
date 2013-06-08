@@ -176,6 +176,7 @@ project('reactor-spring') {
 		compile "org.springframework:spring-context-support:$springVersion"
 		compile "org.springframework:spring-core:$springVersion"
 		compile "org.springframework:spring-expression:$springVersion"
+		compile "org.springframework:spring-tx:$springVersion"
 
 		// Spring Integration
 		compile "org.springframework.integration:spring-integration-core:$siVersion"
