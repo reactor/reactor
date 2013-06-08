@@ -119,15 +119,15 @@ class GroovyPromisesSpec extends Specification {
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		def s = p.then{ Integer.parseInt it }.
+		def s = p.then{ println it;Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
 				then{ println('not in log'); true }
 
 		and: "setting a value"
 		p << 'not a number'
-		s.await(500, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
+		s.await(2000, TimeUnit.MILLISECONDS)
 		thrown(IllegalStateException)
 		latch.count == 0
 	}

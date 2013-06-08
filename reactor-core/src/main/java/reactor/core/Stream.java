@@ -257,59 +257,6 @@ public class Stream<T> extends Composable<T> {
 		return c;
 	}
 
-	/**
-	 * Trigger composition with a value to be processed by dedicated consumers
-	 *
-	 * @param value The exception
-	 */
-	@Override
-	public void accept(T value) {
-		internalAccept(value);
-	}
-
-	@Override
-	protected void internalAccept(T value) {
-		boolean notifyFirst = false;
-		boolean notifyLast = false;
-
-		synchronized (monitor) {
-			setValue(value);
-			if (isFirst()) {
-				notifyFirst = true;
-			}
-
-			if (acceptCountReached()) {
-				notifyLast = true;
-				monitor.notifyAll();
-			}
-
-			Event<T> ev = Event.wrap(value);
-			notifyAccept(ev);
-
-			if (notifyFirst) {
-				notifyFirst(ev);
-			}
-
-			if (notifyLast) {
-				notifyLast(ev);
-			}
-		}
-	}
-
-	@Override
-	protected <U> Future<U> createComposableConsumer(Observable src) {
-		return new Stream<U>(getEnvironment(), createReactor(src));
-	}
-
-
-	protected final void notifyFirst(Event<?> event) {
-		getObservable().notify(firstKey, event);
-	}
-
-	protected final void notifyLast(Event<?> event) {
-		getObservable().notify(lastKey, event);
-	}
-
 	@Override
 	public <E extends Throwable> Stream<T> when(Class<E> exceptionType, Consumer<E> onError) {
 		return (Stream<T>) super.when(exceptionType, onError);
@@ -338,6 +285,44 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public Stream<T> filter(Function<T, Boolean> fn) {
 		return (Stream<T>) super.filter(fn);
+	}
+
+	@Override
+	protected void internalAccept(T value) {
+		synchronized (monitor) {
+			setValue(value);
+			Event<T> ev = Event.wrap(value);
+
+			if (acceptCountReached()) {
+				monitor.notifyAll();
+			}
+
+			if (getExpectedAcceptCount() < 0 || !isBeyondExceptedCount()) {
+				notifyAccept(ev);
+			}
+			if (isComplete()) {
+				notifyLast(ev);
+			}
+
+			if (isFirst()) {
+				notifyFirst(ev);
+			}
+
+		}
+	}
+
+	@Override
+	protected <U> Future<U> createFuture(Observable src) {
+		return new Stream<U>(getEnvironment(), createReactor(src));
+	}
+
+
+	protected final void notifyFirst(Event<?> event) {
+		getObservable().notify(firstKey, event);
+	}
+
+	protected final void notifyLast(Event<?> event) {
+		getObservable().notify(lastKey, event);
 	}
 
 	/**
@@ -393,52 +378,27 @@ public class Stream<T> extends Composable<T> {
 
 		private void acceptValues(Iterable<T> values) {
 			for (T initValue : values) {
-				accept(initValue);
+				internalAccept(initValue);
 			}
 		}
 
 		@Override
 		public void accept(T value) {
-			boolean notifyFirst = false;
-			boolean notifyLast = false;
 			boolean init = false;
 
-			if (values != null) {
-				synchronized (this.stateMonitor) {
-					if (acceptState == AcceptState.DELAYED) {
-						acceptState = AcceptState.ACCEPTING;
-						init = true;
-					}
+			synchronized (this.stateMonitor) {
+				if (acceptState == AcceptState.DELAYED) {
+					acceptState = AcceptState.ACCEPTING;
+					init = true;
 				}
+			}
 
+			if (values != null) {
 				if (init) {
 					acceptValues(values);
 				}
-			}
-
-			synchronized (monitor) {
-				setValue(value);
-
-				if (isFirst()) {
-					notifyFirst = true;
-				}
-
-				if (acceptCountReached()) {
-					notifyLast = true;
-					monitor.notifyAll();
-				}
-			}
-
-			Event<T> ev = Event.wrap(value);
-
-			if (notifyFirst) {
-				notifyFirst(ev);
-			}
-
-			notifyAccept(ev);
-
-			if (notifyLast) {
-				notifyLast(ev);
+			} else {
+				internalAccept(value);
 			}
 
 			synchronized (this.stateMonitor) {
@@ -460,7 +420,7 @@ public class Stream<T> extends Composable<T> {
 		}
 
 		@Override
-		protected <U> Stream<U> createComposableConsumer(Observable src) {
+		protected <U> Stream<U> createFuture(Observable src) {
 			final DeferredStream<T> self = this;
 			final DeferredStream<U> c =
 					new DeferredStream<U>(getEnvironment(), createReactor(src), self.getExpectedAcceptCount()) {

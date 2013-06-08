@@ -568,5 +568,25 @@ class PromiseSpec extends Specification {
 		then: "the filtered promise is rejected"
 		filteredPromise.error
 	}
+
+	def "Errors stop compositions"() {
+		given: "a promise"
+		Promise<String> p = P.<String>defer().using(new Environment()).dispatcher('eventLoop').get()
+		final latch = new CountDownLatch(1)
+
+		when: "p1 is consumed by p2"
+		Promise s = p.then(function{ Integer.parseInt it }, null).
+				when (NumberFormatException, consumer{ latch.countDown() }).
+				then(function{ println('not in log'); true }, null)
+
+		and: "setting a value"
+		p.accept 'not a number'
+		s.await(5000, TimeUnit.MILLISECONDS)
+
+		then: 'No value'
+		latch.count == 0
+		thrown(IllegalStateException)
+	}
+
 }
 

@@ -263,14 +263,14 @@ public class Future<T> implements Supplier<T> {
 	}
 
 	protected <U> Future<U> assignComposable(Observable src) {
-		Future<U> c = this.createComposableConsumer(src);
+		Future<U> c = this.createFuture(src);
 		synchronized (monitor) {
 			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
 		}
 		return c;
 	}
 
-	protected <U> Future<U> createComposableConsumer(Observable src) {
+	protected <U> Future<U> createFuture(Observable src) {
 		return new Future<U>(getEnvironment(), createReactor(getObservable()));
 	}
 
@@ -307,6 +307,11 @@ public class Future<T> implements Supplier<T> {
 			return expectedAcceptCount;
 		}
 	}
+	protected boolean isBeyondExceptedCount() {
+		synchronized (monitor) {
+			return acceptedCount > expectedAcceptCount;
+		}
+	}
 
 	protected final Observable getObservable() {
 		return this.observable;
@@ -331,13 +336,14 @@ public class Future<T> implements Supplier<T> {
 
 	protected void internalAccept(Throwable value) {
 		synchronized (monitor) {
-			notifyAccept(Event.wrap(value));
 			setError(value);
+			notifyError(value);
 			if (hasBlockers) {
 				monitor.notifyAll();
 			}
 		}
 	}
+
 	protected final void setValue(T value) {
 		synchronized (monitor) {
 			this.value = value;
@@ -372,7 +378,7 @@ public class Future<T> implements Supplier<T> {
 	}
 
 	protected void handleError(Future<?> c, Throwable t) {
-		c.notifyError(t);
+		c.setError(t);
 		c.decreaseAcceptLength();
 	}
 }

@@ -255,7 +255,7 @@ public class Promise<T> extends Composable<T> {
 	@Override
 	public Promise<T> filter(final Function<T, Boolean> fn) {
 		synchronized (monitor) {
-			final Promise<T> p = createComposableConsumer(getObservable());
+			final Promise<T> p = createFuture(getObservable());
 
 			Consumer<T> consumer = new Consumer<T>() {
 				@Override
@@ -282,6 +282,11 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
+	public <E extends Throwable> Promise<T> when(Class<E> exceptionType, Consumer<E> onError) {
+		return (Promise<T>)super.when(exceptionType, onError);
+	}
+
+	@Override
 	protected void handleError(Future<?> c, Throwable t) {
 		c.internalAccept(t);
 		c.decreaseAcceptLength();
@@ -298,7 +303,7 @@ public class Promise<T> extends Composable<T> {
 	}
 
 	@Override
-	protected <U> Promise<U> createComposableConsumer(Observable src) {
+	protected <U> Promise<U> createFuture(Observable src) {
 		final Promise<U> p = new Promise<U>(getEnvironment(), src);
 		forwardError(p);
 		return p;

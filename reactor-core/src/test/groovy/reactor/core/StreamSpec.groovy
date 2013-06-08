@@ -30,8 +30,8 @@ class StreamSpec extends Specification {
 		when: 'a value is accepted'
 		composable.accept(2)
 
-		then: 'the consumer has been passed the values'
-		values == [1, 2]
+		then: 'the consumer has been passed the init value'
+		values == [1]
 	}
 
 	def 'A deferred Stream with an initial value with Future read only supplier'() {
@@ -89,8 +89,8 @@ class StreamSpec extends Specification {
 		when: 'a subsequent value is accepted'
 		composable.accept(6)
 
-		then: 'it is passed to the consumer'
-		values == [1, 2, 3, 4, 5, 6]
+		then: 'it is not passed to the consumer'
+		values == [1, 2, 3, 4, 5]
 
 
 	}
@@ -186,8 +186,8 @@ class StreamSpec extends Specification {
 		when: 'another value is accepted'
 		composable.accept(6)
 
-		then: 'the value of last is updated'
-		last.get() == 6
+		then: 'the value of last is not updated'
+		last.get() == 5
 	}
 
 	def 'When the number of values is unknown, last is never updated'() {

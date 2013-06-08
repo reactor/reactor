@@ -17,7 +17,6 @@
 package reactor.core;
 
 import reactor.fn.Consumer;
-import reactor.fn.Event;
 import reactor.fn.Observable;
 
 /**
@@ -59,7 +58,7 @@ public abstract class Composable<T> extends Future<T> implements Consumer<T> {
 	 * Provide a read-only future that no longer accepts user values
 	 */
 	public Future<T> future() {
-		final Future<T> c = super.createComposableConsumer(getObservable());
+		final Future<T> c = super.createFuture(getObservable());
 		synchronized (monitor) {
 			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
 			if (null != getValue()) {
@@ -102,7 +101,6 @@ public abstract class Composable<T> extends Future<T> implements Consumer<T> {
 	@Override
 	public void accept(T value) {
 		internalAccept(value);
-		notifyAccept(Event.wrap(value));
 	}
 
 

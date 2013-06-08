@@ -31,7 +31,7 @@ import static reactor.Fn.$
 /**
  * @author Stephane Maldini
  */
-class GroovyComposableSpec extends Specification {
+class GroovyStreamSpec extends Specification {
 
 	@Shared def testEnv
 

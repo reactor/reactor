@@ -341,7 +341,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
 		Stream<E> composable = Streams.defer(ev).using(env).using(this).get();
 		composable.<V>map(key, this).consume(consumer);
-		composable.accept(ev);
+		composable.get();
 
 		return this;
 	}

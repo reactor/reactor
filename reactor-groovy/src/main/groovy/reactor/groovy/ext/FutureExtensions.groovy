@@ -17,29 +17,28 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.Composable
+import reactor.core.Future
 import reactor.core.Promise
 import reactor.core.Stream
 import reactor.fn.Consumer
 import reactor.fn.Function
+import reactor.fn.Observable
 import reactor.fn.support.Reduce
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureFunction
 import reactor.groovy.support.ClosureReduce
-import reactor.fn.Observable
-
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 @CompileStatic
-class ComposableExtensions {
+class FutureExtensions {
 
 	/**
 	 * Alias
 	 */
 
-	static <T, V> Composable<V> to(final Composable<T> selfType, final key, final Observable observable) {
+	static <T, V> Future<V> to(final Future<T> selfType, final key, final Observable observable) {
 		selfType.consume key, observable
 	}
 
@@ -47,11 +46,11 @@ class ComposableExtensions {
 	 * Closure converters
 	 */
 
-	static <T, V> Composable<V> map(final Composable<T> selfType, final Closure<V> closure) {
+	static <T, V> Future<V> map(final Future<T> selfType, final Closure<V> closure) {
 		selfType.map new ClosureFunction<T, V>(closure)
 	}
 
-	static <T> Composable<T> consume(final Composable<T> selfType, final Closure closure) {
+	static <T> Future<T> consume(final Future<T> selfType, final Closure closure) {
 		selfType.consume new ClosureConsumer<T>(closure)
 	}
 
@@ -63,7 +62,7 @@ class ComposableExtensions {
 		selfType.reduce new ClosureReduce<T, V>(closure), initial
 	}
 
-	static <T, E> Composable<T> when(final Composable<T> selfType, final Class<E> exceptionType, final Closure closure) {
+	static <T, E> Future<T> when(final Future<T> selfType, final Class<E> exceptionType, final Closure closure) {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
@@ -101,7 +100,7 @@ class ComposableExtensions {
 		selfType.reduce other
 	}
 
-	static <T, V> Composable<V> or(final Composable<T> selfType, final Function<T, V> other) {
+	static <T, V> Future<V> or(final Future<T> selfType, final Function<T, V> other) {
 		selfType.map other
 	}
 
@@ -113,7 +112,7 @@ class ComposableExtensions {
 		selfType.filter other
 	}
 
-	static <T> Composable<T> leftShift(final Composable<T> selfType, final Closure other) {
+	static <T> Future<T> leftShift(final Future<T> selfType, final Closure other) {
 		consume selfType, other
 	}
 
@@ -125,7 +124,7 @@ class ComposableExtensions {
 		reduce selfType, other
 	}
 
-	static <T, V> Composable<V> or(final Composable<T> selfType, final Closure<V> other) {
+	static <T, V> Future<V> or(final Future<T> selfType, final Closure<V> other) {
 		map selfType, other
 	}
 
