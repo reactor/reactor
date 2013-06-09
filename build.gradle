@@ -199,6 +199,13 @@ project('reactor-logback') {
 	}
 }
 
+project('reactor-benchmark') {
+	description = 'Performance tests'
+	dependencies {
+		compile project(':reactor-core')
+	}
+}
+
 project('reactor-tcp') {
 	description = 'Reactor TCP component'
 	dependencies {
