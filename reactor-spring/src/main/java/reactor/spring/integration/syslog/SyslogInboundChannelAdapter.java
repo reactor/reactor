@@ -83,6 +83,7 @@ public class SyslogInboundChannelAdapter extends MessageProducerSupport {
 								UUID uuid = new UUID();
 								Map<String, Object> headers = new HashMap<String, Object>();
 								headers.put(MessageHeaders.ID, uuid);
+								this.headers = new MessageHeaders(headers);
 							}
 
 							@Override
