@@ -1,9 +1,11 @@
 package reactor.spring.integration.syslog;
 
+import com.eaio.uuid.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.integration.Message;
 import org.springframework.integration.MessageChannel;
+import org.springframework.integration.MessageHeaders;
 import org.springframework.integration.endpoint.MessageProducerSupport;
-import org.springframework.integration.message.GenericMessage;
 import reactor.core.Environment;
 import reactor.tcp.TcpServer;
 import reactor.tcp.encoding.syslog.SyslogCodec;
@@ -11,6 +13,9 @@ import reactor.tcp.encoding.syslog.SyslogConsumer;
 import reactor.tcp.encoding.syslog.SyslogMessage;
 import reactor.tcp.netty.NettyTcpServer;
 import reactor.util.Assert;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Jon Brisbin
@@ -54,8 +59,26 @@ public class SyslogInboundChannelAdapter extends MessageProducerSupport {
 				.codec(new SyslogCodec())
 				.consume(new SyslogConsumer() {
 					@Override
-					protected void accept(SyslogMessage msg) {
-						outputChannel.send(new GenericMessage<SyslogMessage>(msg));
+					protected void accept(final SyslogMessage msg) {
+						outputChannel.send(new Message<SyslogMessage>() {
+							MessageHeaders headers;
+
+							{
+								UUID uuid = new UUID();
+								Map<String, Object> headers = new HashMap<String, Object>();
+								headers.put(MessageHeaders.ID, uuid);
+							}
+
+							@Override
+							public MessageHeaders getHeaders() {
+								return headers;
+							}
+
+							@Override
+							public SyslogMessage getPayload() {
+								return msg;
+							}
+						});
 					}
 				})
 				.get()
