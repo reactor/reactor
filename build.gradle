@@ -169,6 +169,7 @@ project('reactor-spring') {
 	description = 'Reactor Spring components'
 	dependencies {
 		compile project(':reactor-core')
+		compile(project(':reactor-tcp'), optional)
 
 		// Spring
 		compile "org.springframework:spring-beans:$springVersion"
@@ -179,7 +180,7 @@ project('reactor-spring') {
 		compile "org.springframework:spring-tx:$springVersion"
 
 		// Spring Integration
-		compile "org.springframework.integration:spring-integration-core:$siVersion"
+		compile("org.springframework.integration:spring-integration-core:$siVersion", optional)
 
 		// Testing
 		testCompile "org.spockframework:spock-spring:$spockVersion"
