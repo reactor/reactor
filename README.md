@@ -66,7 +66,7 @@ Each `Reactor` you create needs a `Dispatcher` to execute tasks. By default, wit
 
 Since it's not desirable to create too many threads in an asynchronous application and *something* has to keep track of those few Dispatchers that are divvyed out to the components that need them, you need to instaniate an Environment which will create those Dispatchers based on either the default configuration (provided in a properties file in the Reactor JAR file) or by providing your own configuration.
 
-There's no magic to it. You simply "new" up an instance of `Environment` and, when creating Reactors, Composables, and Promises, pass a reference to this Environment into the Specs (essentially a "builder" helper class). The Environment instance is where the `reactor.` system properties live and it's also the place where the small number of Dispatchers that are intended to be used by any component in your application that needs one reside.
+There's no magic to it. You simply "new" up an instance of `Environment` and, when creating Reactors, Streams, and Promises, pass a reference to this Environment into the Specs (essentially a "builder" helper class). The Environment instance is where the `reactor.` system properties live and it's also the place where the small number of Dispatchers that are intended to be used by any component in your application that needs one reside.
 
 You can, of course, create Dispatchers directly in your code. There may be times in scenarios like embedding in other threading scenarios where that's desirable. But in general, you should refrain from directly instantiating your own Dispatchers and instead use those configured to be created by the Environment.
 
