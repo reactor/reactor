@@ -3,18 +3,16 @@ package reactor.spring.integration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.integration.Message;
 import org.springframework.integration.MessageChannel;
-import org.springframework.integration.MessageHeaders;
 import org.springframework.integration.endpoint.MessageProducerSupport;
-import org.springframework.integration.message.GenericMessage;
 import org.springframework.util.Assert;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.selector.Selector;
+import reactor.spring.integration.support.ReactorEventConverter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Map;
 
 import static reactor.fn.Functions.T;
 
@@ -26,7 +24,8 @@ public class ReactorInboundChannelAdapter extends MessageProducerSupport {
 	private final    Reactor        reactor;
 	private final    Selector       selector;
 	private volatile MessageChannel errorChannel;
-	private volatile Converter<Event<?>, Message<?>> converter = new ReactorEventConverter();
+	@SuppressWarnings("unchecked")
+	private volatile Converter<Event, Message> converter = new ReactorEventConverter();
 
 	public ReactorInboundChannelAdapter(@Nonnull Reactor reactor) {
 		this(reactor, null);
@@ -45,7 +44,7 @@ public class ReactorInboundChannelAdapter extends MessageProducerSupport {
 		this.errorChannel = errorChannel;
 	}
 
-	public void setConverter(Converter<Event<?>, Message<?>> converter) {
+	public void setConverter(Converter<Event, Message> converter) {
 		Assert.notNull(converter, "Converter cannot be null.");
 		this.converter = converter;
 	}
@@ -74,15 +73,6 @@ public class ReactorInboundChannelAdapter extends MessageProducerSupport {
 					errorChannel.send(converter.convert(ev));
 				}
 			});
-		}
-	}
-
-	private static class ReactorEventConverter implements Converter<Event<?>, Message<?>> {
-		@SuppressWarnings("unchecked")
-		@Override
-		public Message<?> convert(Event<?> ev) {
-			MessageHeaders hdrs = new MessageHeaders((Map) ev.getHeaders().asMap());
-			return new GenericMessage<Object>(ev.getData(), hdrs);
 		}
 	}
 
