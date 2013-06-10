@@ -11,11 +11,11 @@ import java.util.Map;
 /**
  * @author Jon Brisbin
  */
-public class ReactorEventConverter<T> implements Converter<Event<T>, Message<T>> {
-	@SuppressWarnings("unchecked")
+public class ReactorEventConverter implements Converter<Event<?>, Message<?>> {
 	@Override
-	public Message<T> convert(Event<T> ev) {
+	@SuppressWarnings("unchecked")
+	public Message<?> convert(Event<?> ev) {
 		MessageHeaders hdrs = new MessageHeaders((Map) ev.getHeaders().asMap());
-		return new GenericMessage<T>(ev.getData(), hdrs);
+		return new GenericMessage(ev.getData(), hdrs);
 	}
 }

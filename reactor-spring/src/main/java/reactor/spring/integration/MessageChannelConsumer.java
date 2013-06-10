@@ -15,30 +15,30 @@ import javax.annotation.Nullable;
  *
  * @author Jon Brisbin
  */
-public class ChannelConsumer<T> implements Consumer<T> {
+public class MessageChannelConsumer<T> implements Consumer<T> {
 
 	private final    MessageChannel           channel;
 	private final    MessageChannel           errors;
 	@SuppressWarnings("unchecked")
-	private volatile Converter<T, Message<T>> converter;
+	private volatile Converter<T, Message<?>> converter;
 
 	/**
-	 * Create a new {@literal ChannelConsumer} using the given output channel.
+	 * Create a new {@literal MessageChannelConsumer} using the given output channel.
 	 *
 	 * @param channel The {@link MessageChannel} on which to publish accepted objects.
 	 */
-	public ChannelConsumer(@Nonnull MessageChannel channel) {
+	public MessageChannelConsumer(@Nonnull MessageChannel channel) {
 		this(channel, null);
 	}
 
 	/**
-	 * Create a new {@literal ChannelConsumer} using the given output channel and report any errors on the given error
-	 * channel.
+	 * Create a new {@literal MessageChannelConsumer} using the given output channel and report any errors on the given
+	 * error channel.
 	 *
 	 * @param channel The {@link MessageChannel} on which to publish accepted objects.
 	 * @param errors  The {@link MessageChannel} on which to publish errors.
 	 */
-	public ChannelConsumer(@Nonnull MessageChannel channel, @Nullable MessageChannel errors) {
+	public MessageChannelConsumer(@Nonnull MessageChannel channel, @Nullable MessageChannel errors) {
 		Assert.notNull(channel, "MessageChannel cannot be null.");
 		this.channel = channel;
 		this.errors = errors;
@@ -50,7 +50,7 @@ public class ChannelConsumer<T> implements Consumer<T> {
 	 *
 	 * @param converter The converter to use.
 	 */
-	public void setConverter(Converter<T, Message<T>> converter) {
+	public void setConverter(Converter<T, Message<?>> converter) {
 		Assert.notNull("Converter cannot be null.");
 		this.converter = converter;
 	}
@@ -66,12 +66,12 @@ public class ChannelConsumer<T> implements Consumer<T> {
 		ch.send(createMessage(t));
 	}
 
-	private Message<T> createMessage(T t) {
-		Message<T> msg;
+	private Message<?> createMessage(T t) {
+		Message<?> msg;
 		if (null != converter) {
 			msg = converter.convert(t);
 		} else {
-			msg = new GenericMessage<T>(t);
+			msg = new GenericMessage<Object>(t);
 		}
 		return msg;
 	}
