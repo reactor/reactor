@@ -21,6 +21,7 @@ import org.springframework.integration.MessageHeaders;
 import reactor.fn.Event;
 import reactor.util.Assert;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -41,7 +42,8 @@ public class ReactorEventMessage<T> implements Message<T> {
 	public MessageHeaders getHeaders() {
 		if (null == headers) {
 			synchronized (event) {
-				Map m = (Map) event.getHeaders().asMap();
+				Map<String, Object> m = new HashMap<String, Object>();
+				m.putAll(event.getHeaders().asMap());
 				m.put(MessageHeaders.ID, event.getId());
 				headers = new MessageHeaders(m);
 			}
