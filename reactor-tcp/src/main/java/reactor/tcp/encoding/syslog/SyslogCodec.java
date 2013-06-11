@@ -1,8 +1,7 @@
 package reactor.tcp.encoding.syslog;
 
-import reactor.fn.Event;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.Observable;
 import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
@@ -48,8 +47,8 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 	}
 
 	@Override
-	public Function<Buffer, SyslogMessage> decoder(Object notifyKey, Observable observable) {
-		return new SyslogMessageDecoder(notifyKey, observable);
+	public Function<Buffer, SyslogMessage> decoder(Consumer<SyslogMessage> next) {
+		return new SyslogMessageDecoder(next);
 	}
 
 	@Override
@@ -60,13 +59,11 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 	private class SyslogMessageDecoder implements Function<Buffer, SyslogMessage> {
 		private final Calendar cal  = Calendar.getInstance();
 		private final int      year = cal.get(Calendar.YEAR);
-		private final Object      notifyKey;
-		private final Observable  observable;
-		private       Buffer.View remainder;
+		private final Consumer<SyslogMessage> next;
+		private       Buffer.View             remainder;
 
-		private SyslogMessageDecoder(Object notifyKey, Observable observable) {
-			this.notifyKey = notifyKey;
-			this.observable = observable;
+		private SyslogMessageDecoder(Consumer<SyslogMessage> next) {
+			this.next = next;
 		}
 
 		@Override
@@ -133,9 +130,8 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 																										null,
 																										host,
 																										msg);
-				if (null != observable) {
-					Event<SyslogMessage> ev = Event.wrap(syslogMsg);
-					observable.notify(notifyKey, ev);
+				if (null != next) {
+					next.accept(syslogMsg);
 				} else {
 					return syslogMsg;
 				}

@@ -6,21 +6,17 @@ import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
-import reactor.fn.dispatch.Dispatcher;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
-import reactor.tcp.AbstractTcpConnection;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.encoding.Codec;
 
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -57,7 +53,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_RCVBUF, rcvbuf)
 				.option(ChannelOption.SO_SNDBUF, sndbuf)
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
-				.handler(new LoggingHandler())
+				.handler(new LoggingHandler(LoggerFactory.getLogger(getClass())))
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
@@ -131,74 +127,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			}
 		};
 		return new ChannelHandler[]{readHandler};
-	}
-
-	protected class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
-		private final SocketChannel     channel;
-		private final InetSocketAddress remoteAddress;
-
-		public NettyTcpConnection(Environment env,
-															Codec<Buffer, IN, OUT> codec,
-															Dispatcher ioDispatcher,
-															Reactor eventsReactor,
-															SocketChannel channel) {
-			super(env, codec, ioDispatcher, eventsReactor);
-			this.channel = channel;
-			this.remoteAddress = channel.remoteAddress();
-		}
-
-		@Override
-		public boolean consumable() {
-			return !channel.isInputShutdown();
-		}
-
-		@Override
-		public boolean writable() {
-			return !channel.isOutputShutdown();
-		}
-
-		@Override
-		public InetSocketAddress remoteAddress() {
-			return remoteAddress;
-		}
-
-		@Override
-		protected void write(Buffer data, final Consumer<Boolean> onComplete) {
-			write(data.asBytes(), onComplete);
-		}
-
-		@Override
-		protected void write(Object data, final Consumer<Boolean> onComplete) {
-			ChannelFuture writeFuture = channel.write(data);
-			if (null != onComplete) {
-				writeFuture.addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
-						onComplete.accept(future.isSuccess());
-					}
-				});
-			}
-		}
-	}
-
-	private static class LoggingHandler extends ChannelHandlerAdapter {
-		private final Logger LOG = LoggerFactory.getLogger(NettyTcpServer.class);
-
-		@Override
-		public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelFuture future) throws Exception {
-			if (LOG.isInfoEnabled()) {
-				LOG.info("BIND {}", localAddress);
-			}
-			super.bind(ctx, localAddress, future);
-		}
-
-		@Override
-		public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelFuture future) throws Exception {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("CONNECT {}", remoteAddress);
-			}
-			super.connect(ctx, remoteAddress, localAddress, future);
-		}
 	}
 
 }

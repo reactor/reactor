@@ -1,4 +1,4 @@
-package reactor.tcp.syslog.test;
+package reactor.tcp;
 
 import org.junit.Ignore;
 import org.junit.Test;

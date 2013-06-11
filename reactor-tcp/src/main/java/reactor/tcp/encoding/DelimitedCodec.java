@@ -1,29 +1,42 @@
 package reactor.tcp.encoding;
 
+import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.Observable;
 import reactor.io.Buffer;
 
 /**
+ * An implementation of that splits a {@link Buffer} into segments based on a delimiter.
+ *
  * @author Jon Brisbin
  */
 public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
-	private final char                   delimiter;
+	private final byte                   delimiter;
 
+	/**
+	 * Create a line-feed-delimited codec, using the given {@literal Codec} as a delegate.
+	 *
+	 * @param delegate The delegate {@link Codec}.
+	 */
 	public DelimitedCodec(Codec<Buffer, IN, OUT> delegate) {
-		this('\n', delegate);
+		this((byte) 10, delegate);
 	}
 
-	public DelimitedCodec(char delimiter, Codec<Buffer, IN, OUT> delegate) {
+	/**
+	 * Create a delimited codec using the given delimiter and using the given {@literal Codec} as a delegate.
+	 *
+	 * @param delimiter The delimiter to use.
+	 * @param delegate  The delegate {@link Codec}.
+	 */
+	public DelimitedCodec(byte delimiter, Codec<Buffer, IN, OUT> delegate) {
 		this.delimiter = delimiter;
 		this.delegate = delegate;
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
-		return new DelimitedDecoder(notifyKey, observable);
+	public Function<Buffer, IN> decoder(Consumer<IN> next) {
+		return new DelimitedDecoder(next);
 	}
 
 	@Override
@@ -31,12 +44,12 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		return new DelimitedEncoder();
 	}
 
-	public class DelimitedDecoder implements Function<Buffer, IN> {
+	private class DelimitedDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
 		private       Buffer               remainder;
 
-		public DelimitedDecoder(Object notifyKey, Observable observable) {
-			this.decoder = delegate.decoder(notifyKey, observable);
+		public DelimitedDecoder(Consumer<IN> next) {
+			this.decoder = delegate.decoder(next);
 		}
 
 		@Override
@@ -55,7 +68,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 					decoder.apply(b);
 				} else {
 					// remainder
-					remainder = new Buffer(b.byteBuffer().duplicate());
+					remainder = b;
 				}
 			}
 
@@ -63,7 +76,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		}
 	}
 
-	public class DelimitedEncoder implements Function<OUT, Buffer> {
+	private class DelimitedEncoder implements Function<OUT, Buffer> {
 		Function<OUT, Buffer> encoder = delegate.encoder();
 
 		@Override

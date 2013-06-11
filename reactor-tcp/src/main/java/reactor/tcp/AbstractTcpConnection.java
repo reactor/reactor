@@ -1,16 +1,17 @@
 package reactor.tcp;
 
-import reactor.S;
 import reactor.Fn;
 import reactor.R;
-import reactor.core.Stream;
+import reactor.S;
 import reactor.core.Environment;
 import reactor.core.Reactor;
+import reactor.core.Stream;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Function;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.selector.Selector;
+import reactor.fn.support.NotifyConsumer;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
@@ -18,6 +19,8 @@ import reactor.tcp.encoding.Codec;
 import static reactor.Fn.$;
 
 /**
+ * Implementations of this class should provide concrete functionality for doing real IO.
+ *
  * @author Jon Brisbin
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
@@ -43,16 +46,22 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 											.using(ioDispatcher)
 											.get();
 		this.eventsReactor = eventsReactor;
-		this.decoder = codec.decoder(read.getT2(), eventsReactor);
-		this.encoder = codec.encoder();
+		if (null != codec) {
+			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getT2(), eventsReactor));
+			this.encoder = codec.encoder();
+		} else {
+			this.decoder = null;
+			this.encoder = null;
+		}
 	}
 
+	/**
+	 * Get the {@code System.currentTimeMillis()} this connection was created.
+	 *
+	 * @return The age in milliseconds.
+	 */
 	public long getCreated() {
 		return created;
-	}
-
-	public Object getReadKey() {
-		return read.getT2();
 	}
 
 	@Override
@@ -64,9 +73,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Stream<IN> in() {
 		Stream<IN> c = S.<IN>defer()
-												.using(env)
-												.using(eventsReactor.getDispatcher())
-												.get();
+										.using(env)
+										.using(eventsReactor.getDispatcher())
+										.get();
 		consume(c);
 		return c;
 	}
@@ -91,17 +100,14 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public Stream<OUT> receive(final Function<IN, OUT> fn) {
-		final Stream<OUT> c = out();
+	public TcpConnection<IN, OUT> receive(final Function<IN, OUT> fn) {
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
-				OUT out = fn.apply(in);
-				send(c);
-				c.accept(out);
+				send(fn.apply(in));
 			}
 		});
-		return c;
+		return this;
 	}
 
 	@Override
@@ -132,7 +138,11 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 								write(bytes, onComplete);
 							}
 						} else {
-							write(data, onComplete);
+							if (Buffer.class.isInstance(data)) {
+								write((Buffer) data, onComplete);
+							} else {
+								write(data, onComplete);
+							}
 						}
 					}
 				},
@@ -142,6 +152,13 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		return this;
 	}
 
+	/**
+	 * Perfoming necessary decoding on the data and notify the internal {@link Reactor} of any results.
+	 *
+	 * @param data The data to decode.
+	 * @return {@literal true} if any more data is remaining to be consumed in the given {@link Buffer}, {@literal false}
+	 *         otherwise.
+	 */
 	public boolean read(Buffer data) {
 		if (null != decoder) {
 			while ((null != data.byteBuffer() && data.byteBuffer().hasRemaining()) && null != decoder.apply(data)) {
@@ -153,8 +170,20 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		return data.remaining() > 0;
 	}
 
+	/**
+	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
+	 *
+	 * @param data       The data to write, as a {@link Buffer}.
+	 * @param onComplete The callback to invoke when the write is complete.
+	 */
 	protected abstract void write(Buffer data, Consumer<Boolean> onComplete);
 
+	/**
+	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
+	 *
+	 * @param data       The data to write.
+	 * @param onComplete The callback to invoke when the write is complete.
+	 */
 	protected abstract void write(Object data, Consumer<Boolean> onComplete);
 
 }

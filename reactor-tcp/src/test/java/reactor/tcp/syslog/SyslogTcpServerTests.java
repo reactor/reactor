@@ -77,7 +77,7 @@ public class SyslogTcpServerTests {
 				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
 				 pipeline.addLast("decoder", new StringDecoder());
 				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String, SyslogMessage>() {
-					 Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null, null);
+					 Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null);
 
 					 @Override
 					 public SyslogMessage decode(ChannelHandlerContext ctx, String msg) throws Exception {

@@ -1,12 +1,5 @@
 <configuration>
 
-  <appender name="file" class="ch.qos.logback.core.FileAppender">
-    <file>syslog.log</file>
-    <encoder>
-      <pattern>%msg%n</pattern>
-    </encoder>
-  </appender>
-
   <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>
@@ -16,15 +9,17 @@
   </appender>
 
   <appender name="async" class="reactor.logback.AsyncAppender">
-    <backlog>1024</backlog>
-    <appender-ref ref="file"/>
+    <appender-ref ref="stdout"/>
   </appender>
 
+  <logger name="ch.qos" level="warn">
+    <appender-ref ref="stdout"/>
+  </logger>
   <logger name="syslog" level="info">
     <appender-ref ref="async"/>
   </logger>
 
-  <root level="info">
+  <root level="warn">
     <appender-ref ref="async"/>
   </root>
 
