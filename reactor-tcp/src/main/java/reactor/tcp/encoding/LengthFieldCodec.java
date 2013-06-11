@@ -16,10 +16,13 @@
 
 package reactor.tcp.encoding;
 
+import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.Observable;
 import reactor.io.Buffer;
 import reactor.util.Assert;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Jon Brisbin
@@ -29,10 +32,22 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private final int                    lengthFieldLength;
 	private final Codec<Buffer, IN, OUT> delegate;
 
+	/**
+	 * Create a length-field codec that reads the first integer as the length of the remaining message.
+	 *
+	 * @param delegate The delegate {@link Codec}.
+	 */
 	public LengthFieldCodec(Codec<Buffer, IN, OUT> delegate) {
 		this(4, delegate);
 	}
 
+	/**
+	 * Create a length-field codec that reads either the first integer or the first long as the the length of the remaining
+	 * message.
+	 *
+	 * @param lengthFieldLength The length of the length field. Valid values are 4 (int) or 8 (long).
+	 * @param delegate          The delegate {@link Codec}.
+	 */
 	public LengthFieldCodec(int lengthFieldLength, Codec<Buffer, IN, OUT> delegate) {
 		Assert.state(lengthFieldLength == 4 || lengthFieldLength == 8, "lengthFieldLength should either be 4 (int) or 8 (long).");
 		this.lengthFieldLength = lengthFieldLength;
@@ -40,8 +55,8 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
-		return new LengthFieldDecoder(notifyKey, observable);
+	public Function<Buffer, IN> decoder(Consumer<IN> next) {
+		return new LengthFieldDecoder(next);
 	}
 
 	@Override
@@ -51,15 +66,55 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private class LengthFieldDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
-		private final Buffer remainder = new Buffer();
+		private final Consumer<IN>         next;
+		private       Buffer               remainder;
 
-		private LengthFieldDecoder(Object notifyKey, Observable observable) {
-			this.decoder = delegate.decoder(notifyKey, observable);
+		private LengthFieldDecoder(Consumer<IN> next) {
+			this.decoder = delegate.decoder(next);
+			this.next = next;
 		}
 
 		@Override
 		public IN apply(Buffer buffer) {
+			if (null != remainder) {
+				buffer.prepend(remainder);
+				remainder = null;
+			}
+
+			for (Buffer.View view : splice(buffer)) {
+				IN in = decoder.apply(view.get());
+				if (null == next) {
+					return in;
+				} else {
+					next.accept(in);
+				}
+			}
+
+			if (buffer.remaining() > 0) {
+				remainder = buffer;
+			}
+
 			return null;
+		}
+
+		private List<Buffer.View> splice(Buffer b) {
+			List<Buffer.View> views = new ArrayList<Buffer.View>();
+			while (b.remaining() > 0) {
+				int len;
+				if (lengthFieldLength == 4) {
+					len = b.readInt();
+				} else {
+					len = (int) b.readLong();
+				}
+				if (len > b.remaining()) {
+					return views;
+				}
+
+				int pos = b.position();
+				views.add(b.createView(pos, pos + len));
+				b.skip(len);
+			}
+			return views;
 		}
 	}
 
@@ -80,8 +135,7 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 					encoded.prepend((long) encoded.remaining());
 				}
 			}
-
-			return null;
+			return encoded;
 		}
 	}
 

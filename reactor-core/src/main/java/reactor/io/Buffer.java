@@ -269,6 +269,25 @@ public class Buffer implements Comparable<Buffer>,
 		return (null == buffer ? 0 : buffer.position());
 	}
 
+	public Buffer position(int pos) {
+		if (null != buffer) {
+			buffer.position(pos);
+		}
+		return this;
+	}
+
+	public Buffer skip(int len) {
+		if (null != buffer) {
+			int pos = buffer.position();
+			if (pos + len < buffer.remaining()) {
+				buffer.position(pos + len);
+			} else {
+				throw new BufferUnderflowException();
+			}
+		}
+		return this;
+	}
+
 	/**
 	 * Provides the current limit of the internal {@link ByteBuffer}.
 	 *
@@ -506,27 +525,31 @@ public class Buffer implements Comparable<Buffer>,
 	/**
 	 * Append the given {@link ByteBuffer} to this {@literal Buffer}.
 	 *
-	 * @param b The {@link ByteBuffer} to append.
+	 * @param buffers The {@link ByteBuffer ByteBuffers} to append.
 	 * @return {@literal this}
 	 */
-	public Buffer append(ByteBuffer b) {
-		ensureCapacity(b.remaining());
-		buffer.put(b);
+	public Buffer append(ByteBuffer... buffers) {
+		for (ByteBuffer bb : buffers) {
+			ensureCapacity(bb.remaining());
+			buffer.put(bb);
+		}
 		return this;
 	}
 
 	/**
 	 * Append the given {@link Buffer} to this {@literal Buffer}.
 	 *
-	 * @param b The {@link Buffer} to append.
+	 * @param buffers The {@link Buffer Buffers} to append.
 	 * @return {@literal this}
 	 */
-	public Buffer append(Buffer b) {
-		int pos = (null == buffer ? 0 : buffer.position());
-		int len = b.remaining();
-		ensureCapacity(len);
-		buffer.put(b.byteBuffer());
-		buffer.position(pos + len);
+	public Buffer append(Buffer... buffers) {
+		for (Buffer b : buffers) {
+			int pos = (null == buffer ? 0 : buffer.position());
+			int len = b.remaining();
+			ensureCapacity(len);
+			buffer.put(b.byteBuffer());
+			buffer.position(pos + len);
+		}
 		return this;
 	}
 
@@ -939,9 +962,9 @@ public class Buffer implements Comparable<Buffer>,
 				// there's remaining capacity that hasn't been used yet
 				if (pos + atLeast > cap) {
 					expand();
-				} else {
-					buffer.limit(Math.min(pos + atLeast, cap));
+					cap = buffer.capacity();
 				}
+				buffer.limit(Math.min(pos + atLeast, cap));
 			} else {
 				expand();
 			}
@@ -1015,28 +1038,22 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
-			if (null == buffer) {
+			if (null == buffer || buffer.remaining() == 0) {
 				return -1;
 			}
-			if ((off + len) > buffer.limit()) {
-				throw new BufferUnderflowException();
+			byte[] bytes = asBytes();
+			int bytesLen = bytes.length;
+			System.arraycopy(bytes, 0, b, off, bytesLen);
+			if (len < bytesLen) {
+				buffer.position(position + len);
 			}
-
-			buffer.position(off);
-			for (int i = 0; i < len; i++) {
-				if (buffer.remaining() == 0) {
-					break;
-				}
-				b[i] = buffer.get();
-			}
-
-			return buffer.position() - off;
+			return bytesLen;
 		}
 
 		@Override
 		public long skip(long n) throws IOException {
 			if (n < buffer.remaining()) {
-				throw new BufferUnderflowException();
+				throw new IOException(new BufferUnderflowException());
 			}
 			int pos = buffer.position();
 			buffer.position((int) (pos + n));

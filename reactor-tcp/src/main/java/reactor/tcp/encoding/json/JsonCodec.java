@@ -20,9 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.fn.Event;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.Observable;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
@@ -65,8 +64,8 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder(Object notifyKey, Observable observable) {
-		return new JsonDecoder(notifyKey, observable);
+	public Function<Buffer, IN> decoder(Consumer<IN> next) {
+		return new JsonDecoder(next);
 	}
 
 	@Override
@@ -75,12 +74,10 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	private class JsonDecoder implements Function<Buffer, IN> {
-		private final Object     notifyKey;
-		private final Observable observable;
+		private final Consumer<IN> next;
 
-		private JsonDecoder(Object notifyKey, Observable observable) {
-			this.notifyKey = notifyKey;
-			this.observable = observable;
+		private JsonDecoder(Consumer<IN> next) {
+			this.next = next;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -93,8 +90,8 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 				} else {
 					in = mapper.readValue(buffer.inputStream(), inputType);
 				}
-				if (null != notifyKey && null != observable) {
-					observable.notify(notifyKey, Event.wrap(in));
+				if (null != next) {
+					next.accept(in);
 					return null;
 				} else {
 					return in;
