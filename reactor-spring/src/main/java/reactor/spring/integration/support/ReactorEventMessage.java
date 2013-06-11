@@ -36,7 +36,7 @@ public class ReactorEventMessage<T> implements Message<T> {
 		this.event = event;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
 	public MessageHeaders getHeaders() {
 		if (null == headers) {
