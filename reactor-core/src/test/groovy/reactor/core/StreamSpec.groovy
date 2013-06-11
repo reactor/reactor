@@ -164,7 +164,7 @@ class StreamSpec extends Specification {
 		def duration = System.currentTimeMillis() - start
 
 		then: 'the await will timeout'
-		duration > 500
+		duration >= 500
 		value == null
 	}
 
