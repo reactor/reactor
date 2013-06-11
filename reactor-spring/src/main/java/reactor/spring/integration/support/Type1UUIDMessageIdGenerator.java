@@ -16,6 +16,7 @@
 
 package reactor.spring.integration.support;
 
+import com.eaio.uuid.UUIDGen;
 import org.springframework.integration.MessageHeaders;
 
 import java.util.UUID;
@@ -27,8 +28,7 @@ public class Type1UUIDMessageIdGenerator implements MessageHeaders.IdGenerator {
 
 	@Override
 	public UUID generateId() {
-		com.eaio.uuid.UUID uuid = new com.eaio.uuid.UUID();
-		return new UUID(uuid.getClockSeqAndNode(), uuid.getTime());
+		return new UUID(System.currentTimeMillis(), UUIDGen.getClockSeqAndNode());
 	}
 
 }
