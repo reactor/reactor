@@ -130,7 +130,7 @@ subprojects { subproject ->
 		compile "org.slf4j:slf4j-api:$slf4jVersion"
 
 		// JSR-305 annotations
-		compile("com.google.code.findbugs:jsr305:2.0.0", provided)
+		compile("com.google.code.findbugs:jsr305:2.0.0", optional)
 
 		// Groovy
 		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
@@ -188,7 +188,6 @@ project('reactor-spring') {
 
 	dependencies {
 		compile project(':reactor-core')
-		compile(project(':reactor-tcp'), provided)
 
 		// Spring
 		compile "org.springframework:spring-beans:$springVersion",
@@ -197,9 +196,6 @@ project('reactor-spring') {
 				"org.springframework:spring-core:$springVersion",
 				"org.springframework:spring-expression:$springVersion",
 				"org.springframework:spring-tx:$springVersion"
-
-		// Spring Integration
-		compile("org.springframework.integration:spring-integration-core:$siVersion", provided)
 
 		// Testing
 		testCompile "org.spockframework:spock-spring:$spockVersion",
@@ -233,9 +229,9 @@ project('reactor-tcp') {
 
 		compile "io.netty:netty:$nettyVersion"
 		compile("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion", optional)
-		compile("org.apache.hadoop:hadoop-client:$hadoopVersion", optional)
 
 		// Testing
+		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}
@@ -269,15 +265,15 @@ task asciidoctorHtml(type: AsciidoctorTask, dependsOn: [pullDocs]) {
 	outputDir = file("$buildDir/html")
 	backend = "html5"
 	options = [
-		attributes: [
-			docinfo: '',
-			toc2: '',
-			imagesdir: 'images',
-			stylesdir: 'stylesheets',
-			stylesheet: 'golo.css',
-			appversion: "$version",
-			'source-highlighter': 'highlightjs'
-		]
+			attributes: [
+					docinfo: '',
+					toc2: '',
+					imagesdir: 'images',
+					stylesdir: 'stylesheets',
+					stylesheet: 'golo.css',
+					appversion: "$version",
+					'source-highlighter': 'highlightjs'
+			]
 	]
 
 	doLast {
