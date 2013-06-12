@@ -21,7 +21,7 @@ import reactor.fn.Observable;
 
 /**
  * A {@literal Composable} is a specific type of {@link Future} implementing {@link Consumer} in order to provide
- * public scoped accept methods. A Composable can push and pull datat o other components that must wait on the data to
+ * public scoped accept methods. A Composable can push and pull data to other components that must wait on the data to
  * become available.
  *
  * @param <T> The {@link Composable}  output type.
