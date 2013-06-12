@@ -10,3 +10,5 @@ out
 *.log
 *.i*
 *.java.hsp
+deps.txt
+line_feed.txt
