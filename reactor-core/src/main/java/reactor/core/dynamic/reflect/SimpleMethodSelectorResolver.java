@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 
 import reactor.core.dynamic.annotation.On;
 import reactor.core.dynamic.reflect.support.AnnotationUtils;
+import reactor.fn.selector.ObjectSelector;
 import reactor.fn.selector.Selector;
 
 /**
@@ -44,7 +45,7 @@ public class SimpleMethodSelectorResolver implements MethodSelectorResolver {
 			sel = methodNameToSelectorName(method.getName());
 		}
 
-		return (!"".equals(sel) ? $(sel) : null);
+		return (!"".equals(sel) ? new ObjectSelector<String>(sel) : null);
 	}
 
 	@Override
