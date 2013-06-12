@@ -97,7 +97,7 @@ class NettyTcpServerSpec extends Specification {
 		startLatch.count == 0
 
 		when: "a pojo is written"
-		def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\": \"John Doe\"}"))
+		def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))
 		client.start()
 		dataLatch.await(5, TimeUnit.SECONDS)
 
