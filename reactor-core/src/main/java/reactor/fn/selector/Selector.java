@@ -16,7 +16,7 @@
 
 package reactor.fn.selector;
 
-import com.eaio.uuid.UUID;
+import java.util.UUID;
 
 /**
  * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link reactor.fn.selector.Taggable} so that they can be

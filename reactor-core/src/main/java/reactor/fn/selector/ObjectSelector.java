@@ -16,12 +16,9 @@
 
 package reactor.fn.selector;
 
-import com.eaio.uuid.UUID;
+import reactor.util.UUIDUtils;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of the internal
@@ -32,7 +29,7 @@ import java.util.TreeSet;
  */
 public class ObjectSelector<T> implements Selector {
 
-	private final UUID   uuid    = new UUID();
+	private final UUID   uuid    = UUIDUtils.create();
 	private final Object monitor = new Object();
 
 	private final T                 object;

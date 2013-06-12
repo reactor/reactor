@@ -18,13 +18,7 @@ package reactor.core;
 
 import static reactor.fn.Functions.$;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import reactor.convert.StandardConverters;
@@ -44,7 +38,6 @@ import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
 
-import com.eaio.uuid.UUID;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 
@@ -70,7 +63,7 @@ public class Environment {
 	 */
 	public static final String THREAD_POOL = "threadPoolExecutor";
 
-	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
+	public static final    int            PROCESSORS    = Runtime.getRuntime().availableProcessors();
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 

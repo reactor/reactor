@@ -16,13 +16,14 @@
 
 package reactor.fn;
 
-import com.eaio.uuid.UUID;
 import reactor.util.Assert;
+import reactor.util.UUIDUtils;
 
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -79,7 +80,7 @@ public class Event<T> {
 	 */
 	public synchronized UUID getId() {
 		if (null == id) {
-			id = new UUID();
+			id = UUIDUtils.create();
 		}
 		return id;
 	}
