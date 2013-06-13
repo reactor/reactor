@@ -98,10 +98,17 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Stream<OUT> out() {
-		return S.<OUT>defer()
-						.using(env)
-						.using(eventsReactor.getDispatcher())
-						.get();
+		Stream<OUT> s = S.<OUT>defer()
+										 .using(env)
+										 .using(eventsReactor.getDispatcher())
+										 .get();
+		s.consume(new Consumer<OUT>() {
+			@Override
+			public void accept(OUT out) {
+				send(out, null);
+			}
+		});
+		return s;
 	}
 
 	@Override
@@ -149,8 +156,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 					@Override
 					public void accept(OUT data) {
 						if (null != encoder) {
-							Buffer bytes;
-							while (null != (bytes = encoder.apply(data)) && bytes.remaining() > 0) {
+							Buffer bytes = encoder.apply(data);
+							if (bytes.remaining() > 0) {
 								write(bytes, onComplete);
 							}
 						} else {
