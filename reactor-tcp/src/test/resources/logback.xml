@@ -19,7 +19,7 @@
   <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>
-        %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+        %d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n
       </pattern>
     </encoder>
   </appender>
@@ -28,12 +28,8 @@
     <appender-ref ref="stdout"/>
   </appender>
 
-  <logger name="ch.qos" level="warn">
-    <appender-ref ref="stdout"/>
-  </logger>
-  <logger name="syslog" level="info">
-    <appender-ref ref="async"/>
-  </logger>
+  <logger name="reactor" level="debug"/>
+  <logger name="syslog" level="info"/>
 
   <root level="warn">
     <appender-ref ref="async"/>
