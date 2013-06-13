@@ -64,8 +64,7 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
 	@Override
 	protected void write(Object data, final Consumer<Boolean> onComplete) {
-		channel.write(data);
-		ChannelFuture writeFuture = channel.flush();
+		ChannelFuture writeFuture = channel.write(data);
 		if (null != onComplete) {
 			writeFuture.addListener(new ChannelFutureListener() {
 				@Override
@@ -74,6 +73,14 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 				}
 			});
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "NettyTcpConnection{" +
+				"channel=" + channel +
+				", remoteAddress=" + remoteAddress +
+				'}';
 	}
 
 }

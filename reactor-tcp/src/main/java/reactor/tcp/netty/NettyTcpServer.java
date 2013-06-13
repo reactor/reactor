@@ -133,7 +133,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
-				int len = data.readableBytes();
 				Buffer b = new Buffer(data.nioBuffer());
 				conn.read(b);
 
