@@ -21,30 +21,36 @@ package reactor.util;
 import com.eaio.uuid.UUIDGen;
 
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * Helper for creating Type-1 time-based UUIDs.
+ *
  * @author Jon Brisbin
  */
 public abstract class UUIDUtils {
 
 	private static final long          clockNodeAndSeq = UUIDGen.getClockSeqAndNode();
 	private static final ReentrantLock lock            = new ReentrantLock();
-	private static final AtomicLong    lastTime        = new AtomicLong();
+	private static long lastTime;
 
 	private UUIDUtils() {
 	}
 
+	/**
+	 * Create a new time-based UUID.
+	 *
+	 * @return
+	 */
 	public static UUID create() {
 		long timeMillis = (System.currentTimeMillis() * 10000) + 0x01B21DD213814000L;
 
 		lock.lock();
 		try {
-			if (lastTime.get() == timeMillis) {
-				timeMillis = lastTime.incrementAndGet();
+			if (lastTime == timeMillis) {
+				timeMillis = ++lastTime;
 			} else {
-				lastTime.set(timeMillis);
+				lastTime = timeMillis;
 			}
 		} finally {
 			lock.unlock();
