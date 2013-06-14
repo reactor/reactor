@@ -35,16 +35,16 @@ class StandardCodecsSpec extends Specification {
 		given: "delimited data"
 		def codec = new DelimitedCodec<String, String>(StandardCodecs.STRING_CODEC)
 		def data = Buffer.wrap("Hello World!\nHello World!\nHello World!\n")
-		def count = 0
+		def hellos = []
 
 		when: "data is decoded"
 		def decoder = codec.decoder({ String s ->
-			count += s.trim().length()
+			hellos << s
 		} as Consumer<String>)
 		decoder.apply(data)
 
 		then: "data was decoded"
-		count == 36
+		hellos == ["Hello World!\n", "Hello World!\n", "Hello World!\n"]
 
 		when: "data is encoded"
 		def encoder = codec.encoder()
