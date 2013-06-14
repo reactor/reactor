@@ -16,29 +16,59 @@
 
 package reactor.tcp;
 
+import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
+import reactor.tcp.encoding.LengthFieldCodec;
+import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.encoding.json.JsonCodec;
 import reactor.tcp.netty.NettyTcpServer;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 /**
  * @author Jon Brisbin
  */
-@Ignore
+//@Ignore
 public class TcpServerTests {
 
-	Environment env;
+	final ExecutorService threadPool = Executors.newCachedThreadPool();
+	final int             msgs       = 2000000;
+	final int             threads    = 4;
+	final int             port       = 24887;
+
+	Environment    env;
+	CountDownLatch latch;
+	AtomicLong count = new AtomicLong();
+	AtomicLong start = new AtomicLong();
+	AtomicLong end   = new AtomicLong();
 
 	@Before
 	public void loadEnv() {
 		env = new Environment();
+		latch = new CountDownLatch(msgs * threads);
+	}
+
+	@After
+	public void cleanup() {
+		threadPool.shutdownNow();
 	}
 
 	@Test
-	public void testTcpServer() throws InterruptedException {
+	public void tcpServerHandlesJsonPojos() throws InterruptedException {
 		TcpServer<Pojo, Pojo> server = new TcpServer.Spec<Pojo, Pojo>(NettyTcpServer.class)
 				.using(env)
 				.dispatcher(Environment.EVENT_LOOP)
@@ -60,6 +90,54 @@ public class TcpServerTests {
 		while (true) {
 			Thread.sleep(5000);
 		}
+	}
+
+	@Test
+	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
+		TcpServer<byte[], byte[]> server = new TcpServer.Spec<byte[], byte[]>(NettyTcpServer.class)
+				.using(env)
+				.dispatcher(Environment.RING_BUFFER)
+				.listen(port)
+				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
+				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {
+					@Override
+					public void accept(TcpConnection<byte[], byte[]> conn) {
+						conn.consume(new Consumer<byte[]>() {
+							@Override
+							public void accept(byte[] bytes) {
+								latch.countDown();
+								int i = 1;
+								for (byte b : bytes) {
+									if (b != (byte) i++) {
+										System.err.print("byte " + b + " does not match expected byte " + i);
+										return;
+									}
+								}
+							}
+						});
+					}
+				})
+				.get()
+				.start(new Consumer<Void>() {
+					@Override
+					public void accept(Void v) {
+						start.set(System.currentTimeMillis());
+						for (int i = 0; i < threads; i++) {
+							threadPool.submit(new LengthFieldMessageWriter(port));
+						}
+					}
+				});
+
+		latch.await(30, TimeUnit.SECONDS);
+		end.set(System.currentTimeMillis());
+
+		assertThat("latch was counted down", latch.getCount(), is(0L));
+
+		double elapsed = (end.get() - start.get()) * 1.0;
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
+
+		server.shutdown();
 	}
 
 	private static class Pojo {
@@ -85,6 +163,42 @@ public class TcpServerTests {
 			return "Pojo{" +
 					"name='" + name + '\'' +
 					'}';
+		}
+	}
+
+	private class LengthFieldMessageWriter extends Thread {
+		private final Random rand = new Random();
+		private final int port;
+		private final int length;
+
+		private LengthFieldMessageWriter(int port) {
+			this.port = port;
+			this.length = rand.nextInt(256);
+		}
+
+		@Override
+		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
+
+				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
+				ByteBuffer buff = ByteBuffer.allocate(length + 4);
+				buff.putInt(length);
+				byte[] bytes = new byte[length];
+				for (int i = 0; i < length; i++) {
+					bytes[i] = (byte) (i + 1);
+				}
+				buff.put(bytes);
+				buff.flip();
+
+				start.set(System.currentTimeMillis());
+				for (int j = 0; j < msgs; j++) {
+					ch.write(buff);
+					buff.flip();
+					count.incrementAndGet();
+				}
+			} catch (IOException e) {
+			}
 		}
 	}
 
