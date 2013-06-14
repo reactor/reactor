@@ -279,7 +279,7 @@ public class Buffer implements Comparable<Buffer>,
 	public Buffer skip(int len) {
 		if (null != buffer) {
 			int pos = buffer.position();
-			if (pos + len < buffer.remaining()) {
+			if (len <= buffer.remaining()) {
 				buffer.position(pos + len);
 			} else {
 				throw new BufferUnderflowException();
@@ -885,11 +885,23 @@ public class Buffer implements Comparable<Buffer>,
 				start = end;
 			}
 		}
-		views.add(createView(start, buffer.position()));
+		if (start < buffer.position()) {
+			views.add(createView(start, buffer.position()));
+		}
 
 		reset();
 
 		return views;
+	}
+
+	/**
+	 * Create a {@link View} of the current range of this {@link Buffer}.
+	 *
+	 * @return
+	 */
+	public View createView() {
+		snapshot();
+		return new View(position, limit);
 	}
 
 	/**
