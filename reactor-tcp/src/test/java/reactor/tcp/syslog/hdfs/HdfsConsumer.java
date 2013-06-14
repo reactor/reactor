@@ -21,6 +21,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import reactor.fn.Consumer;
+import reactor.io.Buffer;
 import reactor.tcp.encoding.syslog.SyslogMessage;
 
 import java.io.IOException;
@@ -41,7 +42,12 @@ public class HdfsConsumer implements Consumer<SyslogMessage> {
 	@Override
 	public void accept(SyslogMessage msg) {
 		try {
-			out.writeUTF(msg.toString());
+			byte[] bytes = msg.toString().getBytes();
+			int len = bytes.length;
+			for (int i = 0; i < len; i += Buffer.SMALL_BUFFER_SIZE) {
+				int size = Math.min(len - i, Buffer.SMALL_BUFFER_SIZE);
+				out.write(bytes, i, size);
+			}
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
