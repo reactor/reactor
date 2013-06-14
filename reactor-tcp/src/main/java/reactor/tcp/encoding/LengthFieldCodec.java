@@ -21,9 +21,6 @@ import reactor.fn.Function;
 import reactor.io.Buffer;
 import reactor.util.Assert;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * @author Jon Brisbin
  */
@@ -66,40 +63,26 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private class LengthFieldDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
-		private final Consumer<IN>         next;
 		private       Buffer               remainder;
 
 		private LengthFieldDecoder(Consumer<IN> next) {
 			this.decoder = delegate.decoder(next);
-			this.next = next;
 		}
 
 		@Override
 		public IN apply(Buffer buffer) {
+			if (buffer.remaining() == 0) {
+				return null;
+			}
+
+			Buffer b;
 			if (null != remainder) {
-				buffer.prepend(remainder);
-				remainder = null;
+				b = remainder;
+			} else {
+				b = buffer;
 			}
 
-			for (Buffer.View view : splice(buffer)) {
-				IN in = decoder.apply(view.get());
-				if (null == next) {
-					return in;
-				} else {
-					next.accept(in);
-				}
-			}
-
-			if (buffer.remaining() > 0) {
-				remainder = buffer;
-			}
-
-			return null;
-		}
-
-		private List<Buffer.View> splice(Buffer b) {
-			List<Buffer.View> views = new ArrayList<Buffer.View>();
-			while (b.remaining() > 0) {
+			while (b.remaining() > lengthFieldLength) {
 				int len;
 				if (lengthFieldLength == 4) {
 					len = b.readInt();
@@ -107,15 +90,30 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 					len = (int) b.readLong();
 				}
 				if (len > b.remaining()) {
-					return views;
+					b.position(b.position() - lengthFieldLength);
+					remainder = buffer;
+					return null;
 				}
 
 				int pos = b.position();
-				views.add(b.createView(pos, pos + len));
-				b.skip(len);
+				int limit = b.limit();
+				Buffer.View v = b.createView(pos, pos + len);
+				IN in = decoder.apply(v.get());
+				b.byteBuffer().limit(limit);
+				b.position(pos + len);
+				if (in != null) {
+					return in;
+				}
 			}
-			return views;
+
+			if (b == remainder) {
+				remainder = null;
+				return apply(buffer);
+			}
+
+			return null;
 		}
+
 	}
 
 	private class LengthFieldEncoder implements Function<OUT, Buffer> {
