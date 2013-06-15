@@ -34,7 +34,6 @@ import reactor.tcp.encoding.Codec;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Jon Brisbin
@@ -129,16 +128,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
-			AtomicInteger counter = new AtomicInteger();
-
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
 				Buffer b = new Buffer(data.nioBuffer());
+				int start = b.position();
 				conn.read(b);
-
-				if (counter.incrementAndGet() % memReclaimRatio == 0) {
-					data.clear();
-				}
+				data.skipBytes(b.position() - start);
 			}
 		};
 		return new ChannelHandler[]{readHandler};

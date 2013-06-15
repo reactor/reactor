@@ -21,7 +21,6 @@ import reactor.tcp.encoding.Codec;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Jon Brisbin
@@ -31,7 +30,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 	private final Bootstrap bootstrap;
 	private final Reactor   eventsReactor;
-	private final int       memReclaimRatio;
 
 	public NettyTcpClient(@Nonnull Environment env,
 												@Nonnull Reactor reactor,
@@ -42,7 +40,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		super(env, reactor, connectAddress, rcvbuf, sndbuf, codec);
 		this.eventsReactor = reactor;
 
-		memReclaimRatio = env.getProperty("reactor.tcp.memReclaimRatio", Integer.class, 12);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 
@@ -112,16 +109,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
 
 		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
-			AtomicInteger counter = new AtomicInteger();
-
 			@Override
 			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
 				Buffer b = new Buffer(data.nioBuffer());
+				int start = b.position();
 				conn.read(b);
-
-				if (counter.incrementAndGet() % memReclaimRatio == 0) {
-					data.clear();
-				}
+				data.skipBytes(b.position() - start);
 			}
 
 			@Override

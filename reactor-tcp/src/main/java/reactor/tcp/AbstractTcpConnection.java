@@ -183,9 +183,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 *         otherwise.
 	 */
 	public boolean read(Buffer data) {
-		if (null != decoder) {
-			while ((null != data.byteBuffer() && data.byteBuffer().hasRemaining()) && null != decoder.apply(data)) {
-			}
+		if (null != decoder && null != data.byteBuffer()) {
+			decoder.apply(data);
 		} else {
 			eventsReactor.notify(read.getT2(), Event.wrap(data));
 		}
