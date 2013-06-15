@@ -28,6 +28,8 @@ import java.util.Random;
  */
 public final class FirstFilter extends AbstractFilter {
 
+	public static final FirstFilter INSTANCE = new FirstFilter();
+
 	@Override
 	public <T> List<T> doFilter(List<T> items, Object key) {
 		if (items.isEmpty()) {

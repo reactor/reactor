@@ -18,10 +18,7 @@ package reactor.core;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
-import reactor.filter.Filter;
-import reactor.filter.PassThroughFilter;
-import reactor.filter.RandomFilter;
-import reactor.filter.RoundRobinFilter;
+import reactor.filter.*;
 import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
@@ -38,7 +35,6 @@ import java.util.List;
 /**
  * A generic environment-aware builder for reactor-based components such as {@link Promise},
  * {@link Stream} or {@link Reactor} itself.
- *
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -109,6 +105,11 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		return (SPEC) this;
 	}
 
+	public SPEC firstEventRouting() {
+		this.eventRoutingStrategy = EventRoutingStrategy.FIRST;
+		return (SPEC) this;
+	}
+
 	public SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
 		return (SPEC) this;
@@ -148,9 +149,9 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
-														dispatcher,
-														selectionStrategy,
-														createEventRouter());
+					dispatcher,
+					selectionStrategy,
+					createEventRouter());
 		} else {
 			reactor = new Reactor(
 					env,
@@ -190,6 +191,8 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 			filter = new RoundRobinFilter();
 		} else if (EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
 			filter = new RandomFilter();
+		} else if (EventRoutingStrategy.FIRST == eventRoutingStrategy) {
+			filter = FirstFilter.INSTANCE;
 		} else {
 			if (null == existingFilter) {
 				filter = PassThroughFilter.INSTANCE;
@@ -203,6 +206,6 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	protected abstract TARGET configure(Reactor reactor);
 
 	private enum EventRoutingStrategy {
-		BROADCAST, RANDOM, ROUND_ROBIN;
+		BROADCAST, RANDOM, ROUND_ROBIN, FIRST
 	}
 }
