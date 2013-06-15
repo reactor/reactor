@@ -18,9 +18,11 @@ package reactor.tcp;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
+import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.tcp.encoding.LengthFieldCodec;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.encoding.json.JsonCodec;
@@ -42,11 +44,11 @@ import static org.hamcrest.Matchers.is;
 /**
  * @author Jon Brisbin
  */
-//@Ignore
+@Ignore
 public class TcpServerTests {
 
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
-	final int             msgs       = 2000000;
+	final int             msgs       = 4000000;
 	final int             threads    = 4;
 	final int             port       = 24887;
 
@@ -96,22 +98,25 @@ public class TcpServerTests {
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
 		TcpServer<byte[], byte[]> server = new TcpServer.Spec<byte[], byte[]>(NettyTcpServer.class)
 				.using(env)
-				.dispatcher(Environment.RING_BUFFER)
+				.using(SynchronousDispatcher.INSTANCE)
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {
 					@Override
 					public void accept(TcpConnection<byte[], byte[]> conn) {
 						conn.consume(new Consumer<byte[]>() {
+							long num = 1;
+
 							@Override
 							public void accept(byte[] bytes) {
 								latch.countDown();
-								int i = 1;
-								for (byte b : bytes) {
-									if (b != (byte) i++) {
-										System.err.print("byte " + b + " does not match expected byte " + i);
-										return;
-									}
+								ByteBuffer bb = ByteBuffer.wrap(bytes);
+								if (bb.remaining() < 4) {
+									System.err.println("insufficient len: " + bb.remaining());
+								}
+								int next = bb.getInt();
+								if (next != num++) {
+									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
 								}
 							}
 						});
@@ -182,19 +187,18 @@ public class TcpServerTests {
 				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 
 				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
-				ByteBuffer buff = ByteBuffer.allocate(length + 4);
-				buff.putInt(length);
-				byte[] bytes = new byte[length];
-				for (int i = 0; i < length; i++) {
-					bytes[i] = (byte) (i + 1);
-				}
-				buff.put(bytes);
-				buff.flip();
 
+				int num = 1;
 				start.set(System.currentTimeMillis());
 				for (int j = 0; j < msgs; j++) {
+					ByteBuffer buff = ByteBuffer.allocate(length + 4);
+					buff.putInt(length);
+					buff.putInt(num++);
+					buff.position(0);
+					buff.limit(length + 4);
+
 					ch.write(buff);
-					buff.flip();
+
 					count.incrementAndGet();
 				}
 			} catch (IOException e) {

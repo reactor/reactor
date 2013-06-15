@@ -2,6 +2,7 @@ package reactor.tcp;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
@@ -30,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class TcpClientTests {
 
 	static final int port = 24887;
