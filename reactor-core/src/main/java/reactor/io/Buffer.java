@@ -366,6 +366,18 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	public Buffer rewind(int len) {
+		if (null != buffer) {
+			int pos = buffer.position();
+			if (len <= pos) {
+				buffer.position(pos - len);
+			} else {
+				throw new BufferUnderflowException();
+			}
+		}
+		return this;
+	}
+
 	/**
 	 * Prepend the given {@link Buffer} to this {@literal Buffer}.
 	 *
