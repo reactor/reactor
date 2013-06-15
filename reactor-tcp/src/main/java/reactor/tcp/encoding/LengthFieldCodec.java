@@ -63,7 +63,6 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private class LengthFieldDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
-		private       Buffer               remainder;
 
 		private LengthFieldDecoder(Consumer<IN> next) {
 			this.decoder = delegate.decoder(next);
@@ -71,49 +70,46 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 		@Override
 		public IN apply(Buffer buffer) {
-			if (buffer.remaining() == 0) {
-				return null;
-			}
-
-			Buffer b;
-			if (null != remainder) {
-				b = remainder;
-			} else {
-				b = buffer;
-			}
-
-			while (b.remaining() > lengthFieldLength) {
-				int len;
-				if (lengthFieldLength == 4) {
-					len = b.readInt();
-				} else {
-					len = (int) b.readLong();
-				}
-				if (len > b.remaining()) {
-					b.position(b.position() - lengthFieldLength);
-					remainder = buffer;
+			while (buffer.remaining() > lengthFieldLength) {
+				int expectedLen = readLen(buffer);
+				if (expectedLen > buffer.remaining()) {
+					// This Buffer doesn't contain a full frame of data
+					// reset to the start and bail out
+					buffer.rewind(lengthFieldLength);
 					return null;
 				}
+				// We have at least a full frame of data
 
-				int pos = b.position();
-				int limit = b.limit();
-				Buffer.View v = b.createView(pos, pos + len);
+				// save the position and limit so we can reset it later
+				int pos = buffer.position();
+				int limit = buffer.limit();
+
+				// create a view of the frame
+				Buffer.View v = buffer.createView(pos, pos + expectedLen);
+				// call the delegate decoder with the full frame
 				IN in = decoder.apply(v.get());
-				b.byteBuffer().limit(limit);
-				b.position(pos + len);
-				if (in != null) {
+				// reset the limit
+				buffer.byteBuffer().limit(limit);
+				if (buffer.position() == pos) {
+					// the pointer hasn't advanced, advance it
+					buffer.skip(expectedLen);
+				}
+				if (null != in) {
+					// no Consumer was invoked, return this data
 					return in;
 				}
-			}
-
-			if (b == remainder) {
-				remainder = null;
-				return apply(buffer);
 			}
 
 			return null;
 		}
 
+		private int readLen(Buffer buffer) {
+			if (lengthFieldLength == 4) {
+				return buffer.readInt();
+			} else {
+				return (int) buffer.readLong();
+			}
+		}
 	}
 
 	private class LengthFieldEncoder implements Function<OUT, Buffer> {
