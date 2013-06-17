@@ -21,7 +21,7 @@ import org.springframework.util.Assert;
 import reactor.R;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.spring.context.EventRouting;
+import reactor.fn.dispatch.SynchronousDispatcher;
 
 /**
  * @author Jon Brisbin
@@ -48,7 +48,11 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
 		Reactor.Spec spec = R.reactor().using(env);
 		if (null != dispatcher) {
-			spec.dispatcher(dispatcher);
+			if ("sync".equals(dispatcher)) {
+				spec.using(SynchronousDispatcher.INSTANCE);
+			} else {
+				spec.dispatcher(dispatcher);
+			}
 		}
 		if (null != eventRouting) {
 			switch (eventRouting) {
