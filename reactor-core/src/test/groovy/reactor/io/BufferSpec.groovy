@@ -252,8 +252,8 @@ class BufferSpec extends Specification {
 		when: "the Buffer is split"
 		def parts = buff.split(10)
 
-		then: "there are 3 parts"
-		parts.size() == 3
+		then: "there are only 2 parts"
+		parts.size() == 2
 	}
 
 	def "A Buffer can be sliced into segments"() {
