@@ -101,7 +101,7 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // Send an event to this Reactor and trigger all actions
     // that match the given key
-    reactor.notify("parse", Fn.event(incomingJsonData));
+    reactor.notify("parse", Event.wrap(incomingJsonData));
 
 In Java 8, the event wiring would become extremely succinct:
 
@@ -137,7 +137,7 @@ Events have optional associated metadata in the `headers` property. Events are m
         }
     });
 
-    Event<String> ev = Fn.event("Hello World!");
+    Event<String> ev = Event.wrap("Hello World!");
     ev.getHeaders().set("x-custom-header", "ID_TO_ANOTHER_REACTOR");
     r.notify(ev);
 
