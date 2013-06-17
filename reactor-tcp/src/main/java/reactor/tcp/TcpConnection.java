@@ -64,7 +64,7 @@ public interface TcpConnection<IN, OUT> {
 
 	/**
 	 * Get a {@link Consumer} for output. To send data to the output using this {@link Consumer}, the caller invokes the
-	 * {@link Consumer#accept(OUT)} method.
+	 * {@link Consumer#accept} method.
 	 *
 	 * @return An output {@link Consumer}.
 	 */

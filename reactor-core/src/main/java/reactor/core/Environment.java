@@ -40,6 +40,7 @@ import reactor.fn.registry.Registry;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import reactor.util.Assert;
 
 /**
  * @author Jon Brisbin
@@ -63,9 +64,10 @@ public class Environment {
 	 */
 	public static final String THREAD_POOL = "threadPoolExecutor";
 
-	public static final    int            PROCESSORS    = Runtime.getRuntime().availableProcessors();
+	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
+	private static final String SYNC_DISPATCHER_NAME    = "sync";
 
 	private final Properties env;
 
@@ -104,6 +106,8 @@ public class Environment {
 				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
 			}
 		}
+
+		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration dispatcherConfiguration) {

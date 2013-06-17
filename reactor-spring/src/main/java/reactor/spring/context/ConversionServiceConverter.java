@@ -20,8 +20,7 @@ import org.springframework.core.convert.ConversionService;
 import reactor.convert.Converter;
 
 /**
- * @author Stephane Maldini (smaldini)
- * @date: 3/21/13
+ * @author Stephane Maldini
  */
 public class ConversionServiceConverter implements Converter {
 
