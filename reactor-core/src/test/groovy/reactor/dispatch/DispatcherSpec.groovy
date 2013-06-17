@@ -24,6 +24,9 @@
 
 package reactor.dispatch
 
+import reactor.R
+import reactor.core.Environment
+
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
 
@@ -51,7 +54,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 		def sameThread = new SynchronousDispatcher()
-		def diffThread = new ThreadPoolExecutorDispatcher(1,128)
+		def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>(null)
@@ -78,6 +81,27 @@ class DispatcherSpec extends Specification {
 		taskThread != currentThread
 		//!diffThread.shutdown()
 
+	}
+
+	def "Dispatcher thread can be reused"() {
+
+		given: "ring buffer reactor"
+		def r = R.reactor().using(new Environment()).dispatcher("ringBuffer").get()
+		def latch = new CountDownLatch(2)
+
+		when: "listen for recursive event"
+		r.on(consumer { int i->
+			if (i < 2) {
+				latch.countDown()
+				r.notify(Event.wrap(++i))
+			}
+		})
+
+		and: "call the reactor"
+		r.notify(Event.wrap(0))
+
+		then: "a task is submitted to the thread pool dispatcher"
+		latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 	}
 
 }
