@@ -29,6 +29,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 	private final byte                   delimiter;
+	private final boolean                stripDelimiter;
 
 	/**
 	 * Create a line-feed-delimited codec, using the given {@literal Codec} as a delegate.
@@ -36,7 +37,19 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * @param delegate The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(Codec<Buffer, IN, OUT> delegate) {
-		this((byte) 10, delegate);
+		this((byte) 10, true, delegate);
+
+	}
+
+	/**
+	 * Create a line-feed-delimited codec, using the given {@literal Codec} as a delegate.
+	 *
+	 * @param stripDelimiter Flag to indicate whether the delimiter should be stripped from the chunk or not.
+	 * @param delegate       The delegate {@link Codec}.
+	 */
+	public DelimitedCodec(boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
+		this((byte) 10, stripDelimiter, delegate);
+
 	}
 
 	/**
@@ -45,8 +58,9 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * @param delimiter The delimiter to use.
 	 * @param delegate  The delegate {@link Codec}.
 	 */
-	public DelimitedCodec(byte delimiter, Codec<Buffer, IN, OUT> delegate) {
+	public DelimitedCodec(byte delimiter, boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
 		this.delimiter = delimiter;
+		this.stripDelimiter = stripDelimiter;
 		this.delegate = delegate;
 	}
 
@@ -62,7 +76,6 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private class DelimitedDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
-		private       Buffer               remainder;
 
 		public DelimitedDecoder(Consumer<IN> next) {
 			this.decoder = delegate.decoder(next);
@@ -74,18 +87,9 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 				return null;
 			}
 
-			if (null != remainder) {
-				bytes.prepend(remainder);
-			}
-
-			for (Buffer.View view : bytes.split(delimiter, false)) {
+			for (Buffer.View view : bytes.split(delimiter, stripDelimiter)) {
 				Buffer b = view.get();
-				if (b.last() == delimiter) {
-					decoder.apply(b);
-				} else {
-					// remainder
-					remainder = b;
-				}
+				decoder.apply(b);
 			}
 
 			return null;

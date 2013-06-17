@@ -898,7 +898,7 @@ public class Buffer implements Comparable<Buffer>,
 			}
 		}
 		if (start < buffer.position()) {
-			views.add(createView(start, buffer.position()));
+			buffer.position(start);
 		}
 
 		reset();
