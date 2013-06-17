@@ -108,7 +108,7 @@ public interface Observable {
 	 *
 	 * @return {@literal this}
 	 */
-	<S extends Supplier<Event<?>>> Observable notify(Object key, S supplier);
+	<S extends Supplier<? extends Event<?>>> Observable notify(Object key, S supplier);
 
 	/**
 	 * Notify this component that an {@link Event} is ready to be processed using the internal key that is unique
@@ -134,7 +134,7 @@ public interface Observable {
 	 *
 	 * @see #on(Consumer)
 	 */
-	<S extends Supplier<Event<?>>> Observable notify(S supplier);
+	<S extends Supplier<? extends Event<?>>> Observable notify(S supplier);
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
@@ -159,7 +159,7 @@ public interface Observable {
 	 *
 	 * @return {@literal this}
 	 */
-	<S extends Supplier<Event<?>>> Observable send(Object key, S supplier);
+	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier);
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
@@ -187,7 +187,7 @@ public interface Observable {
 	 *
 	 * @return {@literal this}
 	 */
-	<S extends Supplier<Event<?>>> Observable send(Object key, S supplier, Observable replyTo);
+	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier, Observable replyTo);
 
 	/**
 	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be

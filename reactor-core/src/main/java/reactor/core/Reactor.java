@@ -215,7 +215,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <S extends Supplier<Event<?>>> Reactor notify(Object key, S supplier) {
+	public <S extends Supplier<? extends Event<?>>> Reactor notify(Object key, S supplier) {
 		return notify(key, supplier.get(), null, eventRouter);
 	}
 
@@ -225,7 +225,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <S extends Supplier<Event<?>>> Reactor notify(S supplier) {
+	public <S extends Supplier<? extends Event<?>>> Reactor notify(S supplier) {
 		return notify(defaultKey, supplier.get(), null, eventRouter);
 	}
 
@@ -240,7 +240,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <S extends Supplier<Event<?>>> Reactor send(Object key, S supplier) {
+	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier) {
 		return notify(key, new ReplyToEvent(supplier.get(), this));
 	}
 
@@ -250,7 +250,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <S extends Supplier<Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
+	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
 		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
 	}
 
