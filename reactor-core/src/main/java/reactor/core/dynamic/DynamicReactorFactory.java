@@ -16,7 +16,6 @@
 
 package reactor.core.dynamic;
 
-import reactor.R;
 import reactor.convert.Converter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -32,6 +31,7 @@ import reactor.core.dynamic.reflect.SimpleMethodSelectorResolver;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.Function;
+import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.registry.Registration;
 import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
 import reactor.fn.routing.ConsumerInvoker;
@@ -263,7 +263,11 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		private Reactor createReactor(Dispatcher dispatcherAnnotation) {
 			Spec reactorSpec = Reactors.reactor().using(env);
 			if (dispatcherAnnotation != null) {
-				reactorSpec = reactorSpec.dispatcher(dispatcherAnnotation.value());
+				if ("sync".equals(dispatcherAnnotation.value())) {
+					reactorSpec.using(SynchronousDispatcher.INSTANCE);
+				} else {
+					reactorSpec.dispatcher(dispatcherAnnotation.value());
+				}
 			}
 			return reactorSpec.get();
 		}
