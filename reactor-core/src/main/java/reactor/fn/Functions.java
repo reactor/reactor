@@ -30,7 +30,7 @@ import java.util.concurrent.Future;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Functions {
+public abstract class Functions {
 
 	/**
 	 * Creates an anonymous {@link reactor.fn.selector.Selector}.

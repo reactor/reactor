@@ -22,7 +22,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.1.4'
+	groovyVersion = '2.1.5'
 
 	// Logging
 	slf4jVersion = '1.7.5'
