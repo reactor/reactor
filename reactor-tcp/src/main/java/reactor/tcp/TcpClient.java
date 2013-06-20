@@ -79,7 +79,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @return A {@link Promise} that will be fulfilled with {@literal null} when the connections have been closed.
 	 */
 	public Promise<Void> close() {
-		Promise<Void> p = Promises.<Void>defer().using(env).using(reactor).get();
+		final Promise<Void> p = Promises.<Void>defer().using(env).using(reactor).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@Override
@@ -88,6 +88,7 @@ public abstract class TcpClient<IN, OUT> {
 							reg.getObject().close();
 							reg.cancel();
 						}
+						p.set((Void)null);
 					}
 				},
 				null,

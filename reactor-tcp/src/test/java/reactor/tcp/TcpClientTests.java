@@ -16,15 +16,11 @@
 
 package reactor.tcp;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import reactor.core.Environment;
-import reactor.fn.Consumer;
-import reactor.io.Buffer;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.netty.NettyTcpClient;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThan;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,10 +35,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import reactor.core.Environment;
+import reactor.fn.Consumer;
+import reactor.io.Buffer;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyTcpClient;
 
 /**
  * @author Jon Brisbin
@@ -127,6 +129,23 @@ public class TcpClientTests {
 		client.close();
 
 		assertEquals(Arrays.asList("Hello World!\n", "Hello World!\n", "Hello World!\n"), strings);
+	}
+
+	@Test
+	public void closingPromiseIsFulfilled() throws InterruptedException {
+		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
+				.using(env)
+				.codec(StandardCodecs.LINE_FEED_CODEC)
+				.connect("localhost", port)
+				.get();
+
+		long startTime = System.currentTimeMillis();
+
+		client.close().await();
+
+		long duration = System.currentTimeMillis() - startTime;
+
+		assertThat(duration, is(lessThan(5000L)));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
