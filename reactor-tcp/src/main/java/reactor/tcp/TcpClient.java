@@ -26,6 +26,7 @@ import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
+import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
 
@@ -47,6 +48,7 @@ public abstract class TcpClient<IN, OUT> {
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Reactor                reactor;
+	private final ClientSocketOptions    options;
 	private final Codec<Buffer, IN, OUT> codec;
 
 	protected final Environment env;
@@ -54,14 +56,14 @@ public abstract class TcpClient<IN, OUT> {
 	protected TcpClient(@Nonnull Environment env,
 											@Nonnull Reactor reactor,
 											@Nonnull InetSocketAddress connectAddress,
-											int rcvbuf,
-											int sndbuf,
+											ClientSocketOptions options,
 											@Nullable Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(env, "A TcpClient cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpClient cannot be created without a properly-configured Reactor.");
 		Assert.notNull(connectAddress, "A TcpClient cannot be created without a properly-configure connect InetSocketAddress.");
 		this.env = env;
 		this.reactor = reactor;
+		this.options = options;
 		this.codec = codec;
 	}
 
@@ -199,8 +201,7 @@ public abstract class TcpClient<IN, OUT> {
 		private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;
 
 		private InetSocketAddress connectAddress;
-		private int rcvbuf = 8 * 1024;
-		private int sndbuf = 8 * 1024;
+		private ClientSocketOptions options = new ClientSocketOptions();
 		private Codec<Buffer, IN, OUT> codec;
 
 		/**
@@ -216,8 +217,7 @@ public abstract class TcpClient<IN, OUT> {
 						Environment.class,
 						Reactor.class,
 						InetSocketAddress.class,
-						int.class,
-						int.class,
+						ClientSocketOptions.class,
 						Codec.class
 				);
 				this.clientImplConstructor.setAccessible(true);
@@ -227,15 +227,13 @@ public abstract class TcpClient<IN, OUT> {
 		}
 
 		/**
-		 * Set the receive and send buffer sizes.
+		 * Set the common {@link ClientSocketOptions} for connections made in this client.
 		 *
-		 * @param rcvbuf The size of the receive buffer, in bytes.
-		 * @param sndbuf The size of the send buffer, in bytes.
+		 * @param options The socket options to apply to new connections.
 		 * @return {@literal this}
 		 */
-		public Spec<IN, OUT> bufferSize(int rcvbuf, int sndbuf) {
-			this.rcvbuf = rcvbuf;
-			this.sndbuf = sndbuf;
+		public Spec<IN, OUT> options(ClientSocketOptions options) {
+			this.options = options;
 			return this;
 		}
 
@@ -271,8 +269,7 @@ public abstract class TcpClient<IN, OUT> {
 						env,
 						reactor,
 						connectAddress,
-						rcvbuf,
-						sndbuf,
+						options,
 						codec
 				);
 			} catch (Throwable t) {

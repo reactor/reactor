@@ -27,6 +27,7 @@ import reactor.fn.registry.Registry;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.io.Buffer;
+import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
 
@@ -62,9 +63,7 @@ public abstract class TcpServer<IN, OUT> {
 	protected TcpServer(@Nonnull Environment env,
 											@Nonnull Reactor reactor,
 											@Nullable InetSocketAddress listenAddress,
-											int backlog,
-											int rcvbuf,
-											int sndbuf,
+											ServerSocketOptions options,
 											@Nullable Codec<Buffer, IN, OUT> codec,
 											@Nonnull Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		Assert.notNull(env, "A TcpServer cannot be created without a properly-configured Environment.");
@@ -251,13 +250,10 @@ public abstract class TcpServer<IN, OUT> {
 	}
 
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpServer<IN, OUT>> {
-		private final Class<? extends TcpServer<IN, OUT>>       serverImpl;
 		private final Constructor<? extends TcpServer<IN, OUT>> serverImplConstructor;
 
-		private InetSocketAddress listenAddress;
-		private int backlog = 512;
-		private int rcvbuf  = 8 * 1024;
-		private int sndbuf  = 8 * 1024;
+		private InetSocketAddress   listenAddress = new InetSocketAddress("localhost", 3000);
+		private ServerSocketOptions options       = new ServerSocketOptions();
 		private Codec<Buffer, IN, OUT>                       codec;
 		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
 
@@ -269,15 +265,12 @@ public abstract class TcpServer<IN, OUT> {
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		public Spec(@Nonnull Class<? extends TcpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
-			this.serverImpl = (Class<? extends TcpServer<IN, OUT>>) serverImpl;
 			try {
 				this.serverImplConstructor = (Constructor<? extends TcpServer<IN, OUT>>) serverImpl.getDeclaredConstructor(
 						Environment.class,
 						Reactor.class,
 						InetSocketAddress.class,
-						int.class,
-						int.class,
-						int.class,
+						ServerSocketOptions.class,
 						Codec.class,
 						Collection.class
 				);
@@ -288,26 +281,14 @@ public abstract class TcpServer<IN, OUT> {
 		}
 
 		/**
-		 * Set the value of the connection backlog.
+		 * Set the common {@link ServerSocketOptions} for connections made in this server.
 		 *
-		 * @param backlog The connection backlog.
+		 * @param options The options to set when new connections are made.
 		 * @return {@literal this}
 		 */
-		public Spec<IN, OUT> backlog(int backlog) {
-			this.backlog = backlog;
-			return this;
-		}
-
-		/**
-		 * Set the receive and send buffer sizes.
-		 *
-		 * @param rcvbuf The size of the receive buffer, in bytes.
-		 * @param sndbuf The size of the send buffer, in bytes.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> bufferSize(int rcvbuf, int sndbuf) {
-			this.rcvbuf = rcvbuf;
-			this.sndbuf = sndbuf;
+		public Spec<IN, OUT> options(@Nonnull ServerSocketOptions options) {
+			Assert.notNull(options, "ServerSocketOptions cannot be null.");
+			this.options = options;
 			return this;
 		}
 
@@ -318,7 +299,6 @@ public abstract class TcpServer<IN, OUT> {
 		 * @return {@literal this}
 		 */
 		public Spec<IN, OUT> listen(int port) {
-			Assert.isNull(listenAddress, "Listen address is already set.");
 			this.listenAddress = new InetSocketAddress(port);
 			return this;
 		}
@@ -331,7 +311,9 @@ public abstract class TcpServer<IN, OUT> {
 		 * @return {@literal this}
 		 */
 		public Spec<IN, OUT> listen(@Nonnull String host, int port) {
-			Assert.isNull(listenAddress, "Listen address is already set.");
+			if (null == host) {
+				host = "localhost";
+			}
 			this.listenAddress = new InetSocketAddress(host, port);
 			return this;
 		}
@@ -342,8 +324,8 @@ public abstract class TcpServer<IN, OUT> {
 		 * @param codec The codec to use.
 		 * @return {@literal this}
 		 */
-		public Spec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
-			Assert.isNull(this.codec, "Codec has already been set.");
+		public Spec<IN, OUT> codec(@Nonnull Codec<Buffer, IN, OUT> codec) {
+			Assert.notNull(codec, "Codec cannot be null.");
 			this.codec = codec;
 			return this;
 		}
@@ -365,6 +347,7 @@ public abstract class TcpServer<IN, OUT> {
 		 * @return {@literal this}
 		 */
 		public Spec<IN, OUT> consume(@Nonnull Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
+			Assert.notNull(connectionConsumers, "Connection consumers cannot be null.");
 			this.connectionConsumers = connectionConsumers;
 			return this;
 		}
@@ -376,9 +359,7 @@ public abstract class TcpServer<IN, OUT> {
 						env,
 						reactor,
 						listenAddress,
-						backlog,
-						rcvbuf,
-						sndbuf,
+						options,
 						codec,
 						connectionConsumers
 				);

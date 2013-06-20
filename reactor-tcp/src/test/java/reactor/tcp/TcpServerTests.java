@@ -23,6 +23,7 @@ import org.junit.Test;
 import reactor.core.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.LengthFieldCodec;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.encoding.json.JsonCodec;
@@ -99,6 +100,10 @@ public class TcpServerTests {
 		TcpServer<byte[], byte[]> server = new TcpServer.Spec<byte[], byte[]>(NettyTcpServer.class)
 				.using(env)
 				.using(SynchronousDispatcher.INSTANCE)
+				.options(new ServerSocketOptions()
+										 .backlog(1000)
+										 .reuseAddr(true)
+										 .tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {

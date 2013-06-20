@@ -20,6 +20,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
+import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
 
 import java.net.InetSocketAddress;
@@ -40,22 +42,20 @@ import java.util.Collection;
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
-	private final ServerBootstrap bootstrap;
-	private final Reactor         eventsReactor;
-	private final int             memReclaimRatio;
+	private final ServerBootstrap     bootstrap;
+	private final Reactor             eventsReactor;
+	private final ServerSocketOptions options;
 
 	protected NettyTcpServer(Environment env,
 													 Reactor reactor,
 													 InetSocketAddress listenAddress,
-													 int backlog,
-													 int rcvbuf,
-													 int sndbuf,
+													 ServerSocketOptions opts,
 													 Codec<Buffer, IN, OUT> codec,
 													 Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
-		super(env, reactor, listenAddress, backlog, rcvbuf, sndbuf, codec, connectionConsumers);
+		super(env, reactor, listenAddress, opts, codec, connectionConsumers);
 		this.eventsReactor = reactor;
+		this.options = opts;
 
-		memReclaimRatio = env.getProperty("reactor.tcp.memReclaimRatio", Integer.class, 12);
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
@@ -64,14 +64,23 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		this.bootstrap = new ServerBootstrap()
 				.group(selectorGroup, ioGroup)
 				.channel(NioServerSocketChannel.class)
-				.option(ChannelOption.SO_BACKLOG, backlog)
-				.option(ChannelOption.SO_RCVBUF, rcvbuf)
-				.option(ChannelOption.SO_SNDBUF, sndbuf)
+				.option(ChannelOption.SO_BACKLOG, options.backlog())
+				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
+				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
 				.handler(new LoggingHandler(LoggerFactory.getLogger(getClass())))
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
+						SocketChannelConfig config = ch.config();
+						config.setReceiveBufferSize(options.rcvbuf());
+						config.setSendBufferSize(options.sndbuf());
+						config.setKeepAlive(options.keepAlive());
+						config.setReuseAddress(options.reuseAddr());
+						config.setSoLinger(options.linger());
+						config.setTcpNoDelay(options.tcpNoDelay());
+
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override

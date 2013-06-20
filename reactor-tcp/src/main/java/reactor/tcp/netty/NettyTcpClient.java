@@ -32,6 +32,7 @@ import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
+import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
 
 import javax.annotation.Nonnull;
@@ -44,17 +45,18 @@ import java.net.InetSocketAddress;
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
-	private final Bootstrap bootstrap;
-	private final Reactor   eventsReactor;
+	private final Bootstrap           bootstrap;
+	private final Reactor             eventsReactor;
+	private final ClientSocketOptions options;
 
 	public NettyTcpClient(@Nonnull Environment env,
 												@Nonnull Reactor reactor,
 												@Nonnull InetSocketAddress connectAddress,
-												int rcvbuf,
-												int sndbuf,
+												ClientSocketOptions opts,
 												@Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, reactor, connectAddress, rcvbuf, sndbuf, codec);
+		super(env, reactor, connectAddress, opts, codec);
 		this.eventsReactor = reactor;
+		this.options = opts;
 
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -62,14 +64,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		this.bootstrap = new Bootstrap()
 				.group(ioGroup)
 				.channel(NioSocketChannel.class)
-				.option(ChannelOption.SO_RCVBUF, rcvbuf)
-				.option(ChannelOption.SO_SNDBUF, sndbuf)
+				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
+				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
+				.option(ChannelOption.SO_LINGER, options.linger())
+				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
 				.remoteAddress(connectAddress)
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
-						ch.pipeline()
-							.addLast(createChannelHandlers(ch));
+						ch.config().setConnectTimeoutMillis(options.timeout());
+						ch.pipeline().addLast(createChannelHandlers(ch));
 
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
