@@ -18,7 +18,14 @@ package reactor.core;
 
 import static reactor.fn.Functions.$;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import reactor.convert.StandardConverters;
@@ -40,7 +47,6 @@ import reactor.fn.registry.Registry;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import reactor.util.Assert;
 
 /**
  * @author Jon Brisbin
@@ -249,5 +255,22 @@ public class Environment {
 	public Reactor getRootReactor() {
 		rootReactor.compareAndSet(null, new Reactor(this, getDefaultDispatcher()));
 		return rootReactor.get();
+	}
+
+	/**
+	 * Shuts down this Environment, causing all of its {@link Dispatcher Dispatchers} to be shut down.
+	 *
+	 * @see Dispatcher#shutdown
+	 */
+	public void shutdown() {
+		List<Dispatcher> dispatchers = new ArrayList<Dispatcher>();
+		synchronized(monitor) {
+			for (Map.Entry<String, List<Dispatcher>> entry : this.dispatchers.entrySet()) {
+				dispatchers.addAll(entry.getValue());
+			}
+		}
+		for (Dispatcher dispatcher: dispatchers) {
+			dispatcher.shutdown();
+		}
 	}
 }
