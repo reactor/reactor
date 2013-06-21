@@ -17,13 +17,27 @@
 package reactor.tcp.netty;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
+
+import java.net.InetSocketAddress;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import reactor.core.Environment;
 import reactor.core.Promise;
 import reactor.core.Promises;
@@ -35,19 +49,17 @@ import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.net.InetSocketAddress;
-
 /**
  * @author Jon Brisbin
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
+
 	private final Bootstrap           bootstrap;
 	private final Reactor             eventsReactor;
 	private final ClientSocketOptions options;
+	private final EventLoopGroup      ioGroup;
 
 	public NettyTcpClient(@Nonnull Environment env,
 												@Nonnull Reactor reactor,
@@ -59,7 +71,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		this.options = opts;
 
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 
 		this.bootstrap = new Bootstrap()
 				.group(ioGroup)
@@ -127,24 +139,30 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
-
-		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
-			@Override
-			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
-				Buffer b = new Buffer(data.nioBuffer());
-				int start = b.position();
-				conn.read(b);
-				data.skipBytes(b.position() - start);
-			}
-
+		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
+		return new ChannelHandler[]{new NettyTcpConnectionChannelInboundHandler(conn) {
 			@Override
 			public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 				NettyTcpClient.this.notifyError(cause);
 			}
-		};
-
-		return new ChannelHandler[]{readHandler};
+		}};
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected void doClose(final Promise<Void> promise) {
+		try {
+			this.ioGroup.shutdownGracefully().await().addListener(new GenericFutureListener() {
+				@Override
+				public void operationComplete(Future future) throws Exception {
+					// Sleep for 1 second to allow Netty's GlobalEventExecutor thread to die
+					// TODO We need a better way of being sure that all of Netty's threads have died
+					Thread.sleep(1000);
+					promise.set((Void)null);
+				}
+			});
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			promise.set(e);
+		}
+	}
 }

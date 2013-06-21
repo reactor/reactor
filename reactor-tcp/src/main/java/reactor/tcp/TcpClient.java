@@ -90,7 +90,7 @@ public abstract class TcpClient<IN, OUT> {
 							reg.getObject().close();
 							reg.cancel();
 						}
-						p.set((Void)null);
+						doClose(p);
 					}
 				},
 				null,
@@ -196,6 +196,8 @@ public abstract class TcpClient<IN, OUT> {
 	protected Codec<Buffer, IN, OUT> getCodec() {
 		return codec;
 	}
+
+	protected abstract void doClose(Promise<Void> promise);
 
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpClient<IN, OUT>> {
 		private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;

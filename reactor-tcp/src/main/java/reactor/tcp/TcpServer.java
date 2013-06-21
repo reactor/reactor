@@ -16,8 +16,20 @@
 
 package reactor.tcp;
 
+import static reactor.fn.Functions.$;
+
+import java.lang.reflect.Constructor;
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import reactor.core.ComponentSpec;
 import reactor.core.Environment;
+import reactor.core.Promise;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
@@ -30,16 +42,6 @@ import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.lang.reflect.Constructor;
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-
-import static reactor.Fn.$;
 
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
@@ -103,19 +105,9 @@ public abstract class TcpServer<IN, OUT> {
 	/**
 	 * Shutdown this server.
 	 *
-	 * @return {@literal this}
+	 * @return a Promise that will be completed with the shutdown outcome
 	 */
-	public TcpServer<IN, OUT> shutdown() {
-		return shutdown(null);
-	}
-
-	/**
-	 * Shutdown this server, invoking the given callback when the server has stopped.
-	 *
-	 * @param stopped Callback to invoke when the server is stopped. May be {@literal null}.
-	 * @return {@literal this}
-	 */
-	public abstract TcpServer<IN, OUT> shutdown(@Nullable Consumer<Void> stopped);
+	public abstract Promise<Void> shutdown();
 
 	/**
 	 * Subclasses should register the given channel and connection for later use.
@@ -206,18 +198,8 @@ public abstract class TcpServer<IN, OUT> {
 
 	/**
 	 * Notify this server's consumers that the server has stopped.
-	 *
-	 * @param stopped An optional callback to invoke.
 	 */
-	protected void notifyShutdown(@Nullable final Consumer<Void> stopped) {
-		if (null != stopped) {
-			reactor.on(shutdown.getT1(), new Consumer<Event<Void>>() {
-				@Override
-				public void accept(Event<Void> ev) {
-					stopped.accept(null);
-				}
-			});
-		}
+	protected void notifyShutdown() {
 		reactor.notify(shutdown.getT2(), selfEvent);
 	}
 
@@ -247,6 +229,10 @@ public abstract class TcpServer<IN, OUT> {
 	@Nullable
 	protected Codec<Buffer, IN, OUT> getCodec() {
 		return codec;
+	}
+
+	protected Reactor getReactor() {
+		return this.reactor;
 	}
 
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpServer<IN, OUT>> {

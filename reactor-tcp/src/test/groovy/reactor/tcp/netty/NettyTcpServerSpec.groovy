@@ -77,7 +77,7 @@ class NettyTcpServerSpec extends Specification {
 		dataLatch.count == 0
 
 		when: "the server is stopped"
-		server.shutdown({
+		server.shutdown().onSuccess({
 			stopLatch.countDown()
 		} as Consumer<Void>)
 		stopLatch.await(5, TimeUnit.SECONDS)
@@ -123,7 +123,7 @@ class NettyTcpServerSpec extends Specification {
 		dataLatch.count == 0
 
 		when: "the server is stopped"
-		server.shutdown({
+		server.shutdown().onSuccess({
 			stopLatch.countDown()
 		} as Consumer<Void>)
 		stopLatch.await(5, TimeUnit.SECONDS)

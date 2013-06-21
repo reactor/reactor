@@ -17,14 +17,31 @@
 package reactor.tcp.netty;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
+
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import reactor.Fn;
 import reactor.core.Environment;
+import reactor.core.Promise;
+import reactor.core.Promises;
 import reactor.core.Reactor;
 import reactor.fn.Consumer;
 import reactor.io.Buffer;
@@ -34,17 +51,18 @@ import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
 
-import java.net.InetSocketAddress;
-import java.util.Collection;
-
 /**
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
+	private final Logger logger = LoggerFactory.getLogger(getClass());
+
 	private final ServerBootstrap     bootstrap;
 	private final Reactor             eventsReactor;
 	private final ServerSocketOptions options;
+	private final EventLoopGroup      selectorGroup;
+	private final EventLoopGroup      ioGroup;
 
 	protected NettyTcpServer(Environment env,
 													 Reactor reactor,
@@ -58,8 +76,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		EventLoopGroup selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
-		EventLoopGroup ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+		selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
+		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 
 		this.bootstrap = new ServerBootstrap()
 				.group(selectorGroup, ioGroup)
@@ -69,7 +87,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
-				.handler(new LoggingHandler(LoggerFactory.getLogger(getClass())))
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
@@ -80,6 +97,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setReuseAddress(options.reuseAddr());
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
+
+						logger.debug("CONNECT {}", ch.remoteAddress());
 
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
@@ -104,6 +123,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			bindFuture.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
+					logger.info("BIND {}", future.channel().localAddress());
 					notifyStart(started);
 				}
 			});
@@ -113,10 +133,33 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public TcpServer<IN, OUT> shutdown(Consumer<Void> stopped) {
-		bootstrap.shutdown();
-		notifyShutdown(stopped);
-		return this;
+	public Promise<Void> shutdown() {
+		final Promise<Void> p = Promises.<Void>defer().using(env).using(getReactor()).get();
+		Fn.schedule(
+				new Consumer<Void>() {
+					@SuppressWarnings({ "rawtypes", "unchecked" })
+					@Override
+					public void accept(Void v) {
+						final AtomicInteger groupsToShutdown = new AtomicInteger(2);
+						GenericFutureListener listener = new GenericFutureListener() {
+
+							@Override
+							public void operationComplete(Future future) throws Exception {
+								if (groupsToShutdown.decrementAndGet() == 0) {
+									notifyShutdown();
+									p.set((Void)null);
+								}
+							}
+						};
+						selectorGroup.shutdownGracefully().addListener(listener);
+						ioGroup.shutdownGracefully().addListener(listener);
+					}
+				},
+				null,
+				getReactor()
+		);
+
+		return p;
 	}
 
 	@Override
@@ -134,18 +177,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
-
-		ChannelHandler readHandler = new ChannelInboundByteHandlerAdapter() {
-			@Override
-			public void inboundBufferUpdated(ChannelHandlerContext ctx, ByteBuf data) throws Exception {
-				Buffer b = new Buffer(data.nioBuffer());
-				int start = b.position();
-				conn.read(b);
-				data.skipBytes(b.position() - start);
-			}
-		};
-		return new ChannelHandler[]{readHandler};
+		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
+		return new ChannelHandler[] {new NettyTcpConnectionChannelInboundHandler(conn)};
 	}
 
 }

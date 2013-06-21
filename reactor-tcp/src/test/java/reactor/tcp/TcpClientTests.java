@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import reactor.core.Environment;
@@ -49,8 +48,9 @@ import reactor.tcp.netty.NettyTcpClient;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpClientTests {
+
+	private final EchoServer echoServer = new EchoServer();
 
 	static final int port = 24887;
 
@@ -59,12 +59,14 @@ public class TcpClientTests {
 	@Before
 	public void setup() {
 		env = new Environment();
-		threadPool.submit(new EchoServer());
+		threadPool.submit(echoServer);
 	}
 
 	@After
-	public void cleanup() {
+	public void cleanup() throws InterruptedException, IOException {
+		echoServer.close();
 		threadPool.shutdown();
+		threadPool.awaitTermination(30, TimeUnit.SECONDS);
 	}
 
 	@Test
@@ -128,7 +130,7 @@ public class TcpClientTests {
 		assertTrue(latch.await(30, TimeUnit.SECONDS));
 		client.close();
 
-		assertEquals(Arrays.asList("Hello World!\n", "Hello World!\n", "Hello World!\n"), strings);
+		assertEquals(Arrays.asList("Hello World!", "Hello World!", "Hello World!"), strings);
 	}
 
 	@Test
@@ -145,16 +147,17 @@ public class TcpClientTests {
 
 		long duration = System.currentTimeMillis() - startTime;
 
-		assertThat(duration, is(lessThan(5000L)));
+		assertThat(duration, is(lessThan(10000L)));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	private static final class EchoServer implements Runnable {
+		private volatile ServerSocketChannel server;
 		@Override
 		public void run() {
 			try {
-				ServerSocketChannel server = ServerSocketChannel.open();
+				server = ServerSocketChannel.open();
 				server.bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
@@ -175,9 +178,14 @@ public class TcpClientTests {
 					}
 				}
 			} catch (IOException e) {
-				throw new IllegalStateException(e);
+				// Server closed
 			}
-
+		}
+		public void close() throws IOException {
+			ServerSocketChannel server = this.server;
+			if (server != null) {
+				server.close();
+			}
 		}
 	}
 
