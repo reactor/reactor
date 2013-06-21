@@ -293,7 +293,7 @@ class BufferSpec extends Specification {
 
 		then: "three parts with the expected contents are produced"
 		def strings = []
-		parts.each { part -> strings << new String(part.get().asBytes())}
+		parts.each { part -> strings << part.get().asString()}
 		strings.size() == 3
 		strings == ['One', 'Two', 'Three']
 	}
