@@ -256,6 +256,48 @@ class BufferSpec extends Specification {
 		parts.size() == 2
 	}
 
+	def "foo"() {
+		given: "A buffer with a single segment"
+		def buff = Buffer.wrap("Hello World!\n")
+
+		when: "the buffer is split"
+		def parts = buff.split((int)'\n')
+
+		then: "there is a single part"
+		parts.size() == 1
+		def strings = []
+		parts.each { part -> strings << new String(part.get().asBytes()) }
+		strings == ['Hello World!\n']
+	}
+
+	def "bar"() {
+		given: "A buffer with two segments"
+		def buff = Buffer.wrap("Hello World!\nHello World!\n")
+
+		when: "the buffer is split"
+		def parts = buff.split((int)'\n')
+
+		then: "there are two parts"
+		parts.size() == 2
+		def strings = []
+		parts.each { part -> strings << new String(part.get().asBytes()) }
+		strings == ['Hello World!\n', 'Hello World!\n']
+	}
+
+	def "A buffer can be split on a delimiter and the delimiter can be stripped from each segment"() {
+		given: "A buffer with three segments"
+		def buff = Buffer.wrap("One\nTwo\nThree\n")
+
+		when: "the buffer is split on the delimiter and the delimiter is stripped"
+		def parts = buff.split(10, true)
+
+		then: "three parts with the expected contents are produced"
+		def strings = []
+		parts.each { part -> strings << new String(part.get().asBytes())}
+		strings.size() == 3
+		strings == ['One', 'Two', 'Three']
+	}
+
 	def "A Buffer can be sliced into segments"() {
 		given: "a syslog message, buffered"
 		def buff = Buffer.wrap("<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n")

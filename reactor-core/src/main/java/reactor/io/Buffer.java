@@ -883,7 +883,7 @@ public class Buffer implements Comparable<Buffer>,
 	 *
 	 * @param views          The list to store {@link View Views} in.
 	 * @param delimiter      The delimiter on which to split this buffer.
-	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @param stripDelimiteiteral true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
@@ -894,10 +894,10 @@ public class Buffer implements Comparable<Buffer>,
 			if (b == delimiter) {
 				int end = stripDelimiter ? buffer.position() - 1 : buffer.position();
 				views.add(createView(start, end));
-				start = end;
+				start = end + (stripDelimiter ? 1 : 0);
 			}
 		}
-		if (start < buffer.position()) {
+		if (start != buffer.position()) {
 			buffer.position(start);
 		}
 
