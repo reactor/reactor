@@ -16,11 +16,15 @@
 
 package reactor.tcp;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import reactor.core.Environment;
+import reactor.core.Promise;
+import reactor.fn.Consumer;
+import reactor.io.Buffer;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyTcpClient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -35,15 +39,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import reactor.core.Environment;
-import reactor.fn.Consumer;
-import reactor.io.Buffer;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.netty.NettyTcpClient;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
@@ -137,23 +136,30 @@ public class TcpClientTests {
 	public void closingPromiseIsFulfilled() throws InterruptedException {
 		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
 				.using(env)
-				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.connect("localhost", port)
+				.codec(StandardCodecs.<Buffer, String, String>passthroughCodec())
+				.connect("www.google.com", 80)
 				.get();
 
-		long startTime = System.currentTimeMillis();
+		final CountDownLatch closeLatch = new CountDownLatch(1);
+		Promise<Void> p = client.close();
+		p.onSuccess(new Consumer<Void>() {
+			@Override
+			public void accept(Void v) {
+				closeLatch.countDown();
+			}
+		});
+		// For some reason, the CI server want's to wait 30 seconds here, so we'll make sure
+		// we wait long enough so the consumer actually has a chance to run.
+		closeLatch.await(60, TimeUnit.SECONDS);
 
-		client.close().await();
-
-		long duration = System.currentTimeMillis() - startTime;
-
-		assertThat(duration, is(lessThan(10000L)));
+		assertThat("latch was counted down", closeLatch.getCount(), is(0L));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	private static final class EchoServer implements Runnable {
 		private volatile ServerSocketChannel server;
+
 		@Override
 		public void run() {
 			try {
@@ -181,6 +187,7 @@ public class TcpClientTests {
 				// Server closed
 			}
 		}
+
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
 			if (server != null) {
