@@ -194,10 +194,13 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 
 	@Override
 	protected void valueAccepted(final T value) {
-		long accepted = getAcceptCount();
+		if (!isBatch()) {
+			return;
+		}
+		long accepted = getAcceptCount() % batchSize;
 		if (accepted == 1) {
 			getObservable().notify(first.getT2(), Event.wrap(value));
-		} else if (accepted % batchSize == 0) {
+		} else if (accepted == 0) {
 			getObservable().notify(last.getT2(), Event.wrap(value));
 		}
 	}
