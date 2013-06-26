@@ -23,6 +23,7 @@ import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
 
 import static reactor.fn.Functions.$;
@@ -38,7 +39,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private final Tuple2<Selector, Object> valueAccepted = $();
 	private final Tuple2<Selector, Object> errorAccepted = $();
 
-	private final long defaultTimeout;
+	private final long       defaultTimeout;
+	private final Promise<?> parent;
 
 	private State   state       = State.PENDING;
 	private boolean hasBlockers = false;
@@ -46,9 +48,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private Throwable error;
 
 	Promise(@Nonnull Environment env,
-					@Nonnull Observable events) {
+					@Nonnull Observable events,
+					@Nullable Promise<?> parent) {
 		super(env, events);
 		this.defaultTimeout = env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+		this.parent = parent;
 	}
 
 	public Promise<T> onComplete(final Consumer<Promise<T>> onComplete) {
@@ -108,8 +112,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 				.using(getEnvironment())
 				.using((Reactor) getObservable())
 				.get();
-		Promise<V> p = d.compose();
-		p.onError(onError);
+		Promise<V> p = d.compose().onError(onError);
 
 		getObservable().on(valueAccepted.getT1(), new Consumer<Event<T>>() {
 			@Override
@@ -196,6 +199,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public T get() {
+		if (null != parent) {
+			parent.get();
+		}
 		if (isSuccess()) {
 			return value;
 		} else {
@@ -242,6 +248,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		return (Deferred<V, C>) new Deferred.PromiseSpec<V>()
 				.using(getEnvironment())
 				.using((Reactor) getObservable())
+				.link(this)
 				.get();
 	}
 

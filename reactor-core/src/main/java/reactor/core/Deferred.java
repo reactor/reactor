@@ -16,7 +16,9 @@
 
 package reactor.core;
 
+import reactor.Fn;
 import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 
 /**
  * @author Jon Brisbin
@@ -43,9 +45,59 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	}
 
 	public static class PromiseSpec<T> extends ComponentSpec<PromiseSpec<T>, Deferred<T, Promise<T>>> {
+		private Promise<?>  parent;
+		private T           value;
+		private Throwable   error;
+		private Supplier<T> supplier;
+
+		public PromiseSpec<T> link(Promise<?> parent) {
+			this.parent = parent;
+			return this;
+		}
+
+		public PromiseSpec<T> value(T value) {
+			this.value = value;
+			return this;
+		}
+
+		public PromiseSpec<T> error(Throwable error) {
+			this.error = error;
+			return this;
+		}
+
+		public PromiseSpec<T> supplier(Supplier<T> supplier) {
+			this.supplier = supplier;
+			return this;
+		}
+
 		@Override
 		protected Deferred<T, Promise<T>> configure(Reactor reactor) {
-			return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor));
+			Promise<T> p = new Promise<T>(env, reactor, parent);
+			final Deferred<T, Promise<T>> d = new Deferred<T, Promise<T>>(p);
+			if (null != error) {
+				d.accept(error);
+			} else if (null != value) {
+				d.accept(value);
+			} else if (null != supplier) {
+				Fn.schedule(
+						new Consumer<Void>() {
+							@Override
+							public void accept(Void v) {
+								try {
+									d.accept(supplier.get());
+								} catch (Throwable t) {
+									d.accept(t);
+								}
+							}
+						},
+						null,
+						reactor
+				);
+			}
+			if (null != parent) {
+				parent.cascadeErrors(p);
+			}
+			return d;
 		}
 	}
 
@@ -71,7 +123,12 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 
 		@Override
 		protected Deferred<T, Stream<T>> configure(Reactor reactor) {
-			return new Deferred<T, Stream<T>>(new Stream<T>(env, reactor, batchSize, values, parent));
+			Stream<T> s = new Stream<T>(env, reactor, batchSize, values, parent);
+			Deferred<T, Stream<T>> d = new Deferred<T, Stream<T>>(s);
+			if (null != parent) {
+				parent.cascadeErrors(s);
+			}
+			return d;
 		}
 	}
 

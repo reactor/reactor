@@ -17,6 +17,8 @@
 package reactor.core;
 
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.convert.Converter;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
@@ -28,6 +30,7 @@ import reactor.fn.registry.SelectionStrategy;
 import reactor.fn.routing.ConsumerFilteringEventRouter;
 import reactor.fn.routing.EventRouter;
 import reactor.fn.routing.Linkable;
+import reactor.fn.selector.ClassSelector;
 import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
@@ -122,6 +125,17 @@ public class Reactor implements Observable, Linkable<Observable> {
 						}
 					}
 				}
+			}
+		});
+		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
+			Logger log;
+
+			@Override
+			public void accept(Event<Throwable> ev) {
+				if (null == log) {
+					log = LoggerFactory.getLogger(Reactor.class);
+				}
+				log.error(ev.getData().getMessage(), ev.getData());
 			}
 		});
 	}

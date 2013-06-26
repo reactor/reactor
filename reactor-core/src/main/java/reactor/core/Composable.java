@@ -149,6 +149,15 @@ public abstract class Composable<T> {
 
 	protected abstract void valueAccepted(T value);
 
+	protected void cascadeErrors(final Composable<?> composable) {
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable t) {
+				composable.notifyError(t);
+			}
+		});
+	}
+
 	protected Environment getEnvironment() {
 		return env;
 	}

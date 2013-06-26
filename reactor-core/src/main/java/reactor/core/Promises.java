@@ -30,21 +30,33 @@ public abstract class Promises {
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
 	 * @param <T> type of the expected value
-	 * @return A {@link Deferred} backed by a {@link Promise}.
+	 * @return A {@link Deferred.PromiseSpec}.
 	 */
 	public static <T> Deferred.PromiseSpec<T> defer() {
 		return new Deferred.PromiseSpec<T>();
 	}
 
 	/**
-	 * Create a {@literal Promise} based on the given supplier.
+	 * Create a {@link Deferred} based on the given supplier.
 	 *
-	 * @param supplier The value to use.
-	 * @param <T>      The type of the function result.
-	 * @return a {@link Deferred.PromiseSpec}.
+	 * @param supplier The {@link Supplier} to use.
+	 * @param <T>      type of the expected value
+	 * @return A {@link Deferred.PromiseSpec}.
 	 */
 	public static <T> Deferred.PromiseSpec<T> task(Supplier<T> supplier) {
-		return new Deferred.PromiseSpec<T>();
+		return new Deferred.PromiseSpec<T>().supplier(supplier);
+	}
+
+	public static <T> Deferred.PromiseSpec<T> success(T value) {
+		return new Deferred.PromiseSpec<T>().value(value);
+	}
+
+	public static <T> Deferred.PromiseSpec<T> error(Throwable error) {
+		return new Deferred.PromiseSpec<T>().error(error);
+	}
+
+	public static <T> Deferred.PromiseSpec<T> when(Composable<T>... composables) {
+		return null;
 	}
 
 }

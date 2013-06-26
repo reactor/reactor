@@ -203,6 +203,36 @@ public class ComposableTests extends AbstractReactorTest {
 		assertThat("count is 15", count.get(), is(15));
 	}
 
+	@Test
+	public void testHandlersErrorsDownstream() throws InterruptedException {
+		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "a", "4", "5")).get();
+		final CountDownLatch latch = new CountDownLatch(1);
+		Stream<Integer> s =
+				d.compose()
+				 .map(STRING_2_INTEGER)
+				 .map(new Function<Integer, Integer>() {
+					 int sum = 0;
+
+					 @Override
+					 public Integer apply(Integer i) {
+						 if (i >= 5) {
+							 throw new IllegalArgumentException();
+						 }
+						 sum += i;
+						 return sum;
+					 }
+				 })
+				 .when(NumberFormatException.class, new Consumer<NumberFormatException>() {
+					 @Override
+					 public void accept(NumberFormatException e) {
+						 latch.countDown();
+					 }
+				 });
+
+		await(2, s, is(7));
+		assertThat("error handler was invoked", latch.getCount(), is(0L));
+	}
+
 	<T> void await(Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		await(1, s, expected);
 	}
