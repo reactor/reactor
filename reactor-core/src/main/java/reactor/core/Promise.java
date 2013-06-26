@@ -43,7 +43,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private final Promise<?> parent;
 
 	private State   state       = State.PENDING;
-	private boolean hasBlockers = false;
 	private T         value;
 	private Throwable error;
 
@@ -177,7 +176,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		lock.lock();
 		try {
 			if (timeout >= 0) {
-				hasBlockers = true;
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
 				long now;
@@ -189,7 +187,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 					this.monitor.wait();
 				}
 			}
-			hasBlockers = false;
 		} finally {
 			lock.unlock();
 		}
