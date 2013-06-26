@@ -16,106 +16,145 @@
 
 package reactor.core;
 
-import reactor.fn.Consumer;
-import reactor.fn.Observable;
+import reactor.Fn;
+import reactor.fn.*;
+import reactor.fn.selector.Selector;
+import reactor.fn.support.EventConsumer;
+import reactor.fn.support.NotifyConsumer;
+import reactor.fn.tuples.Tuple2;
+import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static reactor.fn.Functions.$;
 
 /**
- * A {@literal Composable} is a specific type of {@link Future} implementing {@link Consumer} in order to provide
- * public scoped accept methods. A Composable can push and pull data to other components that must wait on the data to
- * become available.
- *
- * @param <T> The {@link Composable}  output type.
  * @author Stephane Maldini
+ * @author Jon Brisbin
+ * @author Andy Wilkinson
  */
-public abstract class Composable<T> extends Future<T> implements Consumer<T> {
+public abstract class Composable<T> {
 
+	protected final ReentrantLock lock = new ReentrantLock();
 
-	/**
-	 * Create a {@link Composable} that uses the given {@link reactor.core.Reactor} for publishing events internally.
-	 *
-	 * @param observable The {@link reactor.core.Reactor} to use.
-	 */
-	protected Composable(Environment env, Observable observable) {
-		super(env, observable);
+	private final Tuple2<Selector, Object> accept = $();
+
+	private final Environment env;
+	private final Observable  events;
+
+	private volatile long acceptCount = 0l;
+	private volatile long errorCount  = 0l;
+
+	protected Composable(@Nonnull Environment env,
+											 @Nonnull Observable events) {
+		Assert.notNull(events, "Events Observable cannot be null.");
+		this.env = env;
+		this.events = events;
+
 	}
 
-	/**
-	 * Register a {@link Composable} that will be invoked whenever {@link #accept(Object)} or {@link #accept (Throwable)}
-	 * are called.
-	 *
-	 * @param composable The composable to invoke.
-	 * @return {@literal this}
-	 * @see {@link #accept(Object)}
-	 */
-	public Composable<T> consume(Composable<T> composable) {
-		consume((Consumer<T>) composable);
-		forwardError(composable);
+	public Composable<T> consume(final Consumer<T> consumer) {
+		this.events.on(accept.getT1(), new EventConsumer<T>(consumer));
 		return this;
 	}
 
+	public Composable<T> consume(final Object key, final Observable observable) {
+		consume(new NotifyConsumer<T>(key, observable));
+		return this;
+	}
 
-	/**
-	 * Provide a read-only future that no longer accepts user values
-	 */
-	public Future<T> future() {
-		final Future<T> c = super.createFuture(getObservable());
-		synchronized (monitor) {
-			c.doSetExpectedAcceptCount(getExpectedAcceptCount());
-			if (null != getValue()) {
-				c.setValue(getValue());
-			}
-			if (null != getError()) {
-				c.setError(getError());
-			}
-		}
-		when(Throwable.class, new Consumer<Throwable>() {
+	public <E extends Throwable> Composable<T> when(Class<E> exceptionType, Consumer<E> onError) {
+		this.events.on(Fn.T(exceptionType), new EventConsumer<E>(onError));
+		return this;
+	}
+
+	public <V> Composable<V> map(final Function<T, V> fn) {
+		Assert.notNull(fn, "Map function cannot be null.");
+		final Deferred<V, ? extends Composable<V>> d = createDeferred();
+		consume(new Consumer<T>() {
 			@Override
-			public void accept(Throwable throwable) {
-				c.internalAccept(throwable);
-			}
-		})
-				.consume(new Consumer<T>() {
-					@Override
-					public void accept(T t) {
-						c.internalAccept(t);
-					}
-				});
-		return c;
-	}
-
-	/**
-	 * Trigger composition with an exception to be processed by dedicated consumers
-	 *
-	 * @param error The exception
-	 */
-	public void accept(Throwable error) {
-		internalAccept(error);
-		notifyError(error);
-	}
-
-	/**
-	 * Trigger composition with a value to be processed by dedicated consumers
-	 *
-	 * @param value The exception
-	 */
-	@Override
-	public void accept(T value) {
-		internalAccept(value);
-	}
-
-
-	protected Composable<T> forwardError(final Composable<?> composable) {
-		if (composable.getObservable() == getObservable()) {
-			return this;
-		}
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable t) {
-				composable.accept(t);
-				composable.decreaseAcceptLength();
+			public void accept(T value) {
+				try {
+					V val = fn.apply(value);
+					d.accept(val);
+				} catch (Throwable e) {
+					d.accept(e);
+				}
 			}
 		});
-		return this;
+		return d.compose();
+	}
+
+	public Composable<T> filter(final Predicate<T> p) {
+		Assert.notNull(p, "Filter predicate cannot be null.");
+		final Deferred<T, ? extends Composable<T>> d = createDeferred();
+		consume(new Consumer<T>() {
+			@Override
+			public void accept(T value) {
+				boolean b = p.test(value);
+				if (b) {
+					d.accept(value);
+				} else {
+					d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
+				}
+			}
+		});
+		return d.compose();
+	}
+
+	public long getAcceptCount() {
+		lock.lock();
+		try {
+			return acceptCount;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public long getErrorCount() {
+		lock.lock();
+		try {
+			return errorCount;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	void notifyValue(T value) {
+		lock.lock();
+		try {
+			acceptCount++;
+			valueAccepted(value);
+		} finally {
+			lock.unlock();
+		}
+		events.notify(accept.getT2(), Event.wrap(value));
+	}
+
+	void notifyError(Throwable error) {
+		lock.lock();
+		try {
+			errorCount++;
+			errorAccepted(error);
+		} finally {
+			lock.unlock();
+		}
+		events.notify(error.getClass(), Event.wrap(error));
+	}
+
+	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
+
+	protected abstract void errorAccepted(Throwable error);
+
+	protected abstract void valueAccepted(T value);
+
+	protected Environment getEnvironment() {
+		return env;
+	}
+
+	protected Observable getObservable() {
+		return events;
 	}
 
 }

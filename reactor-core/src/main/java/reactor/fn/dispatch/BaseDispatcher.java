@@ -24,7 +24,12 @@ import reactor.fn.routing.EventRouter;
 abstract class BaseDispatcher implements Dispatcher {
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>> consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
+	public <E extends Event<?>> void dispatch(Object key,
+																						E event,
+																						Registry<Consumer<? extends Event<?>>> consumerRegistry,
+																						Consumer<Throwable> errorConsumer,
+																						EventRouter eventRouter,
+																						Consumer<E> completionConsumer) {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}

@@ -14,43 +14,26 @@
  * limitations under the License.
  */
 
-
-
-package reactor.groovy
+package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.core.Environment
-import reactor.P
-import reactor.fn.Supplier
+import reactor.fn.Predicate
 
 /**
- * This class shouldnt fail compilation
- *
- * @author Stephane Maldini
+ * @author Jon Brisbin
  */
 @CompileStatic
-class CompileStaticTest {
+class ClosurePredicate<V> extends Predicate<V> {
 
-	Environment env = new Environment()
+  final Closure<Boolean> callback
 
-	def run() {
+  ClosurePredicate(Closure<Boolean> callback) {
+    this.callback = callback
+  }
 
-		def testClosure = {
-			'test'
-		}
+  @Override
+  boolean test(V value) {
+    callback value
+  }
 
-		def supplier = new Supplier<String>(){
-			@Override
-			String get() {
-				'test'
-			}
-		}
-
-		//P.task(supplier).using(env)
-	}
-
-	static void main(String[] args) {
-		new CompileStaticTest().run()
-
-	}
 }

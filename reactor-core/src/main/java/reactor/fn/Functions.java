@@ -20,6 +20,7 @@ import reactor.fn.selector.*;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 
+import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -134,6 +135,33 @@ public abstract class Functions {
 				r.run();
 			}
 		};
+	}
+
+	public static <T> Supplier<T> supplier(final T value) {
+		return new Supplier<T>() {
+			@Override
+			public T get() {
+				return value;
+			}
+		};
+	}
+
+	public static <T> Supplier<T> supplier(final Class<T> type) {
+		try {
+			final Constructor<T> ctor = type.getConstructor();
+			return new Supplier<T>() {
+				@Override
+				public T get() {
+					try {
+						return ctor.newInstance();
+					} catch (Exception e) {
+						throw new IllegalStateException(e.getMessage(), e);
+					}
+				}
+			};
+		} catch (NoSuchMethodException e) {
+			throw new IllegalArgumentException(e.getMessage(), e);
+		}
 	}
 
 	/**

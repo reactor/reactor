@@ -19,6 +19,7 @@ package reactor.tcp;
 import reactor.Fn;
 import reactor.R;
 import reactor.S;
+import reactor.core.Deferred;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.Stream;
@@ -88,27 +89,32 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Stream<IN> in() {
-		Stream<IN> c = S.<IN>defer()
-										.using(env)
-										.using(eventsReactor.getDispatcher())
-										.get();
-		consume(c);
-		return c;
+		final Deferred<IN, Stream<IN>> d = S.<IN>defer()
+																				.using(env)
+																				.using(eventsReactor.getDispatcher())
+																				.get();
+		consume(new Consumer<IN>() {
+			@Override
+			public void accept(IN in) {
+				d.accept(in);
+			}
+		});
+		return d.compose();
 	}
 
 	@Override
-	public Stream<OUT> out() {
-		Stream<OUT> s = S.<OUT>defer()
-										 .using(env)
-										 .using(eventsReactor.getDispatcher())
-										 .get();
-		s.consume(new Consumer<OUT>() {
+	public Deferred<OUT, Stream<OUT>> out() {
+		Deferred<OUT, Stream<OUT>> d = S.<OUT>defer()
+																		.using(env)
+																		.using(eventsReactor.getDispatcher())
+																		.get();
+		d.compose().consume(new Consumer<OUT>() {
 			@Override
 			public void accept(OUT out) {
 				send(out, null);
 			}
 		});
-		return s;
+		return d;
 	}
 
 	@Override

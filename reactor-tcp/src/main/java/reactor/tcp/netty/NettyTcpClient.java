@@ -17,37 +17,25 @@
 package reactor.tcp.netty;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-
-import java.net.InetSocketAddress;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import reactor.core.Environment;
-import reactor.core.Promise;
-import reactor.core.Promises;
-import reactor.core.Reactor;
+import reactor.core.*;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
 
 /**
  * @author Jon Brisbin
@@ -100,10 +88,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
-		final Promise<TcpConnection<IN, OUT>> p = Promises.<TcpConnection<IN, OUT>>defer()
-																											.using(env)
-																											.using(eventsReactor)
-																											.get();
+		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> d = Promises.<TcpConnection<IN, OUT>>defer()
+																																												.using(env)
+																																												.using(eventsReactor)
+																																												.get();
 
 		ChannelFuture connectFuture = bootstrap.connect();
 		connectFuture.addListener(new ChannelFutureListener() {
@@ -114,14 +102,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					if (log.isInfoEnabled()) {
 						log.info("CONNECT: " + conn);
 					}
-					p.set(conn);
+					d.accept(conn);
 				} else {
-					p.set(future.cause());
+					d.accept(future.cause());
 				}
 			}
 		});
 
-		return p;
+		return d.compose();
 	}
 
 	@Override
@@ -140,16 +128,18 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
 		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
-		return new ChannelHandler[]{new NettyTcpConnectionChannelInboundHandler(conn) {
-			@Override
-			public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-				NettyTcpClient.this.notifyError(cause);
-			}
-		}};
+		return new ChannelHandler[]{
+				new NettyTcpConnectionChannelInboundHandler(conn) {
+					@Override
+					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+						NettyTcpClient.this.notifyError(cause);
+					}
+				}
+		};
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected void doClose(final Promise<Void> promise) {
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	protected void doClose(final Deferred<Void, Promise<Void>> d) {
 		try {
 			this.ioGroup.shutdownGracefully().await().addListener(new GenericFutureListener() {
 				@Override
@@ -157,12 +147,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					// Sleep for 1 second to allow Netty's GlobalEventExecutor thread to die
 					// TODO We need a better way of being sure that all of Netty's threads have died
 					Thread.sleep(1000);
-					promise.set((Void)null);
+					d.accept((Void) null);
 				}
 			});
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			promise.set(e);
+			d.accept(e);
 		}
 	}
 }

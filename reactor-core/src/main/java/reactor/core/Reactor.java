@@ -281,18 +281,19 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(sel, "Selector cannot be null.");
 		Assert.notNull(function, "Function cannot be null.");
 
-		final Stream<V> c = Streams.<V>defer().using(env).using(this).get();
-		on(sel, new Consumer<E>() {
-			@Override
-			public void accept(E event) {
-				try {
-					c.accept(function.apply(event));
-				} catch (Throwable t) {
-					c.accept(t);
-				}
-			}
-		});
-		return c;
+//		final Stream<V> c = Streams.<V>defer().using(env).using(this).get();
+//		on(sel, new Consumer<E>() {
+//			@Override
+//			public void accept(E event) {
+//				try {
+//					c.accept(function.apply(event));
+//				} catch (Throwable t) {
+//					c.accept(t);
+//				}
+//			}
+//		});
+//		return c;
+		return null;
 	}
 
 	/**
@@ -320,7 +321,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @return {@link Stream}
 	 */
 	public <T, E extends Event<T>, V> Stream<V> compose(Object key, E ev) {
-		return Streams.defer(ev).using(env).using(this).get().map(key, this);
+//		return Streams.defer(ev).using(env).using(this).get().map(key, this);
+		return null;
 	}
 
 	/**
@@ -333,9 +335,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @return {@literal this}
 	 */
 	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
-		Stream<E> composable = Streams.defer(ev).using(env).using(this).get();
-		composable.<V>map(key, this).consume(consumer);
-		composable.get();
+//		Stream<E> composable = Streams.defer(ev).using(env).using(this).get();
+//		composable.<V>map(key, this).consume(consumer);
+//		composable.get();
 
 		return this;
 	}

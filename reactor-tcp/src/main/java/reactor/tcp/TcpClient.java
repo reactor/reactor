@@ -81,7 +81,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @return A {@link Promise} that will be fulfilled with {@literal null} when the connections have been closed.
 	 */
 	public Promise<Void> close() {
-		final Promise<Void> p = Promises.<Void>defer().using(env).using(reactor).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().using(env).using(reactor).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@Override
@@ -90,13 +90,13 @@ public abstract class TcpClient<IN, OUT> {
 							reg.getObject().close();
 							reg.cancel();
 						}
-						doClose(p);
+						doClose(d);
 					}
 				},
 				null,
 				reactor
 		);
-		return p;
+		return d.compose();
 	}
 
 	/**
@@ -197,7 +197,7 @@ public abstract class TcpClient<IN, OUT> {
 		return codec;
 	}
 
-	protected abstract void doClose(Promise<Void> promise);
+	protected abstract void doClose(Deferred<Void, Promise<Void>> d);
 
 	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpClient<IN, OUT>> {
 		private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;

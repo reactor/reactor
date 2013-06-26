@@ -17,40 +17,28 @@
 package reactor.core;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * A public factory to build {@link Stream}
  *
  * @author Stephane Maldini
+ * @author Jon Brisbin
  */
 public abstract class Streams {
-	/**
-	 * Create a delayed {@link Stream} with no initial state, ready to accept values.
-	 *
-	 * @return A {@link Stream.Spec} to further refine the {@link Stream} and then build it.
-	 */
-	public static <T> Stream.Spec<T> defer() {
-		return new Stream.Spec<T>(null);
+
+	public static <T> Deferred.StreamSpec<T> defer() {
+		return new Deferred.StreamSpec<T>();
 	}
 
-	/**
-	 * Create a delayed {@link Stream} with initial state, ready to accept values.
-	 *
-	 * @return A {@link Stream.Spec} to further refine the {@link Stream} and then build it.
-	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream.Spec<T> defer(T value) {
-		return new Stream.Spec<T>(Arrays.asList(value));
+	public static <T> Deferred.StreamSpec<T> defer(T value) {
+		return defer(Arrays.asList(value));
 	}
 
-	/**
-	 * Create a {@link Stream} from the given list of values.
-	 *
-	 * @param values The values to use.
-	 * @param <T>    The type of the values.
-	 * @return A {@link Stream.Spec} to further refine the {@link Stream} and then build it.
-	 */
-	public static <T> Stream.Spec<T> each(Iterable<T> values) {
-		return new Stream.Spec<T>(values);
+	public static <T> Deferred.StreamSpec<T> defer(Iterable<T> values) {
+		int size = (values instanceof List ? ((List) values).size() : -1);
+		return new Deferred.StreamSpec<T>().each(values).batch(size);
 	}
+
 }

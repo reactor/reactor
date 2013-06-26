@@ -33,8 +33,8 @@ import reactor.util.Assert;
 import java.util.List;
 
 /**
- * A generic environment-aware builder for reactor-based components such as {@link Promise},
- * {@link Stream} or {@link Reactor} itself.
+ * A generic environment-aware builder for reactor-based components such as {@link Promise}, {@link Stream} or {@link
+ * Reactor} itself.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -49,6 +49,17 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	protected EventRoutingStrategy eventRoutingStrategy;
 	protected SelectionStrategy    selectionStrategy;
 	protected String               reactorId;
+
+	public ComponentSpec() {
+	}
+
+	public ComponentSpec(ComponentSpec<?, ?> src) {
+		this.env = src.env;
+		this.dispatcher = src.dispatcher;
+		this.converter = src.converter;
+		this.eventRoutingStrategy = src.eventRoutingStrategy;
+		this.selectionStrategy = src.selectionStrategy;
+	}
 
 	public SPEC register() {
 		return register("");
@@ -149,9 +160,9 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		}
 		if (null == this.reactor) {
 			reactor = new Reactor(env,
-					dispatcher,
-					selectionStrategy,
-					createEventRouter());
+														dispatcher,
+														selectionStrategy,
+														createEventRouter());
 		} else {
 			reactor = new Reactor(
 					env,

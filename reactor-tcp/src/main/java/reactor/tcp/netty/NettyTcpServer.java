@@ -17,32 +17,17 @@
 package reactor.tcp.netty;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
-
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.Fn;
-import reactor.core.Environment;
-import reactor.core.Promise;
-import reactor.core.Promises;
-import reactor.core.Reactor;
+import reactor.core.*;
 import reactor.fn.Consumer;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -50,6 +35,10 @@ import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
+
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Jon Brisbin
@@ -134,10 +123,10 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Promise<Void> p = Promises.<Void>defer().using(env).using(getReactor()).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().using(env).using(getReactor()).get();
 		Fn.schedule(
 				new Consumer<Void>() {
-					@SuppressWarnings({ "rawtypes", "unchecked" })
+					@SuppressWarnings({"rawtypes", "unchecked"})
 					@Override
 					public void accept(Void v) {
 						final AtomicInteger groupsToShutdown = new AtomicInteger(2);
@@ -147,7 +136,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							public void operationComplete(Future future) throws Exception {
 								if (groupsToShutdown.decrementAndGet() == 0) {
 									notifyShutdown();
-									p.set((Void)null);
+									d.accept((Void) null);
 								}
 							}
 						};
@@ -159,7 +148,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				getReactor()
 		);
 
-		return p;
+		return d.compose();
 	}
 
 	@Override
@@ -178,7 +167,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
 		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
-		return new ChannelHandler[] {new NettyTcpConnectionChannelInboundHandler(conn)};
+		return new ChannelHandler[]{new NettyTcpConnectionChannelInboundHandler(conn)};
 	}
 
 }

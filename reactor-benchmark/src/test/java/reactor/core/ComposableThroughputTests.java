@@ -24,9 +24,9 @@ import reactor.AbstractReactorTest;
 import reactor.S;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.support.Reduce;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.fn.tuples.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,19 +55,19 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		latch = new CountDownLatch(length * runs * samples);
 	}
 
-	private Stream<Integer> createComposable(Dispatcher dispatcher) {
-		Stream<Integer> cInt = S.<Integer>defer().using(env).using(dispatcher).get();
-		cInt.map(new Function<Integer, Integer>() {
+	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
+		Deferred<Integer, Stream<Integer>> dInt = S.<Integer>defer().using(env).using(dispatcher).get();
+		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer integer) {
 				return integer;
 			}
 		})
-				.reduce(new Function<Reduce<Integer, Integer>, Integer>() {
+				.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
 					@Override
-					public Integer apply(Reduce<Integer, Integer> r) {
-						int last = (null != r.getLastValue() ? r.getLastValue() : 1);
-						return last + r.getNextValue();
+					public Integer apply(Tuple2<Integer, Integer> r) {
+						int last = (null != r.getT1() ? r.getT1() : 1);
+						return last + r.getT2();
 					}
 				})
 				.consume(new Consumer<Integer>() {
@@ -76,16 +76,16 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 						latch.countDown();
 					}
 				});
-		return cInt;
+		return dInt;
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
-		Stream<Integer> c = createComposable(dispatcher);
+		Deferred<Integer, Stream<Integer>> d = createDeferred(dispatcher);
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {
 				for (int j = 0; j < length; j++) {
-					c.accept(j);
+					d.accept(j);
 				}
 			}
 		}

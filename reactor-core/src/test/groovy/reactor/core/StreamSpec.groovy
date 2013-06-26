@@ -18,13 +18,14 @@
 
 package reactor.core
 
+import reactor.fn.tuples.Tuple2
+
 import static reactor.GroovyTestUtils.*
 
 import java.util.concurrent.TimeUnit
 
 import reactor.fn.Function
 import reactor.fn.Observable;
-import reactor.fn.support.Reduce
 import spock.lang.Specification
 
 class StreamSpec extends Specification {
@@ -513,11 +514,11 @@ class StreamSpec extends Specification {
 		3 * observable.notify('key', _)
 	}
 
-	static class Reduction implements Function<Reduce<Integer, Integer>, Integer> {
+	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
 		@Override
-		public Integer apply(Reduce<Integer, Integer> reduce) {
-			def result = reduce.lastValue == null ? reduce.nextValue : reduce.lastValue * reduce.nextValue
-			println "${reduce?.lastValue} ${reduce?.nextValue} reduced to ${result}"
+		public Integer apply(Tuple2<Integer, Integer> reduce) {
+			def result = reduce.t1 == null ? reduce.t1 : reduce.t1 * reduce.t2
+			println "${reduce?.t1} ${reduce?.t2} reduced to ${result}"
 			return result
 		}
 	}

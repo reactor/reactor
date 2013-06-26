@@ -48,13 +48,13 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 
 	@Override
 	public void shutdown() {
-		eventLoop.shutdown();
+		eventLoop.shutdownGracefully();
 		super.shutdown();
 	}
 
 	@Override
 	public void halt() {
-		eventLoop.shutdownNow();
+		eventLoop.shutdownGracefully();
 		super.halt();
 	}
 

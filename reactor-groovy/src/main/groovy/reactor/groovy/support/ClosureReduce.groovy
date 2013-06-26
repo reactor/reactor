@@ -20,26 +20,26 @@ package reactor.groovy.support
 
 import groovy.transform.CompileStatic
 import reactor.fn.Function
-import reactor.fn.support.Reduce
-
+import reactor.fn.tuples.Tuple2
 /**
  * @author Stephane Maldini
+ * @author Jon Brisbin
  */
 @CompileStatic
-class ClosureReduce<T,V> implements Function<Reduce<T, V>,V>  {
+class ClosureReduce<T, V> implements Function<Tuple2<T, V>, V> {
 
-	final Closure<V> callback
+  final Closure<V> callback
 
-	ClosureReduce(Closure<V> cl) {
-		callback = cl
-	}
+  ClosureReduce(Closure<V> cl) {
+    callback = cl
+  }
 
-	@Override
-	V apply(Reduce<T,V> t) {
+  @Override
+  V apply(Tuple2<T, V> t) {
 
-		if(t.lastValue)
-			callback t.nextValue, t.lastValue
-		else
-			callback t.nextValue
-	}
+    if (t.t1)
+      callback t.t1, t.t2
+    else
+      callback t.t2
+  }
 }

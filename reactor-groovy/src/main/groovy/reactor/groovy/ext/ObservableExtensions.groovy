@@ -33,7 +33,7 @@ import reactor.groovy.support.ClosureEventFunction
 import static reactor.Fn.$
 
 /**
- * Extensions for providing syntax suger for working with {@link reactor.fn.Observable}s.
+ * Extensions for providing syntax sugar for working with {@link reactor.fn.Observable}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin

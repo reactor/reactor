@@ -21,6 +21,7 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.Fn
 import reactor.P
+import reactor.core.Deferred
 import reactor.core.Promise
 import reactor.core.Promises
 import reactor.fn.Observable
@@ -39,11 +40,12 @@ class ReactorExtensions {
 		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
-	static <T> Promise.Spec<T> task(final Promises selfType, Closure<T> callback) {
+	static <T> Deferred.PromiseSpec<T> task(final Promises selfType, Closure<T> callback) {
 		P.task new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Spec<T> from(final Promise<T> selfType, Closure<T> callback) {
+	static <T> Deferred.PromiseSpec<T> from(final Promise<T> selfType, Closure<T> callback) {
 		task null, callback
 	}
+
 }

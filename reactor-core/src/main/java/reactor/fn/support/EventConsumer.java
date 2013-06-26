@@ -14,43 +14,27 @@
  * limitations under the License.
  */
 
+package reactor.fn.support;
 
-
-package reactor.groovy
-
-import groovy.transform.CompileStatic
-import reactor.core.Environment
-import reactor.P
-import reactor.fn.Supplier
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.util.Assert;
 
 /**
- * This class shouldnt fail compilation
- *
- * @author Stephane Maldini
+ * @author Jon Brisbin
  */
-@CompileStatic
-class CompileStaticTest {
+public class EventConsumer<T> implements Consumer<Event<T>> {
 
-	Environment env = new Environment()
+	private final Consumer<T> delegate;
 
-	def run() {
-
-		def testClosure = {
-			'test'
-		}
-
-		def supplier = new Supplier<String>(){
-			@Override
-			String get() {
-				'test'
-			}
-		}
-
-		//P.task(supplier).using(env)
+	public EventConsumer(Consumer<T> delegate) {
+		Assert.notNull(delegate, "Delegate Consumer cannot be null.");
+		this.delegate = delegate;
 	}
 
-	static void main(String[] args) {
-		new CompileStaticTest().run()
-
+	@Override
+	public void accept(Event<T> ev) {
+		delegate.accept(ev.getData());
 	}
+
 }
