@@ -40,7 +40,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private final Tuple2<Selector, Object> errorAccepted = $();
 
 	private final long       defaultTimeout;
-	private final Promise<?> parent;
 
 	private State state = State.PENDING;
 	private T         value;
@@ -48,10 +47,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	Promise(Environment env,
 	        @Nonnull Observable events,
-	        @Nullable Promise<?> parent) {
-		super(env, events);
+	        @Nullable Composable<?> parent) {
+		super(env, events, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
-		this.parent = parent;
 	}
 
 	public Promise<T> onComplete(final Consumer<Promise<T>> onComplete) {
@@ -198,8 +196,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public T get() {
-		if (null != parent) {
-			parent.get();
+		if (isPending()) {
+			resolve();
 		}
 		if (isSuccess()) {
 			return value;
@@ -246,6 +244,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		return (Promise<T>) super.filter(p);
 	}
 
+
+	@Override
+	public Promise<T> resolve() {
+		return (Promise<T>) super.resolve();
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
@@ -276,9 +280,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			assertPending();
 			this.state = State.SUCCESS;
 			this.value = value;
+			getObservable().notify(valueAccepted.getT2(), Event.wrap(value));
 		} finally {
 			lock.unlock();
 		}
+	}
+
+	@Override
+	protected void doResolution() {
 	}
 
 	private void assertPending() {

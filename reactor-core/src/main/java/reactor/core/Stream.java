@@ -37,24 +37,22 @@ import static reactor.fn.Functions.$;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
+public class Stream<T> extends Composable<T> {
 
 	private final Tuple2<Selector, Object> first = $();
 	private final Tuple2<Selector, Object> last  = $();
 	private final int         batchSize;
 	private final Iterable<T> values;
-	private final Stream<?>   parent;
 	private final long        defaultTimeout;
 
 	Stream(Environment env,
 	       @Nonnull Observable events,
 	       int batchSize,
 	       @Nullable Iterable<T> values,
-	       Stream<?> parent) {
-		super(env, events);
+	       Composable<?> parent) {
+		super(env, events,parent);
 		this.batchSize = batchSize;
 		this.values = values;
-		this.parent = parent;
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 	}
 
@@ -89,8 +87,10 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 	}
 
 	public Promise<T> first() {
-		final Deferred<T, Promise<T>> d = Promises.<T>defer().using(getEnvironment())
+		final Deferred<T, Promise<T>> d = Promises.<T>defer()
+				.using(getEnvironment())
 				.using((Reactor) getObservable())
+				.link(this)
 				.get();
 
 		getObservable().on(first.getT1(), new Consumer<Event<T>>() {
@@ -106,6 +106,7 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 		final Deferred<T, Promise<T>> d = Promises.<T>defer()
 				.using(getEnvironment())
 				.using((Reactor) getObservable())
+				.link(this)
 				.get();
 
 		getObservable().on(last.getT1(), new Consumer<Event<T>>() {
@@ -144,6 +145,16 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 		return batchSize > 0;
 	}
 
+	public Stream<List<T>> reduce() {
+		return reduce(new Function<Tuple2<T, List<T>>, List<T>>() {
+			@Override
+			public List<T> apply(Tuple2<T, List<T>> reduceValues) {
+				reduceValues.getT2().add(reduceValues.getT1());
+				return reduceValues.getT2();
+			}
+		}, Fn.<List<T>>supplier(new ArrayList<T>()));
+	}
+
 	public <A> Stream<A> reduce(Function<Tuple2<T, A>, A> fn, A initial) {
 		return reduce(fn, Fn.supplier(initial));
 	}
@@ -177,16 +188,12 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 	}
 
 	@Override
-	public Stream<T> get() {
-		if (null != parent) {
-			parent.get();
-		}
+	protected void doResolution() {
 		if (null != values) {
 			for (T val : values) {
 				notifyValue(val);
 			}
 		}
-		return this;
 	}
 
 	public T awaitNext() throws InterruptedException {
@@ -248,7 +255,6 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 		return "Stream{" +
 				"batchSize=" + batchSize +
 				", values=" + values +
-				", parent=" + parent +
 				'}';
 	}
 }

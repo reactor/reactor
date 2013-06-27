@@ -43,14 +43,18 @@ public abstract class Composable<T> {
 	private final Environment env;
 	private final Observable  events;
 
+	private final Composable<?> parent;
+
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
 
 	protected Composable(Environment env,
-											 @Nonnull Observable events) {
+	                     @Nonnull Observable events,
+	                     Composable parent) {
 		Assert.notNull(events, "Events Observable cannot be null.");
 		this.env = env;
 		this.events = events;
+		this.parent = parent;
 
 	}
 
@@ -132,6 +136,14 @@ public abstract class Composable<T> {
 		}
 	}
 
+	public Composable<T> resolve(){
+		if (null != parent) {
+			parent.resolve();
+		}
+		doResolution();
+		return this;
+	}
+
 	void notifyValue(T value) {
 		lock.lock();
 		try {
@@ -159,6 +171,8 @@ public abstract class Composable<T> {
 	protected abstract void errorAccepted(Throwable error);
 
 	protected abstract void valueAccepted(T value);
+
+	protected abstract void doResolution();
 
 	protected void cascadeErrors(final Composable<?> composable) {
 		when(Throwable.class, new Consumer<Throwable>() {

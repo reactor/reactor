@@ -22,6 +22,7 @@ import reactor.fn.Supplier;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 
@@ -45,12 +46,12 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	}
 
 	public static class PromiseSpec<T> extends ComponentSpec<PromiseSpec<T>, Deferred<T, Promise<T>>> {
-		private Promise<?>  parent;
+		private Composable<?>  parent;
 		private T           value;
 		private Throwable   error;
 		private Supplier<T> supplier;
 
-		public PromiseSpec<T> link(Promise<?> parent) {
+		public PromiseSpec<T> link(Composable<?> parent) {
 			this.parent = parent;
 			return this;
 		}
@@ -102,11 +103,11 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	}
 
 	public static class StreamSpec<T> extends ComponentSpec<StreamSpec<T>, Deferred<T, Stream<T>>> {
-		private Stream<?> parent;
+		private Composable<?> parent;
 		private int batchSize = -1;
 		private Iterable<T> values;
 
-		public StreamSpec<T> link(Stream<?> parent) {
+		public StreamSpec<T> link(Composable<?> parent) {
 			this.parent = parent;
 			return this;
 		}

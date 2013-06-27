@@ -38,7 +38,7 @@ class StreamSpec extends Specification {
 		when:
 			'the value is retrieved'
 			def value
-			d.compose().consume(consumer { value = it }).get()
+			d.compose().consume(consumer { value = it }).resolve()
 
 		then:
 			'it is available'
@@ -50,7 +50,7 @@ class StreamSpec extends Specification {
 			'a composable with an initial value'
 			def values = []
 			Deferred d = Streams.defer(1).sync().get()
-			d.compose().consume(consumer { values << it }).get()
+			d.compose().consume(consumer { values << it }).resolve()
 
 		when:
 			'a value is accepted'
@@ -74,10 +74,6 @@ class StreamSpec extends Specification {
 			'the last value is retrieved'
 			def last = s.last()
 
-		and:
-			'trigger deferred stream'
-			s.get()
-
 		then:
 			'first and last'
 			first.get() == 1
@@ -100,8 +96,8 @@ class StreamSpec extends Specification {
 			values == []
 
 		when:
-			'get is called'
-			composable.get()
+			'resolve is called'
+			composable.resolve()
 
 		then:
 			'the initial values are passed'
@@ -229,11 +225,11 @@ class StreamSpec extends Specification {
 		when:
 			'last is retrieved'
 			Promise last = composable.last()
-			composable.get()
+			composable.resolve()
 
 		then:
 			'its value is the last of the initial values'
-			last.await() == 5
+			last.get() == 5
 
 		when:
 			'another value is accepted'
@@ -276,7 +272,7 @@ class StreamSpec extends Specification {
 		when:
 			'last is retrieved'
 			Promise last = composable.last()
-			composable.get()
+			composable.resolve()
 
 		then:
 			'its value is unknown'
@@ -379,7 +375,7 @@ class StreamSpec extends Specification {
 		when:
 			'a reduce function is registered'
 			def value
-			Stream reduced = source.compose().reduce(new Reduction()).consume(consumer { value = it }).get()
+			Stream reduced = source.compose().reduce(new Reduction()).consume(consumer { value = it }).resolve()
 
 		then:
 			'the resulting composable holds the reduced value'
@@ -389,7 +385,7 @@ class StreamSpec extends Specification {
 	def "When reducing a known set of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known set of values and a reduce function'
-			Stream reduced = Streams.defer([1, 2, 3, 4, 5]).sync().get().compose().reduce(new Reduction()).get()
+			Stream reduced = Streams.defer([1, 2, 3, 4, 5]).sync().get().compose().reduce(new Reduction()).resolve()
 
 		when:
 			'a consumer is registered'
@@ -400,7 +396,7 @@ class StreamSpec extends Specification {
 			// get(). The behaviour needs to be consistent irrespective of whether the known number of values is provided up
 			// front or via accept.
 
-			reduced.get()
+			reduced.resolve()
 
 		then:
 			'the consumer only receives the final value'
@@ -527,6 +523,9 @@ class StreamSpec extends Specification {
 			'a composable'
 			Deferred source = Streams.defer().sync().get()
 			Stream reduced = source.compose().reduce()
+			def value
+			reduced.consume(consumer { value = it })
+
 
 		when:
 			'the first value is accepted'
@@ -534,7 +533,7 @@ class StreamSpec extends Specification {
 
 		then:
 			'the list contains the first element'
-			reduced.get() == [1]
+			value == [1]
 	}
 
 	def 'Reduce will accumulate a list of accepted values and pass it to a consumer'() {
@@ -620,7 +619,7 @@ class StreamSpec extends Specification {
 			'a composable consumer is registerd'
 			composable.consume('key', observable)
 
-			composable.get()//  TODO This will pass if get is called, but I don't think it should be necessary
+			composable.resolve()//  TODO This will pass if get is called, but I don't think it should be necessary
 
 		then:
 			'the observable is notified of the values'
