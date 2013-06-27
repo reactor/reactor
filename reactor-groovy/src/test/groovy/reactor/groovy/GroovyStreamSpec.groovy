@@ -50,7 +50,7 @@ class GroovyStreamSpec extends Specification {
 		def d = c | { it + 1 }
 
 		then: 'Composition contains value'
-		d.await 5, TimeUnit.SECONDS
+		d.awaitNext 5, TimeUnit.SECONDS
 		d.get() == 2
 	}
 
@@ -63,7 +63,7 @@ class GroovyStreamSpec extends Specification {
 		def d = c | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
-		d.await 1, TimeUnit.SECONDS
+		d.awaitNext 1, TimeUnit.SECONDS
 		sum == 15
 	}
 
@@ -75,7 +75,7 @@ class GroovyStreamSpec extends Specification {
 		def d = (c | { Integer.parseInt it }) & { it % 2 == 0 }
 
 		then:
-		d.await 1, TimeUnit.SECONDS
+		d.awaitNext 1, TimeUnit.SECONDS
 		d.get() == 4
 	}
 
@@ -88,7 +88,7 @@ class GroovyStreamSpec extends Specification {
 		def d = c | { Integer.parseInt it } | { if (it >= 5) throw new IllegalArgumentException() else sum += it }
 
 		then:
-		d.await 100, TimeUnit.SECONDS
+		d.awaitNext 100, TimeUnit.SECONDS
 		d.get() == 10
 	}
 
@@ -110,7 +110,7 @@ class GroovyStreamSpec extends Specification {
 		def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i }
 
 		then:
-		d.await 1, TimeUnit.SECONDS
+		d.awaitNext 1, TimeUnit.SECONDS
 		d.get() == 120
 	}
 
@@ -127,8 +127,8 @@ class GroovyStreamSpec extends Specification {
 		def last = d.last()
 
 		then:
-		first.await(1, TimeUnit.SECONDS) == 1
-		last.await(1, TimeUnit.SECONDS) == 5
+		first.awaitNext(1, TimeUnit.SECONDS) == 1
+		last.awaitNext(1, TimeUnit.SECONDS) == 5
 	}
 
 
@@ -146,7 +146,7 @@ class GroovyStreamSpec extends Specification {
 		def c = r.compose(key.t2, '1') % { i, acc = [] -> acc << i }
 
 		then:
-		c.await(1, TimeUnit.SECONDS)
+		c.awaitNext(1, TimeUnit.SECONDS)
 		c.get() == [1]
 	}
 
@@ -175,7 +175,7 @@ class GroovyStreamSpec extends Specification {
 		r.compose(key.t2, '1', c1)
 
 		then:
-		c2.await(1, TimeUnit.SECONDS)
+		c2.awaitNext(1, TimeUnit.SECONDS)
 		c2.get() == [1, 100]
 
 		when: 'using reduce() alias'
@@ -185,7 +185,7 @@ class GroovyStreamSpec extends Specification {
 		r.compose(key.t2, '1', c1)
 
 		then:
-		c2.await(1, TimeUnit.SECONDS)
+		c2.awaitNext(1, TimeUnit.SECONDS)
 		c2.get() == [1, 100, 1000]
 	}
 
@@ -229,7 +229,7 @@ class GroovyStreamSpec extends Specification {
 		}
 
 		then:
-		d.await(1, TimeUnit.SECONDS)
+		d.awaitNext(1, TimeUnit.SECONDS)
 		d.get() == 15
 	}
 

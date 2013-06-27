@@ -42,15 +42,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private final long       defaultTimeout;
 	private final Promise<?> parent;
 
-	private State   state       = State.PENDING;
+	private State state = State.PENDING;
 	private T         value;
 	private Throwable error;
 
-	Promise(@Nonnull Environment env,
-					@Nonnull Observable events,
-					@Nullable Promise<?> parent) {
+	Promise(Environment env,
+	        @Nonnull Observable events,
+	        @Nullable Promise<?> parent) {
 		super(env, events);
-		this.defaultTimeout = env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.parent = parent;
 	}
 
@@ -175,16 +175,18 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		lock.lock();
 		try {
-			if (timeout >= 0) {
-				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
-				long endTime = System.currentTimeMillis() + msTimeout;
-				long now;
-				while (state == State.PENDING && (now = System.currentTimeMillis()) < endTime) {
-					this.monitor.wait(endTime - now);
-				}
-			} else {
-				while (state == State.PENDING) {
-					this.monitor.wait();
+			synchronized (monitor) {
+				if (timeout >= 0) {
+					long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
+					long endTime = System.currentTimeMillis() + msTimeout;
+					long now;
+					while (state == State.PENDING && (now = System.currentTimeMillis()) < endTime) {
+						this.monitor.wait(endTime - now);
+					}
+				} else {
+					while (state == State.PENDING) {
+						this.monitor.wait();
+					}
 				}
 			}
 		} finally {

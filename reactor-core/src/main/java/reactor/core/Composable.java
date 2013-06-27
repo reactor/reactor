@@ -46,7 +46,7 @@ public abstract class Composable<T> {
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
 
-	protected Composable(@Nonnull Environment env,
+	protected Composable(Environment env,
 											 @Nonnull Observable events) {
 		Assert.notNull(events, "Events Observable cannot be null.");
 		this.env = env;

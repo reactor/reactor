@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
@@ -66,8 +67,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 				.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
 					@Override
 					public Integer apply(Tuple2<Integer, Integer> r) {
-						int last = (null != r.getT1() ? r.getT1() : 1);
-						return last + r.getT2();
+						int last = (null != r.getT2() ? r.getT2() : 1);
+						return last + r.getT1();
 					}
 				})
 				.consume(new Consumer<Integer>() {

@@ -26,6 +26,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static reactor.fn.Functions.$;
 
@@ -41,16 +44,18 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 	private final int         batchSize;
 	private final Iterable<T> values;
 	private final Stream<?>   parent;
+	private final long        defaultTimeout;
 
-	Stream(@Nonnull Environment env,
-				 @Nonnull Observable events,
-				 int batchSize,
-				 @Nullable Iterable<T> values,
-				 Stream<?> parent) {
+	Stream(Environment env,
+	       @Nonnull Observable events,
+	       int batchSize,
+	       @Nullable Iterable<T> values,
+	       Stream<?> parent) {
 		super(env, events);
 		this.batchSize = batchSize;
 		this.values = values;
 		this.parent = parent;
+		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 	}
 
 	@Override
@@ -78,8 +83,11 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 		return (Stream<T>) super.filter(p);
 	}
 
-	public Stream<T> first() {
-		final Deferred<T, Stream<T>> d = createDeferred();
+	public Promise<T> first() {
+		final Deferred<T, Promise<T>> d = Promises.<T>defer().using(getEnvironment())
+				.using((Reactor) getObservable())
+				.get();
+
 		getObservable().on(first.getT1(), new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> ev) {
@@ -89,8 +97,12 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 		return d.compose();
 	}
 
-	public Stream<T> last() {
-		final Deferred<T, Stream<T>> d = createDeferred();
+	public Promise<T> last() {
+		final Deferred<T, Promise<T>> d = Promises.<T>defer()
+				.using(getEnvironment())
+				.using((Reactor) getObservable())
+				.get();
+
 		getObservable().on(last.getT1(), new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> ev) {
@@ -170,6 +182,27 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 			}
 		}
 		return this;
+	}
+
+	public T awaitNext() throws InterruptedException {
+		return awaitNext(defaultTimeout, TimeUnit.MILLISECONDS);
+	}
+
+	public T awaitNext(long timeout, TimeUnit unit) throws InterruptedException {
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<T> ref = new AtomicReference<T>();
+
+		consume(new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				ref.set(t);
+				latch.countDown();
+			}
+		});
+
+		latch.await(timeout, unit);
+
+		return ref.get();
 	}
 
 	@SuppressWarnings("unchecked")

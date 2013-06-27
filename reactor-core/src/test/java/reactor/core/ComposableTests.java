@@ -147,11 +147,13 @@ public class ComposableTests extends AbstractReactorTest {
 				d.compose()
 				 .map(STRING_2_INTEGER);
 
-		Stream<Integer> first = s.first();
-		Stream<Integer> last = s.last();
+		Promise<Integer> first = s.first();
+		Promise<Integer> last = s.last();
 
-		await(first, is(1));
-		await(last, is(5));
+		s.get();
+
+		assertThat("First is 1", first.await(), is(1));
+		assertThat("Last is 5", last.await(), is(5));
 	}
 
 	@Test
