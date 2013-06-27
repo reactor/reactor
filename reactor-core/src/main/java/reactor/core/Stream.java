@@ -19,6 +19,7 @@ package reactor.core;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
+import reactor.fn.support.Cursor;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
 
@@ -69,6 +70,11 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public Stream<T> consume(Object key, Observable observable) {
 		return (Stream<T>) super.consume(key, observable);
+	}
+
+	@Override
+	public Stream<T> resolve() {
+		return (Stream<T>) super.resolve();
 	}
 
 	@Override
@@ -143,6 +149,17 @@ public class Stream<T> extends Composable<T> {
 
 	public boolean isBatch() {
 		return batchSize > 0;
+	}
+
+	public Cursor<T> cursor() {
+		final Cursor<T> cursor = new Cursor<T>();
+		consume(new Consumer<T>() {
+			@Override
+			public void accept(T t) {
+				cursor.set(t);
+			}
+		});
+		return cursor;
 	}
 
 	public Stream<List<T>> reduce() {
