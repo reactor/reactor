@@ -98,6 +98,26 @@ public abstract class GroovyTestUtils {
 			}
 		};
 	}
+	public static <K> Predicate<K> predicate(final Closure<Boolean> cl) {
+		return new Predicate<K>() {
+			Class<?>[] argTypes = cl.getParameterTypes();
+
+			@Override
+			public boolean test(K arg) {
+				if (argTypes.length < 1) {
+					return cl.call();
+				}
+				if (null != arg
+						&& argTypes[0] != Object.class
+						&& !argTypes[0].isAssignableFrom(arg.getClass())
+						&& arg instanceof Event) {
+					return test((K) ((Event<?>) arg).getData());
+				}
+
+				return cl.call(arg);
+			}
+		};
+	}
 
 	public static <V> Supplier<V> supplier(final Closure<V> cl) {
 		return new Supplier<V>() {

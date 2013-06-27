@@ -54,6 +54,17 @@ public abstract class Composable<T> {
 
 	}
 
+	public Composable<T> consume(final Composable<T> composable) {
+		this.events.on(accept.getT1(), new Consumer<Event<T>>() {
+			@Override
+			public void accept(Event<T> event) {
+				composable.notifyValue(event.getData());
+			}
+		});
+		cascadeErrors(composable);
+		return this;
+	}
+
 	public Composable<T> consume(final Consumer<T> consumer) {
 		this.events.on(accept.getT1(), new EventConsumer<T>(consumer));
 		return this;

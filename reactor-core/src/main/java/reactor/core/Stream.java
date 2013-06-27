@@ -64,6 +64,11 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 	}
 
 	@Override
+	public Stream<T> consume(Composable<T> consumer) {
+		return (Stream<T>) super.consume(consumer);
+	}
+
+	@Override
 	public Stream<T> consume(Object key, Observable observable) {
 		return (Stream<T>) super.consume(key, observable);
 	}
@@ -122,7 +127,7 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 			public void accept(T value) {
 				batchValues.add(value);
 				long accepted = getAcceptCount();
-				if (accepted % batchSize == 0 || accepted == Stream.this.batchSize) {
+				if (accepted % batchSize == 0 || accepted == Stream.this.batchSize || Stream.this.batchSize == -1) {
 					// This List might be accessed from another thread, depending on the Dispatcher in use, so copy it.
 					List<T> copy = new ArrayList<T>(batchSize);
 					copy.addAll(batchValues);
@@ -158,7 +163,7 @@ public class Stream<T> extends Composable<T> implements Supplier<Stream<T>> {
 				acc = fn.apply(Tuple.of(value, acc));
 				if (isBatch() && (getAcceptCount() % batchSize == 0)) {
 					d.accept(acc);
-				} else {
+				} else if(!isBatch()){
 					d.accept(acc);
 				}
 			}

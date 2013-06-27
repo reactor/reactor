@@ -222,6 +222,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
+	public Promise<T> consume(Composable<T> composable) {
+		return (Promise<T>) super.consume(composable);
+	}
+
+	@Override
 	public Promise<T> consume(Object key, Observable observable) {
 		return (Promise<T>) super.consume(key, observable);
 	}
