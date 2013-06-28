@@ -41,8 +41,6 @@ import java.util.concurrent.Callable;
  */
 public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker {
 
-	public static final ArgumentConvertingConsumerInvoker DEFAULT = new ArgumentConvertingConsumerInvoker(null);
-
 	private final Converter converter;
 
 	public ArgumentConvertingConsumerInvoker(Converter converter) {

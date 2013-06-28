@@ -20,6 +20,7 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.convert.Converter;
+import reactor.filter.PassThroughFilter;
 import reactor.fn.*;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
@@ -27,6 +28,7 @@ import reactor.fn.registry.CachingRegistry;
 import reactor.fn.registry.Registration;
 import reactor.fn.registry.Registry;
 import reactor.fn.registry.SelectionStrategy;
+import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
 import reactor.fn.routing.ConsumerFilteringEventRouter;
 import reactor.fn.routing.EventRouter;
 import reactor.fn.routing.Linkable;
@@ -54,6 +56,10 @@ import static reactor.fn.Functions.$;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Reactor implements Observable, Linkable<Observable> {
 
+	private static final EventRouter DEFAULT_EVENT_ROUTER = new ConsumerFilteringEventRouter(
+			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
+	);
+
 	private final Environment                            env;
 	private final Dispatcher                             dispatcher;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
@@ -61,9 +67,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	private final Object   defaultKey      = new Object();
 	private final Selector defaultSelector = $(defaultKey);
-
-	private final Object   registerKey      = new Object();
-	private final Selector registerSelector = $(registerKey);
 
 	private final UUID                id             = UUIDUtils.create();
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
@@ -107,7 +110,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 					EventRouter eventRouter) {
 		this.env = env;
 		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
-		this.eventRouter = eventRouter == null ? ConsumerFilteringEventRouter.DEFAULT : eventRouter;
+		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
 
 		this.on(new Consumer<Event>() {
@@ -120,7 +123,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 						try {
 							((Consumer) consumer).accept(data);
 						} catch (Throwable t) {
-							//LoggerFactory.getLogger(Reactor.class).error(t.getMessage(), t);
 							Reactor.this.notify(t.getClass(), Event.wrap(t));
 						}
 					}
@@ -188,7 +190,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		Registration<Consumer<E>> reg = consumerRegistry.register(selector, consumer);
-		notify(registerKey, Event.wrap(reg), null, ConsumerFilteringEventRouter.DEFAULT);
 		return reg;
 	}
 
@@ -203,7 +204,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return on(sel, new ReplyToConsumer<E, V>(fn));
 	}
 
-	private <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete, EventRouter eventRouter) {
+	@Override
+	public <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
@@ -218,34 +220,28 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
-		notify(key, ev, onComplete, eventRouter);
-		return this;
-	}
-
-	@Override
 	public <E extends Event<?>> Reactor notify(Object key, E ev) {
-		return notify(key, ev, null, eventRouter);
+		return notify(key, ev, null);
 	}
 
 	@Override
 	public <S extends Supplier<? extends Event<?>>> Reactor notify(Object key, S supplier) {
-		return notify(key, supplier.get(), null, eventRouter);
+		return notify(key, supplier.get(), null);
 	}
 
 	@Override
 	public <E extends Event<?>> Reactor notify(E ev) {
-		return notify(defaultKey, ev, null, eventRouter);
+		return notify(defaultKey, ev, null);
 	}
 
 	@Override
 	public <S extends Supplier<? extends Event<?>>> Reactor notify(S supplier) {
-		return notify(defaultKey, supplier.get(), null, eventRouter);
+		return notify(defaultKey, supplier.get(), null);
 	}
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, Event.NULL_EVENT, null, eventRouter);
+		return notify(key, Event.NULL_EVENT, null);
 	}
 
 	@Override
@@ -266,124 +262,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 	@Override
 	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
 		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
-	}
-
-
-	/**
-	 * Register a {@link Consumer} to be triggered when {@link #on} has been completed.
-	 *
-	 * @param registrationConsumer The {@literal Consumer} to be triggered.
-	 * @param <E>                  The type of the event passed to the registrationConsumer.
-	 * @return A {@link Registration} object that allows the caller to interact with consumer state.
-	 */
-	public <E extends Event<Registration<?>>> Registration<Consumer<E>> onRegistration(Consumer<E>
-																																												 registrationConsumer) {
-		return consumerRegistry.register(registerSelector, registrationConsumer);
-	}
-
-	/**
-	 * Register a {@link Function} to be triggered using the given {@link Selector}. The return value is automatically
-	 * handled and replied to the origin reactor/replyTo key set within an incoming event
-	 *
-	 * @param sel      The {@link Selector} to be used for matching
-	 * @param function The {@literal Function} to be triggered.
-	 * @param <T>      The type of the data in the {@link Event}.
-	 * @param <V>      The type of the return value when the given {@link Function}.
-	 * @return A {@link Stream} object that allows the caller to interact with the given mapping.
-	 */
-	public <T, E extends Event<T>, V> Stream<V> map(Selector sel, final Function<E, V> function) {
-		Assert.notNull(sel, "Selector cannot be null.");
-		Assert.notNull(function, "Function cannot be null.");
-
-//		final Stream<V> c = Streams.<V>defer().using(env).using(this).get();
-//		on(sel, new Consumer<E>() {
-//			@Override
-//			public void accept(E event) {
-//				try {
-//					c.accept(function.apply(event));
-//				} catch (Throwable t) {
-//					c.accept(t);
-//				}
-//			}
-//		});
-//		return c;
-		return null;
-	}
-
-	/**
-	 * Register a {@link Function} to be triggered using the internal, global {@link Selector} that is unique to each
-	 * {@literal Observable} instance. The return value is automatically handled and replied to the origin reactor/replyTo
-	 * key set within an incoming event
-	 *
-	 * @param function The {@literal Consumer} to be triggered.
-	 * @param <T>      The type of the data in the {@link Event}.
-	 * @param <V>      The type of the return value when the given {@link Function}.
-	 * @return A {@link Registration} object that allows the caller to interact with the given mapping.
-	 */
-	public <T, E extends Event<T>, V> Stream<V> map(Function<E, V> function) {
-		Assert.notNull(function, "Function cannot be null.");
-		return map(defaultSelector, function);
-	}
-
-	/**
-	 * Return a new composition ready to accept an event {@param ev}, thus notifying this component that the consumers
-	 * matching {@param key} should consume the event and might reply using R.replyTo (which is automatically handled when
-	 * used in combination with {@link #map(Function)}.
-	 *
-	 * @param key The notification key
-	 * @param ev  The {@link Event} to publish.
-	 * @return {@link Stream}
-	 */
-	public <T, E extends Event<T>, V> Stream<V> compose(Object key, E ev) {
-//		return Streams.defer(ev).using(env).using(this).get().map(key, this);
-		return null;
-	}
-
-	/**
-	 * Notify this component that the consumers matching {@param key} should consume the event {@param ev} and might send
-	 * replies to the consumer {@param consumer}.
-	 *
-	 * @param key      The notification key
-	 * @param ev       The {@link Event} to publish.
-	 * @param consumer The {@link Stream} to pass the replies.
-	 * @return {@literal this}
-	 */
-	public <T, E extends Event<T>, V> Reactor compose(Object key, E ev, Consumer<V> consumer) {
-//		Stream<E> composable = Streams.defer(ev).using(env).using(this).get();
-//		composable.<V>map(key, this).consume(consumer);
-//		composable.get();
-
-		return this;
-	}
-
-	/**
-	 * Compose an action starting with the given key and {@link Supplier}.
-	 *
-	 * @param key      The key to use.
-	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
-	 * @param <T>      The type of the incoming data.
-	 * @param <S>      The type of the event supplier.
-	 * @param <V>      The type of the {@link Stream}.
-	 * @return A new {@link Stream}.
-	 */
-	public <T, S extends Supplier<Event<T>>, V> Stream<V> compose(Object key, S supplier) {
-		return compose(key, supplier.get());
-	}
-
-
-	/**
-	 * Compose an action starting with the given key, the {@link Supplier} and a replies consumer.
-	 *
-	 * @param key      The key to use.
-	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance.
-	 * @param consumer The {@link Consumer} that will consume replies.
-	 * @param <T>      The type of the incoming data.
-	 * @param <S>      The type of the event supplier.
-	 * @param <V>      The type of the {@link Stream}.
-	 * @return A new {@link Stream}.
-	 */
-	public <T, S extends Supplier<Event<T>>, V> Reactor compose(Object key, S supplier, Consumer<V> consumer) {
-		return compose(key, supplier.get(), consumer);
 	}
 
 	@Override

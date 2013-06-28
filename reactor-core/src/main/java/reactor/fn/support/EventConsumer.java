@@ -18,9 +18,11 @@ package reactor.fn.support;
 
 import reactor.fn.Consumer;
 import reactor.fn.Event;
-import reactor.util.Assert;
 
 /**
+ * Simple {@link Consumer} implementation that pulls the data from an {@link Event} and passes it to a delegate {@link
+ * Consumer}.
+ *
  * @author Jon Brisbin
  */
 public class EventConsumer<T> implements Consumer<Event<T>> {
@@ -28,13 +30,14 @@ public class EventConsumer<T> implements Consumer<Event<T>> {
 	private final Consumer<T> delegate;
 
 	public EventConsumer(Consumer<T> delegate) {
-		Assert.notNull(delegate, "Delegate Consumer cannot be null.");
 		this.delegate = delegate;
 	}
 
 	@Override
 	public void accept(Event<T> ev) {
-		delegate.accept(ev.getData());
+		if (null != delegate) {
+			delegate.accept(ev.getData());
+		}
 	}
 
 }

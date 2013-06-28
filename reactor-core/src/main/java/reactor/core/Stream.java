@@ -19,21 +19,31 @@ package reactor.core;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
-import reactor.fn.support.Cursor;
+import reactor.fn.support.CascadingConsumer;
+import reactor.fn.support.EventConsumer;
+import reactor.fn.support.Tap;
 import reactor.fn.tuples.Tuple;
 import reactor.fn.tuples.Tuple2;
+import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static reactor.fn.Functions.$;
 
 /**
+ * A {@code Stream} is a stateless event processor that provides methods for attaching {@link Consumer Consumers} to
+ * consume the values passing through the stream. Some methods like {@link #map(reactor.fn.Function)}, {@link
+ * #filter(reactor.fn.Predicate)}, {@link #first()}, {@link #last()}, and {@link #reduce(reactor.fn.Function, Object)}
+ * return new {@code Stream Streams} whose values are the result of transformation functions, filtering, and the like.
+ * <p/>
+ * New {@code Stream Streams} aren't created directly. To get access to a {@code Stream}, create a {@link
+ * Deferred.StreamSpec} and configure it with the appropriate {@link Environment}, {@link
+ * reactor.fn.dispatch.Dispatcher}, and other settings, then call {@link reactor.core.Deferred#compose()}, which will
+ * return a {@code Stream} that handles the values passed into the {@link Deferred} previously created.
+ *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -44,31 +54,29 @@ public class Stream<T> extends Composable<T> {
 	private final Tuple2<Selector, Object> last  = $();
 	private final int         batchSize;
 	private final Iterable<T> values;
-	private final long        defaultTimeout;
 
-	Stream(Environment env,
-	       @Nonnull Observable events,
-	       int batchSize,
-	       @Nullable Iterable<T> values,
-	       Composable<?> parent) {
-		super(env, events,parent);
+	Stream(@Nullable Environment env,
+				 @Nonnull Observable events,
+				 int batchSize,
+				 @Nullable Iterable<T> values,
+				 Composable<?> parent) {
+		super(env, events, parent);
 		this.batchSize = batchSize;
 		this.values = values;
-		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 	}
 
 	@Override
-	public Stream<T> consume(Consumer<T> consumer) {
+	public Stream<T> consume(@Nonnull Consumer<T> consumer) {
 		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
-	public Stream<T> consume(Composable<T> consumer) {
+	public Stream<T> consume(@Nonnull Composable<T> consumer) {
 		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
-	public Stream<T> consume(Object key, Observable observable) {
+	public Stream<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
 		return (Stream<T>) super.consume(key, observable);
 	}
 
@@ -78,53 +86,102 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public <E extends Throwable> Stream<T> when(Class<E> exceptionType, Consumer<E> onError) {
+	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		return (Stream<T>) super.when(exceptionType, onError);
 	}
 
 	@Override
-	public <V> Stream<V> map(Function<T, V> fn) {
+	public <V> Stream<V> map(@Nonnull Function<T, V> fn) {
 		return (Stream<V>) super.map(fn);
 	}
 
 	@Override
-	public Stream<T> filter(Predicate<T> p) {
+	public Stream<T> filter(@Nonnull Predicate<T> p) {
 		return (Stream<T>) super.filter(p);
 	}
 
-	public Promise<T> first() {
-		final Deferred<T, Promise<T>> d = Promises.<T>defer()
-				.using(getEnvironment())
-				.using((Reactor) getObservable())
-				.link(this)
-				.get();
-
-		getObservable().on(first.getT1(), new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> ev) {
-				d.accept(ev.getData());
-			}
-		});
+	/**
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize} to
+	 * have been set.
+	 * <p/>
+	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @return a new {@code Stream} whose values are the first value of each batch
+	 * @see {@link #batch(int)}
+	 */
+	public Stream<T> first() {
+		final Deferred<T, Stream<T>> d = Streams.<T>defer()
+																						.using(getEnvironment())
+																						.using((Reactor) getObservable())
+																						.link(this)
+																						.get();
+		getObservable().on(first.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
 
-	public Promise<T> last() {
-		final Deferred<T, Promise<T>> d = Promises.<T>defer()
-				.using(getEnvironment())
-				.using((Reactor) getObservable())
-				.link(this)
-				.get();
-
-		getObservable().on(last.getT1(), new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> ev) {
-				d.accept(ev.getData());
-			}
-		});
+	/**
+	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize} to
+	 * have been set.
+	 * <p/>
+	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @return a new {@code Stream} whose values are the last value of each batch
+	 */
+	public Stream<T> last() {
+		final Deferred<T, Stream<T>> d = Streams.<T>defer()
+																						.using(getEnvironment())
+																						.using((Reactor) getObservable())
+																						.link(this)
+																						.get();
+		getObservable().on(last.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
 
-	public Stream<List<T>> batch(final int batchSize) {
+	/**
+	 * Create a new {@code Stream} with the given {@code batchSize}. When a {@code batchSize} has been set, {@link
+	 * #first()} and {@link #last()} and {@link #collect()} are available, since a fixed number of values is expected. In
+	 * an unbounded {@code Stream}, those methods have no meaning because there is no beginning or end of an unbounded
+	 * {@code Stream}.
+	 *
+	 * @param batchSize the batch size to use
+	 * @return a new {@code Stream} containing the values from the parent
+	 */
+	public Stream<T> batch(final int batchSize) {
+		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
+		consume(new CascadingConsumer<T>(d));
+		return d.compose();
+	}
+
+	/**
+	 * Indicates whether or not this {@code Stream} is unbounded.
+	 *
+	 * @return {@literal true} if a {@code batchSize} has been set, {@literal false} otherwise
+	 */
+	public boolean isBatch() {
+		return batchSize > 0;
+	}
+
+	/**
+	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code Stream}. The {@link Tap} is
+	 * continually updated when new values pass through the {@code Stream}.
+	 *
+	 * @return the new {@link Tap}
+	 * @see {@link Supplier}
+	 */
+	public Tap<T> tap() {
+		final Tap<T> tap = new Tap<T>();
+		consume(tap);
+		return tap;
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
+	 * batchSize} has been reached.
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> collect() {
+		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Trying extracting a batch first().");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
 		consume(new Consumer<T>() {
@@ -134,7 +191,7 @@ public class Stream<T> extends Composable<T> {
 			public void accept(T value) {
 				batchValues.add(value);
 				long accepted = getAcceptCount();
-				if (accepted % batchSize == 0 || accepted == Stream.this.batchSize || Stream.this.batchSize == -1) {
+				if (accepted % batchSize == 0 || accepted == Stream.this.batchSize) {
 					// This List might be accessed from another thread, depending on the Dispatcher in use, so copy it.
 					List<T> copy = new ArrayList<T>(batchSize);
 					copy.addAll(batchValues);
@@ -147,36 +204,36 @@ public class Stream<T> extends Composable<T> {
 		return d.compose();
 	}
 
-	public boolean isBatch() {
-		return batchSize > 0;
-	}
-
-	public Cursor<T> cursor() {
-		final Cursor<T> cursor = new Cursor<T>();
-		consume(new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				cursor.set(t);
-			}
-		});
-		return cursor;
-	}
-
-	public Stream<List<T>> reduce() {
-		return reduce(new Function<Tuple2<T, List<T>>, List<T>>() {
-			@Override
-			public List<T> apply(Tuple2<T, List<T>> reduceValues) {
-				reduceValues.getT2().add(reduceValues.getT1());
-				return reduceValues.getT2();
-			}
-		}, Fn.<List<T>>supplier(new ArrayList<T>()));
-	}
-
-	public <A> Stream<A> reduce(Function<Tuple2<T, A>, A> fn, A initial) {
+	/**
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
+	 * passed to the function's {@link Tuple2} argument.
+	 *
+	 * @param fn      the reduce function
+	 * @param initial the initial argument to pass to the reduce function
+	 * @param <A>     the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
 		return reduce(fn, Fn.supplier(initial));
 	}
 
-	public <A> Stream<A> reduce(final Function<Tuple2<T, A>, A> fn, final Supplier<A> accumulators) {
+	/**
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
+	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
+	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
+	 * <p/>
+	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} every time a
+	 * value is accepted. But when a {@code batchSize} has been set and {@link #isBatch()} returns true, the accumulated
+	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of the
+	 * next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with a new
+	 * accumulator.
+	 *
+	 * @param fn           the reduce function
+	 * @param accumulators the {@link Supplier} that will provide accumulators
+	 * @param <A>          the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
 
 		consume(new Consumer<T>() {
@@ -184,14 +241,15 @@ public class Stream<T> extends Composable<T> {
 
 			@Override
 			public void accept(T value) {
-				long accepted = (isBatch() ? getAcceptCount() % batchSize : getAcceptCount());
+				long batchIdx = getAcceptCount() % batchSize;
+				long accepted = (isBatch() ? batchIdx : getAcceptCount());
 				if (accepted == 1) {
 					acc = (null != accumulators ? accumulators.get() : null);
 				}
 				acc = fn.apply(Tuple.of(value, acc));
-				if (isBatch() && (getAcceptCount() % batchSize == 0)) {
+				if (isBatch() && (batchIdx == 0)) {
 					d.accept(acc);
-				} else if(!isBatch()){
+				} else if (!isBatch()) {
 					d.accept(acc);
 				}
 			}
@@ -200,7 +258,14 @@ public class Stream<T> extends Composable<T> {
 		return d.compose();
 	}
 
-	public <A> Stream<A> reduce(final Function<Tuple2<T, A>, A> fn) {
+	/**
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
+	 *
+	 * @param fn  the reduce function
+	 * @param <A> the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
 		return reduce(fn, (Supplier<A>) null);
 	}
 
@@ -211,27 +276,6 @@ public class Stream<T> extends Composable<T> {
 				notifyValue(val);
 			}
 		}
-	}
-
-	public T awaitNext() throws InterruptedException {
-		return awaitNext(defaultTimeout, TimeUnit.MILLISECONDS);
-	}
-
-	public T awaitNext(long timeout, TimeUnit unit) throws InterruptedException {
-		final CountDownLatch latch = new CountDownLatch(1);
-		final AtomicReference<T> ref = new AtomicReference<T>();
-
-		consume(new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				ref.set(t);
-				latch.countDown();
-			}
-		});
-
-		latch.await(timeout, unit);
-
-		return ref.get();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -270,8 +314,11 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public String toString() {
 		return "Stream{" +
-				"batchSize=" + batchSize +
+				"acceptCount=" + getAcceptCount() +
+				", errorCount=" + getErrorCount() +
+				", batchSize=" + batchSize +
 				", values=" + values +
 				'}';
 	}
+
 }

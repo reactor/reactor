@@ -19,7 +19,7 @@ package reactor.core;
 import reactor.fn.Supplier;
 
 /**
- * A public factory to build {@link Promise}
+ * Helper methods for creating {@link Deferred} instances, backed by a {@link Promise}.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -37,9 +37,10 @@ public abstract class Promises {
 	}
 
 	/**
-	 * Create a {@link Deferred} based on the given supplier.
+	 * Create a {@link Deferred} backed by a {@link Promise} and producing the value for the {@link Promise} using the
+	 * given supplier.
 	 *
-	 * @param supplier The {@link Supplier} to use.
+	 * @param supplier {@link Supplier} that will produce the value
 	 * @param <T>      type of the expected value
 	 * @return A {@link Deferred.PromiseSpec}.
 	 */
@@ -47,16 +48,30 @@ public abstract class Promises {
 		return new Deferred.PromiseSpec<T>().supplier(supplier);
 	}
 
+	/**
+	 * Create a {@link Deferred} backed by a {@link Promise} and using the given value to complete the {@link Promise}
+	 * immediately.
+	 *
+	 * @param value the value to complete the {@link Promise} with
+	 * @param <T>   the type of the value
+	 * @return A {@link Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
+	 *         the given value
+	 */
 	public static <T> Deferred.PromiseSpec<T> success(T value) {
 		return new Deferred.PromiseSpec<T>().value(value);
 	}
 
+	/**
+	 * Create a {@link Deferred} backed by a {@link Promise} and using the given error to complete the {@link Promise}
+	 * immediately.
+	 *
+	 * @param error the error to complete the {@link Promise} with
+	 * @param <T>   the type of the value
+	 * @return A {@link Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
+	 *         the given error
+	 */
 	public static <T> Deferred.PromiseSpec<T> error(Throwable error) {
 		return new Deferred.PromiseSpec<T>().error(error);
-	}
-
-	public static <T> Deferred.PromiseSpec<T> when(Composable<T>... composables) {
-		return null;
 	}
 
 }

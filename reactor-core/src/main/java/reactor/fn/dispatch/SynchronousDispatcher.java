@@ -28,6 +28,9 @@ public class SynchronousDispatcher extends BaseDispatcher {
 
 	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
 
+	private SynchronousDispatcher() {
+	}
+
 	@Override
 	public boolean alive() {
 		return true;
@@ -41,7 +44,7 @@ public class SynchronousDispatcher extends BaseDispatcher {
 	public void halt() {
 	}
 
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings({"unchecked"})
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
 		return (Task<E>) new SyncTask();
@@ -53,4 +56,5 @@ public class SynchronousDispatcher extends BaseDispatcher {
 			execute();
 		}
 	}
+
 }

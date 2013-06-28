@@ -16,35 +16,27 @@
 
 package reactor.fn.routing;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.filter.Filter;
-import reactor.filter.PassThroughFilter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.registry.Registration;
 import reactor.util.Assert;
 
+import java.util.List;
+
 /**
- * An {@link reactor.fn.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to them.
+ * An {@link reactor.fn.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to
+ * them.
  *
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
 public final class ConsumerFilteringEventRouter implements EventRouter {
 
-	public static final ConsumerFilteringEventRouter DEFAULT = new ConsumerFilteringEventRouter(
-			PassThroughFilter.INSTANCE,
-			ArgumentConvertingConsumerInvoker.DEFAULT
-	);
-
 	private final Logger logger = LoggerFactory.getLogger(getClass());
-
-	private final Filter filter;
-
+	private final Filter          filter;
 	private final ConsumerInvoker consumerInvoker;
 
 	/**

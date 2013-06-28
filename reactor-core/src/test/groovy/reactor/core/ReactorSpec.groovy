@@ -301,84 +301,6 @@ class ReactorSpec extends Specification {
 		e
 	}
 
-	def "A Reactor can map replies to Stream"() {
-		given: "a synchronous Reactor"
-		def r = R.reactor().sync().get()
-
-		when: "mapping a default Function"
-		def s = r.map function { Integer.parseInt it.data }
-
-		and: "Notify reactor default selector"
-		r.notify Event.wrap('1')
-
-		then: "Stream result should be set"
-		s.get() == 1
-
-		when: "mapping a 'test' Function"
-		s = r.map $('test'), function { Integer.parseInt it.data }
-
-		and: "Notify reactor 'test' selector"
-		r.notify 'test', Event.wrap('1')
-
-		then: "Stream result should be set"
-		s.get() == 1
-
-		when: "mapping a 'test2' Function"
-		s = r.map $('test2'), function { throw new Exception() }
-		def ex
-		s.when(Exception, consumer { ex = it })
-
-		and: "Notify reactor 'test2' selector"
-		r.notify 'test2', Event.wrap('1')
-
-		then: "Exception should be set"
-		ex
-	}
-
-	def "A Reactor can compose replies to Stream"() {
-		given: "a synchronous Reactor"
-		def r = R.reactor().sync().get()
-
-		when: "mapping a 'test' Function"
-		r.receive $('test'), function { Integer.parseInt it.data }
-
-		and: "Notify reactor 'test' selector"
-		def s = r.compose 'test', Event.wrap('1')
-
-		then: "Stream result should be set"
-		s.get() == 1
-
-		when: "Notify reactor 'test' selector"
-		s = r.compose 'test', supplier{Event.wrap('1')}
-
-		then: "Stream result should be set"
-		s.get() == 1
-
-		when: "mapping a new 'test' Function"
-		r.receive $('test'), function { Integer.parseInt(it.data) * 10 }
-
-		and: "Notify reactor 'test' selector (2 previous functions registered)"
-		s = r.compose 'test', Event.wrap('1')
-
-		then: "Stream result should be set"
-		s.reduce().get() == [1, 10]
-
-		when: "Notify reactor 'test' selector with a provided consumer"
-		def count = 0
-		r.compose 'test', Event.wrap('1'), consumer { count++ }
-
-		then: "The consumer has received 2 results"
-		count == 2
-
-		when: "Notify reactor 'test' selector with supplier and a provided consumer"
-		count = 0
-		r.compose 'test', supplier { Event.wrap('1') }, consumer { count++ }
-
-		then: "The consumer has received 2 results"
-		count == 2
-	}
-
-
 	def "A Consumer can be unassigned"() {
 
 		given: "a normal reactor"
@@ -475,34 +397,6 @@ class ReactorSpec extends Specification {
 
 		then: "the count is only 1"
 		count == 1
-
-	}
-
-
-	def "A Reactor can receive registration notifications"() {
-
-		given: "a synchronous Reactor and a registration consumer"
-		def r = R.reactor().get()
-		def count = 0
-		r.onRegistration(consumer { count++ })
-
-		when: "a consumer is registered"
-		r.on(consumer {})
-
-		then: "the count should be 1 as we had a single registration"
-		count == 1
-
-		when: "a synchronous RoundRobin Reactor and 2 registration consumers"
-		r = R.reactor().roundRobinEventRouting().get()
-		count = 0
-		r.onRegistration(consumer { count++ })
-		r.onRegistration(consumer { count++ })
-
-		and: "register a consumer"
-		r.on(consumer {})
-
-		then: "the count should be 2 as we had 2 registrations consumers called"
-		count == 2
 
 	}
 

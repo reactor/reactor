@@ -164,7 +164,7 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
