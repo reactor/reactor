@@ -57,7 +57,11 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		Deferred<Integer, Stream<Integer>> dInt = S.<Integer>defer().using(env).using(dispatcher).get();
+		Deferred<Integer, Stream<Integer>> dInt = S.<Integer>defer()
+				.using(env)
+				.using(dispatcher)
+				.batch(length * runs * samples)
+				.get();
 		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer integer) {

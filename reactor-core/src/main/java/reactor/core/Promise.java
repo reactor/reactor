@@ -154,7 +154,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
 		final Deferred<V, Promise<V>> d = new Deferred.PromiseSpec<V>()
 				.using(getEnvironment())
-				.using((Reactor) getObservable())
+				.sync()
 				.get();
 
 		Promise<V> p = d.compose().onError(onError);
@@ -433,7 +433,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
 		return (Deferred<V, C>) new Deferred.PromiseSpec<V>()
 				.using(getEnvironment())
-				.using((Reactor) getObservable())
+				.sync()
 				.link(this)
 				.get();
 	}

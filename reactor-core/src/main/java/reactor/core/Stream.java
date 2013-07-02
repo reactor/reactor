@@ -56,10 +56,10 @@ public class Stream<T> extends Composable<T> {
 	private final Iterable<T> values;
 
 	Stream(@Nullable Environment env,
-				 @Nonnull Observable events,
-				 int batchSize,
-				 @Nullable Iterable<T> values,
-				 Composable<?> parent) {
+	       @Nonnull Observable events,
+	       int batchSize,
+	       @Nullable Iterable<T> values,
+	       Composable<?> parent) {
 		super(env, events, parent);
 		this.batchSize = batchSize;
 		this.values = values;
@@ -111,10 +111,10 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> first() {
 		final Deferred<T, Stream<T>> d = Streams.<T>defer()
-																						.using(getEnvironment())
-																						.using((Reactor) getObservable())
-																						.link(this)
-																						.get();
+				.using(getEnvironment())
+				.sync()
+				.link(this)
+				.get();
 		getObservable().on(first.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
@@ -129,10 +129,10 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> last() {
 		final Deferred<T, Stream<T>> d = Streams.<T>defer()
-																						.using(getEnvironment())
-																						.using((Reactor) getObservable())
-																						.link(this)
-																						.get();
+				.using(getEnvironment())
+				.sync()
+				.link(this)
+				.get();
 		getObservable().on(last.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
@@ -288,7 +288,7 @@ public class Stream<T> extends Composable<T> {
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
 		return (Deferred<V, C>) new Deferred.StreamSpec<V>()
 				.using(getEnvironment())
-				.using((Reactor) getObservable())
+				.sync()
 				.link(this)
 				.batch(batchSize)
 				.get();
