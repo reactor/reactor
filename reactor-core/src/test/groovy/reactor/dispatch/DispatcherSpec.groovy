@@ -58,8 +58,8 @@ class DispatcherSpec extends Specification {
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>(null)
-		def eventRouter = new ConsumerFilteringEventRouter(new PassThroughFilter(), ArgumentConvertingConsumerInvoker
-				.DEFAULT)
+		def eventRouter = new ConsumerFilteringEventRouter(
+				new PassThroughFilter(),  new ArgumentConvertingConsumerInvoker())
 		def sel = $('test')
 		registry.register(sel, consumer {
 			taskThread = Thread.currentThread()

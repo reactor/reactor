@@ -26,6 +26,7 @@ import reactor.fn.Event;
 import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.fn.selector.Selector;
+import reactor.fn.support.Tap;
 import reactor.fn.tuples.Tuple2;
 
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import static reactor.Fn.$;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ComposableTests extends AbstractReactorTest {
 
@@ -120,7 +122,7 @@ public class ComposableTests extends AbstractReactorTest {
 					 }
 				 });
 
-		await(4, s, is(10));
+		await(5, s, is(10));
 		assertThat("error count is 1", s.getErrorCount(), is(1L));
 	}
 
@@ -147,13 +149,13 @@ public class ComposableTests extends AbstractReactorTest {
 				d.compose()
 				 .map(STRING_2_INTEGER);
 
-		Stream<Integer> first = s.first();
-		Stream<Integer> last = s.last();
+		Tap<Integer> first = s.first().tap();
+		Tap<Integer> last = s.last().tap();
 
 		s.resolve();
 
-		assertThat("First is 1", first.tap().get(), is(1));
-		assertThat("Last is 5", last.tap().get(), is(5));
+		assertThat("First is 1", first.get(), is(1));
+		assertThat("Last is 5", last.get(), is(5));
 	}
 
 	@Test
@@ -187,7 +189,7 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<List<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
-				 .batch(2)
+				 .batch(5)
 				 .collect();
 
 		final AtomicInteger batchCount = new AtomicInteger();
@@ -202,7 +204,7 @@ public class ComposableTests extends AbstractReactorTest {
 			}
 		}).resolve();
 
-		assertThat("batchCount is 3", batchCount.get(), is(3));
+		assertThat("batchCount is 3", batchCount.get(), is(1));
 		assertThat("count is 15", count.get(), is(15));
 	}
 
@@ -249,6 +251,12 @@ public class ComposableTests extends AbstractReactorTest {
 				ref.set(t);
 				latch.countDown();
 			}
+		}).when(Exception.class, new Consumer<Exception>() {
+			@Override
+			public void accept(Exception e) {
+				e.printStackTrace();
+				latch.countDown();
+			}
 		}).resolve();
 
 		long startTime = System.currentTimeMillis();
@@ -257,11 +265,12 @@ public class ComposableTests extends AbstractReactorTest {
 			latch.await(1, TimeUnit.SECONDS);
 			result = ref.get();
 		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		long duration = System.currentTimeMillis() - startTime;
 
 		assertThat(result, expected);
-		assertThat(duration, is(lessThan(1000L)));
+		assertThat(duration, is(lessThan(2000L)));
 	}
 
 	static class String2Integer implements Function<String, Integer> {

@@ -17,6 +17,7 @@
 package reactor.core;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -37,7 +38,7 @@ public abstract class Streams {
 	}
 
 	public static <T> Deferred.StreamSpec<T> defer(Iterable<T> values) {
-		int size = (values instanceof List ? ((List) values).size() : -1);
+		int size = (values instanceof Collection ? ((Collection) values).size() : -1);
 		return new Deferred.StreamSpec<T>().each(values).batch(size);
 	}
 

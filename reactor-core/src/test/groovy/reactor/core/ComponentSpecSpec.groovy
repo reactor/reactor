@@ -27,6 +27,7 @@ package reactor.core
 import reactor.P
 import reactor.R
 import reactor.S
+import reactor.fn.support.Tap
 import spock.lang.Specification
 
 /**
@@ -46,23 +47,24 @@ class ComponentSpecSpec extends Specification {
 	def "Composable correctly built"() {
 
 		when: "we create a plain Composable"
-		def composable = S.defer().sync().get()
+		Deferred composable = S.defer().sync().get()
+		Tap<String> tap = composable.compose().tap()
 		composable.accept('test')
 
 		then:
-		Stream.isAssignableFrom(composable.class)
-		composable.get() == 'test'
+		Deferred.isAssignableFrom(composable.class)
+		tap.get() == 'test'
 
 	}
 
 	def "Promise correctly built"() {
 
 		when: "we create a plain Promise"
-		def promise = P.success('test').sync().get()
+		Deferred promise = P.success('test').sync().get()
 
 		then:
-		Promise.isAssignableFrom(promise.class)
-		promise.get() == 'test'
+		Deferred.isAssignableFrom(promise.class)
+		promise.compose().get() == 'test'
 
 	}
 
