@@ -51,17 +51,18 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	private final long defaultTimeout;
 
-	private State state = State.PENDING;
+	private volatile State state = State.PENDING;
 	private T           value;
 	private Throwable   error;
 	private Supplier<T> supplier;
+	private boolean hasBlockers = false;
 
 	Promise(@Nullable Environment env,
-					@Nonnull Observable events,
-					@Nullable Composable<?> parent,
-					Supplier<T> value,
-					Throwable error,
-					Supplier<T> supplier) {
+	        @Nonnull Observable events,
+	        @Nullable Composable<?> parent,
+	        Supplier<T> value,
+	        Throwable error,
+	        Supplier<T> supplier) {
 		super(env, events, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		if (null != value) {
@@ -267,25 +268,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			return get();
 		}
 
-		lock.lock();
-		try {
-			synchronized (monitor) {
-				if (timeout >= 0) {
-					long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
-					long endTime = System.currentTimeMillis() + msTimeout;
-					long now;
-					while (state == State.PENDING && (now = System.currentTimeMillis()) < endTime) {
-						this.monitor.wait(endTime - now);
-					}
-				} else {
-					while (state == State.PENDING) {
-						this.monitor.wait();
-					}
+		hasBlockers = true;
+		synchronized (monitor) {
+			if (timeout >= 0) {
+				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
+				long endTime = System.currentTimeMillis() + msTimeout;
+				while (state == State.PENDING && (System.currentTimeMillis()) < endTime) {
+					this.monitor.wait(200);
+				}
+			} else {
+				while (state == State.PENDING) {
+					this.monitor.wait(200);
 				}
 			}
-		} finally {
-			lock.unlock();
 		}
+		hasBlockers = false;
 
 		return get();
 	}
@@ -445,10 +442,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			assertPending();
 			this.state = State.FAILURE;
 			this.error = error;
+			if (hasBlockers) {
+				monitor.notifyAll();
+			}
 		} finally {
 			lock.unlock();
 		}
 		getObservable().notify(complete.getT2(), Event.wrap(this));
+
 	}
 
 	@Override
@@ -458,10 +459,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			assertPending();
 			this.state = State.SUCCESS;
 			this.value = value;
+			if (hasBlockers) {
+				monitor.notifyAll();
+			}
 		} finally {
 			lock.unlock();
 		}
 		getObservable().notify(complete.getT2(), Event.wrap(this));
+
 	}
 
 	@Override
