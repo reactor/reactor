@@ -23,7 +23,11 @@ import reactor.support.Supports;
 import java.lang.reflect.Method;
 
 /**
+ * When given a {@link Method}, a {@code MethodSelectorResolver} will attempt to return a
+ * {@link Selector} for the method.
+ *
  * @author Jon Brisbin
  */
 public interface MethodSelectorResolver extends Supports<Method>, Function<Method, Selector> {
+
 }

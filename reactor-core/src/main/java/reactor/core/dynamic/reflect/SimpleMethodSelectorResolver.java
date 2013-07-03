@@ -16,7 +16,6 @@
 
 package reactor.core.dynamic.reflect;
 
-import static reactor.Fn.$;
 import static reactor.core.dynamic.reflect.support.MethodNameUtils.methodNameToSelectorName;
 
 import java.lang.reflect.Method;
@@ -52,7 +51,5 @@ public class SimpleMethodSelectorResolver implements MethodSelectorResolver {
 	public boolean supports(Method method) {
 		return method.getDeclaringClass() != Object.class && !method.getName().contains("$");
 	}
-
-
 
 }
