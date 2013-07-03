@@ -53,7 +53,13 @@ import reactor.util.Assert;
  * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based
  * on the given interface, that intercepts calls to the interface and translates them into
  * the appropriate {@link Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer)} or
- * {@link Reactor#notify(Object, Event)} calls.
+ * {@link Reactor#notify(Object, Event)} calls. Methods that are translated to {@code on}
+ * calls should take a single argument that is a {@link Consumer}, {@link Function},
+ * {@link Runnable}, or {@link Callable}. Methods that are translated to {@code notify}
+ * calls should take zero or one arguments. If the method takes zero arguments it will be
+ * translated to {@link Reactor#notify(Object)}. IF the method takes one argument it will
+ * be translated to {@link Reactor#notify(Object, Event)}, {@link Event#wrap(Object)
+ * wrapping} the argument in an {@link Event} if necessary.
  * <p>
  * The translation of calls on the interface to calls to {@code on} and the selector that
  * is used is determined by the {@link MethodSelectorResolver}s. The translation of calls on
