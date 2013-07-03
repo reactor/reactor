@@ -16,24 +16,25 @@
 
 package reactor.fn.routing;
 
+import java.util.concurrent.Callable;
+
 import reactor.convert.Converter;
 import reactor.fn.Consumer;
 import reactor.fn.Event;
 import reactor.fn.support.ConsumerUtils;
 
-import java.util.concurrent.Callable;
-
 /**
- * This implementation of a {@link reactor.fn.routing.ConsumerInvoker} will attempt to invoke a {@link
- * reactor.fn.Consumer} as-is and, if that fails with a {@link ClassCastException} because the argument declared in the
- * {@literal Consumer} isn't of the correct type, it tries to find an object of that type in the array of {@literal
- * possibleArgs} passed to the invoker. If that fails, it will attempt to use the given {@link Converter} to convert the
- * argument into a form acceptable to the {@literal Consumer}. If the argument is of type {@link reactor.fn.Event} and
- * the data inside that event is of a compatible type with the argument to the consumer, this invoker will unwrap that
+ * This implementation of a {@link reactor.fn.routing.ConsumerInvoker} will attempt to invoke
+ * a {@link Consumer} as-is and, if that fails with a {@link ClassCastException} because the
+ * argument declared in the {@literal Consumer} isn't of the correct type, it tries to find an
+ * object of that type in the array of possible arguments passed to the invoker. If that fails,
+ * it will attempt to use a {@link Converter} to convert the argument into a form acceptable to
+ * the {@literal Consumer}. If the argument is of type {@link Event} and the data inside that
+ * event is of a compatible type with the argument to the consumer, this invoker will unwrap that
  * {@literal Event} and try to invoke the consumer using the data itself.
- * <p/>
+ * <p>
  * Finally, if the {@literal Consumer} also implements {@link Callable}, then it will invoke the {@link
- * java.util.concurrent.Callable#call()} method to obtain a return value and return that. Otherwise it will return
+ * Callable#call()} method to obtain a return value and return that. Otherwise it will return
  * {@literal null} or throw any raised exceptions.
  *
  * @author Jon Brisbin
@@ -43,6 +44,12 @@ public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker 
 
 	private final Converter converter;
 
+	/**
+	 * Creates a new {@code ArgumentConvertingConsumerInvoker} that will use the given
+	 * {@code converter} for any necessary argument conversion.
+	 *
+	 * @param converter The converter to be used
+	 */
 	public ArgumentConvertingConsumerInvoker(Converter converter) {
 		this.converter = converter;
 	}

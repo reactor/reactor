@@ -19,6 +19,8 @@ package reactor.fn.routing;
 /**
  * Simple abstraction to provide linking components together.
  *
+ * @param <T> the type that can be linked
+ *
  * @author Jon Brisbin
  */
 public interface Linkable<T> {

@@ -27,8 +27,8 @@ import reactor.util.Assert;
 import java.util.List;
 
 /**
- * An {@link reactor.fn.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to
- * them.
+ * An {@link reactor.fn.routing.EventRouter} that {@link Filter#filter filters} consumers before
+ * routing events to them.
  *
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -40,10 +40,12 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	private final ConsumerInvoker consumerInvoker;
 
 	/**
-	 * Creates a new {@code ConsumerFilteringEventRouter} that will use {@code filter} to filter consumers.
+	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to
+	 * filter consumers.
 	 *
 	 * @param filter          The filter to use. Must not be {@code null}.
 	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
+	 *
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
