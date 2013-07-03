@@ -168,6 +168,7 @@ project('reactor-core') {
 	}
 }
 
+/*
 project('reactor-groovy') {
 	description = 'Reactor Groovy components'
 	dependencies {
@@ -176,6 +177,7 @@ project('reactor-groovy') {
 		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
 	}
 }
+*/
 
 project('reactor-spring') {
 	description = 'Reactor Spring components'
