@@ -24,7 +24,6 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import reactor.core.Environment
-import reactor.core.dynamic.annotation.DispatcherType
 import reactor.core.dynamic.DynamicReactor
 import reactor.core.dynamic.annotation.Dispatcher
 import reactor.fn.Consumer

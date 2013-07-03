@@ -16,25 +16,30 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import reactor.core.Reactor;
 
 /**
- * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#notify(Object, reactor.Event.wrap))}.
+ * Annotation to denote that a method should proxy a call to an underlying {@link
+ * Reactor#notify(Object, reactor.fn.Event)} or {@link Reactor#notify(Object)} call.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-@Target({
-						ElementType.METHOD
-				})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface Notify {
 
 	/**
-	 * The string to use as a key.
+	 * The string to use as the notification key
 	 *
-	 * @return
+	 * @return the notification key
 	 */
 	String value() default "";
 

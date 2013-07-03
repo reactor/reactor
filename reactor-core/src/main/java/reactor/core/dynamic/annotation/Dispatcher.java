@@ -16,16 +16,34 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import reactor.core.Environment;
+import reactor.core.Reactor;
+import reactor.core.dynamic.DynamicReactorFactory;
 
 /**
+ * Used on a {@class DynamicReactor} to specify the {@link Dispatcher} that should be used
+ * by the underlying {@link Reactor}. The {@code Dispatcher} is looked up in the
+ * {@link Environment} of the {@link DynamicReactorFactory}.
+ *
  * @author Jon Brisbin
+ *
  */
-@Target({
-						ElementType.TYPE
-				})
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface Dispatcher {
+
+	/**
+	 * The name of the dispatcher. The actual dispatcher is found by using the name to {@link
+	 * Environment#getDispatcher(String) look it up} in the {@link Environment}.
+	 *
+	 * @return The name of the dispatcher
+	 */
 	String value();
 }

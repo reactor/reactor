@@ -16,25 +16,33 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import reactor.fn.selector.ObjectSelector;
+import reactor.fn.selector.Selector;
 
 /**
- * Annotation to denote that a method should proxy a call to an underlying {@link reactor.core.Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer))}.
+ * Annotation to denote that a method should proxy a call to
+ * {@link reactor.core.Reactor#on(Selector, reactor.fn.Consumer)}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-@Target({
-						ElementType.METHOD
-				})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface On {
 
 	/**
-	 * The string to use as a {@link reactor.fn.selector.Selector}.
+	 * The string to use to create the {@link Selector}.
 	 *
-	 * @return
+	 * @return the selector string
+	 *
+	 * @see ObjectSelector
 	 */
 	String value() default "";
 
