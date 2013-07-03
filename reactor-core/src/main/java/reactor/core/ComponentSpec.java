@@ -132,7 +132,7 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 	}
 
 	public SPEC sync() {
-		this.dispatcher = SynchronousDispatcher.INSTANCE;
+		this.dispatcher = new SynchronousDispatcher();
 		return (SPEC) this;
 	}
 

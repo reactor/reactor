@@ -318,7 +318,7 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 			Spec reactorSpec = Reactors.reactor().using(env);
 			if (dispatcherAnnotation != null) {
 				if ("sync".equals(dispatcherAnnotation.value())) {
-					reactorSpec.using(SynchronousDispatcher.INSTANCE);
+					reactorSpec.using(new SynchronousDispatcher());
 				} else {
 					reactorSpec.dispatcher(dispatcherAnnotation.value());
 				}

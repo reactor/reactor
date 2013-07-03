@@ -99,7 +99,7 @@ public class TcpServerTests {
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
 		TcpServer<byte[], byte[]> server = new TcpServer.Spec<byte[], byte[]>(NettyTcpServer.class)
 				.using(env)
-				.using(SynchronousDispatcher.INSTANCE)
+				.sync()
 				.options(new ServerSocketOptions()
 										 .backlog(1000)
 										 .reuseAddr(true)

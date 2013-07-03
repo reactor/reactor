@@ -58,7 +58,7 @@ class ReactorSpec extends Specification {
 		def reactor = R.reactor().sync().get()
 
 		then: "Dispatcher has been set to Synchronous"
-		reactor.dispatcher == SynchronousDispatcher.INSTANCE
+		reactor.dispatcher instanceof SynchronousDispatcher
 
 		when: "Building a RoundRobin Reactor"
 		reactor = R.reactor().roundRobinEventRouting().get()

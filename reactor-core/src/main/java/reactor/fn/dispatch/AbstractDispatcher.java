@@ -19,6 +19,8 @@ package reactor.fn.dispatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * A {@code Dispatcher} that has a lifecycle.
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */

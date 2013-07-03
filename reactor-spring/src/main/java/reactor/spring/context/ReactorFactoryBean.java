@@ -49,7 +49,7 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 		Reactor.Spec spec = R.reactor().using(env);
 		if (null != dispatcher) {
 			if ("sync".equals(dispatcher)) {
-				spec.using(SynchronousDispatcher.INSTANCE);
+				spec.sync();
 			} else {
 				spec.dispatcher(dispatcher);
 			}

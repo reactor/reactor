@@ -107,13 +107,13 @@ public class Environment {
 			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
 			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
+				addDispatcher(dispatcherConfiguration.getName(), new SynchronousDispatcher());
 			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
 			}
 		}
 
-		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
+		addDispatcher(SYNC_DISPATCHER_NAME, new SynchronousDispatcher());
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration dispatcherConfiguration) {

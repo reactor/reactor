@@ -27,7 +27,8 @@ import reactor.fn.cache.LoadingCache;
 import reactor.support.NamedDaemonThreadFactory;
 
 /**
- * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to execute {@link Task Tasks}.
+ * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to
+ * dispatch events.
  *
  * @author Andy Wilkinson
  * @author Jon Brisbin
@@ -39,7 +40,8 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 	private final Cache<ThreadPoolTask> readyTasks;
 
 	/**
-	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
+	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize}
+	 * and {@literal backlog}.
 	 *
 	 * @param poolSize the pool size
 	 * @param backlog  the backlog size

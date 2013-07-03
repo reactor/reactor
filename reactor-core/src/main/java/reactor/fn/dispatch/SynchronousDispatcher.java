@@ -19,17 +19,12 @@ package reactor.fn.dispatch;
 import reactor.fn.Event;
 
 /**
- * A {@link Dispatcher} implementation that executes a {@link Task} immediately in the calling thread.
+ * A {@link Dispatcher} implementation that dispatches events using the calling thread.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public class SynchronousDispatcher extends BaseDispatcher {
-
-	public static final Dispatcher INSTANCE = new SynchronousDispatcher();
-
-	private SynchronousDispatcher() {
-	}
 
 	@Override
 	public boolean alive() {

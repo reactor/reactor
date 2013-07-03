@@ -16,12 +16,22 @@
 
 package reactor.core;
 
+import static reactor.fn.Functions.$;
+
+import java.util.Set;
+import java.util.UUID;
+
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import reactor.convert.Converter;
 import reactor.filter.PassThroughFilter;
-import reactor.fn.*;
+import reactor.fn.Consumer;
+import reactor.fn.Event;
+import reactor.fn.Function;
+import reactor.fn.Observable;
+import reactor.fn.Supplier;
 import reactor.fn.dispatch.Dispatcher;
 import reactor.fn.dispatch.SynchronousDispatcher;
 import reactor.fn.registry.CachingRegistry;
@@ -37,11 +47,6 @@ import reactor.fn.selector.Selector;
 import reactor.fn.tuples.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
-
-import java.util.Set;
-import java.util.UUID;
-
-import static reactor.fn.Functions.$;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -109,7 +114,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 					SelectionStrategy selectionStrategy,
 					EventRouter eventRouter) {
 		this.env = env;
-		this.dispatcher = dispatcher == null ? SynchronousDispatcher.INSTANCE : dispatcher;
+		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
 
