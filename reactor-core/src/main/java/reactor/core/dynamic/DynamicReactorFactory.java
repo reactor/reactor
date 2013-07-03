@@ -16,6 +16,17 @@
 
 package reactor.core.dynamic;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+
 import reactor.convert.Converter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -38,17 +49,30 @@ import reactor.fn.routing.ConsumerInvoker;
 import reactor.fn.selector.Selector;
 import reactor.util.Assert;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.*;
-import java.util.concurrent.Callable;
-
 /**
- * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based on the given interface, that
- * intercepts calls to the interface and translates them into the appropriate {@link
- * Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer)} or {@link Reactor#notify(Object, Event)} calls.
+ * A {@literal DynamicReactorFactory} is responsible for generating a {@link Proxy} based
+ * on the given interface, that intercepts calls to the interface and translates them into
+ * the appropriate {@link Reactor#on(reactor.fn.selector.Selector, reactor.fn.Consumer)} or
+ * {@link Reactor#notify(Object, Event)} calls.
+ * <p>
+ * The translation of calls on the interface to calls to {@code on} and the selector that
+ * is used is determined by the {@link MethodSelectorResolver}s. The translation of calls on
+ * the interface to calls to {@link Reactor#notify(Object, Event) notify} is determined by
+ * the {@link MethodNotificationKeyResolver}s.
+ * <p>
+ * By default, the creation of the selector for {@code on} calls will look for the {@link On}
+ * annotation. In its absence, if the method name begins with {@code on}, the method name
+ * minus the on prefix and with the first character lower-cased, will be used to create the
+ * selector. For example, the selector for a method named {@code onAlpha} will be {@code
+ * "alpha"}.
+ * <p>
+ * By default, the translation for {@code notify} calls will look for the {@link Notify}
+ * annotation. In its absence, if the method name begins with {@code notify}, the method name
+ * minus the notify prefix and with the first character lower-cased, will be used to create
+ * the notification key. For example, the notification key for a method named {@code
+ * notifyAlpha} will be {@code "alpha"}.
+ *
+ * @param <T> The type to proxy
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -64,6 +88,37 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	private volatile ConsumerInvoker            consumerInvoker = new ArgumentConvertingConsumerInvoker(null);
 	private volatile Converter converter;
 
+
+	/**
+	 * Creates a new DynamicReactorFactory that will use the given {@code env} when creating
+	 * its {@link Reactor}. The proxy that is generated will be based upon the given {@code type}.
+	 * A {@link SimpleMethodSelectorResolver} will be used to create selectors for proxied methods.
+	 * A {@link SimpleMethodNotificationKeyResolver} will be used to create notification keys for
+	 * proxied methods.
+	 *
+	 * @param env The Environment to use when creating the underlying Reactor.
+	 * @param type The type of the proxy
+	 */
+	public DynamicReactorFactory(Environment env,
+															 Class<T> type) {
+		this(env,
+				 type,
+				 Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()),
+				 Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
+	}
+
+	/**
+	 * Creates a new DynamicReactorFactory that will use the given {@code env} when creating
+	 * its {@link Reactor}. The proxy that is generated will be based upon the given {@code
+	 * type}. The {@code selectorResolvers} will be used to create selectors for proxied methods
+	 * and the {@code notificationKeyResolvers} will be used to create notification keys for
+	 * proxied methods.
+	 *
+	 * @param env The Environment to use when creating the underlying Reactor.
+	 * @param type The type of the proxy
+	 * @param selectorResolvers used to resolve the selectors for proxied methods
+	 * @param notificationKeyResolvers used to resolve the notification keys for proxied methods
+	 */
 	public DynamicReactorFactory(Environment env,
 															 Class<T> type,
 															 List<MethodSelectorResolver> selectorResolvers,
@@ -74,13 +129,6 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 		this.notificationKeyResolvers = notificationKeyResolvers;
 	}
 
-	public DynamicReactorFactory(Environment env,
-															 Class<T> type) {
-		this(env,
-				 type,
-				 Arrays.<MethodSelectorResolver>asList(new SimpleMethodSelectorResolver()),
-				 Arrays.<MethodNotificationKeyResolver>asList(new SimpleMethodNotificationKeyResolver()));
-	}
 
 	/**
 	 * Get the list of {@link MethodSelectorResolver}s in use.
@@ -133,11 +181,11 @@ public class DynamicReactorFactory<T extends DynamicReactor> {
 	}
 
 	/**
-	 * Generate a {@link Proxy} based on the given interface.
+	 * Generate a {@link Proxy} based on the type used to create this factory.
 	 *
-	 * @return A proxy based on {@link #type}.
+	 * @return A proxy based on the type used to create the factory
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings("unchecked")
 	public T create() {
 		return (T) Proxy.newProxyInstance(
 				DynamicReactorFactory.class.getClassLoader(),
