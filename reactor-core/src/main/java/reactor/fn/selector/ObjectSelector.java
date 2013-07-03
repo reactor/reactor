@@ -21,8 +21,10 @@ import reactor.util.UUIDUtils;
 import java.util.*;
 
 /**
- * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)} methods of the internal
- * object to determine a match.
+ * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)}
+ * methods of the internal object to determine a match.
+ *
+ * @param <T> The type of object held by the selector
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

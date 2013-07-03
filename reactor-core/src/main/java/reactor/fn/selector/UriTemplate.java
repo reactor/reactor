@@ -53,6 +53,11 @@ public class UriTemplate {
 
 	private final Pattern uriPattern;
 
+	/**
+	 * Creates a new {@code UriTrmplate} from the given {@code uriPattern}.
+	 *
+	 * @param uriPattern The pattern to be used by the template
+	 */
 	public UriTemplate(String uriPattern) {
 		String s = "^" + uriPattern;
 
@@ -85,14 +90,27 @@ public class UriTemplate {
 		this.uriPattern = Pattern.compile(s + "$");
 	}
 
-	public Pattern getUriPattern() {
-		return uriPattern;
-	}
-
+	/**
+	 * Tests the given {@code uri} against this template, returning {@code true} if the
+	 * uri matches the template, {@code false} otherwise.
+	 *
+	 * @param uri The uri to match
+	 *
+	 * @return {@code true} if there's a match, {@code false} otherwise
+	 */
 	public boolean matches(String uri) {
 		return matcher(uri).matches();
 	}
 
+	/**
+	 * Matches the template against the given {@code uri} returning a map of path parameters
+	 * extracted from the uri, keyed by the names in the template. If the uri does not match,
+	 * or there are no path parameters, an empty map is returned.
+	 *
+	 * @param uri The uri to match
+	 *
+	 * @return the path parameters from the uri. Never {@code null}.
+	 */
 	public Map<String, String> match(String uri) {
 		Map<String, String> pathParameters = vars.get(uri);
 		if (null != pathParameters) {

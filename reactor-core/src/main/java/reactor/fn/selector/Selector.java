@@ -19,8 +19,8 @@ package reactor.fn.selector;
 import java.util.UUID;
 
 /**
- * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link reactor.fn.selector.Taggable} so that they can be
- * filtered based on their tags.
+ * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link Taggable}
+ * so that they can be filtered based on their tags.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -29,7 +29,7 @@ import java.util.UUID;
 public interface Selector extends Taggable<Selector> {
 
 	/**
-	 * Get the unique id of this Selector. Useful for things like caches and referencing in distributed situations.
+	 * Get the unique id of this Selector
 	 *
 	 * @return The unique id.
 	 */
@@ -43,17 +43,18 @@ public interface Selector extends Taggable<Selector> {
 	Object getObject();
 
 	/**
-	 * Indicates whether this Selector matches the {@code object}.
+	 * Indicates whether this Selector matches the {@code key}.
 	 *
 	 * @param key The key to match
+	 *
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
 	boolean matches(Object key);
 
 	/**
-	 * Return a component that can resolve headers when a given key.
+	 * Return a component that can resolve headers from a key
 	 *
-	 * @return A {@link reactor.fn.selector.HeaderResolver} applicable to this {@link Selector} type.
+	 * @return A {@link HeaderResolver} applicable to this {@link Selector} type.
 	 */
 	HeaderResolver getHeaderResolver();
 

@@ -20,11 +20,12 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * A {@link Selector} implementation based on the given string that is compiled into a {@link UriTemplate}.
+ * A {@link Selector} implementation based on a {@link UriTemplate}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
- * @see {@link UriTemplate}
+ *
+ * @see UriTemplate
  */
 public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 
@@ -41,7 +42,7 @@ public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 	};
 
 	/**
-	 * Create a selector when the given uri template string.
+	 * Create a selector from the given uri template string.
 	 *
 	 * @param tmpl The string to compile into a {@link UriTemplate}.
 	 */
@@ -53,9 +54,10 @@ public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 	 * Creates a {@link Selector} based on a URI template.
 	 *
 	 * @param uriTemplate The URI template to compile.
+	 *
 	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.UriTemplate}
-	 * @see {@link reactor.fn.selector.UriTemplateSelector}
+	 *
+	 * @see UriTemplate
 	 */
 	public static Selector uriTemplateSelector(String uriTemplate) {
 		return new UriTemplateSelector(uriTemplate);

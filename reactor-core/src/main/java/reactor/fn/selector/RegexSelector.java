@@ -71,8 +71,9 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
 	 * @param regex The regular expression to compile.
+	 *
 	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.RegexSelector}
+	 *
 	 */
 	public static Selector regexSelector(String regex) {
 		return new RegexSelector(regex);
