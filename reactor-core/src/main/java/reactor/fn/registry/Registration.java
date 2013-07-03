@@ -16,47 +16,52 @@
 
 package reactor.fn.registry;
 
-import reactor.fn.Consumer;
 import reactor.fn.selector.Selector;
 
 /**
- * Implementations of this interface provide the ability to manage a {@link reactor.fn.selector.Selector} to {@link Consumer} registration.
+ * A {@code Registration} represents an object that has been {@link Registry#register(Selector,
+ * Object) registered} with a {@link Registry}.
+ *
+ * @param <T> The type of object that is registered
  *
  * @author Jon Brisbin
+ *
  */
 public interface Registration<T> {
 
 	/**
-	 * The {@link reactor.fn.selector.Selector} being used in this assignment.
+	 * The {@link reactor.fn.selector.Selector} that was used when the registration was made.
 	 *
-	 * @return {@literal this}
+	 * @return the registration's selector
 	 */
 	Selector getSelector();
 
 	/**
-	 * The item being registered in this assignment.
+	 * The object that was registered
 	 *
 	 * @return the registered object
 	 */
 	T getObject();
 
 	/**
-	 * Cancel this {@link Registration} after it has been selected and used. {@link reactor.fn.dispatch.Dispatcher}
-	 * implementations should respect this value and perform the cancellation.
+	 * Cancel this {@link Registration} after it has been selected and used. {@link
+	 * reactor.fn.dispatch.Dispatcher} implementations should respect this value and perform
+	 * the cancellation.
 	 *
-	 * @return
+	 * @return {@literal this}
 	 */
 	Registration<T> cancelAfterUse();
 
 	/**
 	 * Whether to cancel this {@link Registration} after use or not.
 	 *
-	 * @return {@literal true} to cancel after use, {@literal false} otherwise.
+	 * @return {@literal true} if the registration will be cancelled after use, {@literal false}
+	 * otherwise.
 	 */
 	boolean isCancelAfterUse();
 
 	/**
-	 * Cancel this {@literal Registration} by removing it when the registry so it will no longer be assigned.
+	 * Cancel this {@literal Registration} by removing it from its registry.
 	 *
 	 * @return {@literal this}
 	 */
@@ -70,8 +75,8 @@ public interface Registration<T> {
 	boolean isCancelled();
 
 	/**
-	 * Pause this {@literal Registration}, which means leave it assigned in the registry but skip over it when evaluating
-	 * {@literal Consumer}s to be performed for an event.
+	 * Pause this {@literal Registration}. This leaves it in its registry but, while it is paused, it
+	 * will not be eligible for {@link Registry#select(Object) selection}.
 	 *
 	 * @return {@literal this}
 	 */
@@ -85,7 +90,7 @@ public interface Registration<T> {
 	boolean isPaused();
 
 	/**
-	 * Unpause this {@literal Registration}. Does the opposite of {@link #pause()}.
+	 * Unpause this {@literal Registration}, making it available for {@link Registry#select(Object) selection}.
 	 *
 	 * @return {@literal this}
 	 */

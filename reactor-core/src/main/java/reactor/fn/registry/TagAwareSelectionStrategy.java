@@ -22,7 +22,9 @@ import reactor.fn.selector.Taggable;
 import java.util.Set;
 
 /**
- * Matches a {@link reactor.fn.selector.Selector} and key like normal, but only if the key is {@link reactor.fn.selector.Taggable} and they have at least one tag in common.
+ * Matches a {@link reactor.fn.selector.Selector} and key like normal, but only if the key is
+ * {@link reactor.fn.selector.Taggable} and the key and selector have at least one tag in
+ * common.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

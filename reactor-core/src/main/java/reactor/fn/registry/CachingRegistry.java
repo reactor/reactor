@@ -27,6 +27,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks.
  *
+ * @param <T> the type of Registration held by this registry
+ *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -44,10 +46,21 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	private boolean refreshRequired;
 
+	/**
+	 * Creates a new {@code CachingRegistry} that will use the {@code selectionStrategy} to select
+	 * registrations that match a key.
+	 *
+	 * @param selectionStrategy The selection strategy to use. May be {@code null}
+	 */
 	public CachingRegistry(SelectionStrategy selectionStrategy) {
 		this.selectionStrategy = selectionStrategy;
 	}
 
+	/**
+	 * Returns the selection strategy that this registry is using to select registrations.
+	 *
+	 * @return the registry's selection strategy.
+	 */
 	public SelectionStrategy getSelectionStrategy() {
 		return selectionStrategy;
 	}

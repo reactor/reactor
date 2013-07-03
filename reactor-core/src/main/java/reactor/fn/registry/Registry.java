@@ -24,6 +24,8 @@ import reactor.fn.selector.Selector;
  * Implementations of this interface manage a registry of objects that works sort of like a Map, except Registries don't
  * use simple keys, they use {@link reactor.fn.selector.Selector}s to map their objects.
  *
+ * @param <T> the type of objects that can be registered
+ *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
