@@ -54,6 +54,10 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private final String defaultProfileNameDefault;
 
+	/**
+	 * Creates a new {@code PropertiesConfigurationReader} that, by default, will load its
+	 * configuration from {@code META-INF/reactor/default.properties}.
+	 */
 	public PropertiesConfigurationReader() {
 		this("default");
 	}

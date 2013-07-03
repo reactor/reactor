@@ -16,13 +16,15 @@
 
 package reactor.core.configuration;
 
+import reactor.fn.dispatch.Dispatcher;
+
 /**
  * An encapsulation of the configuration for a {@link Dispatcher}.
  *
  * @author Andy Wilkinson
  *
  */
-public class DispatcherConfiguration {
+public final class DispatcherConfiguration {
 
 	private final String name;
 
