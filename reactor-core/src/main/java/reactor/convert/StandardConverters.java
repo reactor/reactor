@@ -34,6 +34,10 @@ public abstract class StandardConverters {
 	private static final Map<Class<?>, Constructor<?>> CTORS       = Collections.synchronizedMap(new HashMap<Class<?>, Constructor<?>>());
 	private static final Map<Class<?>, Class<?>>       CTOR_PARAMS = Collections.synchronizedMap(new HashMap<Class<?>, Class<?>>());
 
+	/**
+	 * A {@link DelegatingConverter} that will delegate to a {@link StringToNumberConverter},
+	 * a {@link ConstructorParameterConverter} and a {@link ToStringConverter} in that order.
+	 */
 	public static final Converter CONVERTERS = new DelegatingConverter(
 			StringToNumberConverter.INSTANCE,
 			ConstructorParameterConverter.INSTANCE,
@@ -61,7 +65,23 @@ public abstract class StandardConverters {
 		return null;
 	}
 
+	/**
+	 * A {@link Converter} that will convert to the target type by creating a new instance
+	 * of the target type using the source, or a conversion of the source, as the argument
+	 * that's passed to the target type's constructor.
+	 * <p>
+	 * For conversion to be possible the target type must have a constructor that requires
+	 * a single argument. In the event of the target type having multiple single-argument
+	 * constructors, the first single-argument constructor that's found will be used.
+	 *
+	 * @author Jon Brisbin
+	 *
+	 */
 	public enum ConstructorParameterConverter implements Converter {
+
+		/**
+		 * The instance of this converter
+		 */
 		INSTANCE;
 
 		@Override
@@ -81,14 +101,36 @@ public abstract class StandardConverters {
 			}
 
 			try {
-				return (T) CTORS.get(source.getClass()).newInstance(source);
+				return (T) CTORS.get(targetType).newInstance(source);
 			} catch (Throwable t) {
 				throw new ConversionFailedException(t, source.getClass(), targetType);
 			}
 		}
 	}
 
+	/**
+	 * A {@link Converter} that will convert a {@link String} to a {@link Number}. The
+	 * following {@code Number} subclasses are supported:
+	 *
+	 * <ul>
+	 *	<li>{@link AtomicInteger}</li>
+	 *	<li>{@link AtomicLong}</li>
+	 *	<li>{@link BigInteger}</li>
+	 * 	<li>{@link Byte}</li>
+	 *	<li>{@link Double}</li>
+	 *	<li>{@link Float}</li>
+	 * 	<li>{@link Integer}</li>
+	 *	<li>{@link Long}</li>
+	 *	<li>{@link Short}</li>
+	 * </ul>
+	 *
+	 * @author Jon Brisbin
+	 */
 	public enum StringToNumberConverter implements Converter {
+
+		/**
+		 * The instance of this converter
+		 */
 		INSTANCE;
 
 		@Override
@@ -124,10 +166,20 @@ public abstract class StandardConverters {
 			throw new ConversionFailedException(source.getClass(), targetType);
 		}
 
-
 	}
 
+	/**
+	 * A {@link Converter} that will convert any Object to a String by
+	 * calling its {@code toString} method.
+	 *
+	 * @author Jon Brisbin
+	 *
+	 */
 	public enum ToStringConverter implements Converter {
+
+		/**
+		 * The instance of this converter
+		 */
 		INSTANCE;
 
 		@Override

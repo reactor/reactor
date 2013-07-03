@@ -21,6 +21,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
+ * A converter that delegates to one or more converters. The delegates are tried in
+ * order until one is found that {@link Converter#canConvert can perform} the
+ * conversion.
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -28,12 +32,24 @@ public class DelegatingConverter implements Converter {
 
 	private final List<Converter> delegateConverters;
 
+	/**
+	 * Creates a new {@code DelegatingConverter} that will delegate to the
+	 * given list of {@code delegateConverters}.
+	 *
+	 * @param delegateConverters The converters to delegate to
+	 */
 	public DelegatingConverter(List<Converter> delegateConverters) {
 		this.delegateConverters = new ArrayList<Converter>(delegateConverters);
 	}
 
-	public DelegatingConverter(Converter... converters) {
-		this.delegateConverters = Arrays.asList(converters);
+	/**
+	 * Creates a new {@code DelegatingConverter} that will delegate to the
+	 * given list of {@code delegateConverters}.
+	 *
+	 * @param delegateConverters The converters to delegate to
+	 */
+	public DelegatingConverter(Converter... delegateConverters) {
+		this.delegateConverters = Arrays.asList(delegateConverters);
 	}
 
 	@Override

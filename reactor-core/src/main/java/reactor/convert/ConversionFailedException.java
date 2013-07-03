@@ -25,22 +25,32 @@ public class ConversionFailedException extends IllegalStateException {
 	private final Class<?> sourceType;
 	private final Class<?> targetType;
 
-	public ConversionFailedException(Class<?> sourceType, Class<?> targetType) {
+	ConversionFailedException(Class<?> sourceType, Class<?> targetType) {
 		super(String.format("Cannot convert %s to type %s", sourceType.getName(), targetType.getName()));
 		this.sourceType = sourceType;
 		this.targetType = targetType;
 	}
 
-	public ConversionFailedException(Throwable cause, Class<?> sourceType, Class<?> targetType) {
+	ConversionFailedException(Throwable cause, Class<?> sourceType, Class<?> targetType) {
 		super(String.format("Cannot convert %s to type %s", sourceType.getName(), targetType.getName()), cause);
 		this.sourceType = sourceType;
 		this.targetType = targetType;
 	}
 
+	/**
+	 * Returns the type that could not be converted from
+	 *
+	 * @return the type that could not be converted from
+	 */
 	public Class<?> getSourceType() {
 		return sourceType;
 	}
 
+	/**
+	 * Returns the type that could not be converted to
+	 *
+	 * @return the type that could not be converted to
+	 */
 	public Class<?> getTargetType() {
 		return targetType;
 	}
