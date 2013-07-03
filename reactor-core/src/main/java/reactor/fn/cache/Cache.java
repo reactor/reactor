@@ -17,13 +17,27 @@
 package reactor.fn.cache;
 
 /**
+ * A cache provides access to a cache of objects.
+ *
+ * @param <T> The type of object in the cache
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public interface Cache<T> {
 
+	/**
+	 * Allocates a new object from the cache
+	 *
+	 * @return the allocated object
+	 */
 	T allocate();
 
+	/**
+	 * Returns an object to the cache
+	 *
+	 * @param obj The object to deallocate
+	 */
 	void deallocate(T obj);
 
 }
