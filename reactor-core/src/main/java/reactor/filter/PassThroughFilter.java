@@ -26,8 +26,6 @@ import java.util.List;
  */
 public final class PassThroughFilter extends AbstractFilter {
 
-	public static final PassThroughFilter INSTANCE = new PassThroughFilter();
-
 	@Override
 	public <T> List<T> doFilter(List<T> items, Object key) {
 		return items;

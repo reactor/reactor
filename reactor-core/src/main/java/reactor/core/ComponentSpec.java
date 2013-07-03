@@ -203,10 +203,10 @@ public abstract class ComponentSpec<SPEC extends ComponentSpec<SPEC, TARGET>, TA
 		} else if (EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
 			filter = new RandomFilter();
 		} else if (EventRoutingStrategy.FIRST == eventRoutingStrategy) {
-			filter = FirstFilter.INSTANCE;
+			filter = new FirstFilter();
 		} else {
 			if (null == existingFilter) {
-				filter = PassThroughFilter.INSTANCE;
+				filter = new PassThroughFilter();
 			} else {
 				filter = existingFilter;
 			}

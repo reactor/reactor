@@ -18,7 +18,6 @@ package reactor.filter;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 /**
  * A {@link reactor.filter.Filter} implementation that returns the first item.
@@ -27,8 +26,6 @@ import java.util.Random;
  *
  */
 public final class FirstFilter extends AbstractFilter {
-
-	public static final FirstFilter INSTANCE = new FirstFilter();
 
 	@Override
 	public <T> List<T> doFilter(List<T> items, Object key) {
