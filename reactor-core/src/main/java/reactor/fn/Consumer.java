@@ -21,6 +21,8 @@ package reactor.fn;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ *
+ * @param <T> the type of values to accept
  */
 public interface Consumer<T> {
 

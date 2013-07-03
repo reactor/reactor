@@ -183,7 +183,7 @@ public interface Observable {
 	 * @param key      The key to be matched by {@link Selector Selectors}
 	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance
 	 * @param replyTo  The {@link Observable} on which to invoke the notify method
-	 * @param <E>      The type of the {@link Event}
+	 * @param <S>      The type of the Supplier
 	 *
 	 * @return {@literal this}
 	 */

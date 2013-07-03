@@ -21,6 +21,8 @@ import reactor.util.Assert;
 /**
  * Determines if the input object matches some criteria.
  *
+ * @param <T> the type of object that the predicate can test
+ *
  * @author Jon Brisbin
  */
 public abstract class Predicate<T> {

@@ -20,17 +20,21 @@ package reactor.fn;
  * Implementations of this class perform work on the given parameter and return a result of an optionally different
  * type.
  *
+ * @param <T> The type of the input to the apply operation
+ * @param <R> The type of the result of the apply operation
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface Function<T, V> {
+public interface Function<T, R> {
 
 	/**
 	 * Execute the logic of the action, accepting the given parameter.
 	 *
 	 * @param t The parameter to pass to the action.
+	 *
 	 * @return result
 	 */
-	V apply(T t);
+	R apply(T t);
 
 }

@@ -29,12 +29,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Wrapper for an object that needs to be processed by {@link Consumer}s.
  *
+ * @param <T> The type of the wrapped object
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
 public class Event<T> {
 
+	/**
+	 * An {@code Event} with {@code null} data.
+	 */
 	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
 	private UUID    id;
@@ -42,11 +47,23 @@ public class Event<T> {
 	private Object  replyTo;
 	private T       data;
 
+	/**
+	 * Creates a new Event with the given {@code headers} and {@code data}.
+	 *
+	 * @param headers The headers
+	 * @param data The data
+	 */
 	public Event(Headers headers, T data) {
 		this.headers = headers;
 		this.data = data;
 	}
 
+	/**
+	 * Creates a new Event with the given {@code data}. The event will have
+	 * empty headers.
+	 *
+	 * @param data The data
+	 */
 	public Event(T data) {
 		this.data = data;
 	}
@@ -62,7 +79,7 @@ public class Event<T> {
 	}
 
 	/**
-	 * Wrap the given object with an {@link Event} and set the {@link Event#replyTo} property to the given {@code key}.
+	 * Wrap the given object with an {@link Event} and set the {@link Event#getReplyTo() replyTo} to the given {@code replyToKey}.
 	 *
 	 * @param obj        The object to wrap.
 	 * @param replyToKey The key to use as a {@literal replyTo}.
@@ -88,7 +105,7 @@ public class Event<T> {
 	/**
 	 * Get the {@link Headers} attached to this event.
 	 *
-	 * @return
+	 * @return The Event's Headers
 	 */
 	public synchronized Headers getHeaders() {
 		if (null == headers) {
@@ -100,7 +117,7 @@ public class Event<T> {
 	/**
 	 * Get the key to send replies to.
 	 *
-	 * @return
+	 * @return The reply-to key
 	 */
 	public Object getReplyTo() {
 		return replyTo;
@@ -143,8 +160,18 @@ public class Event<T> {
 	 * versions and the like.
 	 */
 	public static class Headers implements Serializable, Iterable<Map.Entry<String, String>> {
+
+		/**
+		 * The name of the origin header
+		 *
+		 * @see #setOrigin(String)
+		 * @see #setOrigin(UUID)
+		 * @see #getOrigin()
+		 */
 		public static final  String ORIGIN           = "x-reactor-origin";
+
 		private static final long   serialVersionUID = 4984692586458514948L;
+
 		private final Map<String, String> headers;
 
 		private Headers(boolean sealed, Map<String, String> headers) {
@@ -175,7 +202,8 @@ public class Event<T> {
 		 * Set all headers when the given {@link Map}.
 		 *
 		 * @param headers The map to use as the headers.
-		 * @return
+		 *
+		 * @return {@literal this}
 		 */
 		public Headers setAll(Map<String, String> headers) {
 			if (null == headers || headers.isEmpty()) {
@@ -190,6 +218,7 @@ public class Event<T> {
 		 *
 		 * @param name  The name of the header.
 		 * @param value The header's value.
+		 *
 		 * @return {@literal this}
 		 */
 		public Headers set(String name, String value) {
@@ -202,6 +231,7 @@ public class Event<T> {
 		 * replies.
 		 *
 		 * @param id The id of the origin component.
+		 *
 		 * @return {@literal this}
 		 */
 		public Headers setOrigin(UUID id) {
@@ -233,6 +263,7 @@ public class Event<T> {
 		 * Get the value for the given header.
 		 *
 		 * @param name The header name.
+		 *
 		 * @return The value of the header, or {@literal null} if none exists.
 		 */
 		public String get(String name) {
@@ -243,6 +274,7 @@ public class Event<T> {
 		 * Determine whether the headers contain a value for the given name.
 		 *
 		 * @param name The header name.
+		 *
 		 * @return {@literal true} if a value exists, {@literal false} otherwise.
 		 */
 		public boolean contains(String name) {

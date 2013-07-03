@@ -16,13 +16,18 @@
 
 package reactor.fn;
 
-import reactor.fn.selector.*;
-import reactor.fn.tuples.Tuple;
-import reactor.fn.tuples.Tuple2;
-
 import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
+
+import reactor.fn.selector.ClassSelector;
+import reactor.fn.selector.ObjectSelector;
+import reactor.fn.selector.RegexSelector;
+import reactor.fn.selector.Selector;
+import reactor.fn.selector.UriTemplate;
+import reactor.fn.selector.UriTemplateSelector;
+import reactor.fn.tuples.Tuple;
+import reactor.fn.tuples.Tuple2;
 
 /**
  * Helper methods to provide syntax sugar for working with functional components in Reactor.
@@ -34,10 +39,12 @@ import java.util.concurrent.Future;
 public abstract class Functions {
 
 	/**
-	 * Creates an anonymous {@link reactor.fn.selector.Selector}.
+	 * Creates an anonymous {@link reactor.fn.selector.Selector}, returning a {@link Tuple} containing
+	 * the {@link Selector} and the notification key that the selector matches.
 	 *
-	 * @return A {@link reactor.fn.tuples.Tuple} containing the {@link reactor.fn.selector.Selector} and the object key.
-	 * @see {@link reactor.fn.selector.ObjectSelector}
+	 * @return The Selector notification key tuple
+	 *
+	 * @see ObjectSelector
 	 */
 	public static Tuple2<Selector, Object> $() {
 		Object obj = new Object();
@@ -48,8 +55,8 @@ public abstract class Functions {
 	 * Creates a {@link Selector} based on the given object.
 	 *
 	 * @param obj Can be anything.
-	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.ObjectSelector}
+	 *
+	 * @return The new {@link ObjectSelector}.
 	 */
 	public static <T> Selector $(T obj) {
 		return new ObjectSelector<T>(obj);
@@ -59,20 +66,22 @@ public abstract class Functions {
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
 	 * @param regex The regular expression to compile.
-	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.RegexSelector}
+	 *
+	 * @return The new {@link RegexSelector}.
+	 *
+	 * @see RegexSelector
 	 */
 	public static Selector R(String regex) {
 		return new RegexSelector(regex);
 	}
 
 	/**
-	 * Creates a {@link Selector} based on the given class type and only matches if the other Selector against which this
-	 * is compared is assignable according to {@link Class#isAssignableFrom(Class)}.
+	 * Creates a {@link Selector} based on the given class type that matches objects whose type is assignable
+	 * according to {@link Class#isAssignableFrom(Class)}.
 	 *
 	 * @param supertype The supertype to compare.
-	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.ClassSelector}
+	 *
+	 * @return The new {@link ClassSelector}.
 	 */
 	public static Selector T(Class<?> supertype) {
 		return new ClassSelector(supertype);
@@ -82,9 +91,10 @@ public abstract class Functions {
 	 * Creates a {@link Selector} based on a URI template.
 	 *
 	 * @param uriTemplate The URI template to compile.
-	 * @return The new {@link Selector}.
-	 * @see {@link reactor.fn.selector.UriTemplate}
-	 * @see {@link reactor.fn.selector.UriTemplateSelector}
+	 *
+	 * @return The new {@link UriTemplateSelector}.
+	 *
+	 * @see UriTemplate
 	 */
 	public static Selector U(String uriTemplate) {
 		return new UriTemplateSelector(uriTemplate);
@@ -137,6 +147,12 @@ public abstract class Functions {
 		};
 	}
 
+	/**
+	 * Creates a {@code Supplier} that will always return the given {@code value}.
+	 *
+	 * @param value the value to be supplied
+	 * @return the supplier for the value
+	 */
 	public static <T> Supplier<T> supplier(final T value) {
 		return new Supplier<T>() {
 			@Override
@@ -146,6 +162,16 @@ public abstract class Functions {
 		};
 	}
 
+	/**
+	 * Creates a {@code Supplier} that will return a new instance of {@code type} each time
+	 * it's called.
+	 *
+	 * @param type The type to create
+	 *
+	 * @return The supplier that will create instances
+	 *
+	 * @throws IllegalArgumentException if {@code type} does not have a zero-args constructor
+	 */
 	public static <T> Supplier<T> supplier(final Class<T> type) {
 		try {
 			final Constructor<T> ctor = type.getConstructor();
@@ -165,17 +191,18 @@ public abstract class Functions {
 	}
 
 	/**
-	 * Wrap the given {@link Callable} and compose a new {@link reactor.fn.Supplier}.
+	 * Creates a {@code Supplier} that will {@link Callable#call call} the {@code callable}
+	 * each time it's asked for a value.
 	 *
-	 * @param r The {@link Callable}.
-	 * @return An {@link reactor.fn.Supplier} that executes the {@link Callable}.
+	 * @param callable The {@link Callable}.
+	 * @return A {@link Supplier} that executes the {@link Callable}.
 	 */
-	public static <T> Supplier<T> supplier(final Callable<T> r) {
+	public static <T> Supplier<T> supplier(final Callable<T> callable) {
 		return new Supplier<T>() {
 			@Override
 			public T get() {
 				try {
-					return r.call();
+					return callable.call();
 				} catch (Exception e) {
 					throw new IllegalStateException(e);
 				}
@@ -184,17 +211,18 @@ public abstract class Functions {
 	}
 
 	/**
-	 * Wrap the given {@link java.util.concurrent.Future} and compose a new {@link reactor.fn.Supplier}.
+	 * Creates a {@code Supplier} that will {@link Future#get get} its value from the
+	 * {@code future} each time it's asked for a value.
 	 *
-	 * @param r The {@link java.util.concurrent.Future}.
-	 * @return An {@link reactor.fn.Supplier} that fetch the {@link java.util.concurrent.Future}.
+	 * @param future The future to get values from
+	 * @return A {@link reactor.fn.Supplier} that gets its values from the Future
 	 */
-	public static <T> Supplier<T> supplier(final Future<T> r) {
+	public static <T> Supplier<T> supplier(final Future<T> future) {
 		return new Supplier<T>() {
 			@Override
 			public T get() {
 				try {
-					return r.get();
+					return future.get();
 				} catch (Exception e) {
 					throw new IllegalStateException(e);
 				}
