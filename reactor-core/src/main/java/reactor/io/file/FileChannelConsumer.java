@@ -16,10 +16,6 @@
 
 package reactor.io.file;
 
-import reactor.convert.Converter;
-import reactor.fn.Consumer;
-import reactor.io.Buffer;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -27,8 +23,20 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicLong;
 
+import reactor.convert.Converter;
+import reactor.fn.Consumer;
+import reactor.io.Buffer;
+
 /**
- * A {@link Consumer} implementation that dumps everything it accepts to an open {@link FileChannel}.
+ * A {@link Consumer} implementation that dumps everything it accepts to an open {@link
+ * FileChannel}. If the accepted value is a {@link Buffer} the buffer's contents are
+ * written to the channel. If a {@link Converter} is available, and the accepted type can
+ * be converted to a {@code Buffer}, the value is converter and then written into the
+ * channel. Otherwise, the accepted value is turned into a String by calling its {@code
+ * toString} method, the string is wrapped in a buffer, and this buffer is written into
+ * the channel.
+ *
+ * @param <T> The type of the values that can be accepted.
  *
  * @author Jon Brisbin
  */
@@ -42,11 +50,13 @@ public class FileChannelConsumer<T> implements Consumer<T> {
 
 	/**
 	 * Create a new timestamped file in the given directory, using the given basename. A timestamp will be append to the
-	 * basename so no files will ever be overwritten using this {@link Consumer}.
+	 * basename so no files will ever be overwritten using this {@link Consumer}. No conversion of accepted values
+	 * will be performed.
 	 *
 	 * @param dir      The directory in which to create the file.
 	 * @param basename The basename to use, to which will be appended a timestamp.
-	 * @throws FileNotFoundException
+	 *
+	 * @throws FileNotFoundException if the output file could not be created
 	 */
 	public FileChannelConsumer(String dir, String basename) throws FileNotFoundException {
 		this(dir, basename, null);
@@ -59,7 +69,8 @@ public class FileChannelConsumer<T> implements Consumer<T> {
 	 * @param dir       The directory in which to create the file.
 	 * @param basename  The basename to use, to which will be appended a timestamp.
 	 * @param converter The {@link Converter} to use to turn accepted objects into {@link Buffer Buffers}.
-	 * @throws FileNotFoundException
+	 *
+	 * @throws FileNotFoundException if the output file could not be created
 	 */
 	public FileChannelConsumer(String dir, String basename, Converter converter) throws FileNotFoundException {
 		this.converter = converter;
