@@ -37,9 +37,9 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * A {@literal Buffer} is a general-purpose IO utility class that wraps a {@link ByteBuffer}. It provides optional
- * dynamic expansion of the buffer to accommodate additional content. It also provides convenience methods for operating
- * on buffers.
+ * A {@literal Buffer} is a general-purpose IO utility class that wraps a {@link ByteBuffer}.
+ * It provides optional dynamic expansion of the buffer to accommodate additional content.
+ * It also provides convenience methods for operating on buffers.
  *
  * @author Jon Brisbin
  */
@@ -49,9 +49,18 @@ public class Buffer implements Comparable<Buffer>,
 															 ReadableByteChannel,
 															 WritableByteChannel {
 
+	/**
+	 * The size, in bytes, of a small buffer. Can be configured using the {@code
+	 * reactor.io.defaultBufferSize} system property. Default to 16384 bytes.
+	 */
 	public static int SMALL_BUFFER_SIZE = Integer.parseInt(
 			System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
 	);
+
+	/**
+	 * The maximum allowed buffer size in bytes. Can be configured using the {@code
+	 * reactor.io.maxBufferSize} system property. Defaults to 16384000 bytes.
+	 */
 	public static int MAX_BUFFER_SIZE   = Integer.parseInt(
 			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
 	);
@@ -72,8 +81,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size and optional make
-	 * this buffer fixed-length.
+	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size
+	 * and optional make this buffer fixed-length.
 	 *
 	 * @param atLeast Allocate this many bytes immediately.
 	 * @param fixed   {@literal true} to make this buffer fixed-length, {@literal false} otherwise.
@@ -113,8 +122,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Convenience method to create a new, fixed-length {@literal Buffer} and putting the given byte array into the
-	 * buffer.
+	 * Convenience method to create a new, fixed-length {@literal Buffer} and putting the given byte
+	 * array into the buffer.
 	 *
 	 * @param bytes The bytes to create a buffer from.
 	 * @return The new {@literal Buffer}.
@@ -126,8 +135,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify whether the new
-	 * {@literal Buffer} should be a fixed length or not.
+	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify
+	 * whether the new {@literal Buffer} should be a fixed length or not.
 	 *
 	 * @param str   The String to create a buffer from.
 	 * @param fixed {@literal true} to create a fixed-length {@literal Buffer}, {@literal false} otherwise.
@@ -150,8 +159,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much faster than {@link
-	 * Integer#parseInt(String)}.
+	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much
+	 * faster than {@link Integer#parseInt(String)}.
 	 *
 	 * @param b     The {@literal Buffer} to slice.
 	 * @param start start of the range.
@@ -172,8 +181,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer}. Much faster than {@link
-	 * Integer#parseInt(String)}.
+	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer}. Much faster
+	 * than {@link Integer#parseInt(String)}.
 	 *
 	 * @param b The {@literal Buffer} to slice.
 	 * @return The int value or {@literal null} if the {@literal Buffer} could not be read.
@@ -200,8 +209,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer} range. Much faster than {@link
-	 * Long#parseLong(String)}.
+	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer} range. Much faster
+	 * than {@link Long#parseLong(String)}.
 	 *
 	 * @param b     The {@literal Buffer} to slice.
 	 * @param start start of the range.
@@ -269,6 +278,13 @@ public class Buffer implements Comparable<Buffer>,
 		return (null == buffer ? 0 : buffer.position());
 	}
 
+	/**
+	 * Sets this buffer's position.
+	 *
+	 * @param pos the new position
+	 *
+	 * @return this buffer
+	 */
 	public Buffer position(int pos) {
 		if (null != buffer) {
 			buffer.position(pos);
@@ -276,6 +292,15 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Skips {@code len} bytes.
+	 *
+	 * @param len the number of bytes to skip
+	 *
+	 * @return this buffer
+	 *
+	 * @throws BufferUnderflowException if the skip exceeds the available bytes
+	 */
 	public Buffer skip(int len) {
 		if (null != buffer) {
 			int pos = buffer.position();
@@ -307,8 +332,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * How many bytes available in this {@literal Buffer}. If reading, it is the number of bytes available to read. If
-	 * writing, it is the number of bytes available for writing.
+	 * How many bytes available in this {@literal Buffer}. If reading, it is the number of bytes
+	 * available to read. If writing, it is the number of bytes available for writing.
 	 *
 	 * @return The number of bytes available in this {@literal Buffer}.
 	 */
@@ -317,8 +342,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Clear the internal {@link ByteBuffer} by setting the {@link ByteBuffer#position(int)} to 0 and the limit to the
-	 * current capacity.
+	 * Clear the internal {@link ByteBuffer} by setting the {@link ByteBuffer#position(int)} to 0
+	 * and the limit to the current capacity.
 	 *
 	 * @return {@literal this}
 	 */
@@ -366,6 +391,15 @@ public class Buffer implements Comparable<Buffer>,
 		return this;
 	}
 
+	/**
+	 * Rewinds this buffer by {@code len} bytes.
+	 *
+	 * @param len The number of bytes the rewind by
+	 *
+	 * @return this buffer
+	 *
+	 * @throws BufferUnderflowException if the rewind would move past the start of the buffer
+	 */
 	public Buffer rewind(int len) {
 		if (null != buffer) {
 			int pos = buffer.position();
@@ -909,7 +943,10 @@ public class Buffer implements Comparable<Buffer>,
 	/**
 	 * Create a {@link View} of the current range of this {@link Buffer}.
 	 *
-	 * @return
+	 * @return The view of the buffer
+	 *
+	 * @see #position()
+	 * @see #limit()
 	 */
 	public View createView() {
 		snapshot();
