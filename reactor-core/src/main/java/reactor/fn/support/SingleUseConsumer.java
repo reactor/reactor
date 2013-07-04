@@ -17,14 +17,17 @@
 package reactor.fn.support;
 
 import reactor.fn.Consumer;
+import reactor.fn.registry.Registration;
 
 /**
- * A {@link reactor.fn.Consumer} implementation that allows the delegate {@link reactor.fn.Consumer} to only be called once. Should be used in
- * combination with {@link reactor.fn.registry.Registration#cancelAfterUse()} to ensure that this {@link reactor.fn.Consumer Consumer's}
- * {@link reactor.fn.registry.Registration} is cancelled as soon after its use as possible.
+ * A {@link Consumer} implementation that allows the delegate {@link Consumer} to only be
+ * called once. Should be used in combination with {@link Registration#cancelAfterUse()} to
+ * ensure that this {@link reactor.fn.Consumer Consumer's} {@link
+ * reactor.fn.registry.Registration} is cancelled as soon after its use as possible.
+ *
+ * @param <T> the type of the values that the consumer can accept
  *
  * @author Jon Brisbin
- * @see {@link reactor.fn.registry.Registration#cancelAfterUse()}
  */
 public class SingleUseConsumer<T> implements Consumer<T> {
 

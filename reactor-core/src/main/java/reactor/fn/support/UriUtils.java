@@ -25,17 +25,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility class for URI encoding and decoding based on RFC 3986. Offers encoding methods for the various URI
- * components.
+ * Utility class for URI encoding and decoding based on RFC 3986. Offers encoding methods for
+ * the various URI components.
  * <p/>
- * <p>All {@code encode*(String, String} methods in this class operate in a similar way: <ul> <li>Valid characters for
- * the specific URI component as defined in RFC 3986 stay the same. <li>All other characters are converted into one or
- * more bytes in the given encoding scheme. Each of the resulting bytes is written as a hexadecimal string in the
- * "<code>%<i>xy</i></code>" format. </ul>
+ * All {@code encode*(String, String} methods in this class operate in a similar way:
+ * <ul>
+ *   <li>Valid characters for the specific URI component as defined in RFC 3986 stay the same.
+ *   <li>All other characters are converted into one or more bytes in the given encoding scheme.
+ *       Each of the resulting bytes is written as a hexadecimal string in the
+ *       "<code>%<i>xy</i></code>" format.
+ * </ul>
  *
  * @author Arjen Poutsma
+ *
  * @see <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a>
- * @since 3.0
  */
 public abstract class UriUtils {
 

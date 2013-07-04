@@ -16,6 +16,7 @@
 
 package reactor.fn.support;
 
+import reactor.fn.Consumer;
 import reactor.fn.Event;
 
 import java.lang.reflect.Method;
@@ -38,12 +39,20 @@ public abstract class ConsumerUtils {
 	private ConsumerUtils() {
 	}
 
+	/**
+	 * Resolves the type of argument that can be {@link Consumer#accept accepted} by the
+	 * given {@code consumer}.
+	 *
+	 * @param consumer The consumer to examine
+	 *
+	 * @return The type that can be accepted by the consumer
+	 */
 	@SuppressWarnings({"unchecked"})
-	public static <T> Class<? extends T> resolveArgType(Object obj) {
+	public static <T> Class<? extends T> resolveArgType(Consumer<?> consumer) {
 		Class<? extends T> clazz;
 		CACHE_READ_LOCK.lock();
 		try {
-			clazz = (Class<? extends T>) ARG_TYPE_CACHE.get(obj.getClass().getName());
+			clazz = (Class<? extends T>) ARG_TYPE_CACHE.get(consumer.getClass().getName());
 			if (null != clazz) {
 				return clazz;
 			}
@@ -51,11 +60,11 @@ public abstract class ConsumerUtils {
 			CACHE_READ_LOCK.unlock();
 		}
 
-		if (Event.class.isInstance(obj) && null != ((Event<?>) obj).getData()) {
-			return (Class<? extends T>) ((Event<?>) obj).getData().getClass();
+		if (Event.class.isInstance(consumer) && null != ((Event<?>) consumer).getData()) {
+			return (Class<? extends T>) ((Event<?>) consumer).getData().getClass();
 		}
 
-		for (Type t : obj.getClass().getGenericInterfaces()) {
+		for (Type t : consumer.getClass().getGenericInterfaces()) {
 			if (t instanceof ParameterizedType) {
 				ParameterizedType pt = (ParameterizedType) t;
 				Type t1 = pt.getActualTypeArguments()[0];
@@ -68,7 +77,7 @@ public abstract class ConsumerUtils {
 			if (null != clazz) {
 				CACHE_WRITE_LOCK.lock();
 				try {
-					ARG_TYPE_CACHE.put(obj.getClass().getName(), clazz);
+					ARG_TYPE_CACHE.put(consumer.getClass().getName(), clazz);
 				} finally {
 					CACHE_WRITE_LOCK.unlock();
 				}
@@ -77,12 +86,12 @@ public abstract class ConsumerUtils {
 		}
 
 		if (null == clazz) {
-			for (Method m : obj.getClass().getDeclaredMethods()) {
+			for (Method m : consumer.getClass().getDeclaredMethods()) {
 				if ("accept".equals(m.getName()) && m.getParameterTypes().length == 1) {
 					clazz = (Class<? extends T>) m.getParameterTypes()[0];
 					CACHE_WRITE_LOCK.lock();
 					try {
-						ARG_TYPE_CACHE.put(obj.getClass().getName(), clazz);
+						ARG_TYPE_CACHE.put(consumer.getClass().getName(), clazz);
 					} finally {
 						CACHE_WRITE_LOCK.unlock();
 					}

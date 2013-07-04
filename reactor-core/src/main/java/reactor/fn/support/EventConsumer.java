@@ -20,8 +20,11 @@ import reactor.fn.Consumer;
 import reactor.fn.Event;
 
 /**
- * Simple {@link Consumer} implementation that pulls the data from an {@link Event} and passes it to a delegate {@link
- * Consumer}.
+ * Simple {@link Consumer} implementation that pulls the data from an {@link Event} and
+ * passes it to a delegate {@link Consumer}.
+ *
+ * @param <T> the type of the event that can be handled by the consumer and the type that
+ *            can be handled by the delegate
  *
  * @author Jon Brisbin
  */
@@ -29,6 +32,12 @@ public class EventConsumer<T> implements Consumer<Event<T>> {
 
 	private final Consumer<T> delegate;
 
+	/**
+	 * Creates a new {@code EventConsumer} that will pass event data to the given {@code
+	 * delegate}.
+	 *
+	 * @param delegate The delegate consumer
+	 */
 	public EventConsumer(Consumer<T> delegate) {
 		this.delegate = delegate;
 	}
