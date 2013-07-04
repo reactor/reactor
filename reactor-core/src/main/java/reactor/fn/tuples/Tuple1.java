@@ -17,11 +17,15 @@
 package reactor.fn.tuples;
 
 /**
+ * A tuple that holds a single value
+ *
+ * @param <T1> The type held by this tuple
+ *
  * @author Jon Brisbin
  */
 public class Tuple1<T1> extends Tuple {
 
-	public Tuple1(Object... values) {
+	Tuple1(Object... values) {
 		super(values);
 	}
 

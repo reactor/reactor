@@ -17,11 +17,17 @@
 package reactor.fn.tuples;
 
 /**
+ * A tuple that holds three values
+ *
+ * @param <T1> The type of the first value held by this tuple
+ * @param <T2> The type of the second value held by this tuple
+ * @param <T3> The type of the third value held by this tuple
+ *
  * @author Jon Brisbin
  */
 public class Tuple3<T1, T2, T3> extends Tuple2<T1, T2> {
 
-	public Tuple3(Object... values) {
+	Tuple3(Object... values) {
 		super(values);
 	}
 

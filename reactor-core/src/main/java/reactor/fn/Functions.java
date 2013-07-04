@@ -48,7 +48,7 @@ public abstract class Functions {
 	 */
 	public static Tuple2<Selector, Object> $() {
 		Object obj = new Object();
-		return new Tuple2<Selector, Object>($(obj), obj);
+		return Tuple.of($(obj), obj);
 	}
 
 	/**
