@@ -22,16 +22,17 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * {@link LinkedHashMap} variant that stores String keys in a case-insensitive
- * manner, for example for key-based access in a results table.
+ * {@link LinkedHashMap} variant that stores String keys in a case-insensitive manner, for
+ * example for key-based access in a results table.
  *
- * <p>Preserves the original order as well as the original casing of keys,
- * while allowing for contains, get and remove calls with any case of key.
+ * <p>Preserves the original order as well as the original casing of keys, while allowing
+ * for contains, get and remove calls with any case of key.
  *
  * <p>Does <i>not</i> support {@code null} keys.
  *
+ * @param <V> The type of the values in the map
+ *
  * @author Juergen Hoeller
- * @since 3.0
  */
 @SuppressWarnings("serial")
 public class LinkedCaseInsensitiveMap<V> extends LinkedHashMap<String, V> {

@@ -46,7 +46,7 @@ import java.util.Map;
  * @author Rob Harrop
  * @since 1.1.2
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"rawtypes"})
 public abstract class Assert {
 
 	/**

@@ -37,7 +37,7 @@ public abstract class UUIDUtils {
 	/**
 	 * Create a new time-based UUID.
 	 *
-	 * @return
+	 * @return the new UUID
 	 */
 	public static UUID create() {
 		long timeMillis = (System.currentTimeMillis() * 10000) + 0x01B21DD213814000L;

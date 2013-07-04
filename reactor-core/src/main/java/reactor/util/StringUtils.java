@@ -34,14 +34,14 @@ import java.util.TreeSet;
  * Miscellaneous {@link String} utility methods.
  *
  * <p>Mainly for internal use within the framework; consider
- * <a href="http://jakarta.apache.org/commons/lang/">Jakarta's Commons Lang</a>
- * for a more comprehensive suite of String utilities.
+ * <a href="http://jakarta.apache.org/commons/lang/">Jakarta's Commons Lang</a> for a more
+ * comprehensive suite of String utilities.
  *
- * <p>This class delivers some simple functionality that should really
- * be provided by the core Java {@code String} and {@link StringBuilder}
- * classes, such as the ability to {@link #replace} all occurrences of a given
- * substring in a target string. It also provides easy-to-use methods to convert
- * between delimited strings, such as CSV strings, and collections and arrays.
+ * <p>This class delivers some simple functionality that should really be provided by the
+ * core Java {@code String} and {@link StringBuilder} classes, such as the ability to
+ * {@link #replace} all occurrences of a given substring in a target string. It also
+ * provides easy-to-use methods to convert between delimited strings, such as CSV strings,
+ * and collections and arrays.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -49,8 +49,6 @@ import java.util.TreeSet;
  * @author Rob Harrop
  * @author Rick Evans
  * @author Arjen Poutsma
- * @since 16 April 2001
- * @see org.apache.commons.lang.StringUtils
  */
 public abstract class StringUtils {
 
@@ -71,30 +69,36 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given String is empty.
-	 * <p>This method accepts any Object as an argument, comparing it to
-	 * {@code null} and the empty String. As a consequence, this method
-	 * will never return {@code true} for a non-null non-String object.
-	 * <p>The Object signature is useful for general attribute handling code
-	 * that commonly deals with Strings but generally has to iterate over
-	 * Objects since attributes may e.g. be primitive value objects as well.
+	 * <p>This method accepts any Object as an argument, comparing it to {@code null} and the
+	 * empty String. As a consequence, this method will never return {@code true} for a non-null
+	 * non-String object.
+	 * <p>The Object signature is useful for general attribute handling code that commonly deals
+	 * with Strings but generally has to iterate over Objects since attributes may e.g. be primitive
+	 * value objects as well.
+	 *
 	 * @param str the candidate String
-	 * @since 3.2.1
+	 *
+	 * @return {@code true} if the object is null or an empty string, {@code false} otherwise
 	 */
 	public static boolean isEmpty(Object str) {
 		return (str == null || "".equals(str));
 	}
 
 	/**
-	 * Check that the given CharSequence is neither {@code null} nor of length 0.
-	 * Note: Will return {@code true} for a CharSequence that purely consists of whitespace.
+	 * Check that the given CharSequence is neither {@code null} nor of length 0. Note: Will return
+	 * {@code true} for a CharSequence that purely consists of whitespace.
+	 *
 	 * <p><pre class="code">
 	 * StringUtils.hasLength(null) = false
 	 * StringUtils.hasLength("") = false
 	 * StringUtils.hasLength(" ") = true
 	 * StringUtils.hasLength("Hello") = true
 	 * </pre>
+	 *
 	 * @param str the CharSequence to check (may be {@code null})
+	 *
 	 * @return {@code true} if the CharSequence is not null and has length
+	 *
 	 * @see #hasText(String)
 	 */
 	public static boolean hasLength(CharSequence str) {
@@ -102,10 +106,13 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check that the given String is neither {@code null} nor of length 0.
-	 * Note: Will return {@code true} for a String that purely consists of whitespace.
+	 * Check that the given String is neither {@code null} nor of length 0. Note: Will return {@code
+	 * true} for a String that purely consists of whitespace.
+	 *
 	 * @param str the String to check (may be {@code null})
+	 *
 	 * @return {@code true} if the String is not null and has length
+	 *
 	 * @see #hasLength(CharSequence)
 	 */
 	public static boolean hasLength(String str) {
@@ -113,9 +120,10 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given CharSequence has actual text.
-	 * More specifically, returns {@code true} if the string not {@code null},
-	 * its length is greater than 0, and it contains at least one non-whitespace character.
+	 * Check whether the given CharSequence has actual text. More specifically, returns {@code
+	 * true} if the string not {@code null}, its length is greater than 0, and it contains at
+	 * least one non-whitespace character.
+	 *
 	 * <p><pre class="code">
 	 * StringUtils.hasText(null) = false
 	 * StringUtils.hasText("") = false
@@ -123,9 +131,12 @@ public abstract class StringUtils {
 	 * StringUtils.hasText("12345") = true
 	 * StringUtils.hasText(" 12345 ") = true
 	 * </pre>
+	 *
 	 * @param str the CharSequence to check (may be {@code null})
-	 * @return {@code true} if the CharSequence is not {@code null},
-	 * its length is greater than 0, and it does not contain whitespace only
+	 *
+	 * @return {@code true} if the CharSequence is not {@code null}, its length is greater than
+	 *         0, and it does not contain whitespace only
+	 *
 	 * @see Character#isWhitespace
 	 */
 	public static boolean hasText(CharSequence str) {
@@ -142,12 +153,15 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given String has actual text.
-	 * More specifically, returns {@code true} if the string not {@code null},
-	 * its length is greater than 0, and it contains at least one non-whitespace character.
+	 * Check whether the given String has actual text. More specifically, returns {@code true} if
+	 * the string not {@code null}, its length is greater than 0, and it contains at least one
+	 * non-whitespace character.
+	 *
 	 * @param str the String to check (may be {@code null})
-	 * @return {@code true} if the String is not {@code null}, its length is
-	 * greater than 0, and it does not contain whitespace only
+	 *
+	 * @return {@code true} if the String is not {@code null}, its length is greater than 0, and it
+	 *         does not contain whitespace only
+	 *
 	 * @see #hasText(CharSequence)
 	 */
 	public static boolean hasText(String str) {
@@ -156,9 +170,12 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given CharSequence contains any whitespace characters.
+	 *
 	 * @param str the CharSequence to check (may be {@code null})
-	 * @return {@code true} if the CharSequence is not empty and
-	 * contains at least 1 whitespace character
+	 *
+	 * @return {@code true} if the CharSequence is not empty and contains at least 1 whitespace
+	 *         character
+	 *
 	 * @see Character#isWhitespace
 	 */
 	public static boolean containsWhitespace(CharSequence str) {
@@ -176,9 +193,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given String contains any whitespace characters.
+	 *
 	 * @param str the String to check (may be {@code null})
-	 * @return {@code true} if the String is not empty and
-	 * contains at least 1 whitespace character
+	 *
+	 * @return {@code true} if the String is not empty and contains at least 1 whitespace character
+	 *
 	 * @see #containsWhitespace(CharSequence)
 	 */
 	public static boolean containsWhitespace(String str) {
@@ -187,8 +206,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Trim leading and trailing whitespace from the given String.
+	 *
 	 * @param str the String to check
+	 *
 	 * @return the trimmed String
+	 *
 	 * @see java.lang.Character#isWhitespace
 	 */
 	public static String trimWhitespace(String str) {
@@ -206,10 +228,13 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Trim <i>all</i> whitespace from the given String:
-	 * leading, trailing, and inbetween characters.
-	 * @param str the String to check
+	 * Trim <i>all</i> whitespace from the given String: leading, trailing, and inbetween
+	 * characters.
+	 *
+	 * @param str the String to trim
+	 *
 	 * @return the trimmed String
+	 *
 	 * @see java.lang.Character#isWhitespace
 	 */
 	public static String trimAllWhitespace(String str) {
@@ -231,8 +256,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Trim leading whitespace from the given String.
-	 * @param str the String to check
+	 *
+	 * @param str the String to trim
+	 *
 	 * @return the trimmed String
+	 *
 	 * @see java.lang.Character#isWhitespace
 	 */
 	public static String trimLeadingWhitespace(String str) {
@@ -248,8 +276,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Trim trailing whitespace from the given String.
-	 * @param str the String to check
+	 *
+	 * @param str the String to trim
+	 *
 	 * @return the trimmed String
+	 *
 	 * @see java.lang.Character#isWhitespace
 	 */
 	public static String trimTrailingWhitespace(String str) {
@@ -264,9 +295,11 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Trim all occurences of the supplied leading character from the given String.
+	 * Trim all occurrences of the supplied leading character from the given String.
+	 *
 	 * @param str the String to check
 	 * @param leadingCharacter the leading character to be trimmed
+	 *
 	 * @return the trimmed String
 	 */
 	public static String trimLeadingCharacter(String str, char leadingCharacter) {
@@ -281,9 +314,11 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Trim all occurences of the supplied trailing character from the given String.
+	 * Trim all occurrences of the supplied trailing character from the given String.
+	 *
 	 * @param str the String to check
 	 * @param trailingCharacter the trailing character to be trimmed
+	 *
 	 * @return the trimmed String
 	 */
 	public static String trimTrailingCharacter(String str, char trailingCharacter) {
@@ -299,10 +334,13 @@ public abstract class StringUtils {
 
 
 	/**
-	 * Test if the given String starts with the specified prefix,
-	 * ignoring upper/lower case.
+	 * Test if the given String starts with the specified prefix, ignoring upper/lower case.
+	 *
 	 * @param str the String to check
 	 * @param prefix the prefix to look for
+	 *
+	 * @return {@code true} if the string starts with the given prefix, {@code false} otherwise
+	 *
 	 * @see java.lang.String#startsWith
 	 */
 	public static boolean startsWithIgnoreCase(String str, String prefix) {
@@ -321,10 +359,13 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Test if the given String ends with the specified suffix,
-	 * ignoring upper/lower case.
+	 * Test if the given String ends with the specified suffix, ignoring upper/lower case.
+	 *
 	 * @param str the String to check
 	 * @param suffix the suffix to look for
+	 *
+	 * @return {@code true} if the string ends with the given suffix, {@code false} otherwise
+	 *
 	 * @see java.lang.String#endsWith
 	 */
 	public static boolean endsWithIgnoreCase(String str, String suffix) {
@@ -344,11 +385,13 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Test whether the given string matches the given substring
-	 * at the given index.
+	 * Test whether the given string matches the given substring at the given index.
+	 *
 	 * @param str the original string (or StringBuilder)
 	 * @param index the index in the original string to start matching against
 	 * @param substring the substring to match at the given index
+	 *
+	 * @return {@code true} if the string matches, {@code false} otherwise
 	 */
 	public static boolean substringMatch(CharSequence str, int index, CharSequence substring) {
 		for (int j = 0; j < substring.length(); j++) {
@@ -362,8 +405,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Count the occurrences of the substring in string s.
+	 *
 	 * @param str string to search in. Return 0 if this is null.
 	 * @param sub string to search for. Return 0 if this is null.
+	 *
+	 * @return the number of ocurrences
 	 */
 	public static int countOccurrencesOf(String str, String sub) {
 		if (str == null || sub == null || str.length() == 0 || sub.length() == 0) {
@@ -380,11 +426,12 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Replace all occurences of a substring within a string with
-	 * another string.
+	 * Replace all occurrences of a substring within a string with another string.
+	 *
 	 * @param inString String to examine
 	 * @param oldPattern String to replace
 	 * @param newPattern String to insert
+	 *
 	 * @return a String with the replacements
 	 */
 	public static String replace(String inString, String oldPattern, String newPattern) {
@@ -409,8 +456,10 @@ public abstract class StringUtils {
 
 	/**
 	 * Delete all occurrences of the given substring.
+	 *
 	 * @param inString the original String
 	 * @param pattern the pattern to delete all occurrences of
+	 *
 	 * @return the resulting String
 	 */
 	public static String delete(String inString, String pattern) {
@@ -419,9 +468,11 @@ public abstract class StringUtils {
 
 	/**
 	 * Delete any character in a given String.
+	 *
 	 * @param inString the original String
-	 * @param charsToDelete a set of characters to delete.
-	 * E.g. "az\n" will delete 'a's, 'z's and new lines.
+	 * @param charsToDelete a set of characters to delete. E.g. "az\n" will delete 'a's, 'z's
+	 *        and new lines.
+	 *
 	 * @return the resulting String
 	 */
 	public static String deleteAny(String inString, String charsToDelete) {
@@ -445,39 +496,47 @@ public abstract class StringUtils {
 
 	/**
 	 * Quote the given String with single quotes.
+	 *
 	 * @param str the input String (e.g. "myString")
-	 * @return the quoted String (e.g. "'myString'"),
-	 * or {@code null} if the input was {@code null}
+	 *
+	 * @return the quoted String (e.g. "'myString'"), or {@code null} if the input was {@code null}
 	 */
 	public static String quote(String str) {
 		return (str != null ? "'" + str + "'" : null);
 	}
 
 	/**
-	 * Turn the given Object into a String with single quotes
-	 * if it is a String; keeping the Object as-is else.
+	 * Turn the given Object into a String with single quotes if it is a String; keeping the Object
+	 * as-is else.
+	 *
 	 * @param obj the input Object (e.g. "myString")
-	 * @return the quoted String (e.g. "'myString'"),
-	 * or the input object as-is if not a String
+	 *
+	 * @return the quoted String (e.g. "'myString'"), or the input object as-is if not a String
 	 */
 	public static Object quoteIfString(Object obj) {
 		return (obj instanceof String ? quote((String) obj) : obj);
 	}
 
 	/**
-	 * Unqualify a string qualified by a '.' dot character. For example,
-	 * "this.name.is.qualified", returns "qualified".
+	 * Unqualify a string qualified by a '.' dot character. For example, "this.name.is.qualified",
+	 * returns "qualified".
+	 *
 	 * @param qualifiedName the qualified name
+	 *
+	 * @return the unqualified name
 	 */
 	public static String unqualify(String qualifiedName) {
 		return unqualify(qualifiedName, '.');
 	}
 
 	/**
-	 * Unqualify a string qualified by a separator character. For example,
-	 * "this:name:is:qualified" returns "qualified" if using a ':' separator.
+	 * Unqualify a string qualified by a separator character. For example, "this:name:is:qualified"
+	 * returns "qualified" if using a ':' separator.
+	 *
 	 * @param qualifiedName the qualified name
 	 * @param separator the separator
+	 *
+	 * @return the unqualified string
 	 */
 	public static String unqualify(String qualifiedName, char separator) {
 		return qualifiedName.substring(qualifiedName.lastIndexOf(separator) + 1);

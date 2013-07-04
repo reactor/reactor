@@ -39,6 +39,7 @@ import java.util.Set;
  * @author Arjen Poutsma
  * @since 1.1.3
  */
+@SuppressWarnings("rawtypes")
 public abstract class CollectionUtils {
 
 	/**
@@ -308,9 +309,18 @@ public abstract class CollectionUtils {
 	}
 
 	/**
-	 * Marshal the elements from the given enumeration into an array of the given type.
-	 * Enumeration elements must be assignable to the type of the given array. The array
-	 * returned will be a different instance than the array given.
+	 * Marshal the elements from the given enumeration into an array of the given type. Enumeration
+	 * elements must be assignable to the type of the given array. The array returned may be a
+	 * different instance than the array given.
+	 *
+	 * @param enumeration The source of the elements
+	 * @param array The array to write the elements into
+	 * @param <A> The type of array elements
+	 * @param <E> The type of the source elements
+	 *
+	 * @return An array containing the elements in the enumeration
+	 *
+	 * @see List#toArray(Object[])
 	 */
 	public static <A,E extends A> A[] toArray(Enumeration<E> enumeration, A[] array) {
 		ArrayList<A> elements = new ArrayList<A>();
