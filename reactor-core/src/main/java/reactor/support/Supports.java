@@ -20,6 +20,8 @@ package reactor.support;
  * Simple interface that can be applied to components to determine whether or not they support a particular type of
  * use.
  *
+ * @param <T> the type of values that may be supported
+ *
  * @author Jon Brisbin
  */
 public interface Supports<T> {

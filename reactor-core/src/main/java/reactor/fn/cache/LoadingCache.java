@@ -17,7 +17,7 @@
 package reactor.fn.cache;
 
 import reactor.fn.Supplier;
-import reactor.support.QueueFactory;
+import reactor.support.BlockingQueueFactory;
 
 import javax.annotation.Nullable;
 import java.util.concurrent.BlockingQueue;
@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class LoadingCache<T> implements Cache<T> {
 
-	private final BlockingQueue<T> cache = QueueFactory.createQueue();
+	private final BlockingQueue<T> cache = BlockingQueueFactory.createQueue();
 	private final Supplier<T> supplier;
 	private final long        cacheMissTimeout;
 

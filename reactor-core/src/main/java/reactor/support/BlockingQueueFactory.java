@@ -18,13 +18,16 @@ package reactor.support;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
 
 /**
- * @author Stephane Maldini (smaldini)
- * @date: 4/2/13
+ * A factory for creating {@link BlockingQueue} instances. When available, {@link LinkedTransferQueue}s
+ * will be created, otherwise {@link LinkedBlockingQueue}s will be created.
+ *
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class QueueFactory {
+public class BlockingQueueFactory {
 
 	static {
 		try {
@@ -36,6 +39,13 @@ public class QueueFactory {
 
 	private static Class<? extends BlockingQueue> QUEUE_TYPE;
 
+	/**
+	 * Creates a new {@link BlockingQueue}
+	 *
+	 * @param <D> the type of values that the queue will hold
+	 *
+	 * @return the blocking queue
+	 */
 	public static <D> BlockingQueue<D> createQueue() {
 		try {
 			return (BlockingQueue<D>) QUEUE_TYPE.newInstance();

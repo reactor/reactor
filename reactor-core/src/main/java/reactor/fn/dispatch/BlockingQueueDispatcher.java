@@ -27,7 +27,7 @@ import reactor.fn.Event;
 import reactor.fn.Supplier;
 import reactor.fn.cache.Cache;
 import reactor.fn.cache.LoadingCache;
-import reactor.support.QueueFactory;
+import reactor.support.BlockingQueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -42,7 +42,7 @@ public final class BlockingQueueDispatcher extends AbstractDispatcher {
 	private static final AtomicInteger INSTANCE_COUNT = new AtomicInteger();
 
 	private final ThreadGroup         threadGroup = new ThreadGroup("eventloop");
-	private final BlockingQueue<Task> taskQueue   = QueueFactory.createQueue();
+	private final BlockingQueue<Task> taskQueue   = BlockingQueueFactory.createQueue();
 	private final Cache<Task> readyTasks;
 	private final Thread      taskExecutor;
 
