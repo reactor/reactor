@@ -18,7 +18,7 @@
 description = 'Reactor-based application framework for the JVM.'
 
 ext {
-	gradleVersion = '1.6'
+	gradleVersion = '1.7-rc-1'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
