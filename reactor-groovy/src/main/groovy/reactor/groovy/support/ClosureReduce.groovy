@@ -37,9 +37,9 @@ class ClosureReduce<T, V> implements Function<Tuple2<T, V>, V> {
   @Override
   V apply(Tuple2<T, V> t) {
 
-    if (t.t1)
+    if (t.t2)
       callback t.t1, t.t2
     else
-      callback t.t2
+      callback t.t1
   }
 }

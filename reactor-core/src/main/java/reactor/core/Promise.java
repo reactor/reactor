@@ -153,10 +153,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
-		final Deferred<V, Promise<V>> d = new Deferred.PromiseSpec<V>()
-				.using(getEnvironment())
-				.sync()
-				.get();
+		final Deferred<V, Promise<V>> d = createDeferred();
 
 		Promise<V> p = d.compose().onError(onError);
 		onSuccess(new Consumer<T>() {
@@ -264,6 +261,10 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @throws InterruptedException
 	 */
 	public T await(long timeout, TimeUnit unit) throws InterruptedException {
+		if(isPending()){
+			resolve();
+		}
+
 		if (!isPending()) {
 			return get();
 		}

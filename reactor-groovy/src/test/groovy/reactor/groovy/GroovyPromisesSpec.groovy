@@ -18,9 +18,11 @@
 
 package reactor.groovy
 
+import reactor.core.Deferred
 import reactor.core.Environment
 import reactor.core.Promise
 import reactor.P
+import reactor.core.Promises
 import reactor.fn.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
@@ -50,36 +52,60 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		def p = P.task{"Hello World!"}.get()
+		Promise<String> p = P.task{"Hello World!"}.get()
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"
 
 		when: "a deferred Promise"
-		p = Promise.from{"Hello World!"}.get()
+		p = Promise.<String>from{"Hello World!"}.get()
 
 		then: 'Promise contains value'
 		p.await() == "Hello World!"
 	}
 
+	def "Compose from Closure"() {
+		when:
+			'Defer a composition'
+			def c = Promises.task { sleep 500; 1 } get()
+
+		and:
+			'apply a transformation'
+			def d = c | { it + 1 }
+
+		then:
+			'Composition contains value'
+			d.await() == 2
+	}
+
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		def p = P.error(new IllegalArgumentException("Bad code! Bad!")).get()
+		Promise p = P.error(new Exception("Bad code! Bad!")).get()
 
 		and: "invoke result"
 		p.get()
 
 		then:
 		p.error
-		thrown(IllegalStateException)
+		thrown(RuntimeException)
+
+		when: "a deferred failed Promise with runtime exception"
+			 p = P.error(new IllegalArgumentException("Bad code! Bad!")).get()
+
+		and: "invoke result"
+			p.get()
+
+		then:
+			p.error
+			thrown(IllegalArgumentException)
 	}
 
 	def "Promises can be mapped"() {
 		given: "a synchronous promise"
-		def p = P.defer().get()
+		Deferred p = P.defer().get()
 
 		when: "add a mapping closure"
-		def s = p | { Integer.parseInt it }
+		Promise s = p | { Integer.parseInt it }
 
 		and: "setting a value"
 		p << '10'
@@ -89,7 +115,7 @@ class GroovyPromisesSpec extends Specification {
 
 		when: "add a mapping closure"
 		p = P.defer().get()
-		s = p.then { Integer.parseInt it }
+		s = p.compose().then { Integer.parseInt it }
 
 		and: "setting a value"
 		p << '10'
@@ -100,8 +126,8 @@ class GroovyPromisesSpec extends Specification {
 
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
-		def p1 = P.defer().get()
-		def p2 = P.defer().get()
+		Deferred p1 = P.defer().get()
+		Deferred p2 = P.defer().get()
 
 		when: "p1 is consumed by p2"
 		p1 << p2 //p1.consume p2
@@ -110,18 +136,18 @@ class GroovyPromisesSpec extends Specification {
 		p1 << 'Hello World!'
 
 		then: 'P2 consumes the value when P1'
-		p2.get() == 'Hello World!'
+		p2.compose().get() == 'Hello World!'
 	}
 
 
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		def p = P.defer().using(testEnv).dispatcher('eventLoop').get()
+		Deferred p = P.defer().using(testEnv).dispatcher('eventLoop').get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		def s = p.then{ println it;Integer.parseInt it }.
+		def s = p.compose().then{ println it;Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
 				then{ println('not in log'); true }
 
@@ -130,7 +156,7 @@ class GroovyPromisesSpec extends Specification {
 		s.await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
-		thrown(IllegalStateException)
+		thrown(NumberFormatException)
 		latch.count == 0
 	}
 

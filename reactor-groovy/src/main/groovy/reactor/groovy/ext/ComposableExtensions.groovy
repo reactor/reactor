@@ -18,7 +18,10 @@
 
 package reactor.groovy.ext
 
+import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
+import reactor.Fn
+import reactor.core.Composable
 import reactor.core.Deferred
 import reactor.core.Promise
 import reactor.core.Stream
@@ -28,6 +31,7 @@ import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureFunction
 import reactor.groovy.support.ClosurePredicate
 import reactor.groovy.support.ClosureReduce
+import reactor.groovy.support.ClosureSupplier
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -35,125 +39,195 @@ import reactor.groovy.support.ClosureReduce
 @CompileStatic
 class ComposableExtensions {
 
-  /**
-   * Alias
-   */
-  static <T, V> Stream<V> to(final Stream<T> selfType, final Object key, final Observable observable) {
-    selfType.consume key, observable
-  }
+	/**
+	 * Alias
+	 */
+	static <T, X extends Composable<T>> X to(final X selfType, final Object key,
+	                                        final Observable observable) {
+		selfType.consume key, observable
+	}
 
-  /**
-   * Closure converters
-   */
-  static <T, V> Stream<V> map(final Stream<T> selfType, final Closure<V> closure) {
-    selfType.map new ClosureFunction<T, V>(closure)
-  }
+	/**
+	 * Closure converters
+	 */
+	static <T, V> Composable<V> map(final Deferred selfType, final Closure<V> closure) {
+		selfType.compose().map new ClosureFunction<T, V>(closure)
+	}
 
-  static <T> Stream<T> consume(final Stream<T> selfType, final Closure closure) {
-    selfType.consume new ClosureConsumer<T>(closure)
-  }
+	static <T, V> Stream<V> map(final Stream<T> selfType, final Closure<V> closure) {
+		selfType.map new ClosureFunction<T, V>(closure)
+	}
 
-  static <T, V> Promise<V> map(final Promise<T> selfType, final Closure<V> closure) {
-    selfType.map new ClosureFunction<T, V>(closure)
-  }
+	static <T, V> Promise<V> map(final Promise<T> selfType, final Closure<V> closure) {
+		selfType.map new ClosureFunction<T, V>(closure)
+	}
 
-  static <T> Promise<T> consume(final Promise<T> selfType, final Closure closure) {
-    selfType.consume new ClosureConsumer<T>(closure)
-  }
+	static <T> Stream<T> consume(final Stream<T> selfType, final Closure closure) {
+		selfType.consume new ClosureConsumer<T>(closure)
+	}
 
-  static <T> Stream<T> filter(final Stream<T> selfType, final Closure<Boolean> closure) {
-    selfType.filter new ClosurePredicate<T>(closure)
-  }
+	static <T> Composable<T> consume(final Deferred selfType, final Closure closure) {
+		selfType.compose().consume new ClosureConsumer<T>(closure)
+	}
 
-  static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, V initial = null) {
-//    selfType.reduce new ClosureReduce<T, V>(closure), initial
-  }
+	static <T> Promise<T> consume(final Promise<T> selfType, final Closure closure) {
+		selfType.consume new ClosureConsumer<T>(closure)
+	}
 
-  static <T, E> Stream<T> when(final Stream<T> selfType, final Class<E> exceptionType, final Closure closure) {
-    selfType.when exceptionType, new ClosureConsumer<E>(closure)
-  }
+	static <T> Stream<T> filter(final Stream<T> selfType, final Closure<Boolean> closure) {
+		selfType.filter new ClosurePredicate<T>(closure)
+	}
 
-  static <T, E> Promise<T> when(final Promise<T> selfType, final Class<E> exceptionType, final Closure closure) {
-    selfType.when exceptionType, new ClosureConsumer<E>(closure)
-  }
+	static <T> Composable<T> filter(final Deferred selfType, final Closure<Boolean> closure) {
+		selfType.compose().filter new ClosurePredicate<T>(closure)
+	}
 
-  static <T> Promise<T> onError(final Promise<T> selfType, final Closure closure) {
-    selfType.onError new ClosureConsumer<Throwable>(closure)
-  }
+	static <T> Promise<T> filter(final Promise<T> selfType, final Closure<Boolean> closure) {
+		selfType.filter new ClosurePredicate<T>(closure)
+	}
 
-  static <T> Promise<T> onComplete(final Promise<T> selfType, final Closure closure) {
-    selfType.onComplete new ClosureConsumer<Promise<T>>(closure)
-  }
+	static <T, E> Stream<T> when(final Stream<T> selfType, final Class<E> exceptionType, final Closure closure) {
+		selfType.when exceptionType, new ClosureConsumer<E>(closure)
+	}
 
-  static <T> Promise<T> onSuccess(final Promise<T> selfType, final Closure closure) {
-    selfType.onSuccess new ClosureConsumer<T>(closure)
-  }
+	static <T, E> Composable<T> when(final Deferred selfType, final Class<E> exceptionType, final Closure closure) {
+		selfType.compose().when exceptionType, new ClosureConsumer<E>(closure)
+	}
 
-  static <T, V> Promise<V> then(final Promise<T> selfType, final Closure<V> closureSuccess,
-                                final Closure closureError = null) {
-    selfType.then(new ClosureFunction<T, V>(closureSuccess), closureError ?
-        new ClosureConsumer<Throwable>(closureError) : null)
-  }
+	static <T, E> Promise<T> when(final Promise<T> selfType, final Class<E> exceptionType, final Closure closure) {
+		selfType.when exceptionType, new ClosureConsumer<E>(closure)
+	}
 
-  /**
-   * Operator overloading
-   */
+	@CompileDynamic
+	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, V initial = null) {
+		reduce selfType, closure, initial ? Fn.<V>supplier((V)initial) : (Supplier<V>)null
+	}
 
-  static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
-//    selfType.reduce other
-  }
+	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, Closure<V> initial) {
+		reduce selfType, closure, new ClosureSupplier(initial)
+	}
 
-  static <T, V> Stream<V> mod(final Stream<T> selfType, final Closure<V> other) {
-    reduce selfType, other
-  }
+	@CompileDynamic
+	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, Supplier<V> initial) {
+		selfType.reduce new ClosureReduce<T, V>(closure), initial
+	}
 
-  static <T, V> Stream<V> or(final Stream<T> selfType, final Function<T, V> other) {
-    selfType.map other
-  }
+	static <T> Promise<T> onError(final Promise<T> selfType, final Closure closure) {
+		selfType.onError new ClosureConsumer<Throwable>(closure)
+	}
 
-  static <T, V> Stream<V> or(final Stream<T> selfType, final Closure<V> other) {
-    map selfType, other
-  }
+	static <T> Promise<T> onComplete(final Promise<T> selfType, final Closure closure) {
+		selfType.onComplete new ClosureConsumer<Promise<T>>(closure)
+	}
 
-  static <T, V> Promise<V> or(final Promise<T> selfType, final Function<T, V> other) {
-    selfType.then other, (Consumer<Throwable>) null
-  }
+	static <T> Promise<T> onSuccess(final Promise<T> selfType, final Closure closure) {
+		selfType.onSuccess new ClosureConsumer<T>(closure)
+	}
 
-  static <T, V> Promise<V> or(final Promise<T> selfType, final Closure<V> other) {
-    then selfType, other
-  }
+	static <T, V> Promise<V> then(final Promise<T> selfType, final Closure<V> closureSuccess,
+	                              final Closure closureError = null) {
+		selfType.then(new ClosureFunction<T, V>(closureSuccess), closureError ?
+				new ClosureConsumer<Throwable>(closureError) : null)
+	}
 
-  static <T, V> Stream<V> and(final Stream<T> selfType, final Predicate<T> other) {
-    selfType.filter other
-  }
+	/**
+	 * Operator overloading
+	 */
 
-  static <T> Stream<T> leftShift(final Stream<T> selfType, final Consumer<T> other) {
-    selfType.consume other
-  }
+	@CompileDynamic
+	static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
+		selfType.reduce other, (Supplier<V>)null
+	}
 
-  static <T> Stream<T> leftShift(final Stream<T> selfType, final Closure other) {
-    consume selfType, other
-  }
+	static <T, V> Stream<V> mod(final Stream<T> selfType, final Closure<V> other) {
+		reduce selfType, other
+	}
 
-  static <T> Promise<T> leftShift(final Promise<T> selfType, final Consumer<T> other) {
-    selfType.onSuccess other
-  }
+	//Mapping
+	static <T, V> Stream<V> or(final Stream<T> selfType, final Function<T, V> other) {
+		selfType.map other
+	}
 
-  static <T> Promise<T> leftShift(final Promise<T> selfType, final Closure other) {
-    onSuccess selfType, other
-  }
+	static <T, V> Stream<V> or(final Stream<T> selfType, final Closure<V> other) {
+		map selfType, other
+	}
 
-  static <T> Stream<T> and(final Stream<T> selfType, final Closure<Boolean> other) {
-    filter selfType, other
-  }
+	static <T, V> Composable<V> or(final Deferred selfType, final Function<T, V> other) {
+		selfType.compose().map other
+	}
 
-  static <T> Consumer<T> leftShift(final Consumer<T> selfType, T value) {
-    selfType.accept value
-    selfType
-  }
+	static <T, V> Composable<V> or(final Deferred selfType, final Closure<V> other) {
+		map selfType, other
+	}
 
-  static <T> Deferred<T, ?> leftShift(final Deferred<T, ?> selfType, T value) {
-    selfType.accept value
-  }
+	static <T, V> Promise<V> or(final Promise<T> selfType, final Function<T, V> other) {
+		selfType.then other, (Consumer<Throwable>) null
+	}
+
+	static <T, V> Promise<V> or(final Promise<T> selfType, final Closure<V> other) {
+		then selfType, other
+	}
+
+
+	//Filtering
+	static <T> Stream<T> and(final Stream<T> selfType, final Closure<Boolean> other) {
+		filter selfType, other
+	}
+
+	static <T> Promise<T> and(final Promise<T> selfType, final Closure<Boolean> other) {
+		filter selfType, other
+	}
+
+	static <T> Composable<T> and(final Deferred selfType, final Closure<Boolean> other) {
+		filter selfType, other
+	}
+
+	static <T> Stream<T> and(final Stream<T> selfType, final Predicate<T> other) {
+		selfType.filter other
+	}
+
+	static <T> Promise<T> and(final Promise<T> selfType, final Predicate<T> other) {
+		selfType.filter other
+	}
+
+	static <T> Composable<T> and(final Deferred selfType, final Predicate<T> other) {
+		selfType.compose().filter other
+	}
+
+
+	//Consuming
+	static <T> Stream<T> leftShift(final Stream<T> selfType, final Consumer<T> other) {
+		selfType.consume other
+	}
+
+	static <T> Composable<T> leftShift(final Deferred selfType, final Consumer<T> other) {
+		selfType.compose().consume other
+	}
+
+	static <T> Stream<T> leftShift(final Stream<T> selfType, final Closure other) {
+		consume selfType, other
+	}
+
+	static <T> Composable<T> leftShift(final Deferred selfType, final Closure other) {
+		consume selfType, other
+	}
+
+	static <T> Promise<T> leftShift(final Promise<T> selfType, final Consumer<T> other) {
+		selfType.onSuccess other
+	}
+
+	static <T> Promise<T> leftShift(final Promise<T> selfType, final Closure other) {
+		onSuccess selfType, other
+	}
+
+	//Accept
+	static <T> Consumer<T> leftShift(final Consumer<T> selfType, T value) {
+		selfType.accept value
+		selfType
+	}
+
+	static <T> Deferred<T, ?> leftShift(final Deferred<T, ?> selfType, T value) {
+		selfType.accept value
+	}
 
 }
