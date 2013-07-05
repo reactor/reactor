@@ -29,10 +29,10 @@ ext {
 	logbackVersion = '1.0.11'
 
 	// Libraries
-	disruptorVersion = '3.0.1'
+	disruptorVersion = '3.1.0'
 	springVersion = '3.2.3.RELEASE'
 	siVersion = '3.0.0.M2'
-	nettyVersion = '4.0.0.CR6'
+	nettyVersion = '4.0.0.CR7'
 	jacksonDatabindVersion = '2.2.1'
 	hadoopVersion = '1.1.2'
 
@@ -168,7 +168,6 @@ project('reactor-core') {
 	}
 }
 
-/*
 project('reactor-groovy') {
 	description = 'Reactor Groovy components'
 	dependencies {
@@ -177,7 +176,6 @@ project('reactor-groovy') {
 		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
 	}
 }
-*/
 
 project('reactor-spring') {
 	description = 'Reactor Spring components'
