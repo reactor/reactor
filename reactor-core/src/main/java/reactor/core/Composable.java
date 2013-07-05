@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.EventConsumer;
@@ -115,7 +114,7 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		this.events.on(Fn.T(exceptionType), new EventConsumer<E>(onError));
+		this.events.on(Functions.T(exceptionType), new EventConsumer<E>(onError));
 		return this;
 	}
 

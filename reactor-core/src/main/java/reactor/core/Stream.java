@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.EventConsumer;
@@ -213,7 +212,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
-		return reduce(fn, Fn.supplier(initial));
+		return reduce(fn, Functions.supplier(initial));
 	}
 
 	/**

@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-
-
 package reactor.groovy.ext
 
-import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
+import groovy.transform.TypeCheckingMode
 import reactor.Fn
 import reactor.core.Composable
 import reactor.core.Deferred
@@ -27,12 +25,11 @@ import reactor.core.Promise
 import reactor.core.Stream
 import reactor.fn.*
 import reactor.fn.tuples.Tuple2
-import reactor.groovy.support.ClosureConsumer
-import reactor.groovy.support.ClosureFunction
-import reactor.groovy.support.ClosurePredicate
-import reactor.groovy.support.ClosureReduce
-import reactor.groovy.support.ClosureSupplier
 /**
+ * Glue for Groovy closures and operator overloading applied to Stream, Composable,
+ * Promise and Deferred.
+ * Also gives convenient Deferred handling by providing map/filter/consume operations
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -43,7 +40,7 @@ class ComposableExtensions {
 	 * Alias
 	 */
 	static <T, X extends Composable<T>> X to(final X selfType, final Object key,
-	                                        final Observable observable) {
+	                                         final Observable observable) {
 		selfType.consume key, observable
 	}
 
@@ -98,7 +95,7 @@ class ComposableExtensions {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
-	@CompileDynamic
+	@CompileStatic(TypeCheckingMode.SKIP)
 	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, V initial = null) {
 		reduce selfType, closure, initial ? Fn.<V>supplier((V)initial) : (Supplier<V>)null
 	}
@@ -107,7 +104,7 @@ class ComposableExtensions {
 		reduce selfType, closure, new ClosureSupplier(initial)
 	}
 
-	@CompileDynamic
+	@CompileStatic(TypeCheckingMode.SKIP)
 	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, Supplier<V> initial) {
 		selfType.reduce new ClosureReduce<T, V>(closure), initial
 	}
@@ -134,7 +131,7 @@ class ComposableExtensions {
 	 * Operator overloading
 	 */
 
-	@CompileDynamic
+	@CompileStatic(TypeCheckingMode.SKIP)
 	static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
 		selfType.reduce other, (Supplier<V>)null
 	}
@@ -231,3 +228,4 @@ class ComposableExtensions {
 	}
 
 }
+import reactor.groovy.support.*

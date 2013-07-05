@@ -27,6 +27,8 @@ import reactor.fn.Observable
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 /**
+ * Static extensions for reactor-core classes, main purpose is to bind closure when required
+ *
  * @author Stephane Maldini
  */
 @CompileStatic

@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
 import reactor.fn.support.EventConsumer;
@@ -87,7 +86,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
 		if (isComplete()) {
-			Fn.schedule(onComplete, this, getObservable());
+			Functions.schedule(onComplete, this, getObservable());
 		} else {
 			getObservable().on(complete.getT1(), new EventConsumer<Promise<T>>(onComplete));
 		}
@@ -322,7 +321,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
 		if (isSuccess()) {
-			Fn.schedule(consumer, value, getObservable());
+			Functions.schedule(consumer, value, getObservable());
 		} else {
 			super.consume(consumer);
 		}
@@ -332,7 +331,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public Promise<T> consume(@Nonnull final Composable<T> composable) {
 		if (isSuccess()) {
-			Fn.schedule(new Consumer<T>() {
+			Functions.schedule(new Consumer<T>() {
 				@Override
 				public void accept(T t) {
 					composable.notifyValue(t);
@@ -358,7 +357,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		if (isError() && exceptionType.isAssignableFrom(error.getClass())) {
-			Fn.schedule(onError, (E) error, getObservable());
+			Functions.schedule(onError, (E) error, getObservable());
 		} else {
 			super.when(exceptionType, onError);
 		}
@@ -373,7 +372,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		final Deferred<V, Promise<V>> d = createDeferred();
 		if (isSuccess()) {
-			Fn.schedule(
+			Functions.schedule(
 					new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
@@ -401,7 +400,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		final Deferred<T, Promise<T>> d = createDeferred();
 		if (isSuccess()) {
-			Fn.schedule(
+			Functions.schedule(
 					new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
@@ -477,7 +476,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	protected void doResolution() {
 		if (null != supplier) {
-			Fn.schedule(
+			Functions.schedule(
 					new Consumer<Void>() {
 						@Override
 						public void accept(Void v) {
@@ -540,7 +539,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		@Override
 		protected Promise<T> configure(Reactor reactor) {
-			Promise<T> p = new Promise<T>(env, reactor, null, (valueSet ? Fn.supplier(value) : null), error, supplier);
+			Promise<T> p = new Promise<T>(env, reactor, null, (valueSet ? Functions.supplier(value) : null), error, supplier);
 			return p;
 		}
 	}

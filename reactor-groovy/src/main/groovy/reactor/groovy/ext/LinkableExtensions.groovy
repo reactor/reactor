@@ -22,6 +22,8 @@ import reactor.fn.routing.Linkable
 
 
 /**
+ * Syntax sugar for Linkable objects, providing | and - operators to link/unlink
+ *
  * @author Stephane Maldini (smaldini)
  */
 @CompileStatic
