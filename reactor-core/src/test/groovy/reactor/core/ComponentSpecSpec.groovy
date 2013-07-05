@@ -60,12 +60,22 @@ class ComponentSpecSpec extends Specification {
 	def "Promise correctly built"() {
 
 		when: "we create a plain Promise"
-		Deferred promise = P.success('test').sync().get()
+		Promise promise = P.success('test').sync().get()
+
+		then:
+		Promise.isAssignableFrom(promise.class)
+		promise.get() == 'test'
+	}
+
+	def "Deferred Promise correctly built"() {
+
+		when: "we create a plain Promise"
+		Deferred promise = P.defer().get()
+		promise.accept 'test'
 
 		then:
 		Deferred.isAssignableFrom(promise.class)
 		promise.compose().get() == 'test'
-
 	}
 
 }

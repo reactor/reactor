@@ -35,7 +35,7 @@ public abstract class Promises {
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
 	 * @param <T> type of the expected value
-	 * @return A {@link Deferred.PromiseSpec}.
+	 * @return A {@link reactor.core.Deferred.PromiseSpec}.
 	 */
 	public static <T> Deferred.PromiseSpec<T> defer() {
 		return new Deferred.PromiseSpec<T>();
@@ -47,10 +47,10 @@ public abstract class Promises {
 	 *
 	 * @param supplier {@link Supplier} that will produce the value
 	 * @param <T>      type of the expected value
-	 * @return A {@link Deferred.PromiseSpec}.
+	 * @return A {@link reactor.core.Deferred.PromiseSpec}.
 	 */
-	public static <T> Deferred.PromiseSpec<T> task(Supplier<T> supplier) {
-		return new Deferred.PromiseSpec<T>().supplier(supplier);
+	public static <T> Promise.Spec<T> task(Supplier<T> supplier) {
+		return new Promise.Spec<T>().supplier(supplier);
 	}
 
 	/**
@@ -59,11 +59,11 @@ public abstract class Promises {
 	 *
 	 * @param value the value to complete the {@link Promise} with
 	 * @param <T>   the type of the value
-	 * @return A {@link Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
+	 * @return A {@link reactor.core.Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
 	 *         the given value
 	 */
-	public static <T> Deferred.PromiseSpec<T> success(T value) {
-		return new Deferred.PromiseSpec<T>().value(value);
+	public static <T> Promise.Spec<T> success(T value) {
+		return new Promise.Spec<T>().value(value);
 	}
 
 	/**
@@ -72,11 +72,11 @@ public abstract class Promises {
 	 *
 	 * @param error the error to complete the {@link Promise} with
 	 * @param <T>   the type of the value
-	 * @return A {@link Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
+	 * @return A {@link reactor.core.Deferred.PromiseSpec} that will produce a {@link Deferred} whose {@link Promise} is completed with
 	 *         the given error
 	 */
-	public static <T> Deferred.PromiseSpec<T> error(Throwable error) {
-		return new Deferred.PromiseSpec<T>().error(error);
+	public static <T> Promise.Spec<T> error(Throwable error) {
+		return new Promise.Spec<T>().error(error);
 	}
 
 	/**

@@ -509,4 +509,38 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 				", error=" + error +
 				'}';
 	}
+
+	public static class Spec<T> extends ComponentSpec<Spec<T>, Promise<T>> {
+		private boolean valueSet = false;
+
+		private Throwable   error;
+		private T           value;
+		private Supplier<T> supplier;
+
+		public Spec<T> value(T value) {
+			Assert.isNull(error, "Cannot set both a value and an error. Use one or the other.");
+			this.value = value;
+			valueSet = true;
+			return this;
+		}
+
+		public Spec<T> error(Throwable error) {
+			Assert.isNull(value, "Cannot set both an error and a value. Use one or the other.");
+			this.error = error;
+			return this;
+		}
+
+		public Spec<T> supplier(Supplier<T> supplier) {
+			Assert.isNull(error, "Cannot set both an error and a Supplier. Use one or the other.");
+			Assert.isNull(value, "Cannot set both a value and a Supplier. Use one or the other.");
+			this.supplier = supplier;
+			return this;
+		}
+
+		@Override
+		protected Promise<T> configure(Reactor reactor) {
+			Promise<T> p = new Promise<T>(env, reactor, null, (valueSet ? Fn.supplier(value) : null), error, supplier);
+			return p;
+		}
+	}
 }

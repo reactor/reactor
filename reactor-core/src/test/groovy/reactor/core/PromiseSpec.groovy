@@ -54,8 +54,7 @@ class PromiseSpec extends Specification {
   def "An onComplete consumer is called when added to an already-rejected promise"() {
     given:
       "a rejected Promise"
-      def deferred = Promises.<Object> error(new Exception()).get()
-      def promise = deferred.compose()
+      def promise = Promises.<Object> error(new Exception()).get()
 
     when:
       "an onComplete consumer is added"
@@ -95,8 +94,7 @@ class PromiseSpec extends Specification {
   def "An onComplete consumer is called when added to an already-fulfilled promise"() {
     given:
       "a fulfilled Promise"
-      def deferred = Promises.success('test').get()
-      def promise = deferred.compose()
+      def promise = Promises.success('test').get()
 
     when:
       "an onComplete consumer is added"
@@ -135,7 +133,7 @@ class PromiseSpec extends Specification {
   def "An onSuccess consumer is called when added to an already-fulfilled promise"() {
     given:
       "a fulfilled Promise"
-      def promise = Promises.success('test').get().compose()
+      def promise = Promises.success('test').get()
 
     when:
       "an onSuccess consumer is added"
@@ -153,7 +151,7 @@ class PromiseSpec extends Specification {
   def "An onSuccess consumer can be added to an already-rejected promise"() {
     given:
       "a rejected Promise"
-      def promise = Promises.error(new Exception()).get().compose()
+      def promise = Promises.error(new Exception()).get()
 
     when:
       "an onSuccess consumer is added"
@@ -167,7 +165,7 @@ class PromiseSpec extends Specification {
   def "An onError consumer can be added to an already-fulfilled promise"() {
     given:
       "a fulfilled Promise"
-      def promise = Promises.success('test').get().compose()
+      def promise = Promises.success('test').get()
 
     when:
       "an onError consumer is added"
@@ -203,7 +201,7 @@ class PromiseSpec extends Specification {
     given:
       "a rejected Promise"
       def failure = new Exception()
-      def promise = Promises.error(failure).get().compose()
+      def promise = Promises.error(failure).get()
 
     when:
       "an onError consumer is added"
@@ -222,7 +220,7 @@ class PromiseSpec extends Specification {
     given:
       "a rejected Promise"
       def failure = new Exception()
-      def promise = Promises.error(failure).get().compose()
+      def promise = Promises.error(failure).get()
 
     when:
       "getting the promise's value"
@@ -236,7 +234,7 @@ class PromiseSpec extends Specification {
   def "A fulfilled promise's value is returned by get"() {
     given:
       "a fulfilled Promise"
-      def promise = Promises.success('test').get().compose()
+      def promise = Promises.success('test').get()
 
     when:
       "getting the promise's value"
@@ -267,7 +265,7 @@ class PromiseSpec extends Specification {
   def "An Observable can be used to consume the value of an already-fulfilled promise"() {
     given:
       "a fulfilled promise"
-      def promise = Promises.success('test').get().compose()
+      def promise = Promises.success('test').get()
       def observable = Mock(Observable)
 
     when:
@@ -298,7 +296,7 @@ class PromiseSpec extends Specification {
   def "A function can be used to map an already-fulfilled Promise's value"() {
     given:
       "a fulfilled promise with a mapping function"
-      def promise = Promises.success(1).get().compose()
+      def promise = Promises.success(1).get()
 
     when:
       "a mapping function is added"
@@ -347,12 +345,12 @@ class PromiseSpec extends Specification {
     given:
       "A promise that has been rejected"
       def e = new Exception()
-      Deferred<String> promise = Promises.<String> error(e).sync().get()
+      def promise = Promises.<String> error(e).sync().get()
 
     when:
       "An onError consumer is registered via then"
       def value
-      promise.compose().then(consumer{}, consumer { value = it })
+      promise.then(consumer{}, consumer { value = it })
 
     then:
       "The consumer is called"
@@ -367,7 +365,7 @@ class PromiseSpec extends Specification {
     when:
       "An onSuccess consumer is registered via then"
       def value
-      promise.compose().then(consumer { value = it }, null)
+      promise.then(consumer { value = it }, null)
 
     then:
       "The consumer is called"
@@ -396,7 +394,7 @@ class PromiseSpec extends Specification {
 
     when:
       "An onSuccess function is registered via then"
-      def transformed = promise.compose().then(function { it * 2 }, null)
+      def transformed = promise.then(function { it * 2 }, null)
 
     then:
       "The function is called and the transformed promise is fulfilled"
@@ -428,7 +426,7 @@ class PromiseSpec extends Specification {
     when:
       "a mapping function that throws an exception is added"
       def e = new RuntimeException()
-      def mapped = promise.compose().map(function { throw e })
+      def mapped = promise.map(function { throw e })
 
     then:
       "the mapped promise is rejected"
@@ -438,52 +436,41 @@ class PromiseSpec extends Specification {
   def "An IllegalStateException is thrown if an attempt is made to fulfil a fulfilled promise"() {
     given:
       "a fulfilled promise"
-      def promise = Promises.success(1).sync().get()
+      def promise = Promises.defer().sync().get()
 
     when:
       "an attempt is made to fulfil it"
+      promise.accept 1
       promise.accept 1
 
     then:
       "an IllegalStateException is thrown"
       thrown(IllegalStateException)
   }
+
+	def "An IllegalStateException is thrown if an attempt is made to reject a rejected promise"() {
+		given:
+			"a rejected promise"
+			Deferred promise = Promises.defer().sync().get()
+
+		when:
+			"an attempt is made to fulfil it"
+			promise.accept new Exception()
+			promise.accept new Exception()
+
+		then:
+			"an IllegalStateException is thrown"
+			thrown(IllegalStateException)
+	}
 
   def "An IllegalStateException is thrown if an attempt is made to reject a fulfilled promise"() {
     given:
       "a fulfilled promise"
-      def promise = Promises.success(1).sync().get()
-
-    when:
-      "an attempt is made to fulfil it"
-      promise.accept new Exception()
-
-    then:
-      "an IllegalStateException is thrown"
-      thrown(IllegalStateException)
-  }
-
-  def "An IllegalStateException is thrown if an attempt is made to fulfil a rejected promise"() {
-    given:
-      "a rejected promise"
-      Deferred promise = Promises.error(new Exception()).sync().get()
+      def promise = Promises.defer().sync().get()
 
     when:
       "an attempt is made to fulfil it"
       promise.accept 1
-
-    then:
-      "an IllegalStateException is thrown"
-      thrown(IllegalStateException)
-  }
-
-  def "An IllegalStateException is thrown if an attempt is made to reject a rejected promise"() {
-    given:
-      "a rejected promise"
-      Deferred promise = Promises.error(new Exception()).sync().get()
-
-    when:
-      "an attempt is made to fulfil it"
       promise.accept new Exception()
 
     then:
@@ -581,8 +568,8 @@ class PromiseSpec extends Specification {
   def "A combined promise is immediately rejected if its component promises are already rejected"() {
     given:
       "two rejected promises"
-      Deferred promise1 = Promises.error(new Exception()).sync().get()
-      Deferred promise2 = Promises.error(new Exception()).sync().get()
+      def promise1 = Promises.error(new Exception()).sync().get()
+      def promise2 = Promises.error(new Exception()).sync().get()
 
     when:
       "a combined promise is first created"
@@ -619,7 +606,7 @@ class PromiseSpec extends Specification {
   def "A promise can be fulfilled with a Supplier"() {
     when:
       "A promise configured with a supplier"
-      def promise = Promises.task(supplier { 1 }).get().compose()
+      def promise = Promises.task(supplier { 1 }).get()
 
     then:
       "it is fulfilled"
@@ -630,7 +617,7 @@ class PromiseSpec extends Specification {
   def "A promise with a Supplier that throws an exception is rejected"() {
     when:
       "A promise configured with a supplier that throws an exception"
-      def promise = Promises.task(supplier { throw new RuntimeException() }).get().compose()
+      def promise = Promises.task(supplier { throw new RuntimeException() }).get()
 	    promise.get()
 
 	  then:
@@ -693,7 +680,7 @@ class PromiseSpec extends Specification {
 
     when:
       "the promise is filtered with a filter that only accepts even values"
-      def filteredPromise = promise.compose().filter(predicate { it % 2 == 0 })
+      def filteredPromise = promise.filter(predicate { it % 2 == 0 })
 
     then:
       "the filtered promise is fulfilled"
@@ -708,7 +695,7 @@ class PromiseSpec extends Specification {
 
     when:
       "the promise is filtered with a filter that only accepts even values"
-      def filteredPromise = promise.compose().filter(predicate { it % 2 == 0 })
+      def filteredPromise = promise.filter(predicate { it % 2 == 0 })
 
     then:
       "the filtered promise is rejected"

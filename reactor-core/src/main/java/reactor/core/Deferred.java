@@ -16,10 +16,7 @@
 
 package reactor.core;
 
-import reactor.Fn;
 import reactor.fn.Consumer;
-import reactor.fn.Supplier;
-import reactor.util.Assert;
 
 /**
  * @author Jon Brisbin
@@ -48,41 +45,15 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 
 	public static class PromiseSpec<T> extends ComponentSpec<PromiseSpec<T>, Deferred<T, Promise<T>>> {
 		private Composable<?> parent;
-		private T             value;
-
-		private boolean valueSet  = false;
-
-		private Throwable   error;
-		private Supplier<T> supplier;
 
 		public PromiseSpec<T> link(Composable<?> parent) {
 			this.parent = parent;
 			return this;
 		}
 
-		public PromiseSpec<T> value(T value) {
-			Assert.isNull(error, "Cannot set both a value and an error. Use one or the other.");
-			this.value = value;
-			valueSet = true;
-			return this;
-		}
-
-		public PromiseSpec<T> error(Throwable error) {
-			Assert.isNull(value, "Cannot set both an error and a value. Use one or the other.");
-			this.error = error;
-			return this;
-		}
-
-		public PromiseSpec<T> supplier(Supplier<T> supplier) {
-			Assert.isNull(error, "Cannot set both an error and a Supplier. Use one or the other.");
-			Assert.isNull(value, "Cannot set both a value and a Supplier. Use one or the other.");
-			this.supplier = supplier;
-			return this;
-		}
-
 		@Override
 		protected Deferred<T, Promise<T>> configure(Reactor reactor) {
-			Promise<T> p = new Promise<T>(env, reactor, parent, (valueSet ? Fn.supplier(value) : null), error, supplier);
+			Promise<T> p = new Promise<T>(env, reactor, parent, null, null, null);
 			final Deferred<T, Promise<T>> d = new Deferred<T, Promise<T>>(p);
 			return d;
 		}
