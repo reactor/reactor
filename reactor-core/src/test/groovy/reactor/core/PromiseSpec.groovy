@@ -467,7 +467,7 @@ class PromiseSpec extends Specification {
   def "An IllegalStateException is thrown if an attempt is made to fulfil a rejected promise"() {
     given:
       "a rejected promise"
-      def promise = Promises.error(new Exception()).sync().get()
+      Deferred promise = Promises.error(new Exception()).sync().get()
 
     when:
       "an attempt is made to fulfil it"
@@ -481,7 +481,7 @@ class PromiseSpec extends Specification {
   def "An IllegalStateException is thrown if an attempt is made to reject a rejected promise"() {
     given:
       "a rejected promise"
-      def promise = Promises.success(new Exception()).sync().get()
+      Deferred promise = Promises.error(new Exception()).sync().get()
 
     when:
       "an attempt is made to fulfil it"
@@ -492,40 +492,38 @@ class PromiseSpec extends Specification {
       thrown(IllegalStateException)
   }
 
-	@Ignore
   def "Multiple promises can be combined"() {
     given:
       "two fulfilled promises"
-      def promise1 = Promises.defer().sync().get()
-      def promise2 = Promises.defer().sync().get()
+      Deferred promise1 = Promises.defer().sync().get()
+      Deferred promise2 = Promises.defer().sync().get()
 
     when:
       "a combined promise is first created"
-      def combined = Promises.when(promise1, promise2).sync().get()
+      Promise combined = Promises.when(promise1, promise2)
 
     then:
       "it is pending"
-      combinedeferred.pending
+	    combined.pending
 
     when:
       "the first promise is fulfilled"
-      promise1.set 1
+      promise1.accept 1
 
     then:
       "the combined promise is still pending"
-      combinedeferred.pending
+      combined.pending
 
     when:
       "the second promise if fulfilled"
-      promise2.set 2
+      promise2.accept 2
 
     then:
       "the combined promise is fulfilled with both values"
-      combinedeferred.success
-      combinedeferred.get() == [1, 2]
+	    combined.success
+	    combined.get() == [1, 2]
   }
 
-	@Ignore
   def "A combined promise is rejected once any of its component promises are rejected"() {
     given:
       "two unfulfilled promises"
@@ -534,55 +532,68 @@ class PromiseSpec extends Specification {
 
     when:
       "a combined promise is first created"
-      def combined = Promises.when(promise1, promise2).sync().get()
+      def combined = Promises.when(promise1, promise2)
 
     then:
       "it is pending"
-      combinedeferred.pending
+	    combined.pending
 
     when:
       "a component promise is rejected"
-      promise1.set new Exception()
+      promise1.accept new Exception()
 
     then:
       "the combined promise is rejected"
-      combinedeferred.error
+	    combined.error
   }
 
-	@Ignore
   def "A combined promise is immediately fulfilled if its component promises are already fulfilled"() {
     given:
       "two fulfilled promises"
-      def promise1 = Promises.success(1).sync().get()
-      def promise2 = Promises.success(2).sync().get()
+      def promise1 = Promises.success(1).get()
+      def promise2 = Promises.success(2).get()
 
     when:
       "a combined promise is first created"
-      def combined = Promises.when(promise1, promise2).sync().get()
+      def combined = Promises.when(promise1, promise2)
 
     then:
       "it is fulfilled"
-      combinedeferred.success
-      combinedeferred.get() == [1, 2]
+	    combined.success
+	    combined.get() == [1, 2]
   }
 
-	@Ignore
+	def "A combined promise through 'any' is fulfilled with the first component result when using synchronously"() {
+		given:
+			"two fulfilled promises"
+			def promise1 = Promises.success(1).get()
+			def promise2 = Promises.success(2).get()
+
+		when:
+			"a combined promise is first created"
+			def combined = Promises.any(promise1, promise2)
+
+		then:
+			"it is fulfilled"
+			combined.success
+			combined.get() == 1
+	}
+
   def "A combined promise is immediately rejected if its component promises are already rejected"() {
     given:
       "two rejected promises"
-      def promise1 = Promises.error(new Exception()).sync().get()
-      def promise2 = Promises.error(new Exception()).sync().get()
+      Deferred promise1 = Promises.error(new Exception()).sync().get()
+      Deferred promise2 = Promises.error(new Exception()).sync().get()
 
     when:
       "a combined promise is first created"
-      def combined = Promises.when(promise1, promise2).sync().get()
+      def combined = Promises.when(promise1, promise2)
 
     then:
       "it is rejected"
-      combinedeferred.error
+      combined.error
   }
 
-	@Ignore
   def "A single promise can be 'combined'"() {
     given:
       "one unfulfilled promise"
@@ -590,7 +601,7 @@ class PromiseSpec extends Specification {
 
     when:
       "a combined promise is first created"
-      def combined = Promises.when(promise1).sync().get()
+      def combined = Promises.when(promise1)
 
     then:
       "it is pending"
@@ -598,18 +609,18 @@ class PromiseSpec extends Specification {
 
     when:
       "the first promise is fulfilled"
-      promise1.set 1
+      promise1.accept 1
 
     then:
       "the combined promise is fulfilled"
-      combined.success
-      combined.get() == [1]
+	    combined.await() == [1]
+	    combined.success
   }
 
   def "A promise can be fulfilled with a Supplier"() {
     when:
       "A promise configured with a supplier"
-      def promise = Promises.task(supplier { 1 }).sync().get().compose()
+      def promise = Promises.task(supplier { 1 }).get().compose()
 
     then:
       "it is fulfilled"
@@ -620,7 +631,7 @@ class PromiseSpec extends Specification {
   def "A promise with a Supplier that throws an exception is rejected"() {
     when:
       "A promise configured with a supplier that throws an exception"
-      def promise = Promises.task(supplier { throw new RuntimeException() }).sync().get().compose()
+      def promise = Promises.task(supplier { throw new RuntimeException() }).get().compose()
 	    promise.get()
 
 	  then:

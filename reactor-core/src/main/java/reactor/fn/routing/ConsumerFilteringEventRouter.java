@@ -66,9 +66,10 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 				}
 			}
 		} catch (Exception e) {
-			logger.error("Event routing failed: {}", e.getMessage(), e);
 			if (null != errorConsumer) {
 				errorConsumer.accept(e);
+			}else{
+				logger.error("Event routing failed: {}", e.getMessage(), e);
 			}
 		}
 	}

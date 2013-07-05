@@ -18,6 +18,9 @@ package reactor.fn.support;
 
 import reactor.fn.Consumer;
 import reactor.fn.Event;
+import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
 
 /**
  * Simple {@link Consumer} implementation that pulls the data from an {@link Event} and
@@ -27,6 +30,7 @@ import reactor.fn.Event;
  *            can be handled by the delegate
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class EventConsumer<T> implements Consumer<Event<T>> {
 
@@ -38,15 +42,14 @@ public class EventConsumer<T> implements Consumer<Event<T>> {
 	 *
 	 * @param delegate The delegate consumer
 	 */
-	public EventConsumer(Consumer<T> delegate) {
+	public EventConsumer(@Nonnull Consumer<T> delegate) {
+		Assert.notNull(delegate, "Delegate must not be null");
 		this.delegate = delegate;
 	}
 
 	@Override
 	public void accept(Event<T> ev) {
-		if (null != delegate) {
-			delegate.accept(ev.getData());
-		}
+		delegate.accept(ev.getData());
 	}
 
 }

@@ -49,7 +49,9 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	public static class PromiseSpec<T> extends ComponentSpec<PromiseSpec<T>, Deferred<T, Promise<T>>> {
 		private Composable<?> parent;
 		private T             value;
-		private boolean valueSet = false;
+
+		private boolean valueSet  = false;
+
 		private Throwable   error;
 		private Supplier<T> supplier;
 
@@ -82,9 +84,6 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 		protected Deferred<T, Promise<T>> configure(Reactor reactor) {
 			Promise<T> p = new Promise<T>(env, reactor, parent, (valueSet ? Fn.supplier(value) : null), error, supplier);
 			final Deferred<T, Promise<T>> d = new Deferred<T, Promise<T>>(p);
-			if (null != parent) {
-				parent.cascadeErrors(p);
-			}
 			return d;
 		}
 	}
@@ -113,9 +112,6 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 		protected Deferred<T, Stream<T>> configure(Reactor reactor) {
 			Stream<T> s = new Stream<T>(env, reactor, batchSize, values, parent);
 			Deferred<T, Stream<T>> d = new Deferred<T, Stream<T>>(s);
-			if (null != parent) {
-				parent.cascadeErrors(s);
-			}
 			return d;
 		}
 	}

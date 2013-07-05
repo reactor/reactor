@@ -328,11 +328,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<T> consume(@Nonnull Composable<T> composable) {
+	public Promise<T> consume(@Nonnull final Composable<T> composable) {
 		if (isSuccess()) {
-			Fn.schedule((Consumer<Object>) composable, value, getObservable());
+			Fn.schedule(new Consumer<T>() {
+				@Override
+				public void accept(T t) {
+					composable.notifyValue(t);
+				}
+			}, value, getObservable());
 		} else {
 			super.consume(composable);
 		}
@@ -490,11 +494,19 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	private void assertPending() {
-		Assert.state(state == State.PENDING, "Promise has already completed.");
+		Assert.state(state == State.PENDING, "Promise has already completed. ");
 	}
 
 	private enum State {
 		PENDING, SUCCESS, FAILURE
 	}
 
+	@Override
+	public String toString() {
+		return "Promise{" +
+				"value=" + value +
+				", state=" + state +
+				", error=" + error +
+				'}';
+	}
 }

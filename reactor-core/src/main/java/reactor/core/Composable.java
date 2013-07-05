@@ -52,14 +52,16 @@ public abstract class Composable<T> {
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
 
-	protected Composable(@Nullable Environment env,
-											 @Nonnull Observable events,
-											 @Nullable Composable parent) {
+	protected <U> Composable(@Nullable Environment env,
+	                         @Nonnull Observable events,
+	                         @Nullable Composable<U> parent) {
 		Assert.notNull(events, "Events Observable cannot be null.");
 		this.env = env;
 		this.events = events;
 		this.parent = parent;
-
+		if (parent != null) {
+			parent.cascadeErrors(this);
+		}
 	}
 
 	/**
@@ -70,12 +72,12 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
-		this.events.on(accept.getT1(), new Consumer<Event<T>>() {
+		this.events.on(accept.getT1(), new EventConsumer<T>(new Consumer<T>() {
 			@Override
-			public void accept(Event<T> event) {
-				composable.notifyValue(event.getData());
+			public void accept(T event) {
+				composable.notifyValue(event);
 			}
-		});
+		}));
 		cascadeErrors(composable);
 		return this;
 	}
@@ -151,7 +153,6 @@ public abstract class Composable<T> {
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
-		Assert.notNull(p, "Filter predicate cannot be null.");
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
 		consume(new Consumer<T>() {
 			@Override

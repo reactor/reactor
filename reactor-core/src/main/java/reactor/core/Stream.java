@@ -19,7 +19,6 @@ package reactor.core;
 import reactor.Fn;
 import reactor.fn.*;
 import reactor.fn.selector.Selector;
-import reactor.fn.support.CascadingConsumer;
 import reactor.fn.support.EventConsumer;
 import reactor.fn.support.Tap;
 import reactor.fn.tuples.Tuple;
@@ -148,7 +147,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> batch(final int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		consume(new CascadingConsumer<T>(d));
+		consume(d);
 		return d.compose();
 	}
 
@@ -181,7 +180,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collect() {
-		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Trying extracting a batch first().");
+		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Trying extracting a batch first.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
 		consume(new Consumer<T>() {
