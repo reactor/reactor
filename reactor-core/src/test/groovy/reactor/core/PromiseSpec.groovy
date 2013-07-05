@@ -17,7 +17,6 @@ package reactor.core
 
 import reactor.P
 import reactor.fn.Observable
-import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -332,7 +331,7 @@ class PromiseSpec extends Specification {
       "A promise with an onError consumer registered using then"
       Deferred<String> promise = Promises.<String> defer().sync().get()
       def value
-	    promise.compose().then(null, consumer { value = it })
+	    promise.compose().then(consumer{}, consumer { value = it })
 
 	  when:
       "The promise is rejected"
@@ -353,7 +352,7 @@ class PromiseSpec extends Specification {
     when:
       "An onError consumer is registered via then"
       def value
-      promise.compose().then(null, consumer { value = it })
+      promise.compose().then(consumer{}, consumer { value = it })
 
     then:
       "The consumer is called"
