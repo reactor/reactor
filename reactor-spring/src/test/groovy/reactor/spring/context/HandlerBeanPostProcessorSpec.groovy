@@ -22,7 +22,7 @@ package reactor.spring.context
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import reactor.fn.Event
+import reactor.event.Event
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.spring.context.annotation.On

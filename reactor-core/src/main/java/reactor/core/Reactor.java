@@ -16,43 +16,42 @@
 
 package reactor.core;
 
-import static reactor.fn.Functions.$;
+import org.cliffc.high_scale_lib.NonBlockingHashSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.convert.Converter;
+import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registration;
+import reactor.event.registry.Registry;
+import reactor.event.registry.SelectionStrategy;
+import reactor.event.routing.ArgumentConvertingConsumerInvoker;
+import reactor.event.routing.ConsumerFilteringEventRouter;
+import reactor.event.routing.EventRouter;
+import reactor.event.routing.Linkable;
+import reactor.event.selector.ClassSelector;
+import reactor.event.selector.Selector;
+import reactor.filter.PassThroughFilter;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Observable;
+import reactor.function.Supplier;
+import reactor.tuple.Tuple2;
+import reactor.util.Assert;
+import reactor.util.UUIDUtils;
 
 import java.util.Set;
 import java.util.UUID;
 
-import org.cliffc.high_scale_lib.NonBlockingHashSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.convert.Converter;
-import reactor.filter.PassThroughFilter;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.Observable;
-import reactor.fn.Supplier;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registration;
-import reactor.fn.registry.Registry;
-import reactor.fn.registry.SelectionStrategy;
-import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
-import reactor.fn.routing.ConsumerFilteringEventRouter;
-import reactor.fn.routing.EventRouter;
-import reactor.fn.routing.Linkable;
-import reactor.fn.selector.ClassSelector;
-import reactor.fn.selector.Selector;
-import reactor.fn.tuples.Tuple2;
-import reactor.util.Assert;
-import reactor.util.UUIDUtils;
+import static reactor.function.Functions.$;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link reactor.fn.selector.Selector ) {@link reactor.fn.registry.Registry }. When a {@literal Reactor} is notified of
- * that {@link Event}, a task is dispatched to the assigned {@link Dispatcher} which causes it to be executed on a
- * thread based on the implementation of the {@link Dispatcher} being used.
+ * {@link reactor.event.selector.Selector ) {@link reactor.event.registry.Registry }. When a {@literal Reactor} is
+ * notified of that {@link Event}, a task is dispatched to the assigned {@link Dispatcher} which causes it to be
+ * executed on a thread based on the implementation of the {@link Dispatcher} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -86,13 +85,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
-	 * reactor.fn.registry.SelectionStrategy}, and {@link Converter} will be used.
+	 * reactor.event.registry.SelectionStrategy}, and {@link Converter} will be used.
 	 *
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
-	Reactor(Environment env,
-					Dispatcher dispatcher) {
+	public Reactor(Environment env,
+								 Dispatcher dispatcher) {
 		this(env,
 				 dispatcher,
 				 null,
@@ -101,7 +100,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
-	 * reactor.fn.registry.SelectionStrategy}, {@link EventRouter}
+	 * reactor.event.registry.SelectionStrategy}, {@link EventRouter}
 	 *
 	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous
 	 *                          dispatcher is used.
@@ -109,10 +108,10 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param eventRouter       The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code
 	 *                          null} in which case a default event router is used.
 	 */
-	Reactor(Environment env,
-					Dispatcher dispatcher,
-					SelectionStrategy selectionStrategy,
-					EventRouter eventRouter) {
+	public Reactor(Environment env,
+								 Dispatcher dispatcher,
+								 SelectionStrategy selectionStrategy,
+								 EventRouter eventRouter) {
 		this.env = env;
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
@@ -346,23 +345,4 @@ public class Reactor implements Observable, Linkable<Observable> {
 		}
 	}
 
-	public static class Spec extends ComponentSpec<Reactor.Spec, Reactor> {
-		private boolean link;
-
-		public Spec() {
-		}
-
-		public Spec link() {
-			this.link = true;
-			return this;
-		}
-
-		@Override
-		public Reactor configure(Reactor reactor) {
-			if (link)
-				this.reactor.link(reactor);
-
-			return reactor;
-		}
-	}
 }

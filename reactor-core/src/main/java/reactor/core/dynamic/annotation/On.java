@@ -22,12 +22,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import reactor.fn.selector.ObjectSelector;
-import reactor.fn.selector.Selector;
+import reactor.event.selector.ObjectSelector;
+import reactor.event.selector.Selector;
 
 /**
  * Annotation to denote that a method should proxy a call to
- * {@link reactor.core.Reactor#on(Selector, reactor.fn.Consumer)}.
+ * {@link reactor.core.Reactor#on(Selector, reactor.function.Consumer)}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

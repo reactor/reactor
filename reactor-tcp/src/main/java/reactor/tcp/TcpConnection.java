@@ -16,9 +16,9 @@
 
 package reactor.tcp;
 
-import reactor.core.Stream;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.core.composable.Stream;
+import reactor.function.Consumer;
+import reactor.function.Function;
 
 import java.net.InetSocketAddress;
 
@@ -79,7 +79,7 @@ public interface TcpConnection<IN, OUT> {
 	TcpConnection<IN, OUT> consume(Consumer<IN> consumer);
 
 	/**
-	 * Use the given {@link Function} to handle incoming data, like in {@link #consume(reactor.fn.Consumer)}, but this
+	 * Use the given {@link Function} to handle incoming data, like in {@link #consume(reactor.function.Consumer)}, but this
 	 * method expects the {@link Function} to return a response object.
 	 *
 	 * @param fn The data-consuming {@link Function}.

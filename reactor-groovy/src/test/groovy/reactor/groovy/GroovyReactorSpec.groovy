@@ -20,8 +20,8 @@ package reactor.groovy
 
 import reactor.core.Environment
 import reactor.R
-import reactor.fn.Event
-import reactor.fn.dispatch.BlockingQueueDispatcher
+import reactor.event.Event
+import reactor.event.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
 

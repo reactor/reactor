@@ -21,13 +21,13 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
-import reactor.fn.Consumer;
-import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.function.Consumer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.LengthFieldCodec;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.encoding.json.JsonCodec;
 import reactor.tcp.netty.NettyTcpServer;
+import reactor.tcp.spec.TcpServerSpec;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -72,8 +72,8 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesJsonPojos() throws InterruptedException {
-		TcpServer<Pojo, Pojo> server = new TcpServer.Spec<Pojo, Pojo>(NettyTcpServer.class)
-				.using(env)
+		TcpServer<Pojo, Pojo> server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer.class)
+				.env(env)
 				.dispatcher(Environment.EVENT_LOOP)
 				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class, Pojo.class))
 				.consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
@@ -97,9 +97,9 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
-		TcpServer<byte[], byte[]> server = new TcpServer.Spec<byte[], byte[]>(NettyTcpServer.class)
-				.using(env)
-				.sync()
+		TcpServer<byte[], byte[]> server = new TcpServerSpec<byte[], byte[]>(NettyTcpServer.class)
+				.env(env)
+				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
 										 .backlog(1000)
 										 .reuseAddr(true)

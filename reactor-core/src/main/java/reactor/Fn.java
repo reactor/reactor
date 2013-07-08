@@ -16,7 +16,7 @@
 
 package reactor;
 
-import reactor.fn.Functions;
+import reactor.function.Functions;
 
 /**
  * Alias for Functions

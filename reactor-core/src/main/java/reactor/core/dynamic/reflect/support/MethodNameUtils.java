@@ -29,7 +29,7 @@ public abstract class MethodNameUtils {
 	 * Strip the "on" or "notify" when a method name and split the camel-case into a dot-separated {@literal String}.
 	 *
 	 * @param name The method name to transform.
-	 * @return A camel-case-to-dot-separated version suitable for a {@link reactor.fn.selector.Selector}.
+	 * @return A camel-case-to-dot-separated version suitable for a {@link reactor.event.selector.Selector}.
 	 */
 	public static String methodNameToSelectorName(String name) {
 		return doTransformation(name, "on", "^on\\.");

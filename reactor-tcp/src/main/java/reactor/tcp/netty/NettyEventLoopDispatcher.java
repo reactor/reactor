@@ -17,11 +17,11 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.fn.Event;
-import reactor.fn.Supplier;
-import reactor.fn.cache.Cache;
-import reactor.fn.cache.LoadingCache;
-import reactor.fn.dispatch.AbstractDispatcher;
+import reactor.event.Event;
+import reactor.function.Supplier;
+import reactor.cache.Cache;
+import reactor.cache.LoadingCache;
+import reactor.event.dispatch.AbstractDispatcher;
 
 /**
  * @author Jon Brisbin

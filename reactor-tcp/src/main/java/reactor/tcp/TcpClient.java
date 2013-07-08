@@ -18,13 +18,17 @@ package reactor.tcp;
 
 import reactor.Fn;
 import reactor.core.*;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registration;
-import reactor.fn.registry.Registry;
-import reactor.fn.selector.Selector;
-import reactor.fn.tuples.Tuple2;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.composable.Promises;
+import reactor.core.DispatcherComponentSpec;
+import reactor.function.Consumer;
+import reactor.event.Event;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registration;
+import reactor.event.registry.Registry;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 import reactor.io.Buffer;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
@@ -36,7 +40,7 @@ import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
 
-import static reactor.fn.Functions.$;
+import static reactor.function.Functions.$;
 
 /**
  * @author Jon Brisbin
@@ -68,10 +72,10 @@ public abstract class TcpClient<IN, OUT> {
 	}
 
 	/**
-	 * Open a {@link TcpConnection} to the configured host:port and return a {@link Promise} that will be fulfilled when
+	 * Open a {@link TcpConnection} to the configured host:port and return a {@link reactor.core.composable.Promise} that will be fulfilled when
 	 * the client is connected.
 	 *
-	 * @return A {@link Promise} that will be filled with the {@link TcpConnection} when connected.
+	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link TcpConnection} when connected.
 	 */
 	public abstract Promise<TcpConnection<IN, OUT>> open();
 
@@ -81,7 +85,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @return A {@link Promise} that will be fulfilled with {@literal null} when the connections have been closed.
 	 */
 	public Promise<Void> close() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().using(env).using(reactor).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).reactor(reactor).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@Override
@@ -105,7 +109,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @param channel    The channel object.
 	 * @param connection The {@link TcpConnection}.
 	 * @param <C>        The type of the channel object.
-	 * @return {@link reactor.fn.registry.Registration} of this connection in the {@link Registry}.
+	 * @return {@link reactor.event.registry.Registration} of this connection in the {@link Registry}.
 	 */
 	protected <C> Registration<? extends TcpConnection<IN, OUT>> register(@Nonnull C channel,
 																																				@Nonnull TcpConnection<IN, OUT> connection) {
@@ -198,86 +202,5 @@ public abstract class TcpClient<IN, OUT> {
 	}
 
 	protected abstract void doClose(Deferred<Void, Promise<Void>> d);
-
-	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpClient<IN, OUT>> {
-		private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;
-
-		private InetSocketAddress connectAddress;
-		private ClientSocketOptions options = new ClientSocketOptions();
-		private Codec<Buffer, IN, OUT> codec;
-
-		/**
-		 * Create a {@code TcpClient.Spec} using the given implementation class.
-		 *
-		 * @param clientImpl The concrete implementation of {@link TcpClient} to instantiate.
-		 */
-		@SuppressWarnings({"unchecked", "rawtypes"})
-		public Spec(@Nonnull Class<? extends TcpClient> clientImpl) {
-			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
-			try {
-				this.clientImplConstructor = (Constructor<? extends TcpClient<IN, OUT>>) clientImpl.getDeclaredConstructor(
-						Environment.class,
-						Reactor.class,
-						InetSocketAddress.class,
-						ClientSocketOptions.class,
-						Codec.class
-				);
-				this.clientImplConstructor.setAccessible(true);
-			} catch (NoSuchMethodException e) {
-				throw new IllegalArgumentException("No public constructor found that matches the signature of the one found in the TcpClient class.");
-			}
-		}
-
-		/**
-		 * Set the common {@link ClientSocketOptions} for connections made in this client.
-		 *
-		 * @param options The socket options to apply to new connections.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> options(ClientSocketOptions options) {
-			this.options = options;
-			return this;
-		}
-
-		/**
-		 * The host and port to which this client should connect.
-		 *
-		 * @param host The host to connect to.
-		 * @param port The port to connect to.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> connect(@Nonnull String host, int port) {
-			Assert.isNull(connectAddress, "Connect address is already set.");
-			this.connectAddress = new InetSocketAddress(host, port);
-			return this;
-		}
-
-		/**
-		 * The {@link Codec} to use to encode and decode data.
-		 *
-		 * @param codec The codec to use.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
-			Assert.isNull(this.codec, "Codec has already been set.");
-			this.codec = codec;
-			return this;
-		}
-
-		@Override
-		protected TcpClient<IN, OUT> configure(Reactor reactor) {
-			try {
-				return clientImplConstructor.newInstance(
-						env,
-						reactor,
-						connectAddress,
-						options,
-						codec
-				);
-			} catch (Throwable t) {
-				throw new IllegalStateException(t);
-			}
-		}
-	}
 
 }

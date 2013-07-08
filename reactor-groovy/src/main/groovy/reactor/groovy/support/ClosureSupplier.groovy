@@ -19,7 +19,7 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.fn.Supplier
+import reactor.function.Supplier
 /**
  * @author Stephane Maldini
  */

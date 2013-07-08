@@ -18,7 +18,7 @@ package reactor.core.dynamic;
 
 import reactor.core.dynamic.annotation.Dispatcher;
 import reactor.core.dynamic.annotation.On;
-import reactor.fn.Consumer;
+import reactor.function.Consumer;
 
 /**
  * @author Jon Brisbin

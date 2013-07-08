@@ -18,9 +18,10 @@ package reactor;
 
 import groovy.lang.Closure;
 import groovy.lang.GString;
-import reactor.fn.*;
-import reactor.fn.selector.ObjectSelector;
-import reactor.fn.selector.Selector;
+import reactor.event.Event;
+import reactor.function.*;
+import reactor.event.selector.ObjectSelector;
+import reactor.event.selector.Selector;
 
 /**
  * @author Jon Brisbin

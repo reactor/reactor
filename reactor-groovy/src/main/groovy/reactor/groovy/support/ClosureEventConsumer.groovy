@@ -19,8 +19,8 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.fn.Consumer
-import reactor.fn.Event
+import reactor.function.Consumer
+import reactor.event.Event
 
 /**
  * @author Jon Brisbin

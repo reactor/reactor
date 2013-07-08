@@ -19,8 +19,8 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.fn.Function
-import reactor.fn.tuples.Tuple2
+import reactor.function.Function
+import reactor.tuple.Tuple2
 /**
  * @author Stephane Maldini
  * @author Jon Brisbin

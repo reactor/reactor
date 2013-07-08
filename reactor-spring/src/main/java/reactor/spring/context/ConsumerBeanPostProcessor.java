@@ -48,9 +48,9 @@ import org.springframework.util.StringUtils;
 
 import reactor.Fn;
 import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.selector.Selector;
+import reactor.function.Consumer;
+import reactor.event.Event;
+import reactor.event.selector.Selector;
 import reactor.spring.context.annotation.On;
 
 /**

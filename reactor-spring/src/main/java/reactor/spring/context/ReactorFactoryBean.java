@@ -21,7 +21,7 @@ import org.springframework.util.Assert;
 import reactor.R;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.fn.dispatch.SynchronousDispatcher;
+import reactor.core.ReactorSpec;
 
 /**
  * @author Jon Brisbin
@@ -46,10 +46,10 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 		Assert.notNull(env, "Environment cannot be null.");
 		this.env = env;
 
-		Reactor.Spec spec = R.reactor().using(env);
+		ReactorSpec spec = R.reactor().env(env);
 		if (null != dispatcher) {
 			if ("sync".equals(dispatcher)) {
-				spec.sync();
+				spec.synchronousDispatcher();
 			} else {
 				spec.dispatcher(dispatcher);
 			}

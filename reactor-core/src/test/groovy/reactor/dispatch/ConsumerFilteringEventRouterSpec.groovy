@@ -21,12 +21,12 @@
 package reactor.dispatch
 
 import reactor.filter.PassThroughFilter
-import reactor.fn.Consumer
-import reactor.fn.Event
-import reactor.fn.registry.Registration;
-import reactor.fn.routing.ConsumerFilteringEventRouter;
-import reactor.fn.routing.ConsumerInvoker;
-import reactor.fn.selector.Selector;
+import reactor.function.Consumer
+import reactor.event.Event
+import reactor.event.registry.Registration;
+import reactor.event.routing.ConsumerFilteringEventRouter;
+import reactor.event.routing.ConsumerInvoker;
+import reactor.event.selector.Selector;
 import spock.lang.Specification
 
 class ConsumerFilteringEventRouterSpec extends Specification {

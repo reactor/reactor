@@ -37,7 +37,7 @@ class ReactorTaskExecutorSpec extends Specification {
   def "ReactorTaskExecutor executes tasks"() {
     given:
       "a Reactor-backed TaskExecutor"
-      def reactor = R.reactor().using(env).dispatcher(Environment.EVENT_LOOP).get()
+      def reactor = R.reactor().env(env).dispatcher(Environment.EVENT_LOOP).get()
       def exec = new ReactorTaskExecutor(reactor)
       def latch = new CountDownLatch(1)
 

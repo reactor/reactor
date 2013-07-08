@@ -22,11 +22,13 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.S;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
-import reactor.fn.tuples.Tuple2;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Stream;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.RingBufferDispatcher;
+import reactor.tuple.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,9 +60,9 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		Deferred<Integer, Stream<Integer>> dInt = S.<Integer>defer()
-				.using(env)
-				.using(dispatcher)
-				.batch(length * runs * samples)
+				.env(env)
+				.dispatcher(dispatcher)
+				.batchSize(length * runs * samples)
 				.get();
 		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override

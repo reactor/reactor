@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,11 +40,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import reactor.core.Environment;
-import reactor.core.Promise;
-import reactor.fn.Consumer;
+import reactor.core.composable.Promise;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyTcpClient;
+import reactor.tcp.spec.TcpClientSpec;
 
 /**
  * @author Jon Brisbin
@@ -75,8 +75,8 @@ public class TcpClientTests {
 	public void testTcpClient() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
-				.using(env)
+		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
+				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
 				.connect("localhost", port)
 				.get();
@@ -107,8 +107,8 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(messages);
 		final List<String> strings = new ArrayList<String>();
 
-		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
-				.using(env)
+		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
+				.env(env)
 				.codec(StandardCodecs.LINE_FEED_CODEC)
 				.connect("localhost", port)
 				.get();
@@ -143,8 +143,8 @@ public class TcpClientTests {
 
 	@Test
 	public void closingPromiseIsFulfilled() throws InterruptedException {
-		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
-				.using(env)
+		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
+				.env(env)
 				.codec(StandardCodecs.<Buffer, String, String>passthroughCodec())
 				.connect("www.google.com", 80)
 				.get();

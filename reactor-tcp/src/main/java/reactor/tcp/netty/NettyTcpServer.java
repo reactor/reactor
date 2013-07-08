@@ -28,7 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Fn;
 import reactor.core.*;
-import reactor.fn.Consumer;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.composable.Promises;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpConnection;
@@ -123,7 +126,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().using(env).using(getReactor()).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).reactor(getReactor()).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})

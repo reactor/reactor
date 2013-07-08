@@ -16,7 +16,7 @@
 
 package reactor.core;
 
-import static reactor.fn.Functions.$;
+import static reactor.function.Functions.$;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,14 +36,14 @@ import reactor.core.configuration.PropertiesConfigurationReader;
 import reactor.core.configuration.ReactorConfiguration;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
-import reactor.fn.dispatch.BlockingQueueDispatcher;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
-import reactor.fn.dispatch.SynchronousDispatcher;
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registration;
-import reactor.fn.registry.Registry;
+import reactor.event.dispatch.BlockingQueueDispatcher;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.RingBufferDispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registration;
+import reactor.event.registry.Registry;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;

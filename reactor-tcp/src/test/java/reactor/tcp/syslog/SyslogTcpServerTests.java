@@ -47,14 +47,15 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import reactor.core.Environment;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.function.Consumer;
+import reactor.function.Function;
 import reactor.io.Buffer;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.encoding.syslog.SyslogCodec;
 import reactor.tcp.encoding.syslog.SyslogMessage;
 import reactor.tcp.netty.NettyTcpServer;
+import reactor.tcp.spec.TcpServerSpec;
 import reactor.tcp.syslog.hdfs.HdfsConsumer;
 
 /**
@@ -146,8 +147,8 @@ public class SyslogTcpServerTests {
 		conf.addResource("/usr/local/Cellar/hadoop/1.1.2/libexec/conf/core-site.xml");
 		final HdfsConsumer hdfs = new HdfsConsumer(conf, "loadtests", "syslog");
 
-		TcpServer<SyslogMessage, Void> server = new TcpServer.Spec<SyslogMessage, Void>(NettyTcpServer.class)
-				.using(env)
+		TcpServer<SyslogMessage, Void> server = new TcpServerSpec<SyslogMessage, Void>(NettyTcpServer.class)
+				.env(env)
 						//.using(SynchronousDispatcher.INSTANCE)
 						//.dispatcher(Environment.EVENT_LOOP)
 				.dispatcher(Environment.RING_BUFFER)

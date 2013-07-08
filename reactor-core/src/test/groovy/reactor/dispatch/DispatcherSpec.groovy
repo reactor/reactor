@@ -33,15 +33,14 @@ import static reactor.GroovyTestUtils.consumer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import reactor.Fn
 import reactor.filter.PassThroughFilter
-import reactor.fn.Consumer
-import reactor.fn.Event
-import reactor.fn.dispatch.SynchronousDispatcher
-import reactor.fn.dispatch.ThreadPoolExecutorDispatcher
-import reactor.fn.registry.CachingRegistry
-import reactor.fn.routing.ArgumentConvertingConsumerInvoker;
-import reactor.fn.routing.ConsumerFilteringEventRouter;
+import reactor.function.Consumer
+import reactor.event.Event
+import reactor.event.dispatch.SynchronousDispatcher
+import reactor.event.dispatch.ThreadPoolExecutorDispatcher
+import reactor.event.registry.CachingRegistry
+import reactor.event.routing.ArgumentConvertingConsumerInvoker;
+import reactor.event.routing.ConsumerFilteringEventRouter;
 import spock.lang.Specification
 
 /**
@@ -86,7 +85,7 @@ class DispatcherSpec extends Specification {
 	def "Dispatcher thread can be reused"() {
 
 		given: "ring buffer reactor"
-		def r = R.reactor().using(new Environment()).dispatcher("ringBuffer").get()
+		def r = R.reactor().env(new Environment()).dispatcher("ringBuffer").get()
 		def latch = new CountDownLatch(2)
 
 		when: "listen for recursive event"

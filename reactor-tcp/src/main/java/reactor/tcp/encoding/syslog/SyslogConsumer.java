@@ -16,7 +16,7 @@
 
 package reactor.tcp.encoding.syslog;
 
-import reactor.fn.Consumer;
+import reactor.function.Consumer;
 import reactor.tcp.TcpConnection;
 
 /**

@@ -19,14 +19,14 @@ package reactor.spring;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskExecutor;
 import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.selector.Selector;
-import reactor.fn.tuples.Tuple2;
+import reactor.function.Consumer;
+import reactor.event.Event;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 
 import java.util.concurrent.Executor;
 
-import static reactor.fn.Functions.$;
+import static reactor.function.Functions.$;
 
 /**
  * A {@link TaskExecutor} implementation that uses a {@link Reactor} to dispatch and execute tasks.

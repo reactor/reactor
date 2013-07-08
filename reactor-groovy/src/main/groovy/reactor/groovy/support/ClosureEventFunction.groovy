@@ -19,8 +19,8 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.fn.Event
-import reactor.fn.Function
+import reactor.event.Event
+import reactor.function.Function
 
 /**
  * @author Stephane Maldini

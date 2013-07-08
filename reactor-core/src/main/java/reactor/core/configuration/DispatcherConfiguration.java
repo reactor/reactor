@@ -16,7 +16,7 @@
 
 package reactor.core.configuration;
 
-import reactor.fn.dispatch.Dispatcher;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * An encapsulation of the configuration for a {@link Dispatcher}.

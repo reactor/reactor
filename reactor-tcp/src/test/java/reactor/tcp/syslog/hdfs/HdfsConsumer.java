@@ -20,7 +20,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import reactor.fn.Consumer;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.syslog.SyslogMessage;
 

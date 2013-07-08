@@ -22,8 +22,8 @@ import java.lang.reflect.Method;
 
 import reactor.core.dynamic.annotation.On;
 import reactor.core.dynamic.reflect.support.AnnotationUtils;
-import reactor.fn.selector.ObjectSelector;
-import reactor.fn.selector.Selector;
+import reactor.event.selector.ObjectSelector;
+import reactor.event.selector.Selector;
 
 /**
  * An implementation of {@link MethodSelectorResolver} that looks for an {@link On} annotation
