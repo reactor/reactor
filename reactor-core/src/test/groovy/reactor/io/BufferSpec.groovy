@@ -335,4 +335,26 @@ class BufferSpec extends Specification {
 		thrown(IllegalArgumentException)
 	}
 
+	def "An IllegalArgumentException is thrown if a buffer is asked to skip beyond its end"() {
+		given: "A buffer"
+		def buffer = Buffer.wrap("some data")
+
+		when: "The buffer is asked to skip beyond its end"
+		buffer.skip(100)
+
+		then: "An IllegalArgumentException is thrown"
+		thrown (IllegalArgumentException)
+	}
+
+	def "An IllegalArgumentException is thrown if a buffer is asked to rewind beyond its beginning"() {
+		given: "A buffer"
+		def buffer = Buffer.wrap("some data")
+
+		when: "The buffer is asked to rewind beyond its beginning"
+		buffer.rewind(100)
+
+		then: "An IllegalArgumentException is thrown"
+		thrown (IllegalArgumentException)
+	}
+
 }

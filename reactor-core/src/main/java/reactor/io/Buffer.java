@@ -308,11 +308,7 @@ public class Buffer implements Comparable<Buffer>,
 		}
 		if (null != buffer) {
 			int pos = buffer.position();
-			if (len <= buffer.remaining()) {
-				buffer.position(pos + len);
-			} else {
-				throw new BufferUnderflowException();
-			}
+			buffer.position(pos + len);
 		}
 		return this;
 	}
@@ -411,11 +407,7 @@ public class Buffer implements Comparable<Buffer>,
 		}
 		if (null != buffer) {
 			int pos = buffer.position();
-			if (len <= pos) {
-				buffer.position(pos - len);
-			} else {
-				throw new BufferUnderflowException();
-			}
+			buffer.position(pos - len);
 		}
 		return this;
 	}
