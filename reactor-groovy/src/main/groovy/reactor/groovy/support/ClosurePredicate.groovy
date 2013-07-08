@@ -17,7 +17,7 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.fn.Predicate
+import reactor.function.Predicate
 
 /**
  * @author Jon Brisbin

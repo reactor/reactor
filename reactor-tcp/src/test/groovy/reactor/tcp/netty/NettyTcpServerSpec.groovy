@@ -17,12 +17,13 @@
 package reactor.tcp.netty
 
 import reactor.core.Environment
-import reactor.fn.Consumer
-import reactor.fn.Function
+import reactor.function.Consumer
+import reactor.function.Function
 import reactor.io.Buffer
 import reactor.tcp.TcpConnection
 import reactor.tcp.TcpServer
 import reactor.tcp.encoding.json.JsonCodec
+import reactor.tcp.spec.TcpServerSpec
 import spock.lang.Specification
 
 import java.nio.ByteBuffer
@@ -47,8 +48,8 @@ class NettyTcpServerSpec extends Specification {
 		def startLatch = new CountDownLatch(1)
 		def stopLatch = new CountDownLatch(1)
 		def dataLatch = new CountDownLatch(1)
-		def server = new TcpServer.Spec<Buffer, Buffer>(NettyTcpServer).
-				using(env).
+		def server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer).
+				env(env).
 				listen(port).
 				consume({ TcpConnection<Buffer, Buffer> conn ->
 					conn.receive({ Buffer data ->
@@ -91,8 +92,8 @@ class NettyTcpServerSpec extends Specification {
 		def startLatch = new CountDownLatch(1)
 		def stopLatch = new CountDownLatch(1)
 		def dataLatch = new CountDownLatch(1)
-		def server = new TcpServer.Spec<Pojo, Pojo>(NettyTcpServer).
-				using(env).
+		def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
+				env(env).
 				listen(port).
 				codec(new JsonCodec<Pojo, Pojo>(Pojo, Pojo)).
 				consume({ conn ->

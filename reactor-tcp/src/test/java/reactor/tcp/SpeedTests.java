@@ -18,7 +18,7 @@ package reactor.tcp;
 
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.fn.Consumer;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 
 import java.text.ParseException;

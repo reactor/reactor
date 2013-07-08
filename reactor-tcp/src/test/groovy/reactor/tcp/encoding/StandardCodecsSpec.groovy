@@ -16,7 +16,7 @@
 
 package reactor.tcp.encoding
 
-import reactor.fn.Consumer
+import reactor.function.Consumer
 import reactor.io.Buffer
 import reactor.tcp.encoding.syslog.SyslogCodec
 import spock.lang.Specification

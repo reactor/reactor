@@ -19,17 +19,17 @@ package reactor.tcp;
 import reactor.Fn;
 import reactor.R;
 import reactor.S;
-import reactor.core.Deferred;
+import reactor.core.composable.Deferred;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.Stream;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.Function;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.selector.Selector;
-import reactor.fn.support.NotifyConsumer;
-import reactor.fn.tuples.Tuple2;
+import reactor.core.composable.Stream;
+import reactor.function.Consumer;
+import reactor.event.Event;
+import reactor.function.Function;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
+import reactor.function.support.NotifyConsumer;
+import reactor.tuple.Tuple2;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
@@ -59,8 +59,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.ioReactor = R.reactor()
-											.using(env)
-											.using(ioDispatcher)
+											.env(env)
+											.dispatcher(ioDispatcher)
 											.get();
 		this.eventsReactor = eventsReactor;
 		if (null != codec) {
@@ -90,8 +90,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Stream<IN> in() {
 		final Deferred<IN, Stream<IN>> d = S.<IN>defer()
-																				.using(env)
-																				.using(eventsReactor.getDispatcher())
+																				.env(env)
+																				.dispatcher(eventsReactor.getDispatcher())
 																				.get();
 		consume(new Consumer<IN>() {
 			@Override
@@ -105,8 +105,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Deferred<OUT, Stream<OUT>> out() {
 		Deferred<OUT, Stream<OUT>> d = S.<OUT>defer()
-																		.using(env)
-																		.using(eventsReactor.getDispatcher())
+																		.env(env)
+																		.dispatcher(eventsReactor.getDispatcher())
 																		.get();
 		d.compose().consume(new Consumer<OUT>() {
 			@Override

@@ -16,11 +16,11 @@
 
 package reactor.tcp.encoding.syslog;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.Supplier;
-import reactor.fn.cache.Cache;
-import reactor.fn.cache.LoadingCache;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Supplier;
+import reactor.cache.Cache;
+import reactor.cache.LoadingCache;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 

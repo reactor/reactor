@@ -26,7 +26,7 @@ import reactor.core.Reactor;
 
 /**
  * Annotation to denote that a method should proxy a call to an underlying {@link
- * Reactor#notify(Object, reactor.fn.Event)} or {@link Reactor#notify(Object)} call.
+ * Reactor#notify(Object, reactor.event.Event)} or {@link Reactor#notify(Object)} call.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

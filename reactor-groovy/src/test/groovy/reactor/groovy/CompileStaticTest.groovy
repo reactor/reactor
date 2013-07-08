@@ -20,8 +20,7 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.Environment
-import reactor.P
-import reactor.fn.Supplier
+import reactor.function.Supplier
 
 /**
  * This class shouldnt fail compilation

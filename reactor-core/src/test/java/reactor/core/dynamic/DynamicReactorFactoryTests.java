@@ -18,7 +18,7 @@ package reactor.core.dynamic;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.fn.Consumer;
+import reactor.function.Consumer;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

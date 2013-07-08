@@ -18,7 +18,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.fn.routing.Linkable
+import reactor.event.routing.Linkable
 
 
 /**

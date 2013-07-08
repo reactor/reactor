@@ -16,32 +16,28 @@
 
 package reactor.tcp;
 
-import static reactor.fn.Functions.$;
-
-import java.lang.reflect.Constructor;
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import reactor.core.ComponentSpec;
 import reactor.core.Environment;
-import reactor.core.Promise;
 import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.registry.CachingRegistry;
-import reactor.fn.registry.Registration;
-import reactor.fn.registry.Registry;
-import reactor.fn.selector.Selector;
-import reactor.fn.tuples.Tuple2;
+import reactor.core.composable.Promise;
+import reactor.event.Event;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registration;
+import reactor.event.registry.Registry;
+import reactor.event.selector.Selector;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.encoding.Codec;
+import reactor.tuple.Tuple2;
 import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Iterator;
+
+import static reactor.function.Functions.$;
 
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
@@ -233,126 +229,6 @@ public abstract class TcpServer<IN, OUT> {
 
 	protected Reactor getReactor() {
 		return this.reactor;
-	}
-
-	public static class Spec<IN, OUT> extends ComponentSpec<Spec<IN, OUT>, TcpServer<IN, OUT>> {
-		private final Constructor<? extends TcpServer<IN, OUT>> serverImplConstructor;
-
-		private InetSocketAddress   listenAddress = new InetSocketAddress("localhost", 3000);
-		private ServerSocketOptions options       = new ServerSocketOptions();
-		private Codec<Buffer, IN, OUT>                       codec;
-		private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
-
-		/**
-		 * Create a {@code TcpServer.Spec} using the given implementation class.
-		 *
-		 * @param serverImpl The concrete implementation of {@link TcpServer} to instantiate.
-		 */
-		@SuppressWarnings({"unchecked", "rawtypes"})
-		public Spec(@Nonnull Class<? extends TcpServer> serverImpl) {
-			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
-			try {
-				this.serverImplConstructor = (Constructor<? extends TcpServer<IN, OUT>>) serverImpl.getDeclaredConstructor(
-						Environment.class,
-						Reactor.class,
-						InetSocketAddress.class,
-						ServerSocketOptions.class,
-						Codec.class,
-						Collection.class
-				);
-				this.serverImplConstructor.setAccessible(true);
-			} catch (NoSuchMethodException e) {
-				throw new IllegalArgumentException("No public constructor found that matches the signature of the one found in the TcpServer class.");
-			}
-		}
-
-		/**
-		 * Set the common {@link ServerSocketOptions} for connections made in this server.
-		 *
-		 * @param options The options to set when new connections are made.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> options(@Nonnull ServerSocketOptions options) {
-			Assert.notNull(options, "ServerSocketOptions cannot be null.");
-			this.options = options;
-			return this;
-		}
-
-		/**
-		 * The port on which this server should listen, assuming it should bind to all available addresses.
-		 *
-		 * @param port The port to listen on.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> listen(int port) {
-			this.listenAddress = new InetSocketAddress(port);
-			return this;
-		}
-
-		/**
-		 * The host and port on which this server should listen.
-		 *
-		 * @param host The host to bind to.
-		 * @param port The port to listen on.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> listen(@Nonnull String host, int port) {
-			if (null == host) {
-				host = "localhost";
-			}
-			this.listenAddress = new InetSocketAddress(host, port);
-			return this;
-		}
-
-		/**
-		 * The {@link Codec} to use to encode and decode data.
-		 *
-		 * @param codec The codec to use.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> codec(@Nonnull Codec<Buffer, IN, OUT> codec) {
-			Assert.notNull(codec, "Codec cannot be null.");
-			this.codec = codec;
-			return this;
-		}
-
-		/**
-		 * Callback to invoke when a new connection is created.
-		 *
-		 * @param connectionConsumer The callback to invoke for new connections.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> consume(@Nonnull Consumer<TcpConnection<IN, OUT>> connectionConsumer) {
-			return consume(Collections.singletonList(connectionConsumer));
-		}
-
-		/**
-		 * Callbacks to invoke when a new connection is created.
-		 *
-		 * @param connectionConsumers The callbacks to invoke for new connections.
-		 * @return {@literal this}
-		 */
-		public Spec<IN, OUT> consume(@Nonnull Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
-			Assert.notNull(connectionConsumers, "Connection consumers cannot be null.");
-			this.connectionConsumers = connectionConsumers;
-			return this;
-		}
-
-		@Override
-		protected TcpServer<IN, OUT> configure(Reactor reactor) {
-			try {
-				return serverImplConstructor.newInstance(
-						env,
-						reactor,
-						listenAddress,
-						options,
-						codec,
-						connectionConsumers
-				);
-			} catch (Throwable t) {
-				throw new IllegalStateException(t);
-			}
-		}
 	}
 
 }

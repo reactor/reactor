@@ -22,11 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.core.Reactor;
-import reactor.fn.Consumer;
-import reactor.fn.Event;
-import reactor.fn.selector.Selector;
-import reactor.fn.dispatch.Dispatcher;
-import reactor.fn.dispatch.RingBufferDispatcher;
+import reactor.function.Consumer;
+import reactor.event.Event;
+import reactor.event.selector.Selector;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.RingBufferDispatcher;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

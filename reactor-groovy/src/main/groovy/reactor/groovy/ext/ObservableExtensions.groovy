@@ -16,15 +16,16 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.fn.*
-import reactor.fn.registry.Registration
-import reactor.fn.selector.Selector
+import reactor.event.Event
+import reactor.function.*
+import reactor.event.registry.Registration
+import reactor.event.selector.Selector
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.groovy.support.ClosureEventFunction
 
 import static reactor.Fn.$
 /**
- * Extensions for providing syntax sugar for working with {@link reactor.fn.Observable}s.
+ * Extensions for providing syntax sugar for working with {@link reactor.function.Observable}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin

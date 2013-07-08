@@ -18,12 +18,12 @@
 
 package reactor.groovy
 
-import reactor.core.Deferred
+import reactor.core.composable.Deferred
 import reactor.core.Environment
-import reactor.core.Promise
+import reactor.core.composable.Promise
 import reactor.P
-import reactor.core.Promises
-import reactor.fn.dispatch.BlockingQueueDispatcher
+import reactor.core.composable.Promises
+import reactor.event.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -143,7 +143,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		Deferred p = P.defer().using(testEnv).dispatcher('eventLoop').get()
+		Deferred p = P.defer().env(testEnv).dispatcher('eventLoop').get()
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

@@ -19,7 +19,7 @@ package reactor.util;
 import com.eaio.uuid.UUIDGen;
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.fn.Supplier;
+import reactor.function.Supplier;
 
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;

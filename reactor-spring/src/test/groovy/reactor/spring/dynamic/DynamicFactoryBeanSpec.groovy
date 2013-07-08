@@ -26,8 +26,7 @@ import org.springframework.context.annotation.Configuration
 import reactor.core.Environment
 import reactor.core.dynamic.DynamicReactor
 import reactor.core.dynamic.annotation.Dispatcher
-import reactor.fn.Consumer
-import spock.lang.Shared
+import reactor.function.Consumer
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch

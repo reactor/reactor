@@ -16,12 +16,12 @@
 
 package reactor.tcp.encoding;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.function.Consumer;
+import reactor.function.Function;
 
 /**
  * Implementations of a {@literal Codec} are responsible for decoding a {@code SRC} into an instance of {@code IN} and
- * passing that to the given {@link reactor.fn.Consumer}. A codec also provides an encoder to take an instance of {@code
+ * passing that to the given {@link reactor.function.Consumer}. A codec also provides an encoder to take an instance of {@code
  * OUT} and encode to an instance of {@code SRC}.
  *
  * @author Jon Brisbin

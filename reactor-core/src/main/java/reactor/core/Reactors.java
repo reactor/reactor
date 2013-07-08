@@ -26,11 +26,12 @@ package reactor.core;
 public abstract class Reactors {
 
 	/**
-	 * Create a {@literal Reactor} based on the given id.
+	 * Create a new {@literal Reactor}.
 	 *
 	 * @return The new {@link Reactor}.
 	 */
-	public static Reactor.Spec reactor() {
-		return new Reactor.Spec();
+	public static ReactorSpec reactor() {
+		return new ReactorSpec();
 	}
+
 }

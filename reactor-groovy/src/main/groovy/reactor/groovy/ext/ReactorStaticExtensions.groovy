@@ -21,9 +21,10 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.Fn
 import reactor.P
-import reactor.core.Promise
-import reactor.core.Promises
-import reactor.fn.Observable
+import reactor.core.composable.Promise
+import reactor.core.composable.PromiseSpec
+import reactor.core.composable.Promises
+import reactor.function.Observable
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 /**
@@ -41,11 +42,11 @@ class ReactorStaticExtensions {
 		Fn.schedule new ClosureConsumer(closure), value, observable
 	}
 
-	static <T> Promise.Spec<T> task(final Promises selfType, Closure<T> callback) {
+	static <T> PromiseSpec<T> task(final Promises selfType, Closure<T> callback) {
 		P.task new ClosureSupplier<T>(callback)
 	}
 
-	static <T> Promise.Spec<T> from(final Promise<T> selfType, Closure<T> callback) {
+	static <T> PromiseSpec<T> from(final Promise<T> selfType, Closure<T> callback) {
 		task null, callback
 	}
 

@@ -20,11 +20,11 @@ package reactor.groovy
 
 import reactor.R
 import reactor.S
-import reactor.core.Deferred
+import reactor.core.composable.Deferred
 import reactor.core.Environment
-import reactor.core.Stream
-import reactor.fn.dispatch.BlockingQueueDispatcher
-import reactor.fn.support.Tap
+import reactor.core.composable.Stream
+import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.function.support.Tap
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -197,7 +197,7 @@ class GroovyStreamSpec extends Specification {
 	def "relay events to reactor"() {
 		given:
 			'a reactor and a selector'
-			def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
+			def r = R.reactor().env(testEnv).dispatcher('eventLoop').get()
 			def key = $()
 
 		when:

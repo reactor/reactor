@@ -16,9 +16,8 @@
 
 package reactor.tcp.syslog.test;
 
-import reactor.fn.Function;
+import reactor.function.Function;
 import reactor.io.Buffer;
-import reactor.tcp.encoding.Codec;
 
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;

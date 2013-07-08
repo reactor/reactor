@@ -26,6 +26,9 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.*;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.composable.Promises;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpClient;
@@ -89,8 +92,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
 		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> d = Promises.<TcpConnection<IN, OUT>>defer()
-																																												.using(env)
-																																												.using(eventsReactor)
+																																												.env(env)
+																																												.reactor(eventsReactor)
 																																												.get();
 
 		ChannelFuture connectFuture = bootstrap.connect();

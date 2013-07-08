@@ -16,8 +16,8 @@
 
 package reactor.tcp.encoding;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.function.Consumer;
+import reactor.function.Function;
 import reactor.io.Buffer;
 import reactor.util.Assert;
 

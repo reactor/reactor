@@ -20,8 +20,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.function.Consumer;
+import reactor.function.Function;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
