@@ -73,6 +73,36 @@ class StandardCodecsSpec extends Specification {
 		buff.asString() == data.flip().asString()
 	}
 
+	def "Once decoding has completed, the buffer's position and limit are at the end of the buffer"() {
+		given: "A decoder and a buffer of delimited data"
+		def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
+		def string = 'Hello World!\nHello World!\nHello World!\n'
+		def data = Buffer.wrap(string)
+
+		when: "data has been decoded"
+		def decoder = codec.decoder({} as Consumer<String>)
+		decoder.apply(data)
+
+		then: "the buffer's limit and position are at the end of the buffer"
+		data.limit() == string.length()
+		data.position() == string.length()
+	}
+
+	def "Once delimiter stripping decoding has completed, the buffer's position and limit are at the end of the buffer"() {
+		given: "A delimiter stripping decoder and a buffer of delimited data"
+		def codec = new DelimitedCodec<String, String>(true, StandardCodecs.STRING_CODEC)
+		def string = 'Hello World!\nHello World!\nHello World!\n'
+		def data = Buffer.wrap(string)
+
+		when: "data has been decoded"
+		def decoder = codec.decoder({} as Consumer<String>)
+		decoder.apply(data)
+
+		then: "the buffer's limit and position are at the end of the buffer"
+		data.limit() == string.length()
+		data.position() == string.length()
+	}
+
 	def "LengthFieldCodec can encode and decode length-prefixed items"() {
 		given: "length-prefixed data"
 		def codec = new LengthFieldCodec<String, String>(StandardCodecs.STRING_CODEC)

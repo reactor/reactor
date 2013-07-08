@@ -293,6 +293,20 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
+	 * Sets this buffer's limit.
+	 *
+	 * @param limit the new limit
+	 *
+	 * @return this buffer
+	 */
+	public Buffer limit(int limit) {
+		if (null != buffer) {
+			buffer.limit(limit);
+		}
+		return this;
+	}
+
+	/**
 	 * Skips {@code len} bytes.
 	 *
 	 * @param len the number of bytes to skip

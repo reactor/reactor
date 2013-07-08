@@ -16,15 +16,10 @@
 
 package reactor.tcp;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import reactor.core.Environment;
-import reactor.core.Promise;
-import reactor.fn.Consumer;
-import reactor.io.Buffer;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.netty.NettyTcpClient;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -33,16 +28,24 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import reactor.core.Environment;
+import reactor.core.Promise;
+import reactor.fn.Consumer;
+import reactor.io.Buffer;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyTcpClient;
 
 /**
  * @author Jon Brisbin
@@ -100,7 +103,8 @@ public class TcpClientTests {
 
 	@Test
 	public void tcpClientHandlesLineFeedData() throws InterruptedException {
-		final CountDownLatch latch = new CountDownLatch(3);
+		final int messages = 100;
+		final CountDownLatch latch = new CountDownLatch(messages);
 		final List<String> strings = new ArrayList<String>();
 
 		TcpClient<String, String> client = new TcpClient.Spec<String, String>(NettyTcpClient.class)
@@ -115,21 +119,26 @@ public class TcpClientTests {
 				conn.in().consume(new Consumer<String>() {
 					@Override
 					public void accept(String s) {
+						if (!"Hello World!".equals(s)) {
+						}
 						strings.add(s);
 						latch.countDown();
 					}
 				});
 
-				conn.out().accept("Hello World!");
-				conn.out().accept("Hello World!");
-				conn.out().accept("Hello World!");
+				for (int i = 0; i < messages; i++) {
+					conn.out().accept("Hello World!");
+				}
 			}
 		});
 
 		assertTrue(latch.await(30, TimeUnit.SECONDS));
 		client.close();
 
-		assertEquals(Arrays.asList("Hello World!", "Hello World!", "Hello World!"), strings);
+		assertEquals(messages, strings.size());
+		Set<String> uniqueStrings = new HashSet<String>(strings);
+		assertEquals(1, uniqueStrings.size());
+		assertEquals("Hello World!", uniqueStrings.iterator().next());
 	}
 
 	@Test

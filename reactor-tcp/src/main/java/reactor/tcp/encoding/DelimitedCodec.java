@@ -19,6 +19,7 @@ package reactor.tcp.encoding;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.Buffer;
+import reactor.io.Buffer.View;
 
 /**
  * An implementation of that splits a {@link Buffer} into segments based on a delimiter.
@@ -87,10 +88,18 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 				return null;
 			}
 
-			for (Buffer.View view : bytes.split(delimiter, stripDelimiter)) {
+			Iterable<View> views = bytes.split(delimiter, stripDelimiter);
+
+			int limit = bytes.limit();
+			int position = bytes.position();
+
+			for (Buffer.View view : views) {
 				Buffer b = view.get();
 				decoder.apply(b);
 			}
+
+			bytes.limit(limit);
+			bytes.position(position);
 
 			return null;
 		}
