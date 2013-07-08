@@ -27,6 +27,7 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
     repositories {
       mavenLocal()
       maven { url 'http://repo.springsource.org/libs-release' }
+      maven { url 'http://repo.springsource.org/libs-milestone' }
       maven { url 'http://repo.springsource.org/libs-snapshot' }
       mavenCentral()
     }
@@ -88,7 +89,7 @@ Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // This factory call creates a Reactor.
     Reactor reactor = R.reactor()
-      .using(env) // our current Environment
+      .env(env) // our current Environment
       .dispatcher(Environment.EVENT_LOOP) // use one of the BlockingQueueDispatchers
       .get(); // get the object when finished configuring
 
