@@ -42,10 +42,13 @@ public class Event<T> {
 	 */
 	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
+	private final Object monitor = new Object();
+
+	private volatile Object  replyTo;
+	private volatile T       data;
+
 	private UUID    id;
 	private Headers headers;
-	private Object  replyTo;
-	private T       data;
 
 	/**
 	 * Creates a new Event with the given {@code headers} and {@code data}.
@@ -95,11 +98,13 @@ public class Event<T> {
 	 *
 	 * @return Unique {@link UUID} of this event.
 	 */
-	public synchronized UUID getId() {
-		if (null == id) {
-			id = UUIDUtils.create();
+	public UUID getId() {
+		synchronized (this.monitor) {
+			if (null == id) {
+				id = UUIDUtils.create();
+			}
+			return id;
 		}
-		return id;
 	}
 
 	/**
@@ -107,11 +112,13 @@ public class Event<T> {
 	 *
 	 * @return The Event's Headers
 	 */
-	public synchronized Headers getHeaders() {
-		if (null == headers) {
-			headers = new Headers();
+	public Headers getHeaders() {
+		synchronized (this.monitor) {
+			if (null == headers) {
+				headers = new Headers();
+			}
+			return headers;
 		}
-		return headers;
 	}
 
 	/**
@@ -183,12 +190,13 @@ public class Event<T> {
 		}
 
 		/**
-		 * Create headers using the existing {@link Map}.
+		 * Create headers using the existing {@link Map}. The map is copied such that subsequent
+		 * changes to it will not affect the headers.
 		 *
 		 * @param headers The map to use as the headers.
 		 */
 		public Headers(Map<String, String> headers) {
-			this(false, headers);
+			this(false, new ConcurrentHashMap<String, String>(headers));
 		}
 
 		/**
@@ -199,9 +207,9 @@ public class Event<T> {
 		}
 
 		/**
-		 * Set all headers when the given {@link Map}.
+		 * Adds all of the headers in the given {@link Map}.
 		 *
-		 * @param headers The map to use as the headers.
+		 * @param headers The map of headers to add.
 		 *
 		 * @return {@literal this}
 		 */
