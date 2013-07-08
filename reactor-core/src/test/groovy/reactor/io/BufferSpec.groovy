@@ -256,7 +256,7 @@ class BufferSpec extends Specification {
 		parts.size() == 2
 	}
 
-	def "foo"() {
+	def "Splitting a single-segment buffer yields a single part with the expected contents"() {
 		given: "A buffer with a single segment"
 		def buff = Buffer.wrap("Hello World!\n")
 
@@ -270,7 +270,7 @@ class BufferSpec extends Specification {
 		strings == ['Hello World!\n']
 	}
 
-	def "bar"() {
+	def "Splitting a two-segment buffer yields two parts with the expected contents"() {
 		given: "A buffer with two segments"
 		def buff = Buffer.wrap("Hello World!\nHello World!\n")
 
@@ -311,6 +311,28 @@ class BufferSpec extends Specification {
 		slices[1].get().asString() == "Oct 11 22:14:15"
 		slices[2].get().asString() == "mymachine"
 		slices[3].get().asString() == "su: 'su root' failed for lonvick on /dev/pts/8\n"
+	}
+
+	def "A Buffer rejects an attempt to rewind by a negative number of bytes"() {
+		given: "A buffer"
+		def buffer = Buffer.wrap("some data")
+
+		when: "The buffer is rewound by a negative number of bytes"
+		buffer.rewind(-5)
+
+		then: "An IllegalArgumentException is thrown"
+		thrown(IllegalArgumentException)
+	}
+
+	def "A Buffer rejects an attempt to skip a negative number of bytes"() {
+		given: "A buffer"
+		def buffer = Buffer.wrap("some data")
+
+		when: "The buffer is asked to skip a negative number of bytes"
+		buffer.skip(-5)
+
+		then: "An IllegalArgumentException is thrown"
+		thrown(IllegalArgumentException)
 	}
 
 }

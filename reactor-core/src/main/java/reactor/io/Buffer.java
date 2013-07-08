@@ -300,8 +300,12 @@ public class Buffer implements Comparable<Buffer>,
 	 * @return this buffer
 	 *
 	 * @throws BufferUnderflowException if the skip exceeds the available bytes
+	 * @throws IllegalArgumentException if len is negative
 	 */
 	public Buffer skip(int len) {
+		if (len < 0) {
+			throw new IllegalArgumentException("len must >= 0");
+		}
 		if (null != buffer) {
 			int pos = buffer.position();
 			if (len <= buffer.remaining()) {
@@ -399,8 +403,12 @@ public class Buffer implements Comparable<Buffer>,
 	 * @return this buffer
 	 *
 	 * @throws BufferUnderflowException if the rewind would move past the start of the buffer
+	 * @throws IllegalArgumentException if len is negative
 	 */
 	public Buffer rewind(int len) {
+		if (len < 0) {
+			throw new IllegalArgumentException("len must >= 0");
+		}
 		if (null != buffer) {
 			int pos = buffer.position();
 			if (len <= pos) {
