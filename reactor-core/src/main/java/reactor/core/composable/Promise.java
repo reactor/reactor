@@ -24,8 +24,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.support.EventConsumer;
@@ -67,12 +67,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private boolean hasBlockers = false;
 
 	public Promise(@Nullable Environment env,
-								 @Nonnull Observable events,
+								 @Nonnull Dispatcher dispatcher,
 								 @Nullable Composable<?> parent,
 								 Supplier<T> value,
 								 Throwable error,
 								 Supplier<T> supplier) {
-		super(env, events, parent);
+		super(env, dispatcher, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		if (null != value) {
 			this.value = value.get();
@@ -442,7 +442,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new Reactor(new SynchronousDispatcher()), this, null, null, null));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new SynchronousDispatcher(), this, null, null, null));
 	}
 
 	@Override

@@ -35,6 +35,6 @@ public class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredProm
 
 	@Override
 	protected Deferred<T, Promise<T>> configure(Reactor reactor) {
-		return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor, parent, null, null, null));
+		return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor.getDispatcher(), parent, null, null, null));
 	}
 }

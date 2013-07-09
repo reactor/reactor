@@ -17,8 +17,10 @@
 package reactor.core.composable;
 
 import reactor.core.Environment;
+import reactor.core.Reactor;
 import reactor.event.Event;
 import reactor.function.*;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.support.EventConsumer;
 import reactor.function.support.NotifyConsumer;
@@ -54,11 +56,11 @@ public abstract class Composable<T> {
 	private volatile long errorCount  = 0l;
 
 	protected <U> Composable(@Nullable Environment env,
-													 @Nonnull Observable events,
+													 @Nonnull Dispatcher dispatcher,
 													 @Nullable Composable<U> parent) {
-		Assert.notNull(events, "Events Observable cannot be null.");
+		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.env = env;
-		this.events = events;
+		this.events = new Reactor(dispatcher);
 		this.parent = parent;
 		if (parent != null) {
 			parent.cascadeErrors(this);

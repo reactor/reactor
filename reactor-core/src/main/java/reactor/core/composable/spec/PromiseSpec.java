@@ -62,6 +62,6 @@ public class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Prom
 
 	@Override
 	protected Promise<T> configure(Reactor reactor) {
-		return new Promise<T>(env, reactor, parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
+		return new Promise<T>(env, reactor.getDispatcher(), parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
 	}
 }
