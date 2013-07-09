@@ -1,6 +1,6 @@
 package reactor.core.composable;
 
-import reactor.Fn;
+import reactor.function.Functions;
 import reactor.core.DispatcherComponentSpec;
 import reactor.core.Reactor;
 import reactor.function.Supplier;
@@ -8,6 +8,7 @@ import reactor.util.Assert;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
 
@@ -44,6 +45,6 @@ public class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Prom
 
 	@Override
 	protected Promise<T> configure(Reactor reactor) {
-		return new Promise<T>(env, reactor, parent, (null != value ? Fn.supplier(value) : null), error, valueSupplier);
+		return new Promise<T>(env, reactor, parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
 	}
 }
