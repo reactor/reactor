@@ -18,7 +18,6 @@ package reactor.core;
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.event.registry.SelectionStrategy;
-import reactor.event.registry.TagAwareSelectionStrategy;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.ConsumerInvoker;
@@ -68,11 +67,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	public SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
-		return (SPEC) this;
-	}
-
-	public SPEC tagFiltering() {
-		this.selectionStrategy = new TagAwareSelectionStrategy();
 		return (SPEC) this;
 	}
 

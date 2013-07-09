@@ -19,14 +19,13 @@ package reactor.event.selector;
 import java.util.UUID;
 
 /**
- * A {@literal Selector} is a wrapper around an arbitrary object. Selectors are {@link Taggable}
- * so that they can be filtered based on their tags.
+ * A {@literal Selector} is a wrapper around an arbitrary object.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector extends Taggable<Selector> {
+public interface Selector  {
 
 	/**
 	 * Get the unique id of this Selector

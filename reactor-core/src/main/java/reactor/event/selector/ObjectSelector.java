@@ -68,27 +68,6 @@ public class ObjectSelector<T> implements Selector {
 	}
 
 	@Override
-	public Selector setTags(String... tags) {
-		synchronized (monitor) {
-			this.tags = new TreeSet<String>();
-			Collections.addAll(this.tags, tags);
-		}
-		return this;
-	}
-
-	@Override
-	public Set<String> getTags() {
-		synchronized (monitor) {
-			return (null == tags ? Collections.<String>emptySet() : Collections.<String>unmodifiableSet(tags));
-		}
-	}
-
-	@Override
-	public Object getTagged() {
-		return object;
-	}
-
-	@Override
 	public boolean matches(Object key) {
 		return !(null == object && null != key) && (object != null && object.equals(key));
 	}

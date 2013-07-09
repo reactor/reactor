@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-
-
-
-
-
 package reactor.event
 
 import reactor.Fn
 import reactor.R
 import reactor.event.Event
-import reactor.event.registry.TagAwareSelectionStrategy;
-import reactor.event.selector.key.TaggableKey
 import spock.lang.Specification
 
 import static org.hamcrest.CoreMatchers.*
@@ -86,25 +79,6 @@ class SelectorSpec extends Specification {
 		then: "it does not match"
 		!sel1.matches(key2)
 
-	}
-
-	def "Selectors can be filtered by tag"() {
-
-		given: "A tag-aware SelectionStrategy"
-		def sel1 = $("test1").setTags("one", "two")
-		def sel2 = $("test2").setTags("three", "four")
-		def sel3 = $("test2").setTags("one", "three")
-		def strategy = new TagAwareSelectionStrategy()
-
-		when:
-		def match1 = strategy.matches(sel1, new TaggableKey('test2').setTags('three', 'four'))
-		def match2 = strategy.matches(sel1, new TaggableKey('test2').setTags('one', 'three'))
-		def match3 = strategy.matches(sel2, new TaggableKey('test2').setTags('one', 'three'))
-
-		then:
-		!match1
-		!match2
-		match3
 	}
 
 	def "Selectors can be matched on URI"() {
