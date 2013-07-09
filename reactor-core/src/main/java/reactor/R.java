@@ -16,7 +16,7 @@
 
 package reactor;
 
-import reactor.core.Reactors;
+import reactor.core.spec.Reactors;
 
 /**
  * Alias for Reactors

@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package reactor.core;
+package reactor.core.spec.support;
 
+import reactor.core.Environment;
+import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;

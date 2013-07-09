@@ -16,22 +16,31 @@
 
 package reactor.core.composable;
 
+import static reactor.function.Functions.$;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import reactor.core.Environment;
+import reactor.core.Reactor;
+import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.Event;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.support.EventConsumer;
-import reactor.function.*;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Functions;
+import reactor.function.Observable;
+import reactor.function.Predicate;
+import reactor.function.Supplier;
 import reactor.function.support.Tap;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-
-import static reactor.function.Functions.$;
 
 /**
  * A {@code Stream} is a stateless event processor that provides methods for attaching {@link Consumer Consumers} to
@@ -111,11 +120,7 @@ public class Stream<T> extends Composable<T> {
 	 * @see {@link #batch(int)}
 	 */
 	public Stream<T> first() {
-		final Deferred<T, Stream<T>> d = Streams.<T>defer()
-																						.env(getEnvironment())
-																						.synchronousDispatcher()
-																						.link(this)
-																						.get();
+		Deferred<T, Stream<T>> d = createDeferredChildStream();
 		getObservable().on(first.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
@@ -129,11 +134,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last() {
-		final Deferred<T, Stream<T>> d = Streams.<T>defer()
-																						.env(getEnvironment())
-																						.synchronousDispatcher()
-																						.link(this)
-																						.get();
+		Deferred<T, Stream<T>> d = createDeferredChildStream();
 		getObservable().on(last.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
@@ -279,7 +280,6 @@ public class Stream<T> extends Composable<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
 		return createDeferred(batchSize);
@@ -287,12 +287,19 @@ public class Stream<T> extends Composable<T> {
 
 	@SuppressWarnings("unchecked")
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
-		return (Deferred<V, C>) new DeferredStreamSpec<V>()
-				.env(getEnvironment())
-				.synchronousDispatcher()
-				.link(this)
-				.batchSize(batchSize)
-				.get();
+		return (Deferred<V, C>) createDeferredChildStream(batchSize);
+	}
+
+	private Deferred<T, Stream<T>> createDeferredChildStream() {
+		return createDeferredChildStream(-1);
+	}
+
+	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
+		return new Deferred<T, Stream<T>>(new Stream<T>(getEnvironment(),
+																										new Reactor(getEnvironment(), new SynchronousDispatcher()),
+																										batchSize,
+																										null,
+																										this));
 	}
 
 	@Override

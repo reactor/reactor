@@ -16,7 +16,7 @@
 
 package reactor;
 
-import reactor.core.composable.Streams;
+import reactor.core.composable.spec.Streams;
 
 /**
  * Alias for Composables

@@ -16,19 +16,27 @@
 
 package reactor.core.composable;
 
-import reactor.core.Environment;
-import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.event.support.EventConsumer;
-import reactor.function.*;
-import reactor.tuple.Tuple2;
-import reactor.util.Assert;
+import static reactor.function.Functions.$;
+
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.concurrent.TimeUnit;
 
-import static reactor.function.Functions.$;
+import reactor.core.Environment;
+import reactor.core.Reactor;
+import reactor.event.Event;
+import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.event.selector.Selector;
+import reactor.event.support.EventConsumer;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Functions;
+import reactor.function.Observable;
+import reactor.function.Predicate;
+import reactor.function.Supplier;
+import reactor.tuple.Tuple2;
+import reactor.util.Assert;
 
 /**
  * A {@code Promise} is a stateful event processor that accepts a single value and always exists in one of three states:
@@ -434,11 +442,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new DeferredPromiseSpec<V>()
-				.env(getEnvironment())
-				.synchronousDispatcher()
-				.link(this)
-				.get();
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new Reactor(getEnvironment(), new SynchronousDispatcher()), this, null, null, null));
 	}
 
 	@Override

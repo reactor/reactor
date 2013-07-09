@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
-package reactor.core.composable;
+package reactor.core.composable.spec;
 
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.composable.Stream;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;

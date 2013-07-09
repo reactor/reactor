@@ -19,7 +19,7 @@ import reactor.P
 import reactor.core.Environment
 import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
-import reactor.core.composable.Promises
+import reactor.core.composable.spec.Promises;
 import reactor.function.Observable
 import spock.lang.Specification
 

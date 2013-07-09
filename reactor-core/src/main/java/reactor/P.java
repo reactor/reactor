@@ -16,7 +16,7 @@
 
 package reactor;
 
-import reactor.core.composable.Promises;
+import reactor.core.composable.spec.Promises;
 
 /**
  * Alias for Promises

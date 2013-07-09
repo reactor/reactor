@@ -15,6 +15,7 @@
  */
 package reactor.core.composable
 
+import reactor.core.composable.spec.Streams;
 import reactor.function.Function
 import reactor.function.Observable
 import reactor.tuple.Tuple2

@@ -21,7 +21,7 @@ import org.springframework.util.Assert;
 import reactor.R;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.ReactorSpec;
+import reactor.core.spec.ReactorSpec;
 
 /**
  * @author Jon Brisbin

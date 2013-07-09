@@ -30,7 +30,7 @@ import reactor.Fn;
 import reactor.core.*;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
-import reactor.core.composable.Promises;
+import reactor.core.composable.spec.Promises;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;

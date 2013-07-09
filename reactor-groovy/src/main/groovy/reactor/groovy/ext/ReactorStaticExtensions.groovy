@@ -22,8 +22,8 @@ import groovy.transform.CompileStatic
 import reactor.Fn
 import reactor.P
 import reactor.core.composable.Promise
-import reactor.core.composable.PromiseSpec
-import reactor.core.composable.Promises
+import reactor.core.composable.spec.PromiseSpec;
+import reactor.core.composable.spec.Promises;
 import reactor.function.Observable
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier

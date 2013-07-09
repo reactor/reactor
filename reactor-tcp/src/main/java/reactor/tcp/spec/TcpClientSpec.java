@@ -1,8 +1,8 @@
 package reactor.tcp.spec;
 
 import reactor.core.Environment;
-import reactor.core.EventRoutingComponentSpec;
 import reactor.core.Reactor;
+import reactor.core.spec.support.EventRoutingComponentSpec;
 import reactor.io.Buffer;
 import reactor.tcp.TcpClient;
 import reactor.tcp.config.ClientSocketOptions;

@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.composable;
+package reactor.core.composable.spec;
 
 import reactor.function.Functions;
-import reactor.core.DispatcherComponentSpec;
 import reactor.core.Reactor;
+import reactor.core.composable.Composable;
+import reactor.core.composable.Promise;
+import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.function.Supplier;
 import reactor.util.Assert;
 

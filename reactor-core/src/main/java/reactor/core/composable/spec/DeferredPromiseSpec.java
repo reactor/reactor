@@ -13,38 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.composable;
+package reactor.core.composable.spec;
 
-import reactor.core.DispatcherComponentSpec;
 import reactor.core.Reactor;
+import reactor.core.composable.Composable;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.spec.support.DispatcherComponentSpec;
 
 /**
  * @author Jon Brisbin
  */
-public class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
+public class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
 
 	private Composable<?> parent;
-	private int batchSize = -1;
-	private Iterable<T> values;
 
-	public DeferredStreamSpec<T> link(Composable<?> parent) {
+	public DeferredPromiseSpec<T> link(Composable<?> parent) {
 		this.parent = parent;
 		return this;
 	}
 
-	public DeferredStreamSpec<T> batchSize(int batchSize) {
-		this.batchSize = batchSize;
-		return this;
-	}
-
-	public DeferredStreamSpec<T> each(Iterable<T> values) {
-		this.values = values;
-		return this;
-	}
-
 	@Override
-	protected Deferred<T, Stream<T>> configure(Reactor reactor) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(env, reactor, batchSize, values, parent));
+	protected Deferred<T, Promise<T>> configure(Reactor reactor) {
+		return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor, parent, null, null, null));
 	}
-
 }

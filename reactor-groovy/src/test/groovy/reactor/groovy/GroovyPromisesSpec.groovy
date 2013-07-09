@@ -22,7 +22,7 @@ import reactor.core.composable.Deferred
 import reactor.core.Environment
 import reactor.core.composable.Promise
 import reactor.P
-import reactor.core.composable.Promises
+import reactor.core.composable.spec.Promises;
 import reactor.event.dispatch.BlockingQueueDispatcher
 import spock.lang.Shared
 import spock.lang.Specification

@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core;
+package reactor.core.spec.support;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
+import reactor.core.Reactor;
 import reactor.event.registry.SelectionStrategy;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;

@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package reactor.core.composable;
+package reactor.core.composable.spec;
 
 import java.util.Arrays;
 import java.util.Collection;
+
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Stream;
 
 /**
  * A public factory to build {@link Stream Streams}.

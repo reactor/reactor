@@ -13,25 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.composable;
+package reactor.core.spec;
 
-import reactor.core.DispatcherComponentSpec;
 import reactor.core.Reactor;
+import reactor.core.spec.support.EventRoutingComponentSpec;
 
 /**
  * @author Jon Brisbin
  */
-public class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
+public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
 
-	private Composable<?> parent;
+	private boolean link = false;
 
-	public DeferredPromiseSpec<T> link(Composable<?> parent) {
-		this.parent = parent;
+	public ReactorSpec link() {
+		this.link = true;
 		return this;
 	}
 
 	@Override
-	protected Deferred<T, Promise<T>> configure(Reactor reactor) {
-		return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor, parent, null, null, null));
+	protected Reactor configure(Reactor reactor) {
+		if (link && null != this.reactor) {
+			this.reactor.link(reactor);
+		}
+		return reactor;
 	}
+
 }
