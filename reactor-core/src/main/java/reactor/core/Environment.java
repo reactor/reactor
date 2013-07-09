@@ -215,43 +215,6 @@ public class Environment {
 		return this;
 	}
 
-	public Registration<? extends Reactor> register(Reactor reactor) {
-		return register("", reactor);
-	}
-
-	public Registration<? extends Reactor> register(String id, Reactor reactor) {
-		return reactors.register($(id.isEmpty() ? reactor.getId().toString() : id), reactor);
-	}
-
-	public Reactor find(UUID id) {
-		return find(id.toString());
-	}
-
-	public Reactor find(String id) {
-		Iterator<Registration<? extends Reactor>> rs = reactors.select(id).iterator();
-		if (!rs.hasNext()) {
-			return null;
-		}
-
-		Reactor r = null;
-		while (rs.hasNext()) {
-			r = rs.next().getObject();
-		}
-		return r;
-	}
-
-	public boolean unregister(Reactor reactor) {
-		return unregister(reactor.getId());
-	}
-
-	public boolean unregister(UUID id) {
-		return unregister(id.toString());
-	}
-
-	public boolean unregister(String id) {
-		return reactors.unregister(id);
-	}
-
 	public Reactor getRootReactor() {
 		rootReactor.compareAndSet(null, new Reactor(this, getDefaultDispatcher()));
 		return rootReactor.get();
