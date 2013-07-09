@@ -369,8 +369,8 @@ class ReactorsSpec extends Specification {
     given:
       "normal reactors on the same thread"
       def r1 = R.reactor().synchronousDispatcher().get()
-      def r2 = R.reactor().reactor(r1).link().get()
-      def r3 = R.reactor().reactor(r1).link().get()
+      def r2 = R.reactor().link(r1).get()
+      def r3 = R.reactor().link(r1).get()
       def r4 = R.reactor().synchronousDispatcher().get()
 
       def d1, d2, d3, d4

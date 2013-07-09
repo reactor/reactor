@@ -15,11 +15,12 @@
  */
 package reactor.core.composable.spec;
 
-import reactor.function.Functions;
-import reactor.core.Reactor;
+import reactor.core.Environment;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Promise;
 import reactor.core.spec.support.DispatcherComponentSpec;
+import reactor.event.dispatch.Dispatcher;
+import reactor.function.Functions;
 import reactor.function.Supplier;
 import reactor.util.Assert;
 
@@ -27,7 +28,7 @@ import reactor.util.Assert;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
+public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
 
 	private Composable<?> parent;
 	private T             value;
@@ -61,7 +62,7 @@ public class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Prom
 	}
 
 	@Override
-	protected Promise<T> configure(Reactor reactor) {
-		return new Promise<T>(env, reactor.getDispatcher(), parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
+	protected Promise<T> configure(Dispatcher dispatcher, Environment env) {
+		return new Promise<T>(env, dispatcher, parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
 	}
 }

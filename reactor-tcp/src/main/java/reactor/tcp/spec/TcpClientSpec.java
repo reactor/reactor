@@ -85,7 +85,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	}
 
 	@Override
-	protected TcpClient<IN, OUT> configure(Reactor reactor) {
+	protected TcpClient<IN, OUT> configure(Reactor reactor, Environment env) {
 		try {
 			return clientImplConstructor.newInstance(
 					env,

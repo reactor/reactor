@@ -41,11 +41,10 @@ public class AwaitTests extends AbstractReactorTest {
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
 		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
 
-		Reactor reactor = R.reactor().env(env).dispatcher("threadPoolExecutor").get();
 		Reactor innerReactor = R.reactor().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 1000; i++) {
-			final Deferred<String, Promise<String>> deferred = P.<String>defer().env(env).reactor(reactor).get();
+			final Deferred<String, Promise<String>> deferred = P.<String>defer().env(env).dispatcher("threadPoolExecutor").get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			Promise<String> promise = deferred.compose();

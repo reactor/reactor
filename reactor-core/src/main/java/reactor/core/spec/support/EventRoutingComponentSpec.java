@@ -17,11 +17,12 @@ package reactor.core.spec.support;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
+import reactor.core.Environment;
 import reactor.core.Reactor;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.SelectionStrategy;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
-import reactor.event.routing.ConsumerInvoker;
 import reactor.event.routing.EventRouter;
 import reactor.filter.*;
 
@@ -30,85 +31,64 @@ import java.util.List;
 /**
  * @author Jon Brisbin
  */
+@SuppressWarnings("unchecked")
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC, TARGET> {
 
-	protected Converter            converter;
-	protected EventRoutingStrategy eventRoutingStrategy;
-	protected SelectionStrategy    selectionStrategy;
+	private Converter            converter;
+	private EventRoutingStrategy eventRoutingStrategy;
+	private SelectionStrategy    selectionStrategy;
 
-	public SPEC selectionStrategy(SelectionStrategy selectionStrategy) {
+	public final SPEC selectionStrategy(SelectionStrategy selectionStrategy) {
 		this.selectionStrategy = selectionStrategy;
 		return (SPEC) this;
 	}
 
-	public SPEC converters(Converter... converters) {
+	public final SPEC converters(Converter... converters) {
 		this.converter = new DelegatingConverter(converters);
 		return (SPEC) this;
 	}
 
-	public SPEC converters(List<Converter> converters) {
+	public final SPEC converters(List<Converter> converters) {
 		this.converter = new DelegatingConverter(converters);
 		return (SPEC) this;
 	}
 
-	public SPEC broadcastEventRouting() {
+	public final SPEC broadcastEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
 		return (SPEC) this;
 	}
 
-	public SPEC randomEventRouting() {
+	public final SPEC randomEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.RANDOM;
 		return (SPEC) this;
 	}
 
-	public SPEC firstEventRouting() {
+	public final SPEC firstEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.FIRST;
 		return (SPEC) this;
 	}
 
-	public SPEC roundRobinEventRouting() {
+	public final SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
 		return (SPEC) this;
 	}
 
-	protected Reactor createReactor() {
-		final Reactor reactor;
-		if (null == this.dispatcher && env != null) {
-			this.dispatcher = env.getDefaultDispatcher();
-		}
-		if (null == this.reactor) {
-			reactor = new Reactor(dispatcher,
-														selectionStrategy,
-														createEventRouter());
-		} else {
-			reactor = new Reactor(
-					null == dispatcher ? this.reactor.getDispatcher() : dispatcher,
-					null == selectionStrategy ? this.reactor.getConsumerRegistry().getSelectionStrategy() : selectionStrategy,
-					createEventRouter(this.reactor));
-		}
-		return reactor;
+	protected abstract TARGET configure(Reactor reactor, Environment environment);
+
+	@Override
+	protected final TARGET configure(Dispatcher dispatcher, Environment environment) {
+		return configure(createReactor(dispatcher), environment);
 	}
 
-	private EventRouter createEventRouter(Reactor reactor) {
-		if (converter == null && eventRoutingStrategy == null) {
-			return reactor.getEventRouter();
-		} else {
-			ConsumerInvoker consumerInvoker;
-			if (converter == null) {
-				consumerInvoker = ((ConsumerFilteringEventRouter) reactor.getEventRouter()).getConsumerInvoker();
-			} else {
-				consumerInvoker = new ArgumentConvertingConsumerInvoker(converter);
-			}
-			Filter filter = getFilter(((ConsumerFilteringEventRouter) reactor.getEventRouter()).getFilter());
-			return new ConsumerFilteringEventRouter(filter, consumerInvoker);
-		}
+	private Reactor createReactor(Dispatcher dispatcher) {
+		return new Reactor(dispatcher, selectionStrategy, createEventRouter());
 	}
 
 	private EventRouter createEventRouter() {
-		return new ConsumerFilteringEventRouter(getFilter(null), new ArgumentConvertingConsumerInvoker(converter));
+		return new ConsumerFilteringEventRouter(createFilter(), new ArgumentConvertingConsumerInvoker(converter));
 	}
 
-	private Filter getFilter(Filter existingFilter) {
+	private Filter createFilter() {
 		Filter filter;
 		if (EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
 			filter = new RoundRobinFilter();
@@ -117,11 +97,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		} else if (EventRoutingStrategy.FIRST == eventRoutingStrategy) {
 			filter = new FirstFilter();
 		} else {
-			if (null == existingFilter) {
-				filter = new PassThroughFilter();
-			} else {
-				filter = existingFilter;
-			}
+			filter = new PassThroughFilter();
 		}
 		return filter;
 	}

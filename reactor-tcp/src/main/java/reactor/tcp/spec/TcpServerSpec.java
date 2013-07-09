@@ -125,7 +125,7 @@ public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerS
 	}
 
 	@Override
-	protected TcpServer<IN, OUT> configure(Reactor reactor) {
+	protected TcpServer<IN, OUT> configure(Reactor reactor, Environment env) {
 		try {
 			return serverImplConstructor.newInstance(
 					env,

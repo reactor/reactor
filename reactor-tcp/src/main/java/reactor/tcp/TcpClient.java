@@ -21,7 +21,6 @@ import reactor.core.*;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
-import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.registry.CachingRegistry;
@@ -36,7 +35,6 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
 
@@ -85,7 +83,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @return A {@link Promise} that will be fulfilled with {@literal null} when the connections have been closed.
 	 */
 	public Promise<Void> close() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).reactor(reactor).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(reactor.getDispatcher()).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@Override

@@ -16,8 +16,6 @@
 
 package reactor.core.spec;
 
-import reactor.core.Reactor;
-
 /**
  * Base class to encapsulate commonly-used functionality around Reactors.
  *

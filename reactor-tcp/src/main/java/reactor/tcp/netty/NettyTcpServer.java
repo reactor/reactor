@@ -126,7 +126,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).reactor(getReactor()).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(getReactor().getDispatcher()).get();
 		Fn.schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})

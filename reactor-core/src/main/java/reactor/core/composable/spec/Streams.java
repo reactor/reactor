@@ -19,9 +19,6 @@ package reactor.core.composable.spec;
 import java.util.Arrays;
 import java.util.Collection;
 
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
-
 /**
  * A public factory to build {@link Stream Streams}.
  *
@@ -62,7 +59,7 @@ public abstract class Streams {
 	 * @return a {@link DeferredStreamSpec} based on the given values
 	 */
 	public static <T> DeferredStreamSpec<T> defer(Iterable<T> values) {
-		int batchSize = (values instanceof Collection ? ((Collection) values).size() : -1);
+		int batchSize = (values instanceof Collection ? ((Collection<?>) values).size() : -1);
 		return new DeferredStreamSpec<T>().each(values).batchSize(batchSize);
 	}
 

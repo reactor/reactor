@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.composable
+package reactor.core.composable.spec
 
 import reactor.P
 import reactor.core.Environment

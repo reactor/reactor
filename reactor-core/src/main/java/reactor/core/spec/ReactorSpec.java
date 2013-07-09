@@ -15,6 +15,7 @@
  */
 package reactor.core.spec;
 
+import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.support.EventRoutingComponentSpec;
 
@@ -23,17 +24,17 @@ import reactor.core.spec.support.EventRoutingComponentSpec;
  */
 public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
 
-	private boolean link = false;
+	private Reactor linked;
 
-	public ReactorSpec link() {
-		this.link = true;
+	public ReactorSpec link(Reactor linked) {
+		this.linked = linked;
 		return this;
 	}
 
 	@Override
-	protected Reactor configure(Reactor reactor) {
-		if (link && null != this.reactor) {
-			this.reactor.link(reactor);
+	protected final Reactor configure(Reactor reactor, Environment environment) {
+		if (null != linked) {
+			linked.link(reactor);
 		}
 		return reactor;
 	}

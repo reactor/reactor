@@ -13,8 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.composable
+package reactor.core.composable.spec
 
+import reactor.core.composable.Composable;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Streams;
 import reactor.function.Function
 import reactor.function.Observable

@@ -17,7 +17,6 @@
 package reactor.core.spec.support;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
@@ -33,45 +32,31 @@ import reactor.util.Assert;
 @SuppressWarnings("unchecked")
 public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSpec<SPEC, TARGET>, TARGET> implements Supplier<TARGET> {
 
-	protected Environment env;
-	protected Dispatcher  dispatcher;
-	protected Reactor     reactor;
+	private Environment env;
+	private Dispatcher  dispatcher;
 
-	public DispatcherComponentSpec() {
-	}
-
-	public DispatcherComponentSpec(DispatcherComponentSpec<?, ?> src) {
-		this.env = src.env;
-		this.dispatcher = src.dispatcher;
-	}
-
-	public SPEC env(Environment env) {
+	public final SPEC env(Environment env) {
 		this.env = env;
 		return (SPEC) this;
 	}
 
-	public SPEC reactor(Reactor reactor) {
-		this.reactor = reactor;
-		return (SPEC) this;
-	}
-
-	public SPEC defaultDispatcher() {
+	public final SPEC defaultDispatcher() {
 		Assert.notNull(env, "Cannot use the default Dispatcher without a properly-configured Environment.");
 		this.dispatcher = env.getDefaultDispatcher();
 		return (SPEC) this;
 	}
 
-	public SPEC synchronousDispatcher() {
+	public final SPEC synchronousDispatcher() {
 		this.dispatcher = new SynchronousDispatcher();
 		return (SPEC) this;
 	}
 
-	public SPEC dispatcher(Dispatcher dispatcher) {
+	public final SPEC dispatcher(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
 		return (SPEC) this;
 	}
 
-	public SPEC dispatcher(String dispatcherName) {
+	public final SPEC dispatcher(String dispatcherName) {
 		Assert.notNull(env, "Cannot reference a Dispatcher by name without a properly-configured Environment.");
 		this.dispatcher = env.getDispatcher(dispatcherName);
 		return (SPEC) this;
@@ -79,28 +64,19 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 
 	@Override
 	public final TARGET get() {
-		return configure(createReactor());
+		return configure(getDispatcher(), this.env);
 	}
 
-	protected Reactor createReactor() {
-		final Reactor reactor;
-		if (null == this.dispatcher && env != null) {
-			this.dispatcher = env.getDefaultDispatcher();
-		}
-		if (null == this.reactor) {
-			reactor = new Reactor(dispatcher,
-														null,
-														null);
+	private final Dispatcher getDispatcher() {
+		if (this.dispatcher != null) {
+			return this.dispatcher;
+		} else if (env != null) {
+			return env.getDefaultDispatcher();
 		} else {
-			reactor = new Reactor(
-					null == dispatcher ? this.reactor.getDispatcher() : dispatcher,
-					null,
-					null
-			);
+			return new SynchronousDispatcher();
 		}
-		return reactor;
 	}
 
-	protected abstract TARGET configure(Reactor reactor);
+	protected abstract TARGET configure(Dispatcher dispatcher, Environment environment);
 
 }

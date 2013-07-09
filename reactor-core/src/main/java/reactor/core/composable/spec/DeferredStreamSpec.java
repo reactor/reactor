@@ -15,16 +15,17 @@
  */
 package reactor.core.composable.spec;
 
-import reactor.core.Reactor;
+import reactor.core.Environment;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.core.spec.support.DispatcherComponentSpec;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * @author Jon Brisbin
  */
-public class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
+public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
 
 	private Composable<?> parent;
 	private int batchSize = -1;
@@ -46,8 +47,8 @@ public class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStrea
 	}
 
 	@Override
-	protected Deferred<T, Stream<T>> configure(Reactor reactor) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(env, reactor.getDispatcher(), batchSize, values, parent));
+	protected Deferred<T, Stream<T>> configure(Dispatcher dispatcher, Environment env) {
+		return new Deferred<T, Stream<T>>(new Stream<T>(env, dispatcher, batchSize, values, parent));
 	}
 
 }

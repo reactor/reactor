@@ -93,7 +93,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	public Promise<TcpConnection<IN, OUT>> open() {
 		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> d = Promises.<TcpConnection<IN, OUT>>defer()
 																																												.env(env)
-																																												.reactor(eventsReactor)
+																																												.dispatcher(eventsReactor.getDispatcher())
 																																												.get();
 
 		ChannelFuture connectFuture = bootstrap.connect();

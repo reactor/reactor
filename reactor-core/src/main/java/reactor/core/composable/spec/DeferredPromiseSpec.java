@@ -15,16 +15,17 @@
  */
 package reactor.core.composable.spec;
 
-import reactor.core.Reactor;
+import reactor.core.Environment;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.spec.support.DispatcherComponentSpec;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * @author Jon Brisbin
  */
-public class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
+public final class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
 
 	private Composable<?> parent;
 
@@ -34,7 +35,7 @@ public class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredProm
 	}
 
 	@Override
-	protected Deferred<T, Promise<T>> configure(Reactor reactor) {
-		return new Deferred<T, Promise<T>>(new Promise<T>(env, reactor.getDispatcher(), parent, null, null, null));
+	protected Deferred<T, Promise<T>> configure(Dispatcher dispatcher, Environment env) {
+		return new Deferred<T, Promise<T>>(new Promise<T>(env, dispatcher, parent, null, null, null));
 	}
 }
