@@ -147,7 +147,7 @@ class GroovyPromisesSpec extends Specification {
 		final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		def s = p.compose().then{ println it;Integer.parseInt it }.
+		Promise s = p.compose().then{ Integer.parseInt it }.
 				when (NumberFormatException, { latch.countDown() }).
 				then{ println('not in log'); true }
 
