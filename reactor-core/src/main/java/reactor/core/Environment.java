@@ -16,16 +16,12 @@
 
 package reactor.core;
 
-import static reactor.function.Functions.$;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import reactor.convert.StandardConverters;
@@ -41,9 +37,6 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.event.registry.CachingRegistry;
-import reactor.event.registry.Registration;
-import reactor.event.registry.Registry;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -78,7 +71,6 @@ public class Environment {
 	private final Properties env;
 
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
-	private final Registry<Reactor>        reactors         = new CachingRegistry<Reactor>(null);
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
 
@@ -216,7 +208,7 @@ public class Environment {
 	}
 
 	public Reactor getRootReactor() {
-		rootReactor.compareAndSet(null, new Reactor(this, getDefaultDispatcher()));
+		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
 		return rootReactor.get();
 	}
 

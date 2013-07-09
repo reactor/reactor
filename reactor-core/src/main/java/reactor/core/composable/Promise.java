@@ -442,7 +442,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new Reactor(getEnvironment(), new SynchronousDispatcher()), this, null, null, null));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new Reactor(new SynchronousDispatcher()), this, null, null, null));
 	}
 
 	@Override

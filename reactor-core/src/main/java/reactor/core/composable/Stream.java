@@ -296,7 +296,7 @@ public class Stream<T> extends Composable<T> {
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
 		return new Deferred<T, Stream<T>>(new Stream<T>(getEnvironment(),
-																										new Reactor(getEnvironment(), new SynchronousDispatcher()),
+																										new Reactor(new SynchronousDispatcher()),
 																										batchSize,
 																										null,
 																										this));

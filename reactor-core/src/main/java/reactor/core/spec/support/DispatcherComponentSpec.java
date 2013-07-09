@@ -88,13 +88,11 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 			this.dispatcher = env.getDefaultDispatcher();
 		}
 		if (null == this.reactor) {
-			reactor = new Reactor(env,
-														dispatcher,
+			reactor = new Reactor(dispatcher,
 														null,
 														null);
 		} else {
 			reactor = new Reactor(
-					env,
 					null == dispatcher ? this.reactor.getDispatcher() : dispatcher,
 					null,
 					null

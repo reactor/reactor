@@ -64,7 +64,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
 
-	private final Environment                            env;
 	private final Dispatcher                             dispatcher;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
@@ -90,10 +89,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
 	 *                   dispatcher is used
 	 */
-	public Reactor(Environment env,
-								 Dispatcher dispatcher) {
-		this(env,
-				 dispatcher,
+	public Reactor(Dispatcher dispatcher) {
+		this(dispatcher,
 				 null,
 				 null);
 	}
@@ -108,11 +105,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * @param eventRouter       The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code
 	 *                          null} in which case a default event router is used.
 	 */
-	public Reactor(Environment env,
-								 Dispatcher dispatcher,
+	public Reactor(Dispatcher dispatcher,
 								 SelectionStrategy selectionStrategy,
 								 EventRouter eventRouter) {
-		this.env = env;
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);

@@ -77,13 +77,11 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 			this.dispatcher = env.getDefaultDispatcher();
 		}
 		if (null == this.reactor) {
-			reactor = new Reactor(env,
-														dispatcher,
+			reactor = new Reactor(dispatcher,
 														selectionStrategy,
 														createEventRouter());
 		} else {
 			reactor = new Reactor(
-					env,
 					null == dispatcher ? this.reactor.getDispatcher() : dispatcher,
 					null == selectionStrategy ? this.reactor.getConsumerRegistry().getSelectionStrategy() : selectionStrategy,
 					createEventRouter(this.reactor));
