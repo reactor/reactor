@@ -50,13 +50,13 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
 	 *
 	 * @param name         The name of the dispatcher
-	 * @param backlog      The backlog size to configuration the ring buffer with
+	 * @param bufferSize   The size to configure the ring buffer with
 	 * @param producerType The producer type to configure the ring buffer with
 	 * @param waitStrategy The wait strategy to configure the ring buffer with
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-															int backlog,
+															int bufferSize,
 															ProducerType producerType,
 															WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
@@ -69,7 +69,7 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 						return new RingBufferTask();
 					}
 				},
-				backlog,
+				bufferSize,
 				executor,
 				producerType,
 				waitStrategy
