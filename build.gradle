@@ -26,14 +26,14 @@ ext {
 
 	// Logging
 	slf4jVersion = '1.7.5'
-	logbackVersion = '1.0.11'
+	logbackVersion = '1.0.13'
 
 	// Libraries
-	disruptorVersion = '3.1.0'
+	disruptorVersion = '3.1.1'
 	springVersion = '3.2.3.RELEASE'
 	siVersion = '3.0.0.M2'
 	nettyVersion = '4.0.0.CR7'
-	jacksonDatabindVersion = '2.2.1'
+	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
 
 	// Testing
@@ -66,7 +66,7 @@ allprojects {
 		exclude module: "junit"
 	}
 
-	group = 'reactor'
+	group = 'org.projectreactor'
 	repositories {
 		mavenCentral()
 		maven { url 'http://repo.springsource.org/libs-release' }
@@ -223,7 +223,7 @@ project('reactor-benchmark') {
 }
 
 project('reactor-tcp') {
-	description = 'Reactor TCP component'
+	description = 'Reactor TCP components'
 	dependencies {
 		compile project(':reactor-core')
 
