@@ -119,8 +119,6 @@ public class TcpClientTests {
 				conn.in().consume(new Consumer<String>() {
 					@Override
 					public void accept(String s) {
-						if (!"Hello World!".equals(s)) {
-						}
 						strings.add(s);
 						latch.countDown();
 					}
@@ -132,7 +130,7 @@ public class TcpClientTests {
 			}
 		});
 
-		assertTrue(latch.await(30, TimeUnit.SECONDS));
+		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings, latch.await(30, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
