@@ -41,7 +41,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	}
 
 	public final SPEC defaultDispatcher() {
-		Assert.notNull(env, "Cannot use the default Dispatcher without a properly-configured Environment.");
+		assertNonNullEnvironment("Cannot use the default Dispatcher without an Environment");
 		this.dispatcher = env.getDefaultDispatcher();
 		return (SPEC) this;
 	}
@@ -57,7 +57,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	}
 
 	public final SPEC dispatcher(String dispatcherName) {
-		Assert.notNull(env, "Cannot reference a Dispatcher by name without a properly-configured Environment.");
+		assertNonNullEnvironment("Cannot reference a Dispatcher by name without an Environment");
 		this.dispatcher = env.getDispatcher(dispatcherName);
 		return (SPEC) this;
 	}
@@ -74,6 +74,12 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 			return env.getDefaultDispatcher();
 		} else {
 			return new SynchronousDispatcher();
+		}
+	}
+
+	private void assertNonNullEnvironment(String message) {
+		if (env == null) {
+			throw new IllegalStateException(message);
 		}
 	}
 

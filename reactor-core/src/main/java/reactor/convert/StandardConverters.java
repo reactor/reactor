@@ -141,7 +141,7 @@ public abstract class StandardConverters {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <T> T convert(Object source, Class<T> targetType) {
-			Assert.notNull(source, "String cannot be null when converting to a Number.");
+			Assert.notNull(source, "Source cannot be null when converting to a Number.");
 
 			if (Integer.class == targetType) {
 				return (T) Integer.valueOf(source.toString());

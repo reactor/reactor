@@ -24,7 +24,7 @@ abstract class AbstractFilter implements Filter {
 
 	@Override
 	public final <T> List<T> filter(List<T> items, Object key) {
-		Assert.notNull(items, "'items' must not be null");
+		Assert.notNull(items, "items must not be null");
 		return doFilter(items, key);
 	}
 

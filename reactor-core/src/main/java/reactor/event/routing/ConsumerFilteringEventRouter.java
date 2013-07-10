@@ -49,8 +49,8 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
-		Assert.notNull(filter, "'filter' must not be null");
-		Assert.notNull(consumerInvoker, "'consumerInvoker' must not be null");
+		Assert.notNull(filter, "filter must not be null");
+		Assert.notNull(consumerInvoker, "consumerInvoker must not be null");
 
 		this.filter = filter;
 		this.consumerInvoker = consumerInvoker;
