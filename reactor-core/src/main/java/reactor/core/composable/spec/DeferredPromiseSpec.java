@@ -36,6 +36,6 @@ public final class DeferredPromiseSpec<T> extends DispatcherComponentSpec<Deferr
 
 	@Override
 	protected Deferred<T, Promise<T>> configure(Dispatcher dispatcher, Environment env) {
-		return new Deferred<T, Promise<T>>(new Promise<T>(env, dispatcher, parent, null, null, null));
+		return new Deferred<T, Promise<T>>(new Promise<T>(dispatcher, env, parent));
 	}
 }

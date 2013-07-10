@@ -16,11 +16,9 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
-import reactor.core.composable.Composable;
 import reactor.core.composable.Promise;
 import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Functions;
 import reactor.function.Supplier;
 import reactor.util.Assert;
 
@@ -30,15 +28,9 @@ import reactor.util.Assert;
  */
 public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
 
-	private Composable<?> parent;
 	private T             value;
 	private Supplier<T>   valueSupplier;
 	private Throwable     error;
-
-	public PromiseSpec<T> link(Composable<?> parent) {
-		this.parent = parent;
-		return this;
-	}
 
 	public PromiseSpec<T> success(T value) {
 		Assert.isNull(error, "Cannot set both a value and an error. Use one or the other.");
@@ -63,6 +55,15 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 
 	@Override
 	protected Promise<T> configure(Dispatcher dispatcher, Environment env) {
-		return new Promise<T>(env, dispatcher, parent, (null != value ? Functions.supplier(value) : null), error, valueSupplier);
+		if (value != null) {
+			return new Promise<T>(value, dispatcher, env);
+		} else if (valueSupplier != null) {
+			return new Promise<T>(valueSupplier, dispatcher, env);
+		} else if (error != null) {
+			return new Promise<T>(error, dispatcher, env);
+		} else {
+			throw new IllegalStateException("A success value/supplier or error reason must be provided. Use " +
+				DeferredPromiseSpec.class.getSimpleName() + " to create a deferred promise");
+		}
 	}
 }

@@ -66,23 +66,83 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private Supplier<T> supplier;
 	private boolean hasBlockers = false;
 
-	public Promise(@Nullable Environment env,
-								 @Nonnull Dispatcher dispatcher,
-								 @Nullable Composable<?> parent,
-								 Supplier<T> value,
-								 Throwable error,
-								 Supplier<T> supplier) {
+	/**
+	 * Creates a new unfulfilled promise.
+	 * <p/>
+	 *
+	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining
+	 * the thread on which they are called. The given {@code env} is used to determine the
+	 * default await timeout. If {@code env} is {@code null} the default await timeout will
+	 * be 30 seconds. This Promise will consumer errors from its {@code parent} such that if
+	 * the parent completes in error then so too will this Promise.
+	 *
+	 * @param dispatcher The Dispatcher to use to call Consumers
+	 * @param env The Environment, if any, from which the default await timeout is obtained
+	 * @param parent The parent, if any, from which errors are consumed
+	 */
+	public Promise(@Nonnull Dispatcher dispatcher,
+								 @Nullable Environment env,
+								 @Nullable Composable<?> parent) {
 		super(env, dispatcher, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
-		if (null != value) {
-			this.value = value.get();
-			this.state = State.SUCCESS;
-		} else if (null != error) {
-			this.error = error;
-			this.state = State.FAILURE;
-		} else if (null != supplier) {
-			this.supplier = supplier;
-		}
+	}
+
+	/**
+	 * Creates a new promise that has been fulfilled with the given {@code value}.
+	 * <p/>
+	 * The {@code dispatcher} is used when notifying the Promise's consumers. The given
+	 * {@code env} is used to determine the default await timeout. If {@code env} is {@code
+	 * null} the default await timeout will be 30 seconds.
+	 *
+	 * @param value The value that fulfills the promise
+	 * @param dispatcher The Dispatcher to use to call Consumers
+	 */
+	public Promise(T value,
+		@Nonnull Dispatcher dispatcher,
+		@Nullable Environment env) {
+		this(dispatcher, env, null);
+		this.value = value;
+		this.state = State.SUCCESS;
+	}
+
+	/**
+	 * Creates a new promise that will be fulfilled with the value obtained from the given
+	 * {@code valueSupplier}.
+	 * <p/>
+	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining
+	 * the thread on which they are called. The given {@code env} is used to determine the
+	 * default await timeout. If {@code env} is {@code null} the default await timeout will
+	 * be 30 seconds.
+	 *
+	 * @param valueSupplier The Supplier of the value that fulfills the promise
+	 * @param dispatcher The Dispatcher to use to call Consumers
+	 * @param env The Environment, if any, from which the default await timeout is obtained
+	 */
+	public Promise(Supplier<T> valueSupplier,
+      @Nonnull Dispatcher dispatcher,
+      @Nullable Environment env) {
+		this(dispatcher, env, null);
+		this.supplier = valueSupplier;
+	}
+
+	/**
+	 * Creates a new promise that has failed with the given {@code error}.
+	 * <p/>
+	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining
+	 * the thread on which they are called. The given {@code env} is used to determine the
+	 * default await timeout. If {@code env} is {@code null} the default await timeout will be
+	 * 30 seconds.
+	 *
+	 * @param env The Environment, if any, from which the default await timeout is obtained
+	 * @param dispatcher The Dispatcher to use to call Consumers
+	 * @param valueSuppler The Supplier of the value that fulfills the promise
+	 */
+	public Promise(Throwable error,
+      @Nonnull Dispatcher dispatcher,
+      @Nullable Environment env) {
+		this(dispatcher, env, null);
+		this.error = error;
+		this.state = State.FAILURE;
 	}
 
 	/**
@@ -93,7 +153,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @param onComplete the completion {@link Consumer}
 	 * @return {@literal this}
 	 */
-	@SuppressWarnings("unchecked")
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
 		if (isComplete()) {
 			Functions.schedule(onComplete, this, getObservable());
@@ -160,7 +219,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @param <V>       the type of the value returned by the transformation {@link Function}
 	 * @return a new {@code Promise} that will be populated by the result of the transformation {@link Function}
 	 */
-	@SuppressWarnings("unchecked")
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
 		final Deferred<V, Promise<V>> d = createDeferred();
 
@@ -442,7 +500,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(getEnvironment(), new SynchronousDispatcher(), this, null, null, null));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(new SynchronousDispatcher(), getEnvironment(), this));
 	}
 
 	@Override
