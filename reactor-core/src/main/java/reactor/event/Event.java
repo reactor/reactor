@@ -16,15 +16,19 @@
 
 package reactor.event;
 
-import reactor.util.Assert;
-import reactor.util.UUIDUtils;
-
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+
+import reactor.tuple.Tuple;
+import reactor.tuple.Tuple2;
+import reactor.util.Assert;
+import reactor.util.UUIDUtils;
 
 /**
  * Wrapper for an object that needs to be processed by {@link reactor.function.Consumer}s.
@@ -163,10 +167,11 @@ public class Event<T> {
 	}
 
 	/**
-	 * Headers are backed by a {@code Map&lt;String, String&gt;} and provide a little extra sugar for creating read-only
-	 * versions and the like.
+	 * Headers are a Map-like structure of name-value pairs. Header names are case-insensitive,
+	 * as determined by {@link String#CASE_INSENSITIVE_ORDER}. A header can be removed by
+	 * setting its value to {@code null}.
 	 */
-	public static class Headers implements Serializable, Iterable<Map.Entry<String, String>> {
+	public static class Headers implements Serializable, Iterable<Tuple2<String, String>> {
 
 		/**
 		 * The name of the origin header
@@ -179,92 +184,110 @@ public class Event<T> {
 
 		private static final long   serialVersionUID = 4984692586458514948L;
 
+		private final Object monitor = new Object();
+
 		private final Map<String, String> headers;
 
 		private Headers(boolean sealed, Map<String, String> headers) {
+			Map<String, String> copy = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+			copyHeaders(headers, copy);
 			if (sealed) {
-				this.headers = Collections.unmodifiableMap(headers);
+				this.headers = Collections.unmodifiableMap(copy);
 			} else {
-				this.headers = headers;
+				this.headers = copy;
 			}
 		}
 
 		/**
-		 * Create headers using the existing {@link Map}. The map is copied such that subsequent
-		 * changes to it will not affect the headers.
+		 * Creates a new Headers instance by copying the contents of the given {@code headers} Map.
+		 * Note that, as the map is copied, subsequent changes to its contents will have no
+		 * effect upon the Headers.
 		 *
-		 * @param headers The map to use as the headers.
+		 * @param headers The map to copy.
 		 */
 		public Headers(Map<String, String> headers) {
-			this(false, new ConcurrentHashMap<String, String>(headers));
+			this(false, headers);
 		}
 
 		/**
-		 * Create headers using a new, empty map.
+		 * Create an empty Headers
 		 */
 		public Headers() {
-			this(false, new ConcurrentHashMap<String, String>());
+			this(false, null);
 		}
 
 		/**
-		 * Adds all of the headers in the given {@link Map}.
+		 * Sets all of the headers represented by entries in the given {@code headers} Map.
+		 * Any entry with a null value will cause the header matching the entry's name to
+		 * be removed.
 		 *
-		 * @param headers The map of headers to add.
+		 * @param headers The map of headers to set.
 		 *
-		 * @return {@literal this}
+		 * @return {@code this}
 		 */
 		public Headers setAll(Map<String, String> headers) {
 			if (null == headers || headers.isEmpty()) {
 				return this;
+			} else {
+				synchronized(this.monitor) {
+					copyHeaders(headers, this.headers);
+				}
 			}
-			this.headers.putAll(headers);
 			return this;
 		}
 
 		/**
-		 * Set the header value.
+		 * Set the header value. If {@code value} is {@code null} the header with the given {@code
+		 * name} will be removed.
 		 *
 		 * @param name  The name of the header.
 		 * @param value The header's value.
 		 *
-		 * @return {@literal this}
+		 * @return {@code this}
 		 */
 		public Headers set(String name, String value) {
-			headers.put(name.toLowerCase(), value);
+			synchronized(this.monitor) {
+				setHeader(name, value, headers);
+			}
 			return this;
 		}
 
 		/**
-		 * Set the origin of this event. The origin is simply a unique id to indicate to consumers where it should send
-		 * replies.
+		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
+		 * it should send replies. If {@code id} is {@code null} the origin header will be removed.
 		 *
 		 * @param id The id of the origin component.
 		 *
-		 * @return {@literal this}
+		 * @return {@code this}
 		 */
 		public Headers setOrigin(UUID id) {
-			return setOrigin(id.toString());
+			String idString = id == null ? null : id.toString();
+			return setOrigin(idString);
 		}
 
 		/**
-		 * Set the origin of this event. The origin is simply a unique id to indicate to consumers where it should send
-		 * replies.
+		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
+		 * it should send replies. If {@code id} is {@code null} this origin header will be removed.
 		 *
 		 * @param id The id of the origin component.
-		 * @return {@literal this}
+		 * @return {@code this}
 		 */
 		public Headers setOrigin(String id) {
-			headers.put(ORIGIN, id);
+			synchronized(this.monitor) {
+				setHeader(ORIGIN,  id,  headers);
+			}
 			return this;
 		}
 
 		/**
-		 * Get the id of the origin of this event.
+		 * Get the origin header
 		 *
-		 * @return The unique id of the component in which this event originated.
+		 * @return The origin header, may be {@code null}.
 		 */
 		public String getOrigin() {
-			return headers.get(ORIGIN);
+			synchronized (this.monitor) {
+				return headers.get(ORIGIN);
+			}
 		}
 
 		/**
@@ -272,10 +295,12 @@ public class Event<T> {
 		 *
 		 * @param name The header name.
 		 *
-		 * @return The value of the header, or {@literal null} if none exists.
+		 * @return The value of the header, or {@code null} if none exists.
 		 */
 		public String get(String name) {
-			return headers.get(name.toLowerCase());
+			synchronized (monitor) {
+				return headers.get(name);
+			}
 		}
 
 		/**
@@ -283,33 +308,64 @@ public class Event<T> {
 		 *
 		 * @param name The header name.
 		 *
-		 * @return {@literal true} if a value exists, {@literal false} otherwise.
+		 * @return {@code true} if a value exists, {@code false} otherwise.
 		 */
 		public boolean contains(String name) {
-			return headers.containsKey(name.toLowerCase());
+			synchronized (monitor) {
+				return headers.containsKey(name);
+			}
 		}
 
 		/**
-		 * Get these headers as a {@link Map}.
+		 * Get these headers as an unmodifiable {@link Map}.
 		 *
-		 * @return The headers as a map.
+		 * @return The unmodifiable header map
 		 */
 		public Map<String, String> asMap() {
-			return Collections.unmodifiableMap(headers);
+			synchronized (monitor) {
+				return Collections.unmodifiableMap(headers);
+			}
 		}
 
 		/**
-		 * Get the headers as a read-only version. No other values can be added.
+		 * Get the headers as a read-only version
 		 *
 		 * @return A read-only version of the headers.
 		 */
 		public Headers readOnly() {
-			return new Headers(true, headers);
+			synchronized (monitor) {
+				return new Headers(true, headers);
+			}
 		}
 
+		/**
+		 * Returns an unmodifiable Iterator over a copy of this Headers' contents.
+		 */
 		@Override
-		public Iterator<Map.Entry<String, String>> iterator() {
-			return headers.entrySet().iterator();
+		public Iterator<Tuple2<String, String>> iterator() {
+			synchronized(this.monitor) {
+				List<Tuple2<String, String>> headers = new ArrayList<Tuple2<String, String>>(this.headers.size());
+				for (Map.Entry<String, String> header: this.headers.entrySet()) {
+					headers.add(Tuple.of(header.getKey(), header.getValue()));
+				}
+				return Collections.unmodifiableList(headers).iterator();
+			}
+		}
+
+		private void copyHeaders(Map<String, String> source, Map<String, String> target) {
+			if (source != null) {
+				for (Map.Entry<String, String> entry: source.entrySet()) {
+					setHeader(entry.getKey(), entry.getValue(), target);
+				}
+			}
+		}
+
+		private void setHeader(String name, String value, Map<String, String> target) {
+			if (value == null) {
+				target.remove(name);
+			} else {
+				target.put(name, value);
+			}
 		}
 	}
 
