@@ -59,6 +59,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	private final long defaultTimeout;
 
+	private final Environment environment;
+
 	private volatile State state = State.PENDING;
 	private T           value;
 	private Throwable   error;
@@ -82,8 +84,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	public Promise(@Nonnull Dispatcher dispatcher,
 								 @Nullable Environment env,
 								 @Nullable Composable<?> parent) {
-		super(env, dispatcher, parent);
+		super(dispatcher, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
+		this.environment = env;
 	}
 
 	/**
@@ -499,7 +502,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(new SynchronousDispatcher(), getEnvironment(), this));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(new SynchronousDispatcher(), environment, this));
 	}
 
 	@Override

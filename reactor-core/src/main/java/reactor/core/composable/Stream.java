@@ -22,7 +22,6 @@ import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import reactor.core.Environment;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -63,12 +62,11 @@ public class Stream<T> extends Composable<T> {
 	private final int         batchSize;
 	private final Iterable<T> values;
 
-	public Stream(@Nullable Environment env,
-								@Nonnull Dispatcher dispatcher,
+	public Stream(@Nonnull Dispatcher dispatcher,
 								int batchSize,
 								@Nullable Iterable<T> values,
 								Composable<?> parent) {
-		super(env, dispatcher, parent);
+		super(dispatcher, parent);
 		this.batchSize = batchSize;
 		this.values = values;
 	}
@@ -293,8 +291,7 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(getEnvironment(),
-																										new SynchronousDispatcher(),
+		return new Deferred<T, Stream<T>>(new Stream<T>(new SynchronousDispatcher(),
 																										batchSize,
 																										null,
 																										this));

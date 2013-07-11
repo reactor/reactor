@@ -21,7 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
@@ -51,18 +50,15 @@ public abstract class Composable<T> {
 
 	private final Tuple2<Selector, Object> accept = Selectors.$();
 
-	private final Environment   env;
 	private final Observable    events;
 	private final Composable<?> parent;
 
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
 
-	protected <U> Composable(@Nullable Environment env,
-													 @Nonnull Dispatcher dispatcher,
+	protected <U> Composable(@Nonnull Dispatcher dispatcher,
 													 @Nullable Composable<U> parent) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
-		this.env = env;
 		this.events = new Reactor(dispatcher);
 		this.parent = parent;
 		if (parent != null) {
@@ -289,15 +285,6 @@ public abstract class Composable<T> {
 				composable.notifyError(t);
 			}
 		});
-	}
-
-	/**
-	 * Get the current {@link Environment}.
-	 *
-	 * @return
-	 */
-	protected Environment getEnvironment() {
-		return env;
 	}
 
 	/**
