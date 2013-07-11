@@ -57,7 +57,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 												@Nonnull InetSocketAddress connectAddress,
 												ClientSocketOptions opts,
 												@Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, reactor, connectAddress, opts, codec);
+		super(env, reactor, connectAddress, codec);
 		this.eventsReactor = reactor;
 		this.options = opts;
 

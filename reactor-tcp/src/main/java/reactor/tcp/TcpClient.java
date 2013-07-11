@@ -36,7 +36,6 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Functions;
 import reactor.io.Buffer;
-import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -51,7 +50,6 @@ public abstract class TcpClient<IN, OUT> {
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Reactor                reactor;
-	private final ClientSocketOptions    options;
 	private final Codec<Buffer, IN, OUT> codec;
 
 	protected final Environment env;
@@ -59,14 +57,12 @@ public abstract class TcpClient<IN, OUT> {
 	protected TcpClient(@Nonnull Environment env,
 											@Nonnull Reactor reactor,
 											@Nonnull InetSocketAddress connectAddress,
-											ClientSocketOptions options,
 											@Nullable Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(env, "A TcpClient cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpClient cannot be created without a properly-configured Reactor.");
 		Assert.notNull(connectAddress, "A TcpClient cannot be created without a properly-configure connect InetSocketAddress.");
 		this.env = env;
 		this.reactor = reactor;
-		this.options = options;
 		this.codec = codec;
 	}
 
