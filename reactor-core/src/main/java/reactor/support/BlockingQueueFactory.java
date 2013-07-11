@@ -18,10 +18,12 @@ package reactor.support;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
 
 /**
- * A factory for creating {@link BlockingQueue} instances. When available, {@link LinkedTransferQueue}s
- * will be created, otherwise {@link LinkedBlockingQueue}s will be created.
+ * A factory for creating {@link BlockingQueue} instances. When available, {@link
+ * LinkedTransferQueue}s will be created, otherwise {@link LinkedBlockingQueue}s will be
+ * created.
  *
  * @author Stephane Maldini
  */

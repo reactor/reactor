@@ -19,6 +19,10 @@ package reactor.core.composable.spec;
 import java.util.Arrays;
 import java.util.Collection;
 
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Stream;
+import reactor.event.dispatch.SynchronousDispatcher;
+
 /**
  * A public factory to build {@link Stream Streams} that use a {@link SynchronousDispatcher}.
  *

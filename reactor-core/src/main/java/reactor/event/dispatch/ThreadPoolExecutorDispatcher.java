@@ -18,6 +18,7 @@ package reactor.event.dispatch;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import reactor.event.Event;
 import reactor.function.Supplier;

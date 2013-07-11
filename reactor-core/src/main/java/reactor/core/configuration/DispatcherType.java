@@ -16,6 +16,12 @@
 
 package reactor.core.configuration;
 
+import java.util.concurrent.ThreadPoolExecutor;
+
+import com.lmax.disruptor.RingBuffer;
+
+import reactor.core.dynamic.annotation.Dispatcher;
+
 /**
  * An enumeration of supported types of {@link Dispatcher}.
  *

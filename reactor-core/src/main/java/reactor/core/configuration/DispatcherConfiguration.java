@@ -16,6 +16,8 @@
 
 package reactor.core.configuration;
 
+import reactor.core.dynamic.annotation.Dispatcher;
+
 /**
  * An encapsulation of the configuration for a {@link Dispatcher}.
  *

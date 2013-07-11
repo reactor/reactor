@@ -16,6 +16,7 @@
 
 package reactor.function.support;
 
+import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
 /**
