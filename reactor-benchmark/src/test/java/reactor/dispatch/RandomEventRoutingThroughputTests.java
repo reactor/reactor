@@ -16,12 +16,11 @@
 
 package reactor.dispatch;
 
-import static reactor.Fn.$;
-
 import org.junit.Test;
 
 import reactor.R;
 import reactor.core.Reactor;
+import reactor.event.selector.Selectors;
 
 /**
  * @author Jon Brisbin
@@ -33,7 +32,7 @@ public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 		for (int i = 0; i < selectors; i++) {
 			int j = i % 10;
 			objects[i] = "test" + j;
-			sels[i] = $(objects[i]);
+			sels[i] = Selectors.$(objects[i]);
 			reactor.on(sels[i], countDownConsumer);
 		}
 		for (int i = 0; i < selectors; i++) {

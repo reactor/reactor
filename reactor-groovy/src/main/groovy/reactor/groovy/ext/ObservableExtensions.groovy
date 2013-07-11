@@ -23,7 +23,7 @@ import reactor.event.selector.Selector
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.groovy.support.ClosureEventFunction
 
-import static reactor.Fn.$
+import static reactor.event.selector.Selectors.$
 /**
  * Extensions for providing syntax sugar for working with {@link reactor.function.Observable}s.
  *

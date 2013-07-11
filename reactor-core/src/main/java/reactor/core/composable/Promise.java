@@ -16,8 +16,6 @@
 
 package reactor.core.composable;
 
-import static reactor.function.Functions.$;
-
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
@@ -28,6 +26,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -56,7 +55,7 @@ import reactor.util.Assert;
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	private final Object                   monitor  = new Object();
-	private final Tuple2<Selector, Object> complete = $();
+	private final Tuple2<Selector, Object> complete = Selectors.$();
 
 	private final long defaultTimeout;
 

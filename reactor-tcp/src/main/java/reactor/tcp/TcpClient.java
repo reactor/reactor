@@ -16,37 +16,38 @@
 
 package reactor.tcp;
 
+import java.net.InetSocketAddress;
+import java.util.Iterator;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import reactor.Fn;
-import reactor.core.*;
+import reactor.core.Environment;
+import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
-import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
-import reactor.tuple.Tuple2;
+import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
+import reactor.tuple.Tuple2;
 import reactor.util.Assert;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.net.InetSocketAddress;
-import java.util.Iterator;
-
-import static reactor.function.Functions.$;
 
 /**
  * @author Jon Brisbin
  */
 public abstract class TcpClient<IN, OUT> {
 
-	private final Tuple2<Selector, Object>         open        = $();
-	private final Tuple2<Selector, Object>         close       = $();
+	private final Tuple2<Selector, Object>         open        = Selectors.$();
+	private final Tuple2<Selector, Object>         close       = Selectors.$();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Reactor                reactor;
@@ -113,7 +114,7 @@ public abstract class TcpClient<IN, OUT> {
 																																				@Nonnull TcpConnection<IN, OUT> connection) {
 		Assert.notNull(channel, "Channel cannot be null.");
 		Assert.notNull(connection, "TcpConnection cannot be null.");
-		return connections.register($(channel), connection);
+		return connections.register(Selectors.$(channel), connection);
 	}
 
 	/**

@@ -17,7 +17,6 @@
 package reactor.cache;
 
 import static org.junit.Assert.assertEquals;
-import static reactor.Fn.$;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +29,7 @@ import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.SelectionStrategy;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 
 public final class CachingRegistryTests {
 
@@ -40,7 +40,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
 		String key = "selector";
-		Selector selector = $(key);
+		Selector selector = Selectors.$(key);
 
 		this.cachingRegistry.register(selector, "echo");
 		this.cachingRegistry.register(selector, "bravo");
@@ -60,7 +60,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void nonEmptyResultsAreCached() {
 		String key = "selector";
-		Selector selector = $(key);
+		Selector selector = Selectors.$(key);
 
 		this.cachingRegistry.register(selector, "alpha");
 
@@ -72,7 +72,7 @@ public final class CachingRegistryTests {
 
 	@Test
 	public void emptyResultsAreCached() {
-		this.cachingRegistry.register($("another-key"), "alpha");
+		this.cachingRegistry.register(Selectors.$("another-key"), "alpha");
 		this.cachingRegistry.select("key");
 		this.cachingRegistry.select("key");
 
@@ -90,7 +90,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void cacheIsRefreshedWhenANewRegistrationWithTheSameSelectorIsMade() {
 		String key = "selector";
-		Selector selector = $(key);
+		Selector selector = Selectors.$(key);
 
 		this.cachingRegistry.register(selector, "alpha");
 
@@ -110,7 +110,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void cacheIsRefreshedWhenANewRegistrationWithADifferentSelectorIsMade() {
 		String key1 = "selector";
-		Selector selector1 = $(key1);
+		Selector selector1 = Selectors.$(key1);
 
 		this.cachingRegistry.register(selector1, "alpha");
 
@@ -120,7 +120,7 @@ public final class CachingRegistryTests {
 		assertEquals(1, this.cacheMisses.get());
 
 		String key2 = "selector2";
-		Selector selector2 = $(key2);
+		Selector selector2 = Selectors.$(key2);
 
 		this.cachingRegistry.register(selector2, "bravo");
 

@@ -44,7 +44,7 @@ import reactor.util.UUIDUtils;
 import java.util.Set;
 import java.util.UUID;
 
-import static reactor.function.Functions.$;
+import reactor.event.selector.Selectors;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
@@ -68,7 +68,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final EventRouter                            eventRouter;
 
 	private final Object   defaultKey      = new Object();
-	private final Selector defaultSelector = $(defaultKey);
+	private final Selector defaultSelector = Selectors.$(defaultKey);
 
 	private final UUID                id             = UUIDUtils.create();
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {

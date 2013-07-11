@@ -24,6 +24,7 @@ import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
@@ -37,8 +38,6 @@ import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Iterator;
 
-import static reactor.function.Functions.$;
-
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
  *
@@ -47,10 +46,10 @@ import static reactor.function.Functions.$;
 public abstract class TcpServer<IN, OUT> {
 
 	private final Event<TcpServer<IN, OUT>>        selfEvent   = Event.wrap(this);
-	private final Tuple2<Selector, Object>         start       = $();
-	private final Tuple2<Selector, Object>         shutdown    = $();
-	private final Tuple2<Selector, Object>         open        = $();
-	private final Tuple2<Selector, Object>         close       = $();
+	private final Tuple2<Selector, Object>         start       = Selectors.$();
+	private final Tuple2<Selector, Object>         shutdown    = Selectors.$();
+	private final Tuple2<Selector, Object>         open        = Selectors.$();
+	private final Tuple2<Selector, Object>         close       = Selectors.$();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
 
 	private final Reactor                reactor;
@@ -117,7 +116,7 @@ public abstract class TcpServer<IN, OUT> {
 																																				@Nonnull TcpConnection<IN, OUT> connection) {
 		Assert.notNull(channel, "Channel cannot be null.");
 		Assert.notNull(connection, "TcpConnection cannot be null.");
-		return connections.register($(channel), connection);
+		return connections.register(Selectors.$(channel), connection);
 	}
 
 	/**

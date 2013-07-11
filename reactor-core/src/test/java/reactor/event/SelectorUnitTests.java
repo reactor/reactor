@@ -23,13 +23,12 @@ import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static reactor.Fn.$;
-import static reactor.Fn.U;
 
 /**
  * @author Jon Brisbin
@@ -57,7 +56,7 @@ public class SelectorUnitTests {
 
 		for (int i = 0; i < selectors; i++) {
 			keys[i] = "test" + i;
-			sels[i] = $(keys[i]);
+			sels[i] = Selectors.$(keys[i]);
 			registry.register(sels[i], hello);
 		}
 
@@ -88,14 +87,14 @@ public class SelectorUnitTests {
 			}
 		};
 
-		Selector sel1 = U("/test/{i}");
+		Selector sel1 = Selectors.u("/test/{i}");
 		registry.register(sel1, hello);
 
 		Selector[] sels = new Selector[selectors];
 		Object[] keys = new Object[selectors];
 		for (int i = 0; i < selectors; i++) {
 			keys[i] = "/test/" + i;
-			sels[i] = $(keys[i]);
+			sels[i] = Selectors.$(keys[i]);
 		}
 
 

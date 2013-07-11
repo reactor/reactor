@@ -16,22 +16,25 @@
 
 package reactor.core.composable;
 
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.event.Event;
-import reactor.function.*;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.selector.Selector;
-import reactor.event.support.EventConsumer;
-import reactor.function.support.NotifyConsumer;
-import reactor.tuple.Tuple2;
-import reactor.util.Assert;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.concurrent.locks.ReentrantLock;
 
-import static reactor.function.Functions.$;
+import reactor.core.Environment;
+import reactor.core.Reactor;
+import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
+import reactor.event.support.EventConsumer;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Observable;
+import reactor.function.Predicate;
+import reactor.function.support.NotifyConsumer;
+import reactor.tuple.Tuple2;
+import reactor.util.Assert;
 
 /**
  * Abstract base class for components designed to provide a succinct API for working with future values. Provides base
@@ -46,7 +49,7 @@ public abstract class Composable<T> {
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
-	private final Tuple2<Selector, Object> accept = $();
+	private final Tuple2<Selector, Object> accept = Selectors.$();
 
 	private final Environment   env;
 	private final Observable    events;
@@ -118,7 +121,7 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		this.events.on(Functions.T(exceptionType), new EventConsumer<E>(onError));
+		this.events.on(Selectors.t(exceptionType), new EventConsumer<E>(onError));
 		return this;
 	}
 

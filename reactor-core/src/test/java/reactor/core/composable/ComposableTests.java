@@ -29,6 +29,7 @@ import reactor.event.Event;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.function.support.Tap;
 import reactor.tuple.Tuple2;
 
@@ -42,7 +43,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
-import static reactor.Fn.$;
 
 /**
  * @author Jon Brisbin
@@ -164,7 +164,7 @@ public class ComposableTests extends AbstractReactorTest {
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
 		Reactor r = R.reactor().get();
-		Tuple2<Selector, Object> key = $();
+		Tuple2<Selector, Object> key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
 		r.on(key.getT1(), new Consumer<Event<Integer>>() {

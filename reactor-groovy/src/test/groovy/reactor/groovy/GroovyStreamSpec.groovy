@@ -13,9 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-
 package reactor.groovy
 
 import reactor.R
@@ -31,7 +28,8 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.Fn.$
+import static reactor.event.selector.Selectors.$
+
 /**
  * @author Stephane Maldini
  */

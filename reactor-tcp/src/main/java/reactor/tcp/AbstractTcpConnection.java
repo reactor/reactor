@@ -28,12 +28,11 @@ import reactor.event.Event;
 import reactor.function.Function;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.function.support.NotifyConsumer;
 import reactor.tuple.Tuple2;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
-
-import static reactor.Fn.$;
 
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
@@ -43,7 +42,7 @@ import static reactor.Fn.$;
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
 
 	private final long                     created = System.currentTimeMillis();
-	private final Tuple2<Selector, Object> read    = $();
+	private final Tuple2<Selector, Object> read    = Selectors.$();
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 

@@ -19,8 +19,7 @@ package reactor.dispatch;
 import org.junit.Test;
 import reactor.R;
 import reactor.core.Reactor;
-
-import static reactor.Fn.$;
+import reactor.event.selector.Selectors;
 
 /**
  * @author Jon Brisbin
@@ -32,7 +31,7 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	public void registerConsumersAndWarmCache(Reactor reactor) {
 		for (int i = 0; i < selectors; i++) {
 			Object object = "test" + i;
-			sels[i] = $(object);
+			sels[i] = Selectors.$(object);
 			objects[i] = object;
 			reactor.on(sels[i], countDownConsumer);
 		}

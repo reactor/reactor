@@ -51,6 +51,7 @@ import reactor.core.Reactor;
 import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.spring.context.annotation.On;
 
 /**
@@ -102,10 +103,10 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 						Expression selectorExpr = expressionParser.parseExpression(onAnno.selector());
 						selObj = selectorExpr.getValue(evalCtx);
 					} catch (EvaluationException e) {
-						selObj = Fn.$(onAnno.selector());
+						selObj = Selectors.$(onAnno.selector());
 					}
 				} else {
-					selObj = Fn.$(method.getName());
+					selObj = Selectors.$(method.getName());
 				}
 
 				Consumer<Event<Object>> handler = new Consumer<Event<Object>>() {
@@ -178,7 +179,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 								|| !Serializable.class.isAssignableFrom(arguments[0].getClass())) {
 							return null;
 						}
-						Selector sel = Fn.$(arguments[0]);
+						Selector sel = Selectors.$(arguments[0]);
 						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
 					}
 				};
@@ -191,7 +192,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 						if (arguments.length != 1 || null == arguments[0]) {
 							return null;
 						}
-						Selector sel = Fn.R(arguments[0].toString());
+						Selector sel = Selectors.r(arguments[0].toString());
 						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
 					}
 				};
@@ -206,7 +207,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 								|| !Class.class.isAssignableFrom(arguments[0].getClass())) {
 							return null;
 						}
-						Selector sel = Fn.T((Class<?>) arguments[0]);
+						Selector sel = Selectors.t((Class<?>) arguments[0]);
 						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
 					}
 				};

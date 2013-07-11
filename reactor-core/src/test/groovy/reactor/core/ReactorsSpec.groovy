@@ -32,8 +32,9 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.Fn.$
-import static reactor.Fn.R
+import static reactor.event.selector.Selectors.$
+import static reactor.event.selector.Selectors.r
+import static reactor.event.selector.Selectors.t
 import static reactor.GroovyTestUtils.*
 /**
  * @author Jon Brisbin
@@ -313,7 +314,7 @@ class ReactorsSpec extends Specification {
     and:
       "a T(Exception) consumer listens"
       def e
-      r.on(Fn.T(Exception), consumer { e = it } as Consumer<Exception>)
+      r.on(t(Exception), consumer { e = it } as Consumer<Exception>)
 
     and:
       "send on 'test4'"
@@ -329,20 +330,20 @@ class ReactorsSpec extends Specification {
 
     given:
       "a normal reactor"
-      def r = R.reactor().synchronousDispatcher().get()
+      def reactor = R.reactor().synchronousDispatcher().get()
 
     when:
       "registering few handlers"
-      r.on R('t[a-z]st'), consumer { println 'test1' }
-      r.on R('t[a-z]st'), consumer { println 'test2' }
+      reactor.on r('t[a-z]st'), Fn.consumer { println 'test1' }
+      reactor.on r('t[a-z]st'), Fn.consumer { println 'test2' }
 
-      r.notify "test", Event.wrap("test")
+      reactor.notify "test", Event.wrap("test")
 
     then:
       "will report false when asked whether it responds to an unmatched key"
-      r.respondsToKey 'test'
-      r.consumerRegistry.unregister('test')
-      !r.respondsToKey('test')
+      reactor.respondsToKey 'test'
+      reactor.consumerRegistry.unregister('test')
+      !reactor.respondsToKey('test')
   }
 
   def "Multiple consumers can use the same selector"() {
@@ -471,7 +472,7 @@ class ReactorsSpec extends Specification {
       "an error consumer is registered"
       def latch = new CountDownLatch(1)
       def e = null
-      r.on(Fn.T(Exception),
+      r.on(t(Exception),
           consumer { Exception ex -> e = ex; latch.countDown() }
           as Consumer<Exception>
       )
@@ -513,7 +514,7 @@ class ReactorsSpec extends Specification {
     when:
       "a consumer listen for failures"
       latch = new CountDownLatch(1)
-      r.on(Fn.T(Exception),
+      r.on(t(Exception),
           consumer { latch.countDown() }
           as Consumer<Exception>)
 

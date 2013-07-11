@@ -16,8 +16,6 @@
 
 package reactor.core.composable;
 
-import static reactor.function.Functions.$;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +27,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -59,8 +58,8 @@ import reactor.util.Assert;
  */
 public class Stream<T> extends Composable<T> {
 
-	private final Tuple2<Selector, Object> first = $();
-	private final Tuple2<Selector, Object> last  = $();
+	private final Tuple2<Selector, Object> first = Selectors.$();
+	private final Tuple2<Selector, Object> last  = Selectors.$();
 	private final int         batchSize;
 	private final Iterable<T> values;
 

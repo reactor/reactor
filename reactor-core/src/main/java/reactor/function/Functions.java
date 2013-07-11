@@ -40,68 +40,6 @@ import reactor.tuple.Tuple2;
 public abstract class Functions {
 
 	/**
-	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple} containing
-	 * the {@link Selector} and the notification key that the selector matches.
-	 *
-	 * @return The Selector notification key tuple
-	 *
-	 * @see ObjectSelector
-	 */
-	public static Tuple2<Selector, Object> $() {
-		Object obj = new Object();
-		return Tuple.of($(obj), obj);
-	}
-
-	/**
-	 * Creates a {@link Selector} based on the given object.
-	 *
-	 * @param obj Can be anything.
-	 *
-	 * @return The new {@link ObjectSelector}.
-	 */
-	public static <T> Selector $(T obj) {
-		return new ObjectSelector<T>(obj);
-	}
-
-	/**
-	 * Creates a {@link Selector} based on the given regular expression.
-	 *
-	 * @param regex The regular expression to compile.
-	 *
-	 * @return The new {@link RegexSelector}.
-	 *
-	 * @see RegexSelector
-	 */
-	public static Selector R(String regex) {
-		return new RegexSelector(regex);
-	}
-
-	/**
-	 * Creates a {@link Selector} based on the given class type that matches objects whose type is assignable
-	 * according to {@link Class#isAssignableFrom(Class)}.
-	 *
-	 * @param supertype The supertype to compare.
-	 *
-	 * @return The new {@link ClassSelector}.
-	 */
-	public static Selector T(Class<?> supertype) {
-		return new ClassSelector(supertype);
-	}
-
-	/**
-	 * Creates a {@link Selector} based on a URI template.
-	 *
-	 * @param uriTemplate The URI template to compile.
-	 *
-	 * @return The new {@link UriTemplateSelector}.
-	 *
-	 * @see UriTemplate
-	 */
-	public static Selector U(String uriTemplate) {
-		return new UriTemplateSelector(uriTemplate);
-	}
-
-	/**
 	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link Observable}, passing the given {@link
 	 * reactor.event.Event}.
 	 *

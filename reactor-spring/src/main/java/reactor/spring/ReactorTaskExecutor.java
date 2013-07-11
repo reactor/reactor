@@ -22,11 +22,10 @@ import reactor.core.Reactor;
 import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.tuple.Tuple2;
 
 import java.util.concurrent.Executor;
-
-import static reactor.function.Functions.$;
 
 /**
  * A {@link TaskExecutor} implementation that uses a {@link Reactor} to dispatch and execute tasks.
@@ -35,7 +34,7 @@ import static reactor.function.Functions.$;
  */
 public class ReactorTaskExecutor implements TaskExecutor, Executor {
 
-	private final Tuple2<Selector, Object> exec = $();
+	private final Tuple2<Selector, Object> exec = Selectors.$();
 	private final Reactor reactor;
 
 	@Autowired
