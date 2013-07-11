@@ -37,6 +37,12 @@ public class ReactorTaskExecutor implements TaskExecutor, Executor {
 	private final Tuple2<Selector, Object> exec = Selectors.$();
 	private final Reactor reactor;
 
+	/**
+	 * Creates a new ReactorTaskExceutor that will use the given {@link reactor} to execute
+	 * tasks.
+	 *
+	 * @param reactor The reactor to use
+	 */
 	@Autowired
 	public ReactorTaskExecutor(Reactor reactor) {
 		this.reactor = reactor;

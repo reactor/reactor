@@ -25,21 +25,48 @@ import reactor.core.spec.ReactorSpec;
 import reactor.core.spec.Reactors;
 
 /**
+ * A Spring {@link FactoryBean} for creating a singleton {@link Reactor}.
+ *
  * @author Jon Brisbin
  */
 public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
 	private volatile Reactor     reactor;
 
+	/**
+	 * Creates a new ReactorFactoryBean that will use the given environment when configuring
+	 * and creating its Reactor. The Reactor will use a synchronous dispatcher and broadcast
+	 * event routing.
+	 *
+	 * @param env The environment to use
+	 */
 	public ReactorFactoryBean(Environment env) {
 		this(env, null, null);
 	}
 
+	/**
+	 * Creates a new ReactorFactoryBean that will use the given environment when configuring
+	 * and creating its Reactor and will configure the reactor with the dispatcher with
+	 * the given name found in the environment. The Reactor will use broadcast event routing.
+	 *
+	 * @param env The environment to use
+	 * @param dispatcher The dispatcher to configure the Reactor with
+	 */
 	public ReactorFactoryBean(Environment env,
 														String dispatcher) {
 		this(env, dispatcher, null);
 	}
 
+	/**
+	 * Creates a new ReactorFactoryBean that will use the given environment when configuring
+	 * and creating its Reactor and will configure the reactor with the dispatcher with
+	 * the given name found in the environment. The Reactor will use the given
+	 * {@code eventRouting}.
+	 *
+	 * @param env The environment to use
+	 * @param dispatcher The dispatcher to configure the Reactor with
+	 * @param eventRouting The type of event routing to use
+	 */
 	public ReactorFactoryBean(Environment env,
 														String dispatcher,
 														EventRouting eventRouting) {

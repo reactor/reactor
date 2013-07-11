@@ -30,6 +30,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
+ * A Logback appender that logs asynchronously, using a {@link RingBuffer} to hold {@link
+ * ILoggingEvent logging events} that have yet to be processed.
+ *
  * @author Jon Brisbin
  */
 public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> implements AppenderAttachable<ILoggingEvent> {
@@ -40,9 +43,7 @@ public class AsyncAppender extends UnsynchronizedAppenderBase<ILoggingEvent> imp
 	private RingBuffer<LogEvent> ringBuffer;
 	private WorkerPool<LogEvent> workerPool;
 
-	public AsyncAppender() {
-	}
-
+	@SuppressWarnings("unchecked")
 	@Override
 	public void start() {
 		this.threadPool = Executors.newCachedThreadPool(

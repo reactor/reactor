@@ -17,8 +17,25 @@
 package reactor.spring.context;
 
 /**
+ * An enumeration of the different types of event routing
+ *
  * @author Jon Brisbin
  */
 public enum EventRouting {
-	BROADCAST_EVENT_ROUTING, RANDOM_EVENT_ROUTING, ROUND_ROBIN_EVENT_ROUTING
+
+	/**
+	 * Events will be routed to every matching consumer
+	 */
+	BROADCAST_EVENT_ROUTING,
+
+	/**
+	 * Events will be routed to one consumer randomly selected from the matching consumers
+	 */
+	RANDOM_EVENT_ROUTING,
+
+	/**
+	 * Events will be routed to one consumer selected from the matching consumers using a random
+	 * algorithm
+	 */
+	ROUND_ROBIN_EVENT_ROUTING
 }

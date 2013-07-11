@@ -17,29 +17,51 @@
 package reactor.spring.dynamic;
 
 import org.springframework.beans.factory.FactoryBean;
+
 import reactor.core.Environment;
 import reactor.core.dynamic.DynamicReactor;
 import reactor.core.dynamic.DynamicReactorFactory;
 
 /**
+ * A Spring {@link FactoryBean} for creating a {@link DynamicReactor} proxy from a given type
+ * using a {@link DynamicReactorFactory}.
+ *
  * @author Jon Brisbin
+ *
+ * @param <T> the type for the proxy
+ *
+ * @see DynamicReactorFactory
  */
 public class DynamicReactorFactoryBean<T extends DynamicReactor> implements FactoryBean<T> {
 
-	private final Environment              env;
 	private final boolean                  singleton;
 	private final Class<T>                 type;
 	private final DynamicReactorFactory<T> reactorFactory;
 
+  /**
+   * Creates a new factory bean that will use a DynamicReactorFactory configured with the
+   * given {@code env} and {@code type} to create its bean. The bean will not be a singleton.
+   *
+   * @param env The environment to use
+   * @param type The type to use
+   */
 	public DynamicReactorFactoryBean(Environment env, Class<T> type) {
-		this.env = env;
 		this.singleton = false;
 		this.type = type;
 		this.reactorFactory = new DynamicReactorFactory<T>(env, type);
 	}
 
+	/**
+	 * Creates a new factory bean that will use a DynamicReactorFactory configured with the
+   * given {@code env} and {@code type} to create its bean. {@code singleton} controls
+   * whether or not the factory creates a singleton bean.
+   *
+	 * @param env The environment to use
+	 * @param type The type to use
+	 * @param singleton {@code true} if the factory's bean should be singleton, {@code false}
+	 *                  otherwise
+	 */
 	public DynamicReactorFactoryBean(Environment env, Class<T> type, boolean singleton) {
-		this.env = env;
 		this.singleton = singleton;
 		this.type = type;
 		this.reactorFactory = new DynamicReactorFactory<T>(env, type);

@@ -20,12 +20,19 @@ import org.springframework.core.convert.ConversionService;
 import reactor.convert.Converter;
 
 /**
+ * An adapter that allows a Spring {@link ConversionService} to be used as a {@link Converter}.
+ *
  * @author Stephane Maldini
  */
 public class ConversionServiceConverter implements Converter {
 
 	private ConversionService conversionService;
 
+	/**
+	 * Creates a new ConversionServiceConverter that will delegate conversion to the given
+	 * {@code conversionService}
+	 * @param conversionService The conversion service to delegate to
+	 */
 	public ConversionServiceConverter(ConversionService conversionService) {
 		this.conversionService = conversionService;
 	}
