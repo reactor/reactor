@@ -93,7 +93,7 @@ public abstract class Selectors {
 	 *
 	 * @see RegexSelector
 	 */
-	public static Selector r(String regex) {
+	public static Selector R(String regex) {
 		return new RegexSelector(regex);
 	}
 
@@ -121,7 +121,7 @@ public abstract class Selectors {
 	 *
 	 * @return The new {@link ClassSelector}.
 	 */
-	public static Selector t(Class<?> supertype) {
+	public static Selector T(Class<?> supertype) {
 		return type(supertype);
 	}
 
@@ -151,7 +151,7 @@ public abstract class Selectors {
 	 * @see UriTemplate
 	 * @see UriTemplateSelector
 	 */
-	public static Selector u(String uriTemplate) {
+	public static Selector U(String uriTemplate) {
 		return new UriTemplateSelector(uriTemplate);
 	}
 }

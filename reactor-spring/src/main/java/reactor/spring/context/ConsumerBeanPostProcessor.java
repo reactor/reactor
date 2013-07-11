@@ -191,7 +191,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 						if (arguments.length != 1 || null == arguments[0]) {
 							return null;
 						}
-						Selector sel = Selectors.r(arguments[0].toString());
+						Selector sel = Selectors.R(arguments[0].toString());
 						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
 					}
 				};
@@ -206,7 +206,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 								|| !Class.class.isAssignableFrom(arguments[0].getClass())) {
 							return null;
 						}
-						Selector sel = Selectors.t((Class<?>) arguments[0]);
+						Selector sel = Selectors.T((Class<?>) arguments[0]);
 						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
 					}
 				};

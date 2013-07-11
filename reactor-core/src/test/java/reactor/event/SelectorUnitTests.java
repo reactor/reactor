@@ -87,7 +87,7 @@ public class SelectorUnitTests {
 			}
 		};
 
-		Selector sel1 = Selectors.u("/test/{i}");
+		Selector sel1 = Selectors.U("/test/{i}");
 		registry.register(sel1, hello);
 
 		Selector[] sels = new Selector[selectors];

@@ -121,7 +121,7 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		this.events.on(Selectors.t(exceptionType), new EventConsumer<E>(onError));
+		this.events.on(Selectors.T(exceptionType), new EventConsumer<E>(onError));
 		return this;
 	}
 

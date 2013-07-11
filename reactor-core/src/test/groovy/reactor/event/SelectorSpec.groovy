@@ -20,9 +20,9 @@ import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
-import static reactor.event.selector.Selectors.r
-import static reactor.event.selector.Selectors.t
-import static reactor.event.selector.Selectors.u
+import static reactor.event.selector.Selectors.R
+import static reactor.event.selector.Selectors.T
+import static reactor.event.selector.Selectors.U
 import reactor.core.spec.Reactors
 import reactor.function.Functions;
 import spock.lang.Specification
@@ -55,8 +55,8 @@ class SelectorSpec extends Specification {
 	def "Class selectors match on isAssignableFrom"() {
 
 		when: "a selector based on Class is defined"
-		def clz1 = t(Throwable)
-		def clz2 = t(IllegalArgumentException)
+		def clz1 = T(Throwable)
+		def clz2 = T(IllegalArgumentException)
 
 		then: "it matches the class and its sub types"
 		clz1.matches Throwable
@@ -66,7 +66,7 @@ class SelectorSpec extends Specification {
 	def "Regex selectors match on expressions"() {
 
 		when: "A selector based on a regular expression and a matching key are defined"
-		def sel1 = r("test([0-9]+)")
+		def sel1 = R("test([0-9]+)")
 		def key = "test1"
 
 		then: "they match"
@@ -83,7 +83,7 @@ class SelectorSpec extends Specification {
 	def "Selectors can be matched on URI"() {
 
 		given: "A UriTemplateSelector"
-		def sel1 = u("/path/to/{resource}")
+		def sel1 = U("/path/to/{resource}")
 		def key = "/path/to/resourceId"
 		def r = Reactors.reactor().synchronousDispatcher().get()
 		def resourceId = ""

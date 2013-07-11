@@ -19,8 +19,8 @@ package reactor.core
 
 import static reactor.GroovyTestUtils.*
 import static reactor.event.selector.Selectors.$
-import static reactor.event.selector.Selectors.r
-import static reactor.event.selector.Selectors.t
+import static reactor.event.selector.Selectors.R
+import static reactor.event.selector.Selectors.T
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -314,7 +314,7 @@ class ReactorsSpec extends Specification {
     and:
       "a T(Exception) consumer listens"
       def e
-      r.on(t(Exception), consumer { e = it } as Consumer<Exception>)
+      r.on(T(Exception), consumer { e = it } as Consumer<Exception>)
 
     and:
       "send on 'test4'"
@@ -334,8 +334,8 @@ class ReactorsSpec extends Specification {
 
     when:
       "registering few handlers"
-      reactor.on r('t[a-z]st'), Functions.consumer { println 'test1' }
-      reactor.on r('t[a-z]st'), Functions.consumer { println 'test2' }
+      reactor.on R('t[a-z]st'), Functions.consumer { println 'test1' }
+      reactor.on R('t[a-z]st'), Functions.consumer { println 'test2' }
 
       reactor.notify "test", Event.wrap("test")
 
@@ -472,7 +472,7 @@ class ReactorsSpec extends Specification {
       "an error consumer is registered"
       def latch = new CountDownLatch(1)
       def e = null
-      r.on(t(Exception),
+      r.on(T(Exception),
           consumer { Exception ex -> e = ex; latch.countDown() }
           as Consumer<Exception>
       )
@@ -514,7 +514,7 @@ class ReactorsSpec extends Specification {
     when:
       "a consumer listen for failures"
       latch = new CountDownLatch(1)
-      r.on(t(Exception),
+      r.on(T(Exception),
           consumer { latch.countDown() }
           as Consumer<Exception>)
 
