@@ -23,6 +23,10 @@ import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
 
 /**
+ * A helper class for specifying a {@link Deferred} {@link Stream}.
+ *
+ * @param <T> The type of values that the stream will contain
+ *
  * @author Jon Brisbin
  */
 public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
@@ -31,16 +35,39 @@ public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<Deferre
 	private int batchSize = -1;
 	private Iterable<T> values;
 
+	/**
+	 * Configures the stream to have the given {@code parent}. The default configuration is
+	 * for the stream to have no parent. The stream will consume errors from its parent.
+	 *
+	 * @param parent The parent of the stream.
+	 *
+	 * @return {@code this}
+	 */
 	public DeferredStreamSpec<T> link(Composable<?> parent) {
 		this.parent = parent;
 		return this;
 	}
 
+	/**
+	 * Configures the stream to have the given {@code batchSize}. A value of {@code -1}, which
+	 * is the default configuration, configures the stream to not be batched.
+	 *
+	 * @param batchSize The batch size of the stream
+	 *
+	 * @return {@code this}
+	 */
 	public DeferredStreamSpec<T> batchSize(int batchSize) {
 		this.batchSize = batchSize;
 		return this;
 	}
 
+	/**
+	 * Configures the stream to contain the given initial {@code values}.
+	 *
+	 * @param values The stream's initial values
+	 *
+	 * @return {@code this}
+	 */
 	public DeferredStreamSpec<T> each(Iterable<T> values) {
 		this.values = values;
 		return this;

@@ -103,6 +103,7 @@ public abstract class GroovyTestUtils {
 		return new Predicate<K>() {
 			Class<?>[] argTypes = cl.getParameterTypes();
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public boolean test(K arg) {
 				if (argTypes.length < 1) {
@@ -124,7 +125,6 @@ public abstract class GroovyTestUtils {
 		return new Supplier<V>() {
 
 			@Override
-			@SuppressWarnings({"unchecked"})
 			public V get() {
 				return cl.call();
 			}

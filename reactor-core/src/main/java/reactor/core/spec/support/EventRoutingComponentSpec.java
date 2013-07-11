@@ -32,7 +32,13 @@ import reactor.filter.RandomFilter;
 import reactor.filter.RoundRobinFilter;
 
 /**
+ * A generic environment-aware class for specifying components that need to be configured
+ * with an {@link Environment}, {@link Dispatcher}, and {@link EventRouter}.
+ *
  * @author Jon Brisbin
+ *
+ * @param <SPEC> The DispatcherComponentSpec subclass
+ * @param <TARGET> The type that this spec will create
  */
 @SuppressWarnings("unchecked")
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC, TARGET> {
@@ -40,31 +46,70 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
 
+	/**
+	 * Configures the component's EventRouter to use the given {code converters}.
+	 *
+	 * @param converters The converters to be used by the event router
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC converters(Converter... converters) {
 		this.converter = new DelegatingConverter(converters);
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component's EventRouter to use the given {code converters}.
+	 *
+	 * @param converters The converters to be used by the event router
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC converters(List<Converter> converters) {
 		this.converter = new DelegatingConverter(converters);
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component's EventRouter to broadcast events to all matching
+	 * consumers
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC broadcastEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component's EventRouter to route events to one consumer that's
+	 * randomly selected from that matching consumers
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC randomEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.RANDOM;
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component's EventRouter to route events to the first of the matching
+	 * consumers
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC firstEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.FIRST;
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component's EventRouter to route events to one consumer selected
+	 * from the matching consumers using a round-robin algorithm
+	 * consumers
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
 		return (SPEC) this;

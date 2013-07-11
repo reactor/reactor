@@ -40,20 +40,23 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 /**
- * A {@code Stream} is a stateless event processor that provides methods for attaching {@link Consumer Consumers} to
- * consume the values passing through the stream. Some methods like {@link #map(reactor.function.Function)}, {@link
- * #filter(reactor.function.Predicate)}, {@link #first()}, {@link #last()}, and {@link
- * #reduce(reactor.function.Function, Object)} return new {@code Stream Streams} whose values are the result of
- * transformation functions, filtering, and the like.
+ * A {@code Stream} is a stateless event processor that provides methods for attaching {@link
+ * Consumer Consumers} to consume the values passing through the stream. Some methods like
+ * {@link #map(reactor.function.Function)}, {@link #filter(reactor.function.Predicate)},
+ * {@link #first()}, {@link #last()}, and {@link #reduce(reactor.function.Function, Object)}
+ * return new {@code Stream Streams} whose values are the result of transformation functions,
+ * filtering, and the like.
  * <p/>
- * New {@code Stream Streams} aren't created directly. To get access to a {@code Stream}, create a {@link
- * DeferredStreamSpec} and configure it with the appropriate {@link reactor.core.Environment}, {@link
- * reactor.event.dispatch.Dispatcher}, and other settings, then call {@link Deferred#compose()}, which will
- * return a {@code Stream} that handles the values passed into the {@link Deferred} previously created.
+ * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
+ * create a {@link DeferredStreamSpec} and configure it with the appropriate {@link Environment},
+ * {@link Dispatcher}, and other settings, then call {@link Deferred#compose()}, which will
+ * return a {@code Stream} that handles the values passed into the {@link Deferred}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
+ *
+ * @param <T> the type of the values in the stream
  */
 public class Stream<T> extends Composable<T> {
 
@@ -62,10 +65,29 @@ public class Stream<T> extends Composable<T> {
 	private final int         batchSize;
 	private final Iterable<T> values;
 
+	/**
+	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
+	 * handlers.
+	 * </p>
+	 * The stream will batch values into batches of the given
+	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
+	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
+	 * </p>
+	 * The stream will be pre-populated with the given initial {@code values}. Once all event
+	 * handler have been registered, {@link #resolve} must be called to pass the initial values
+	 * to those handlers.
+	 * </p>
+	 * The stream will accept errors from the given {@code parent}.
+	 *
+	 * @param dispatcher The dispatcher used to drive event handlers
+	 * @param batchSize The size of the batches, or {@code -1} for no batching
+	 * @param values The stream's initial values. May be {@code null}
+	 * @param parent The stream's parent. May be {@code null}
+	 */
 	public Stream(@Nonnull Dispatcher dispatcher,
 								int batchSize,
 								@Nullable Iterable<T> values,
-								Composable<?> parent) {
+								@Nullable Composable<?> parent) {
 		super(dispatcher, parent);
 		this.batchSize = batchSize;
 		this.values = values;
@@ -113,7 +135,7 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
-	 * @see {@link #batch(int)}
+	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
 		Deferred<T, Stream<T>> d = createDeferredChildStream();
@@ -164,7 +186,7 @@ public class Stream<T> extends Composable<T> {
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
 	 * @return the new {@link Tap}
-	 * @see {@link Supplier}
+	 * @see Supplier
 	 */
 	public Tap<T> tap() {
 		final Tap<T> tap = new Tap<T>();

@@ -22,11 +22,14 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
 
 /**
- * A generic environment-aware builder for reactor-based components that need to be configured with an {@link
- * Environment} and {@link Dispatcher}.
+ * A generic environment-aware class for specifying components that need to be configured
+ * with an {@link Environment} and {@link Dispatcher}.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
+ *
+ * @param <SPEC> The DispatcherComponentSpec subclass
+ * @param <TARGET> The type that this spec will create
  */
 @SuppressWarnings("unchecked")
 public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSpec<SPEC, TARGET>, TARGET> implements Supplier<TARGET> {
@@ -34,27 +37,70 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	private Environment env;
 	private Dispatcher  dispatcher;
 
+	/**
+	 * Configures the spec, and potentially the component being configured, to use the given
+	 * environment
+	 *
+	 * @param env The environment to use
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC env(Environment env) {
 		this.env = env;
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component to use the configured Environment's default dispatcher
+	 *
+	 * @return {@code this}
+	 *
+	 * @throws IllegalStateException if no Environment has been configured
+	 *
+	 * @see Environment#getDefaultDispatcher()
+	 * @see #env(Environment)
+	 */
 	public final SPEC defaultDispatcher() {
 		assertNonNullEnvironment("Cannot use the default Dispatcher without an Environment");
 		this.dispatcher = env.getDefaultDispatcher();
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component to use a synchronous dispatcher
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC synchronousDispatcher() {
 		this.dispatcher = new SynchronousDispatcher();
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component to use the given {@code dispatcher}
+	 *
+	 * @param dispatcher The dispatcher to use
+	 *
+	 * @return {@code this}
+	 */
 	public final SPEC dispatcher(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component to the dispatcher in the configured Environment with the given
+	 * {@code dispatcherName}
+	 *
+	 * @param dispatcherName The name of the dispatcher
+	 *
+	 * @return {@code this}
+	 *
+	 * @throws IllegalStateException if no Environment has been configured
+	 *
+	 * @see Environment#getDispatcher(String)
+	 * @see #env(Environment)
+	 */
 	public final SPEC dispatcher(String dispatcherName) {
 		assertNonNullEnvironment("Cannot reference a Dispatcher by name without an Environment");
 		this.dispatcher = env.getDispatcher(dispatcherName);

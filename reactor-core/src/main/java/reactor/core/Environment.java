@@ -30,13 +30,13 @@ import reactor.core.configuration.DispatcherConfiguration;
 import reactor.core.configuration.DispatcherType;
 import reactor.core.configuration.PropertiesConfigurationReader;
 import reactor.core.configuration.ReactorConfiguration;
-import reactor.filter.Filter;
-import reactor.filter.RoundRobinFilter;
 import reactor.event.dispatch.BlockingQueueDispatcher;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.filter.Filter;
+import reactor.filter.RoundRobinFilter;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -63,6 +63,11 @@ public class Environment {
 	 */
 	public static final String THREAD_POOL = "threadPoolExecutor";
 
+	/**
+	 * The number of processors available to the runtime
+	 *
+	 * @see Runtime#availableProcessors()
+	 */
 	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
@@ -77,14 +82,32 @@ public class Environment {
 	private final Map<String, List<Dispatcher>> dispatchers;
 	private final String                        defaultDispatcher;
 
+	/**
+	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to
+	 * obtain its initial configuration. The configuration will be read from the classpath
+	 * at the location {@code META-INF/reactor/default.properties}.
+	 */
 	public Environment() {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
 	}
 
+	/**
+	 * Creates a new Environment that will use the given {@code configurationReader} to
+	 * obtain its initial configuration.
+	 *
+	 * @param configurationReader The configuration reader to use to obtain initial configuration
+	 */
 	public Environment(ConfigurationReader configurationReader) {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), configurationReader);
 	}
 
+	/**
+	 * Creates a new Environment that will contain the given {@code dispatchers} and will use the
+	 * given {@code configurationReader} to obtain additional configuration.
+	 *
+	 * @param dispatchers The dispatchers to add include in the Environment
+	 * @param configurationReader The configuration reader to use to obtain additional configuration
+	 */
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
 
 		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
@@ -145,30 +168,63 @@ public class Environment {
 		return size;
 	}
 
+	/**
+	 * Gets the property with the given {@code key}. If the property does not exist {@code
+	 * defaultValue} will be returned.
+	 *
+	 * @param key The property key
+	 * @param defaultValue The value to return if the property does not exist
+	 *
+	 * @return The value for the property
+	 */
 	public String getProperty(String key, String defaultValue) {
 		return env.getProperty(key, defaultValue);
 	}
 
+	/**
+	 * Gets the property with the given {@code key}, converting it to the required
+	 * {@code type} using the {@link StandardConverters#CONVERTERS standard converters}.
+	 * fF the property does not exist {@code defaultValue} will be returned.
+	 *
+	 * @param key The property key
+	 * @param type The type to convert the property to
+	 * @param defaultValue The value to return if the property does not exist
+	 *
+	 * @return The converted value for the property
+	 */
 	@SuppressWarnings("unchecked")
-	public <T> T getProperty(String key, Class<T> type, T defaultValue) {
-		if (env.containsKey(key)) {
-			Object val = env.getProperty(key);
-			if (null == val) {
-				return defaultValue;
-			}
-			if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
-				return StandardConverters.CONVERTERS.convert(val, type);
-			} else {
-				return (T) val;
-			}
-		}
-		return defaultValue;
-	}
+  public <T> T getProperty(String key, Class<T> type, T defaultValue) {
+    Object val = env.getProperty(key);
+    if (null == val) {
+        return defaultValue;
+    }
+    if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
+        return StandardConverters.CONVERTERS.convert(val, type);
+    } else {
+        return (T) val;
+    }
+  }
 
+	/**
+	 * Returns the default dispatcher for this environment. By default, when a {@link
+	 * PropertiesConfigurationReader} is being used. This default dispatcher is specified by
+	 * the value of the {@code reactor.dispatchers.default} property.
+	 *
+	 * @return The default dispatcher
+	 */
 	public Dispatcher getDefaultDispatcher() {
 		return getDispatcher(DEFAULT_DISPATCHER_NAME);
 	}
 
+	/**
+	 * Returns the dispatcher with the given {@code name}.
+	 *
+	 * @param name The name of the dispatcher
+	 *
+	 * @return The matching dispatcher, never {@code null}.
+	 *
+	 * @throws IllegalArgumentException if the dispatcher does not exist
+	 */
 	public Dispatcher getDispatcher(String name) {
 		synchronized (monitor) {
 			List<Dispatcher> dispatchers = this.dispatchers.get(name);
@@ -181,6 +237,14 @@ public class Environment {
 		}
 	}
 
+	/**
+	 * Adds the {@code dispatcher} to the environment, storing it using the given {@code name}.
+	 *
+	 * @param name The name of the dispatcher
+	 * @param dispatcher The dispatcher
+	 *
+	 * @return This Environment
+	 */
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
 		synchronized (monitor) {
 			doAddDispatcher(name, dispatcher);
@@ -200,6 +264,13 @@ public class Environment {
 		dispatchers.add(dispatcher);
 	}
 
+	/**
+	 * Removes the Dispatcher, stored using the given {@code name} from the environment.
+	 *
+	 * @param name The name of the dispatcher
+	 *
+	 * @return This Environment
+	 */
 	public Environment removeDispatcher(String name) {
 		synchronized (monitor) {
 			dispatchers.remove(name);
@@ -207,6 +278,14 @@ public class Environment {
 		return this;
 	}
 
+	/**
+	 * Returns this environments root Reactor, creating it if necessary. The Reactor will use
+	 * the environment default dispatcher.
+	 *
+	 * @return The root reactor
+	 *
+	 * @see Environment#getDefaultDispatcher()
+	 */
 	public Reactor getRootReactor() {
 		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
 		return rootReactor.get();

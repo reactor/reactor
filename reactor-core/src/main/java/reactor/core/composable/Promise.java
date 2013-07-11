@@ -38,19 +38,25 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 /**
- * A {@code Promise} is a stateful event processor that accepts a single value and always exists in one of three states:
- * {@link Promise.State#PENDING PENDING}, {@link Promise.State#SUCCESS SUCCESS}, or {@link
- * Promise.State#FAILURE FAILURE}. It also provides methods for composing actions with the future value
- * much like a {@link Stream}. Where a {@link Stream} can process many values, a {@code Promise} processes only one (or
- * an error instead of a value).
+ * A {@code Promise} is a stateful event processor that accepts a single value or error. In
+ * addition to {@link #get() getting} or {@link #await() awaiting} the value, consumers can
+ * be registered to be notified of {@link #onError(Consumer) notified an error}, {@link
+ * #onSuccess(Consumer) a value}, or {@link #onComplete(Consumer) both}. A promise also provides
+ * methods for composing actions with the future value much like a {@link Stream}. However,
+ * where a {@link Stream} can process many values, a {@code Promise} processes only one value or
+ * error.
  * <p/>
- * Reactor's {@code Promise} implementation is modeled largely after the <a href="https://github.com/promises-aplus/promises-spec">Promises/A+
- * specification</a>, which defines a number of methods and potential actions for promises.
+ * Reactor's {@code Promise} implementation is modeled largely after the
+ * <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>, which
+ * defines a number of methods and potential actions for promises.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
+ *
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
+ *
+ * @param <T> the type of the value that will be made available
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
@@ -98,6 +104,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 *
 	 * @param value The value that fulfills the promise
 	 * @param dispatcher The Dispatcher to use to call Consumers
+	 * @param env The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(T value,
 		@Nonnull Dispatcher dispatcher,
@@ -135,9 +142,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * default await timeout. If {@code env} is {@code null} the default await timeout will be
 	 * 30 seconds.
 	 *
+	 * @param error The error the completed the promise
 	 * @param env The Environment, if any, from which the default await timeout is obtained
 	 * @param dispatcher The Dispatcher to use to call Consumers
-	 * @param valueSuppler The Supplier of the value that fulfills the promise
 	 */
 	public Promise(Throwable error,
       @Nonnull Dispatcher dispatcher,
@@ -148,11 +155,13 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed by either setting
-	 * a value or propagating an error, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to
-	 * be executed on the current {@link reactor.event.dispatch.Dispatcher}.
+	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is
+	 * completed by either setting a value or propagating an error, or, if this {@code Promise}
+	 * has already been fulfilled, is immediately scheduled to be executed on the current {@link
+	 * reactor.event.dispatch.Dispatcher}.
 	 *
 	 * @param onComplete the completion {@link Consumer}
+	 *
 	 * @return {@literal this}
 	 */
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
@@ -165,11 +174,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed with
-	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
-	 * current {@link reactor.event.dispatch.Dispatcher}.
+	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is
+	 * successfully completed with a value, or, if this {@code Promise} has already been fulfilled,
+	 * is immediately scheduled to be executed on the current {@link Dispatcher}.
 	 *
 	 * @param onSuccess the success {@link Consumer}
+	 *
 	 * @return {@literal this}
 	 */
 	public Promise<T> onSuccess(@Nonnull final Consumer<T> onSuccess) {
@@ -177,11 +187,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
-	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
-	 * {@link reactor.event.dispatch.Dispatcher}.
+	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is
+	 * completed with an error, or, if this {@code Promise} has already been fulfilled, is immediately
+	 * scheduled to be executed on the current {@link Dispatcher}.
 	 *
 	 * @param onError the error {@link Consumer}
+	 *
 	 * @return {@literal this}
 	 */
 	public Promise<T> onError(@Nullable final Consumer<Throwable> onError) {
@@ -193,14 +204,16 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assign both a success {@link Consumer} and an optional (possibly {@code null}) error {@link Consumer} in a single
-	 * method call.
+	 * Assign both a success {@link Consumer} and an optional (possibly {@code null}) error {@link
+	 * Consumer}.
 	 *
 	 * @param onSuccess the success {@link Consumer}
 	 * @param onError   the error {@link Consumer}
+	 *
 	 * @return {@literal this}
-	 * @see {@link #onSuccess(reactor.function.Consumer)}
-	 * @see {@link #onError(reactor.function.Consumer)}
+	 *
+	 * @see #onSuccess(Consumer)
+	 * @see #onError(Consumer)
 	 */
 	public Promise<T> then(@Nonnull Consumer<T> onSuccess, @Nullable Consumer<Throwable> onError) {
 		onSuccess(onSuccess);
@@ -209,17 +222,20 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assign a success {@link Function} that will either be invoked later, when the {@code Promise} is successfully
-	 * completed with a value, or, if this {@code Promise} has already been fulfilled, the function is immediately
-	 * scheduled to be executed on the current {@link reactor.event.dispatch.Dispatcher}.
+	 * Assign a success {@link Function} that will either be invoked later, when the {@code
+	 * Promise} is successfully completed with a value, or, if this {@code Promise} has already
+	 * been fulfilled, the function is immediately scheduled to be executed on the current {@link
+	 * reactor.event.dispatch.Dispatcher}.
 	 * <p/>
-	 * A new {@code Promise} is returned that will be populated by result of the given transformation {@link Function} that
-	 * turns the incoming {@code T} into a {@code V}.
+	 * A new {@code Promise} is returned that will be populated by result of the given
+	 * transformation {@link Function} that turns the incoming {@code T} into a {@code V}.
 	 *
 	 * @param onSuccess the success transformation {@link Function}
 	 * @param onError   the error {@link Consumer}
 	 * @param <V>       the type of the value returned by the transformation {@link Function}
-	 * @return a new {@code Promise} that will be populated by the result of the transformation {@link Function}
+	 *
+	 * @return a new {@code Promise} that will be populated by the result of the transformation
+	 *         {@link Function}
 	 */
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
 		final Deferred<V, Promise<V>> d = createDeferred();
@@ -245,13 +261,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has been completed with either an error or a value and is no longer {@code
-	 * PENDING}.
+	 * Indicates whether this {@code Promise} has been completed with either an error or a value
 	 *
 	 * @return {@code true} if this {@code Promise} is complete, {@code false} otherwise.
-	 * @see {@link State#PENDING}
-	 * @see {@link State#SUCCESS}
-	 * @see {@link State#FAILURE}
+	 *
+	 * @see #isPending()
 	 */
 	public boolean isComplete() {
 		lock.lock();
@@ -263,10 +277,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} is still {@code PENDING} a value or error.
+	 * Indicates whether this {@code Promise} has yet to be completed with a value or an error.
 	 *
 	 * @return {@code true} if this {@code Promise} is still pending, {@code false} otherwise.
-	 * @see {@link State#PENDING}
+	 *
+	 * @see #isComplete()
 	 */
 	public boolean isPending() {
 		lock.lock();
@@ -278,10 +293,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has been successfully completed a value and is no longer {@code PENDING}.
+	 * Indicates whether this {@code Promise} has been successfully completed a value.
 	 *
 	 * @return {@code true} if this {@code Promise} is successful, {@code false} otherwise.
-	 * @see {@link State#SUCCESS}
 	 */
 	public boolean isSuccess() {
 		lock.lock();
@@ -293,10 +307,10 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has been completed an error and is no longer {@code PENDING}.
+	 * Indicates whether this {@code Promise} has been completed with an error.
 	 *
-	 * @return {@code true} if this {@code Promise} is <strong>not</strong> successful, {@code false} otherwise.
-	 * @see {@link State#FAILURE}
+	 * @return {@code true} if this {@code Promise} was completed with an error, {@code false}
+	 *         otherwise.
 	 */
 	public boolean isError() {
 		lock.lock();
@@ -308,26 +322,33 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
-	 * Reactor's {@link Environment} properties using the key {@code reactor.await.defaultTimeout} is used. The default is
-	 * 30 seconds.
+	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default
+	 * timeout as specified in Reactor's {@link Environment} properties using the key {@code
+	 * reactor.await.defaultTimeout} is used. The default is 30 seconds. If the promise is
+	 * completed with an error a RuntimeException that wraps the error is thrown.
 	 *
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has not
-	 *         completed
-	 * @throws InterruptedException
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and
+	 *         the {@code Promise} has not completed
+	 *
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
+	 * @throws RuntimeException if the promise is completed with an error
 	 */
 	public T await() throws InterruptedException {
 		return await(defaultTimeout, TimeUnit.MILLISECONDS);
 	}
 
 	/**
-	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}.
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code
+	 * Promise}. If the promise is completed with an error a RuntimeException that wraps the error
+	 * is thrown.
 	 *
 	 * @param timeout the timeout value
 	 * @param unit    the {@link TimeUnit} of the timeout value
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has not
-	 *         completed
-	 * @throws InterruptedException
+	 *
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and
+	 *         the {@code Promise} has not completed
+	 *
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
 	 */
 	public T await(long timeout, TimeUnit unit) throws InterruptedException {
 		if (isPending()) {
@@ -357,6 +378,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		return get();
 	}
 
+	/**
+	 * Returns the value that completed this promise. Returns {@code null} if the promise has
+	 * not been completed. If the promise is completed with an error a RuntimeException that
+	 * wraps the error is thrown.
+	 *
+	 * @return the value that completed the promise, or {@code null} if it has not been completed
+	 *
+	 * @throws RuntimeException if the promise was completed with an error
+	 */
 	@Override
 	public T get() {
 		if (isPending()) {
@@ -376,7 +406,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Return the error (if any) that has completed this {@code Promise}.
+	 * Return the error (if any) that has completed this {@code Promise}. Returns {@code null} if
+	 * the promise has not been completed, or was completed with a value.
 	 *
 	 * @return the error (if any)
 	 */

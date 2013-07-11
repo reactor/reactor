@@ -46,10 +46,14 @@ import java.util.UUID;
 import reactor.event.selector.Selectors;
 
 /**
- * A reactor is an event gateway that allows other components to register {@link Event} (@link Consumer}s with its
- * {@link reactor.event.selector.Selector ) {@link reactor.event.registry.Registry }. When a {@literal Reactor} is
- * notified of that {@link Event}, a task is dispatched to the assigned {@link Dispatcher} which causes it to be
- * executed on a thread based on the implementation of the {@link Dispatcher} being used.
+ * A reactor is an event gateway that allows other components to register {@link Event} {@link
+ * Consumer}s that can subsequently be notified of events. A consumer is typically registered
+ * with a {@link Selector} which, by matching on the notification key, governs which events the
+ * consumer will receive.
+ * </p>
+ * When a {@literal Reactor} is notified of an {@link Event}, a task is dispatched using the
+ * reactor's {@link Dispatcher} which causes it to be executed on a thread based on the
+ * implementation of the {@link Dispatcher} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -81,11 +85,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The default {@link EventRouter}, {@link
-	 * reactor.event.registry.SelectionStrategy}, and {@link Converter} will be used.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will
+	 * use a default {@link EventRouter} that broadcast events to all of the registered consumers
+	 * that {@link Selector#matches(Object) match} the notification key and does not perform any
+	 * type conversion.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new worker dispatcher is used
-	 *                   dispatcher is used
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new
+	 *                   {@link SynchronousDispatcher} is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
 		this(dispatcher,
@@ -93,14 +99,16 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}, {@link
-	 * reactor.event.registry.SelectionStrategy}, {@link EventRouter}
+	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code
+	 * eventRouter}.
 	 *
-	 * @param dispatcher        The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous
-	 *                          dispatcher is used.
-	 * @param selectionStrategy The custom {@link SelectionStrategy} to use. May be {@code null}.
-	 * @param eventRouter       The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code
-	 *                          null} in which case a default event router is used.
+	 * @param dispatcher  The {@link Dispatcher} to use. May be {@code null} in which
+	 *                    case a new synchronous  dispatcher is used.
+	 * @param eventRouter The {@link EventRouter} used to route events to {@link Consumer Consumers}.
+	 *                    May be {@code null} in which case the default event router that broadcasts
+	 *                    events to all of the registered consumers that {@link
+	 *                    Selector#matches(Object) match} the notification key and does not perform
+	 *                    any type conversion will be used.
 	 */
 	public Reactor(Dispatcher dispatcher,
 								 EventRouter eventRouter) {

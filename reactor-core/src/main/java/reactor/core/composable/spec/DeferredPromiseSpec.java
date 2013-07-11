@@ -23,12 +23,23 @@ import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
 
 /**
+ * A helper class for specifying a {@link Deferred} {@link Promise}.
+ *
+ * @param <T> The type of the value that the promise will accept
+ *
  * @author Jon Brisbin
  */
 public final class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
 
 	private Composable<?> parent;
 
+	/**
+	 * Configures the promise to have the given {@code parent}
+	 *
+	 * @param parent The parent for the promise that's being configured
+	 *
+	 * @return {@code this}
+	 */
 	public DeferredPromiseSpec<T> link(Composable<?> parent) {
 		this.parent = parent;
 		return this;

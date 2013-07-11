@@ -43,6 +43,8 @@ import reactor.util.Assert;
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ *
+ * @param <T> The type of the values
  */
 public abstract class Composable<T> {
 

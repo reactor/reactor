@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * A public factory to build {@link Stream Streams}.
+ * A public factory to build {@link Stream Streams} that use a {@link SynchronousDispatcher}.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -31,6 +31,7 @@ public abstract class Streams {
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
 	 * @param <T> the type of values passing through the {@literal Stream}
+	 *
 	 * @return a new {@link DeferredStreamSpec}
 	 */
 	public static <T> DeferredStreamSpec<T> defer() {
@@ -38,11 +39,13 @@ public abstract class Streams {
 	}
 
 	/**
-	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)} the given value whenever the
-	 * {@link reactor.core.composable.Stream#resolve()} function is invoked.
+	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)}
+	 * the given value whenever the {@link reactor.core.composable.Stream#resolve()} function
+	 * is invoked.
 	 *
 	 * @param value The value to {@code accept()}
 	 * @param <T>   type of the value
+	 *
 	 * @return a {@link DeferredStreamSpec} based on the given value
 	 */
 	@SuppressWarnings("unchecked")
@@ -51,11 +54,14 @@ public abstract class Streams {
 	}
 
 	/**
-	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)} the given values whenever
-	 * the {@link reactor.core.composable.Stream#resolve()} function is invoked.
+	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)}
+	 * the given values whenever the {@link reactor.core.composable.Stream#resolve()} function
+	 * is invoked. If the {@code values} are a {@code Collection} the Stream's batch size will
+	 * be set to the Collection's {@link Collection#size()}.
 	 *
 	 * @param values The values to {@code accept()}
 	 * @param <T>    type of the values
+	 *
 	 * @return a {@link DeferredStreamSpec} based on the given values
 	 */
 	public static <T> DeferredStreamSpec<T> defer(Iterable<T> values) {

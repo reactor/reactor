@@ -17,7 +17,6 @@
 package reactor.tuple;
 
 import org.junit.Test;
-import reactor.tuple.*;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;

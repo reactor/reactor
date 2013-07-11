@@ -22,8 +22,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import reactor.core.Reactor;
-
 /**
  * Annotation to denote that a method should proxy a call to an underlying {@link
  * Reactor#notify(Object, reactor.event.Event)} or {@link Reactor#notify(Object)} call.

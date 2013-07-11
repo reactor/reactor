@@ -17,7 +17,6 @@
 package reactor.function.support;
 
 import reactor.function.Consumer;
-import reactor.event.registry.Registration;
 
 /**
  * A {@link Consumer} implementation that allows the delegate {@link Consumer} to only be

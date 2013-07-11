@@ -26,9 +26,9 @@ package reactor.core.spec;
 public abstract class Reactors {
 
 	/**
-	 * Create a new {@literal Reactor}.
+	 * Create a new {@link ReactorSpec} to configure a Reactor.
 	 *
-	 * @return The new {@link Reactor}.
+	 * @return The Reactor spec
 	 */
 	public static ReactorSpec reactor() {
 		return new ReactorSpec();

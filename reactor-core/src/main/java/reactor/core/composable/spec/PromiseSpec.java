@@ -23,8 +23,12 @@ import reactor.function.Supplier;
 import reactor.util.Assert;
 
 /**
+ * A helper class for specifying a {@link Promise}.
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ *
+ * @param <T> the type of the value that the Promise will contain
  */
 public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
 
@@ -32,6 +36,13 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 	private Supplier<T>   valueSupplier;
 	private Throwable     error;
 
+	/**
+	 * Configures the promise to have been successfully completed with the given {@code value}.
+	 *
+	 * @param value The value for the promise to contain
+	 *
+	 * @return {@code this}
+	 */
 	public PromiseSpec<T> success(T value) {
 		Assert.isNull(error, "Cannot set both a value and an error. Use one or the other.");
 		Assert.isNull(valueSupplier, "Cannot set both a value and a Supplier. Use one or the other.");
@@ -39,6 +50,14 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 		return this;
 	}
 
+	/**
+	 * Configures the promise to have been successfully completed with the value from the given
+	 * {@code valueSupplier}.
+	 *
+	 * @param valueSupplier The supplier of the value for the promise to contain
+	 *
+	 * @return {@code this}
+	 */
 	public PromiseSpec<T> success(Supplier<T> valueSupplier) {
 		Assert.isNull(error, "Cannot set both an error and a Supplier. Use one or the other.");
 		Assert.isNull(value, "Cannot set both a value and a Supplier. Use one or the other.");
@@ -46,6 +65,13 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 		return this;
 	}
 
+	/**
+	 * Configures the promise to have been completed with the given {@code error}.
+	 *
+	 * @param error The error to be held by the Promise
+	 *
+	 * @return {@code this}
+	 */
 	public PromiseSpec<T> error(Throwable error) {
 		Assert.isNull(value, "Cannot set both a value and an error. Use one or the other.");
 		Assert.isNull(valueSupplier, "Cannot set both an error and a Supplier. Use one or the other.");

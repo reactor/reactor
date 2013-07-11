@@ -128,6 +128,7 @@ public class Buffer implements Comparable<Buffer>,
 	 * @param bytes The bytes to create a buffer from.
 	 * @return The new {@literal Buffer}.
 	 */
+	@SuppressWarnings("resource")
 	public static Buffer wrap(byte[] bytes) {
 		return new Buffer(bytes.length, true)
 				.append(bytes)
@@ -142,6 +143,7 @@ public class Buffer implements Comparable<Buffer>,
 	 * @param fixed {@literal true} to create a fixed-length {@literal Buffer}, {@literal false} otherwise.
 	 * @return The new {@literal Buffer}.
 	 */
+	@SuppressWarnings("resource")
 	public static Buffer wrap(String str, boolean fixed) {
 		return new Buffer(str.length(), fixed)
 				.append(str)

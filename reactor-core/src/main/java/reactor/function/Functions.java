@@ -21,14 +21,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 import reactor.event.Event;
-import reactor.event.selector.ClassSelector;
-import reactor.event.selector.ObjectSelector;
-import reactor.event.selector.RegexSelector;
-import reactor.event.selector.Selector;
-import reactor.event.selector.UriTemplate;
-import reactor.event.selector.UriTemplateSelector;
 import reactor.tuple.Tuple;
-import reactor.tuple.Tuple2;
 
 /**
  * Helper methods to provide syntax sugar for working with functional components in Reactor.

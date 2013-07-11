@@ -20,12 +20,22 @@ import reactor.core.Reactor;
 import reactor.core.spec.support.EventRoutingComponentSpec;
 
 /**
+ * A helper class for configuring a new {@link Reactor}.
+ *
  * @author Jon Brisbin
  */
 public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
 
 	private Reactor linked;
 
+	/**
+	 * Configured the Reactor to be linked to the given reactor such that events that the
+	 * reactor being configured is notified of events that {@code linked} is notified of.
+	 *
+	 * @param linked The reactor to link this reactor to
+	 *
+	 * @return {@code this}
+	 */
 	public ReactorSpec link(Reactor linked) {
 		this.linked = linked;
 		return this;

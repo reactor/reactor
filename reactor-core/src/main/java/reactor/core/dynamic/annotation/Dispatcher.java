@@ -22,10 +22,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.core.dynamic.DynamicReactorFactory;
-
 /**
  * Used on a {@class DynamicReactor} to specify the {@link Dispatcher} that should be used
  * by the underlying {@link Reactor}. The {@code Dispatcher} is looked up in the
