@@ -42,28 +42,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
 	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
 
-	private final SelectionStrategy selectionStrategy;
-
 	private boolean refreshRequired;
-
-	/**
-	 * Creates a new {@code CachingRegistry} that will use the {@code selectionStrategy} to select
-	 * registrations that match a key.
-	 *
-	 * @param selectionStrategy The selection strategy to use. May be {@code null}
-	 */
-	public CachingRegistry(SelectionStrategy selectionStrategy) {
-		this.selectionStrategy = selectionStrategy;
-	}
-
-	/**
-	 * Returns the selection strategy that this registry is using to select registrations.
-	 *
-	 * @return the registry's selection strategy.
-	 */
-	public SelectionStrategy getSelectionStrategy() {
-		return selectionStrategy;
-	}
 
 	@Override
 	public <V extends T> Registration<V> register(Selector sel, V obj) {
@@ -82,6 +61,8 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public boolean unregister(Object key) {
+
+		assert key != null;
 
 		writeLock.lock();
 		try {
@@ -180,11 +161,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	private List<Registration<? extends T>> findMatchingRegistrations(Object object) {
 		List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
 		for (Registration<? extends T> reg : registrations) {
-			if (null != selectionStrategy
-					&& selectionStrategy.supports(object)
-					&& selectionStrategy.matches(reg.getSelector(), object)) {
-				regs.add(reg);
-			} else if (reg.getSelector().matches(object)) {
+			if (reg.getSelector().matches(object)) {
 				regs.add(reg);
 			}
 		}

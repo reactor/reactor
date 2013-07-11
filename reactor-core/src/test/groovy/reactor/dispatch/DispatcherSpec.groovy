@@ -55,7 +55,7 @@ class DispatcherSpec extends Specification {
 		def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
 		def currentThread = Thread.currentThread()
 		Thread taskThread = null
-		def registry = new CachingRegistry<Consumer<Event>>(null)
+		def registry = new CachingRegistry<Consumer<Event>>()
 		def eventRouter = new ConsumerFilteringEventRouter(
 				new PassThroughFilter(),  new ArgumentConvertingConsumerInvoker())
 		def sel = $('test')

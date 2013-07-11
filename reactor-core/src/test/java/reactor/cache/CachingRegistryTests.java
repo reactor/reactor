@@ -27,7 +27,6 @@ import org.junit.Test;
 
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
-import reactor.event.registry.SelectionStrategy;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 
@@ -35,7 +34,7 @@ public final class CachingRegistryTests {
 
 	private final AtomicInteger cacheMisses = new AtomicInteger();
 
-	private final CachingRegistry<Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(null, cacheMisses);
+	private final CachingRegistry<Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(cacheMisses);
 
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
@@ -134,8 +133,7 @@ public final class CachingRegistryTests {
 
 		private final AtomicInteger cacheMisses;
 
-		public CacheMissCountingCachingRegistry(SelectionStrategy selectionStrategy, AtomicInteger cacheMisses) {
-			super(selectionStrategy);
+		public CacheMissCountingCachingRegistry(AtomicInteger cacheMisses) {
 			this.cacheMisses = cacheMisses;
 		}
 

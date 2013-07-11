@@ -20,7 +20,6 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
-import reactor.util.Assert;
 
 /**
  * A generic environment-aware builder for reactor-based components that need to be configured with an {@link

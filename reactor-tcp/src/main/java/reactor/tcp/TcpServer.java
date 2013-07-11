@@ -50,7 +50,7 @@ public abstract class TcpServer<IN, OUT> {
 	private final Tuple2<Selector, Object>         shutdown    = Selectors.$();
 	private final Tuple2<Selector, Object>         open        = Selectors.$();
 	private final Tuple2<Selector, Object>         close       = Selectors.$();
-	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>(null);
+	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>();
 
 	private final Reactor                reactor;
 	private final Codec<Buffer, IN, OUT> codec;

@@ -15,18 +15,21 @@
  */
 package reactor.core.spec.support;
 
+import java.util.List;
+
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.registry.SelectionStrategy;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.EventRouter;
-import reactor.filter.*;
-
-import java.util.List;
+import reactor.filter.Filter;
+import reactor.filter.FirstFilter;
+import reactor.filter.PassThroughFilter;
+import reactor.filter.RandomFilter;
+import reactor.filter.RoundRobinFilter;
 
 /**
  * @author Jon Brisbin
@@ -36,12 +39,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
-	private SelectionStrategy    selectionStrategy;
-
-	public final SPEC selectionStrategy(SelectionStrategy selectionStrategy) {
-		this.selectionStrategy = selectionStrategy;
-		return (SPEC) this;
-	}
 
 	public final SPEC converters(Converter... converters) {
 		this.converter = new DelegatingConverter(converters);
@@ -81,7 +78,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Reactor createReactor(Dispatcher dispatcher) {
-		return new Reactor(dispatcher, selectionStrategy, createEventRouter());
+		return new Reactor(dispatcher, createEventRouter());
 	}
 
 	private EventRouter createEventRouter() {

@@ -57,11 +57,4 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
 	 */
 	List<Registration<? extends T>> select(Object key);
-
-	/**
-	 * Returns the custom selection strategy, if any, that is being used by this {@literal Registry}
-	 *
-	 * @return the {@link reactor.event.registry.SelectionStrategy}. May be {@code null}.
-	 */
-	SelectionStrategy getSelectionStrategy();
 }

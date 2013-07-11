@@ -25,7 +25,6 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
-import reactor.event.registry.SelectionStrategy;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.EventRouter;
@@ -90,7 +89,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 */
 	public Reactor(Dispatcher dispatcher) {
 		this(dispatcher,
-				 null,
 				 null);
 	}
 
@@ -105,11 +103,10 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 *                          null} in which case a default event router is used.
 	 */
 	public Reactor(Dispatcher dispatcher,
-								 SelectionStrategy selectionStrategy,
 								 EventRouter eventRouter) {
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
-		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(selectionStrategy);
+		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>();
 
 		this.on(new Consumer<Event>() {
 			@Override
