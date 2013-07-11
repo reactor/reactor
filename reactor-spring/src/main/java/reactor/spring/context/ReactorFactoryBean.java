@@ -29,7 +29,6 @@ import reactor.core.spec.Reactors;
  */
 public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
-	private final    Environment env;
 	private volatile Reactor     reactor;
 
 	public ReactorFactoryBean(Environment env) {
@@ -45,7 +44,6 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 														String dispatcher,
 														EventRouting eventRouting) {
 		Assert.notNull(env, "Environment cannot be null.");
-		this.env = env;
 
 		ReactorSpec spec = Reactors.reactor().env(env);
 		if (null != dispatcher) {
