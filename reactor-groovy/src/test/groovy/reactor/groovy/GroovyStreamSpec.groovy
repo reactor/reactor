@@ -15,20 +15,20 @@
  */
 package reactor.groovy
 
-import reactor.R
-import reactor.S
-import reactor.core.composable.Deferred
-import reactor.core.Environment
-import reactor.core.composable.Stream
-import reactor.event.dispatch.BlockingQueueDispatcher
-import reactor.function.support.Tap
-import spock.lang.Shared
-import spock.lang.Specification
+import static reactor.event.selector.Selectors.$
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.event.selector.Selectors.$
+import reactor.core.Environment
+import reactor.core.composable.Deferred
+import reactor.core.composable.Stream
+import reactor.core.composable.spec.Streams
+import reactor.core.spec.Reactors
+import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.function.support.Tap
+import spock.lang.Shared
+import spock.lang.Specification
 
 /**
  * @author Stephane Maldini
@@ -47,7 +47,7 @@ class GroovyStreamSpec extends Specification {
 	def "Compose from multiple values"() {
 		when:
 			'Defer a composition'
-			Deferred c = S.defer(['1', '2', '3', '4', '5']).get()
+			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation'
@@ -62,7 +62,7 @@ class GroovyStreamSpec extends Specification {
 	def "Compose from multiple filtered values"() {
 		when:
 			'Defer a composition'
-			def c = S.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation that filters odd elements'
@@ -77,7 +77,7 @@ class GroovyStreamSpec extends Specification {
 	def "Error handling with composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = S.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation that generates an exception for the last value'
@@ -95,7 +95,7 @@ class GroovyStreamSpec extends Specification {
 	def "Reduce composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = S.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a reduction'
@@ -111,7 +111,7 @@ class GroovyStreamSpec extends Specification {
 	def "consume first and last with a composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = S.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation'
@@ -132,7 +132,7 @@ class GroovyStreamSpec extends Specification {
 	/*def "Compose events (Request/Reply)"() {
 		given:
 			'a reactor and a selector'
-			def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
+			def r = Reactors.reactor().using(testEnv).dispatcher('eventLoop').get()
 			def key = $()
 
 		when:
@@ -153,7 +153,7 @@ class GroovyStreamSpec extends Specification {
 	/* def "Compose events (Request/ N Replies)"() {
 			given:
 				'a reactor and a selector'
-				def r = R.reactor().using(testEnv).dispatcher('eventLoop').get()
+				def r = Reactors.reactor().using(testEnv).dispatcher('eventLoop').get()
 				def key = $()
 
 			when:
@@ -171,7 +171,7 @@ class GroovyStreamSpec extends Specification {
 
 			and:
 				'prepare reduce and notify composition'
-				def c1 = S.defer().using(r).get()
+				def c1 = Streams.defer().using(r).get()
 				def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
 				r.compose(key.t2, '1', c1)
@@ -182,7 +182,7 @@ class GroovyStreamSpec extends Specification {
 
 			when:
 				'using reduce() alias'
-				c1 = S.defer().using(r).get()
+				c1 = Streams.defer().using(r).get()
 				c2 = c1.take(3).reduce()
 
 				r.compose(key.t2, '1', c1)
@@ -195,7 +195,7 @@ class GroovyStreamSpec extends Specification {
 	def "relay events to reactor"() {
 		given:
 			'a reactor and a selector'
-			def r = R.reactor().env(testEnv).dispatcher('eventLoop').get()
+			def r = Reactors.reactor().env(testEnv).dispatcher('eventLoop').get()
 			def key = $()
 
 		when:
@@ -207,7 +207,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'Defer a composition'
-			Deferred c = S.defer(['1', '2', '3', '4', '5']).get()
+			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation and call an explicit reactor'
@@ -226,7 +226,7 @@ class GroovyStreamSpec extends Specification {
 
 		when:
 			'Defer a composition'
-			def c = S.defer(new TestIterable('1', '2', '3', '4', '5')).get()
+			def c = Streams.defer(new TestIterable('1', '2', '3', '4', '5')).get()
 
 		and:
 			'apply a transformation and call an explicit reactor'

@@ -16,23 +16,23 @@
 
 package reactor.tcp;
 
-import reactor.Fn;
-import reactor.R;
-import reactor.S;
-import reactor.core.composable.Deferred;
 import reactor.core.Environment;
 import reactor.core.Reactor;
+import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
-import reactor.function.Consumer;
+import reactor.core.composable.spec.Streams;
+import reactor.core.spec.Reactors;
 import reactor.event.Event;
-import reactor.function.Function;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Functions;
 import reactor.function.support.NotifyConsumer;
-import reactor.tuple.Tuple2;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
+import reactor.tuple.Tuple2;
 
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
@@ -57,7 +57,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 																	Reactor eventsReactor) {
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
-		this.ioReactor = R.reactor()
+		this.ioReactor = Reactors.reactor()
 											.env(env)
 											.dispatcher(ioDispatcher)
 											.get();
@@ -88,7 +88,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Stream<IN> in() {
-		final Deferred<IN, Stream<IN>> d = S.<IN>defer()
+		final Deferred<IN, Stream<IN>> d = Streams.<IN>defer()
 																				.env(env)
 																				.dispatcher(eventsReactor.getDispatcher())
 																				.get();
@@ -103,7 +103,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Deferred<OUT, Stream<OUT>> out() {
-		Deferred<OUT, Stream<OUT>> d = S.<OUT>defer()
+		Deferred<OUT, Stream<OUT>> d = Streams.<OUT>defer()
 																		.env(env)
 																		.dispatcher(eventsReactor.getDispatcher())
 																		.get();
@@ -156,7 +156,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public TcpConnection<IN, OUT> send(OUT data, final Consumer<Boolean> onComplete) {
-		Fn.schedule(
+		Functions.schedule(
 				new Consumer<OUT>() {
 					@Override
 					public void accept(OUT data) {

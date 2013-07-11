@@ -16,8 +16,8 @@
 
 package reactor.spring
 
-import reactor.R
 import reactor.core.Environment
+import reactor.core.spec.Reactors;
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -37,7 +37,7 @@ class ReactorTaskExecutorSpec extends Specification {
   def "ReactorTaskExecutor executes tasks"() {
     given:
       "a Reactor-backed TaskExecutor"
-      def reactor = R.reactor().env(env).dispatcher(Environment.EVENT_LOOP).get()
+      def reactor = Reactors.reactor().env(env).dispatcher(Environment.EVENT_LOOP).get()
       def exec = new ReactorTaskExecutor(reactor)
       def latch = new CountDownLatch(1)
 

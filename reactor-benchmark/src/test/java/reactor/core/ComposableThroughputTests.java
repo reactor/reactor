@@ -21,9 +21,9 @@ import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.S;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
+import reactor.core.composable.spec.Streams;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.event.dispatch.Dispatcher;
@@ -59,7 +59,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		Deferred<Integer, Stream<Integer>> dInt = S.<Integer>defer()
+		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
 				.batchSize(length * runs * samples)

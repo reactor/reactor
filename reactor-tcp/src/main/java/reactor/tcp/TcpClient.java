@@ -22,7 +22,6 @@ import java.util.Iterator;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import reactor.Fn;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
@@ -35,6 +34,7 @@ import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
+import reactor.function.Functions;
 import reactor.io.Buffer;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
@@ -85,7 +85,7 @@ public abstract class TcpClient<IN, OUT> {
 	 */
 	public Promise<Void> close() {
 		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(reactor.getDispatcher()).get();
-		Fn.schedule(
+		Functions.schedule(
 				new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {

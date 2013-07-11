@@ -19,14 +19,14 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.Fn
-import reactor.P
 import reactor.core.composable.Promise
 import reactor.core.composable.spec.PromiseSpec;
 import reactor.core.composable.spec.Promises;
+import reactor.function.Functions;
 import reactor.function.Observable
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
+
 /**
  * Static extensions for reactor-core classes, main purpose is to bind closure when required
  *
@@ -38,12 +38,12 @@ class ReactorStaticExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T> void schedule(final Fn selfType, final T value, final Observable observable, final Closure closure) {
-		Fn.schedule new ClosureConsumer(closure), value, observable
+	static <T> void schedule(final Functions selfType, final T value, final Observable observable, final Closure closure) {
+		Functions.schedule new ClosureConsumer(closure), value, observable
 	}
 
 	static <T> PromiseSpec<T> task(final Promises selfType, Closure<T> callback) {
-		P.task new ClosureSupplier<T>(callback)
+		Promises.task new ClosureSupplier<T>(callback)
 	}
 
 	static <T> PromiseSpec<T> from(final Promise<T> selfType, Closure<T> callback) {

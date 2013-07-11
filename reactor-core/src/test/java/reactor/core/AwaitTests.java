@@ -16,20 +16,21 @@
 
 package reactor.core;
 
-import org.junit.Test;
-import reactor.AbstractReactorTest;
-import reactor.Fn;
-import reactor.P;
-import reactor.R;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.function.Consumer;
-import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.Test;
+
+import reactor.AbstractReactorTest;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
+import reactor.core.composable.spec.Promises;
+import reactor.core.spec.Reactors;
+import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.function.Consumer;
+import reactor.function.Functions;
 
 /**
  * @author Jon Brisbin
@@ -41,10 +42,10 @@ public class AwaitTests extends AbstractReactorTest {
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
 		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
 
-		Reactor innerReactor = R.reactor().env(env).dispatcher(dispatcher).get();
+		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 1000; i++) {
-			final Deferred<String, Promise<String>> deferred = P.<String>defer().env(env).dispatcher("threadPoolExecutor").get();
+			final Deferred<String, Promise<String>> deferred = Promises.<String>defer().env(env).dispatcher("threadPoolExecutor").get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			Promise<String> promise = deferred.compose();
@@ -55,7 +56,7 @@ public class AwaitTests extends AbstractReactorTest {
 					latch.countDown();
 				}
 			});
-			Fn.schedule(new Consumer() {
+			Functions.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {

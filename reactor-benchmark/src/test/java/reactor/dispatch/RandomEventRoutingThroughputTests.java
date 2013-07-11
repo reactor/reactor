@@ -18,8 +18,8 @@ package reactor.dispatch;
 
 import org.junit.Test;
 
-import reactor.R;
 import reactor.core.Reactor;
+import reactor.core.spec.Reactors;
 import reactor.event.selector.Selectors;
 
 /**
@@ -58,21 +58,21 @@ public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 
 	@Test
 	public void blockingQueueDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(R.reactor().env(env).randomEventRouting().dispatcher("eventLoop").get());
+		doTest(Reactors.reactor().env(env).randomEventRouting().dispatcher("eventLoop").get());
 	}
 
 	@Test
 	public void threadPoolDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(R.reactor().env(env).randomEventRouting().dispatcher("threadPoolExecutor").get());
+		doTest(Reactors.reactor().env(env).randomEventRouting().dispatcher("threadPoolExecutor").get());
 	}
 
 	@Test
 	public void rootDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(R.reactor().env(env).randomEventRouting().dispatcher("ringBuffer").get());
+		doTest(Reactors.reactor().env(env).randomEventRouting().dispatcher("ringBuffer").get());
 	}
 
 	@Test
 	public void ringBufferDispatcherWithRandomLoadBalancing() throws InterruptedException {
-		doTest(R.reactor().env(env).randomEventRouting().dispatcher(createRingBufferDispatcher()).get());
+		doTest(Reactors.reactor().env(env).randomEventRouting().dispatcher(createRingBufferDispatcher()).get());
 	}
 }

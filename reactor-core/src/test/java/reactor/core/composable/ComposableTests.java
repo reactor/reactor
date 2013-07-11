@@ -16,22 +16,9 @@
 
 package reactor.core.composable;
 
-import org.hamcrest.Matcher;
-import org.junit.Test;
-import reactor.AbstractReactorTest;
-import reactor.R;
-import reactor.S;
-import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
-import reactor.function.Consumer;
-import reactor.event.Event;
-import reactor.function.Function;
-import reactor.function.Predicate;
-import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
-import reactor.function.support.Tap;
-import reactor.tuple.Tuple2;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.number.OrderingComparison.lessThan;
 
 import java.util.Arrays;
 import java.util.List;
@@ -40,9 +27,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.number.OrderingComparison.lessThan;
+import org.hamcrest.Matcher;
+import org.junit.Test;
+
+import reactor.AbstractReactorTest;
+import reactor.core.Reactor;
+import reactor.core.composable.spec.Streams;
+import reactor.core.spec.Reactors;
+import reactor.event.Event;
+import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Predicate;
+import reactor.function.support.Tap;
+import reactor.tuple.Tuple2;
 
 /**
  * @author Jon Brisbin
@@ -54,7 +53,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer("Hello World!").get();
+		Deferred<String, Stream<String>> d = Streams.defer("Hello World!").get();
 		Stream<String> s =
 				d.compose()
 				 .map(new Function<String, String>() {
@@ -69,7 +68,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -87,7 +86,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -105,7 +104,7 @@ public class ComposableTests extends AbstractReactorTest {
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Deferred<String, Stream<String>> d =
-				S.defer(Arrays.asList("1", "2", "3", "4", "5"))
+				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"))
 				 .env(env)
 				 .dispatcher("eventLoop")
 				 .get();
@@ -131,7 +130,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -147,7 +146,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER);
@@ -163,7 +162,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		Reactor r = R.reactor().get();
+		Reactor r = Reactors.reactor().get();
 		Tuple2<Selector, Object> key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
@@ -174,7 +173,7 @@ public class ComposableTests extends AbstractReactorTest {
 			}
 		});
 
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -188,7 +187,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testStreamBatchesResults() {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<List<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -213,7 +212,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testHandlersErrorsDownstream() throws InterruptedException {
-		Deferred<String, Stream<String>> d = S.defer(Arrays.asList("1", "2", "a", "4", "5")).get();
+		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "a", "4", "5")).get();
 		final CountDownLatch latch = new CountDownLatch(1);
 		Stream<Integer> s =
 				d.compose()

@@ -16,18 +16,16 @@
 
 package reactor.event
 
-import reactor.Fn
-import reactor.R
-import reactor.event.Event
-import spock.lang.Specification
-
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
-import static reactor.event.selector.Selectors.r;
-import static reactor.event.selector.Selectors.t;
-import static reactor.event.selector.Selectors.u;
 import static reactor.GroovyTestUtils.$
 import static reactor.GroovyTestUtils.consumer
+import static reactor.event.selector.Selectors.r
+import static reactor.event.selector.Selectors.t
+import static reactor.event.selector.Selectors.u
+import reactor.core.spec.Reactors
+import reactor.function.Functions;
+import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
@@ -87,7 +85,7 @@ class SelectorSpec extends Specification {
 		given: "A UriTemplateSelector"
 		def sel1 = u("/path/to/{resource}")
 		def key = "/path/to/resourceId"
-		def r = R.reactor().synchronousDispatcher().get()
+		def r = Reactors.reactor().synchronousDispatcher().get()
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
 			resourceId = ev.headers["resource"]
@@ -104,7 +102,7 @@ class SelectorSpec extends Specification {
 	def "Consumers can be called using round-robin routing"() {
 
 		given: "A Reactor using round-robin routing and a set of consumers assigned to the same selector"
-		def r = R.reactor().synchronousDispatcher().roundRobinEventRouting().get()
+		def r = Reactors.reactor().synchronousDispatcher().roundRobinEventRouting().get()
 		def called = []
 		def a1 = {
 			called << 1
@@ -118,10 +116,10 @@ class SelectorSpec extends Specification {
 		def a4 = {
 			called << 4
 		}
-		r.on($('key'), Fn.consumer(a1))
-		r.on($('key'), Fn.consumer(a2))
-		r.on($('key'), Fn.consumer(a3))
-		r.on($('key'), Fn.consumer(a4))
+		r.on($('key'), Functions.consumer(a1))
+		r.on($('key'), Functions.consumer(a2))
+		r.on($('key'), Functions.consumer(a3))
+		r.on($('key'), Functions.consumer(a4))
 
 		when: "events are triggered"
 		(1..4).each {
@@ -136,7 +134,7 @@ class SelectorSpec extends Specification {
 
 		given: "A Reactor using random routing and a set of consumers assigned to the same selector"
 
-		def r = R.reactor().synchronousDispatcher().randomEventRouting().get()
+		def r = Reactors.reactor().synchronousDispatcher().randomEventRouting().get()
 		def called = []
 		def a1 = {
 			called << 1
@@ -150,10 +148,10 @@ class SelectorSpec extends Specification {
 		def a4 = {
 			called << 4
 		}
-		r.on(Fn.consumer(a1))
-		r.on(Fn.consumer(a2))
-		r.on(Fn.consumer(a3))
-		r.on(Fn.consumer(a4))
+		r.on(Functions.consumer(a1))
+		r.on(Functions.consumer(a2))
+		r.on(Functions.consumer(a3))
+		r.on(Functions.consumer(a4))
 
 		when: "events are triggered"
 

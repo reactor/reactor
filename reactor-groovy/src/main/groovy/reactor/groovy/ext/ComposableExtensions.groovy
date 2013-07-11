@@ -18,13 +18,13 @@ package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
 import groovy.transform.TypeCheckingMode
-import reactor.Fn
 import reactor.core.composable.Composable
 import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
 import reactor.core.composable.Stream
 import reactor.function.*
 import reactor.tuple.Tuple2
+
 /**
  * Glue for Groovy closures and operator overloading applied to Stream, Composable,
  * Promise and Deferred.
@@ -97,7 +97,7 @@ class ComposableExtensions {
 
 	@CompileStatic(TypeCheckingMode.SKIP)
 	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, V initial = null) {
-		reduce selfType, closure, initial ? Fn.<V>supplier((V)initial) : (Supplier<V>)null
+		reduce selfType, closure, initial ? Functions.<V>supplier((V)initial) : (Supplier<V>)null
 	}
 
 	static <T, V> Stream<V> reduce(final Stream<T> selfType, final Closure<V> closure, Closure<V> initial) {

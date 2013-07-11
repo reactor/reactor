@@ -15,17 +15,17 @@
  */
 package reactor.groovy
 
-import reactor.core.Environment
-import reactor.R
-import reactor.event.Event
-import reactor.event.dispatch.BlockingQueueDispatcher
-import spock.lang.Shared
-import spock.lang.Specification
+import static reactor.event.selector.Selectors.$
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.event.selector.Selectors.$
+import reactor.core.Environment
+import reactor.core.spec.Reactors
+import reactor.event.Event
+import reactor.event.dispatch.BlockingQueueDispatcher
+import spock.lang.Shared
+import spock.lang.Specification
 
 /**
  * @author Stephane Maldini (smaldini)
@@ -42,8 +42,8 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor dispatches events properly"() {
 
 		given: "a simple reactor implementation"
-		def r1 = R.reactor().get()
-		def r2 = R.reactor().get()
+		def r1 = Reactors.reactor().get()
+		def r2 = Reactors.reactor().get()
 		def latch = new CountDownLatch(1)
 
 		when: 'Using simple arguments'
@@ -80,7 +80,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor provides Closure as Supplier on notify"() {
 
 		given: "a simple Reactor"
-		def r = R.reactor().get()
+		def r = Reactors.reactor().get()
 		def result = ""
 		r.on('supplier') { String s ->
 			result = s
@@ -97,7 +97,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor enables Actor programming style"() {
 
 		given: "a simple reactor implementation"
-		def reactor = R.reactor().get()
+		def reactor = Reactors.reactor().get()
 
 		when: 'Using simple arguments'
 		def data2 = ""
@@ -115,10 +115,10 @@ class GroovyReactorSpec extends Specification {
 	def "Simple reactors linking"() {
 
 		given: "normal reactors on the same thread"
-		def r1 = R.reactor().get()
-		def r2 = R.reactor().get()
-		def r3 = R.reactor().get()
-		def r4 = R.reactor().get()
+		def r1 = Reactors.reactor().get()
+		def r2 = Reactors.reactor().get()
+		def r3 = Reactors.reactor().get()
+		def r4 = Reactors.reactor().get()
 
 		def d1, d2, d3, d4
 

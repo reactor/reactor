@@ -17,25 +17,25 @@
 
 package reactor.core
 
-import reactor.Fn
-import reactor.R
+import static reactor.GroovyTestUtils.*
+import static reactor.event.selector.Selectors.$
+import static reactor.event.selector.Selectors.r
+import static reactor.event.selector.Selectors.t
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.routing.ConsumerFilteringEventRouter
 import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
+import reactor.function.Functions;
 import reactor.function.support.SingleUseConsumer
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-import static reactor.event.selector.Selectors.$
-import static reactor.event.selector.Selectors.r
-import static reactor.event.selector.Selectors.t
-import static reactor.GroovyTestUtils.*
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -49,11 +49,11 @@ class ReactorsSpec extends Specification {
     testEnv = new Environment()
   }
 
-  def "A Reactor can be configured with R.reactor()"() {
+  def "A Reactor can be configured with Reactors.reactor()"() {
 
     when:
       "Building a Synchronous Reactor"
-      def reactor = R.reactor().synchronousDispatcher().get()
+      def reactor = Reactors.reactor().synchronousDispatcher().get()
 
     then:
       "Dispatcher has been set to Synchronous"
@@ -61,7 +61,7 @@ class ReactorsSpec extends Specification {
 
     when:
       "Building a RoundRobin Reactor"
-      reactor = R.reactor().roundRobinEventRouting().get()
+      reactor = Reactors.reactor().roundRobinEventRouting().get()
 
     then:
       "EventRouter has been correctly set"
@@ -73,7 +73,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a plain Reactor and a simple consumer on \$('test')"
-      def reactor = R.reactor().synchronousDispatcher().get()
+      def reactor = Reactors.reactor().synchronousDispatcher().get()
       def data = ""
       Thread t = null
       reactor.on($("test"), { ev ->
@@ -144,7 +144,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a simple reactor implementation"
-      def reactor = R.reactor().synchronousDispatcher().get()
+      def reactor = Reactors.reactor().synchronousDispatcher().get()
       def data = ""
       def reg = reactor.on($("test"), { ev ->
         data = ev.data
@@ -175,7 +175,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a simple consumer"
-      def reactor = R.reactor().synchronousDispatcher().get()
+      def reactor = Reactors.reactor().synchronousDispatcher().get()
       def data = ""
       def h = consumer { String s ->
         data = s
@@ -194,7 +194,7 @@ class ReactorsSpec extends Specification {
 
   def "A Reactor can reply to events"() {
 
-    def r = R.reactor().synchronousDispatcher().get()
+    def r = Reactors.reactor().synchronousDispatcher().get()
 
     given:
       "a simple consumer"
@@ -218,7 +218,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a simple Reactor and a response-producing Function"
-      def r = R.reactor().synchronousDispatcher().get()
+      def r = Reactors.reactor().synchronousDispatcher().get()
       def f = function { s ->
         "Hello World!"
       }
@@ -254,7 +254,7 @@ class ReactorsSpec extends Specification {
 
     when:
       "A different reactor is provided"
-      def r2 = R.reactor().get()
+      def r2 = Reactors.reactor().get()
 
     and:
       "A new consumer is attached"
@@ -330,12 +330,12 @@ class ReactorsSpec extends Specification {
 
     given:
       "a normal reactor"
-      def reactor = R.reactor().synchronousDispatcher().get()
+      def reactor = Reactors.reactor().synchronousDispatcher().get()
 
     when:
       "registering few handlers"
-      reactor.on r('t[a-z]st'), Fn.consumer { println 'test1' }
-      reactor.on r('t[a-z]st'), Fn.consumer { println 'test2' }
+      reactor.on r('t[a-z]st'), Functions.consumer { println 'test1' }
+      reactor.on r('t[a-z]st'), Functions.consumer { println 'test2' }
 
       reactor.notify "test", Event.wrap("test")
 
@@ -350,7 +350,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a normal synchronous reactor"
-      def r = R.reactor().synchronousDispatcher().get()
+      def r = Reactors.reactor().synchronousDispatcher().get()
       def d1, d2
       def selector = $("test")
 
@@ -369,20 +369,20 @@ class ReactorsSpec extends Specification {
 
     given:
       "normal reactors on the same thread"
-      def r1 = R.reactor().synchronousDispatcher().get()
-      def r2 = R.reactor().link(r1).get()
-      def r3 = R.reactor().link(r1).get()
-      def r4 = R.reactor().synchronousDispatcher().get()
+      def r1 = Reactors.reactor().synchronousDispatcher().get()
+      def r2 = Reactors.reactor().link(r1).get()
+      def r3 = Reactors.reactor().link(r1).get()
+      def r4 = Reactors.reactor().synchronousDispatcher().get()
 
       def d1, d2, d3, d4
 
 
     when:
       "registering few handlers"
-      r1.on $('test'), Fn.consumer({ d1 = true })
-      r2.on $('test'), Fn.consumer({ d2 = true })
-      r3.on $('test'), Fn.consumer({ d3 = true })
-      r4.on $('test'), Fn.consumer({ d4 = true })
+      r1.on $('test'), Functions.consumer({ d1 = true })
+      r2.on $('test'), Functions.consumer({ d2 = true })
+      r3.on $('test'), Functions.consumer({ d3 = true })
+      r4.on $('test'), Functions.consumer({ d4 = true })
 
       r1.notify 'test', new Event('bob')
 
@@ -429,7 +429,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a synchronous Reactor and a single-use Consumer"
-      def r = R.reactor().get()
+      def r = Reactors.reactor().get()
       def count = 0
       r.on(new SingleUseConsumer(consumer { count++ }))
 
@@ -466,7 +466,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a synchronous Reactor"
-      def r = R.reactor().synchronousDispatcher().get()
+      def r = Reactors.reactor().synchronousDispatcher().get()
 
     when:
       "an error consumer is registered"
@@ -497,7 +497,7 @@ class ReactorsSpec extends Specification {
 
     given:
       "a synchronous Reactor"
-      def r = R.reactor().synchronousDispatcher().get()
+      def r = Reactors.reactor().synchronousDispatcher().get()
 
     when:
       "the Reactor default Selector is notified with a tuple of consumer and data"

@@ -15,7 +15,6 @@
  */
 package reactor.core.composable.spec
 
-import reactor.P
 import reactor.core.Environment
 import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
@@ -709,7 +708,7 @@ class PromisesSpec extends Specification {
   def "Errors stop compositions"() {
     given:
       "a promise"
-      def promiseDeferred = P.<String> defer()
+      def promiseDeferred = Promises.<String> defer()
 		      .env(new Environment())
 		      .dispatcher('eventLoop')
 		      .get()
