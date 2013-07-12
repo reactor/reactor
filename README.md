@@ -79,30 +79,33 @@ Three of the most foundational components in Reactor’s `reactor-core` module a
 
 There are different kinds of `Selector`s for doing different kinds of matching. The simplest form is just to match one object with another. For example, a `Selector` created from a `String` "parse" will match another `Selector` whose wrapped object is also a `String` "parse" (in this case it's just like a `String.equals(String)`.
 
-But a `Selector` can also match another `Selector` based on `Class.isAssignableFrom(Class<?>)`, regular expressions, URL templates, or the like. There are helper methods on the `Fn` abstract class to make creating these `Selector`s very easy in user code.
+But a `Selector` can also match another `Selector` based on `Class.isAssignableFrom(Class<?>)`, regular expressions, URL templates, or the like. There are helper methods on the `Selectors` abstract class to make creating these `Selector`s very easy in user code.
 
 Here's is an example of wiring a `Consumer` to a `Selector` on a `Reactor`:
 
     // This helper method is like jQuery’s.
     // It just creates a Selector instance so you don’t have to "new" one up.
-    import static reactor.Fn.$;
+    import static reactor.event.selector.Selectors.$;
+
+    …
+
+    Environment env = new Environment();
 
     // This factory call creates a Reactor.
-    Reactor reactor = R.reactor()
+    Reactor reactor = Reactors.reactor()
       .env(env) // our current Environment
       .dispatcher(Environment.EVENT_LOOP) // use one of the BlockingQueueDispatchers
       .get(); // get the object when finished configuring
 
-    // Wire an event to handle the data sent with the Event
+    // Register a consumer to handle events sent with a key that matches "parse"
     reactor.on($("parse"), new Consumer<Event<String>>() {
+      @Override
       public void accept(Event<String> ev) {
-        service.handleEvent(ev);
+        System.out.println("Received event with data: " + ev.getData());
       }
     });
-
-    // Send an event to this Reactor and trigger all actions
-    // that match the given key
-    reactor.notify("parse", Event.wrap(incomingJsonData));
+    // Send an event to this Reactor and trigger all actions that match the given key
+    reactor.notify("parse", Event.wrap("data"));
 
 In Java 8, the event wiring would become extremely succinct:
 
@@ -162,7 +165,7 @@ Beyond implementing a `Selector`, there is also a `SelectionStrategy` interface 
 
 ### Routing
 
-Reactor includes three different kinds of routing for assigned consumers: broadcast, random, and round-robin. This means that, of the given `Consumer`s assigned to the same `Selector`, the routing will determine whether to execute all the consumers, one of them randomly selected, or one of them selected in a round robin fashion. The default is to use broadcast routing.
+Reactor includes three different kinds of routing for assigned consumers: broadcast, random, round-robin, first, and last. This means that, of the given `Consumer`s assigned to the same `Selector`, the routing will determine whether to execute all the consumers, one of them randomly selected, one of them selected in a round robin fashion, the first matching consumer, or the last matching consumer. The default is to use broadcast routing.
 
 ---
 
