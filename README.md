@@ -165,7 +165,7 @@ Beyond implementing a `Selector`, there is also a `SelectionStrategy` interface 
 
 ### Routing
 
-Reactor includes three different kinds of routing for assigned consumers: broadcast, random, round-robin, first, and last. This means that, of the given `Consumer`s assigned to the same `Selector`, the routing will determine whether to execute all the consumers, one of them randomly selected, one of them selected in a round robin fashion, the first matching consumer, or the last matching consumer. The default is to use broadcast routing.
+Reactor includes five different kinds of routing for assigned consumers: broadcast, random, round-robin, first, and last. This means that, of the given `Consumer`s assigned to the same `Selector`, the routing will determine whether to execute all the consumers, one of them randomly selected, one of them selected in a round robin fashion, the first matching consumer, or the last matching consumer. The default is to use broadcast routing.
 
 ---
 
