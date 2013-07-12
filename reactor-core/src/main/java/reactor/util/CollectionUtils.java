@@ -376,7 +376,7 @@ public abstract class CollectionUtils {
 
 		private Enumeration<E> enumeration;
 
-		public EnumerationIterator(Enumeration<E> enumeration) {
+		private EnumerationIterator(Enumeration<E> enumeration) {
 			this.enumeration = enumeration;
 		}
 
@@ -404,7 +404,7 @@ public abstract class CollectionUtils {
 
 		private final Map<K, List<V>> map;
 
-		public MultiValueMapAdapter(Map<K, List<V>> map) {
+		private MultiValueMapAdapter(Map<K, List<V>> map) {
 			Assert.notNull(map, "'map' must not be null");
 			this.map = map;
 		}

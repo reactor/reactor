@@ -88,7 +88,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private class DelimitedDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
 
-		public DelimitedDecoder(Consumer<IN> next) {
+		DelimitedDecoder(Consumer<IN> next) {
 			this.decoder = delegate.decoder(next);
 		}
 

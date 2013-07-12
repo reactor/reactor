@@ -57,37 +57,37 @@ abstract class BaseDispatcher implements Dispatcher {
 		private volatile Consumer<Throwable>                    errorConsumer;
 		private volatile EventRouter                            eventRouter;
 
-		public Task<E> setKey(Object key) {
+		Task<E> setKey(Object key) {
 			this.key = key;
 			return this;
 		}
 
-		public Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 			this.consumerRegistry = consumerRegistry;
 			return this;
 		}
 
-		public Task<E> setEvent(E event) {
+		Task<E> setEvent(E event) {
 			this.event = event;
 			return this;
 		}
 
-		public Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
+		Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
 			this.completionConsumer = completionConsumer;
 			return this;
 		}
 
-		public Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
+		Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
 			this.errorConsumer = errorConsumer;
 			return this;
 		}
 
-		public Task<E> setEventRouter(EventRouter eventRouter) {
+		Task<E> setEventRouter(EventRouter eventRouter) {
 			this.eventRouter = eventRouter;
 			return this;
 		}
 
-		public void reset() {
+		protected void reset() {
 			key = null;
 			consumerRegistry = null;
 			event = null;
@@ -95,7 +95,7 @@ abstract class BaseDispatcher implements Dispatcher {
 			errorConsumer = null;
 		}
 
-		public abstract void submit();
+		protected abstract void submit();
 
 		protected void execute() {
 			eventRouter.route(key, event, consumerRegistry.select(key), completionConsumer, errorConsumer);
