@@ -24,6 +24,7 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
+import reactor.util.Assert;
 
 import java.io.IOException;
 
@@ -33,29 +34,16 @@ import java.io.IOException;
 public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 	private final Class<IN>    inputType;
-	private final boolean      inputJsonNode;
-	private final Class<OUT>   outputType;
-	private final boolean      outputJsonNode;
 	private final ObjectMapper mapper;
 
-	public JsonCodec() {
-		this(null, null, null);
-	}
-
-	public JsonCodec(Module customModule) {
-		this(null, null, customModule);
-	}
-
-	public JsonCodec(Class<IN> inputType, Class<OUT> outputType) {
-		this(inputType, outputType, null);
+	public JsonCodec(Class<IN> inputType) {
+		this(inputType, null);
 	}
 
 	@SuppressWarnings("unchecked")
-	public JsonCodec(Class<IN> inputType, Class<OUT> outputType, Module customModule) {
+	public JsonCodec(Class<IN> inputType, Module customModule) {
+		Assert.notNull(inputType, "inputType must not be null");
 		this.inputType = (null == inputType ? (Class<IN>) JsonNode.class : inputType);
-		this.inputJsonNode = JsonNode.class.isAssignableFrom(inputType);
-		this.outputType = (null == outputType ? (Class<OUT>) JsonNode.class : outputType);
-		this.outputJsonNode = JsonNode.class.isAssignableFrom(outputType);
 
 		this.mapper = new ObjectMapper();
 		if (null != customModule) {
