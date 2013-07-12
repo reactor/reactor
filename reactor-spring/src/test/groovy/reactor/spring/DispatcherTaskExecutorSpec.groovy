@@ -16,17 +16,18 @@
 
 package reactor.spring
 
-import reactor.core.Environment
-import reactor.core.spec.Reactors;
-import spock.lang.Specification
-
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+
+import reactor.core.Environment
+import reactor.core.spec.Reactors
+import reactor.event.dispatch.SynchronousDispatcher
+import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
  */
-class ReactorTaskExecutorSpec extends Specification {
+class DispatcherTaskExecutorSpec extends Specification {
 
   Environment env
 
@@ -34,11 +35,10 @@ class ReactorTaskExecutorSpec extends Specification {
     env = new Environment()
   }
 
-  def "ReactorTaskExecutor executes tasks"() {
+  def "DispatcherTaskExecutor executes tasks"() {
     given:
-      "a Reactor-backed TaskExecutor"
-      def reactor = Reactors.reactor().env(env).dispatcher(Environment.EVENT_LOOP).get()
-      def exec = new ReactorTaskExecutor(reactor)
+      "a Dispatcher-backed TaskExecutor"
+      def exec = new DispatcherTaskExecutor(new SynchronousDispatcher())
       def latch = new CountDownLatch(1)
 
     when:
