@@ -19,6 +19,8 @@ package reactor.tcp.encoding.syslog;
 import java.util.Date;
 
 /**
+ * An object representation of a syslog message
+ *
  * @author Jon Brisbin
  */
 public class SyslogMessage {
@@ -31,6 +33,17 @@ public class SyslogMessage {
 	private final String host;
 	private final String message;
 
+	/**
+	 * Creates a new syslog message.
+	 *
+	 * @param raw The raw, unparsed message
+	 * @param priority The message's priority
+	 * @param facility The message's facility
+	 * @param severity The message's severity
+	 * @param timestamp The message's timestamp
+	 * @param host The host from which the message originated
+	 * @param message The actual message
+	 */
 	public SyslogMessage(String raw,
 											 int priority,
 											 int facility,
@@ -47,26 +60,56 @@ public class SyslogMessage {
 		this.message = message;
 	}
 
+	/**
+	 * Returns the priority assigned to the message
+	 *
+	 * @return The message's priority
+	 */
 	public int getPriority() {
 		return priority;
 	}
 
+	/**
+	 * Returns the facility that sent the message
+	 *
+	 * @return The message's facility
+	 */
 	public int getFacility() {
 		return facility;
 	}
 
+	/**
+	 * Returns the severity assigned to the message
+	 *
+	 * @return The message's severity
+	 */
 	public int getSeverity() {
 		return severity;
 	}
 
+	/**
+	 * Returns the timestamp for the message
+	 *
+	 * @return The message's timestamp
+	 */
 	public Date getTimestamp() {
 		return timestamp;
 	}
 
+	/**
+	 * Returns the host from which the message originated
+	 *
+	 * @return The message's host
+	 */
 	public String getHost() {
 		return host;
 	}
 
+	/**
+	 * Returns the actual message
+	 *
+	 * @return The text-based message
+	 */
 	public String getMessage() {
 		return message;
 	}

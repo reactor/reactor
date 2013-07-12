@@ -37,6 +37,9 @@ import reactor.tuple.Tuple2;
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
  *
+ * @param <IN> The type that will be received by this connection
+ * @param <OUT> The type that will be sent by this connection
+ *
  * @author Jon Brisbin
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {

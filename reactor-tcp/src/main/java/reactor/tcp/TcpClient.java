@@ -41,6 +41,11 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 /**
+ * The base class for a Reactor-based TCP client.
+ *
+ * @param <IN> The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
+ *
  * @author Jon Brisbin
  */
 public abstract class TcpClient<IN, OUT> {

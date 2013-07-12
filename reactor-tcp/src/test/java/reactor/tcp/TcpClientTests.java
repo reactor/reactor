@@ -143,8 +143,8 @@ public class TcpClientTests {
 	public void closingPromiseIsFulfilled() throws InterruptedException {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
-				.codec(StandardCodecs.<Buffer, String, String>passthroughCodec())
-				.connect("www.google.com", 80)
+				.codec(null)
+				.connect("localhost", port)
 				.get();
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);

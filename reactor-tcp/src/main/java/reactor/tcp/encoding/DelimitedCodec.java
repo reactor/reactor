@@ -22,7 +22,13 @@ import reactor.io.Buffer;
 import reactor.io.Buffer.View;
 
 /**
- * An implementation of that splits a {@link Buffer} into segments based on a delimiter.
+ * An implementation of {@link Codec} that decodes by splitting a {@link Buffer} into segments
+ * based on a delimiter and encodes by appending its delimiter to each piece of output.
+ * During decoding the delegate is used to process each segment. During encoding the delegate
+ * is used to create a buffer for each piece of output to which the delimiter is then appended.
+ *
+ * @param <IN> The type that will be produced by decoding
+ * @param <OUT> The type that will be consumed by encoding
  *
  * @author Jon Brisbin
  */
@@ -33,7 +39,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private final boolean                stripDelimiter;
 
 	/**
-	 * Create a line-feed-delimited codec, using the given {@literal Codec} as a delegate.
+	 * Create a line-feed-delimited codec, using the given {@code Codec} as a delegate.
 	 *
 	 * @param delegate The delegate {@link Codec}.
 	 */
@@ -43,9 +49,10 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	/**
-	 * Create a line-feed-delimited codec, using the given {@literal Codec} as a delegate.
+	 * Create a line-feed-delimited codec, using the given {@code Codec} as a delegate.
 	 *
-	 * @param stripDelimiter Flag to indicate whether the delimiter should be stripped from the chunk or not.
+	 * @param stripDelimiter Flag to indicate whether the delimiter should be stripped from the
+	 *                       chunk or not during decoding.
 	 * @param delegate       The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
@@ -54,10 +61,13 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	/**
-	 * Create a delimited codec using the given delimiter and using the given {@literal Codec} as a delegate.
+	 * Create a delimited codec using the given delimiter and using the given {@code Codec}
+	 * as a delegate.
 	 *
-	 * @param delimiter The delimiter to use.
-	 * @param delegate  The delegate {@link Codec}.
+	 * @param delimiter      The delimiter to use.
+	 * @param stripDelimiter Flag to indicate whether the delimiter should be stripped from the
+	 *                       chunk or not during decoding.
+	 * @param delegate       The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(byte delimiter, boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
 		this.delimiter = delimiter;
@@ -109,6 +119,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		Function<OUT, Buffer> encoder = delegate.encoder();
 
 		@Override
+		@SuppressWarnings("resource")
 		public Buffer apply(OUT out) {
 			Buffer buffer = new Buffer();
 			Buffer encoded = encoder.apply(out);

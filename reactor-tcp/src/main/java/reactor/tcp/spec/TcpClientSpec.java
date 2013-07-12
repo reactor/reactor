@@ -15,6 +15,11 @@ import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 
 /**
+ * A helper class for specifying a {@code TcpClient}
+ *
+ * @param <IN> The type that will be received by the client
+ * @param <OUT> The type that will be sent by the client
+ *
  * @author Jon Brisbin
  */
 public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {

@@ -20,16 +20,22 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 
 /**
- * Implementations of a {@literal Codec} are responsible for decoding a {@code SRC} into an instance of {@code IN} and
- * passing that to the given {@link reactor.function.Consumer}. A codec also provides an encoder to take an instance of {@code
- * OUT} and encode to an instance of {@code SRC}.
+ * Implementations of a {@literal Codec} are responsible for decoding a {@code SRC} into an
+ * instance of {@code IN} and passing that to the given {@link reactor.function.Consumer}. A
+ * codec also provides an encoder to take an instance of {@code OUT} and encode to an
+ * instance of {@code SRC}.
+ *
+ * @param <SRC> The type that the codec decodes from and encodes to
+ * @param <IN> The type produced by decoding
+ * @param <OUT> The type consumed by encoding
  *
  * @author Jon Brisbin
  */
 public interface Codec<SRC, IN, OUT> {
 
 	/**
-	 * Provide the caller with a decoder to turn a source object into an instance of the input type.
+	 * Provide the caller with a decoder to turn a source object into an instance of the input
+	 * type.
 	 *
 	 * @param next The {@link Consumer} to call after the object has been decoded.
 	 * @return The decoded object.
@@ -37,7 +43,8 @@ public interface Codec<SRC, IN, OUT> {
 	Function<SRC, IN> decoder(Consumer<IN> next);
 
 	/**
-	 * Provide the caller with an encoder to turn an output object into an instance of the source type.
+	 * Provide the caller with an encoder to turn an output object into an instance of the source
+	 * type.
 	 *
 	 * @return The encoded source object.
 	 */

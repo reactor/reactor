@@ -18,18 +18,16 @@ package reactor.tcp.encoding.syslog;
 
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Supplier;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 
 /**
+ * A coded for consuming syslog messages. This codec produces no output, i.e.  its encoding
+ * function returns {@code null}.
+ *
  * @author Jon Brisbin
  */
 public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
@@ -46,21 +44,6 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 			return null;
 		}
 	};
-
-	private final Cache<List<Buffer.View>> viewsCache;
-
-	public SyslogCodec() {
-		this.viewsCache = new LoadingCache<List<Buffer.View>>(
-				new Supplier<List<Buffer.View>>() {
-					@Override
-					public List<Buffer.View> get() {
-						return new ArrayList<Buffer.View>();
-					}
-				},
-				64,
-				500
-		);
-	}
 
 	@Override
 	public Function<Buffer, SyslogMessage> decoder(Consumer<SyslogMessage> next) {
@@ -143,7 +126,7 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 																										priority,
 																										facility,
 																										severity,
-																										null,
+																										tstamp,
 																										host,
 																										msg);
 				if (null != next) {

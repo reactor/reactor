@@ -24,6 +24,8 @@ import reactor.cache.LoadingCache;
 import reactor.event.dispatch.AbstractDispatcher;
 
 /**
+ * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
+ *
  * @author Jon Brisbin
  */
 @SuppressWarnings({"rawtypes"})
@@ -32,6 +34,13 @@ public class NettyEventLoopDispatcher extends AbstractDispatcher {
 	private final EventLoop   eventLoop;
 	private final Cache<Task> readyTasks;
 
+	/**
+	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given
+	 * {@code eventLoop} with the given {@code backlog} size.
+	 *
+	 * @param eventLoop The event loop to run tasks on
+	 * @param backlog The size of the backlog of unexecuted tasks
+	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
 		this.eventLoop = eventLoop;
 		this.readyTasks = new LoadingCache<Task>(

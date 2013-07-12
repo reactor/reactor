@@ -17,30 +17,54 @@
 package reactor.tcp.config;
 
 /**
+ * Encapsulates configuration options for server sockets.
+ *
  * @author Jon Brisbin
  */
 public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions> {
 
-	public int     backlog   = 1000;
-	public boolean reuseAddr = true;
+	private int     backlog   = 1000;
+	private boolean reuseAddr = true;
 
+	/**
+	 * Returns the configured pending connection backlog for the socket.
+	 *
+	 * @return The configured connection backlog size
+	 */
 	public int backlog() {
 		return backlog;
 	}
 
+	/**
+	 * Configures the size of the pending connection backlog for the socket.
+	 *
+	 * @param backlog The size of the backlog
+	 *
+	 * @return {@code this}
+	 */
 	public ServerSocketOptions backlog(int backlog) {
 		this.backlog = backlog;
 		return this;
 	}
 
+	/**
+	 * Returns a boolean indicating whether or not {@code SO_REUSEADDR} is enabled
+	 *
+	 * @return {@code true} if {@code SO_REUSEADDR} is enabled, {@code false} if it is not
+	 */
 	public boolean reuseAddr() {
 		return reuseAddr;
 	}
 
+	/**
+	 * Enables or disables {@code SO_REUSEADDR}.
+	 *
+	 * @param reuseAddr {@code true} to enable {@code SO_REUSEADDR}, {@code false} to disable it
+	 *
+	 * @return {@code this}
+	 */
 	public ServerSocketOptions reuseAddr(boolean reuseAddr) {
 		this.reuseAddr = reuseAddr;
 		return this;
 	}
-
-
 }

@@ -41,6 +41,11 @@ import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 
 /**
+ * A Netty-based {@code TcpClient}.
+ *
+ * @param <IN> The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
+ *
  * @author Jon Brisbin
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
@@ -52,6 +57,21 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ClientSocketOptions options;
 	private final EventLoopGroup      ioGroup;
 
+	/**
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given
+	 * {@code reactor} to send events. The number of IO threads used by the client is configured by
+	 * the environment's {@code reactor.tcp.ioThreadCount} property. In its absence the number of
+	 * IO threads will be equal to the {@link Environment#PROCESSORS number of available processors}.
+	 * </p>
+	 * The client will connect to the given {@code connectAddress}, configuring its socket using the
+	 * given {@code opts}. The given {@code codec} will be used for encoding and decoding of data.
+	 *
+	 * @param env The configuration environment
+	 * @param reactor The reactor used to send events
+	 * @param connectAddress The address the client will connect to
+	 * @param opts The configuration options for the client's socket
+	 * @param codec The codec used to encode and decode data
+	 */
 	public NettyTcpClient(@Nonnull Environment env,
 												@Nonnull Reactor reactor,
 												@Nonnull InetSocketAddress connectAddress,
@@ -141,6 +161,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		};
 	}
 
+	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	protected void doClose(final Deferred<Void, Promise<Void>> d) {
 		try {

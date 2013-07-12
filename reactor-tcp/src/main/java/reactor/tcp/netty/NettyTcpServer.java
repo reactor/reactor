@@ -44,6 +44,11 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * A Netty-based {@code TcpServer} implementation
+ *
+ * @param <IN> The type that will be received by this server
+ * @param <OUT> The type that will be sent by this server
+ *
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {

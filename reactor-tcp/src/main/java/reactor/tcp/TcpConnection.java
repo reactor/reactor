@@ -25,6 +25,9 @@ import java.net.InetSocketAddress;
 /**
  * Implementations of this class provide functionality for reading and writing to TCP connections.
  *
+ * @param <IN> The type that will be received by this connection
+ * @param <OUT> The type that will be sent by this connection
+ *
  * @author Jon Brisbin
  */
 public interface TcpConnection<IN, OUT> {

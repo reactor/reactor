@@ -18,6 +18,11 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
+ * A TcpServerSpec is used to specify a TcpServer
+ *
+ * @param <IN> The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
+ *
  * @author Jon Brisbin
  */
 public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {

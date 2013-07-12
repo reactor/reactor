@@ -29,6 +29,11 @@ import reactor.util.Assert;
 import java.io.IOException;
 
 /**
+ * A codec for decoding JSON into Java objects and encoding Java objects into JSON.
+ *
+ * @param <IN> The type to decode JSON into
+ * @param <OUT> The type to encode into JSON
+ *
  * @author Jon Brisbin
  */
 public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
@@ -36,10 +41,24 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private final Class<IN>    inputType;
 	private final ObjectMapper mapper;
 
+	/**
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
+	 * decoding.
+	 *
+	 * @param inputType The type to create when decoding.
+	 */
 	public JsonCodec(Class<IN> inputType) {
 		this(inputType, null);
 	}
 
+	/**
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
+	 * decoding. The {@code customModule} will be registered with the underlying {@link
+	 * ObjectMapper}.
+	 *
+	 * @param inputType The type to create when decoding.
+	 * @param customModule The module to register with the underlying ObjectMapper
+	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule) {
 		Assert.notNull(inputType, "inputType must not be null");

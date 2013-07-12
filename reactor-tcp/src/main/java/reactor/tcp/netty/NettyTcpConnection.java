@@ -32,7 +32,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 /**
- * {@link reactor.tcp.TcpConnection} implementation that uses Netty.
+ * A {@link TcpConnection} implementation that uses Netty.
  *
  * @author Jon Brisbin
  */

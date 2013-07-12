@@ -22,6 +22,14 @@ import reactor.io.Buffer;
 import reactor.util.Assert;
 
 /**
+ * A codec that uses a length-field at the start of each chunk to denote the chunk's size.
+ * During decoding the delegate is used to process each chunk. During encoding the delegate
+ * is used to encode each piece of output into a buffer. The buffer is then output, with its
+ * length prepended.
+ *
+ * @param <IN> The type that will be produced by decoding
+ * @param <OUT> The type that will be consumed by encoding
+ *
  * @author Jon Brisbin
  */
 public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
@@ -30,7 +38,8 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	private final Codec<Buffer, IN, OUT> delegate;
 
 	/**
-	 * Create a length-field codec that reads the first integer as the length of the remaining message.
+	 * Create a length-field codec that reads the first integer as the length of the
+	 * remaining message.
 	 *
 	 * @param delegate The delegate {@link Codec}.
 	 */
@@ -39,10 +48,10 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	}
 
 	/**
-	 * Create a length-field codec that reads either the first integer or the first long as the the length of the remaining
-	 * message.
+	 * Create a length-field codec that reads either the first integer or the first long as the
+	 * length of the remaining message, and prepends either an integer or long to its output.
 	 *
-	 * @param lengthFieldLength The length of the length field. Valid values are 4 (int) or 8 (long).
+	 * @param lengthFieldLength The size of the length field. Valid values are 4 (int) or 8 (long).
 	 * @param delegate          The delegate {@link Codec}.
 	 */
 	public LengthFieldCodec(int lengthFieldLength, Codec<Buffer, IN, OUT> delegate) {

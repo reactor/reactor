@@ -16,10 +16,9 @@
 
 package reactor.tcp.encoding;
 
-import reactor.function.Consumer;
-import reactor.function.Function;
-
 /**
+ * A selection of standard codecs.
+ *
  * @author Jon Brisbin
  */
 public abstract class StandardCodecs {
@@ -27,31 +26,20 @@ public abstract class StandardCodecs {
 	private StandardCodecs() {
 	}
 
+	/**
+	 * A {@link ByteArrayCodec}.
+	 *
+	 */
 	public static final ByteArrayCodec                 BYTE_ARRAY_CODEC = new ByteArrayCodec();
+
+	/**
+	 * A {@link StringCodec}.
+	 */
 	public static final StringCodec                    STRING_CODEC     = new StringCodec();
+
+	/**
+	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed
+	 * ({@code '\n'}) character
+	 */
 	public static final DelimitedCodec<String, String> LINE_FEED_CODEC  = new DelimitedCodec<String, String>(STRING_CODEC);
-
-	public static <SRC,IN,OUT> Codec<SRC,IN,OUT> passthroughCodec(){
-		return new Codec<SRC, IN, OUT>() {
-			@Override
-			public Function<SRC, IN> decoder(Consumer<IN> next) {
-				return new Function<SRC, IN>() {
-					@Override
-					public IN apply(SRC src) {
-						return null;
-					}
-				};
-			}
-
-			@Override
-			public Function<OUT, SRC> encoder() {
-				return new Function<OUT, SRC>() {
-					@Override
-					public SRC apply(OUT out) {
-						return null;
-					}
-				};
-			}
-		};
-	}
 }
