@@ -16,18 +16,8 @@
 
 package reactor.tcp;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import reactor.core.Environment;
-import reactor.function.Consumer;
-import reactor.tcp.config.ServerSocketOptions;
-import reactor.tcp.encoding.LengthFieldCodec;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.encoding.json.JsonCodec;
-import reactor.tcp.netty.NettyTcpServer;
-import reactor.tcp.spec.TcpServerSpec;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,8 +29,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import reactor.core.Environment;
+import reactor.function.Consumer;
+import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.encoding.LengthFieldCodec;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.encoding.json.JsonCodec;
+import reactor.tcp.netty.NettyTcpServer;
+import reactor.tcp.spec.TcpServerSpec;
 
 /**
  * @author Jon Brisbin
@@ -75,7 +76,7 @@ public class TcpServerTests {
 		TcpServer<Pojo, Pojo> server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer.class)
 				.env(env)
 				.dispatcher(Environment.EVENT_LOOP)
-				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class, Pojo.class))
+				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class))
 				.consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
 					@Override
 					public void accept(TcpConnection<Pojo, Pojo> conn) {

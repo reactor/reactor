@@ -95,7 +95,7 @@ class NettyTcpServerSpec extends Specification {
 		def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 				env(env).
 				listen(port).
-				codec(new JsonCodec<Pojo, Pojo>(Pojo, Pojo)).
+				codec(new JsonCodec<Pojo, Pojo>(Pojo)).
 				consume({ conn ->
 					conn.receive({ pojo ->
 						assert pojo.name == "John Doe"
