@@ -30,24 +30,40 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 
 /**
- * Implementation of a {@link Dispatcher} that uses a <a href="http://github.com/lmax-exchange/disruptor">Disruptor
- * RingBuffer</a> to queue tasks to execute.
+ * Implementation of a {@link Dispatcher} that uses a {@link RingBuffer} to queue tasks to
+ * execute.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public class RingBufferDispatcher extends AbstractDispatcher {
 
+	private static final int DEFAULT_DEFAULT_SIZE = 1024;
+
 	private final ExecutorService            executor;
 	private final Disruptor<RingBufferTask<?>>  disruptor;
 	private final RingBuffer<RingBufferTask<?>> ringBuffer;
 
 	/**
-	 * Creates a new {@literal RingBufferDispatcher} with the given configuration.
+	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a
+	 * RingBuffer with 1024 slots, configured with a producer type of {@link ProducerType#MULTI
+	 * MULTI} and a {@link YieldingWaitStrategy yielding wait strategy}.
+	 *
+	 * @param name The name of the dispatcher.
+	 */
+	public RingBufferDispatcher(String name) {
+		this(name, DEFAULT_DEFAULT_SIZE, ProducerType.MULTI, new YieldingWaitStrategy());
+	}
+
+	/**
+	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use
+	 * a {@link RingBuffer} with {@code bufferSize} slots, configured with the given {@code
+	 * producerType} and {@code waitStrategy}.
 	 *
 	 * @param name         The name of the dispatcher
 	 * @param bufferSize   The size to configure the ring buffer with
