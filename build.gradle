@@ -42,6 +42,10 @@ ext {
 
 	// Code coverage
 	jacocoVersion = '0.6.2.201302030002'
+
+	javadocLinks = [
+			"http://docs.oracle.com/javaee/6/api/"
+	] as String[]
 }
 
 buildscript {
@@ -78,7 +82,6 @@ allprojects {
 subprojects { subproject ->
 	apply plugin: 'java'
 	apply plugin: 'groovy'
-
 	apply plugin: 'eclipse'
 
 	sourceCompatibility = 1.6
@@ -218,6 +221,10 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
+
+	// don't publish the default jar for the root project
+	configurations.archives.artifacts.clear()
+
 	dependencies {
 		compile project(':reactor-core')
 	}
@@ -235,6 +242,39 @@ project('reactor-tcp') {
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+}
+
+configure(rootProject) {
+	description = "Reactor"
+
+	task api(type: Javadoc) {
+		group = "Documentation"
+		description = "Generates aggregated Javadoc API documentation."
+		title = "${rootProject.description} ${version} API"
+
+		dependsOn {
+			subprojects.collect {
+				it.tasks.getByName("jar")
+			}
+		}
+		options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
+		options.author = true
+		options.header = rootProject.description
+		//options.overview = "src/api/overview.html"
+		options.stylesheetFile = file("src/api/stylesheet.css")
+		options.links(project.ext.javadocLinks)
+
+		source subprojects.collect { project ->
+			project.sourceSets.main.allJava
+		}
+
+		maxMemory = "1024m"
+		destinationDir = new File(buildDir, "api")
+
+		doFirst {
+			classpath = files(subprojects.collect { it.sourceSets.main.compileClasspath })
+		}
 	}
 }
 
