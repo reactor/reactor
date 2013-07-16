@@ -22,8 +22,9 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.socket.SocketChannel;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.function.Consumer;
+import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.AbstractTcpConnection;
 import reactor.tcp.encoding.Codec;
@@ -32,7 +33,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 /**
- * A {@link TcpConnection} implementation that uses Netty.
+ * A {@link reactor.tcp.TcpConnection} implementation that uses Netty.
  *
  * @author Jon Brisbin
  */
@@ -81,14 +82,21 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 	@Override
 	protected void write(Object data, final Consumer<Boolean> onComplete) {
 		ChannelFuture writeFuture = channel.write(data);
-		if (null != onComplete) {
-			writeFuture.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					onComplete.accept(future.isSuccess());
+		writeFuture.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				boolean success = future.isSuccess();
+
+				if (!success) {
+					Throwable t = future.cause();
+					eventsReactor.notify(t, Event.wrap(t));
 				}
-			});
-		}
+
+				if (null != onComplete) {
+					onComplete.accept(success);
+				}
+			}
+		});
 	}
 
 	@Override
