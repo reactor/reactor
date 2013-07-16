@@ -26,6 +26,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Functions;
@@ -37,9 +38,8 @@ import reactor.tuple.Tuple2;
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
  *
- * @param <IN> The type that will be received by this connection
+ * @param <IN>  The type that will be received by this connection
  * @param <OUT> The type that will be sent by this connection
- *
  * @author Jon Brisbin
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
@@ -61,9 +61,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.ioReactor = Reactors.reactor()
-											.env(env)
-											.dispatcher(ioDispatcher)
-											.get();
+														 .env(env)
+														 .dispatcher(ioDispatcher)
+														 .get();
 		this.eventsReactor = eventsReactor;
 		if (null != codec) {
 			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getT2(), eventsReactor));
@@ -92,9 +92,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Stream<IN> in() {
 		final Deferred<IN, Stream<IN>> d = Streams.<IN>defer()
-																				.env(env)
-																				.dispatcher(eventsReactor.getDispatcher())
-																				.get();
+																							.env(env)
+																							.dispatcher(eventsReactor.getDispatcher())
+																							.get();
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -107,9 +107,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Deferred<OUT, Stream<OUT>> out() {
 		Deferred<OUT, Stream<OUT>> d = Streams.<OUT>defer()
-																		.env(env)
-																		.dispatcher(eventsReactor.getDispatcher())
-																		.get();
+																					.env(env)
+																					.dispatcher(eventsReactor.getDispatcher())
+																					.get();
 		d.compose().consume(new Consumer<OUT>() {
 			@Override
 			public void accept(OUT out) {
@@ -117,6 +117,12 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 			}
 		});
 		return d;
+	}
+
+	@Override
+	public <T extends Throwable> TcpConnection<IN, OUT> when(Class<T> errorType, Consumer<T> errorConsumer) {
+		eventsReactor.on(Selectors.T(errorType), new EventConsumer<T>(errorConsumer));
+		return this;
 	}
 
 	@Override
@@ -163,17 +169,21 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 				new Consumer<OUT>() {
 					@Override
 					public void accept(OUT data) {
-						if (null != encoder) {
-							Buffer bytes = encoder.apply(data);
-							if (bytes.remaining() > 0) {
-								write(bytes, onComplete);
-							}
-						} else {
-							if (Buffer.class.isInstance(data)) {
-								write((Buffer) data, onComplete);
+						try {
+							if (null != encoder) {
+								Buffer bytes = encoder.apply(data);
+								if (bytes.remaining() > 0) {
+									write(bytes, onComplete);
+								}
 							} else {
-								write(data, onComplete);
+								if (Buffer.class.isInstance(data)) {
+									write((Buffer) data, onComplete);
+								} else {
+									write(data, onComplete);
+								}
 							}
+						} catch (Throwable t) {
+							eventsReactor.notify(t.getClass(), Event.wrap(t));
 						}
 					}
 				},

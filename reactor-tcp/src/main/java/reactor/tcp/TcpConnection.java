@@ -25,9 +25,8 @@ import java.net.InetSocketAddress;
 /**
  * Implementations of this class provide functionality for reading and writing to TCP connections.
  *
- * @param <IN> The type that will be received by this connection
+ * @param <IN>  The type that will be received by this connection
  * @param <OUT> The type that will be sent by this connection
- *
  * @author Jon Brisbin
  */
 public interface TcpConnection<IN, OUT> {
@@ -74,6 +73,16 @@ public interface TcpConnection<IN, OUT> {
 	Consumer<OUT> out();
 
 	/**
+	 * Set an error {@link Consumer} for errors that happen on the connection.
+	 *
+	 * @param errorType     The type of error to handle.
+	 * @param errorConsumer The {@link Consumer} when the given error occurs.
+	 * @param <T>           The type of the error.
+	 * @return {@literal this}
+	 */
+	<T extends Throwable> TcpConnection<IN, OUT> when(Class<T> errorType, Consumer<T> errorConsumer);
+
+	/**
 	 * Set a callback for consuming decoded data.
 	 *
 	 * @param consumer The data {@link Consumer}.
@@ -82,8 +91,8 @@ public interface TcpConnection<IN, OUT> {
 	TcpConnection<IN, OUT> consume(Consumer<IN> consumer);
 
 	/**
-	 * Use the given {@link Function} to handle incoming data, like in {@link #consume(reactor.function.Consumer)}, but this
-	 * method expects the {@link Function} to return a response object.
+	 * Use the given {@link Function} to handle incoming data, like in {@link #consume(reactor.function.Consumer)}, but
+	 * this method expects the {@link Function} to return a response object.
 	 *
 	 * @param fn The data-consuming {@link Function}.
 	 * @return {@literal this}
