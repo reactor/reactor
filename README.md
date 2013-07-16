@@ -47,7 +47,7 @@ When Reactor is released as a milestone or release, the artifacts will be genera
 
 * [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
 * [GitHub Issues](https://github.com/reactor/reactor/issues)
-* [Reference Documentation](wiki/Home)
+* [Reference Documentation](https://github.com/reactor/reactor/wiki)
 
 ---
 
