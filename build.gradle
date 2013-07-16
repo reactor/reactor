@@ -221,10 +221,6 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
-
-	// don't publish the default jar for the root project
-	configurations.archives.artifacts.clear()
-
 	dependencies {
 		compile project(':reactor-core')
 	}
