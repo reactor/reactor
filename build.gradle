@@ -158,6 +158,8 @@ subprojects { subproject ->
 }
 
 project('reactor-core') {
+
+	apply plugin: 'osgi'
 	description = 'Core Reactor components'
 	dependencies {
 
@@ -227,7 +229,15 @@ project('reactor-benchmark') {
 }
 
 project('reactor-tcp') {
+	apply plugin: 'osgi'
 	description = 'Reactor TCP components'
+
+	ext.bundleImportPackages = [
+		'com.fasterxml.jackson.core;resolution:=optional',
+		'com.fasterxml.jackson.databind;resolution:=optional',
+		'*'
+	]
+
 	dependencies {
 		compile project(':reactor-core')
 
@@ -238,6 +248,12 @@ project('reactor-tcp') {
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+
+	jar {
+		manifest {
+			instruction 'Import-Package' , bundleImportPackages.join(',')
+		}
 	}
 }
 
