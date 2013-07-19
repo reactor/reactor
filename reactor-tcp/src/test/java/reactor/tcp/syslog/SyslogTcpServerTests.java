@@ -16,16 +16,8 @@
 
 package reactor.tcp.syslog;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.MessageList;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -33,19 +25,10 @@ import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.string.StringDecoder;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
 import reactor.core.Environment;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -58,8 +41,20 @@ import reactor.tcp.netty.NettyTcpServer;
 import reactor.tcp.spec.TcpServerSpec;
 import reactor.tcp.syslog.hdfs.HdfsConsumer;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @Ignore
 public class SyslogTcpServerTests {
@@ -104,18 +99,16 @@ public class SyslogTcpServerTests {
 					 Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null);
 
 					 @Override
-					 public void decode(ChannelHandlerContext ctx, String msg, MessageList<Object> messages) throws Exception {
+					 public void decode(ChannelHandlerContext ctx, String msg, List<Object> messages) throws Exception {
 						 messages.add(decoder.apply(Buffer.wrap(msg + "\n")));
 					 }
 				 });
 				 pipeline.addLast("handler", new ChannelInboundHandlerAdapter() {
 
 					 @Override
-					 public void messageReceived(ChannelHandlerContext ctx, MessageList<Object> messages) throws Exception {
-						 for (Object message: messages) {
-							 latch.countDown();
-							 hdfs.accept((SyslogMessage)message);
-						 }
+					 public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+						 latch.countDown();
+						 hdfs.accept((SyslogMessage)msg);
 					 }
 				 });
 			 }
