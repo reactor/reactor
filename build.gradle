@@ -175,6 +175,7 @@ project('reactor-core') {
 }
 
 project('reactor-groovy') {
+	apply plugin: 'osgi'
 	description = 'Reactor Groovy components'
 	dependencies {
 		compile project(':reactor-core')
@@ -184,6 +185,7 @@ project('reactor-groovy') {
 }
 
 project('reactor-spring') {
+	apply plugin: 'osgi'
 	description = 'Reactor Spring components'
 
 	eclipse {
