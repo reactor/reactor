@@ -21,6 +21,13 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import reactor.io.Buffer;
 
+/**
+ * A {@link ChannelInboundHandlerAdapter} implementation that uses NettyTcpConnection.
+ *
+ * @author Jon Brisbin
+ * @author Stephane Maldini
+ */
+
 class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapter {
 
 	private final NettyTcpConnection<?, ?> conn;
@@ -30,7 +37,6 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	NettyTcpConnectionChannelInboundHandler(NettyTcpConnection<?, ?> conn) {
 		this.conn = conn;
 	}
-
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {

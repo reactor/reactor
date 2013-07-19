@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
  * A {@link reactor.tcp.TcpConnection} implementation that uses Netty.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
@@ -81,7 +82,7 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
 	@Override
 	protected void write(Object data, final Consumer<Boolean> onComplete) {
-		ChannelFuture writeFuture = channel.write(data);
+		ChannelFuture writeFuture = channel.writeAndFlush(data);
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
