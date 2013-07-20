@@ -100,6 +100,39 @@ public class TcpClientTests {
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
+    
+
+
+	@Test
+	public void testTcpClientWithInetSocketAddress() throws InterruptedException {
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
+				.env(env)
+				.codec(StandardCodecs.STRING_CODEC)
+				.connect(new InetSocketAddress("localhost", port))
+				.get();
+
+		client.open().consume(new Consumer<TcpConnection<String, String>>() {
+			@Override
+			public void accept(TcpConnection<String, String> conn) {
+				conn.in().consume(new Consumer<String>() {
+					@Override
+					public void accept(String s) {
+						latch.countDown();
+					}
+				});
+				conn.out().accept("Hello World!");
+			}
+		});
+
+		latch.await(30, TimeUnit.SECONDS);
+
+		client.close();
+
+		assertThat("latch was counted down", latch.getCount(), is(0L));
+	}
+    
 
 	@Test
 	public void tcpClientHandlesLineFeedData() throws InterruptedException {
