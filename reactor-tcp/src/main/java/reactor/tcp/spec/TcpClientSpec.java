@@ -72,8 +72,18 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	 * @return {@literal this}
 	 */
 	public TcpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
-		Assert.isNull(connectAddress, "Connect address is already set.");
-		this.connectAddress = new InetSocketAddress(host, port);
+		return connect(new InetSocketAddress(host, port));
+	}
+
+	/**
+	 * The address to which this client should connect.
+	 *
+	 * @param connectAddress The address to connect to.
+	 * @return {@literal this}
+	 */
+	public TcpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
+		Assert.isNull(this.connectAddress, "Connect address is already set.");
+		this.connectAddress = connectAddress;
 		return this;
 	}
 
