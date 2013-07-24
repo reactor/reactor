@@ -550,6 +550,19 @@ class PromisesSpec extends Specification {
       "it is fulfilled"
 	    combined.success
 	    combined.get() == [1, 2]
+
+	  when:
+		  "promises are supplied"
+		  promise1 = Promises.task(supplier{'1'}).get()
+		  promise2 = Promises.task(supplier{'2'}).get()
+		  combined = Promises.when(promise1, promise2)
+
+
+	  then:
+		  "it is fulfilled"
+		  combined.success
+		  combined.get() == ['1', '2']
+
   }
 
 	def "A combined promise through 'any' is fulfilled with the first component result when using synchronously"() {

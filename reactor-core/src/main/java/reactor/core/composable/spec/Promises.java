@@ -53,7 +53,7 @@ public abstract class Promises {
 	 * @return A {@link PromiseSpec}.
 	 */
 	public static <T> PromiseSpec<T> task(Supplier<T> supplier) {
-		return new PromiseSpec<T>().success(supplier);
+		return new PromiseSpec<T>().supply(supplier);
 	}
 
 	/**

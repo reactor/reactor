@@ -58,7 +58,7 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 	 *
 	 * @return {@code this}
 	 */
-	public PromiseSpec<T> success(Supplier<T> valueSupplier) {
+	public PromiseSpec<T> supply(Supplier<T> valueSupplier) {
 		Assert.isNull(error, "Cannot set both an error and a Supplier. Use one or the other.");
 		Assert.isNull(value, "Cannot set both a value and a Supplier. Use one or the other.");
 		this.valueSupplier = valueSupplier;
