@@ -17,7 +17,7 @@
 package reactor.cache;
 
 import reactor.function.Supplier;
-import reactor.support.BlockingQueueFactory;
+import reactor.queue.BlockingQueueFactory;
 
 import javax.annotation.Nullable;
 import java.util.concurrent.BlockingQueue;

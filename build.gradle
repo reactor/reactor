@@ -22,7 +22,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.1.5'
+	groovyVersion = '2.1.6'
 
 	// Logging
 	slf4jVersion = '1.7.5'
@@ -35,6 +35,7 @@ ext {
 	nettyVersion = '4.0.3.Final'
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
+	javaChronicleVersion = '1.7.2'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -44,6 +45,7 @@ ext {
 	jacocoVersion = '0.6.2.201302030002'
 
 	javadocLinks = [
+			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/"
 	] as String[]
 }
@@ -171,6 +173,9 @@ project('reactor-core') {
 
 		// High-speed Dispatching
 		compile "com.lmax:disruptor:$disruptorVersion"
+
+		// High-speed Messaging
+		compile("com.higherfrequencytrading:chronicle:$javaChronicleVersion", optional)
 	}
 }
 
@@ -235,9 +240,9 @@ project('reactor-tcp') {
 	description = 'Reactor TCP components'
 
 	ext.bundleImportPackages = [
-		'com.fasterxml.jackson.core;resolution:=optional',
-		'com.fasterxml.jackson.databind;resolution:=optional',
-		'*'
+			'com.fasterxml.jackson.core;resolution:=optional',
+			'com.fasterxml.jackson.databind;resolution:=optional',
+			'*'
 	]
 
 	dependencies {
@@ -254,7 +259,7 @@ project('reactor-tcp') {
 
 	jar {
 		manifest {
-			instruction 'Import-Package' , bundleImportPackages.join(',')
+			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
 	}
 }
