@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.support;
+package reactor.queue;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
