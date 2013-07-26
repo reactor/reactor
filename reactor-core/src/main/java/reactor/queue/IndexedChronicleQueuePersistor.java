@@ -17,7 +17,11 @@ import reactor.function.Supplier;
 import reactor.io.Buffer;
 
 /**
+ * A {@link QueuePersistor} implementation that uses a <a href="https://github.com/peter-lawrey/Java-Chronicle">Java
+ * Chronicle</a> {@literal IndexedChronicle} to persist items in the queue.
+ *
  * @author Jon Brisbin
+ * @see <a href="https://github.com/peter-lawrey/Java-Chronicle">Java Chronicle</a>
  */
 public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
@@ -29,11 +33,33 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private final ChronicleGetFunction    getFun;
 	private final ChronicleRemoveFunction removeFun;
 
-
+	/**
+	 * Create an {@link IndexedChronicleQueuePersistor} based on the given base path.
+	 *
+	 * @param basePath
+	 * 		Directory in which to create the Chronicle.
+	 *
+	 * @throws IOException
+	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
 		this(basePath, null, null, true);
 	}
 
+	/**
+	 * Create an {@link IndexedChronicleQueuePersistor} based on the given base path, encoder and decoder. Optionally,
+	 * passing {@literal false} to {@code clearOnStart} skips clearing the Chronicle on start for appending.
+	 *
+	 * @param basePath
+	 * 		Directory in which to create the Chronicle.
+	 * @param encoder
+	 * 		Encoder to turn objects into a {@link Buffer}.
+	 * @param decoder
+	 * 		Decoder to turn {@link Buffer Buffers} into an object.
+	 * @param clearOnStart
+	 * 		Whether to clear the Chronicle on start or not.
+	 *
+	 * @throws IOException
+	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath,
 	                                      @Nullable Function<T, Buffer> encoder,
 	                                      @Nullable Function<Buffer, T> decoder,
@@ -55,6 +81,9 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 	}
 
+	/**
+	 * Close the underlying chronicles.
+	 */
 	public void close() {
 		offerFun.chronicle.close();
 		getFun.chronicle.close();
@@ -82,7 +111,21 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	}
 
 	@Override public Iterator<T> iterator() {
-		return null;
+		return new Iterator<T>() {
+			Excerpt ex = getFun.chronicle.createExcerpt();
+			long idx = 0;
+
+			public boolean hasNext() {
+				return ex.index(idx);
+			}
+
+			@Override public T next() {
+				return getFun.apply(idx++);
+			}
+
+			@Override public void remove() {
+			}
+		};
 	}
 
 	private class ChronicleOfferFunction implements Function<T, Long> {

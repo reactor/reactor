@@ -22,4 +22,34 @@ import spock.lang.Specification
  * @author Jon Brisbin
  */
 class PersistentQueueSpec extends Specification {
+
+  String tmpdir
+
+  def setup() {
+    tmpdir = System.getProperty("java.io.tmpdir", "/tmp")
+  }
+
+  def "File-based PersistentQueue is sharable"() {
+
+    given:
+      "a pair of IndexedChroniclePersistentQueues"
+      def wq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("${tmpdir}tests"))
+      def rq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("${tmpdir}tests"))
+
+    when:
+      "data is written to the queue using a write Queue"
+      for (i in 1..100) {
+        wq.offer("test $i")
+      }
+      def count = 0
+      for (String s : rq) {
+        ++count
+      }
+
+    then:
+      "data was readable from the read Queue"
+      count == 100
+
+  }
+
 }
