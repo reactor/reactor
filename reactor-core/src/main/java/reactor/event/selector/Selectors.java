@@ -171,14 +171,12 @@ public abstract class Selectors {
 	 *
 	 * @param predicate
 	 * 		The {@link Predicate} to delegate to when matching objects.
-	 * @param <T>
-	 * 		The type of the object this predicate matches.
 	 *
 	 * @return PredicateSelector
 	 *
 	 * @see {@link PredicateSelector}
 	 */
-	public static <T> Selector predicate(Predicate<T> predicate) {
+	public static Selector predicate(Predicate<Object> predicate) {
 		return new PredicateSelector(predicate);
 	}
 
