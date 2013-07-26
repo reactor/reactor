@@ -16,13 +16,12 @@
 
 package reactor.spring.context;
 
-import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
+import java.lang.reflect.Proxy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -32,15 +31,9 @@ import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionService;
-import org.springframework.core.convert.TypeDescriptor;
-import org.springframework.expression.AccessException;
 import org.springframework.expression.BeanResolver;
-import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.EvaluationException;
 import org.springframework.expression.Expression;
-import org.springframework.expression.MethodExecutor;
-import org.springframework.expression.MethodResolver;
-import org.springframework.expression.TypedValue;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -61,8 +54,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
                                                   BeanFactoryAware,
                                                   Ordered {
 
-	private static final Logger               LOG              = LoggerFactory.getLogger(ConsumerBeanPostProcessor.class);
-	private static final List<MethodResolver> METHOD_RESOLVERS = Arrays.<MethodResolver>asList(new ReactorsMethodResolver());
+	private static final Logger LOG = LoggerFactory.getLogger(ConsumerBeanPostProcessor.class);
+
 	private BeanResolver beanResolver;
 	private TemplateAwareExpressionParser expressionParser = new SpelExpressionParser();
 	private final ConversionService conversionService;
@@ -84,8 +77,26 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	@Override
 	public Object postProcessBeforeInitialization(final Object bean,
 	                                              String beanName) throws BeansException {
+		Class<?> type = bean.getClass();
+		if(Proxy.isProxyClass(bean.getClass())) {
+			for(Class<?> iface : AopProxyUtils.proxiedUserInterfaces(type)) {
+				findHandlerMethods(iface, bean);
+			}
+		} else {
+			findHandlerMethods(type, bean);
+		}
+		return bean;
+	}
+
+	@Override
+	public Object postProcessAfterInitialization(Object bean,
+	                                             String beanName) throws BeansException {
+		return bean;
+	}
+
+	private void findHandlerMethods(Class<?> type, final Object bean) {
 		ReflectionUtils.doWithMethods(
-				bean.getClass(),
+				type,
 				new ReflectionUtils.MethodCallback() {
 					@Override
 					public void doWith(final Method method) throws IllegalArgumentException,
@@ -93,7 +104,6 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 						StandardEvaluationContext evalCtx = new StandardEvaluationContext();
 						evalCtx.setRootObject(bean);
 						evalCtx.setBeanResolver(beanResolver);
-						evalCtx.setMethodResolvers(METHOD_RESOLVERS);
 
 						On onAnno = AnnotationUtils.findAnnotation(method, On.class);
 
@@ -196,69 +206,6 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 					}
 				}
 		);
-		return bean;
-	}
-
-	@Override
-	public Object postProcessAfterInitialization(Object bean,
-	                                             String beanName)
-			throws BeansException {
-		return bean;
-	}
-
-	private static class ReactorsMethodResolver implements MethodResolver {
-		@Override
-		public MethodExecutor resolve(EvaluationContext context,
-		                              Object targetObject,
-		                              String name,
-		                              List<TypeDescriptor> argumentTypes) throws AccessException {
-			if("$".equals(name)) {
-				return new MethodExecutor() {
-					@Override
-					public TypedValue execute(EvaluationContext context,
-					                          Object target,
-					                          Object... arguments) throws AccessException {
-						if(arguments.length != 1
-								|| null == arguments[0]
-								|| !Serializable.class.isAssignableFrom(arguments[0].getClass())) {
-							return null;
-						}
-						Selector sel = Selectors.$(arguments[0]);
-						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
-					}
-				};
-			} else if("R".equals(name)) {
-				return new MethodExecutor() {
-					@Override
-					public TypedValue execute(EvaluationContext context,
-					                          Object target,
-					                          Object... arguments) throws AccessException {
-						if(arguments.length != 1 || null == arguments[0]) {
-							return null;
-						}
-						Selector sel = Selectors.R(arguments[0].toString());
-						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
-					}
-				};
-			} else if("T".equals(name)) {
-				return new MethodExecutor() {
-					@Override
-					public TypedValue execute(EvaluationContext context,
-					                          Object target,
-					                          Object... arguments) throws AccessException {
-						if(arguments.length != 1
-								|| null == arguments[0]
-								|| !Class.class.isAssignableFrom(arguments[0].getClass())) {
-							return null;
-						}
-						Selector sel = Selectors.T((Class<?>)arguments[0]);
-						return new TypedValue(sel, TypeDescriptor.valueOf(sel.getClass()));
-					}
-				};
-			}
-
-			return null;
-		}
 	}
 
 }
