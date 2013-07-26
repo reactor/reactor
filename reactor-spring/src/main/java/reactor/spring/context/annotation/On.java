@@ -38,7 +38,7 @@ public @interface On {
 	 *
 	 * @return An expression to be evaluated.
 	 */
-	String reactor() default "rootReactor";
+	String reactor() default "reactor";
 
 	/**
 	 * An expression that evaluates to a {@link reactor.event.selector.Selector} to register this handler with the {@link

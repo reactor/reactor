@@ -59,7 +59,7 @@ class HandlerBeanPostProcessorSpec extends Specification {
 
 class HandlerBean {
   @Autowired
-  Reactor rootReactor
+  Reactor reactor
   def latch = new CountDownLatch(1)
 
   @On('test')
