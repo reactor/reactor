@@ -22,9 +22,9 @@ package reactor.spring.context
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import reactor.event.Event
 import reactor.core.Environment
 import reactor.core.Reactor
+import reactor.event.Event
 import reactor.spring.context.annotation.On
 import spock.lang.Specification
 
@@ -37,53 +37,56 @@ import java.util.concurrent.TimeUnit
  */
 class HandlerBeanPostProcessorSpec extends Specification {
 
-	def "Annotated handler is wired to a Reactor"() {
+  def "Annotated handler is wired to a Reactor"() {
 
-		given: "an ApplicationContext with an annotated bean handler"
-		def appCtx = new AnnotationConfigApplicationContext(AnnotatedHandlerConfig)
-		def handlerBean = appCtx.getBean(HandlerBean)
-		def reactor = appCtx.getBean(Reactor)
+    given:
+      "an ApplicationContext with an annotated bean handler"
+      def appCtx = new AnnotationConfigApplicationContext(AnnotatedHandlerConfig)
+      def handlerBean = appCtx.getBean(HandlerBean)
+      def reactor = appCtx.getBean(Reactor)
 
-		when: "an Event is emitted onto the Reactor in context"
-		reactor.notify('test', Event.wrap("Hello World!"))
+    when:
+      "an Event is emitted onto the Reactor in context"
+      reactor.notify('test', Event.wrap("Hello World!"))
 
-		then: "the method has been invoked"
-		handlerBean.latch.await(1, TimeUnit.SECONDS)
-	}
+    then:
+      "the method has been invoked"
+      handlerBean.latch.await(1, TimeUnit.SECONDS)
+  }
 
 }
 
 class HandlerBean {
-	def latch = new CountDownLatch(1)
+  def latch = new CountDownLatch(1)
 
-	@On(reactor = "@rootReactor", selector = '$("test")')
-	def handleTest() {
-		latch.countDown()
-	}
+  @On('test')
+  void handleTest(String s) {
+    println("ev: ${s}")
+    latch.countDown()
+  }
 }
 
 @Configuration
 class AnnotatedHandlerConfig {
 
-	@Bean
-	Environment reactorSpringEnvironment() {
-		def env = new Environment()
-		env
-	}
+  @Bean
+  Environment reactorSpringEnvironment() {
+    return new Environment()
+  }
 
-	@Bean
-	Reactor rootReactor() {
-		reactorSpringEnvironment().rootReactor
-	}
+  @Bean
+  Reactor rootReactor(Environment env) {
+    return env.rootReactor
+  }
 
-	@Bean
-	ConsumerBeanPostProcessor handlerBeanPostProcessor() {
-		return new ConsumerBeanPostProcessor()
-	}
+  @Bean
+  ConsumerBeanPostProcessor handlerBeanPostProcessor() {
+    return new ConsumerBeanPostProcessor()
+  }
 
-	@Bean
-	HandlerBean handlerBean() {
-		return new HandlerBean()
-	}
+  @Bean
+  HandlerBean handlerBean() {
+    return new HandlerBean()
+  }
 
 }

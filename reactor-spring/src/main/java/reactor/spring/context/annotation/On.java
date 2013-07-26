@@ -16,15 +16,19 @@
 
 package reactor.spring.context.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * @author Jon Brisbin
  */
 @Target({
-						ElementType.TYPE,
-						ElementType.METHOD
-				})
+		        ElementType.TYPE,
+		        ElementType.METHOD
+        })
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface On {
@@ -34,7 +38,7 @@ public @interface On {
 	 *
 	 * @return An expression to be evaluated.
 	 */
-	String reactor() default "";
+	String reactor() default "rootReactor";
 
 	/**
 	 * An expression that evaluates to a {@link reactor.event.selector.Selector} to register this handler with the {@link
@@ -42,6 +46,13 @@ public @interface On {
 	 *
 	 * @return An expression to be evaluated.
 	 */
-	String selector() default "";
+	String value();
+
+	/**
+	 * The type of {@link reactor.event.selector.Selector} to register.
+	 *
+	 * @return The type of the {@link reactor.event.selector.Selector}.
+	 */
+	SelectorType type() default SelectorType.OBJECT;
 
 }
