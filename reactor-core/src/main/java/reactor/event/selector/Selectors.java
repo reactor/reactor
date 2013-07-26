@@ -1,5 +1,6 @@
 package reactor.event.selector;
 
+import reactor.function.Predicate;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
@@ -25,9 +26,9 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#anonymous()}.
-	 *
 	 * <p/>
-	 *
+	 * <p/>
+	 * <p/>
 	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple}
 	 * containing the {@link Selector} and the notification key that the selector matches.
 	 *
@@ -42,7 +43,8 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given object.
 	 *
-	 * @param obj The object to use for matching
+	 * @param obj
+	 * 		The object to use for matching
 	 *
 	 * @return The new {@link ObjectSelector}.
 	 *
@@ -54,12 +56,13 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#object}.
-	 *
 	 * <p/>
-	 *
+	 * <p/>
+	 * <p/>
 	 * Creates a {@link Selector} based on the given object.
 	 *
-	 * @param obj The object to use for matching
+	 * @param obj
+	 * 		The object to use for matching
 	 *
 	 * @return The new {@link ObjectSelector}.
 	 *
@@ -72,7 +75,8 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
-	 * @param regex The regular expression to compile and use for matching
+	 * @param regex
+	 * 		The regular expression to compile and use for matching
 	 *
 	 * @return The new {@link RegexSelector}.
 	 *
@@ -87,7 +91,8 @@ public abstract class Selectors {
 	 * <p/>
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
-	 * @param regex The regular expression to compile and use for matching
+	 * @param regex
+	 * 		The regular expression to compile and use for matching
 	 *
 	 * @return The new {@link RegexSelector}.
 	 *
@@ -101,7 +106,8 @@ public abstract class Selectors {
 	 * Creates a {@link Selector} based on the given class type that matches objects whose type is
 	 * assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
-	 * @param supertype The supertype to use for matching
+	 * @param supertype
+	 * 		The supertype to use for matching
 	 *
 	 * @return The new {@link ClassSelector}.
 	 *
@@ -113,13 +119,16 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#type(Class)}.
-	 *
+	 * <p/>
 	 * Creates a {@link Selector} based on the given class type that matches objects whose type is
 	 * assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
-	 * @param supertype The supertype to compare.
+	 * @param supertype
+	 * 		The supertype to compare.
 	 *
 	 * @return The new {@link ClassSelector}.
+	 *
+	 * @see ClassSelector
 	 */
 	public static Selector T(Class<?> supertype) {
 		return type(supertype);
@@ -128,7 +137,8 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on a URI template.
 	 *
-	 * @param uriTemplate The string to compile into a URI template and use for matching
+	 * @param uriTemplate
+	 * 		The string to compile into a URI template and use for matching
 	 *
 	 * @return The new {@link UriTemplateSelector}.
 	 *
@@ -144,7 +154,8 @@ public abstract class Selectors {
 	 * </p>
 	 * Creates a {@link Selector} based on a URI template.
 	 *
-	 * @param uriTemplate The string to compile into a URI template and use for matching
+	 * @param uriTemplate
+	 * 		The string to compile into a URI template and use for matching
 	 *
 	 * @return The new {@link UriTemplateSelector}.
 	 *
@@ -154,4 +165,21 @@ public abstract class Selectors {
 	public static Selector U(String uriTemplate) {
 		return new UriTemplateSelector(uriTemplate);
 	}
+
+	/**
+	 * Creates a {@link Selector} based on the given {@link Predicate}.
+	 *
+	 * @param predicate
+	 * 		The {@link Predicate} to delegate to when matching objects.
+	 * @param <T>
+	 * 		The type of the object this predicate matches.
+	 *
+	 * @return PredicateSelector
+	 *
+	 * @see {@link PredicateSelector}
+	 */
+	public static <T> Selector predicate(Predicate<T> predicate) {
+		return new PredicateSelector(predicate);
+	}
+
 }
