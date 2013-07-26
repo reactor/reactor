@@ -19,6 +19,7 @@
 
 package reactor.spring.context
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -57,11 +58,12 @@ class HandlerBeanPostProcessorSpec extends Specification {
 }
 
 class HandlerBean {
+  @Autowired
+  Reactor rootReactor
   def latch = new CountDownLatch(1)
 
   @On('test')
   void handleTest(String s) {
-    println("ev: ${s}")
     latch.countDown()
   }
 }

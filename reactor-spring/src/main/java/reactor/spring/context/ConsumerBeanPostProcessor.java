@@ -129,8 +129,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 										break;
 								}
 							} catch(EvaluationException e) {
-								if(LOG.isWarnEnabled()) {
-									LOG.warn("Creating ObjectSelector for '" + onAnno.value() + "' due to " + e.getMessage(), e);
+								if(LOG.isTraceEnabled()) {
+									LOG.trace("Creating ObjectSelector for '" + onAnno.value() + "' due to " + e.getMessage(), e);
 								}
 								selector = Selectors.object(onAnno.value());
 							}
