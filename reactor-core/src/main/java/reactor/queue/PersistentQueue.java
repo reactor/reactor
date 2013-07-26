@@ -16,18 +16,26 @@
 
 package reactor.queue;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.AbstractQueue;
 import java.util.Iterator;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
+ * A {@literal PersistentQueue} is a {@link java.util.Queue} implementation that delegates the actual storage of the
+ * elements in the queue to a {@link QueuePersistor}.
+ *
  * @author Jon Brisbin
  */
 public class PersistentQueue<T> extends AbstractQueue<T> {
 
 	private final QueuePersistor<T> persistor;
 
+	/**
+	 * Create a {@literal PersistentQueue} using the given {@link QueuePersistor}.
+	 *
+	 * @param persistor
+	 */
 	public PersistentQueue(@Nullable QueuePersistor<T> persistor) {
 		this.persistor = (null == persistor ? new InMemoryQueuePersistor<T>() : persistor);
 	}
@@ -39,7 +47,7 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 
 	@Override
 	public int size() {
-		return (int) persistor.size();
+		return (int)persistor.size();
 	}
 
 	@Override
