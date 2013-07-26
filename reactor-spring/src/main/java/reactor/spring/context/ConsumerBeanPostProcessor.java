@@ -75,8 +75,14 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	}
 
 	@Override
-	public Object postProcessBeforeInitialization(final Object bean,
+	public Object postProcessBeforeInitialization(Object bean,
 	                                              String beanName) throws BeansException {
+		return bean;
+	}
+
+	@Override
+	public Object postProcessAfterInitialization(Object bean,
+	                                             String beanName) throws BeansException {
 		Class<?> type = bean.getClass();
 		if(Proxy.isProxyClass(bean.getClass())) {
 			for(Class<?> iface : AopProxyUtils.proxiedUserInterfaces(type)) {
@@ -85,12 +91,6 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		} else {
 			findHandlerMethods(type, bean);
 		}
-		return bean;
-	}
-
-	@Override
-	public Object postProcessAfterInitialization(Object bean,
-	                                             String beanName) throws BeansException {
 		return bean;
 	}
 
