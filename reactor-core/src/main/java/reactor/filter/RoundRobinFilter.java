@@ -63,6 +63,7 @@ public final class RoundRobinFilter extends AbstractFilter {
 				readLock.unlock();
 				writeLock.lock();
 				try {
+					usageCount = this.usageCounts.get(key);
 					if (usageCount == null) {
 						usageCount = new AtomicLong();
 						this.usageCounts.put(key, usageCount);
