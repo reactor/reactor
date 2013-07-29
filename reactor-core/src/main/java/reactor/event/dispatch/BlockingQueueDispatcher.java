@@ -27,7 +27,7 @@ import reactor.event.Event;
 import reactor.function.Supplier;
 import reactor.cache.Cache;
 import reactor.cache.LoadingCache;
-import reactor.support.BlockingQueueFactory;
+import reactor.queue.BlockingQueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.

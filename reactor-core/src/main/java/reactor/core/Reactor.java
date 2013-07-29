@@ -16,6 +16,9 @@
 
 package reactor.core;
 
+import java.util.Set;
+import java.util.UUID;
+
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,7 @@ import reactor.event.routing.EventRouter;
 import reactor.event.routing.Linkable;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -40,20 +44,12 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
 
-import java.util.Set;
-import java.util.UUID;
-
-import reactor.event.selector.Selectors;
-
 /**
- * A reactor is an event gateway that allows other components to register {@link Event} {@link
- * Consumer}s that can subsequently be notified of events. A consumer is typically registered
- * with a {@link Selector} which, by matching on the notification key, governs which events the
- * consumer will receive.
- * </p>
- * When a {@literal Reactor} is notified of an {@link Event}, a task is dispatched using the
- * reactor's {@link Dispatcher} which causes it to be executed on a thread based on the
- * implementation of the {@link Dispatcher} being used.
+ * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
+ * subsequently be notified of events. A consumer is typically registered with a {@link Selector} which, by matching on
+ * the notification key, governs which events the consumer will receive. </p> When a {@literal Reactor} is notified of
+ * an {@link Event}, a task is dispatched using the reactor's {@link Dispatcher} which causes it to be executed on a
+ * thread based on the implementation of the {@link Dispatcher} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -85,33 +81,33 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will
-	 * use a default {@link EventRouter} that broadcast events to all of the registered consumers
-	 * that {@link Selector#matches(Object) match} the notification key and does not perform any
-	 * type conversion.
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
+	 * EventRouter} that broadcast events to all of the registered consumers that {@link Selector#matches(Object) match}
+	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new
-	 *                   {@link SynchronousDispatcher} is used
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
+	 * 		SynchronousDispatcher} is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
 		this(dispatcher,
-				 null);
+		     null);
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code
-	 * eventRouter}.
+	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
 	 *
-	 * @param dispatcher  The {@link Dispatcher} to use. May be {@code null} in which
-	 *                    case a new synchronous  dispatcher is used.
-	 * @param eventRouter The {@link EventRouter} used to route events to {@link Consumer Consumers}.
-	 *                    May be {@code null} in which case the default event router that broadcasts
-	 *                    events to all of the registered consumers that {@link
-	 *                    Selector#matches(Object) match} the notification key and does not perform
-	 *                    any type conversion will be used.
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
+	 * 		used.
+	 * @param eventRouter
+	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
+	 * 		in which case the default event router that broadcasts events to all of the registered consumers
+	 * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
+	 * 		conversion will be used.
 	 */
 	public Reactor(Dispatcher dispatcher,
-								 EventRouter eventRouter) {
+	               EventRouter eventRouter) {
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
 		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>();
@@ -119,13 +115,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 		this.on(new Consumer<Event>() {
 			@Override
 			public void accept(Event event) {
-				if (Tuple2.class.isInstance(event.getData())) {
-					Object consumer = ((Tuple2) event.getData()).getT1();
-					Object data = ((Tuple2) event.getData()).getT2();
-					if (Consumer.class.isInstance(consumer)) {
+				if(Tuple2.class.isInstance(event.getData())) {
+					Object consumer = ((Tuple2)event.getData()).getT1();
+					Object data = ((Tuple2)event.getData()).getT2();
+					if(Consumer.class.isInstance(consumer)) {
 						try {
-							((Consumer) consumer).accept(data);
-						} catch (Throwable t) {
+							((Consumer)consumer).accept(data);
+						} catch(Throwable t) {
 							Reactor.this.notify(t.getClass(), Event.wrap(t));
 						}
 					}
@@ -137,7 +133,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 			@Override
 			public void accept(Event<Throwable> ev) {
-				if (null == log) {
+				if(null == log) {
 					log = LoggerFactory.getLogger(Reactor.class);
 				}
 				log.error(ev.getData().getMessage(), ev.getData());
@@ -214,8 +210,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
 
-		if (!linkedReactors.isEmpty()) {
-			for (Observable r : linkedReactors) {
+		if(!linkedReactors.isEmpty()) {
+			for(Observable r : linkedReactors) {
 				r.notify(key, ev);
 			}
 		}
@@ -281,10 +277,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if(this == o) {
+			return true;
+		}
+		if(o == null || getClass() != o.getClass()) {
+			return false;
+		}
 
-		Reactor reactor = (Reactor) o;
+		Reactor reactor = (Reactor)o;
 
 		return id.equals(reactor.id);
 
@@ -320,9 +320,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 		public void accept(E ev) {
 			Observable replyToObservable = Reactor.this;
 
-			if (ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
-				Observable o = ((ReplyToEvent<?>) ev).getReplyToObservable();
-				if (null != o) {
+			if(ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
+				Observable o = ((ReplyToEvent<?>)ev).getReplyToObservable();
+				if(null != o) {
 					replyToObservable = o;
 				}
 			}
@@ -331,14 +331,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 				V reply = fn.apply(ev);
 
 				Event<?> replyEv;
-				if (null == reply) {
+				if(null == reply) {
 					replyEv = Event.NULL_EVENT;
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
-			} catch (Throwable x) {
+			} catch(Throwable x) {
 				replyToObservable.notify(x.getClass(), Event.wrap(x));
 			}
 		}
