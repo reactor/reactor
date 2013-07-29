@@ -12,3 +12,4 @@ out
 *.java.hsp
 deps.txt
 line_feed.txt
+tmp.*
