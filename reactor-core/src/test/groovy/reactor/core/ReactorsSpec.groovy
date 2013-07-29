@@ -598,6 +598,7 @@ class ReactorsSpec extends Specification {
     when:
       "the Sequencer is flushed"
       c.flush()
+      persistor.close()
 
     then:
       "events have been processed in order"
