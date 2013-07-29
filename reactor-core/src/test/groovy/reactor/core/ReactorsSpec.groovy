@@ -535,14 +535,13 @@ class ReactorsSpec extends Specification {
     given:
       "a synchronous Reactor Sequencer"
       def r = Reactors.reactor().synchronousDispatcher().get()
-      def c = r.startConversation("test").
-          addConversationIdHeader(true).
+      def c = new SequencerSpec().
+          observable(r).
+          notifyKey("test").
           get()
       def events = [Event.wrap("1"), Event.wrap("2"), Event.wrap("3")]
       def processedEvents = []
-      def conversationId = null
       r.on($("test"), consumer { ev ->
-        conversationId = ev.headers.get(Sequencer.CONVERSATION_ID)
         processedEvents << ev
       })
 
@@ -566,7 +565,6 @@ class ReactorsSpec extends Specification {
       processedEvents[0].data == "1"
       processedEvents[1].data == "2"
       processedEvents[2].data == "3"
-      null != conversationId
 
   }
 
@@ -576,7 +574,7 @@ class ReactorsSpec extends Specification {
       "a Sequencer backed by a PersistentQueue"
       def r = Reactors.reactor().synchronousDispatcher().get()
       def persistor = new IndexedChronicleQueuePersistor(
-          System.getProperty("java.io.tmpdir")
+          System.getProperty("java.io.tmpdir", "./tmp")
       )
       def c = new SequencerSpec().
           observable(r).
