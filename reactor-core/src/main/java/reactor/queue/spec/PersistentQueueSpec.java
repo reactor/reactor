@@ -20,7 +20,7 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 
 	@Override
 	public PersistentQueue<T> get() {
-		return null;
+		return queue;
 	}
 
 }
