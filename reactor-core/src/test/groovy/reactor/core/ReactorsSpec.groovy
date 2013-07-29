@@ -573,7 +573,7 @@ class ReactorsSpec extends Specification {
     given:
       "a Sequencer backed by a PersistentQueue"
       def r = Reactors.reactor().synchronousDispatcher().get()
-      def persistor = new IndexedChronicleQueuePersistor("./tmp")
+      def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
       def c = new SequencerSpec().
           observable(r).
           notifyKey("test").

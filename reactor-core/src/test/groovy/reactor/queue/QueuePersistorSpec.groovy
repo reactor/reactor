@@ -54,7 +54,7 @@ class QueuePersistorSpec extends Specification {
 
     given:
       "an IndexedChronicleQueuePersistor"
-      def persistor = new IndexedChronicleQueuePersistor("./tmp")
+      def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
       def obj = "Hello World!"
 
     when:

@@ -12,6 +12,7 @@ import javax.annotation.Nullable;
 
 import com.higherfrequencytrading.chronicle.Excerpt;
 import com.higherfrequencytrading.chronicle.impl.IndexedChronicle;
+import com.higherfrequencytrading.chronicle.tools.ChronicleTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.function.Function;
@@ -81,6 +82,10 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		this.removeFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
 		if(clearOnStart) {
 			this.removeFun.chronicle.clear();
+		}
+
+		if(clearOnStart) {
+			ChronicleTools.deleteOnExit(basePath);
 		}
 	}
 
@@ -178,13 +183,8 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		@Override public T apply(Long id) {
-			int tries = 0;
-			boolean positioned;
-			while(!(positioned = ex.index(id)) && 3 > tries++) {
-				Thread.yield();
-			}
-			if(!positioned) {
-				throw new IllegalStateException("Cannot position Chronicle to position " + id);
+			if(!ex.index(id)) {
+				throw new IllegalStateException("Cannot position Chronicle to index " + id);
 			}
 
 			int len = -1;
@@ -216,28 +216,29 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		@Override public T get() {
-			if(!ex.nextIndex()) {
+			if(!ex.hasNextIndex()) {
 				return null;
 			}
 
+			ex.nextIndex();
 			int len = -1;
-			try {
-				len = ex.readInt();
-				byte[] bytes = new byte[len];
-				ex.read(bytes);
-				ex.finish();
+			//try {
+			len = ex.readInt();
+			byte[] bytes = new byte[len];
+			ex.read(bytes);
+			ex.finish();
 
-				count.decrementAndGet();
+			count.decrementAndGet();
 
-				return decoder.apply(Buffer.wrap(bytes));
-			} catch(Throwable t) {
-				if(LOG.isDebugEnabled()) {
-					LOG.debug("Asked to read: " + len + "b from index " + ex.index());
-					LOG.debug(t.getMessage(), t);
-				}
-			}
+			return decoder.apply(Buffer.wrap(bytes));
+			//} catch(Throwable t) {
+			//if(LOG.isDebugEnabled()) {
+			//LOG.debug("Asked to read: " + len + "b from index " + ex.index());
+			//LOG.debug(t.getMessage(), t);
+			//}
+			//}
 
-			return null;
+			//return null;
 		}
 	}
 

@@ -27,8 +27,8 @@ class PersistentQueueSpec extends Specification {
 
     given:
       "a pair of IndexedChroniclePersistentQueues"
-      def wq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./tmp"))
-      def rq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./tmp"))
+      def wq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./persistent-queue"))
+      def rq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./persistent-queue"))
 
     when:
       "data is written to the queue using a write Queue"
