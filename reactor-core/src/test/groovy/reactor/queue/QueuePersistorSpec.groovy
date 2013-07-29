@@ -55,10 +55,7 @@ class QueuePersistorSpec extends Specification {
     given:
       "an IndexedChronicleQueuePersistor"
       def persistor = new IndexedChronicleQueuePersistor(
-          System.getProperty("java.io.tmpdir"),
-          null,
-          null,
-          -1
+          System.getProperty("java.io.tmpdir", "./tmp")
       )
       def obj = "Hello World!"
 
