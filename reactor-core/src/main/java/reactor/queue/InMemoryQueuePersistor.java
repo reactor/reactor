@@ -16,14 +16,14 @@
 
 package reactor.queue;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMapLong;
-import reactor.function.Function;
-import reactor.function.Supplier;
-
-import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nonnull;
+
+import org.cliffc.high_scale_lib.NonBlockingHashMapLong;
+import reactor.function.Function;
+import reactor.function.Supplier;
 
 /**
  * @author Jon Brisbin
@@ -74,6 +74,9 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 	@Override
 	public Supplier<T> remove() {
 		return removeFun;
+	}
+
+	@Override public void close() {
 	}
 
 	private class MapOfferFunction implements Function<T, Long> {

@@ -31,6 +31,8 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private static final Logger     LOG    = LoggerFactory.getLogger(IndexedChronicleQueuePersistor.class);
 	private final        AtomicLong count  = new AtomicLong();
 	private final        AtomicLong lastId = new AtomicLong();
+	private final String                  basePath;
+	private final boolean                 deleteOnExit;
 	private final Function<T, Buffer>     encoder;
 	private final Function<Buffer, T>     decoder;
 	private final ChronicleOfferFunction  offerFun;
@@ -46,7 +48,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
-		this(basePath, null, null, true);
+		this(basePath, null, null, true, false);
 	}
 
 	/**
@@ -60,16 +62,21 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @param decoder
 	 * 		Decoder to turn {@link Buffer Buffers} into an object.
 	 * @param clearOnStart
-	 * 		Whether to clear the Chronicle on start or not.
+	 * 		Whether or not to clear the Chronicle on start.
+	 * @param deleteOnExit
+	 * 		Whether or not to delete the Chronicle when the program exits.
 	 *
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath,
 	                                      @Nullable Function<T, Buffer> encoder,
 	                                      @Nullable Function<Buffer, T> decoder,
-	                                      boolean clearOnStart) throws IOException {
+	                                      boolean clearOnStart,
+	                                      boolean deleteOnExit) throws IOException {
+		this.basePath = basePath;
 		this.encoder = (null == encoder ? new SerializableEncoder<T>() : encoder);
 		this.decoder = (null == decoder ? new SerializableDecoder<T>() : decoder);
+		this.deleteOnExit = deleteOnExit;
 
 		this.offerFun = new ChronicleOfferFunction(new IndexedChronicle(basePath));
 		if(clearOnStart) {
@@ -84,18 +91,19 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			this.removeFun.chronicle.clear();
 		}
 
-		if(clearOnStart) {
-			ChronicleTools.deleteOnExit(basePath);
-		}
 	}
 
 	/**
 	 * Close the underlying chronicles.
 	 */
+	@Override
 	public void close() {
 		offerFun.chronicle.close();
 		getFun.chronicle.close();
 		removeFun.chronicle.close();
+		if(deleteOnExit) {
+			ChronicleTools.deleteOnExit(basePath);
+		}
 	}
 
 	@Override public long lastId() {
@@ -120,28 +128,52 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
 	@Override public Iterator<T> iterator() {
 		return new Iterator<T>() {
-			Excerpt ex = getFun.chronicle.createExcerpt();
-			long idx = 0;
+			private final ChronicleRemoveFunction iterFun;
 
-			public boolean hasNext() {
-				return ex.hasNextIndex();
-			}
-
-			@Override public T next() {
+			{
 				try {
-					return getFun.apply(idx++);
-				} catch(Throwable t) {
-					if(LOG.isDebugEnabled()) {
-						LOG.debug(t.getMessage(), t);
-					}
-					return null;
+					iterFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
+				} catch(IOException e) {
+					throw new IllegalArgumentException(e.getMessage(), e);
 				}
 			}
 
+			public boolean hasNext() {
+				return iterFun.ex.hasNextIndex();
+			}
+
+			@Override public T next() {
+				return iterFun.get();
+			}
+
 			@Override public void remove() {
-				throw new IllegalStateException("Cannot remove items from the queue using an Iterator.");
 			}
 		};
+	}
+
+	private T read(Excerpt ex, long index) {
+		if(!ex.index(index)) {
+			if(LOG.isDebugEnabled()) {
+				LOG.debug("Could not read requested index [" + index + "]");
+			}
+			return null;
+		}
+
+		int len = -1;
+		try {
+			len = ex.readInt();
+			byte[] bytes = new byte[len];
+			ex.read(bytes);
+			ex.finish();
+
+			return decoder.apply(Buffer.wrap(bytes));
+		} catch(Throwable t) {
+			if(LOG.isDebugEnabled()) {
+				LOG.debug("Asked to read: " + len + "b from index " + ex.index());
+				LOG.debug(t.getMessage(), t);
+			}
+			return null;
+		}
 	}
 
 	private class ChronicleOfferFunction implements Function<T, Long> {
@@ -183,26 +215,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		@Override public T apply(Long id) {
-			if(!ex.index(id)) {
-				throw new IllegalStateException("Cannot position Chronicle to index " + id);
-			}
-
-			int len = -1;
-			try {
-				len = ex.readInt();
-				byte[] bytes = new byte[len];
-				ex.read(bytes);
-				ex.finish();
-
-				return decoder.apply(Buffer.wrap(bytes));
-			} catch(Throwable t) {
-				if(LOG.isDebugEnabled()) {
-					LOG.debug("Asked to read: " + len + "b from index " + ex.index());
-					LOG.debug(t.getMessage(), t);
-				}
-			}
-
-			return null;
+			return read(ex, id);
 		}
 	}
 
@@ -216,29 +229,12 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		@Override public T get() {
-			if(!ex.hasNextIndex()) {
+			if(!ex.nextIndex()) {
 				return null;
 			}
-
-			ex.nextIndex();
-			int len = -1;
-			//try {
-			len = ex.readInt();
-			byte[] bytes = new byte[len];
-			ex.read(bytes);
-			ex.finish();
-
+			T obj = read(ex, ex.index());
 			count.decrementAndGet();
-
-			return decoder.apply(Buffer.wrap(bytes));
-			//} catch(Throwable t) {
-			//if(LOG.isDebugEnabled()) {
-			//LOG.debug("Asked to read: " + len + "b from index " + ex.index());
-			//LOG.debug(t.getMessage(), t);
-			//}
-			//}
-
-			//return null;
+			return obj;
 		}
 	}
 

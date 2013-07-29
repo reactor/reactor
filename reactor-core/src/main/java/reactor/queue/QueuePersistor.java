@@ -16,10 +16,10 @@
 
 package reactor.queue;
 
+import javax.annotation.Nonnull;
+
 import reactor.function.Function;
 import reactor.function.Supplier;
-
-import javax.annotation.Nonnull;
 
 /**
  * @author Jon Brisbin
@@ -30,13 +30,12 @@ public interface QueuePersistor<T> extends Iterable<T> {
 
 	long size();
 
-	@Nonnull
-	Function<T, Long> offer();
+	@Nonnull Function<T, Long> offer();
 
-	@Nonnull
-	Function<Long, T> get();
+	@Nonnull Function<Long, T> get();
 
-	@Nonnull
-	Supplier<T> remove();
+	@Nonnull Supplier<T> remove();
+
+	void close();
 
 }

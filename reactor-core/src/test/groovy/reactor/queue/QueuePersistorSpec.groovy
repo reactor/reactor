@@ -48,13 +48,16 @@ class QueuePersistorSpec extends Specification {
       null == persistor.get().apply(id)
       persistor.size() == 0
 
+    cleanup:
+      persistor.close()
+
   }
 
   def "IndexedChronicleQueuePersistor persists objects"() {
 
     given:
       "an IndexedChronicleQueuePersistor"
-      def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
+      def persistor = new IndexedChronicleQueuePersistor("./queue-persistor")
       def obj = "Hello World!"
 
     when:
@@ -73,6 +76,9 @@ class QueuePersistorSpec extends Specification {
     then:
       "the object was removed"
       persistor.size() == 0
+
+    cleanup:
+      persistor.close()
 
   }
 
