@@ -211,14 +211,22 @@ public class Stream<T> extends Composable<T> {
 
 			@Override
 			public void accept(T value) {
-				batchValues.add(value);
-				long accepted = getAcceptCount();
-				if (accepted % batchSize == 0 || accepted == Stream.this.batchSize) {
-					// This List might be accessed from another thread, depending on the Dispatcher in use, so copy it.
-					List<T> copy = new ArrayList<T>(batchSize);
-					copy.addAll(batchValues);
+				boolean flush = false;
+				List<T> copy = null;
+				lock.lock();
+				try {
+					batchValues.add(value);
+					flush = batchValues.size() % batchSize == 0;
+					if( flush ) {
+						copy = new ArrayList<T>(batchValues);
+						batchValues.clear();
+					}
+				} 
+				finally {
+					lock.unlock();
+				}
+				if(flush) {
 					d.accept(copy);
-					batchValues.clear();
 				}
 			}
 		});
