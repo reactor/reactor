@@ -192,8 +192,7 @@ public class Event<T> implements Serializable {
 
 		private static final long serialVersionUID = 4984692586458514948L;
 
-		private final Object monitor = new Object();
-
+		private final Object monitor = UUIDUtils.create();
 		private final Map<String, String> headers;
 
 		private Headers(boolean sealed, Map<String, String> headers) {
