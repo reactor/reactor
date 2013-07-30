@@ -229,6 +229,7 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
+		final AtomicLong counter = new AtomicLong(0);
 		final Queue<T> valueBuffer = BlockingQueueFactory.createQueue();
 		final Runnable batchAcceptor = new Runnable() {
 			@Override public void run() {
@@ -244,7 +245,7 @@ public class Stream<T> extends Composable<T> {
 			@Override
 			public void accept(T value) {
 				valueBuffer.add(value);
-				if(valueBuffer.size() % batchSize != 0) {
+				if(counter.incrementAndGet() % batchSize != 0) {
 					return;
 				}
 
