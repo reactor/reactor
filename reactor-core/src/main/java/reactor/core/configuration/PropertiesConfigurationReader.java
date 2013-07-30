@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.util.IoUtils;
 
 /**
@@ -46,9 +45,9 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private static final String PROPERTY_PREFIX_REACTOR = "reactor.";
 
-	private static final String PROPERTY_NAME_PROFILES_ACTIVE      = "reactor.profiles.active";
-	private static final String PROPERTY_NAME_PROFILES_DEFAULT     = "reactor.profiles.default";
-	private static final String PROPERTY_NAME_DEFAULT_DISPATCHER   = "reactor.dispatchers.default";
+	private static final String PROPERTY_NAME_PROFILES_ACTIVE    = "reactor.profiles.active";
+	private static final String PROPERTY_NAME_PROFILES_DEFAULT   = "reactor.profiles.default";
+	private static final String PROPERTY_NAME_DEFAULT_DISPATCHER = "reactor.dispatchers.default";
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -62,17 +61,17 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 		this("default");
 	}
 
-	protected PropertiesConfigurationReader(String defaultProfileNameDefault) {
+	public PropertiesConfigurationReader(String defaultProfileNameDefault) {
 		this.defaultProfileNameDefault = defaultProfileNameDefault;
 	}
 
 	@Override
-	public final ReactorConfiguration read() {
+	public ReactorConfiguration read() {
 		Properties configuration = new Properties();
 
 		applyProfile(loadDefaultProfile(), configuration);
 
-		for (Properties activeProfile : loadActiveProfiles()) {
+		for(Properties activeProfile : loadActiveProfiles()) {
 			applyProfile(activeProfile, configuration);
 		}
 
@@ -93,9 +92,9 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private List<Properties> loadActiveProfiles() {
 		List<Properties> activeProfiles = new ArrayList<Properties>();
-		if (null != System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE)) {
+		if(null != System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE)) {
 			String[] profileNames = System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE).split(",");
-			for (String profileName : profileNames) {
+			for(String profileName : profileNames) {
 				activeProfiles.add(loadProfile(profileName.trim()));
 			}
 		}
@@ -107,8 +106,8 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	}
 
 	private void applySystemProperties(Properties configuration) {
-		for (String prop : System.getProperties().stringPropertyNames()) {
-			if (prop.startsWith(PROPERTY_PREFIX_REACTOR)) {
+		for(String prop : System.getProperties().stringPropertyNames()) {
+			if(prop.startsWith(PROPERTY_PREFIX_REACTOR)) {
 				configuration.put(prop, System.getProperty(prop));
 			}
 		}
@@ -117,10 +116,14 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	private List<DispatcherConfiguration> createDispatcherConfiguration(Properties configuration) {
 		List<String> dispatcherNames = getDispatcherNames(configuration);
 		List<DispatcherConfiguration> dispatcherConfigurations = new ArrayList<DispatcherConfiguration>(dispatcherNames.size());
-		for (String dispatcherName : dispatcherNames) {
+		for(String dispatcherName : dispatcherNames) {
 			DispatcherType type = getType(dispatcherName, configuration);
-			if (type != null) {
-				dispatcherConfigurations.add(new DispatcherConfiguration(dispatcherName, type, getBacklog(dispatcherName, configuration),  getSize(dispatcherName, configuration)));
+			if(type != null) {
+				dispatcherConfigurations.add(new DispatcherConfiguration(dispatcherName,
+				                                                         type,
+				                                                         getBacklog(dispatcherName,
+				                                                                    configuration),
+				                                                         getSize(dispatcherName, configuration)));
 			}
 		}
 		return dispatcherConfigurations;
@@ -129,9 +132,9 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	private List<String> getDispatcherNames(Properties configuration) {
 		List<String> dispatcherNames = new ArrayList<String>();
 
-		for (Object propertyName : configuration.keySet()) {
+		for(Object propertyName : configuration.keySet()) {
 			Matcher matcher = REACTOR_NAME_PATTERN.matcher((String)propertyName);
-			if (matcher.matches()) {
+			if(matcher.matches()) {
 				dispatcherNames.add(matcher.group(1));
 			}
 		}
@@ -141,13 +144,13 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private DispatcherType getType(String dispatcherName, Properties configuration) {
 		String type = configuration.getProperty(String.format(FORMAT_DISPATCHER_TYPE, dispatcherName));
-		if ("eventLoop".equals(type)) {
+		if("eventLoop".equals(type)) {
 			return DispatcherType.EVENT_LOOP;
-		} else if ("ringBuffer".equals(type)) {
+		} else if("ringBuffer".equals(type)) {
 			return DispatcherType.RING_BUFFER;
-		} else if ("synchronous".equals(type)) {
+		} else if("synchronous".equals(type)) {
 			return DispatcherType.SYNCHRONOUS;
-		} else if ("threadPoolExecutor".equals(type)) {
+		} else if("threadPoolExecutor".equals(type)) {
 			return DispatcherType.THREAD_POOL_EXECUTOR;
 		} else {
 			logger.warn("The type '{}' of Dispatcher '{}' is not recognized", type, dispatcherName);
@@ -156,16 +159,16 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	}
 
 	private Integer getBacklog(String dispatcherName, Properties configuration) {
-		return getInteger(String.format(FORMAT_DISPATCHER_BACKLOG,  dispatcherName), configuration);
+		return getInteger(String.format(FORMAT_DISPATCHER_BACKLOG, dispatcherName), configuration);
 	}
 
 	private Integer getSize(String dispatcherName, Properties configuration) {
-		return getInteger(String.format(FORMAT_DISPATCHER_SIZE,  dispatcherName), configuration);
+		return getInteger(String.format(FORMAT_DISPATCHER_SIZE, dispatcherName), configuration);
 	}
 
 	private Integer getInteger(String propertyName, Properties configuration) {
 		String property = configuration.getProperty(propertyName);
-		if (property != null) {
+		if(property != null) {
 			return Integer.parseInt(property);
 		} else {
 			return null;
@@ -175,17 +178,23 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	protected Properties loadProfile(String name) {
 		Properties properties = new Properties();
 		InputStream inputStream = getClass().getResourceAsStream(String.format(FORMAT_RESOURCE_NAME, name));
-		if (null != inputStream) {
+		if(null != inputStream) {
 			try {
 				properties.load(inputStream);
-			} catch (IOException e) {
-				logger.error("Failed to load properties from '{}' for profile '{}'", String.format(FORMAT_RESOURCE_NAME, name), name, e);
+			} catch(IOException e) {
+				logger.error("Failed to load properties from '{}' for profile '{}'",
+				             String.format(FORMAT_RESOURCE_NAME, name),
+				             name,
+				             e);
 			} finally {
 				IoUtils.closeQuietly(inputStream);
 			}
 		} else {
-			logger.debug("No properties file found in the classpath at '{}' for profile '{}'", String.format(FORMAT_RESOURCE_NAME, name), name);
+			logger.debug("No properties file found in the classpath at '{}' for profile '{}'", String.format(
+					FORMAT_RESOURCE_NAME,
+					name), name);
 		}
 		return properties;
 	}
+
 }

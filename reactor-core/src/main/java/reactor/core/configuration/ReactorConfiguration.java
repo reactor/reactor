@@ -25,9 +25,9 @@ import reactor.util.Assert;
  * An encapsulation of configuration for Reactor
  *
  * @author Andy Wilkinson
- *
+ * @author Jon Brisbin
  */
-public final class ReactorConfiguration {
+public class ReactorConfiguration {
 
 	private final List<DispatcherConfiguration> dispatcherConfigurations;
 
@@ -35,7 +35,7 @@ public final class ReactorConfiguration {
 
 	private final Properties properties;
 
-	ReactorConfiguration(List<DispatcherConfiguration> dispatcherConfigurations, String defaultDispatcherName, Properties properties) {
+	public ReactorConfiguration(List<DispatcherConfiguration> dispatcherConfigurations, String defaultDispatcherName, Properties properties) {
 		Assert.notNull(dispatcherConfigurations, "'dispatcherConfigurations' must not be null");
 		Assert.notNull(defaultDispatcherName, "'defaultDispatcherName' must not be null");
 		Assert.notNull(properties, "'properties' must not be null");
