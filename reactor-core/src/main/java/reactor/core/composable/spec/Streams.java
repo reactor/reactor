@@ -44,7 +44,7 @@ public abstract class Streams {
 
 	/**
 	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)}
-	 * the given value whenever the {@link reactor.core.composable.Stream#resolve()} function
+	 * the given value whenever the {@link reactor.core.composable.Stream#flush()} function
 	 * is invoked.
 	 *
 	 * @param value The value to {@code accept()}
@@ -59,7 +59,7 @@ public abstract class Streams {
 
 	/**
 	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)}
-	 * the given values whenever the {@link reactor.core.composable.Stream#resolve()} function
+	 * the given values whenever the {@link reactor.core.composable.Stream#flush()} function
 	 * is invoked. If the {@code values} are a {@code Collection} the Stream's batch size will
 	 * be set to the Collection's {@link Collection#size()}.
 	 *

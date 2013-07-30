@@ -18,7 +18,6 @@
 package reactor.core
 
 import reactor.core.spec.Reactors
-import reactor.core.spec.SequencerSpec
 import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.routing.ConsumerFilteringEventRouter
@@ -26,8 +25,6 @@ import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
 import reactor.function.Functions
 import reactor.function.support.SingleUseConsumer
-import reactor.queue.IndexedChronicleQueuePersistor
-import reactor.queue.PersistentQueue
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
@@ -528,86 +525,6 @@ class ReactorsSpec extends Specification {
     then:
       "error consumer has been invoked"
       latch.await(3, TimeUnit.SECONDS)
-  }
-
-  def "A Reactor delays notification of events in a Conversation"() {
-
-    given:
-      "a synchronous Reactor Sequencer"
-      def r = Reactors.reactor().synchronousDispatcher().get()
-      def c = new SequencerSpec().
-          observable(r).
-          notifyKey("test").
-          get()
-      def events = [Event.wrap("1"), Event.wrap("2"), Event.wrap("3")]
-      def processedEvents = []
-      r.on($("test"), consumer { ev ->
-        processedEvents << ev
-      })
-
-    when:
-      "events are published to the Sequencer"
-      events.each {
-        c.accept(it)
-      }
-
-    then:
-      "events should not have been processed"
-      processedEvents.size() == 0
-
-    when:
-      "the Sequencer is flushed"
-      c.flush()
-
-    then:
-      "events have been processed in order"
-      processedEvents == events
-      processedEvents[0].data == "1"
-      processedEvents[1].data == "2"
-      processedEvents[2].data == "3"
-
-  }
-
-  def "A Reactor persists Events in a Sequencer"() {
-
-    given:
-      "a Sequencer backed by a PersistentQueue"
-      def r = Reactors.reactor().synchronousDispatcher().get()
-      def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
-      def c = new SequencerSpec().
-          observable(r).
-          notifyKey("test").
-          eventQueue(new PersistentQueue<Event<String>>(persistor)).
-          get()
-      def events = [Event.wrap("1"), Event.wrap("2"), Event.wrap("3")]
-      def processedEvents = []
-      r.on($("test"), consumer { ev ->
-        processedEvents << ev
-      })
-
-    when:
-      "events are published to the Sequencer"
-      events.each {
-        c.accept(it)
-      }
-
-    then:
-      "events should not have been processed"
-      processedEvents.size() == 0
-
-    when:
-      "the Sequencer is flushed"
-      c.flush()
-
-    then:
-      "events have been processed in order"
-      processedEvents[0].data == "1"
-      processedEvents[1].data == "2"
-      processedEvents[2].data == "3"
-
-    cleanup:
-      persistor.close()
-
   }
 
 }

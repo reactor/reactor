@@ -17,7 +17,6 @@
 package reactor.core.composable;
 
 import java.util.concurrent.locks.ReentrantLock;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -37,20 +36,23 @@ import reactor.util.Assert;
 
 /**
  * Abstract base class for components designed to provide a succinct API for working with future values. Provides base
- * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)} and
+ * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)}
+ * and
  * {@link #filter(reactor.function.Predicate)} methods.
+ *
+ * @param <T>
+ * 		The type of the values
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @author Andy Wilkinson
- *
- * @param <T> The type of the values
  */
 public abstract class Composable<T> {
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
 	private final Tuple2<Selector, Object> accept = Selectors.$();
+	private final Tuple2<Selector, Object> flush  = Selectors.$();
 
 	private final Observable    events;
 	private final Composable<?> parent;
@@ -59,11 +61,11 @@ public abstract class Composable<T> {
 	private volatile long errorCount  = 0l;
 
 	protected <U> Composable(@Nonnull Dispatcher dispatcher,
-													 @Nullable Composable<U> parent) {
+	                         @Nullable Composable<U> parent) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.events = new Reactor(dispatcher);
 		this.parent = parent;
-		if (parent != null) {
+		if(parent != null) {
 			parent.cascadeErrors(this);
 		}
 	}
@@ -72,7 +74,9 @@ public abstract class Composable<T> {
 	 * Attach another {@code Composable} to this one that will cascade the value received by this {@code Composable} into
 	 * the next.
 	 *
-	 * @param composable the next {@code Composable} to cascade events to
+	 * @param composable
+	 * 		the next {@code Composable} to cascade events to
+	 *
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
@@ -90,7 +94,9 @@ public abstract class Composable<T> {
 	 * Attach a {@link Consumer} to this {@code Composable} that will consume any values accepted by this {@code
 	 * Composable}.
 	 *
-	 * @param consumer the conumer to invoke on each value
+	 * @param consumer
+	 * 		the conumer to invoke on each value
+	 *
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
@@ -101,8 +107,11 @@ public abstract class Composable<T> {
 	/**
 	 * Pass values accepted by this {@code Composable} into the given {@link Observable}, notifying with the given key.
 	 *
-	 * @param key        the key to notify on
-	 * @param observable the {@link Observable} to notify
+	 * @param key
+	 * 		the key to notify on
+	 * @param observable
+	 * 		the {@link Observable} to notify
+	 *
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
@@ -113,9 +122,13 @@ public abstract class Composable<T> {
 	/**
 	 * Assign an error handler to exceptions of the given type.
 	 *
-	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param exceptionType
+	 * 		the type of exceptions to handle
+	 * @param onError
+	 * 		the error handler for each exception
+	 * @param <E>
+	 * 		type of the exception to handle
+	 *
 	 * @return {@literal this}
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
@@ -127,8 +140,11 @@ public abstract class Composable<T> {
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code V} and pass it into
 	 * another {@code Composable}.
 	 *
-	 * @param fn  the transformation function
-	 * @param <V> the type of the return value of the transformation function
+	 * @param fn
+	 * 		the transformation function
+	 * @param <V>
+	 * 		the type of the return value of the transformation function
+	 *
 	 * @return a new {@code Composable} containing the transformed values
 	 */
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
@@ -140,7 +156,7 @@ public abstract class Composable<T> {
 				try {
 					V val = fn.apply(value);
 					d.accept(val);
-				} catch (Throwable e) {
+				} catch(Throwable e) {
 					d.accept(e);
 				}
 			}
@@ -153,7 +169,9 @@ public abstract class Composable<T> {
 	 * passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the new {@code
 	 * Composable}.
 	 *
-	 * @param p the {@link Predicate} to test values against
+	 * @param p
+	 * 		the {@link Predicate} to test values against
+	 *
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
@@ -162,7 +180,7 @@ public abstract class Composable<T> {
 			@Override
 			public void accept(T value) {
 				boolean b = p.test(value);
-				if (b) {
+				if(b) {
 					d.accept(value);
 				} else {
 					d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
@@ -201,23 +219,23 @@ public abstract class Composable<T> {
 	}
 
 	/**
-	 * {@code Composable}s created with existing values must be accepted into this {@code Composable} after all event
-	 * handlers have been assigned. {@link #resolve()} is called to trigger this acceptance of initial values.
+	 * Flush any cached or unprocessed values through this {@literal Stream}.
 	 *
 	 * @return {@literal this}
 	 */
-	public Composable<T> resolve() {
-		if (null != parent) {
-			parent.resolve();
+	public Composable<T> flush() {
+		if(null != parent) {
+			parent.flush();
 		}
-		doResolution();
+		events.notify(flush.getT2(), Event.NULL_EVENT);
 		return this;
 	}
 
 	/**
 	 * Notify this {@code Composable} that a value is being accepted by this {@code Composable}.
 	 *
-	 * @param value the value to accept
+	 * @param value
+	 * 		the value to accept
 	 */
 	void notifyValue(T value) {
 		lock.lock();
@@ -233,7 +251,8 @@ public abstract class Composable<T> {
 	/**
 	 * Notify this {@code Composable} that an error is being propagated through this {@code Composable}.
 	 *
-	 * @param error the error to propagate
+	 * @param error
+	 * 		the error to propagate
 	 */
 	void notifyError(Throwable error) {
 		lock.lock();
@@ -249,8 +268,11 @@ public abstract class Composable<T> {
 	/**
 	 * Create a {@link Deferred} that is compatible with the subclass of {@code Composable} in use.
 	 *
-	 * @param <V> type the {@code Composable} handles
-	 * @param <C> type of the {@code Composable} returned by the {@link Deferred#compose()} method.
+	 * @param <V>
+	 * 		type the {@code Composable} handles
+	 * @param <C>
+	 * 		type of the {@code Composable} returned by the {@link Deferred#compose()} method.
+	 *
 	 * @return a new {@link Deferred} backed by a {@code Composable} compatible with the current subclass.
 	 */
 	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
@@ -258,27 +280,25 @@ public abstract class Composable<T> {
 	/**
 	 * Called after {@code errorCount} has been incremented, but before {@link Consumer}s have been notified.
 	 *
-	 * @param error the error being propagated
+	 * @param error
+	 * 		the error being propagated
 	 */
 	protected abstract void errorAccepted(Throwable error);
 
 	/**
 	 * Called after {@code acceptCount} has been incremented, but before {@link Consumer}s have been notified.
 	 *
-	 * @param value the value being accepted
+	 * @param value
+	 * 		the value being accepted
 	 */
 	protected abstract void valueAccepted(T value);
-
-	/**
-	 * Subclasses must implement this to do resolution processing.
-	 */
-	protected abstract void doResolution();
 
 	/**
 	 * Adds an error {@link Consumer} to this {@code Composable} that will propagate errors to the given {@link
 	 * Composable}.
 	 *
-	 * @param composable the {@code Composable} to propagate errors to
+	 * @param composable
+	 * 		the {@code Composable} to propagate errors to
 	 */
 	protected void cascadeErrors(final Composable<?> composable) {
 		when(Throwable.class, new Consumer<Throwable>() {
@@ -296,6 +316,24 @@ public abstract class Composable<T> {
 	 */
 	protected Observable getObservable() {
 		return events;
+	}
+
+	/**
+	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing accepts.
+	 *
+	 * @return
+	 */
+	protected Tuple2<Selector, Object> getAccept() {
+		return this.accept;
+	}
+
+	/**
+	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing flushes.
+	 *
+	 * @return
+	 */
+	protected Tuple2<Selector, Object> getFlush() {
+		return this.flush;
 	}
 
 }

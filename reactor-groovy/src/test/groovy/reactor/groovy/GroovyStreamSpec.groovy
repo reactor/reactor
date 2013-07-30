@@ -55,7 +55,7 @@ class GroovyStreamSpec extends Specification {
 			Stream d = c | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
-			d.resolve()
+			d.flush()
 			sum == 15
 	}
 
@@ -70,7 +70,7 @@ class GroovyStreamSpec extends Specification {
 			def d = ((c | { Integer.parseInt it }) & { it % 2 == 0 }) << t
 
 		then:
-			d.resolve()
+			d.flush()
 			t.get() == 4
 	}
 
@@ -87,7 +87,7 @@ class GroovyStreamSpec extends Specification {
 			d << t
 
 		then:
-			d.resolve()
+			d.flush()
 			t.get() == 10
 	}
 
@@ -101,7 +101,7 @@ class GroovyStreamSpec extends Specification {
 			'apply a reduction'
 			def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i;  }
 			def t = d.tap()
-			d.resolve()
+			d.flush()
 
 		then:
 			t.get() == 120
@@ -122,7 +122,7 @@ class GroovyStreamSpec extends Specification {
 			def first = d.first().tap()
 			def last = d.last().tap()
 
-			d.resolve()
+			d.flush()
 
 		then:
 			first.get() == 1
@@ -213,7 +213,7 @@ class GroovyStreamSpec extends Specification {
 			'apply a transformation and call an explicit reactor'
 			def s = (c | { Integer.parseInt it }).to(key.t2, r)
 			def t = s.tap()
-			s.resolve()
+			s.flush()
 
 
 		then:
@@ -237,7 +237,7 @@ class GroovyStreamSpec extends Specification {
 			'set a batch size to tap value after 5 iterations'
 			def t = d.batch(5).tap()
 
-			d.resolve()
+			d.flush()
 
 		then:
 			t.get()

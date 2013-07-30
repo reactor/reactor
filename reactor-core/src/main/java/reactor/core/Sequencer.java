@@ -17,6 +17,7 @@
 package reactor.core;
 
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -32,6 +33,8 @@ import reactor.util.Assert;
  */
 public class Sequencer<T> implements Consumer<Event<T>> {
 
+	private final AtomicLong count      = new AtomicLong();
+	private final AtomicLong flushCount = new AtomicLong();
 	private final Observable                 observable;
 	private final Object                     key;
 	private final Queue<Event<T>>            queue;
@@ -53,8 +56,10 @@ public class Sequencer<T> implements Consumer<Event<T>> {
 	}
 
 	public void flush() {
+		flushCount.set(count.get());
+
 		Event<T> ev;
-		while(null != (ev = queue.poll())) {
+		while(flushCount.getAndDecrement() > 0 && null != (ev = queue.poll())) {
 			observable.notify(key, ev);
 		}
 	}
@@ -63,6 +68,7 @@ public class Sequencer<T> implements Consumer<Event<T>> {
 	public final void accept(Event<T> ev) {
 		if(null == queueWhile || queueWhile.test(queue)) {
 			queue.add(ev);
+			count.incrementAndGet();
 		}
 		if(null != flushWhen && flushWhen.test(queue)) {
 			flush();

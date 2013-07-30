@@ -154,7 +154,7 @@ public class ComposableTests extends AbstractReactorTest {
 		Tap<Integer> first = s.first().tap();
 		Tap<Integer> last = s.last().tap();
 
-		s.resolve();
+		s.flush();
 
 		assertThat("First is 1", first.get(), is(1));
 		assertThat("Last is 5", last.get(), is(5));
@@ -179,7 +179,7 @@ public class ComposableTests extends AbstractReactorTest {
 				 .map(STRING_2_INTEGER)
 				 .consume(key.getT2(), r);
 
-		s.resolve(); // Trigger the deferred value to be set
+		s.flush(); // Trigger the deferred value to be set
 
 		await(s, is(5));
 		assertThat("latch was counted down", latch.getCount(), is(0l));
@@ -204,7 +204,7 @@ public class ComposableTests extends AbstractReactorTest {
 					count.addAndGet(i);
 				}
 			}
-		}).resolve();
+		}).flush();
 
 		assertThat("batchCount is 3", batchCount.get(), is(1));
 		assertThat("count is 15", count.get(), is(15));
@@ -259,7 +259,7 @@ public class ComposableTests extends AbstractReactorTest {
 				e.printStackTrace();
 				latch.countDown();
 			}
-		}).resolve();
+		}).flush();
 
 		long startTime = System.currentTimeMillis();
 		T result = null;

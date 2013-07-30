@@ -15,14 +15,18 @@
  */
 package reactor.core.composable.spec
 
-import reactor.core.composable.Composable;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Streams;
+import reactor.core.Environment
+import reactor.core.composable.Composable
+import reactor.core.composable.Deferred
+import reactor.core.composable.Stream
 import reactor.function.Function
 import reactor.function.Observable
 import reactor.tuple.Tuple2
 import spock.lang.Specification
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 import static reactor.GroovyTestUtils.*
 
@@ -36,7 +40,7 @@ class StreamsSpec extends Specification {
     when:
       'the value is retrieved'
       def value = d.compose().tap()
-      d.compose().resolve()
+      d.compose().flush()
 
     then:
       'it is available'
@@ -48,7 +52,7 @@ class StreamsSpec extends Specification {
       'a composable with an initial value'
       def values = []
       Deferred d = Streams.defer(1).synchronousDispatcher().get()
-      d.compose().consume(consumer { values << it }).resolve()
+      d.compose().consume(consumer { values << it }).flush()
 
     when:
       'a value is accepted'
@@ -71,7 +75,7 @@ class StreamsSpec extends Specification {
     and:
       'the last value is retrieved'
       def last = s.last().tap()
-      s.resolve()
+      s.flush()
 
     then:
       'first and last'
@@ -95,8 +99,8 @@ class StreamsSpec extends Specification {
       values == []
 
     when:
-      'resolve is called'
-      composable.resolve()
+      'flush is called'
+      composable.flush()
 
     then:
       'the initial values are passed'
@@ -208,7 +212,7 @@ class StreamsSpec extends Specification {
     when:
       'last is retrieved'
       def last = composable.last().tap()
-      composable.resolve()
+      composable.flush()
 
     then:
       'its value is the last of the initial values'
@@ -357,7 +361,7 @@ class StreamsSpec extends Specification {
       'a reduce function is registered'
       def reduced = source.compose().reduce(new Reduction())
       def value = reduced.tap()
-      reduced.resolve()
+      reduced.flush()
 
     then:
       'the resulting composable holds the reduced value'
@@ -367,18 +371,16 @@ class StreamsSpec extends Specification {
   def "When reducing a known set of values, only the final value is passed to consumers"() {
     given:
       'a composable with a known set of values and a reduce function'
-      Stream reduced = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get().compose().reduce(new Reduction()).resolve()
+      Stream reduced = Streams.defer([1, 2, 3, 4, 5]).
+          synchronousDispatcher().
+          get().
+          compose().
+          reduce(new Reduction())
 
     when:
       'a consumer is registered'
       def values = []
-      reduced.consume(consumer { values << it })
-
-      // TODO This will pass if get is called, but it shouldn't be necessary. The following test passes without calling
-      // get(). The behaviour needs to be consistent irrespective of whether the known number of values is provided up
-      // front or via accept.
-
-      reduced.resolve()
+      reduced.consume(consumer { values << it }).flush()
 
     then:
       'the consumer only receives the final value'
@@ -514,7 +516,7 @@ class StreamsSpec extends Specification {
 
   def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
     given:
-      'a source composable and a reduced composable'
+      'a source and a collected stream'
       Deferred source = Streams.defer().batchSize(2).synchronousDispatcher().get()
       Stream reduced = source.compose().collect()
       def value = reduced.tap()
@@ -534,6 +536,34 @@ class StreamsSpec extends Specification {
     then:
       'the collected list contains the first and second elements'
       value.get() == [1, 2]
+  }
+
+  def 'Collect will accumulate values from multiple threads'() {
+    given:
+      'a source and a collected stream'
+      def sum = new AtomicInteger()
+      def latch = new CountDownLatch(3)
+      Environment env = new Environment()
+      Deferred head = Streams.defer().
+          env(env).
+          batchSize(3).
+          dispatcher(Environment.THREAD_POOL).
+          get()
+      Stream tail = head.compose().collect()
+      tail.consume(consumer { List<Integer> ints ->
+        println "consuming $ints"
+        sum.addAndGet(ints.sum())
+        latch.countDown()
+      })
+
+    when:
+      'values are accepted into the head'
+      (1..10).each { head.accept(it) }
+
+    then:
+      'results contains the expected values'
+      latch.await(5, TimeUnit.SECONDS)
+      sum.get() == 45
   }
 
   def 'An Observable can consume values from a Stream'() {
@@ -564,7 +594,7 @@ class StreamsSpec extends Specification {
       'a composable consumer is registerd'
       composable.consume('key', observable)
 
-      composable.resolve()//  TODO This will pass if get is called, but I don't think it should be necessary
+      composable.flush() //  TODO This will pass if get is called, but I don't think it should be necessary
 
     then:
       'the observable is notified of the values'
