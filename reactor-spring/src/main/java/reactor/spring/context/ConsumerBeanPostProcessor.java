@@ -37,6 +37,7 @@ import org.springframework.expression.Expression;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import reactor.event.Event;
@@ -59,6 +60,10 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	private BeanResolver beanResolver;
 	private TemplateAwareExpressionParser expressionParser = new SpelExpressionParser();
 	private final ConversionService conversionService;
+
+	public ConsumerBeanPostProcessor() {
+		this.conversionService = new DefaultFormattingConversionService();
+	}
 
 	@Autowired(required = false)
 	public ConsumerBeanPostProcessor(ConversionService conversionService) {
