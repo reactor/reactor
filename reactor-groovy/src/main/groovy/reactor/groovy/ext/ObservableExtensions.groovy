@@ -25,7 +25,7 @@ import reactor.groovy.support.ClosureEventFunction
 
 import static reactor.event.selector.Selectors.$
 /**
- * Extensions for providing syntax sugar for working with {@link reactor.function.Observable}s.
+ * Extensions for providing syntax sugar for working with {@link reactor.core.Observable}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -38,25 +38,25 @@ class ObservableExtensions {
   /**
    * Closure converters
    */
-  static <T, E extends Event<T>, V> Registration<Consumer<E>> receive(final Observable selfType,
+  static <T, E extends Event<T>, V> Registration<Consumer<E>> receive(final reactor.core.Observable selfType,
                                                                       final Selector key,
                                                                       final Closure<V> closure) {
     selfType.receive key, new ClosureEventFunction<E, V>(closure)
   }
 
-  static Registration<Consumer> on(Observable selfType,
+  static Registration<Consumer> on(reactor.core.Observable selfType,
                                    Selector selector,
                                    @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
     selfType.on selector, new ClosureEventConsumer(handler)
   }
 
-  static Registration<Consumer> on(Observable selfType,
+  static Registration<Consumer> on(reactor.core.Observable selfType,
                                    String selector,
                                    @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
     selfType.on $(selector), new ClosureEventConsumer(handler)
   }
 
-  static Registration<Consumer> on(Observable selfType,
+  static Registration<Consumer> on(reactor.core.Observable selfType,
                                    @DelegatesTo(value = ClosureEventConsumer, strategy = Closure.DELEGATE_FIRST) Closure handler) {
     selfType.on new ClosureEventConsumer(handler)
   }
@@ -64,30 +64,30 @@ class ObservableExtensions {
   /**
    * Alias and Misc. Helpers
    */
-  static <T> Observable notify(Observable selfType,
+  static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
                                Object key,
                                T obj) {
     selfType.notify key, Event.<T> wrap(obj)
   }
 
-  static <T> Observable notify(Observable selfType,
+  static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
                                Object key,
                                Supplier<Event<T>> obj) {
     selfType.notify key, obj.get()
   }
 
-  static Observable notify(Observable selfType,
+  static reactor.core.Observable notify(reactor.core.Observable selfType,
                            Object key) {
     selfType.notify key, Event.<Void> wrap(null)
   }
 
-  static <T> Observable notify(Observable selfType,
+  static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
                                String key,
                                Closure<T> closure) {
     selfType.notify key, Event.wrap((T) closure.call())
   }
 
-  static Observable notify(final Observable selfType, final Map<String, ?> params) {
+  static reactor.core.Observable notify(final reactor.core.Observable selfType, final Map<String, ?> params) {
     Object topic = params.remove ARG_TOPIC
 
     def toSend
@@ -108,19 +108,19 @@ class ObservableExtensions {
    * Operator overloading
    */
 
-  static <T> Observable leftShift(final Observable selfType, final T obj) {
+  static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final T obj) {
     selfType.notify Event.wrap(obj)
   }
 
-  static <T> Observable leftShift(final Observable selfType, final Event<T> obj) {
+  static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Event<T> obj) {
     selfType.notify obj
   }
 
-  static <T> Observable leftShift(final Observable selfType, final Closure<T> obj) {
+  static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Closure<T> obj) {
     selfType.notify Event.wrap((T) obj.call())
   }
 
-  static <T> Observable leftShift(final Observable selfType, final Supplier<Event<T>> obj) {
+  static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Supplier<Event<T>> obj) {
     selfType.notify obj.get()
   }
 

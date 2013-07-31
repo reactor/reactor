@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.function;
+package reactor.core;
 
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
+import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Supplier;
 
 /**
  * Basic unit of event handling in Reactor.
@@ -39,7 +42,7 @@ public interface Observable {
 	boolean respondsToKey(Object key);
 
 	/**
-	 * Register a {@link Consumer} to be triggered when a notification matches the given {@link Selector}.
+	 * Register a {@link reactor.function.Consumer} to be triggered when a notification matches the given {@link Selector}.
 	 *
 	 * @param sel      The {@literal Selector} to be used for matching
 	 * @param consumer The {@literal Consumer} to be triggered
@@ -59,15 +62,15 @@ public interface Observable {
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 *
 	 * @see #notify(Event)
-	 * @see #notify(Supplier)
+	 * @see #notify(reactor.function.Supplier)
 	 */
 	<E extends Event<?>> Registration<Consumer<E>> on(Consumer<E> consumer);
 
 	/**
-	 * Assign a {@link Function} to receive an {@link Event} and produce a reply of the given type.
+	 * Assign a {@link reactor.function.Function} to receive an {@link Event} and produce a reply of the given type.
 	 *
 	 * @param sel The {@link Selector} to be used for matching
-	 * @param fn  The transformative {@link Function} to call to receive an {@link Event}
+	 * @param fn  The transformative {@link reactor.function.Function} to call to receive an {@link Event}
 	 * @param <E> The type of the {@link Event}
 	 * @param <V> The type of the response data
 	 *
@@ -100,12 +103,12 @@ public interface Observable {
 	<E extends Event<?>> Observable notify(Object key, E ev);
 
 	/**
-	 * Notify this component that the given {@link Supplier} can provide an event that's ready to be processed.
+	 * Notify this component that the given {@link reactor.function.Supplier} can provide an event that's ready to be processed.
 	 *
 	 * @param key      The key to be matched by {@link Selector Selectors}
-	 * @param supplier The {@link Supplier} that will provide the actual {@link Event}
+	 * @param supplier The {@link reactor.function.Supplier} that will provide the actual {@link Event}
 	 *
-	 * @param <S>      The type of the {@link Supplier}
+	 * @param <S>      The type of the {@link reactor.function.Supplier}
 	 *
 	 * @return {@literal this}
 	 */

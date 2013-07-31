@@ -48,7 +48,7 @@ import reactor.event.Event;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Observable;
+import reactor.core.Observable;
 import reactor.spring.annotation.ReplyTo;
 import reactor.spring.annotation.Selector;
 import reactor.util.StringUtils;

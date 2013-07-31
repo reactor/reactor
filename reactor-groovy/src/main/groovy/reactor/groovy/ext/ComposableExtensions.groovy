@@ -40,7 +40,7 @@ class ComposableExtensions {
 	 * Alias
 	 */
 	static <T, X extends Composable<T>> X to(final X selfType, final Object key,
-	                                         final Observable observable) {
+	                                         final reactor.core.Observable observable) {
 		selfType.consume key, observable
 	}
 

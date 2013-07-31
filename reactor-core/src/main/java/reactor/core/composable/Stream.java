@@ -34,7 +34,7 @@ import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Functions;
-import reactor.function.Observable;
+import reactor.core.Observable;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.function.support.Tap;

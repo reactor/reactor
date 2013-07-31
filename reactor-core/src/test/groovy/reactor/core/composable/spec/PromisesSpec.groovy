@@ -18,8 +18,7 @@ package reactor.core.composable.spec
 import reactor.core.Environment
 import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
-import reactor.core.composable.spec.Promises;
-import reactor.function.Observable
+import reactor.core.Observable
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch

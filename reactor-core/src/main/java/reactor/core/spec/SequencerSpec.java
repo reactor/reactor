@@ -4,7 +4,7 @@ import java.util.Queue;
 
 import reactor.core.Sequencer;
 import reactor.event.Event;
-import reactor.function.Observable;
+import reactor.core.Observable;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.util.Assert;

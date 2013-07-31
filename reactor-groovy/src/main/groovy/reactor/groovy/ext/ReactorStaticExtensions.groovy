@@ -23,7 +23,7 @@ import reactor.core.composable.Promise
 import reactor.core.composable.spec.PromiseSpec;
 import reactor.core.composable.spec.Promises;
 import reactor.function.Functions;
-import reactor.function.Observable
+import reactor.core.Observable
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 

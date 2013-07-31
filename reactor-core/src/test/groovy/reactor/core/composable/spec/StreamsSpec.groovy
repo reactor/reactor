@@ -20,7 +20,7 @@ import reactor.core.composable.Composable
 import reactor.core.composable.Deferred
 import reactor.core.composable.Stream
 import reactor.function.Function
-import reactor.function.Observable
+import reactor.core.Observable
 import reactor.tuple.Tuple2
 import spock.lang.Specification
 
@@ -546,7 +546,7 @@ class StreamsSpec extends Specification {
       Environment env = new Environment()
       Deferred head = Streams.defer().
           env(env).
-          batchSize(3).
+          batchSize(333).
           dispatcher(Environment.THREAD_POOL).
           get()
       Stream tail = head.compose().collect()
@@ -558,12 +558,12 @@ class StreamsSpec extends Specification {
 
     when:
       'values are accepted into the head'
-      (1..10).each { head.accept(it) }
+      (1..1000).each { head.accept(it) }
 
     then:
       'results contains the expected values'
       latch.await(5, TimeUnit.SECONDS)
-      sum.get() == 45
+      sum.get() == 499500
   }
 
   def 'An Observable can consume values from a Stream'() {

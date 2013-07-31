@@ -23,7 +23,6 @@ import javax.annotation.Nullable;
 
 import reactor.event.Event;
 import reactor.function.Consumer;
-import reactor.function.Observable;
 import reactor.function.Predicate;
 import reactor.queue.BlockingQueueFactory;
 import reactor.util.Assert;

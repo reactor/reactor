@@ -38,7 +38,6 @@ import reactor.event.selector.Selectors;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Observable;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;

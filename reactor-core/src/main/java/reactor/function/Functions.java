@@ -20,6 +20,7 @@ import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
+import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.tuple.Tuple;
 
@@ -33,7 +34,7 @@ import reactor.tuple.Tuple;
 public abstract class Functions {
 
 	/**
-	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link Observable}, passing the given {@link
+	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link reactor.core.Observable}, passing the given {@link
 	 * reactor.event.Event}.
 	 *
 	 * @param consumer   The {@link Consumer} to invoke.
