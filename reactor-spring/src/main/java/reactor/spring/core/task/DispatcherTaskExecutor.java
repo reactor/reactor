@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.spring;
+package reactor.spring.core.task;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -22,7 +22,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.TaskExecutor;
-
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
@@ -40,16 +39,15 @@ import reactor.function.Consumer;
 public class DispatcherTaskExecutor implements TaskExecutor {
 
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry = new EmptyConsumerRegistry();
-
-	private final EventRouter eventRouter = new RunnableEventRouter();
-
+	private final EventRouter                            eventRouter      = new RunnableEventRouter();
 	private final Dispatcher dispatcher;
 
 	/**
 	 * Creates a new DispatcherTaskExceutor that will use the given {@code dispatcher} to execute
 	 * tasks.
 	 *
-	 * @param dispatcher The dispatcher to use
+	 * @param dispatcher
+	 * 		The dispatcher to use
 	 */
 	@Autowired
 	public DispatcherTaskExecutor(Dispatcher dispatcher) {
@@ -62,20 +60,17 @@ public class DispatcherTaskExecutor implements TaskExecutor {
 	}
 
 	private static final class RunnableEventRouter implements EventRouter {
-
 		@Override
 		public void route(Object key,
 		                  Event<?> event,
 		                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
 		                  Consumer<?> completionConsumer,
 		                  Consumer<Throwable> errorConsumer) {
-
 			((Runnable)event.getData()).run();
 		}
 	}
 
 	private static final class EmptyConsumerRegistry implements Registry<Consumer<? extends Event<?>>> {
-
 		@Override
 		public Iterator<Registration<? extends Consumer<? extends Event<?>>>> iterator() {
 			throw new UnsupportedOperationException();
@@ -96,4 +91,5 @@ public class DispatcherTaskExecutor implements TaskExecutor {
 			return Collections.emptyList();
 		}
 	}
+
 }

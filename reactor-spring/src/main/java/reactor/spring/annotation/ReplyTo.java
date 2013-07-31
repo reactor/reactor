@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
-package reactor.spring.context.annotation;
+package reactor.spring.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Indicate a method return is to be sent to the key referenced by the given expression.
  *
  * @author Jon Brisbin
  */
-@Target({
-						ElementType.METHOD
-				})
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-public @interface Reply {
+public @interface ReplyTo {
 
 	/**
 	 * An expression which evaluates to a key to which is sent the method return value.

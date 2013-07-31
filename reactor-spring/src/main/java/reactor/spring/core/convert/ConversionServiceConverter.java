@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.spring.context;
+package reactor.spring.core.convert;
 
 import org.springframework.core.convert.ConversionService;
 import reactor.convert.Converter;
@@ -31,7 +31,9 @@ public class ConversionServiceConverter implements Converter {
 	/**
 	 * Creates a new ConversionServiceConverter that will delegate conversion to the given
 	 * {@code conversionService}
-	 * @param conversionService The conversion service to delegate to
+	 *
+	 * @param conversionService
+	 * 		The conversion service to delegate to
 	 */
 	public ConversionServiceConverter(ConversionService conversionService) {
 		this.conversionService = conversionService;
@@ -46,4 +48,5 @@ public class ConversionServiceConverter implements Converter {
 	public <T> T convert(Object source, Class<T> targetType) {
 		return conversionService.convert(source, targetType);
 	}
+
 }

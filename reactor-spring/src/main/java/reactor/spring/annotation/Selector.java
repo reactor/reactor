@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.spring.context.annotation;
+package reactor.spring.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -25,20 +25,10 @@ import java.lang.annotation.Target;
 /**
  * @author Jon Brisbin
  */
-@Target({
-		        ElementType.TYPE,
-		        ElementType.METHOD
-        })
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
-public @interface On {
-
-	/**
-	 * An expression that evaluates to the {@link reactor.core.Reactor} on which to place this handler.
-	 *
-	 * @return An expression to be evaluated.
-	 */
-	String reactor() default "reactor";
+public @interface Selector {
 
 	/**
 	 * An expression that evaluates to a {@link reactor.event.selector.Selector} to register this handler with the {@link
@@ -47,6 +37,13 @@ public @interface On {
 	 * @return An expression to be evaluated.
 	 */
 	String value();
+
+	/**
+	 * An expression that evaluates to the {@link reactor.core.Reactor} on which to place this handler.
+	 *
+	 * @return An expression to be evaluated.
+	 */
+	String reactor() default "reactor";
 
 	/**
 	 * The type of {@link reactor.event.selector.Selector} to register.

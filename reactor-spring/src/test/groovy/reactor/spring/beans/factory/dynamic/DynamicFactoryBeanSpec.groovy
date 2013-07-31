@@ -18,7 +18,7 @@
 
 
 
-package reactor.spring.dynamic
+package reactor.spring.beans.factory.dynamic
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean

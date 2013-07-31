@@ -17,7 +17,7 @@
 
 
 
-package reactor.spring.context
+package reactor.spring.beans.factory.config
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
@@ -26,7 +26,8 @@ import org.springframework.context.annotation.Configuration
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.event.Event
-import reactor.spring.context.annotation.On
+import reactor.spring.annotation.Consumer
+import reactor.spring.annotation.Selector
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -36,9 +37,9 @@ import java.util.concurrent.TimeUnit
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-class HandlerBeanPostProcessorSpec extends Specification {
+class ConsumerBeanPostProcessorSpec extends Specification {
 
-  def "Annotated handler is wired to a Reactor"() {
+  def "Annotated Consumer is wired to a Reactor"() {
 
     given:
       "an ApplicationContext with an annotated bean handler"
@@ -57,13 +58,13 @@ class HandlerBeanPostProcessorSpec extends Specification {
 
 }
 
+@Consumer
 class HandlerBean {
   @Autowired
   Reactor reactor
   def latch = new CountDownLatch(1)
 
-  @On('test')
-  void handleTest(String s) {
+  @Selector('test') void handleTest(String s) {
     latch.countDown()
   }
 }

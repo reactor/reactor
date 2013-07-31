@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.spring.context;
+package reactor.spring.beans.factory;
 
 /**
  * An enumeration of the different types of event routing

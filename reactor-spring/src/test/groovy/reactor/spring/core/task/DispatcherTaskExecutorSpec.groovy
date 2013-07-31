@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.spring
+package reactor.spring.core.task
+
+import reactor.spring.core.task.DispatcherTaskExecutor
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.core.Environment
-import reactor.core.spec.Reactors
 import reactor.event.dispatch.SynchronousDispatcher
 import spock.lang.Specification
 

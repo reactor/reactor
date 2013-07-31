@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.spring.dynamic;
+package reactor.spring.beans.factory.dynamic;
 
 import org.springframework.beans.factory.FactoryBean;
 

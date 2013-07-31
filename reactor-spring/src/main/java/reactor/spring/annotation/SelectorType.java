@@ -1,4 +1,4 @@
-package reactor.spring.context.annotation;
+package reactor.spring.annotation;
 
 /**
  * @author Jon Brisbin

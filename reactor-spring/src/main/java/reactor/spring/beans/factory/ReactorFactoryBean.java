@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package reactor.spring.context;
+package reactor.spring.beans.factory;
 
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.util.Assert;
-
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.ReactorSpec;
@@ -31,14 +30,15 @@ import reactor.core.spec.Reactors;
  */
 public class ReactorFactoryBean implements FactoryBean<Reactor> {
 
-	private volatile Reactor     reactor;
+	private volatile Reactor reactor;
 
 	/**
 	 * Creates a new ReactorFactoryBean that will use the given environment when configuring
 	 * and creating its Reactor. The Reactor will use a synchronous dispatcher and broadcast
 	 * event routing.
 	 *
-	 * @param env The environment to use
+	 * @param env
+	 * 		The environment to use
 	 */
 	public ReactorFactoryBean(Environment env) {
 		this(env, null, null);
@@ -49,11 +49,13 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 	 * and creating its Reactor and will configure the reactor with the dispatcher with
 	 * the given name found in the environment. The Reactor will use broadcast event routing.
 	 *
-	 * @param env The environment to use
-	 * @param dispatcher The dispatcher to configure the Reactor with
+	 * @param env
+	 * 		The environment to use
+	 * @param dispatcher
+	 * 		The dispatcher to configure the Reactor with
 	 */
 	public ReactorFactoryBean(Environment env,
-														String dispatcher) {
+	                          String dispatcher) {
 		this(env, dispatcher, null);
 	}
 
@@ -63,25 +65,28 @@ public class ReactorFactoryBean implements FactoryBean<Reactor> {
 	 * the given name found in the environment. The Reactor will use the given
 	 * {@code eventRouting}.
 	 *
-	 * @param env The environment to use
-	 * @param dispatcher The dispatcher to configure the Reactor with
-	 * @param eventRouting The type of event routing to use
+	 * @param env
+	 * 		The environment to use
+	 * @param dispatcher
+	 * 		The dispatcher to configure the Reactor with
+	 * @param eventRouting
+	 * 		The type of event routing to use
 	 */
 	public ReactorFactoryBean(Environment env,
-														String dispatcher,
-														EventRouting eventRouting) {
+	                          String dispatcher,
+	                          EventRouting eventRouting) {
 		Assert.notNull(env, "Environment cannot be null.");
 
 		ReactorSpec spec = Reactors.reactor().env(env);
-		if (null != dispatcher) {
-			if ("sync".equals(dispatcher)) {
+		if(null != dispatcher) {
+			if("sync".equals(dispatcher)) {
 				spec.synchronousDispatcher();
 			} else {
 				spec.dispatcher(dispatcher);
 			}
 		}
-		if (null != eventRouting) {
-			switch (eventRouting) {
+		if(null != eventRouting) {
+			switch(eventRouting) {
 				case BROADCAST_EVENT_ROUTING:
 					spec.broadcastEventRouting();
 					break;
