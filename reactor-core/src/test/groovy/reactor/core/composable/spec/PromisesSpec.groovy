@@ -554,7 +554,9 @@ class PromisesSpec extends Specification {
 	  when:
 		  "promises are supplied"
 		  promise1 = Promises.task(supplier{'1'}).get()
+		  promise1.flush()
 		  promise2 = Promises.task(supplier{'2'}).get()
+		  promise2.flush()
 	    combined = Promises.when(promise1, promise2)
 
 
