@@ -30,7 +30,7 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.core.Observable;
 import reactor.function.Predicate;
-import reactor.function.support.NotifyConsumer;
+import reactor.core.support.NotifyConsumer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 

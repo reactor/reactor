@@ -30,7 +30,7 @@ import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Functions;
-import reactor.function.support.NotifyConsumer;
+import reactor.core.support.NotifyConsumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;

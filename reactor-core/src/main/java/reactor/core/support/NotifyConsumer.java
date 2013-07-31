@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.function.support;
+package reactor.core.support;
 
 import reactor.function.Consumer;
 import reactor.event.Event;
