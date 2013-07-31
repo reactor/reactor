@@ -26,6 +26,8 @@ import reactor.function.Function;
 import reactor.function.Supplier;
 
 /**
+ * A {@link QueuePersistor} implementations that stores items in-memory.
+ *
  * @author Jon Brisbin
  */
 public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
