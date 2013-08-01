@@ -13,21 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: "sonar-runner"
+apply plugin: "sonar"
 
-sonarRunner {
-	sonarProperties {
-		property "sonar.host.url", "$sonarHostUrl"
-		property "sonar.jdbc.url", "$sonarJdbcUrl"
-		property "sonar.jdbc.driverClassName", "$sonarJdbcDriver"
-		property "sonar.jdbc.username", "$sonarJdbcUsername"
-		property "sonar.jdbc.password", "$sonarJdbcPassword"
-		property "sonar.core.codeCoveragePlugin", "jacoco"
-		property "sonar.jacoco.reportPath", "${buildDir.name}/jacoco.exec"
-		property "sonar.links.ci", "https://build.springsource.org/browse/REACTOR-CORE"
-		property "sonar.links.issue", "https://github.com/reactor/reactor/issues"
-		property "sonar.links.scm", "https://github.com/reactor/reactor.git"
-	}
+sonar.withGlobalProperties {
+	props["sonar.host.url"] = "$sonarHostUrl"
+	props["sonar.jdbc.url"] = "$sonarJdbcUrl"
+	props["sonar.jdbc.driverClassName"] = "$sonarJdbcDriver"
+	props["sonar.jdbc.username"] = "$sonarJdbcUsername"
+	props["sonar.jdbc.password"] = "$sonarJdbcPassword"
+	props["sonar.core.codeCoveragePlugin"] = "jacoco"
+	props["sonar.jacoco.reportPath"] = "${buildDir.name}/jacoco.exec"
+	props["sonar.links.ci"] = "https://build.springsource.org/browse/REACTOR-CORE"
+	props["sonar.links.issue"] = "https://github.com/reactor/reactor/issues"
+	props["sonar.links.scm"] = "https://github.com/reactor/reactor.git"
 }
 
 task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {

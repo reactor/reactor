@@ -182,6 +182,13 @@ project('reactor-core') {
 project('reactor-groovy') {
 	apply plugin: 'osgi'
 	description = 'Reactor Groovy components'
+
+	sonar {
+		project {
+			language = 'groovy'
+		}
+	}
+
 	dependencies {
 		compile project(':reactor-core')
 
@@ -230,6 +237,11 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
+	sonar {
+		project {
+			skip = true
+		}
+	}
 	dependencies {
 		compile project(':reactor-core')
 	}
