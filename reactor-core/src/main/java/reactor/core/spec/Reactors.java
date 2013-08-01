@@ -16,6 +16,11 @@
 
 package reactor.core.spec;
 
+import reactor.core.Observable;
+import reactor.event.Event;
+import reactor.function.Consumer;
+import reactor.tuple.Tuple;
+
 /**
  * Base class to encapsulate commonly-used functionality around Reactors.
  *
@@ -34,4 +39,16 @@ public abstract class Reactors {
 		return new ReactorSpec();
 	}
 
+	/**
+	 * Schedule an arbitrary {@link reactor.function.Consumer} to be executed on the given {@link reactor.core.Observable}, passing the given {@link
+	 * reactor.event.Event}.
+	 *
+	 * @param consumer   The {@link reactor.function.Consumer} to invoke.
+	 * @param data       The data to pass to the consumer.
+	 * @param observable The {@literal Observable} that will be used to invoke the {@literal Consumer}
+	 * @param <T>        The type of the data.
+	 */
+	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
+		observable.notify(Event.wrap(Tuple.of(consumer, data)));
+	}
 }

@@ -21,6 +21,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import reactor.core.Environment;
+import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -29,7 +30,6 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Functions;
 import reactor.core.Observable;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
@@ -189,7 +189,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 */
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
 		if(isComplete()) {
-			Functions.schedule(onComplete, this, getObservable());
+			Reactors.schedule(onComplete, this, getObservable());
 		} else {
 			getObservable().on(complete.getT1(), new EventConsumer<Promise<T>>(onComplete));
 		}
@@ -453,7 +453,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
 		if(isSuccess()) {
-			Functions.schedule(consumer, value, getObservable());
+			Reactors.schedule(consumer, value, getObservable());
 		} else {
 			super.consume(consumer);
 		}
@@ -463,7 +463,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public Promise<T> consume(@Nonnull final Composable<T> composable) {
 		if(isSuccess()) {
-			Functions.schedule(new Consumer<T>() {
+			Reactors.schedule(new Consumer<T>() {
 				@Override
 				public void accept(T t) {
 					composable.notifyValue(t);
@@ -489,7 +489,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		if(isError() && exceptionType.isAssignableFrom(error.getClass())) {
-			Functions.schedule(onError, (E)error, getObservable());
+			Reactors.schedule(onError, (E) error, getObservable());
 		} else {
 			super.when(exceptionType, onError);
 		}
@@ -504,13 +504,13 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		final Deferred<V, Promise<V>> d = createDeferred();
 		if(isSuccess()) {
-			Functions.schedule(
+			Reactors.schedule(
 					new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
 							try {
 								d.accept(fn.apply(value));
-							} catch(Throwable throwable) {
+							} catch (Throwable throwable) {
 								d.accept(throwable);
 							}
 						}
@@ -532,17 +532,17 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 		final Deferred<T, Promise<T>> d = createDeferred();
 		if(isSuccess()) {
-			Functions.schedule(
+			Reactors.schedule(
 					new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
 							try {
-								if(p.test(value)) {
+								if (p.test(value)) {
 									d.accept(value);
 								} else {
 									d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
 								}
-							} catch(Throwable throwable) {
+							} catch (Throwable throwable) {
 								d.accept(throwable);
 							}
 						}

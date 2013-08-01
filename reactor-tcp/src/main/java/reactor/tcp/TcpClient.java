@@ -27,6 +27,7 @@ import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
+import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
@@ -34,7 +35,6 @@ import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
-import reactor.function.Functions;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
@@ -86,7 +86,7 @@ public abstract class TcpClient<IN, OUT> {
 	 */
 	public Promise<Void> close() {
 		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(reactor.getDispatcher()).get();
-		Functions.schedule(
+		Reactors.schedule(
 				new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {

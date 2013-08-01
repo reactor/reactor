@@ -30,7 +30,6 @@ import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
-import reactor.function.Functions;
 
 /**
  * @author Jon Brisbin
@@ -56,7 +55,7 @@ public class AwaitTests extends AbstractReactorTest {
 					latch.countDown();
 				}
 			});
-			Functions.schedule(new Consumer() {
+			Reactors.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {

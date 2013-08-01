@@ -29,7 +29,6 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Functions;
 import reactor.core.support.NotifyConsumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
@@ -165,7 +164,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public TcpConnection<IN, OUT> send(OUT data, final Consumer<Boolean> onComplete) {
-		Functions.schedule(
+		Reactors.schedule(
 				new Consumer<OUT>() {
 					@Override
 					public void accept(OUT data) {

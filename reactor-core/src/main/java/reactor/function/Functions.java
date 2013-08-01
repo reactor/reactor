@@ -34,19 +34,6 @@ import reactor.tuple.Tuple;
 public abstract class Functions {
 
 	/**
-	 * Schedule an arbitrary {@link Consumer} to be executed on the given {@link reactor.core.Observable}, passing the given {@link
-	 * reactor.event.Event}.
-	 *
-	 * @param consumer   The {@link Consumer} to invoke.
-	 * @param data       The data to pass to the consumer.
-	 * @param observable The {@literal Observable} that will be used to invoke the {@literal Consumer}
-	 * @param <T>        The type of the data.
-	 */
-	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		observable.notify(Event.wrap(Tuple.of(consumer, data)));
-	}
-
-	/**
 	 * Wrap the given {@link java.util.concurrent.Callable} and compose a new {@link reactor.function.Function}.
 	 *
 	 * @param c The {@link java.util.concurrent.Callable}.
