@@ -643,7 +643,7 @@ class PromisesSpec extends Specification {
       promise.error
   }
 
-  def "A filtered promise is rejected if the filter does not allow the value to pass through"() {
+  def "A filtered promise is not fulfilled if the filter does not allow the value to pass through"() {
     given:
       "a promise with a filter that only accepts even values"
       def promise = Promises.defer().synchronousDispatcher().get()
@@ -654,8 +654,8 @@ class PromisesSpec extends Specification {
       promise.accept 1
 
     then:
-      "the filtered promise is rejected"
-      filteredPromise.error
+      "the filtered promise is not fulfilled"
+      filteredPromise.pending
   }
 
   def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
@@ -705,7 +705,7 @@ class PromisesSpec extends Specification {
       filteredPromise.get() == 2
   }
 
-  def "If a promise is already fulfilled with a value rejected by a filter, the filtered promise is rejected"() {
+  def "If a promise is already fulfilled with a value rejected by a filter, the filtered promise is not fulfilled"() {
     given:
       "a promise that is already fulfilled with an odd value"
       def promise = Promises.success(1).synchronousDispatcher().get()
@@ -715,8 +715,8 @@ class PromisesSpec extends Specification {
       def filteredPromise = promise.filter(predicate { it % 2 == 0 })
 
     then:
-      "the filtered promise is rejected"
-      filteredPromise.error
+      "the filtered promise is not fulfilled"
+      filteredPromise.pending
   }
 
   def "Errors stop compositions"() {
