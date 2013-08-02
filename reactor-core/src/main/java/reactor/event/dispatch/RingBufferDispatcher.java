@@ -43,9 +43,9 @@ import com.lmax.disruptor.dsl.ProducerType;
  */
 public class RingBufferDispatcher extends AbstractDispatcher {
 
-	private static final int DEFAULT_DEFAULT_SIZE = 1024;
+	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
-	private final ExecutorService            executor;
+	private final ExecutorService               executor;
 	private final Disruptor<RingBufferTask<?>>  disruptor;
 	private final RingBuffer<RingBufferTask<?>> ringBuffer;
 
@@ -57,7 +57,7 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	 * @param name The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
-		this(name, DEFAULT_DEFAULT_SIZE, ProducerType.MULTI, new YieldingWaitStrategy());
+		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new YieldingWaitStrategy());
 	}
 
 	/**
@@ -72,9 +72,9 @@ public class RingBufferDispatcher extends AbstractDispatcher {
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-															int bufferSize,
-															ProducerType producerType,
-															WaitStrategy waitStrategy) {
+	                            int bufferSize,
+	                            ProducerType producerType,
+	                            WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
 		this.disruptor = new Disruptor<RingBufferTask<?>>(
