@@ -16,7 +16,7 @@ import reactor.function.Supplier;
  */
 public class ProcessorThroughputTests {
 
-	static final int RUNS = 1000000000;
+	static final int RUNS = 10000000;
 
 	Processor<Data> processor;
 	CountDownLatch  latch;
