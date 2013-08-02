@@ -47,7 +47,7 @@ public class Event<T> implements Serializable {
 	 */
 	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
 
-	private          UUID    id;
+	private volatile UUID    id;
 	private volatile Headers headers;
 	private volatile Object  replyTo;
 	private volatile T       data;
@@ -110,7 +110,7 @@ public class Event<T> implements Serializable {
 	 *
 	 * @return Unique {@link UUID} of this event.
 	 */
-	public UUID getId() {
+	public synchronized UUID getId() {
 		if(null == id) {
 			id = UUIDUtils.create();
 		}
@@ -122,7 +122,7 @@ public class Event<T> implements Serializable {
 	 *
 	 * @return The Event's Headers
 	 */
-	public Headers getHeaders() {
+	public synchronized Headers getHeaders() {
 		if(null == headers) {
 			headers = new Headers();
 		}
