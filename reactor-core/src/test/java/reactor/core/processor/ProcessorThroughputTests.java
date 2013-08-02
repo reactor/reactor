@@ -16,7 +16,7 @@ import reactor.function.Supplier;
  */
 public class ProcessorThroughputTests {
 
-	static final int RUNS = 10000000;
+	static final int RUNS = 100000;
 
 	Processor<Data> processor;
 	CountDownLatch  latch;
@@ -67,7 +67,7 @@ public class ProcessorThroughputTests {
 			processor.batch(batchSize, dataConsumer);
 		}
 
-		assertTrue(latch.await(10, TimeUnit.SECONDS));
+		assertTrue(latch.await(60, TimeUnit.SECONDS));
 	}
 
 	static final class Data {
