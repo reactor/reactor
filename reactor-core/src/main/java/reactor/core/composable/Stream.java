@@ -18,12 +18,12 @@ package reactor.core.composable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
@@ -34,11 +34,9 @@ import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Functions;
-import reactor.core.Observable;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.function.support.Tap;
-import reactor.queue.BlockingQueueFactory;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -228,35 +226,30 @@ public class Stream<T> extends Composable<T> {
 	public Stream<List<T>> collect() {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
-
-		final AtomicLong counter = new AtomicLong(0);
-		final Queue<T> valueBuffer = BlockingQueueFactory.createQueue();
-		final Runnable batchAcceptor = new Runnable() {
-			@Override public void run() {
-				List<T> batchValues = new ArrayList<T>();
-				for(int i = 0; i < batchSize && null != valueBuffer.peek(); i++) {
-					batchValues.add(valueBuffer.poll());
-				}
-				d.accept(batchValues);
-			}
-		};
+		final List<T> values = new ArrayList<T>();
 
 		consume(new Consumer<T>() {
 			@Override
 			public void accept(T value) {
-				valueBuffer.add(value);
-				if(counter.incrementAndGet() % batchSize != 0) {
-					return;
+				synchronized(values) {
+					values.add(value);
+					if(values.size() % batchSize != 0) {
+						return;
+					}
+					d.accept(new ArrayList<T>(values));
+					values.clear();
 				}
-
-				batchAcceptor.run();
 			}
 		});
 
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
 			@Override public void accept(Event<Void> ev) {
-				if(!valueBuffer.isEmpty()) {
-					batchAcceptor.run();
+				synchronized(values) {
+					if(values.isEmpty()) {
+						return;
+					}
+					d.accept(new ArrayList<T>(values));
+					values.clear();
 				}
 			}
 		});
