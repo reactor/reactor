@@ -18,11 +18,10 @@ class ProcessorSpec extends Specification {
       'a RingBuffer for Events'
       def latch = new CountDownLatch(10)
       List<Data> data = []
-      def processor = new Processor<Data>(
-          { new Data() } as Supplier<Data>,
-          { Data d -> data << d; latch.countDown() } as Consumer<Data>,
-          null
-      )
+      def processor = new reactor.core.processor.spec.ProcessorSpec<Data>().
+          dataSupplier({ new Data() } as Supplier<Data>).
+          consume({ Data d -> data << d; latch.countDown() } as Consumer<Data>).
+          get()
 
     when:
       'a series of Events are triggered'

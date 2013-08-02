@@ -1,5 +1,6 @@
 package reactor.core.processor;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -24,15 +25,28 @@ public class Processor<T> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Processor.class);
 
+	private final int                                         opsBufferSize;
 	private final Disruptor<Operation<T>>                     disruptor;
 	private final com.lmax.disruptor.RingBuffer<Operation<T>> ringBuffer;
 
 	@SuppressWarnings("unchecked")
-	public Processor(@Nonnull final Supplier<T> dataSupplier,
+	public Processor(@Nullable Executor executor,
+	                 boolean multiThreadedProducer,
+	                 int opsBufferSize,
+	                 @Nonnull final Supplier<T> dataSupplier,
 	                 @Nonnull final Consumer<T> consumer,
 	                 @Nullable final Consumer<Throwable> errorConsumer) {
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
+
+		if(null == executor) {
+			executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory("processor"));
+		}
+		if(opsBufferSize < 1) {
+			this.opsBufferSize = 256 * Runtime.getRuntime().availableProcessors();
+		} else {
+			this.opsBufferSize = opsBufferSize;
+		}
 
 		this.disruptor = new Disruptor<Operation<T>>(
 				new EventFactory<Operation<T>>() {
@@ -46,12 +60,11 @@ public class Processor<T> {
 						};
 					}
 				},
-				512 * Runtime.getRuntime().availableProcessors(),
-				Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory("processor")),
-				ProducerType.SINGLE,
+				this.opsBufferSize,
+				executor,
+				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
 				new YieldingWaitStrategy()
 		);
-
 		this.disruptor.handleEventsWith(new EventHandler<Operation<T>>() {
 			@Override public void onEvent(Operation<T> op, long sequence, boolean endOfBatch) throws Exception {
 				consumer.accept(op.get());
@@ -90,7 +103,8 @@ public class Processor<T> {
 	}
 
 	public Processor<T> batch(int size, Consumer<T> consumer) {
-		Assert.isTrue(size > 2, "Batch size must be greater than 2");
+		Assert.isTrue(size > 2 && size < opsBufferSize,
+		              "Batch size must be greater than 2 but less than buffer size (" + opsBufferSize + ")");
 
 		long start = -1;
 		long end = -1;

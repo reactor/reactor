@@ -18,7 +18,7 @@ import reactor.function.Supplier;
 @Ignore
 public class ProcessorThroughputTests {
 
-	static final int RUNS = 100000;
+	static final int RUNS = 1000000000;
 
 	Processor<Data> processor;
 	CountDownLatch  latch;
@@ -35,19 +35,18 @@ public class ProcessorThroughputTests {
 			}
 		};
 
-		processor = new Processor<Data>(
-				new Supplier<Data>() {
+		processor = new reactor.core.processor.spec.ProcessorSpec<Data>()
+				.dataSupplier(new Supplier<Data>() {
 					@Override public Data get() {
 						return new Data();
 					}
-				},
-				new Consumer<Data>() {
+				})
+				.consume(new Consumer<Data>() {
 					@Override public void accept(Data data) {
 						latch.countDown();
 					}
-				},
-				null
-		);
+				})
+				.get();
 
 		start = System.currentTimeMillis();
 	}
