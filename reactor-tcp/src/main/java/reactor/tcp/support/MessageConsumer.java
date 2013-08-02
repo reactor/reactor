@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding.syslog;
+package reactor.tcp.support;
 
 import reactor.function.Consumer;
 import reactor.tcp.TcpConnection;
 
 /**
- * Abstract helper class to aid in consuming {@link SyslogMessage SyslogMessages}.
+ * Abstract helper class to aid in consuming messages.
  *
  * @author Jon Brisbin
  */
-public abstract class SyslogConsumer implements Consumer<TcpConnection<SyslogMessage, Void>> {
+public abstract class MessageConsumer<T, V> implements Consumer<TcpConnection<T, V>> {
 
 	@Override
-	public final void accept(TcpConnection<SyslogMessage, Void> conn) {
-		conn.consume(new Consumer<SyslogMessage>() {
+	public final void accept(TcpConnection<T, V> conn) {
+		conn.consume(new Consumer<T>() {
 			@Override
-			public void accept(SyslogMessage syslogMessage) {
-				SyslogConsumer.this.accept(syslogMessage);
+			public void accept(T msg) {
+				MessageConsumer.this.acceptMessage(msg);
 			}
 		});
 	}
@@ -39,8 +39,9 @@ public abstract class SyslogConsumer implements Consumer<TcpConnection<SyslogMes
 	/**
 	 * Implementations of this class should override this method to act on messages received.
 	 *
-	 * @param msg The incoming syslog message.
+	 * @param msg
+	 * 		The incoming  message.
 	 */
-	protected abstract void accept(SyslogMessage msg);
+	protected abstract void acceptMessage(T msg);
 
 }
