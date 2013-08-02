@@ -539,7 +539,6 @@ class StreamsSpec extends Specification {
       value.get() == [1, 2]
   }
 
-  @Ignore
   def 'Collect will accumulate values from multiple threads'() {
     given:
       'a source and a collected stream'
@@ -553,7 +552,6 @@ class StreamsSpec extends Specification {
           get()
       Stream tail = head.compose().collect()
       tail.consume(consumer { List<Integer> ints ->
-        println "consuming $ints"
         sum.addAndGet(ints.sum())
         latch.countDown()
       })
