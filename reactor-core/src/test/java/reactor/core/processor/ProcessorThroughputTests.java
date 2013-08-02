@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
@@ -14,6 +15,7 @@ import reactor.function.Supplier;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class ProcessorThroughputTests {
 
 	static final int RUNS = 100000;
