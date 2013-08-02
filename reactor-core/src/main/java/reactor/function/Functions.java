@@ -20,10 +20,6 @@ import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.tuple.Tuple;
-
 /**
  * Helper methods to provide syntax sugar for working with functional components in Reactor.
  *
@@ -36,16 +32,18 @@ public abstract class Functions {
 	/**
 	 * Wrap the given {@link java.util.concurrent.Callable} and compose a new {@link reactor.function.Function}.
 	 *
-	 * @param c The {@link java.util.concurrent.Callable}.
+	 * @param c
+	 * 		The {@link java.util.concurrent.Callable}.
+	 *
 	 * @return An {@link reactor.function.Consumer} that executes the {@link java.util.concurrent.Callable}.
 	 */
-	public static <T> Function<? extends Event<T>, T> function(final Callable<T> c) {
-		return new Function<Event<T>, T>() {
+	public static <T, V> Function<T, V> function(final Callable<V> c) {
+		return new Function<T, V>() {
 			@Override
-			public T apply(Event<T> o) {
+			public V apply(T o) {
 				try {
 					return c.call();
-				} catch (Exception e) {
+				} catch(Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}
@@ -55,7 +53,9 @@ public abstract class Functions {
 	/**
 	 * Wrap the given {@link Runnable} and compose a new {@link reactor.function.Consumer}.
 	 *
-	 * @param r The {@link Runnable}.
+	 * @param r
+	 * 		The {@link Runnable}.
+	 *
 	 * @return An {@link reactor.function.Consumer} that executes the {@link Runnable}.
 	 */
 	public static <T> Consumer<T> consumer(final Runnable r) {
@@ -70,7 +70,9 @@ public abstract class Functions {
 	/**
 	 * Creates a {@code Supplier} that will always return the given {@code value}.
 	 *
-	 * @param value the value to be supplied
+	 * @param value
+	 * 		the value to be supplied
+	 *
 	 * @return the supplier for the value
 	 */
 	public static <T> Supplier<T> supplier(final T value) {
@@ -86,11 +88,13 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will return a new instance of {@code type} each time
 	 * it's called.
 	 *
-	 * @param type The type to create
+	 * @param type
+	 * 		The type to create
 	 *
 	 * @return The supplier that will create instances
 	 *
-	 * @throws IllegalArgumentException if {@code type} does not have a zero-args constructor
+	 * @throws IllegalArgumentException
+	 * 		if {@code type} does not have a zero-args constructor
 	 */
 	public static <T> Supplier<T> supplier(final Class<T> type) {
 		try {
@@ -100,12 +104,12 @@ public abstract class Functions {
 				public T get() {
 					try {
 						return ctor.newInstance();
-					} catch (Exception e) {
+					} catch(Exception e) {
 						throw new IllegalStateException(e.getMessage(), e);
 					}
 				}
 			};
-		} catch (NoSuchMethodException e) {
+		} catch(NoSuchMethodException e) {
 			throw new IllegalArgumentException(e.getMessage(), e);
 		}
 	}
@@ -114,7 +118,9 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will {@link Callable#call call} the {@code callable}
 	 * each time it's asked for a value.
 	 *
-	 * @param callable The {@link Callable}.
+	 * @param callable
+	 * 		The {@link Callable}.
+	 *
 	 * @return A {@link Supplier} that executes the {@link Callable}.
 	 */
 	public static <T> Supplier<T> supplier(final Callable<T> callable) {
@@ -123,7 +129,7 @@ public abstract class Functions {
 			public T get() {
 				try {
 					return callable.call();
-				} catch (Exception e) {
+				} catch(Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}
@@ -134,7 +140,9 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will {@link Future#get get} its value from the
 	 * {@code future} each time it's asked for a value.
 	 *
-	 * @param future The future to get values from
+	 * @param future
+	 * 		The future to get values from
+	 *
 	 * @return A {@link reactor.function.Supplier} that gets its values from the Future
 	 */
 	public static <T> Supplier<T> supplier(final Future<T> future) {
@@ -143,7 +151,7 @@ public abstract class Functions {
 			public T get() {
 				try {
 					return future.get();
-				} catch (Exception e) {
+				} catch(Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}

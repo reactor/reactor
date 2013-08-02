@@ -16,12 +16,17 @@
 
 package reactor.event.routing;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import reactor.convert.Converter;
-import reactor.function.Consumer;
 import reactor.event.Event;
-import reactor.function.support.ConsumerUtils;
+import reactor.function.Consumer;
 
 /**
  * This implementation of a {@link reactor.event.routing.ConsumerInvoker} will attempt to invoke
@@ -32,7 +37,7 @@ import reactor.function.support.ConsumerUtils;
  * the {@literal Consumer}. If the argument is of type {@link Event} and the data inside that
  * event is of a compatible type with the argument to the consumer, this invoker will unwrap that
  * {@literal Event} and try to invoke the consumer using the data itself.
- * <p>
+ * <p/>
  * Finally, if the {@literal Consumer} also implements {@link Callable}, then it will invoke the {@link
  * Callable#call()} method to obtain a return value and return that. Otherwise it will return
  * {@literal null} or throw any raised exceptions.
@@ -42,13 +47,19 @@ import reactor.function.support.ConsumerUtils;
  */
 public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker {
 
+	private static final ReentrantReadWriteLock           CACHE_LOCK       = new ReentrantReadWriteLock();
+	private static final ReentrantReadWriteLock.ReadLock  CACHE_READ_LOCK  = CACHE_LOCK.readLock();
+	private static final ReentrantReadWriteLock.WriteLock CACHE_WRITE_LOCK = CACHE_LOCK.writeLock();
+	private static final Map<String, Class<?>>            ARG_TYPE_CACHE   = new WeakHashMap<String, Class<?>>();
+
 	private final Converter converter;
 
 	/**
 	 * Creates a new {@code ArgumentConvertingConsumerInvoker} that will use the given
 	 * {@code converter} for any necessary argument conversion.
 	 *
-	 * @param converter The converter to be used
+	 * @param converter
+	 * 		The converter to be used
 	 */
 	public ArgumentConvertingConsumerInvoker(Converter converter) {
 		this.converter = converter;
@@ -57,61 +68,62 @@ public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Override
 	public <T> T invoke(Consumer<?> consumer,
-											Class<? extends T> returnType,
-											Object... possibleArgs) throws Exception {
+	                    Class<? extends T> returnType,
+	                    Object... possibleArgs) throws Exception {
 		try {
-			((Consumer) consumer).accept((possibleArgs.length > 0 ? possibleArgs[0] : null));
-		} catch (ClassCastException e) {
-			Class<?> argType = ConsumerUtils.resolveArgType(consumer);
-			if (argType == Object.class) {
+			((Consumer)consumer).accept((possibleArgs.length > 0 ? possibleArgs[0] : null));
+		} catch(ClassCastException e) {
+			Class<?> argType = resolveArgType(consumer);
+			if(argType == Object.class) {
 				throw e;
 			}
 
 			// Try and find an argument when the list of possible arguments past the 1st
-			for (int i = 1; i < possibleArgs.length; i++) {
+			for(int i = 1; i < possibleArgs.length; i++) {
 				Object o = possibleArgs[i];
-				if (null == o) {
+				if(null == o) {
 					continue;
 				}
-				if (argType.isInstance(o)) {
+				if(argType.isInstance(o)) {
 					// arg type matches a possible arg
 					return invoke(consumer, returnType, o);
-				} else if (null != converter && converter.canConvert(o.getClass(), argType)) {
+				} else if(null != converter && converter.canConvert(o.getClass(), argType)) {
 					// arg is convertible
 					return invoke(consumer, returnType, converter.convert(o, argType));
-				} else if (Event.class.isInstance(o)
-						&& null != ((Event<?>) o).getData()
-						&& argType.isInstance(((Event<?>) o).getData())) {
+				} else if(Event.class.isInstance(o)
+						&& null != ((Event<?>)o).getData()
+						&& argType.isInstance(((Event<?>)o).getData())) {
 					// Try unwrapping the Event data
-					return invoke(consumer, returnType, ((Event<?>) o).getData());
+					return invoke(consumer, returnType, ((Event<?>)o).getData());
 				}
 			}
 
 			// Try unwrapping the Event data
-			if (possibleArgs.length == 1 && Event.class.isInstance(possibleArgs[0])) {
-				return invoke(consumer, returnType, ((Event) possibleArgs[0]).getData());
+			if(possibleArgs.length == 1 && Event.class.isInstance(possibleArgs[0])) {
+				return invoke(consumer, returnType, ((Event)possibleArgs[0]).getData());
 			}
 
 			throw e;
 		}
 
-		if (Void.TYPE == returnType) {
+		if(Void.TYPE == returnType) {
 			return null;
 		}
 
-		if (consumer instanceof Callable) {
-			Object o = ((Callable<Object>) consumer).call();
+		if(consumer instanceof Callable) {
+			Object o = ((Callable<Object>)consumer).call();
 
-			if (null == o) {
+			if(null == o) {
 				return null;
 			}
 
-			if (returnType.isAssignableFrom(o.getClass())) {
-				return (T) o;
-			} else if (null != converter && converter.canConvert(o.getClass(), returnType)) {
+			if(returnType.isAssignableFrom(o.getClass())) {
+				return (T)o;
+			} else if(null != converter && converter.canConvert(o.getClass(), returnType)) {
 				return converter.convert(o, returnType);
 			} else {
-				throw new IllegalArgumentException("Cannot convert object of type " + o.getClass().getName() + " to " + returnType.getName());
+				throw new IllegalArgumentException("Cannot convert object of type " + o.getClass()
+				                                                                       .getName() + " to " + returnType.getName());
 			}
 		}
 		return null;
@@ -120,6 +132,72 @@ public final class ArgumentConvertingConsumerInvoker implements ConsumerInvoker 
 	@Override
 	public boolean supports(Consumer<?> consumer) {
 		return true;
+	}
+
+
+	/**
+	 * Resolves the type of argument that can be {@link Consumer#accept accepted} by the
+	 * given {@code consumer}.
+	 *
+	 * @param consumer
+	 * 		The consumer to examine
+	 *
+	 * @return The type that can be accepted by the consumer
+	 */
+	@SuppressWarnings({"unchecked"})
+	public static <T> Class<? extends T> resolveArgType(Consumer<?> consumer) {
+		Class<? extends T> clazz;
+		CACHE_READ_LOCK.lock();
+		try {
+			clazz = (Class<? extends T>)ARG_TYPE_CACHE.get(consumer.getClass().getName());
+			if(null != clazz) {
+				return clazz;
+			}
+		} finally {
+			CACHE_READ_LOCK.unlock();
+		}
+
+		if(Event.class.isInstance(consumer) && null != ((Event<?>)consumer).getData()) {
+			return (Class<? extends T>)((Event<?>)consumer).getData().getClass();
+		}
+
+		for(Type t : consumer.getClass().getGenericInterfaces()) {
+			if(t instanceof ParameterizedType) {
+				ParameterizedType pt = (ParameterizedType)t;
+				Type t1 = pt.getActualTypeArguments()[0];
+				if(t1 instanceof ParameterizedType) {
+					clazz = (Class<? extends T>)((ParameterizedType)t1).getRawType();
+				} else if(t1 instanceof Class) {
+					clazz = (Class<? extends T>)t1;
+				}
+			}
+			if(null != clazz) {
+				CACHE_WRITE_LOCK.lock();
+				try {
+					ARG_TYPE_CACHE.put(consumer.getClass().getName(), clazz);
+				} finally {
+					CACHE_WRITE_LOCK.unlock();
+				}
+				break;
+			}
+		}
+
+		if(null == clazz) {
+			for(Method m : consumer.getClass().getDeclaredMethods()) {
+				if("accept".equals(m.getName()) && m.getParameterTypes().length == 1) {
+					clazz = (Class<? extends T>)m.getParameterTypes()[0];
+					CACHE_WRITE_LOCK.lock();
+					try {
+						ARG_TYPE_CACHE.put(consumer.getClass().getName(), clazz);
+					} finally {
+						CACHE_WRITE_LOCK.unlock();
+					}
+					return clazz;
+				}
+			}
+		}
+
+		return clazz;
 	}
 
 }
