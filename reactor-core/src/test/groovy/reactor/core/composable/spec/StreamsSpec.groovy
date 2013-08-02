@@ -552,7 +552,7 @@ class StreamsSpec extends Specification {
           get()
       Stream tail = head.compose().collect()
       tail.consume(consumer { List<Integer> ints ->
-        sum.addAndGet(ints.sum())
+        sum.addAndGet(ints.size())
         latch.countDown()
       })
 
@@ -563,7 +563,7 @@ class StreamsSpec extends Specification {
     then:
       'results contains the expected values'
       latch.await(5, TimeUnit.SECONDS)
-      sum.get() == 499500
+      sum.get() == 999
   }
 
   def 'An Observable can consume values from a Stream'() {
