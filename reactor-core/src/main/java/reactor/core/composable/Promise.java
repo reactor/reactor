@@ -21,6 +21,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
@@ -30,7 +31,6 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.core.Observable;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
@@ -489,7 +489,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@Override
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		if(isError() && exceptionType.isAssignableFrom(error.getClass())) {
-			Reactors.schedule(onError, (E) error, getObservable());
+			Reactors.schedule(onError, (E)error, getObservable());
 		} else {
 			super.when(exceptionType, onError);
 		}
@@ -510,7 +510,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 						public void accept(Void aVoid) {
 							try {
 								d.accept(fn.apply(value));
-							} catch (Throwable throwable) {
+							} catch(Throwable throwable) {
 								d.accept(throwable);
 							}
 						}
@@ -537,12 +537,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 						@Override
 						public void accept(Void aVoid) {
 							try {
-								if (p.test(value)) {
+								if(p.test(value)) {
 									d.accept(value);
 								} else {
-									d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
+									// GH-154: Verbose error level logging of every event filtered out by a Stream filter
+									// Fix: ignore Predicate failures and drop values rather than notifying of errors.
+									//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
 								}
-							} catch (Throwable throwable) {
+							} catch(Throwable throwable) {
 								d.accept(throwable);
 							}
 						}

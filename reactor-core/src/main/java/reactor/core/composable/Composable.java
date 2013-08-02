@@ -20,7 +20,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import reactor.core.Observable;
 import reactor.core.Reactor;
+import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
@@ -28,9 +30,7 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.core.Observable;
 import reactor.function.Predicate;
-import reactor.core.support.NotifyConsumer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -183,7 +183,9 @@ public abstract class Composable<T> {
 				if(b) {
 					d.accept(value);
 				} else {
-					d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
+					// GH-154: Verbose error level logging of every event filtered out by a Stream filter
+					// Fix: ignore Predicate failures and drop values rather than notifying of errors.
+					//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
 				}
 			}
 		});
