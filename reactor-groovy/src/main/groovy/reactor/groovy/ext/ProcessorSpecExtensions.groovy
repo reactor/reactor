@@ -1,0 +1,49 @@
+package reactor.groovy.ext
+
+import groovy.transform.CompileStatic
+import reactor.core.processor.spec.ProcessorSpec
+import reactor.groovy.support.ClosureConsumer
+import reactor.groovy.support.ClosureSupplier
+
+/**
+ * Groovy extension module for {@link ProcessorSpec}.
+ *
+ * @author Jon Brisbin
+ */
+@CompileStatic
+class ProcessorSpecExtensions {
+
+  /**
+   * Provide a {@link Closure} as a {@code dataSupplier}.
+   *
+   * @param selfType
+   * @param closure
+   * @return
+   */
+  static <T> ProcessorSpec<T> dataSupplier(ProcessorSpec<T> selfType, Closure<T> closure) {
+    selfType.dataSupplier(new ClosureSupplier<T>(closure))
+  }
+
+  /**
+   * Provide a {@link Closure} as a {@link reactor.function.Consumer}.
+   *
+   * @param selfType
+   * @param closure
+   * @return
+   */
+  static <T> ProcessorSpec<T> consume(ProcessorSpec<T> selfType, Closure closure) {
+    selfType.consume(new ClosureConsumer<T>(closure))
+  }
+
+  /**
+   * Provide a {@link Closure} as an error {@link reactor.function.Consumer}.
+   *
+   * @param selfType
+   * @param closure
+   * @return
+   */
+  static <T> ProcessorSpec<T> consumeErrors(ProcessorSpec<T> selfType, Closure closure) {
+    selfType.consumeErrors(new ClosureConsumer<Throwable>(closure))
+  }
+
+}
