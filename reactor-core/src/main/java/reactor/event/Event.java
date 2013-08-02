@@ -174,6 +174,15 @@ public class Event<T> implements Serializable {
 		return this;
 	}
 
+	@Override public String toString() {
+		return "Event{" +
+				"id=" + id +
+				", headers=" + headers +
+				", replyTo=" + replyTo +
+				", data=" + data +
+				'}';
+	}
+
 	/**
 	 * Headers are a Map-like structure of name-value pairs. Header names are case-insensitive,
 	 * as determined by {@link String#CASE_INSENSITIVE_ORDER}. A header can be removed by
