@@ -1,7 +1,9 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.core.processor.Processor
 import reactor.core.processor.spec.ProcessorSpec
+import reactor.function.Consumer
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 
@@ -11,7 +13,7 @@ import reactor.groovy.support.ClosureSupplier
  * @author Jon Brisbin
  */
 @CompileStatic
-class ProcessorSpecExtensions {
+class ProcessorExtensions {
 
   /**
    * Provide a {@link Closure} as a {@code dataSupplier}.
@@ -31,8 +33,8 @@ class ProcessorSpecExtensions {
    * @param closure
    * @return
    */
-  static <T> ProcessorSpec<T> consume(ProcessorSpec<T> selfType, Closure closure) {
-    selfType.consume(new ClosureConsumer<T>(closure))
+  static <T> Processor<T> consume(Processor<T> selfType, Closure... closures) {
+    selfType.consume((Collection<Consumer<T>>) closures.collect { Closure cl -> new ClosureConsumer<T>(cl) })
   }
 
   /**
@@ -42,8 +44,8 @@ class ProcessorSpecExtensions {
    * @param closure
    * @return
    */
-  static <T> ProcessorSpec<T> consumeErrors(ProcessorSpec<T> selfType, Closure closure) {
-    selfType.consumeErrors(new ClosureConsumer<Throwable>(closure))
+  static <T> Processor<T> when(Processor<T> selfType, Class<Throwable> type, Closure closure) {
+    selfType.when(type, new ClosureConsumer<Throwable>(closure))
   }
 
 }
