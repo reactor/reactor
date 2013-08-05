@@ -41,12 +41,12 @@ public class ProcessorThroughputTests {
 						return new Data();
 					}
 				})
+				.get()
 				.consume(new Consumer<Data>() {
 					@Override public void accept(Data data) {
 						latch.countDown();
 					}
-				})
-				.get();
+				});
 
 		start = System.currentTimeMillis();
 	}

@@ -1,7 +1,11 @@
 package reactor.core.processor;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -13,6 +17,10 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registration;
+import reactor.event.registry.Registry;
+import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.support.NamedDaemonThreadFactory;
@@ -25,18 +33,19 @@ public class Processor<T> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Processor.class);
 
+	private final ReentrantLock                           consumersLock  = new ReentrantLock();
+	private final List<Consumer<T>>                       consumers      = new ArrayList<Consumer<T>>();
+	private final Registry<Consumer<? extends Throwable>> errorConsumers = new CachingRegistry<Consumer<? extends Throwable>>();
+
 	private final int                                         opsBufferSize;
 	private final Disruptor<Operation<T>>                     disruptor;
 	private final com.lmax.disruptor.RingBuffer<Operation<T>> ringBuffer;
 
 	@SuppressWarnings("unchecked")
 	public Processor(@Nullable Executor executor,
-	                 boolean multiThreadedProducer,
-	                 int opsBufferSize,
 	                 @Nonnull final Supplier<T> dataSupplier,
-	                 @Nonnull final Consumer<T> consumer,
-	                 @Nullable final Consumer<Throwable> errorConsumer) {
-		Assert.notNull(consumer, "Consumer cannot be null.");
+	                 boolean multiThreadedProducer,
+	                 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
 
 		if(null == executor) {
@@ -67,24 +76,30 @@ public class Processor<T> {
 		);
 		this.disruptor.handleEventsWith(new EventHandler<Operation<T>>() {
 			@Override public void onEvent(Operation<T> op, long sequence, boolean endOfBatch) throws Exception {
-				consumer.accept(op.get());
+				consumersLock.lock();
+				try {
+					int size = consumers.size();
+					for(int i = 0; i < size; i++) {
+						consumers.get(i).accept(op.get());
+					}
+				} finally {
+					consumersLock.unlock();
+				}
 			}
 		});
 		this.disruptor.handleExceptionsWith(new ExceptionHandler() {
 			@Override public void handleEventException(Throwable ex, long sequence, Object event) {
-				if(null == errorConsumer) {
-					LOG.error(ex.getMessage(), ex);
-				} else {
-					errorConsumer.accept(ex);
+				for(Registration<? extends Consumer<? extends Throwable>> reg : errorConsumers.select(ex.getClass())) {
+					((Consumer<Throwable>)reg.getObject()).accept(ex);
 				}
 			}
 
 			@Override public void handleOnStartException(Throwable ex) {
-				LOG.error(ex.getMessage(), ex);
+				handleEventException(ex, -1, null);
 			}
 
 			@Override public void handleOnShutdownException(Throwable ex) {
-				LOG.error(ex.getMessage(), ex);
+				handleEventException(ex, -1, null);
 			}
 		});
 
@@ -93,6 +108,56 @@ public class Processor<T> {
 
 	public void shutdown() {
 		disruptor.shutdown();
+	}
+
+	public <E extends Throwable> Processor<T> when(Class<E> type, Consumer<E> errorConsumer) {
+		consumersLock.lock();
+		try {
+			errorConsumers.register(Selectors.type(type), errorConsumer);
+		} finally {
+			consumersLock.unlock();
+		}
+		return this;
+	}
+
+	public Processor<T> consume(Consumer<T> consumer) {
+		consumersLock.lock();
+		try {
+			this.consumers.add(consumer);
+		} finally {
+			consumersLock.unlock();
+		}
+		return this;
+	}
+
+	public Processor<T> consume(Collection<Consumer<T>> consumers) {
+		consumersLock.lock();
+		try {
+			this.consumers.addAll(consumers);
+		} finally {
+			consumersLock.unlock();
+		}
+		return this;
+	}
+
+	public Processor<T> cancel(Consumer<T> consumer) {
+		consumersLock.lock();
+		try {
+			this.consumers.remove(consumer);
+		} finally {
+			consumersLock.unlock();
+		}
+		return this;
+	}
+
+	public Processor<T> cancel(Collection<Consumer<T>> consumers) {
+		consumersLock.lock();
+		try {
+			this.consumers.removeAll(consumers);
+		} finally {
+			consumersLock.unlock();
+		}
+		return this;
 	}
 
 	public Operation<T> prepare() {
