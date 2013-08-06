@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.After;
 import org.junit.Before;
@@ -18,35 +19,42 @@ import reactor.function.Supplier;
 @Ignore
 public class ProcessorThroughputTests {
 
-	static final int RUNS = 1000000000;
+	static final int RUNS = 500000000;
 
-	Processor<Data> processor;
+	Processor<Data> proc;
 	CountDownLatch  latch;
-	Consumer<Data>  dataConsumer;
-	long            start;
+	Supplier<Data> dataSupplier = new Supplier<Data>() {
+		@Override public Data get() {
+			return new Data();
+		}
+	};
+	Consumer<Data> dataConsumer;
+	long           start;
 
 	@Before
 	public void setup() {
-		latch = new CountDownLatch(RUNS);
+		latch = new CountDownLatch(RUNS / 2);
 
 		dataConsumer = new Consumer<Data>() {
+			final AtomicLong counter = new AtomicLong();
+
 			@Override public void accept(Data data) {
 				data.type = "test";
+				//data.run = counter.incrementAndGet();
 			}
 		};
 
-		processor = new reactor.core.processor.spec.ProcessorSpec<Data>()
-				.dataSupplier(new Supplier<Data>() {
-					@Override public Data get() {
-						return new Data();
-					}
-				})
-				.get()
-				.consume(new Consumer<Data>() {
-					@Override public void accept(Data data) {
-						latch.countDown();
-					}
-				});
+		Consumer<Data> countDownConsumer = new Consumer<Data>() {
+			@Override public void accept(Data data) {
+				latch.countDown();
+			}
+		};
+
+		proc = new reactor.core.processor.spec.ProcessorSpec<Data>()
+				.dataSupplier(dataSupplier)
+				.dataBufferSize(1024 * 4)
+				.consume(countDownConsumer)
+				.get();
 
 		start = System.currentTimeMillis();
 	}
@@ -61,11 +69,11 @@ public class ProcessorThroughputTests {
 
 	@Test
 	public void testProcessorThroughput() throws InterruptedException {
-		int batchSize = 256;
+		int batchSize = 512;
 		int runs = RUNS / batchSize;
 
 		for(int i = 0; i < runs; i++) {
-			processor.batch(batchSize, dataConsumer);
+			proc.batch(batchSize, dataConsumer);
 		}
 
 		assertTrue(latch.await(60, TimeUnit.SECONDS));
@@ -73,6 +81,7 @@ public class ProcessorThroughputTests {
 
 	static final class Data {
 		String type;
+		Long   run;
 	}
 
 }

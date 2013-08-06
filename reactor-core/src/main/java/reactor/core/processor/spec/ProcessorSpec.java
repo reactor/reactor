@@ -1,8 +1,10 @@
 package reactor.core.processor.spec;
 
-import java.util.concurrent.Executor;
-
 import reactor.core.processor.Processor;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registry;
+import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
 
 /**
@@ -12,23 +14,11 @@ import reactor.function.Supplier;
  */
 public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 
-	private boolean  multiThreadedProducer = false;
-	private int      dataBufferSize        = -1;
-	private Executor executor              = null;
+	private Registry<Consumer<Throwable>> errorConsumers        = new CachingRegistry<Consumer<Throwable>>();
+	private boolean                       multiThreadedProducer = false;
+	private int                           dataBufferSize        = -1;
+	private Consumer<T> consumer;
 	private Supplier<T> dataSupplier;
-
-	/**
-	 * Use the given {@link Executor}. If not specified, a default single-threaded {@code Executor} is created.
-	 *
-	 * @param executor
-	 * 		the {@link Executor} to use
-	 *
-	 * @return {@literal this}
-	 */
-	public ProcessorSpec<T> executor(Executor executor) {
-		this.executor = executor;
-		return this;
-	}
 
 	/**
 	 * Protect against publication of data events from multiple producer threads.
@@ -77,9 +67,40 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 		return this;
 	}
 
+	/**
+	 * When data is mutated and published into the {@code Processor}, invoke the given {@link Consumer} and pass the
+	 * mutated data.
+	 *
+	 * @param consumer
+	 * 		the mutated event data {@code Consumer}
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> consume(Consumer<T> consumer) {
+		this.consumer = consumer;
+		return this;
+	}
+
+	/**
+	 * Assign the given {@link Consumer} as an error handler for exceptions of the given type.
+	 *
+	 * @param type
+	 * 		type of the exception to handle
+	 * @param errorConsumer
+	 * 		exception {@code Consumer}
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> when(Class<? extends Throwable> type, Consumer<Throwable> errorConsumer) {
+		errorConsumers.register(Selectors.type(type), errorConsumer);
+		return this;
+	}
+
+
 	@Override public Processor<T> get() {
-		return new Processor<T>(executor,
-		                        dataSupplier,
+		return new Processor<T>(dataSupplier,
+		                        consumer,
+		                        errorConsumers,
 		                        multiThreadedProducer,
 		                        dataBufferSize);
 	}

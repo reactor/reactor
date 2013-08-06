@@ -20,8 +20,8 @@ class ProcessorSpec extends Specification {
       List<Data> data = []
       def processor = new reactor.core.processor.spec.ProcessorSpec<Data>().
           dataSupplier({ new Data() } as Supplier<Data>).
-          get().
-          consume({ Data d -> data << d; latch.countDown() } as Consumer<Data>)
+          consume({ Data d -> data << d; latch.countDown() } as Consumer<Data>).
+          get()
 
     when:
       'a series of Events are triggered'
