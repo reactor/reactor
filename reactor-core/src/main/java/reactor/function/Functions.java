@@ -19,6 +19,7 @@ package reactor.function;
 import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Helper methods to provide syntax sugar for working with functional components in Reactor.
@@ -28,6 +29,36 @@ import java.util.concurrent.Future;
  * @author Andy Wilkinson
  */
 public abstract class Functions {
+
+	/**
+	 * Chain a set of {@link Consumer Consumers} together into a single {@link Consumer}.
+	 *
+	 * @param consumers
+	 * 		the {@link Consumer Consumers} to chain together
+	 * @param <T>
+	 * 		type of the event handled by the {@link Consumer}
+	 *
+	 * @return a new {@link Consumer}
+	 */
+	@SafeVarargs
+	public final static <T> Consumer<T> chain(Consumer<T>... consumers) {
+		final AtomicReference<Consumer<T>> composition = new AtomicReference<Consumer<T>>();
+		for(final Consumer<T> next : consumers) {
+			if(null == composition.get()) {
+				composition.set(next);
+			} else {
+				composition.set(new Consumer<T>() {
+					final Consumer<T> prev = composition.get();
+
+					public void accept(T t) {
+						prev.accept(t);
+						next.accept(t);
+					}
+				});
+			}
+		}
+		return composition.get();
+	}
 
 	/**
 	 * Wrap the given {@link java.util.concurrent.Callable} and compose a new {@link reactor.function.Function}.
