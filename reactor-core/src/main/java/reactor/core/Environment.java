@@ -16,30 +16,16 @@
 
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
-
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
-import reactor.core.configuration.ConfigurationReader;
-import reactor.core.configuration.DispatcherConfiguration;
-import reactor.core.configuration.DispatcherType;
-import reactor.core.configuration.PropertiesConfigurationReader;
-import reactor.core.configuration.ReactorConfiguration;
-import reactor.event.dispatch.BlockingQueueDispatcher;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.RingBufferDispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.core.configuration.*;
+import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author Jon Brisbin
@@ -75,6 +61,7 @@ public class Environment {
 
 	private final Properties env;
 
+	private final Timer                    timer            = new Timer();
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -83,17 +70,15 @@ public class Environment {
 	private final String                        defaultDispatcher;
 
 	/**
-	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to
-	 * obtain its initial configuration. The configuration will be read from the classpath
-	 * at the location {@code META-INF/reactor/default.properties}.
+	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial configuration.
+	 * The configuration will be read from the classpath at the location {@code META-INF/reactor/default.properties}.
 	 */
 	public Environment() {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
 	}
 
 	/**
-	 * Creates a new Environment that will use the given {@code configurationReader} to
-	 * obtain its initial configuration.
+	 * Creates a new Environment that will use the given {@code configurationReader} to obtain its initial configuration.
 	 *
 	 * @param configurationReader The configuration reader to use to obtain initial configuration
 	 */
@@ -102,10 +87,10 @@ public class Environment {
 	}
 
 	/**
-	 * Creates a new Environment that will contain the given {@code dispatchers} and will use the
-	 * given {@code configurationReader} to obtain additional configuration.
+	 * Creates a new Environment that will contain the given {@code dispatchers} and will use the given {@code
+	 * configurationReader} to obtain additional configuration.
 	 *
-	 * @param dispatchers The dispatchers to add include in the Environment
+	 * @param dispatchers         The dispatchers to add include in the Environment
 	 * @param configurationReader The configuration reader to use to obtain additional configuration
 	 */
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
@@ -169,12 +154,10 @@ public class Environment {
 	}
 
 	/**
-	 * Gets the property with the given {@code key}. If the property does not exist {@code
-	 * defaultValue} will be returned.
+	 * Gets the property with the given {@code key}. If the property does not exist {@code defaultValue} will be returned.
 	 *
-	 * @param key The property key
+	 * @param key          The property key
 	 * @param defaultValue The value to return if the property does not exist
-	 *
 	 * @return The value for the property
 	 */
 	public String getProperty(String key, String defaultValue) {
@@ -182,33 +165,31 @@ public class Environment {
 	}
 
 	/**
-	 * Gets the property with the given {@code key}, converting it to the required
-	 * {@code type} using the {@link StandardConverters#CONVERTERS standard converters}.
-	 * fF the property does not exist {@code defaultValue} will be returned.
+	 * Gets the property with the given {@code key}, converting it to the required {@code type} using the {@link
+	 * StandardConverters#CONVERTERS standard converters}. fF the property does not exist {@code defaultValue} will be
+	 * returned.
 	 *
-	 * @param key The property key
-	 * @param type The type to convert the property to
+	 * @param key          The property key
+	 * @param type         The type to convert the property to
 	 * @param defaultValue The value to return if the property does not exist
-	 *
 	 * @return The converted value for the property
 	 */
 	@SuppressWarnings("unchecked")
-  public <T> T getProperty(String key, Class<T> type, T defaultValue) {
-    Object val = env.getProperty(key);
-    if (null == val) {
-        return defaultValue;
-    }
-    if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
-        return StandardConverters.CONVERTERS.convert(val, type);
-    } else {
-        return (T) val;
-    }
-  }
+	public <T> T getProperty(String key, Class<T> type, T defaultValue) {
+		Object val = env.getProperty(key);
+		if (null == val) {
+			return defaultValue;
+		}
+		if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
+			return StandardConverters.CONVERTERS.convert(val, type);
+		} else {
+			return (T) val;
+		}
+	}
 
 	/**
-	 * Returns the default dispatcher for this environment. By default, when a {@link
-	 * PropertiesConfigurationReader} is being used. This default dispatcher is specified by
-	 * the value of the {@code reactor.dispatchers.default} property.
+	 * Returns the default dispatcher for this environment. By default, when a {@link PropertiesConfigurationReader} is
+	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.default} property.
 	 *
 	 * @return The default dispatcher
 	 */
@@ -220,9 +201,7 @@ public class Environment {
 	 * Returns the dispatcher with the given {@code name}.
 	 *
 	 * @param name The name of the dispatcher
-	 *
 	 * @return The matching dispatcher, never {@code null}.
-	 *
 	 * @throws IllegalArgumentException if the dispatcher does not exist
 	 */
 	public Dispatcher getDispatcher(String name) {
@@ -240,9 +219,8 @@ public class Environment {
 	/**
 	 * Adds the {@code dispatcher} to the environment, storing it using the given {@code name}.
 	 *
-	 * @param name The name of the dispatcher
+	 * @param name       The name of the dispatcher
 	 * @param dispatcher The dispatcher
-	 *
 	 * @return This Environment
 	 */
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
@@ -268,7 +246,6 @@ public class Environment {
 	 * Removes the Dispatcher, stored using the given {@code name} from the environment.
 	 *
 	 * @param name The name of the dispatcher
-	 *
 	 * @return This Environment
 	 */
 	public Environment removeDispatcher(String name) {
@@ -279,16 +256,19 @@ public class Environment {
 	}
 
 	/**
-	 * Returns this environments root Reactor, creating it if necessary. The Reactor will use
-	 * the environment default dispatcher.
+	 * Returns this environments root Reactor, creating it if necessary. The Reactor will use the environment default
+	 * dispatcher.
 	 *
 	 * @return The root reactor
-	 *
 	 * @see Environment#getDefaultDispatcher()
 	 */
 	public Reactor getRootReactor() {
 		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
 		return rootReactor.get();
+	}
+
+	public Timer getRootTimer() {
+		return timer;
 	}
 
 	/**
@@ -298,13 +278,14 @@ public class Environment {
 	 */
 	public void shutdown() {
 		List<Dispatcher> dispatchers = new ArrayList<Dispatcher>();
-		synchronized(monitor) {
+		synchronized (monitor) {
 			for (Map.Entry<String, List<Dispatcher>> entry : this.dispatchers.entrySet()) {
 				dispatchers.addAll(entry.getValue());
 			}
 		}
-		for (Dispatcher dispatcher: dispatchers) {
+		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
 	}
+
 }

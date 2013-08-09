@@ -39,7 +39,7 @@ public class ProcessorThroughputTests {
 		dataConsumer = new Consumer<Data>() {
 			@Override
 			public void accept(Data data) {
-				data.type = "test";
+				//data.type = "test";
 			}
 		};
 
@@ -52,7 +52,7 @@ public class ProcessorThroughputTests {
 
 		proc = new reactor.core.processor.spec.ProcessorSpec<Data>()
 				.dataSupplier(dataSupplier)
-				.dataBufferSize(512 * 4)
+				.dataBufferSize(1024 * 2)
 						//.consume(new DelegatingConsumer<Data>().add(countDownConsumer))
 				.consume(countDownConsumer)
 				.get();

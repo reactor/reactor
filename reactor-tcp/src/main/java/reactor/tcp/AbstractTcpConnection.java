@@ -22,6 +22,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Streams;
 import reactor.core.spec.Reactors;
+import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
@@ -29,7 +30,6 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.core.support.NotifyConsumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
@@ -76,7 +76,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	/**
 	 * Get the {@code System.currentTimeMillis()} this connection was created.
 	 *
-	 * @return The age in milliseconds.
+	 * @return creation time
 	 */
 	public long getCreated() {
 		return created;

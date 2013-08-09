@@ -31,8 +31,7 @@ import reactor.io.Buffer;
 class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapter {
 
 	private final NettyTcpConnection<?, ?> conn;
-
-	private ByteBuf remainder;
+	private       ByteBuf                  remainder;
 
 	NettyTcpConnectionChannelInboundHandler(NettyTcpConnection<?, ?> conn) {
 		this.conn = conn;
@@ -40,39 +39,41 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {
-		if (m instanceof ByteBuf) {
-			ByteBuf data = (ByteBuf) m;
+		if (!(m instanceof ByteBuf)) {
+			return;
+		}
 
-			if (remainder == null) {
-				try {
-					passToConnection(data);
-				} finally {
-					if (data.isReadable()) {
-						remainder = data;
-					} else {
-						data.release();
-					}
-				}
-			} else {
-				if (!bufferHasSufficientCapacity(remainder, data)) {
-					ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
-					remainder.release();
-					remainder = combined;
+		ByteBuf data = (ByteBuf) m;
+		if (remainder == null) {
+			try {
+				passToConnection(data);
+			} finally {
+				if (data.isReadable()) {
+					remainder = data;
 				} else {
-					remainder.writeBytes(data);
+					data.release();
 				}
-				data.release();
+				return;
+			}
+		}
 
-				try {
-					passToConnection(remainder);
-				} finally {
-					if (remainder.isReadable()) {
-						remainder.discardSomeReadBytes();
-					} else {
-						remainder.release();
-						remainder = null;
-					}
-				}
+		if (!bufferHasSufficientCapacity(remainder, data)) {
+			ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
+			remainder.release();
+			remainder = combined;
+		} else {
+			remainder.writeBytes(data);
+		}
+		data.release();
+
+		try {
+			passToConnection(remainder);
+		} finally {
+			if (remainder.isReadable()) {
+				remainder.discardSomeReadBytes();
+			} else {
+				remainder.release();
+				remainder = null;
 			}
 		}
 	}
@@ -82,10 +83,10 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	}
 
 	private ByteBuf createCombinedBuffer(ByteBuf partOne, ByteBuf partTwo, ChannelHandlerContext ctx) {
-    ByteBuf combined = ctx.alloc().buffer(partOne.readableBytes() + partTwo.readableBytes());
-    combined.writeBytes(partOne);
-    combined.writeBytes(partTwo);
-    return combined;
+		ByteBuf combined = ctx.alloc().buffer(partOne.readableBytes() + partTwo.readableBytes());
+		combined.writeBytes(partOne);
+		combined.writeBytes(partTwo);
+		return combined;
 	}
 
 	private void passToConnection(ByteBuf data) {
@@ -94,4 +95,5 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 		conn.read(b);
 		data.skipBytes(b.position() - start);
 	}
+
 }

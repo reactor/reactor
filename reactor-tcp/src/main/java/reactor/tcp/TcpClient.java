@@ -16,12 +16,6 @@
 
 package reactor.tcp;
 
-import java.net.InetSocketAddress;
-import java.util.Iterator;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
@@ -40,12 +34,16 @@ import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
+import java.util.Iterator;
+
 /**
  * The base class for a Reactor-based TCP client.
  *
- * @param <IN> The type that will be received by this client
+ * @param <IN>  The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
- *
  * @author Jon Brisbin
  */
 public abstract class TcpClient<IN, OUT> {
@@ -65,17 +63,18 @@ public abstract class TcpClient<IN, OUT> {
 											@Nullable Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(env, "A TcpClient cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpClient cannot be created without a properly-configured Reactor.");
-		Assert.notNull(connectAddress, "A TcpClient cannot be created without a properly-configure connect InetSocketAddress.");
+		Assert.notNull(connectAddress, "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
 		this.env = env;
 		this.reactor = reactor;
 		this.codec = codec;
 	}
 
 	/**
-	 * Open a {@link TcpConnection} to the configured host:port and return a {@link reactor.core.composable.Promise} that will be fulfilled when
-	 * the client is connected.
+	 * Open a {@link TcpConnection} to the configured host:port and return a {@link reactor.core.composable.Promise} that
+	 * will be fulfilled when the client is connected.
 	 *
-	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link TcpConnection} when connected.
+	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link TcpConnection} when
+	 *         connected.
 	 */
 	public abstract Promise<TcpConnection<IN, OUT>> open();
 

@@ -16,10 +16,17 @@
 
 package reactor.tcp;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import reactor.core.Environment;
+import reactor.core.composable.Promise;
+import reactor.function.Consumer;
+import reactor.function.Supplier;
+import reactor.io.Buffer;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyTcpClient;
+import reactor.tcp.spec.TcpClientSpec;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,27 +41,24 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import reactor.core.Environment;
-import reactor.core.composable.Promise;
-import reactor.function.Consumer;
-import reactor.io.Buffer;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.netty.NettyTcpClient;
-import reactor.tcp.spec.TcpClientSpec;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
  */
 public class TcpClientTests {
 
-	private final EchoServer echoServer = new EchoServer();
+	private final EchoServer            echoServer  = new EchoServer();
+	private final ConnectionAbortServer abortServer = new ConnectionAbortServer();
 
-	static final int port = 24887;
+	static final int ECHO_SERVER_PORT  = 24887;
+	static final int ABORT_SERVER_PORT = 24888;
 
 	Environment env;
 
@@ -62,6 +66,7 @@ public class TcpClientTests {
 	public void setup() {
 		env = new Environment();
 		threadPool.submit(echoServer);
+		threadPool.submit(abortServer);
 	}
 
 	@After
@@ -78,7 +83,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect("localhost", port)
+				.connect("localhost", ECHO_SERVER_PORT)
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -100,7 +105,6 @@ public class TcpClientTests {
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
-    
 
 
 	@Test
@@ -110,7 +114,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect(new InetSocketAddress("localhost", port))
+				.connect(new InetSocketAddress("localhost", ECHO_SERVER_PORT))
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -132,7 +136,7 @@ public class TcpClientTests {
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
-    
+
 
 	@Test
 	public void tcpClientHandlesLineFeedData() throws InterruptedException {
@@ -143,7 +147,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.connect("localhost", port)
+				.connect("localhost", ECHO_SERVER_PORT)
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -177,7 +181,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(null)
-				.connect("localhost", port)
+				.connect("localhost", ECHO_SERVER_PORT)
 				.get();
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
@@ -195,6 +199,48 @@ public class TcpClientTests {
 		assertThat("latch was counted down", closeLatch.getCount(), is(0L));
 	}
 
+	@Test
+	public void smartReconnectWillReconnect() throws InterruptedException {
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicLong totalDelay = new AtomicLong();
+
+		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", ABORT_SERVER_PORT)
+				.reconnect(new Supplier<Reconnect>() {
+					long start = System.currentTimeMillis();
+
+					@Override
+					public Reconnect get() {
+						return new Reconnect() {
+							int tries = 0;
+							long delay = 1000;
+
+							@Override
+							public InetSocketAddress reconnectTo(InetSocketAddress currentAddress) {
+								totalDelay.set(System.currentTimeMillis() - start);
+								return (tries++ < 3 ? currentAddress : null);
+							}
+
+							@Override
+							public long reconnectAfter(long elapsedSinceDisconnect) {
+								return delay *= 2;
+							}
+
+							@Override
+							public void close() {
+								latch.countDown();
+							}
+						};
+					}
+				})
+				.get()
+				.open();
+
+		assertTrue("latch was counted down", latch.await(15, TimeUnit.SECONDS));
+		assertThat("totalDelay was XXms", totalDelay.get(), greaterThan(1400L));
+	}
+
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	private static final class EchoServer implements Runnable {
@@ -204,7 +250,7 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress(ECHO_SERVER_PORT));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
@@ -222,6 +268,32 @@ public class TcpClientTests {
 						}
 						buffer.rewind();
 					}
+				}
+			} catch (IOException e) {
+				// Server closed
+			}
+		}
+
+		public void close() throws IOException {
+			ServerSocketChannel server = this.server;
+			if (server != null) {
+				server.close();
+			}
+		}
+	}
+
+	private static final class ConnectionAbortServer implements Runnable {
+		private volatile ServerSocketChannel server;
+
+		@Override
+		public void run() {
+			try {
+				server = ServerSocketChannel.open();
+				server.socket().bind(new InetSocketAddress(ECHO_SERVER_PORT));
+				server.configureBlocking(true);
+				while (true) {
+					SocketChannel ch = server.accept();
+					ch.close();
 				}
 			} catch (IOException e) {
 				// Server closed

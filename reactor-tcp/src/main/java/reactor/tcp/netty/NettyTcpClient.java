@@ -25,12 +25,16 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.*;
+import reactor.core.Environment;
+import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
+import reactor.function.Consumer;
+import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
+import reactor.tcp.Reconnect;
 import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
@@ -39,47 +43,54 @@ import reactor.tcp.encoding.Codec;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A Netty-based {@code TcpClient}.
  *
- * @param <IN> The type that will be received by this client
+ * @param <IN>  The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
- *
  * @author Jon Brisbin
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 
-	private final Bootstrap           bootstrap;
-	private final Reactor             eventsReactor;
-	private final ClientSocketOptions options;
-	private final EventLoopGroup      ioGroup;
+	private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+
+	private final    Bootstrap               bootstrap;
+	private final    Reactor                 eventsReactor;
+	private final    ClientSocketOptions     options;
+	private final    Supplier<Reconnect>     reconnectSupplier;
+	private final    EventLoopGroup          ioGroup;
+	private final    Supplier<ChannelFuture> connectionSupplier;
+	private volatile InetSocketAddress       connectAddress;
 
 	/**
-	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given
-	 * {@code reactor} to send events. The number of IO threads used by the client is configured by
-	 * the environment's {@code reactor.tcp.ioThreadCount} property. In its absence the number of
-	 * IO threads will be equal to the {@link Environment#PROCESSORS number of available processors}.
-	 * </p>
-	 * The client will connect to the given {@code connectAddress}, configuring its socket using the
-	 * given {@code opts}. The given {@code codec} will be used for encoding and decoding of data.
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor} to
+	 * send events. The number of IO threads used by the client is configured by the environment's {@code
+	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
+	 * Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
+	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
+	 * encoding and decoding of data.
 	 *
-	 * @param env The configuration environment
-	 * @param reactor The reactor used to send events
+	 * @param env            The configuration environment
+	 * @param reactor        The reactor used to send events
 	 * @param connectAddress The address the client will connect to
-	 * @param opts The configuration options for the client's socket
-	 * @param codec The codec used to encode and decode data
+	 * @param opts           The configuration options for the client's socket
+	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
 												@Nonnull Reactor reactor,
 												@Nonnull InetSocketAddress connectAddress,
-												ClientSocketOptions opts,
+												@Nonnull ClientSocketOptions opts,
+												@Nullable Supplier<Reconnect> reconnectSupplier,
 												@Nullable Codec<Buffer, IN, OUT> codec) {
 		super(env, reactor, connectAddress, codec);
 		this.eventsReactor = reactor;
+		this.connectAddress = connectAddress;
 		this.options = opts;
+		this.reconnectSupplier = reconnectSupplier;
 
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -96,17 +107,25 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
-						ch.config().setConnectTimeoutMillis(options.timeout());
-						ch.pipeline().addLast(createChannelHandlers(ch));
-
-						ch.closeFuture().addListener(new ChannelFutureListener() {
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								close(ch);
-							}
-						});
+						if (!reconnecting.get()) {
+							ch.config().setConnectTimeoutMillis(options.timeout());
+							ch.pipeline().addLast(createChannelHandlers(ch));
+						}
+//						ch.closeFuture().addListener(new ChannelFutureListener() {
+//							@Override
+//							public void operationComplete(ChannelFuture future) throws Exception {
+//								close(ch);
+//							}
+//						});
 					}
 				});
+
+		this.connectionSupplier = new Supplier<ChannelFuture>() {
+			@Override
+			public ChannelFuture get() {
+				return bootstrap.connect(NettyTcpClient.this.connectAddress);
+			}
+		};
 	}
 
 	@Override
@@ -116,21 +135,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 																																												.dispatcher(eventsReactor.getDispatcher())
 																																												.get();
 
-		ChannelFuture connectFuture = bootstrap.connect();
-		connectFuture.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
-					if (log.isInfoEnabled()) {
-						log.info("CONNECT: " + conn);
-					}
-					d.accept(conn);
-				} else {
-					d.accept(future.cause());
-				}
-			}
-		});
+		ChannelFuture connectFuture = connectionSupplier.get();
+		connectFuture.addListener(createCloseListener(d));
 
 		return d.compose();
 	}
@@ -145,7 +151,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				getCodec(),
 				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
 				eventsReactor,
-				ch
+				ch,
+				connectAddress,
+				reconnectSupplier,
+				new Consumer<InetSocketAddress>() {
+					@Override
+					public void accept(InetSocketAddress address) {
+						connectAddress = address;
+					}
+				},
+				connectionSupplier,
+				reconnecting
 		);
 	}
 
@@ -179,4 +195,25 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			d.accept(e);
 		}
 	}
+
+	private ChannelFutureListener createCloseListener(final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> d) {
+		return new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if (d.compose().isComplete()) {
+					return;
+				}
+				if (future.isSuccess()) {
+					final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
+					if (log.isInfoEnabled()) {
+						log.info("CONNECT: " + conn);
+					}
+					d.accept(conn);
+				} else {
+					d.accept(future.cause());
+				}
+			}
+		};
+	}
+
 }
