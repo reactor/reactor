@@ -26,7 +26,8 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.*;
+import reactor.core.Environment;
+import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
@@ -46,9 +47,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN> The type that will be received by this server
+ * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
- *
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {

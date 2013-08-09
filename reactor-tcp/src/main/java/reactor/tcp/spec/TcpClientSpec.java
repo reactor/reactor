@@ -3,7 +3,9 @@ package reactor.tcp.spec;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.support.EventRoutingComponentSpec;
+import reactor.function.Supplier;
 import reactor.io.Buffer;
+import reactor.tcp.Reconnect;
 import reactor.tcp.TcpClient;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.encoding.Codec;
@@ -17,9 +19,8 @@ import java.net.InetSocketAddress;
 /**
  * A helper class for specifying a {@code TcpClient}
  *
- * @param <IN> The type that will be received by the client
+ * @param <IN>  The type that will be received by the client
  * @param <OUT> The type that will be sent by the client
- *
  * @author Jon Brisbin
  */
 public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
@@ -29,6 +30,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	private InetSocketAddress connectAddress;
 	private ClientSocketOptions options = new ClientSocketOptions();
 	private Codec<Buffer, IN, OUT> codec;
+	private Supplier<Reconnect>    reconnectSupplier;
 
 	/**
 	 * Create a {@code TcpClient.Spec} using the given implementation class.
@@ -44,6 +46,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					Reactor.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
+					Supplier.class,
 					Codec.class
 			);
 			this.clientImplConstructor.setAccessible(true);
@@ -87,6 +90,11 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		return this;
 	}
 
+	public TcpClientSpec<IN, OUT> reconnect(@Nonnull Supplier<Reconnect> reconnectSupplier) {
+		this.reconnectSupplier = reconnectSupplier;
+		return this;
+	}
+
 	/**
 	 * The {@link Codec} to use to encode and decode data.
 	 *
@@ -107,6 +115,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					reactor,
 					connectAddress,
 					options,
+					reconnectSupplier,
 					codec
 			);
 		} catch (Throwable t) {
