@@ -1,0 +1,170 @@
+package reactor.function.support;
+
+import reactor.function.Consumer;
+import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * An implementation of {@link Consumer} that maintains a list of delegates to which events received by this {@link
+ * Consumer} will be passed along.
+ * <p/>
+ * NOTE: Access to the list of delegates is {@code synchronized} to make it thread-safe. Using this implementation of
+ * {@link Consumer} will incur an overall performance hit on throughput.
+ *
+ * @author Jon Brisbin
+ */
+public class DelegatingConsumer<T> implements Consumer<T>, Iterable<Consumer<T>> {
+
+	private final Object                           delegateMonitor = new Object() {
+	};
+	private final List<WeakReference<Consumer<T>>> delegates       = new ArrayList<WeakReference<Consumer<T>>>();
+	private volatile int delegateSize;
+
+	/**
+	 * Add the given {@link Consumer} to the list of delegates.
+	 *
+	 * @param consumer the {@link Consumer} to add
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> add(Consumer<T> consumer) {
+		Assert.notNull(consumer, "Consumer cannot be null.");
+		synchronized (delegateMonitor) {
+			delegates.add(new WeakReference<Consumer<T>>(consumer));
+			delegateSize = delegates.size();
+		}
+		return this;
+	}
+
+	/**
+	 * Add the given {@link Consumer Consumers} to the list of delegates.
+	 *
+	 * @param consumers the {@link Consumer Consumers} to add
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> add(Collection<Consumer<T>> consumers) {
+		if (null == consumers || consumers.isEmpty()) {
+			return this;
+		}
+		for (Consumer<T> c : consumers) {
+			add(c);
+		}
+		return this;
+	}
+
+	/**
+	 * Remove the given {@link Consumer} from the list of delegates.
+	 *
+	 * @param consumer
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> remove(Consumer<T> consumer) {
+		synchronized (delegateMonitor) {
+			for (WeakReference<Consumer<T>> ref : delegates) {
+				if (ref.get() == consumer) {
+					ref.clear();
+					break;
+				}
+			}
+		}
+		return this;
+	}
+
+	/**
+	 * Remove the given {@link Consumer Consumers} from the list of delegates.
+	 *
+	 * @param consumers the {@link Consumer Consumers} to remove
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> remove(Collection<Consumer<T>> consumers) {
+		if (null == consumers || consumers.isEmpty()) {
+			return this;
+		}
+		for (Consumer<T> c : consumers) {
+			remove(c);
+		}
+		prune();
+		return this;
+	}
+
+	/**
+	 * Remove the references to {@link Consumer Consumers} that have been removed or have gone out of scope and prune the
+	 * size of the list. If many {@link Consumer Consumers} are removed individually, it will increase overall throughput
+	 * to call this method periodically. To maintain as high a throughput as possible, though, its not necessary to call
+	 * this every time a {@link Consumer} is removed.
+	 *
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> prune() {
+		synchronized (delegateMonitor) {
+			List<WeakReference<Consumer<T>>> delegatesToRemove = new ArrayList<WeakReference<Consumer<T>>>();
+			for (WeakReference<Consumer<T>> ref : delegates) {
+				if (null == ref.get()) {
+					delegatesToRemove.add(ref);
+				}
+			}
+			delegates.removeAll(delegatesToRemove);
+			delegateSize = delegates.size();
+		}
+		return this;
+	}
+
+	/**
+	 * Clear all delegate {@link Consumer Consumers} from the list.
+	 *
+	 * @return {@literal this}
+	 */
+	public DelegatingConsumer<T> clear() {
+		synchronized (delegateMonitor) {
+			delegates.clear();
+			delegateSize = delegates.size();
+		}
+		return this;
+	}
+
+	@Override
+	public void accept(T t) {
+		synchronized (delegateMonitor) {
+			final int size = delegateSize;
+			for (int i = 0; i < size; i++) {
+				WeakReference<Consumer<T>> ref = delegates.get(i);
+				if (null == ref) {
+					continue;
+				}
+				Consumer<T> c = ref.get();
+				if (null == c) {
+					continue;
+				}
+				c.accept(t);
+			}
+		}
+	}
+
+	@Override
+	@Nonnull
+	public Iterator<Consumer<T>> iterator() {
+		return new Iterator<Consumer<T>>() {
+			final Iterator<WeakReference<Consumer<T>>> delegatesIter = delegates.iterator();
+
+			public boolean hasNext() {
+				return delegatesIter.hasNext();
+			}
+
+			@Override
+			public Consumer<T> next() {
+				return delegatesIter.next().get();
+			}
+
+			@Override
+			public void remove() {
+				delegatesIter.remove();
+			}
+		};
+	}
+
+}
