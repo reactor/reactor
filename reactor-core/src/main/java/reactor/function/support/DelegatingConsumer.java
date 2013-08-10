@@ -14,8 +14,11 @@ import java.util.List;
  * An implementation of {@link Consumer} that maintains a list of delegates to which events received by this {@link
  * Consumer} will be passed along.
  * <p/>
- * NOTE: Access to the list of delegates is {@code synchronized} to make it thread-safe. Using this implementation of
- * {@link Consumer} will incur an overall performance hit on throughput.
+ * NOTE: Access to the list of delegates is {@code synchronized} to make it thread-safe, so using this implementation of
+ * {@link Consumer} will incur an overall performance hit on throughput. Also, references to the {@link Consumer
+ * Consumers} are weak. It's not possible to remove a {@link Consumer} without a reference to it, so the {@code
+ * DelegatingConsumer} assumes references to {@link Consumer Consumers} added here have other components with strong
+ * references to them somewhere else.
  *
  * @author Jon Brisbin
  */
