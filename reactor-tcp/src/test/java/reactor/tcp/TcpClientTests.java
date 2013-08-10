@@ -72,8 +72,9 @@ public class TcpClientTests {
 	@After
 	public void cleanup() throws InterruptedException, IOException {
 		echoServer.close();
+		abortServer.close();
 		threadPool.shutdown();
-		threadPool.awaitTermination(30, TimeUnit.SECONDS);
+		threadPool.awaitTermination(60, TimeUnit.SECONDS);
 	}
 
 	@Test
@@ -208,11 +209,10 @@ public class TcpClientTests {
 				.env(env)
 				.connect("localhost", ABORT_SERVER_PORT)
 				.reconnect(new Supplier<Reconnect>() {
-					long start = System.currentTimeMillis();
-
 					@Override
 					public Reconnect get() {
 						return new Reconnect() {
+							long start = System.currentTimeMillis();
 							int tries = 0;
 							long delay = 1000;
 
@@ -237,8 +237,8 @@ public class TcpClientTests {
 				.get()
 				.open();
 
-		assertTrue("latch was counted down", latch.await(15, TimeUnit.SECONDS));
-		assertThat("totalDelay was XXms", totalDelay.get(), greaterThan(1400L));
+		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
+		assertThat("totalDelay was >14s", totalDelay.get(), greaterThan(1400L));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
