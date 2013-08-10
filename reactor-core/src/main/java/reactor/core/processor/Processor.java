@@ -1,15 +1,6 @@
 package reactor.core.processor;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import javax.annotation.Nonnull;
-
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.LifecycleAware;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.event.registry.Registration;
@@ -19,6 +10,10 @@ import reactor.function.Supplier;
 import reactor.function.batch.BatchConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * A {@code Processor} is a highly-efficient data processor that is backed by an <a
@@ -36,14 +31,14 @@ import reactor.util.Assert;
  * <p/>
  * To operate on the {@code Processor} in batch mode, first set a {@link BatchConsumer} as the {@link Consumer} of
  * events. This interface provides two additional methods, {@link reactor.function.batch.BatchConsumer#start()}, which
- * is invoked before the batch starts, and {@link reactor.function.batch.BatchConsumer#end()}, which is invoked when
- * the batch is submitted. The {@link BatchConsumer} will work for either single-operation mode or batch mode, but only
- * a {@link BatchConsumer} will be able to recognize the start and end of a batch.
+ * is invoked before the batch starts, and {@link reactor.function.batch.BatchConsumer#end()}, which is invoked when the
+ * batch is submitted. The {@link BatchConsumer} will work for either single-operation mode or batch mode, but only a
+ * {@link BatchConsumer} will be able to recognize the start and end of a batch.
  *
  * @author Jon Brisbin
  * @see {@link https://github.com/LMAX-Exchange/disruptor}
  */
-public class Processor<T> {
+public class Processor<T> implements Supplier<Operation<T>> {
 
 	private final int                      opsBufferSize;
 	private final ExecutorService          executor;
@@ -52,17 +47,17 @@ public class Processor<T> {
 
 	@SuppressWarnings("unchecked")
 	public Processor(@Nonnull final Supplier<T> dataSupplier,
-	                 @Nonnull final Consumer<T> consumer,
-	                 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
-	                 boolean multiThreadedProducer,
-	                 int opsBufferSize) {
+									 @Nonnull final Consumer<T> consumer,
+									 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
+									 boolean multiThreadedProducer,
+									 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		Assert.notNull(errorConsumers, "Error Consumers Registry cannot be null.");
 
 		executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory("processor"));
 
-		if(opsBufferSize < 1) {
+		if (opsBufferSize < 1) {
 			this.opsBufferSize = 256 * Runtime.getRuntime().availableProcessors();
 		} else {
 			this.opsBufferSize = opsBufferSize;
@@ -74,7 +69,8 @@ public class Processor<T> {
 					@Override
 					public Operation<T> newInstance() {
 						return new Operation<T>(dataSupplier.get()) {
-							@Override public void commit() {
+							@Override
+							public void commit() {
 								ringBuffer.publish(id);
 							}
 						};
@@ -114,8 +110,7 @@ public class Processor<T> {
 	}
 
 	/**
-	 * If the {@link Consumer} set in the spec is a {@link BatchConsumer}, then the start method will be invoked before
-	 * the
+	 * If the {@link Consumer} set in the spec is a {@link BatchConsumer}, then the start method will be invoked before the
 	 * batch is published, then all the events of the batch are published to the consumer, then the batch end is
 	 * published.
 	 * <p/>
@@ -124,23 +119,25 @@ public class Processor<T> {
 	 * update with the appropriate data. Note that this is not an event handler. The event handler {@link Consumer} is
 	 * specified in the spec (which is passed into the {@code Processor} constructor).
 	 *
-	 * @param size
-	 * 		size of the batch
-	 * @param mutator
-	 * 		a {@link Consumer} that mutates the data object before it is published as an event and handled by the event {@link
-	 * 		Consumer}
-	 *
+	 * @param size    size of the batch
+	 * @param mutator a {@link Consumer} that mutates the data object before it is published as an event and handled by the
+	 *                event {@link Consumer}
 	 * @return {@literal this}
 	 */
 	public Processor<T> batch(int size, Consumer<T> mutator) {
 		long seqId = 0;
-		for(int i = 0; i < size; i++) {
+		for (int i = 0; i < size; i++) {
 			seqId = ringBuffer.next();
 			mutator.accept(ringBuffer.get(seqId).get());
 		}
 		ringBuffer.publish(seqId - size, seqId);
 
 		return this;
+	}
+
+	@Override
+	public Operation<T> get() {
+		return prepare();
 	}
 
 	private static class ConsumerEventHandler<T> implements EventHandler<Operation<T>>, LifecycleAware {
@@ -152,19 +149,22 @@ public class Processor<T> {
 			this.isBatchConsumer = consumer instanceof BatchConsumer;
 		}
 
-		@Override public void onStart() {
-			if(isBatchConsumer) {
-				((BatchConsumer)consumer).start();
+		@Override
+		public void onStart() {
+			if (isBatchConsumer) {
+				((BatchConsumer) consumer).start();
 			}
 		}
 
-		@Override public void onShutdown() {
-			if(isBatchConsumer) {
-				((BatchConsumer)consumer).end();
+		@Override
+		public void onShutdown() {
+			if (isBatchConsumer) {
+				((BatchConsumer) consumer).end();
 			}
 		}
 
-		@Override public void onEvent(Operation<T> op, long sequence, boolean endOfBatch) throws Exception {
+		@Override
+		public void onEvent(Operation<T> op, long sequence, boolean endOfBatch) throws Exception {
 			consumer.accept(op.get());
 		}
 	}
@@ -179,16 +179,18 @@ public class Processor<T> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void handleEventException(Throwable ex, long sequence, Object event) {
-			for(Registration<? extends Consumer<? extends Throwable>> reg : errorConsumers.select(ex.getClass())) {
-				((Consumer<Throwable>)reg.getObject()).accept(ex);
+			for (Registration<? extends Consumer<? extends Throwable>> reg : errorConsumers.select(ex.getClass())) {
+				((Consumer<Throwable>) reg.getObject()).accept(ex);
 			}
 		}
 
-		@Override public void handleOnStartException(Throwable ex) {
+		@Override
+		public void handleOnStartException(Throwable ex) {
 			handleEventException(ex, -1, null);
 		}
 
-		@Override public void handleOnShutdownException(Throwable ex) {
+		@Override
+		public void handleOnShutdownException(Throwable ex) {
 			handleEventException(ex, -1, null);
 		}
 	}
