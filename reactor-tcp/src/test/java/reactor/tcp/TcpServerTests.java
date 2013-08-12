@@ -16,8 +16,21 @@
 
 package reactor.tcp;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import reactor.core.Environment;
+import reactor.function.Consumer;
+import reactor.io.Buffer;
+import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.encoding.Frame;
+import reactor.tcp.encoding.FrameCodec;
+import reactor.tcp.encoding.LengthFieldCodec;
+import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.encoding.json.JsonCodec;
+import reactor.tcp.netty.NettyTcpServer;
+import reactor.tcp.spec.TcpServerSpec;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -29,29 +42,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import reactor.core.Environment;
-import reactor.function.Consumer;
-import reactor.tcp.config.ServerSocketOptions;
-import reactor.tcp.encoding.LengthFieldCodec;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.encoding.json.JsonCodec;
-import reactor.tcp.netty.NettyTcpServer;
-import reactor.tcp.spec.TcpServerSpec;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpServerTests {
 
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
-	final int             msgs       = 4000000;
-	final int             threads    = 4;
+	final int             msgs       = 100;
+	final int             threads    = 2;
 	final int             port       = 24887;
 
 	Environment    env;
@@ -72,6 +73,7 @@ public class TcpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void tcpServerHandlesJsonPojos() throws InterruptedException {
 		TcpServer<Pojo, Pojo> server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer.class)
 				.env(env)
@@ -151,6 +153,59 @@ public class TcpServerTests {
 		server.shutdown();
 	}
 
+	@Test
+	public void tcpServerHandlesFrameData() throws InterruptedException {
+		TcpServer<Frame, Frame> server = new TcpServerSpec<Frame, Frame>(NettyTcpServer.class)
+				.env(env)
+						//.synchronousDispatcher()
+				.dispatcher(Environment.RING_BUFFER)
+				.options(new ServerSocketOptions()
+										 .backlog(1000)
+										 .reuseAddr(true)
+										 .tcpNoDelay(true))
+				.listen(port)
+				.codec(new FrameCodec(FrameCodec.LengthField.SHORT, 2))
+				.consume(new Consumer<TcpConnection<Frame, Frame>>() {
+					@Override
+					public void accept(TcpConnection<Frame, Frame> conn) {
+						conn.consume(new Consumer<Frame>() {
+							@Override
+							public void accept(Frame frame) {
+								short prefix = frame.getPrefix().readShort();
+								assertThat("prefix is 0", prefix == 0);
+								Buffer data = frame.getData();
+								assertThat("len is 128", data.remaining() == 128);
+
+								latch.countDown();
+							}
+						}
+
+						);
+					}
+				})
+				.get()
+				.start(new Consumer<Void>() {
+					@Override
+					public void accept(Void v) {
+						start.set(System.currentTimeMillis());
+						for (int i = 0; i < threads; i++) {
+							threadPool.submit(new FramedLengthFieldMessageWriter(port));
+						}
+					}
+				});
+
+		latch.await(60, TimeUnit.SECONDS);
+		end.set(System.currentTimeMillis());
+
+		assertThat("latch was counted down", latch.getCount(), is(0L));
+
+		double elapsed = (end.get() - start.get()) * 1.0;
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
+
+		server.shutdown();
+	}
+
 	private static class Pojo {
 		String name;
 
@@ -201,6 +256,41 @@ public class TcpServerTests {
 					buff.putInt(length);
 					buff.putInt(num++);
 					buff.position(0);
+					buff.limit(length + 4);
+
+					ch.write(buff);
+
+					count.incrementAndGet();
+				}
+			} catch (IOException e) {
+			}
+		}
+	}
+
+	private class FramedLengthFieldMessageWriter extends Thread {
+		private final short length = 128;
+		private final int port;
+
+		private FramedLengthFieldMessageWriter(int port) {
+			this.port = port;
+		}
+
+		@Override
+		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
+
+				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
+
+				start.set(System.currentTimeMillis());
+				for (int j = 0; j < msgs; j++) {
+					ByteBuffer buff = ByteBuffer.allocate(length + 4);
+					buff.putShort((short) 0);
+					buff.putShort(length);
+					for (int i = 4; i < length; i++) {
+						buff.put((byte) 1);
+					}
+					buff.flip();
 					buff.limit(length + 4);
 
 					ch.write(buff);
