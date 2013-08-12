@@ -3,7 +3,6 @@ package reactor.tcp.spec;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.support.EventRoutingComponentSpec;
-import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.tcp.Reconnect;
 import reactor.tcp.TcpClient;
@@ -30,7 +29,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	private InetSocketAddress connectAddress;
 	private ClientSocketOptions options = new ClientSocketOptions();
 	private Codec<Buffer, IN, OUT> codec;
-	private Supplier<Reconnect>    reconnectSupplier;
+	private Reconnect              reconnect;
 
 	/**
 	 * Create a {@code TcpClient.Spec} using the given implementation class.
@@ -46,7 +45,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					Reactor.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
-					Supplier.class,
+					Reconnect.class,
 					Codec.class
 			);
 			this.clientImplConstructor.setAccessible(true);
@@ -90,8 +89,15 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		return this;
 	}
 
-	public TcpClientSpec<IN, OUT> reconnect(@Nonnull Supplier<Reconnect> reconnectSupplier) {
-		this.reconnectSupplier = reconnectSupplier;
+	/**
+	 * An instance {@link Reconnect} that implements a reconnection policy that can handle incremental back-off and
+	 * switching hosts to connect to.
+	 *
+	 * @param reconnect the {@link Reconnect} instance to control reconnection
+	 * @return {@literal this}
+	 */
+	public TcpClientSpec<IN, OUT> reconnect(@Nonnull Reconnect reconnect) {
+		this.reconnect = reconnect;
 		return this;
 	}
 
@@ -115,7 +121,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					reactor,
 					connectAddress,
 					options,
-					reconnectSupplier,
+					reconnect,
 					codec
 			);
 		} catch (Throwable t) {

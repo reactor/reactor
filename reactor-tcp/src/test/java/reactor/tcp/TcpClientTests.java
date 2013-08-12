@@ -22,11 +22,12 @@ import org.junit.Test;
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
 import reactor.function.Consumer;
-import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.spec.TcpClientSpec;
+import reactor.tuple.Tuple;
+import reactor.tuple.Tuple2;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -44,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -54,11 +55,11 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpClientTests {
 
-	private final EchoServer            echoServer  = new EchoServer();
-	private final ConnectionAbortServer abortServer = new ConnectionAbortServer();
+	private static final int ECHO_SERVER_PORT  = 27487;
+	private static final int ABORT_SERVER_PORT = 27488;
 
-	static final int ECHO_SERVER_PORT  = 24887;
-	static final int ABORT_SERVER_PORT = 24888;
+	private final EchoServer            echoServer  = new EchoServer(ECHO_SERVER_PORT);
+	private final ConnectionAbortServer abortServer = new ConnectionAbortServer(ABORT_SERVER_PORT);
 
 	Environment env;
 
@@ -73,7 +74,7 @@ public class TcpClientTests {
 	public void cleanup() throws InterruptedException, IOException {
 		echoServer.close();
 		abortServer.close();
-		threadPool.shutdown();
+		threadPool.shutdownNow();
 		threadPool.awaitTermination(60, TimeUnit.SECONDS);
 	}
 
@@ -207,50 +208,52 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ABORT_SERVER_PORT)
-				.reconnect(new Supplier<Reconnect>() {
+				.connect("localhost", ECHO_SERVER_PORT - 1)
+				.reconnect(new Reconnect() {
 					@Override
-					public Reconnect get() {
-						return new Reconnect() {
-							long start = System.currentTimeMillis();
-							int tries = 0;
-							long delay = 1000;
-
-							@Override
-							public InetSocketAddress reconnectTo(InetSocketAddress currentAddress) {
-								totalDelay.set(System.currentTimeMillis() - start);
-								return (tries++ < 3 ? currentAddress : null);
-							}
-
-							@Override
-							public long reconnectAfter(long elapsedSinceDisconnect) {
-								return delay *= 2;
-							}
-
-							@Override
-							public void close() {
+					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
+						switch (attempt) {
+							case 1:
+								totalDelay.addAndGet(100);
+								return Tuple.of(currentAddress, 100L);
+							case 2:
+								totalDelay.addAndGet(500);
+								return Tuple.of(currentAddress, 500L);
+							case 3:
+								totalDelay.addAndGet(1000);
+								return Tuple.of(currentAddress, 1000L);
+							default:
 								latch.countDown();
-							}
-						};
+								return null;
+						}
+					}
+
+					@Override
+					public void reconnected() {
 					}
 				})
 				.get()
 				.open();
 
 		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
-		assertThat("totalDelay was >14s", totalDelay.get(), greaterThan(1400L));
+		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	private static final class EchoServer implements Runnable {
 		private volatile ServerSocketChannel server;
+		private final    int                 port;
+
+		private EchoServer(int port) {
+			this.port = port;
+		}
 
 		@Override
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(ECHO_SERVER_PORT));
+				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
@@ -283,13 +286,18 @@ public class TcpClientTests {
 	}
 
 	private static final class ConnectionAbortServer implements Runnable {
+		final            int                 port;
 		private volatile ServerSocketChannel server;
+
+		private ConnectionAbortServer(int port) {
+			this.port = port;
+		}
 
 		@Override
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(ECHO_SERVER_PORT));
+				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
