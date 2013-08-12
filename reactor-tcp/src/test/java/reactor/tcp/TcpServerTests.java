@@ -164,7 +164,7 @@ public class TcpServerTests {
 										 .reuseAddr(true)
 										 .tcpNoDelay(true))
 				.listen(port)
-				.codec(new FrameCodec(FrameCodec.LengthField.SHORT, 2))
+				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.consume(new Consumer<TcpConnection<Frame, Frame>>() {
 					@Override
 					public void accept(TcpConnection<Frame, Frame> conn) {
@@ -178,9 +178,7 @@ public class TcpServerTests {
 
 								latch.countDown();
 							}
-						}
-
-						);
+						});
 					}
 				})
 				.get()

@@ -19,9 +19,9 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 	private final int         prefixLength;
 	private final int         minRequiredLen;
 
-	public FrameCodec(LengthField lengthField, int prefixLength) {
-		this.lengthField = lengthField;
+	public FrameCodec(int prefixLength, LengthField lengthField) {
 		this.prefixLength = prefixLength;
+		this.lengthField = lengthField;
 		this.minRequiredLen = lengthFieldLength(lengthField) + prefixLength;
 	}
 
