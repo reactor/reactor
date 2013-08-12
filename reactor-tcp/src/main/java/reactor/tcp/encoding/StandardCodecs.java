@@ -16,6 +16,8 @@
 
 package reactor.tcp.encoding;
 
+import reactor.io.Buffer;
+
 /**
  * A selection of standard codecs.
  *
@@ -26,20 +28,20 @@ public abstract class StandardCodecs {
 	private StandardCodecs() {
 	}
 
+	public static final Codec<Buffer, Buffer, Buffer> PASS_THROUGH_CODEC = new PassThroughCodec();
+
 	/**
 	 * A {@link ByteArrayCodec}.
-	 *
 	 */
-	public static final ByteArrayCodec                 BYTE_ARRAY_CODEC = new ByteArrayCodec();
+	public static final ByteArrayCodec BYTE_ARRAY_CODEC = new ByteArrayCodec();
 
 	/**
 	 * A {@link StringCodec}.
 	 */
-	public static final StringCodec                    STRING_CODEC     = new StringCodec();
+	public static final StringCodec STRING_CODEC = new StringCodec();
 
 	/**
-	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed
-	 * ({@code '\n'}) character
+	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed ({@code '\n'}) character
 	 */
-	public static final DelimitedCodec<String, String> LINE_FEED_CODEC  = new DelimitedCodec<String, String>(STRING_CODEC);
+	public static final DelimitedCodec<String, String> LINE_FEED_CODEC = new DelimitedCodec<String, String>(STRING_CODEC);
 }
