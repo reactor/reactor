@@ -207,8 +207,9 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ECHO_SERVER_PORT - 1)
-				.reconnect(new Reconnect() {
+				.connect("localhost", ABORT_SERVER_PORT + 1)
+				.get()
+				.open(new Reconnect() {
 					@Override
 					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
 						switch (attempt) {
@@ -226,13 +227,7 @@ public class TcpClientTests {
 								return null;
 						}
 					}
-
-					@Override
-					public void reconnected() {
-					}
-				})
-				.get()
-				.open();
+				});
 
 		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));

@@ -20,6 +20,7 @@ import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
+import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
@@ -48,13 +49,13 @@ import java.util.Iterator;
  */
 public abstract class TcpClient<IN, OUT> {
 
-	private final Tuple2<Selector, Object>         open        = Selectors.$();
-	private final Tuple2<Selector, Object>         close       = Selectors.$();
-	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>();
+	private final Tuple2<Selector, Object> open  = Selectors.$();
+	private final Tuple2<Selector, Object> close = Selectors.$();
 
 	private final Reactor                reactor;
 	private final Codec<Buffer, IN, OUT> codec;
 
+	protected final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>();
 	protected final Environment env;
 
 	protected TcpClient(@Nonnull Environment env,
@@ -77,6 +78,20 @@ public abstract class TcpClient<IN, OUT> {
 	 *         connected.
 	 */
 	public abstract Promise<TcpConnection<IN, OUT>> open();
+
+	/**
+	 * Open a {@link TcpConnection} to the configured host:port and return a {@link Stream} that will be passed a new
+	 * {@link TcpConnection} object every time the client is connected to the endpoint. The given {@link Reconnect}
+	 * describes how the client should attempt to reconnect to the host if the initial connection fails or if the client
+	 * successfully connects but at some point in the future gets cut off from the host. The {@code Reconnect} tells the
+	 * client where to try reconnecting and gives a delay describing how long to wait to attempt to reconnect. When the
+	 * connect is successfully made, the {@link Stream} is sent a new {@link TcpConnection} backed by the newly-connected
+	 * connection.
+	 *
+	 * @param reconnect
+	 * @return
+	 */
+	public abstract Stream<TcpConnection<IN, OUT>> open(Reconnect reconnect);
 
 	/**
 	 * Close any open connections and disconnect this client.

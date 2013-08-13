@@ -12,10 +12,6 @@ import java.net.InetSocketAddress;
  * address and the number of times a reconnection has been attempted on this connection. If the client is to reconnect
  * to a different host, then provide that different address in the return value. If you don't want to try and reconnect
  * at all, simply return {@code null}.
- * <p/>
- * If the connection was successful, then the {@link #reconnected()} method is called. If all reconnection attempts have
- * been exhausted (i.e. {@link #reconnect(java.net.InetSocketAddress, int)} returned {@code null}) then the {@link
- * #reconnected()} will be invoked at that point.
  *
  * @author Jon Brisbin
  */
@@ -29,10 +25,5 @@ public interface Reconnect {
 	 *         Long} denoting the time to delay a reconnection attempt
 	 */
 	Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt);
-
-	/**
-	 * Notify this component that the reconnection was successful.
-	 */
-	void reconnected();
 
 }
