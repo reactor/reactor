@@ -423,6 +423,30 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
+	 * Create a new {@code Buffer} by calling {@link java.nio.ByteBuffer#duplicate()} on the underlying {@code
+	 * ByteBuffer}.
+	 *
+	 * @return the new {@code Buffer}
+	 */
+	public Buffer duplicate() {
+		return new Buffer(buffer.duplicate());
+	}
+
+	/**
+	 * Create a new {@code Buffer} by copying the underlying {@link ByteBuffer} into a newly-allocated {@code Buffer}.
+	 *
+	 * @return the new {@code Buffer}
+	 */
+	public Buffer copy() {
+		snapshot();
+		Buffer b = new Buffer(buffer.remaining(), false);
+		b.append(buffer);
+		reset();
+
+		return b.flip();
+	}
+
+	/**
 	 * Prepend the given {@link Buffer} to this {@literal Buffer}.
 	 *
 	 * @param b The {@link Buffer} to prepend.
@@ -1057,7 +1081,7 @@ public class Buffer implements Comparable<Buffer>,
 		return (null != buffer ? this.buffer.compareTo(buffer.buffer) : -1);
 	}
 
-	private void ensureCapacity(int atLeast) {
+	private synchronized void ensureCapacity(int atLeast) {
 		if (null == buffer) {
 			buffer = ByteBuffer.allocate(SMALL_BUFFER_SIZE);
 			return;

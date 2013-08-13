@@ -261,7 +261,7 @@ class BufferSpec extends Specification {
 		def buff = Buffer.wrap("Hello World!\n")
 
 		when: "the buffer is split"
-		def parts = buff.split((int)'\n')
+		def parts = buff.split((int) '\n')
 
 		then: "there is a single part"
 		parts.size() == 1
@@ -275,7 +275,7 @@ class BufferSpec extends Specification {
 		def buff = Buffer.wrap("Hello World!\nHello World!\n")
 
 		when: "the buffer is split"
-		def parts = buff.split((int)'\n')
+		def parts = buff.split((int) '\n')
 
 		then: "there are two parts"
 		parts.size() == 2
@@ -293,7 +293,7 @@ class BufferSpec extends Specification {
 
 		then: "three parts with the expected contents are produced"
 		def strings = []
-		parts.each { part -> strings << part.get().asString()}
+		parts.each { part -> strings << part.get().asString() }
 		strings.size() == 3
 		strings == ['One', 'Two', 'Three']
 	}
@@ -343,7 +343,7 @@ class BufferSpec extends Specification {
 		buffer.skip(100)
 
 		then: "An IllegalArgumentException is thrown"
-		thrown (IllegalArgumentException)
+		thrown(IllegalArgumentException)
 	}
 
 	def "An IllegalArgumentException is thrown if a buffer is asked to rewind beyond its beginning"() {
@@ -354,7 +354,31 @@ class BufferSpec extends Specification {
 		buffer.rewind(100)
 
 		then: "An IllegalArgumentException is thrown"
-		thrown (IllegalArgumentException)
+		thrown(IllegalArgumentException)
+	}
+
+	def "A Buffer can be duplicated"() {
+		given: "A Buffer"
+		def buffer = new Buffer(128, true).append("Hello World!").flip()
+
+		when: "the Buffer is duplicated"
+		def dup = buffer.duplicate()
+
+		then: "a new Buffer is created on a duplicate"
+		dup.capacity() == 128
+		dup.asString() == "Hello World!"
+	}
+
+	def "A Buffer can be copied"() {
+		given: "A Buffer"
+		def buffer = new Buffer(128, true).append("Hello World!").flip()
+
+		when: "the Buffer is copied"
+		def copy = buffer.copy()
+
+		then: "a new Buffer is created on a copy"
+		copy.capacity() == Buffer.SMALL_BUFFER_SIZE
+		copy.asString() == "Hello World!"
 	}
 
 }
