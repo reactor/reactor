@@ -1,6 +1,7 @@
 package reactor.function.support;
 
 import reactor.function.Consumer;
+import reactor.function.batch.BatchConsumer;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -22,7 +23,7 @@ import java.util.List;
  *
  * @author Jon Brisbin
  */
-public class DelegatingConsumer<T> implements Consumer<T>, Iterable<Consumer<T>> {
+public class DelegatingConsumer<T> implements BatchConsumer<T>, Iterable<Consumer<T>> {
 
 	private final Object                           delegateMonitor = new Object() {
 	};
@@ -169,5 +170,41 @@ public class DelegatingConsumer<T> implements Consumer<T>, Iterable<Consumer<T>>
 			}
 		};
 	}
+
+  @Override
+  public void start() {
+    synchronized (delegateMonitor) {
+      final int size = delegateSize;
+      for (int i = 0; i < size; i++) {
+        WeakReference<Consumer<T>> ref = delegates.get(i);
+        if (null == ref) {
+          continue;
+        }
+        Consumer<T> c = ref.get();
+        if (null == c || !(c instanceof BatchConsumer)) {
+          continue;
+        }
+        ((BatchConsumer) c).start();
+      }
+    }
+  }
+
+  @Override
+  public void end() {
+    synchronized (delegateMonitor) {
+      final int size = delegateSize;
+      for (int i = 0; i < size; i++) {
+        WeakReference<Consumer<T>> ref = delegates.get(i);
+        if (null == ref) {
+          continue;
+        }
+        Consumer<T> c = ref.get();
+        if (null == c || !(c instanceof BatchConsumer)) {
+          continue;
+        }
+        ((BatchConsumer) c).end();
+      }
+    }
+  }
 
 }
