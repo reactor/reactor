@@ -28,6 +28,7 @@ import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -63,12 +64,11 @@ public class Processor<T> implements Supplier<Operation<T>> {
 
 	@SuppressWarnings("unchecked")
 	public Processor(@Nonnull final Supplier<T> dataSupplier,
-									 @Nonnull final Consumer<T> consumer,
+									 @Nonnull final List<Consumer<T>> consumers,
 									 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
 									 boolean multiThreadedProducer,
 									 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
-		Assert.notNull(consumer, "Consumer cannot be null.");
 		Assert.notNull(errorConsumers, "Error Consumers Registry cannot be null.");
 
 		executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory("processor"));
@@ -97,7 +97,9 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
 				new YieldingWaitStrategy()
 		);
-		disruptor.handleEventsWith(new ConsumerEventHandler(consumer));
+		for (Consumer<T> consumer : consumers) {
+			disruptor.handleEventsWith(new ConsumerEventHandler(consumer));
+		}
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));
 
 		ringBuffer = disruptor.start();

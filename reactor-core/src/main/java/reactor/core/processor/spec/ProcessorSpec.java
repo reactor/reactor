@@ -24,6 +24,9 @@ import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.util.Assert;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Specification class to create {@link Processor Processors}.
  *
@@ -31,10 +34,10 @@ import reactor.util.Assert;
  */
 public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 
+	private List<Consumer<T>>             consumers             = new ArrayList<Consumer<T>>();
 	private Registry<Consumer<Throwable>> errorConsumers        = new CachingRegistry<Consumer<Throwable>>();
 	private boolean                       multiThreadedProducer = false;
 	private int                           dataBufferSize        = -1;
-	private Consumer<T> consumer;
 	private Supplier<T> dataSupplier;
 
 	/**
@@ -61,9 +64,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	/**
 	 * How many data objects to pre-allocate in the buffer.
 	 *
-	 * @param dataBufferSize
-	 * 		number of data objects to pre-allocate
-	 *
+	 * @param dataBufferSize number of data objects to pre-allocate
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> dataBufferSize(int dataBufferSize) {
@@ -74,9 +75,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	/**
 	 * Use the given {@link Supplier} to provide new instances of the data object for pre-allocation.
 	 *
-	 * @param dataSupplier
-	 * 		the {@link Supplier} to provide new data instances
-	 *
+	 * @param dataSupplier the {@link Supplier} to provide new data instances
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> dataSupplier(Supplier<T> dataSupplier) {
@@ -89,25 +88,19 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	 * When data is mutated and published into the {@code Processor}, invoke the given {@link Consumer} and pass the
 	 * mutated data.
 	 *
-	 * @param consumer
-	 * 		the mutated event data {@code Consumer}
-	 *
+	 * @param consumer the mutated event data {@code Consumer}
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> consume(Consumer<T> consumer) {
-    Assert.isNull(this.consumer, "Consumer is already set.");
-		this.consumer = consumer;
+		this.consumers.add(consumer);
 		return this;
 	}
 
 	/**
 	 * Assign the given {@link Consumer} as an error handler for exceptions of the given type.
 	 *
-	 * @param type
-	 * 		type of the exception to handle
-	 * @param errorConsumer
-	 * 		exception {@code Consumer}
-	 *
+	 * @param type          type of the exception to handle
+	 * @param errorConsumer exception {@code Consumer}
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> when(Class<? extends Throwable> type, Consumer<Throwable> errorConsumer) {
@@ -116,12 +109,13 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	}
 
 
-	@Override public Processor<T> get() {
+	@Override
+	public Processor<T> get() {
 		return new Processor<T>(dataSupplier,
-		                        consumer,
-		                        errorConsumers,
-		                        multiThreadedProducer,
-		                        dataBufferSize);
+														consumers,
+														errorConsumers,
+														multiThreadedProducer,
+														dataBufferSize);
 	}
 
 }
