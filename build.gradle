@@ -29,7 +29,7 @@ ext {
 	logbackVersion = '1.0.13'
 
 	// Libraries
-	disruptorVersion = '3.1.1'
+	disruptorVersion = '3.2.0'
 	springVersion = '3.2.3.RELEASE'
 	siVersion = '3.0.0.M2'
 	nettyVersion = '4.0.6.Final'
