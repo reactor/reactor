@@ -257,25 +257,24 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							},
 							delay
 					);
-				}
-
-				if (log.isInfoEnabled()) {
-					log.info("CONNECT: " + future.channel());
-				}
-				final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
-				future.channel().closeFuture().addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
-						if (log.isInfoEnabled()) {
-							log.info("CLOSED: " + future.channel());
-						}
-						NettyTcpClient.this.connections.unregister(future.channel());
-						notifyClose(conn);
-						connectionSupplier.get().addListener(self);
+				} else {
+					if (log.isInfoEnabled()) {
+						log.info("CONNECT: " + future.channel());
 					}
-				});
-
-				connections.accept(conn);
+					final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
+					future.channel().closeFuture().addListener(new ChannelFutureListener() {
+						@Override
+						public void operationComplete(ChannelFuture future) throws Exception {
+							if (log.isInfoEnabled()) {
+								log.info("CLOSED: " + future.channel());
+							}
+							NettyTcpClient.this.connections.unregister(future.channel());
+							notifyClose(conn);
+							connectionSupplier.get().addListener(self);
+						}
+					});
+					connections.accept(conn);
+				}
 			}
 		};
 	}
