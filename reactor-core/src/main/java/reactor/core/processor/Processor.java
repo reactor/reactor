@@ -98,28 +98,12 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				new YieldingWaitStrategy()
 		);
 		if (!consumers.isEmpty()) {
-			if (consumers.size() == 1) {
-				// Optimize for a single Consumer
-				disruptor.handleEventsWith(new ConsumerEventHandler<T>(consumers.get(0)));
-			} else {
-				// Multiple Consumers need a composition for efficiency
-				Consumer<T> composition = null;
-				int len = consumers.size();
-				for (int i = 0; i < len; i++) {
-					final Consumer<T> prev = composition;
-					final Consumer<T> next = consumers.get(i);
-					composition = new Consumer<T>() {
-						@Override
-						public void accept(T t) {
-							if (null != prev) {
-								prev.accept(t);
-							}
-							next.accept(t);
-						}
-					};
-				}
-				disruptor.handleEventsWith(new ConsumerEventHandler<T>(composition));
+			ConsumerEventHandler<T>[] handlers = new ConsumerEventHandler[consumers.size()];
+			int i = 0;
+			for (Consumer<T> consumer : consumers) {
+				handlers[i++] = new ConsumerEventHandler<T>(consumer);
 			}
+			disruptor.handleEventsWith(handlers);
 		}
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));
 

@@ -41,28 +41,26 @@ class ProcessorSpec extends Specification {
 	def "Processor provides for multiple event handlers"() {
 
 		given: 'a Processor for events'
-		def latch = new CountDownLatch(20)
-		List<Data> data = []
+		def latch = new CountDownLatch(3)
+		def data = []
+		def consumer = { Data d -> data << d.data; latch.countDown() } as Consumer<Data>
 		def processor = new reactor.core.processor.spec.ProcessorSpec<Data>().
 				dataSupplier({ new Data() } as Supplier<Data>).
-				consume({ Data d ->
-					data << d
-					latch.countDown()
-				} as Consumer<Data>).
-				consume({ Data d ->
-					data << d
-					latch.countDown()
-				} as Consumer<Data>).
+				consume(consumer).
+				consume(consumer).
+				consume(consumer).
 				get()
 
 		when: 'a series of events are triggered'
-		processor.batch(10, { Data d ->
+		def i = 0
+		processor.batch(3, { Data d ->
 			d.type = "test"
+			d.data = "run ${i++}"
 		} as Consumer<Data>)
 
 		then: 'the Consumers were run'
 		latch.await(1, TimeUnit.SECONDS)
-		data.size() == 20
+		data.size() == 3
 
 		cleanup:
 		processor.shutdown()
