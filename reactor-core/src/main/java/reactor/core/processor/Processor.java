@@ -148,12 +148,22 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	 * @return {@literal this}
 	 */
 	public Processor<T> batch(int size, Consumer<T> mutator) {
-		long seqId = 0;
+		long start = -1;
+		long end = 0;
 		for (int i = 0; i < size; i++) {
-			seqId = ringBuffer.next();
-			mutator.accept(ringBuffer.get(seqId).get());
+			if (i > 0 && i % opsBufferSize == 0) {
+				// Automatically flush when buffer is full
+				ringBuffer.publish(start, end);
+				start = -1;
+			}
+			long l = ringBuffer.next();
+			if (start < 0) {
+				start = l;
+			}
+			end = l;
+			mutator.accept(ringBuffer.get(end).get());
 		}
-		ringBuffer.publish(seqId - size, seqId);
+		ringBuffer.publish(start, end);
 
 		return this;
 	}

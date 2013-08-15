@@ -52,7 +52,7 @@ public class ProcessorThroughputTests {
 
 		proc = new reactor.core.processor.spec.ProcessorSpec<Data>()
 				.dataSupplier(dataSupplier)
-				.dataBufferSize(1024 * 2)
+						//.dataBufferSize(1024 * 4)
 						//.consume(new DelegatingConsumer<Data>().add(countDownConsumer))
 				.consume(countDownConsumer)
 				.get();

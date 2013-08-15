@@ -67,6 +67,32 @@ class ProcessorSpec extends Specification {
 
 	}
 
+	def "Processor can handle batches larger than the backlog"() {
+
+		given: 'a Processor for events'
+		def latch = new CountDownLatch(300)
+		def consumer = { Data d -> latch.countDown() } as Consumer<Data>
+		def processor = new reactor.core.processor.spec.ProcessorSpec<Data>().
+				dataBufferSize(128).
+				dataSupplier({ new Data() } as Supplier<Data>).
+				consume(consumer).
+				get()
+
+		when: 'a series of events are triggered'
+		def i = 0
+		processor.batch(300, { Data d ->
+			d.type = "test"
+			d.data = "run ${i++}"
+		} as Consumer<Data>)
+
+		then: 'the Consumers were run'
+		latch.await(1, TimeUnit.SECONDS)
+
+		cleanup:
+		processor.shutdown()
+
+	}
+
 }
 
 class Data {
