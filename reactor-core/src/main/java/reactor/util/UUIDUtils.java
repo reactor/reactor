@@ -44,10 +44,10 @@ public abstract class UUIDUtils {
 
 		lock.lock();
 		try {
-			if (lastTime == timeMillis) {
-				timeMillis = ++lastTime;
-			} else {
+			if (timeMillis > lastTime) {
 				lastTime = timeMillis;
+			} else {
+				timeMillis = ++lastTime;
 			}
 		} finally {
 			lock.unlock();
