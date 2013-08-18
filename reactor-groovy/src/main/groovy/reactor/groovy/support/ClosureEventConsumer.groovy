@@ -19,6 +19,7 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
+import reactor.core.Reactor
 import reactor.function.Consumer
 import reactor.event.Event
 
@@ -30,21 +31,45 @@ import reactor.event.Event
 class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 
 	final Closure callback
-	final boolean eventArg = true
+	final boolean eventArg
 
 
 	ClosureEventConsumer(Closure cl) {
 		callback = cl
 		def argTypes = callback.parameterTypes
-		eventArg = Event.isAssignableFrom(argTypes[0])
+		this.eventArg = Event.isAssignableFrom(argTypes[0])
 	}
 
 	@Override
 	void accept(Event<T> arg) {
+		def callback = this.callback
+		if (Reactor.ReplyToEvent.class.isAssignableFrom(arg.class)) {
+			callback = (Closure) callback.clone()
+			callback.delegate = new ReplyDecorator(arg.replyTo, (((Reactor.ReplyToEvent) arg).replyToObservable))
+		}
 		if (eventArg) {
 			callback arg
 		} else {
 			callback arg?.data
+		}
+	}
+
+	static class ReplyDecorator {
+
+		final replyTo
+		final reactor.core.Observable observable
+
+		ReplyDecorator(replyTo, reactor.core.Observable observable) {
+			this.replyTo = replyTo
+			this.observable = observable
+		}
+
+		void reply() {
+			observable.notify(replyTo, Event.NULL_EVENT)
+		}
+
+		void reply(data) {
+			observable.notify(replyTo, Event.wrap(data))
 		}
 	}
 }

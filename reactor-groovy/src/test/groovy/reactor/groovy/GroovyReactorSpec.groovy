@@ -112,6 +112,26 @@ class GroovyReactorSpec extends Specification {
 
 	}
 
+	def "Groovy Reactor allows inline reply"() {
+
+		given: "a simple reactor implementation"
+		def reactor = Reactors.reactor().get()
+
+		when: 'Using simple arguments'
+		def data2 = ""
+		reactor.on($('test')){ String s ->
+			reply(s + ' ok')
+		}  // ugly hack until I can get Groovy Closure invocation support built-in
+
+		reactor.send('test', 'send'){
+			data2 = 'test3'
+		}
+
+		then:
+		data2 == 'test3'
+
+	}
+
 	def "Simple reactors linking"() {
 
 		given: "normal reactors on the same thread"

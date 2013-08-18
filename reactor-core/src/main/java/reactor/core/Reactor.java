@@ -294,7 +294,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return id.hashCode();
 	}
 
-	private static class ReplyToEvent<T> extends Event<T> {
+	public static class ReplyToEvent<T> extends Event<T> {
 		private final Observable replyToObservable;
 
 		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
@@ -303,7 +303,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 			this.replyToObservable = replyToObservable;
 		}
 
-		private Observable getReplyToObservable() {
+		public Observable getReplyToObservable() {
 			return replyToObservable;
 		}
 	}
