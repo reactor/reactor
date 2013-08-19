@@ -22,6 +22,7 @@ import groovy.transform.CompileStatic
 import reactor.core.Reactor
 import reactor.function.Consumer
 import reactor.event.Event
+import reactor.function.support.CancelConsumerException
 
 /**
  * @author Jon Brisbin
@@ -33,11 +34,15 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	final Closure callback
 	final boolean eventArg
 
-
 	ClosureEventConsumer(Closure cl) {
 		callback = cl
+		callback.delegate = this
 		def argTypes = callback.parameterTypes
 		this.eventArg = Event.isAssignableFrom(argTypes[0])
+	}
+
+	void cancel() {
+		throw new CancelConsumerException()
 	}
 
 	@Override
@@ -54,7 +59,7 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 		}
 	}
 
-	static class ReplyDecorator {
+	class ReplyDecorator {
 
 		final replyTo
 		final reactor.core.Observable observable
@@ -63,6 +68,7 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 			this.replyTo = replyTo
 			this.observable = observable
 		}
+
 
 		void reply() {
 			observable.notify(replyTo, Event.NULL_EVENT)
