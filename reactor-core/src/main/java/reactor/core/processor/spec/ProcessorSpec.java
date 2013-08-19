@@ -24,9 +24,6 @@ import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.util.Assert;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Specification class to create {@link Processor Processors}.
  *
@@ -34,11 +31,11 @@ import java.util.List;
  */
 public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 
-	private List<Consumer<T>>             consumers             = new ArrayList<Consumer<T>>();
 	private Registry<Consumer<Throwable>> errorConsumers        = new CachingRegistry<Consumer<Throwable>>();
 	private boolean                       multiThreadedProducer = false;
 	private int                           dataBufferSize        = -1;
 	private Supplier<T> dataSupplier;
+	private Consumer<T> consumer;
 
 	/**
 	 * Protect against publication of data events from multiple producer threads.
@@ -79,7 +76,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> dataSupplier(Supplier<T> dataSupplier) {
-    Assert.isNull(this.dataSupplier, "Data Supplier is already set.");
+		Assert.isNull(this.dataSupplier, "Data Supplier is already set.");
 		this.dataSupplier = dataSupplier;
 		return this;
 	}
@@ -92,7 +89,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	 * @return {@literal this}
 	 */
 	public ProcessorSpec<T> consume(Consumer<T> consumer) {
-		this.consumers.add(consumer);
+		this.consumer = consumer;
 		return this;
 	}
 
@@ -112,7 +109,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	@Override
 	public Processor<T> get() {
 		return new Processor<T>(dataSupplier,
-														consumers,
+														consumer,
 														errorConsumers,
 														multiThreadedProducer,
 														dataBufferSize);
