@@ -68,7 +68,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 									 boolean multiThreadedProducer,
 									 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
-		Assert.notNull(dataSupplier, "Consumer cannot be null.");
+		Assert.notNull(consumer, "Consumer cannot be null.");
 		Assert.notNull(errorConsumers, "Error Consumers Registry cannot be null.");
 
 		executor = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("processor"));
