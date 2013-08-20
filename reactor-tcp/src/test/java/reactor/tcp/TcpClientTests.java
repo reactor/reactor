@@ -55,11 +55,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpClientTests {
 
-	private static final int ECHO_SERVER_PORT  = 27487;
-	private static final int ABORT_SERVER_PORT = 27488;
+	private static final int ECHO_SERVER_PORT    = 27487;
+	private static final int ABORT_SERVER_PORT   = 27488;
+	private static final int TIMEOUT_SERVER_PORT = 27489;
 
-	private final EchoServer            echoServer  = new EchoServer(ECHO_SERVER_PORT);
-	private final ConnectionAbortServer abortServer = new ConnectionAbortServer(ABORT_SERVER_PORT);
+	private final EchoServer              echoServer    = new EchoServer(ECHO_SERVER_PORT);
+	private final ConnectionAbortServer   abortServer   = new ConnectionAbortServer(ABORT_SERVER_PORT);
+	private final ConnectionTimeoutServer timeoutServer = new ConnectionTimeoutServer(TIMEOUT_SERVER_PORT);
 
 	Environment env;
 
@@ -68,12 +70,14 @@ public class TcpClientTests {
 		env = new Environment();
 		threadPool.submit(echoServer);
 		threadPool.submit(abortServer);
+		threadPool.submit(timeoutServer);
 	}
 
 	@After
 	public void cleanup() throws InterruptedException, IOException {
 		echoServer.close();
 		abortServer.close();
+		timeoutServer.close();
 		threadPool.shutdownNow();
 		threadPool.awaitTermination(60, TimeUnit.SECONDS);
 	}
@@ -207,7 +211,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ABORT_SERVER_PORT + 1)
+				.connect("localhost", ABORT_SERVER_PORT + 2)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -231,6 +235,41 @@ public class TcpClientTests {
 
 		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
+	}
+
+	@Test
+	public void consumerSpecAssignsEventHandlers() throws InterruptedException {
+		final CountDownLatch latch = new CountDownLatch(3);
+		final AtomicLong totalDelay = new AtomicLong();
+		final long start = System.currentTimeMillis();
+
+		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", TIMEOUT_SERVER_PORT)
+				.get().open().await().on()
+				.close(new Runnable() {
+					@Override
+					public void run() {
+						latch.countDown();
+					}
+				})
+				.readIdle(500, new Runnable() {
+					@Override
+					public void run() {
+						totalDelay.addAndGet(System.currentTimeMillis() - start);
+						latch.countDown();
+					}
+				})
+				.writeIdle(500, new Runnable() {
+					@Override
+					public void run() {
+						totalDelay.addAndGet(System.currentTimeMillis() - start);
+						latch.countDown();
+					}
+				});
+
+		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
+		assertThat("totalDelay was >500ms", totalDelay.get(), greaterThanOrEqualTo(500L));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -296,6 +335,38 @@ public class TcpClientTests {
 				while (true) {
 					SocketChannel ch = server.accept();
 					ch.close();
+				}
+			} catch (IOException e) {
+				// Server closed
+			}
+		}
+
+		public void close() throws IOException {
+			ServerSocketChannel server = this.server;
+			if (server != null) {
+				server.close();
+			}
+		}
+	}
+
+	private static final class ConnectionTimeoutServer implements Runnable {
+		final            int                 port;
+		private volatile ServerSocketChannel server;
+
+		private ConnectionTimeoutServer(int port) {
+			this.port = port;
+		}
+
+		@Override
+		public void run() {
+			try {
+				server = ServerSocketChannel.open();
+				server.socket().bind(new InetSocketAddress(port));
+				server.configureBlocking(true);
+				while (true) {
+					SocketChannel ch = server.accept();
+					ByteBuffer buff = ByteBuffer.allocate(1);
+					ch.read(buff);
 				}
 			} catch (IOException e) {
 				// Server closed

@@ -43,15 +43,15 @@ import reactor.tuple.Tuple2;
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
 
-	private final long                     created = System.currentTimeMillis();
-	private final Tuple2<Selector, Object> read    = Selectors.$();
-	private final Function<Buffer, IN>  decoder;
-	private final Function<OUT, Buffer> encoder;
+	protected final long                     created = System.currentTimeMillis();
+	protected final Tuple2<Selector, Object> read    = Selectors.$();
 
-	protected final Dispatcher  ioDispatcher;
-	protected final Reactor     ioReactor;
-	protected final Reactor     eventsReactor;
-	protected final Environment env;
+	protected final Function<Buffer, IN>  decoder;
+	protected final Function<OUT, Buffer> encoder;
+	protected final Dispatcher            ioDispatcher;
+	protected final Reactor               ioReactor;
+	protected final Reactor               eventsReactor;
+	protected final Environment           env;
 
 	protected AbstractTcpConnection(Environment env,
 																	Codec<Buffer, IN, OUT> codec,
@@ -86,7 +86,6 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	public void close() {
 		eventsReactor.getConsumerRegistry().unregister(read.getT2());
 	}
-
 
 	@Override
 	public Stream<IN> in() {

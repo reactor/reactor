@@ -127,4 +127,46 @@ public interface TcpConnection<IN, OUT> {
 	 */
 	TcpConnection<IN, OUT> send(OUT data, Consumer<Boolean> onComplete);
 
+	/**
+	 * Provide the caller with a spec-style configuration object that allows a user to attach multiple event handlers to
+	 * the connection.
+	 *
+	 * @return
+	 */
+	ConsumerSpec on();
+
+	/**
+	 * Spec class for assigning multiple event handlers on a connection.
+	 *
+	 * @param <IN>  type of the input
+	 * @param <OUT> type of the output
+	 */
+	public static interface ConsumerSpec<IN, OUT> {
+		/**
+		 * Assign a {@link Runnable} to be invoked when the connection is closed.
+		 *
+		 * @param onClose the close event handler
+		 * @return {@literal this}
+		 */
+		ConsumerSpec close(Runnable onClose);
+
+		/**
+		 * Assign a {@link Runnable} to be invoked when reads have become idle for the given timeout.
+		 *
+		 * @param idleTimeout the idle timeout
+		 * @param onReadIdle  the idle timeout handler
+		 * @return {@literal this}
+		 */
+		ConsumerSpec readIdle(long idleTimeout, Runnable onReadIdle);
+
+		/**
+		 * Assign a {@link Runnable} to be invoked when writes have become idle for the given timeout.
+		 *
+		 * @param idleTimeout the idle timeout
+		 * @param onWriteIdle the idle timeout handler
+		 * @return {@literal this}
+		 */
+		ConsumerSpec writeIdle(long idleTimeout, Runnable onWriteIdle);
+	}
+
 }
