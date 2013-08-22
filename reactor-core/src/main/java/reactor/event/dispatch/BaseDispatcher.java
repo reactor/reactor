@@ -16,12 +16,20 @@
 
 package reactor.event.dispatch;
 
-import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
+import reactor.function.Consumer;
 
 abstract class BaseDispatcher implements Dispatcher {
+
+	@Override
+	public <E extends Event<?>> void dispatch(E event,
+																						EventRouter eventRouter,
+																						Consumer<E> consumer,
+																						Consumer<Throwable> errorConsumer) {
+		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	}
 
 	@Override
 	public <E extends Event<?>> void dispatch(Object key,
@@ -98,7 +106,12 @@ abstract class BaseDispatcher implements Dispatcher {
 		protected abstract void submit();
 
 		protected void execute() {
-			eventRouter.route(key, event, consumerRegistry.select(key), completionConsumer, errorConsumer);
+			eventRouter.route(key,
+												event,
+												(null != consumerRegistry ? consumerRegistry.select(key) : null),
+												completionConsumer,
+												errorConsumer);
 		}
 	}
+
 }

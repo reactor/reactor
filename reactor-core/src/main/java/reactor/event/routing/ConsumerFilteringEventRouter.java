@@ -16,16 +16,16 @@
 
 package reactor.event.routing;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.function.support.CancelConsumerException;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.filter.Filter;
 import reactor.function.Consumer;
+import reactor.function.support.CancelConsumerException;
 import reactor.util.Assert;
+
+import java.util.List;
 
 /**
  * An {@link reactor.event.routing.EventRouter} that {@link Filter#filter filters} consumers before
@@ -66,10 +66,16 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		try {
-			for(Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
-				invokeConsumer(key, event, consumer);
-				if(null != completionConsumer) {
+			if (null == consumers) {
+				if (null != completionConsumer) {
 					consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
+				}
+			} else {
+				for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
+					invokeConsumer(key, event, consumer);
+					if (null != completionConsumer) {
+						consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
+					}
 				}
 			}
 		} catch(Exception e) {

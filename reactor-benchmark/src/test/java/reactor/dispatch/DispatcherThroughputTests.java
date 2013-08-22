@@ -16,10 +16,15 @@
 
 package reactor.dispatch;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
+import reactor.event.Event;
 import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
+
+import java.util.Random;
 
 /**
  * @author Jon Brisbin
@@ -55,6 +60,22 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 		reactor.getDispatcher().shutdown();
 	}
 
+	protected void doPrepareTest(Reactor reactor) throws InterruptedException {
+		registerConsumersAndWarmCache(reactor);
+
+		final int selectorIdx = new Random().nextInt(selectors);
+		Consumer<Event<String>> consumer = reactor.prepare(objects[selectorIdx]);
+		for (int j = 0; j < testRuns; j++) {
+			preRun();
+			for (int i = 0; i < selectors * iterations; i++) {
+				consumer.accept(hello);
+			}
+			postRun(reactor);
+		}
+
+		reactor.getDispatcher().shutdown();
+	}
+
 	@Test
 	public void blockingQueueDispatcherThroughput() throws InterruptedException {
 		log.info("Starting blocking queue test...");
@@ -77,6 +98,12 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	public void singleProducerRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting single-producer, yielding RingBuffer test...");
 		doTest(Reactors.reactor().env(env).dispatcher(createRingBufferDispatcher()).get());
+	}
+
+	@Test
+	public void preparedRingBufferDispatcherThroughput() throws InterruptedException {
+		log.info("Starting prepared RingBuffer test...");
+		doPrepareTest(Reactors.reactor().env(env).dispatcher("ringBuffer").get());
 	}
 
 }

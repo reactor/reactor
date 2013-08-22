@@ -203,4 +203,12 @@ public interface Observable {
 	 */
 	Observable notify(Object key);
 
+	/**
+	 * Create an optimized path for publishing notifications to the given key.
+	 *
+	 * @param key The key to be matched by {@link Selector Selectors}
+	 * @return a {@link Consumer} to invoke with the {@link Event Events} to publish
+	 */
+	<T> Consumer<Event<T>> prepare(Object key);
+
 }

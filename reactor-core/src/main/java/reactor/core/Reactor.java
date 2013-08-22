@@ -16,9 +16,6 @@
 
 package reactor.core;
 
-import java.util.Set;
-import java.util.UUID;
-
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +39,10 @@ import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -260,6 +261,22 @@ public class Reactor implements Observable, Linkable<Observable> {
 	@Override
 	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
 		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
+	}
+
+	@Override
+	public <T> Consumer<Event<T>> prepare(final Object key) {
+		return new Consumer<Event<T>>() {
+			final List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
+			final int size = regs.size();
+
+			@Override
+			public void accept(Event<T> event) {
+				for (int i = 0; i < size; i++) {
+					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>) regs.get(i);
+					dispatcher.dispatch(event, eventRouter, reg.getObject(), errorHandler);
+				}
+			}
+		};
 	}
 
 	@Override
