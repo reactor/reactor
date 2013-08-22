@@ -17,6 +17,8 @@
 package reactor.core;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
@@ -125,7 +127,7 @@ public class Environment {
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
-		return new RingBufferDispatcher(dispatcherConfiguration.getName(), backlog, ProducerType.MULTI, new BlockingWaitStrategy());
+		return new RingBufferDispatcher(dispatcherConfiguration.getName(), backlog, ProducerType.MULTI, new YieldingWaitStrategy());
 	}
 
 	private BlockingQueueDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
