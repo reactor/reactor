@@ -198,7 +198,7 @@ public class TcpClientTests {
 				closeLatch.countDown();
 			}
 		});
-		// For some reason, the CI server want's to wait 30 seconds here, so we'll make sure
+		// For some reason, the CI server wants to wait 30 seconds here, so we'll make sure
 		// we wait long enough so the consumer actually has a chance to run.
 		assertTrue("latch didn't time out", closeLatch.await(60, TimeUnit.SECONDS));
 		assertThat("latch was counted down", closeLatch.getCount(), is(0L));
