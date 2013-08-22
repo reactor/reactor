@@ -31,26 +31,26 @@ import reactor.filter.PassThroughFilter;
 import reactor.filter.RandomFilter;
 import reactor.filter.RoundRobinFilter;
 
+
 /**
  * A generic environment-aware class for specifying components that need to be configured
  * with an {@link Environment}, {@link Dispatcher}, and {@link EventRouter}.
  *
- * @author Jon Brisbin
- *
- * @param <SPEC> The DispatcherComponentSpec subclass
+ * @param <SPEC>   The DispatcherComponentSpec subclass
  * @param <TARGET> The type that this spec will create
+ * @author Jon Brisbin
  */
 @SuppressWarnings("unchecked")
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC, TARGET> {
 
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
+	private Filter               eventFilter;
 
 	/**
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
 	 * @param converters The converters to be used by the event router
-	 *
 	 * @return {@code this}
 	 */
 	public final SPEC converters(Converter... converters) {
@@ -62,11 +62,22 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
 	 * @param converters The converters to be used by the event router
-	 *
 	 * @return {@code this}
 	 */
 	public final SPEC converters(List<Converter> converters) {
 		this.converter = new DelegatingConverter(converters);
+		return (SPEC) this;
+	}
+
+
+	/**
+	 * Configures the component's EventRouter to broadcast events to all matching
+	 * consumers
+	 *
+	 * @return {@code this}
+	 */
+	public final SPEC eventRoutingFilter(Filter filter) {
+		this.eventFilter = filter;
 		return (SPEC) this;
 	}
 
@@ -127,7 +138,9 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private EventRouter createEventRouter() {
-		return new ConsumerFilteringEventRouter(createFilter(), new ArgumentConvertingConsumerInvoker(converter));
+		return new ConsumerFilteringEventRouter(
+				eventFilter != null ? eventFilter : createFilter(),
+				new ArgumentConvertingConsumerInvoker(converter));
 	}
 
 	private Filter createFilter() {

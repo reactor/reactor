@@ -34,7 +34,7 @@ public final class DispatcherConfiguration {
 
 	private final Integer size;
 
-	DispatcherConfiguration(String name, DispatcherType type, Integer backlog, Integer size) {
+	public DispatcherConfiguration(String name, DispatcherType type, Integer backlog, Integer size) {
 		this.name = name;
 		this.type = type;
 		this.backlog = backlog;
