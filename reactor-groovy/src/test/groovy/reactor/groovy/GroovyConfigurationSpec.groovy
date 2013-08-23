@@ -16,9 +16,12 @@
 package reactor.groovy
 
 import reactor.core.Environment
-import reactor.event.Event
+import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
 import spock.lang.Specification
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 /**
  * @author Stephane Maldini (smaldini)
  */
@@ -39,5 +42,21 @@ class GroovyConfigurationSpec extends Specification {
 		then:
 			groovySystem['test1']
 			groovySystem['child_test1']
+	}
+
+	def "GroovyEnvironment creates consumers properly"() {
+		when:
+			"Building a simple dispatcher"
+			GroovyEnvironment groovySystem = StaticConfiguration.test3()
+			def res = null
+			def latch = new CountDownLatch(1)
+			groovySystem['test1'].send('test','test'){
+				res = it
+				latch.countDown()
+			}
+		then:
+			latch.await(5, TimeUnit.SECONDS)
+			groovySystem['test1'].dispatcher instanceof SynchronousDispatcher
+			res
 	}
 }

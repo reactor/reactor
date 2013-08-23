@@ -16,11 +16,13 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
-
+import reactor.event.dispatch.SynchronousDispatcher
+import reactor.function.Consumer
 import reactor.groovy.config.GroovyEnvironment
 
 @CompileStatic
 class StaticConfiguration {
+
 	static GroovyEnvironment test() {
 		GroovyEnvironment.create {
 			environment {
@@ -30,10 +32,6 @@ class StaticConfiguration {
 					name = "test"
 				}
 			}
-
-			reactor {
-
-			}
 		}
 	}
 
@@ -41,13 +39,26 @@ class StaticConfiguration {
 		GroovyEnvironment.create {
 			reactor {
 				name = 'test1'
-				on('test'){
+				on('test') {
 					println it
 				}
 
-				reactor{
+				reactor {
 					name = 'child_test1'
 				}
+			}
+		}
+	}
+
+	static GroovyEnvironment test3() {
+		GroovyEnvironment.create {
+			reactor {
+				name = 'test1'
+				dispatcher = new SynchronousDispatcher()
+				on('test') {
+					reply it
+				}
+
 			}
 		}
 	}

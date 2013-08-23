@@ -8,6 +8,7 @@ import reactor.core.spec.Reactors
 import reactor.event.dispatch.Dispatcher
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
+import reactor.function.Consumer
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 
@@ -27,7 +28,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	Dispatcher dispatcher
 
 	boolean linkParent = true
-	private Map<Selector, List<Closure>> consumers = [:]
+	private Map<Selector, List<Consumer>> consumers = [:]
 	private Reactor reactor
 	private List<ReactorBuilder> childNodes = []
 
@@ -45,16 +46,31 @@ class ReactorBuilder implements Supplier<Reactor> {
 		this.dispatcher = dispatcher
 	}
 
-	ReactorBuilder on(Closure closure) {
-		on noSelector, closure
+	ReactorBuilder on( @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
+		on noSelector, new ClosureEventConsumer((Closure) closure.clone())
 	}
 
-	ReactorBuilder on(String selector, Closure closure) {
+	ReactorBuilder on(String selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
+		on Selectors.$(selector), new ClosureEventConsumer((Closure) closure.clone())
+	}
+
+	ReactorBuilder on(Consumer consumer) {
+		on noSelector, consumer
+	}
+
+	ReactorBuilder on(String selector, Consumer closure) {
 		on Selectors.$(selector), closure
 	}
 
-	ReactorBuilder on(Selector selector, Closure closure) {
-		consumers[selector] = consumers[selector] ?: (List<Closure>)[]
+	ReactorBuilder on(Selector selector,  @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
+		on selector, new ClosureEventConsumer((Closure)closure.clone())
+	}
+
+	ReactorBuilder on(Selector selector, Consumer closure) {
+		consumers[selector] = consumers[selector] ?: (List<Consumer>) []
 		consumers[selector] << closure
 		this
 	}
@@ -89,7 +105,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (consumers) {
 			for (perSelectorConsumers in consumers.entrySet()) {
 				for (consumer in perSelectorConsumers.value) {
-					reactor.on((Selector) perSelectorConsumers.key, new ClosureEventConsumer((Closure) consumer.clone()))
+					reactor.on((Selector) perSelectorConsumers.key, consumer)
 				}
 			}
 		}
