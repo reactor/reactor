@@ -122,7 +122,7 @@ public class Environment {
 		int size = getSize(dispatcherConfiguration, 0);
 		int backlog = getBacklog(dispatcherConfiguration, 128);
 
-		return new ThreadPoolExecutorDispatcher(size, backlog);
+		return new ThreadPoolExecutorDispatcher(size, backlog, dispatcherConfiguration.getName());
 	}
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {

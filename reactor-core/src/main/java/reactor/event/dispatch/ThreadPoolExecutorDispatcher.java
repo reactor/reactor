@@ -47,9 +47,13 @@ public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
 	 * @param backlog  the backlog size
 	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
+		this(poolSize, backlog, "thread-pool-executor-dispatcher");
+	}
+
+	public ThreadPoolExecutorDispatcher(int poolSize, int backlog, String threadName) {
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
-				new NamedDaemonThreadFactory("thread-pool-executor-dispatcher")
+				new NamedDaemonThreadFactory(threadName)
 		);
 		this.readyTasks = new LoadingCache<ThreadPoolTask>(
 				new Supplier<ThreadPoolTask>() {
