@@ -66,17 +66,13 @@ public final class ConsumerFilteringEventRouter implements EventRouter {
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		try {
-			if (null == consumers) {
-				if (null != completionConsumer) {
-					consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
-				}
-			} else {
+			if (null != consumers) {
 				for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
 					invokeConsumer(key, event, consumer);
-					if (null != completionConsumer) {
-						consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
-					}
 				}
+			}
+			if (null != completionConsumer) {
+				consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
 			}
 		} catch(Exception e) {
 			if(null != errorConsumer) {
