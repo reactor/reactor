@@ -34,7 +34,7 @@ import reactor.support.NamedDaemonThreadFactory;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class ThreadPoolExecutorDispatcher extends AbstractDispatcher {
+public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 	private final ExecutorService       executor;
 	private final Cache<ThreadPoolTask> readyTasks;

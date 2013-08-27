@@ -41,7 +41,7 @@ import com.lmax.disruptor.dsl.ProducerType;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher extends AbstractDispatcher {
+public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 

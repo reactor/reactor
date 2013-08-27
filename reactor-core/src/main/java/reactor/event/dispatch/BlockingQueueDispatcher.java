@@ -37,7 +37,7 @@ import reactor.queue.BlockingQueueFactory;
  * @author Andy Wilkinson
  */
 @SuppressWarnings("rawtypes")
-public final class BlockingQueueDispatcher extends AbstractDispatcher {
+public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 
 	private static final AtomicInteger INSTANCE_COUNT = new AtomicInteger();
 

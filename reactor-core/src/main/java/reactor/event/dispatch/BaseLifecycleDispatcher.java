@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class AbstractDispatcher extends BaseDispatcher {
+public abstract class BaseLifecycleDispatcher extends BaseDispatcher {
 
 	private final AtomicBoolean   alive   = new AtomicBoolean(true);
 
