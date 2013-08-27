@@ -2,26 +2,19 @@ package reactor.core.processor;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertTrue;
-
 /**
  * @author Jon Brisbin
  */
-@Ignore
+//@Ignore
 public class ProcessorThroughputTests {
 
-	static final int RUNS = 500000000;
+	static final int RUNS = 250000000;
 
 	Processor<Data> proc;
-	CountDownLatch  latch;
 	Supplier<Data> dataSupplier = new Supplier<Data>() {
 		@Override
 		public Data get() {
@@ -34,19 +27,16 @@ public class ProcessorThroughputTests {
 	@SuppressWarnings("unchecked")
 	@Before
 	public void setup() {
-		latch = new CountDownLatch(RUNS / 2);
-
 		dataConsumer = new Consumer<Data>() {
 			@Override
 			public void accept(Data data) {
-				//data.type = "test";
+				data.type = "test";
 			}
 		};
 
 		Consumer<Data> countDownConsumer = new Consumer<Data>() {
 			@Override
 			public void accept(Data data) {
-				latch.countDown();
 			}
 		};
 
@@ -74,8 +64,6 @@ public class ProcessorThroughputTests {
 		for (int i = 0; i < runs; i++) {
 			proc.batch(batchSize, dataConsumer);
 		}
-
-		assertTrue(latch.await(60, TimeUnit.SECONDS));
 	}
 
 	static final class Data {
