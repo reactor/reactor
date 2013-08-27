@@ -18,10 +18,10 @@ package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
 import reactor.event.Event;
+import reactor.event.dispatch.BaseLifecycleDispatcher;
 import reactor.function.Supplier;
 import reactor.cache.Cache;
 import reactor.cache.LoadingCache;
-import reactor.event.dispatch.AbstractDispatcher;
 
 /**
  * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
@@ -29,7 +29,7 @@ import reactor.event.dispatch.AbstractDispatcher;
  * @author Jon Brisbin
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends AbstractDispatcher {
+public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 
 	private final EventLoop   eventLoop;
 	private final Cache<Task> readyTasks;
