@@ -27,8 +27,6 @@ public abstract class Selectors {
 	/**
 	 * A short-hand alias for {@link Selectors#anonymous()}.
 	 * <p/>
-	 * <p/>
-	 * <p/>
 	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple}
 	 * containing the {@link Selector} and the notification key that the selector matches.
 	 *
@@ -57,8 +55,6 @@ public abstract class Selectors {
 	/**
 	 * A short-hand alias for {@link Selectors#object}.
 	 * <p/>
-	 * <p/>
-	 * <p/>
 	 * Creates a {@link Selector} based on the given object.
 	 *
 	 * @param obj
@@ -70,6 +66,23 @@ public abstract class Selectors {
 	 */
 	public static <T> Selector $(T obj) {
 		return object(obj);
+	}
+
+	/**
+	 * Creates a {@link Selector} based on the given string format and arguments.
+	 *
+	 * @param fmt
+	 * 		The {@code String.format} style format specification
+	 * @param args
+	 * 		The format args
+	 *
+	 * @return The new {@link ObjectSelector}.
+	 *
+	 * @see ObjectSelector
+	 * @see {@link String#format(String, Object...)}
+	 */
+	public static Selector $(String fmt, Object... args) {
+		return object(String.format(fmt, args));
 	}
 
 	/**
@@ -151,7 +164,7 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#uri(String)}.
-	 * </p>
+	 * <p/>
 	 * Creates a {@link Selector} based on a URI template.
 	 *
 	 * @param uriTemplate
