@@ -21,7 +21,6 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
@@ -58,8 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
-	private final Logger        log                = LoggerFactory.getLogger(NettyTcpClient.class);
-	private final AtomicInteger connectionAttempts = new AtomicInteger(0);
+	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 
 	private final    Bootstrap               bootstrap;
 	private final    Reactor                 eventsReactor;
@@ -274,7 +272,16 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							connectionSupplier.get().addListener(self);
 						}
 					});
-					connections.accept(conn);
+					// hopefully avoid a race condition with user code currently assigning handlers
+					// by accepting on the 'next tick' of the event loop
+					future.channel().eventLoop().execute(
+							new Runnable() {
+								@Override
+								public void run() {
+									connections.accept(conn);
+								}
+							}
+					);
 				}
 			}
 		};
