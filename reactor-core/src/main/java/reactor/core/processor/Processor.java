@@ -95,7 +95,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				this.opsBufferSize,
 				executor,
 				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
-				new YieldingWaitStrategy()
+				new BlockingWaitStrategy()
 		);
 		disruptor.handleEventsWith(new ConsumerEventHandler<T>(consumer));
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));

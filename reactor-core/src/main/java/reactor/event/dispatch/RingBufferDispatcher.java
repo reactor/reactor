@@ -19,18 +19,13 @@ package reactor.event.dispatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.lmax.disruptor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import reactor.event.Event;
 import reactor.support.NamedDaemonThreadFactory;
 
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 
@@ -52,12 +47,12 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a
 	 * RingBuffer with 1024 slots, configured with a producer type of {@link ProducerType#MULTI
-	 * MULTI} and a {@link YieldingWaitStrategy yielding wait strategy}.
+	 * MULTI} and a {@link BlockingWaitStrategy blocking wait strategy}.
 	 *
 	 * @param name The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
-		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new YieldingWaitStrategy());
+		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new BlockingWaitStrategy());
 	}
 
 	/**
