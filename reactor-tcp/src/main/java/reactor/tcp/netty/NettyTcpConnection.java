@@ -152,7 +152,7 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
 		@Override
 		public ConsumerSpec readIdle(long idleTimeout, final Runnable onReadIdle) {
-			channel.pipeline().addLast(new IdleStateHandler(idleTimeout, 0, idleTimeout, TimeUnit.MILLISECONDS) {
+			channel.pipeline().addFirst(new IdleStateHandler(idleTimeout, 0, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
 					if (evt.state() == IdleState.READER_IDLE) {
@@ -166,7 +166,7 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
 		@Override
 		public ConsumerSpec writeIdle(long idleTimeout, final Runnable onWriteIdle) {
-			channel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, idleTimeout, TimeUnit.MILLISECONDS) {
+			channel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
 					if (evt.state() == IdleState.WRITER_IDLE) {
