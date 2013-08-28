@@ -19,6 +19,7 @@ package reactor.tcp;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
 import reactor.function.Consumer;
@@ -55,13 +56,15 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpClientTests {
 
-	private static final int ECHO_SERVER_PORT    = 27487;
-	private static final int ABORT_SERVER_PORT   = 27488;
-	private static final int TIMEOUT_SERVER_PORT = 27489;
+	private static final int ECHO_SERVER_PORT      = 27487;
+	private static final int ABORT_SERVER_PORT     = 27488;
+	private static final int TIMEOUT_SERVER_PORT   = 27489;
+	private static final int HEARTBEAT_SERVER_PORT = 27490;
 
-	private final EchoServer              echoServer    = new EchoServer(ECHO_SERVER_PORT);
-	private final ConnectionAbortServer   abortServer   = new ConnectionAbortServer(ABORT_SERVER_PORT);
-	private final ConnectionTimeoutServer timeoutServer = new ConnectionTimeoutServer(TIMEOUT_SERVER_PORT);
+	private final EchoServer              echoServer      = new EchoServer(ECHO_SERVER_PORT);
+	private final ConnectionAbortServer   abortServer     = new ConnectionAbortServer(ABORT_SERVER_PORT);
+	private final ConnectionTimeoutServer timeoutServer   = new ConnectionTimeoutServer(TIMEOUT_SERVER_PORT);
+	private final HeartbeatServer         heartbeatServer = new HeartbeatServer(HEARTBEAT_SERVER_PORT);
 
 	Environment env;
 
@@ -71,6 +74,7 @@ public class TcpClientTests {
 		threadPool.submit(echoServer);
 		threadPool.submit(abortServer);
 		threadPool.submit(timeoutServer);
+		threadPool.submit(heartbeatServer);
 	}
 
 	@After
@@ -78,6 +82,7 @@ public class TcpClientTests {
 		echoServer.close();
 		abortServer.close();
 		timeoutServer.close();
+		heartbeatServer.close();
 		threadPool.shutdownNow();
 		threadPool.awaitTermination(60, TimeUnit.SECONDS);
 	}
@@ -211,7 +216,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ABORT_SERVER_PORT + 2)
+				.connect("localhost", ABORT_SERVER_PORT + 3)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -270,6 +275,62 @@ public class TcpClientTests {
 
 		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 		assertThat("totalDelay was >500ms", totalDelay.get(), greaterThanOrEqualTo(500L));
+	}
+
+	@Test
+	public void readIdleDoesNotFireWhileDataIsBeingRead() throws InterruptedException, IOException {
+		final CountDownLatch latch = new CountDownLatch(1);
+		long start = System.currentTimeMillis();
+
+		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", HEARTBEAT_SERVER_PORT)
+				.get().open().await().on()
+				.readIdle(500, new Runnable() {
+					@Override
+					public void run() {
+						latch.countDown();
+					}
+				});
+
+		Thread.sleep(700);
+		heartbeatServer.close();
+
+		assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+		long duration = System.currentTimeMillis() - start;
+
+		assertThat(duration, is(greaterThanOrEqualTo(1000L)));
+	}
+
+	@Test
+	public void writeIdleDoesNotFireWhileDataIsBeingSent() throws InterruptedException, IOException {
+		final CountDownLatch latch = new CountDownLatch(1);
+		long start = System.currentTimeMillis();
+
+		TcpConnection<Buffer, Buffer> connection = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", ECHO_SERVER_PORT)
+				.get().open().await();
+
+		connection.on()
+				.writeIdle(500, new Runnable() {
+					@Override
+					public void run() {
+						latch.countDown();
+					}
+				});
+
+		for (int i = 0; i < 5; i++) {
+			Thread.sleep(100);
+			connection.send(Buffer.wrap("a"));
+		}
+
+		assertTrue(latch.await(30, TimeUnit.SECONDS));
+
+		long duration = System.currentTimeMillis() - start;
+
+		assertThat(duration, is(greaterThanOrEqualTo(1000L)));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -370,6 +431,45 @@ public class TcpClientTests {
 				}
 			} catch (IOException e) {
 				// Server closed
+			}
+		}
+
+		public void close() throws IOException {
+			ServerSocketChannel server = this.server;
+			if (server != null) {
+				server.close();
+			}
+		}
+	}
+
+	private static final class HeartbeatServer implements Runnable {
+		final            int                 port;
+		private volatile ServerSocketChannel server;
+
+		private HeartbeatServer(int port) {
+			this.port = port;
+		}
+
+		@Override
+		public void run() {
+			try {
+				server = ServerSocketChannel.open();
+				server.socket().bind(new InetSocketAddress(port));
+				server.configureBlocking(true);
+				while (true) {
+					SocketChannel ch = server.accept();
+					while (true && server.isOpen()) {
+						ByteBuffer out = ByteBuffer.allocate(1);
+						out.put((byte)'\n');
+						out.flip();
+						ch.write(out);
+						Thread.sleep(100);
+					}
+				}
+			} catch (IOException e) {
+				// Server closed
+			} catch (InterruptedException ie) {
+
 			}
 		}
 
