@@ -16,22 +16,19 @@
 
 package reactor.event.dispatch;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import com.lmax.disruptor.*;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.event.Event;
 import reactor.support.NamedDaemonThreadFactory;
 
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Implementation of a {@link Dispatcher} that uses a {@link RingBuffer} to queue tasks to
- * execute.
+ * Implementation of a {@link Dispatcher} that uses a {@link RingBuffer} to queue tasks to execute.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -45,9 +42,9 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	private final RingBuffer<RingBufferTask<?>> ringBuffer;
 
 	/**
-	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a
-	 * RingBuffer with 1024 slots, configured with a producer type of {@link ProducerType#MULTI
-	 * MULTI} and a {@link BlockingWaitStrategy blocking wait strategy}.
+	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
+	 * strategy}.
 	 *
 	 * @param name The name of the dispatcher.
 	 */
@@ -56,9 +53,8 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	}
 
 	/**
-	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use
-	 * a {@link RingBuffer} with {@code bufferSize} slots, configured with the given {@code
-	 * producerType} and {@code waitStrategy}.
+	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
+	 * {@code bufferSize} slots, configured with the given {@code producerType} and {@code waitStrategy}.
 	 *
 	 * @param name         The name of the dispatcher
 	 * @param bufferSize   The size to configure the ring buffer with
@@ -67,9 +63,9 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-	                            int bufferSize,
-	                            ProducerType producerType,
-	                            WaitStrategy waitStrategy) {
+															int bufferSize,
+															ProducerType producerType,
+															WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
 		this.disruptor = new Disruptor<RingBufferTask<?>>(
@@ -85,7 +81,6 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 				producerType,
 				waitStrategy
 		);
-		disruptor.handleEventsWith(new RingBufferTaskHandler());
 		// Exceptions are handled by the errorConsumer
 		disruptor.handleExceptionsWith(
 				new ExceptionHandler() {
@@ -111,6 +106,8 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 					}
 				}
 		);
+		disruptor.handleEventsWith(new RingBufferTaskHandler());
+
 		ringBuffer = disruptor.start();
 	}
 
