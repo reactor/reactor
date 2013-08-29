@@ -11,12 +11,17 @@ import reactor.function.Supplier
 @CompileStatic
 class DispatcherConfigurationBuilder implements Supplier<DispatcherConfiguration>{
 
-	String name
+	final String name
+
 	DispatcherType type = DispatcherType.RING_BUFFER
 	Integer backlog
 	Integer size
 
 	private DispatcherConfiguration dispatcherConfiguration
+
+	DispatcherConfigurationBuilder(String name) {
+		this.name = name
+	}
 
 	@Override
 	DispatcherConfiguration get() {

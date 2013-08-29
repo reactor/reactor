@@ -1,7 +1,6 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
-import reactor.core.Environment
 
 import static groovy.lang.Closure.DELEGATE_FIRST
 

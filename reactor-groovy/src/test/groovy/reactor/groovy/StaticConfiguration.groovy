@@ -16,8 +16,8 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
+import reactor.core.configuration.DispatcherType
 import reactor.event.dispatch.SynchronousDispatcher
-import reactor.function.Consumer
 import reactor.groovy.config.GroovyEnvironment
 
 @CompileStatic
@@ -28,8 +28,8 @@ class StaticConfiguration {
 			environment {
 				defaultDispatcher = "test"
 
-				dispatcher {
-					name = "test"
+				dispatcher('test') {
+					type = DispatcherType.SYNCHRONOUS
 				}
 			}
 		}
@@ -37,28 +37,54 @@ class StaticConfiguration {
 
 	static GroovyEnvironment test2() {
 		GroovyEnvironment.create {
-			reactor {
-				name = 'test1'
+			reactor('test1') {
 				on('test') {
 					println it
 				}
 
-				reactor {
-					name = 'child_test1'
-				}
+				reactor('child_test1'){}
 			}
 		}
 	}
 
 	static GroovyEnvironment test3() {
 		GroovyEnvironment.create {
-			reactor {
-				name = 'test1'
+			reactor('test1') {
 				dispatcher = new SynchronousDispatcher()
 				on('test') {
 					reply it
 				}
 
+			}
+		}
+	}
+
+	static GroovyEnvironment test4() {
+		def parentEnvironment = GroovyEnvironment.create {
+			environment{
+				defaultDispatcher = 'testDispatcher'
+
+				dispatcher 'testDispatcher', new SynchronousDispatcher()
+			}
+
+			reactor('test1'){
+				dispatcher 'testDispatcher'
+				on('test') {
+					reply it
+				}
+			}
+		}
+
+		GroovyEnvironment.create {
+			include parentEnvironment
+
+			reactor('test1'){
+				on('test2') {
+					reply it
+				}
+			}
+			reactor('test2'){
+				dispatcher 'testDispatcher'
 			}
 		}
 	}

@@ -17,8 +17,6 @@
 package reactor.core;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.BusySpinWaitStrategy;
-import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
@@ -34,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Environment {
+public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>> {
 
 	/**
 	 * The name of the default event loop dispatcher
@@ -100,7 +98,8 @@ public class Environment {
 		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
 
 		ReactorConfiguration configuration = configurationReader.read();
-		defaultDispatcher = configuration.getDefaultDispatcherName();
+		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
+				DEFAULT_DISPATCHER_NAME;
 		env = configuration.getAdditionalProperties();
 
 		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
@@ -196,7 +195,7 @@ public class Environment {
 	 * @return The default dispatcher
 	 */
 	public Dispatcher getDefaultDispatcher() {
-		return getDispatcher(DEFAULT_DISPATCHER_NAME);
+		return getDispatcher(defaultDispatcher);
 	}
 
 	/**
@@ -290,4 +289,8 @@ public class Environment {
 		}
 	}
 
+	@Override
+	public Iterator<Map.Entry<String, List<Dispatcher>>> iterator() {
+		return this.dispatchers.entrySet().iterator();
+	}
 }

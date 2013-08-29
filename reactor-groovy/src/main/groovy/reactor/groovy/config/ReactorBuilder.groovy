@@ -1,11 +1,14 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.dispatch.Dispatcher
+import reactor.event.registry.Registration
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
 import reactor.function.Consumer
@@ -18,42 +21,54 @@ import reactor.groovy.support.ClosureEventConsumer
 @CompileStatic
 class ReactorBuilder implements Supplier<Reactor> {
 
-	private static Selector noSelector = Selectors.anonymous().t1
+	static private Selector noSelector = Selectors.anonymous().t1
 
-	String name
-	Reactor linked
+	ReactorBuilder linked
+
 	Environment env
 	Converter converter
 	def eventRoutingStrategy
 	Dispatcher dispatcher
-
 	boolean linkParent = true
-	private Map<Selector, List<Consumer>> consumers = [:]
+
+	private final Map<Selector, List<Consumer>> consumers = [:]
+	private final String name
+	private final Map<String, ReactorBuilder> reactorMap
+	private final List<ReactorBuilder> childNodes = []
+
 	private Reactor reactor
-	private List<ReactorBuilder> childNodes = []
 
-	private Map<String, Reactor> reactorMap
-
-	ReactorBuilder(Map<String, Reactor> reactorMap) {
+	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap) {
 		this.reactorMap = reactorMap
+		this.name = name
 	}
 
-	void setDispatcher(String dispatcher) {
-		this.dispatcher = env.getDispatcher dispatcher
+	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap, Reactor reactor) {
+		this(name, reactorMap)
+		this.reactor = reactor
 	}
 
-	void setDispatcher(Dispatcher dispatcher) {
-		this.dispatcher = dispatcher
+	void init() {
+		if (name) {
+			if (reactorMap.containsKey(name)) {
+				copyConsumersFrom(reactorMap[name])
+			}
+			reactorMap[name] = this
+		}
 	}
 
-	ReactorBuilder on( @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+	Dispatcher dispatcher(String dispatcher) {
+		this.dispatcher = env?.getDispatcher(dispatcher)
+	}
+
+	ReactorBuilder on(@DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
 		on noSelector, new ClosureEventConsumer((Closure) closure.clone())
 	}
 
 	ReactorBuilder on(String selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
-		on Selectors.$(selector), new ClosureEventConsumer((Closure) closure.clone())
+		on Selectors.object(selector), new ClosureEventConsumer((Closure) closure.clone())
 	}
 
 	ReactorBuilder on(Consumer consumer) {
@@ -61,12 +76,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	ReactorBuilder on(String selector, Consumer closure) {
-		on Selectors.$(selector), closure
+		on Selectors.object(selector), closure
 	}
 
-	ReactorBuilder on(Selector selector,  @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+	ReactorBuilder on(Selector selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
-		on selector, new ClosureEventConsumer((Closure)closure.clone())
+		on selector, new ClosureEventConsumer((Closure) closure.clone())
 	}
 
 	ReactorBuilder on(Selector selector, Consumer closure) {
@@ -85,10 +100,10 @@ class ReactorBuilder implements Supplier<Reactor> {
 			spec.converters(converter)
 		}
 		if (eventRoutingStrategy) {
-
+			throw new Exception("not yet implemented")
 		}
 		if (linked) {
-			spec.link(linked)
+			spec.link(linked.get())
 		}
 
 		reactor = spec.get()
@@ -96,7 +111,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (childNodes) {
 			for (childNode in childNodes) {
 				if (childNode.@linkParent && !childNode.@linked) {
-					childNode.linked = reactor
+					childNode.linked = this
 				}
 				childNode.get()
 			}
@@ -110,10 +125,19 @@ class ReactorBuilder implements Supplier<Reactor> {
 			}
 		}
 
-		if (name)
-			reactorMap[name] = reactor
-
 		reactor
+	}
+
+	void copyConsumersFrom(ReactorBuilder from) {
+		Map<Selector, List<Consumer>> fromConsumers = from.consumers
+		Map.Entry<Selector, List<Consumer>> consumerEntry
+
+		for (_consumerEntry in fromConsumers) {
+			consumerEntry = (Map.Entry<Selector, List<Consumer>>) _consumerEntry
+			for (consumer in consumerEntry.value) {
+				on consumerEntry.key, (Consumer) consumer
+			}
+		}
 	}
 
 /**
@@ -121,9 +145,19 @@ class ReactorBuilder implements Supplier<Reactor> {
  * @param c DSL
  */
 	ReactorBuilder reactor(
-			@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = NestedReactorBuilder) Closure c
+			@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = NestedReactorBuilder)
+			Closure c
 	) {
-		def builder = new NestedReactorBuilder(this)
+		reactor(null, c)
+	}
+
+	ReactorBuilder reactor(String reactorName,
+	                       @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = NestedReactorBuilder)
+	                       Closure c
+	) {
+		def builder = new NestedReactorBuilder(reactorName, this, reactor)
+		builder.init()
+
 		DSLUtils.delegateFirstAndRun builder, c
 
 		childNodes << builder
@@ -132,12 +166,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	final class NestedReactorBuilder extends ReactorBuilder {
 
-		NestedReactorBuilder(ReactorBuilder parent) {
-			super(parent.reactorMap)
+		NestedReactorBuilder(String reactorName, ReactorBuilder parent, Reactor reactor) {
+			super(reactorName, parent.reactorMap, reactor)
 			env = parent.env
 			converter = parent.converter
 			dispatcher = parent.dispatcher
-			consumers = parent.consumers
+			consumers.putAll(parent.consumers)
 			eventRoutingStrategy = parent.eventRoutingStrategy
 		}
 	}

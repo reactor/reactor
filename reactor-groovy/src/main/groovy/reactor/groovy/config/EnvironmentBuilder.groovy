@@ -27,7 +27,7 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	}
 
 	Environment get(){
-		   environment ?: new Environment(this)
+		   environment ?: new Environment(dispatchers, this)
 	}
 
 	@Override
@@ -40,10 +40,10 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	 * @param c DSL
 	 * @return {@link Dispatcher}
 	 */
-	DispatcherConfiguration dispatcher(
+	DispatcherConfiguration dispatcher(String name,
 			@DelegatesTo(strategy = DELEGATE_FIRST, value = DispatcherConfigurationBuilder) Closure c
 	) {
-		def builder = new DispatcherConfigurationBuilder()
+		def builder = new DispatcherConfigurationBuilder(name)
 		DSLUtils.delegateFirstAndRun builder, c
 
 		dispatcherConfigurations << builder.get()

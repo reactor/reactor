@@ -3,6 +3,7 @@ package reactor.groovy.config
 import groovy.transform.CompileStatic
 import reactor.core.Environment
 import reactor.core.Reactor
+import reactor.event.dispatch.Dispatcher
 
 import static groovy.lang.Closure.*
 import groovy.transform.TypeCheckingMode
@@ -15,7 +16,7 @@ import org.codehaus.groovy.control.customizers.builder.CompilerCustomizationBuil
 @CompileStatic
 class GroovyEnvironment {
 
-	private final Map<String, Reactor> reactors = [:]
+	private final Map<String, ReactorBuilder> reactors = [:]
 
 	Environment reactorEnvironment
 
@@ -47,10 +48,9 @@ class GroovyEnvironment {
 	}
 
 	/**
-	 * Root DSL to findOrCreate a GroovyConfigurationReader System
-	 * @param properties
+	 * Root DSL to a GroovyEnvironment
 	 * @param c DSL
-	 * @return {@link Environment}
+	 * @return {@link GroovyEnvironment}
 	 */
 	static GroovyEnvironment create(@DelegatesTo(strategy = DELEGATE_FIRST, value = GroovyEnvironment) Closure c
 	) {
@@ -61,37 +61,85 @@ class GroovyEnvironment {
 		configuration
 	}
 
+
+	GroovyEnvironment include(GroovyEnvironment... groovyEnvironments) {
+		ReactorBuilder reactorBuilder
+		String key
+
+		for (groovyEnvironment in groovyEnvironments) {
+			for (reactorEntry in groovyEnvironment.reactors) {
+				reactorBuilder = ((Map.Entry<String, ReactorBuilder>) reactorEntry).value
+				key = ((Map.Entry<String, Reactor>) reactorEntry).key
+
+				if (reactors.containsKey(key)) {
+					reactorBuilder.copyConsumersFrom reactors[key]
+				} else {
+					reactors[key] = reactorBuilder
+				}
+			}
+
+			if (reactorEnvironment) {
+				for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
+					for (dispatcher in dispatcherEntry.value) {
+						reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)
+					}
+				}
+			} else {
+				reactorEnvironment = groovyEnvironment.reactorEnvironment
+			}
+
+		}
+		this
+	}
+
 	/**
 	 * initialize a Reactor
 	 * @param c DSL
 	 */
-	Reactor reactor(
-			@DelegatesTo(strategy = DELEGATE_FIRST, value = ReactorBuilder) Closure c
+	ReactorBuilder reactor(@DelegatesTo(strategy = DELEGATE_FIRST, value = ReactorBuilder) Closure c) {
+		reactor(null, c)
+	}
+
+	ReactorBuilder reactor(String name,
+	                       @DelegatesTo(strategy = DELEGATE_FIRST, value = ReactorBuilder) Closure c
 	) {
 		reactorEnvironment = reactorEnvironment ?: new Environment()
 
-		def builder = new ReactorBuilder(reactors)
+		def builder = new ReactorBuilder(name, reactors)
+		builder.init()
 		builder.env = reactorEnvironment
 
 		DSLUtils.delegateFirstAndRun builder, c
 
-		builder.get()
+		builder
 	}
 
-	Reactor getAt(String reactor){
-		reactors[reactor]
+	Reactor getAt(String reactor) {
+		reactors[reactor]?.get()
 	}
 
-	Reactor reactor(String reactor){
+	void putAt(String reactorName, Reactor reactor) {
+		ReactorBuilder builder = new ReactorBuilder(reactorName, reactors, reactor)
+		reactors[reactorName] = builder
+	}
+
+	Reactor reactor(String reactor) {
 		getAt reactor
 	}
 
+	Reactor reactor(String reactorName, Reactor reactor) {
+		putAt reactorName, reactor
+	}
 
 	/**
 	 * initialize a {@link Environment}
 	 * @param c DSL
 	 */
-	Environment environment(Map properties = [:],
+	Environment environment(@DelegatesTo(strategy = DELEGATE_FIRST, value = EnvironmentBuilder) Closure c) {
+		environment([:], c)
+	}
+
+	Environment environment(Map properties,
 	                        @DelegatesTo(strategy = DELEGATE_FIRST, value = EnvironmentBuilder) Closure c
 	) {
 		def builder = new EnvironmentBuilder(properties as Properties)
@@ -99,12 +147,21 @@ class GroovyEnvironment {
 		reactorEnvironment = builder.get()
 	}
 
-	Environment environment(Environment environment){
+	Environment environment(Environment environment) {
 		this.reactorEnvironment = environment
 	}
 
-	Environment environment(){
+	Environment environment() {
 		this.reactorEnvironment
+	}
+
+	Dispatcher dispatcher(String dispatcher) {
+		reactorEnvironment?.getDispatcher(dispatcher)
+	}
+
+	Dispatcher dispatcher(String dispatcherName, Dispatcher dispatcher) {
+		reactorEnvironment?.addDispatcher(dispatcherName, dispatcher)
+		dispatcher
 	}
 
 }

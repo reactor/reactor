@@ -50,13 +50,31 @@ class GroovyConfigurationSpec extends Specification {
 			GroovyEnvironment groovySystem = StaticConfiguration.test3()
 			def res = null
 			def latch = new CountDownLatch(1)
-			groovySystem['test1'].send('test','test'){
+			groovySystem['test1'].send('test', 'test') {
 				res = it
 				latch.countDown()
 			}
 		then:
 			latch.await(5, TimeUnit.SECONDS)
 			groovySystem['test1'].dispatcher instanceof SynchronousDispatcher
+			res
+	}
+
+	def "GroovyEnvironment includes another Environment"() {
+		when:
+			"Building a simple dispatcher"
+			GroovyEnvironment groovySystem = StaticConfiguration.test4()
+			def res = null
+			def latch = new CountDownLatch(1)
+			groovySystem['test1'].send('test', 'test') {
+				res = it
+				latch.countDown()
+			}
+		then:
+			latch.await(5, TimeUnit.SECONDS)
+			groovySystem.dispatcher('testDispatcher') instanceof SynchronousDispatcher
+			groovySystem['test1'].dispatcher == groovySystem.dispatcher('testDispatcher')
+			groovySystem['test2'].dispatcher == groovySystem.dispatcher('testDispatcher')
 			res
 	}
 }

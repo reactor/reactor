@@ -26,6 +26,7 @@ import reactor.groovy.support.ClosureEventConsumer
 import reactor.groovy.support.ClosureEventFunction
 
 import static reactor.event.selector.Selectors.$
+import static reactor.event.selector.Selectors.object
 /**
  * Extensions for providing syntax sugar for working with {@link reactor.core.Observable}s.
  *
@@ -56,7 +57,7 @@ class ObservableExtensions {
 	static Registration<Consumer> on(reactor.core.Observable selfType,
 	                                 String selector,
 	                                 @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		selfType.on $(selector), new ClosureEventConsumer(handler)
+		selfType.on object(selector), new ClosureEventConsumer(handler)
 	}
 
 	static Registration<Consumer> on(reactor.core.Observable selfType,
