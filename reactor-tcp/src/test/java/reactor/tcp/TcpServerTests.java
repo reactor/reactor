@@ -50,6 +50,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -61,9 +62,9 @@ import static org.junit.Assert.assertTrue;
 public class TcpServerTests {
 
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
+	final AtomicInteger   port       = new AtomicInteger(24887);
 	final int             msgs       = 100;
 	final int             threads    = 2;
-	final int             port       = 24887;
 
 	Environment    env;
 	CountDownLatch latch;
@@ -84,15 +85,13 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesJsonPojosOverSsl() throws InterruptedException {
-		int port = 3288;
+		final int port = this.port.incrementAndGet();
 		SslOptions serverOpts = new SslOptions()
-				.keystoreFile("reactor-tcp/src/test/resources/server.jks")
-				//.keystoreFile("src/test/resources/server.jks")
+				.keystoreFile("./src/test/resources/server.jks")
 				.keystorePasswd("changeit");
 
 		SslOptions clientOpts = new SslOptions()
-				.keystoreFile("reactor-tcp/src/test/resources/client.jks")
-				//.keystoreFile("src/test/resources/client.jks")
+				.keystoreFile("./src/test/resources/client.jks")
 				.keystorePasswd("changeit")
 				.trustManagers(new Supplier<TrustManager[]>() {
 					@Override
@@ -166,6 +165,8 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
+		final int port = this.port.incrementAndGet();
+
 		TcpServer<byte[], byte[]> server = new TcpServerSpec<byte[], byte[]>(NettyTcpServer.class)
 				.env(env)
 				.synchronousDispatcher()
@@ -219,6 +220,8 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesFrameData() throws InterruptedException {
+		final int port = this.port.incrementAndGet();
+
 		TcpServer<Frame, Frame> server = new TcpServerSpec<Frame, Frame>(NettyTcpServer.class)
 				.env(env)
 						//.synchronousDispatcher()
@@ -268,7 +271,7 @@ public class TcpServerTests {
 
 	@Test
 	public void exposesNettyPipelineConfiguration() throws InterruptedException {
-		int port = 3127;
+		final int port = this.port.incrementAndGet();
 		final CountDownLatch latch = new CountDownLatch(2);
 
 		final TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)

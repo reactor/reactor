@@ -4,6 +4,7 @@ import reactor.function.Supplier;
 import reactor.util.Assert;
 
 import javax.net.ssl.TrustManager;
+import java.io.File;
 
 /**
  * Helper class encapsulating common SSL configuration options.
@@ -12,7 +13,7 @@ import javax.net.ssl.TrustManager;
  */
 public class SslOptions {
 
-	private String keystoreFile;
+	private File   keystoreFile;
 	private String keystorePasswd;
 	private String keyManagerPasswd;
 	private String keyManagerFactoryAlgorithm = "SunX509";
@@ -22,11 +23,12 @@ public class SslOptions {
 	private String sslProtocol                  = "TLS";
 
 	public String keystoreFile() {
-		return keystoreFile;
+		return keystoreFile.getPath();
 	}
 
 	public SslOptions keystoreFile(String keystoreFile) {
-		this.keystoreFile = keystoreFile;
+		this.keystoreFile = new File(keystoreFile);
+		Assert.isTrue(this.keystoreFile.exists(), "No keystore file found at path " + this.keystoreFile.getAbsolutePath());
 		return this;
 	}
 
