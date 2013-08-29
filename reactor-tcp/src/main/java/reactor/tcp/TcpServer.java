@@ -28,6 +28,7 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -64,6 +65,7 @@ public abstract class TcpServer<IN, OUT> {
 											@Nonnull Reactor reactor,
 											@Nullable InetSocketAddress listenAddress,
 											ServerSocketOptions options,
+											SslOptions sslOptions,
 											@Nullable Codec<Buffer, IN, OUT> codec,
 											@Nonnull Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		Assert.notNull(env, "A TcpServer cannot be created without a properly-configured Environment.");

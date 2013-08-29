@@ -16,25 +16,35 @@
 
 package reactor.tcp;
 
+import io.netty.channel.ChannelPipeline;
+import io.netty.handler.codec.LineBasedFrameDecoder;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.function.Consumer;
+import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Frame;
 import reactor.tcp.encoding.FrameCodec;
 import reactor.tcp.encoding.LengthFieldCodec;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.encoding.json.JsonCodec;
+import reactor.tcp.netty.NettyServerSocketOptions;
+import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.netty.NettyTcpServer;
+import reactor.tcp.spec.TcpClientSpec;
 import reactor.tcp.spec.TcpServerSpec;
 
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
@@ -73,29 +83,85 @@ public class TcpServerTests {
 	}
 
 	@Test
-	@Ignore
-	public void tcpServerHandlesJsonPojos() throws InterruptedException {
+	public void tcpServerHandlesJsonPojosOverSsl() throws InterruptedException {
+		int port = 3288;
+		SslOptions serverOpts = new SslOptions()
+				//.keystoreFile("reactor-tcp/src/test/resources/server.jks")
+				.keystoreFile("src/test/resources/server.jks")
+				.keystorePasswd("changeit");
+
+		SslOptions clientOpts = new SslOptions()
+				//.keystoreFile("reactor-tcp/src/test/resources/client.jks")
+				.keystoreFile("src/test/resources/client.jks")
+				.keystorePasswd("changeit")
+				.trustManagers(new Supplier<TrustManager[]>() {
+					@Override
+					public TrustManager[] get() {
+						return new TrustManager[]{
+								new X509TrustManager() {
+									@Override
+									public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+										// trust all
+									}
+
+									@Override
+									public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+										// trust all
+									}
+
+									@Override
+									public X509Certificate[] getAcceptedIssuers() {
+										return new X509Certificate[0];
+									}
+								}
+						};
+					}
+				});
+
+		JsonCodec<Pojo, Pojo> codec = new JsonCodec<Pojo, Pojo>(Pojo.class);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		final TcpClient<Pojo, Pojo> client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient.class)
+				.env(env)
+				.ssl(clientOpts)
+				.codec(codec)
+				.connect("localhost", port)
+				.get();
+
 		TcpServer<Pojo, Pojo> server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer.class)
 				.env(env)
-				.dispatcher(Environment.EVENT_LOOP)
-				.codec(new JsonCodec<Pojo, Pojo>(Pojo.class))
+				.ssl(serverOpts)
+				.listen("localhost", port)
+				.codec(codec)
 				.consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
 					@Override
 					public void accept(TcpConnection<Pojo, Pojo> conn) {
 						conn.consume(new Consumer<Pojo>() {
 							@Override
 							public void accept(Pojo data) {
-								System.out.println("got data: " + data);
+								if ("John Doe".equals(data.getName())) {
+									latch.countDown();
+								}
 							}
 						});
 					}
 				})
 				.get()
-				.start();
+				.start(new Consumer<Void>() {
+					@Override
+					public void accept(Void v) {
+						try {
+							client.open().await().send(new Pojo("John Doe"));
+						} catch (InterruptedException e) {
+							throw new IllegalStateException(e.getMessage(), e);
+						}
+					}
+				});
 
-		while (true) {
-			Thread.sleep(5000);
-		}
+		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+
+		client.close().await();
+		server.shutdown().await();
 	}
 
 	@Test
@@ -141,16 +207,14 @@ public class TcpServerTests {
 					}
 				});
 
-		latch.await(30, TimeUnit.SECONDS);
+		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
-
-		assertThat("latch was counted down", latch.getCount(), is(0L));
 
 		double elapsed = (end.get() - start.get()) * 1.0;
 		System.out.println("elapsed: " + (int) elapsed + "ms");
 		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
-		server.shutdown();
+		server.shutdown().await();
 	}
 
 	@Test
@@ -192,20 +256,73 @@ public class TcpServerTests {
 					}
 				});
 
-		latch.await(60, TimeUnit.SECONDS);
+		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
-
-		assertThat("latch was counted down", latch.getCount(), is(0L));
 
 		double elapsed = (end.get() - start.get()) * 1.0;
 		System.out.println("elapsed: " + (int) elapsed + "ms");
 		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
-		server.shutdown();
+		server.shutdown().await();
 	}
 
-	private static class Pojo {
-		String name;
+	@Test
+	public void exposesNettyPipelineConfiguration() throws InterruptedException {
+		int port = 3127;
+		final CountDownLatch latch = new CountDownLatch(2);
+
+		final TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", port)
+				.codec(StandardCodecs.LINE_FEED_CODEC)
+				.get();
+
+		Consumer<TcpConnection<String, String>> serverHandler = new Consumer<TcpConnection<String, String>>() {
+			@Override
+			public void accept(TcpConnection<String, String> conn) {
+				conn.consume(new Consumer<String>() {
+					@Override
+					public void accept(String data) {
+						latch.countDown();
+					}
+				});
+			}
+		};
+
+		TcpServer<String, String> server = new TcpServerSpec<String, String>(NettyTcpServer.class)
+				.env(env)
+				.options(new NettyServerSocketOptions()
+										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+											 @Override
+											 public void accept(ChannelPipeline pipeline) {
+												 pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
+											 }
+										 }))
+				.listen("localhost", port)
+				.codec(StandardCodecs.STRING_CODEC)
+				.consume(serverHandler)
+				.get()
+				.start(new Consumer<Void>() {
+					@Override
+					public void accept(Void v) {
+						client.open().onSuccess(new Consumer<TcpConnection<String, String>>() {
+							@Override
+							public void accept(TcpConnection<String, String> conn) {
+								conn.send("Hello World!")
+										.send("Hello World!");
+							}
+						});
+					}
+				});
+
+		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+
+		client.close().await();
+		server.shutdown().await();
+	}
+
+	public static class Pojo {
+		private String name;
 
 		private Pojo() {
 		}
@@ -214,11 +331,11 @@ public class TcpServerTests {
 			this.name = name;
 		}
 
-		private String getName() {
+		public String getName() {
 			return name;
 		}
 
-		private void setName(String name) {
+		public void setName(String name) {
 			this.name = name;
 		}
 

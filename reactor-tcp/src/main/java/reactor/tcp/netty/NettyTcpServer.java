@@ -22,6 +22,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
@@ -38,8 +39,12 @@ import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
+import reactor.tcp.ssl.SSLEngineSupplier;
+import reactor.util.Assert;
 
+import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +58,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ServerBootstrap     bootstrap;
 	private final Reactor             eventsReactor;
@@ -64,11 +69,13 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected NettyTcpServer(Environment env,
 													 Reactor reactor,
 													 InetSocketAddress listenAddress,
-													 ServerSocketOptions opts,
+													 final ServerSocketOptions opts,
+													 final SslOptions sslOpts,
 													 Codec<Buffer, IN, OUT> codec,
 													 Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
-		super(env, reactor, listenAddress, opts, codec, connectionConsumers);
+		super(env, reactor, listenAddress, opts, sslOpts, codec, connectionConsumers);
 		this.eventsReactor = reactor;
+		Assert.notNull(opts, "ServerSocketOptions cannot be null");
 		this.options = opts;
 
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
@@ -95,8 +102,16 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
 
-						logger.debug("CONNECT {}", ch.remoteAddress());
+						log.debug("CONNECT {}", ch.remoteAddress());
 
+						if (null != sslOpts) {
+							SSLEngine ssl = new SSLEngineSupplier(sslOpts, false).get();
+							log.debug("SSL enabled using keystore {}", (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							ch.pipeline().addLast(new SslHandler(ssl));
+						}
+						if (options instanceof NettyServerSocketOptions && null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
+							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
+						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
@@ -120,7 +135,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			bindFuture.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
-					logger.info("BIND {}", future.channel().localAddress());
+					log.info("BIND {}", future.channel().localAddress());
 					notifyStart(started);
 				}
 			});

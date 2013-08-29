@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
+public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
 	private volatile SocketChannel     channel;
 	private volatile InetSocketAddress remoteAddress;
@@ -65,6 +65,15 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 		super(env, codec, ioDispatcher, eventsReactor);
 		this.channel = channel;
 		this.remoteAddress = remoteAddress;
+	}
+
+	/**
+	 * Return the {@link SocketChannel} in use by this connection.
+	 *
+	 * @return the {@link SocketChannel} in use
+	 */
+	public SocketChannel channel() {
+		return channel;
 	}
 
 	@Override
@@ -95,6 +104,10 @@ class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 	@Override
 	public InetSocketAddress remoteAddress() {
 		return remoteAddress;
+	}
+
+	void notifyRead(Object obj) {
+		eventsReactor.notify(read.getT2(), (Event.class.isInstance(obj) ? (Event) obj : Event.wrap(obj)));
 	}
 
 	@Override

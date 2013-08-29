@@ -21,6 +21,7 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
@@ -32,6 +33,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
+import reactor.event.registry.Registration;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -39,13 +41,19 @@ import reactor.tcp.Reconnect;
 import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
+import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.tuple.Tuple2;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -84,8 +92,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 												@Nonnull Reactor reactor,
 												@Nonnull InetSocketAddress connectAddress,
 												@Nonnull ClientSocketOptions opts,
+												@Nullable final SslOptions sslOpts,
 												@Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, reactor, connectAddress, codec);
+		super(env, reactor, connectAddress, opts, sslOpts, codec);
 		this.eventsReactor = reactor;
 		this.connectAddress = connectAddress;
 		this.options = opts;
@@ -106,6 +115,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
+
+						if (null != sslOpts) {
+							SSLEngine ssl = new SSLEngineSupplier(sslOpts, true).get();
+							log.debug("SSL enabled using keystore {}", (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							ch.pipeline().addLast(new SslHandler(ssl));
+						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 					}
 				});
@@ -173,15 +188,21 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	protected void doClose(final Deferred<Void, Promise<Void>> d) {
 		try {
-			this.ioGroup.shutdownGracefully().await().addListener(new GenericFutureListener() {
+			final CountDownLatch latch = new CountDownLatch(1);
+			this.ioGroup.shutdownGracefully().addListener(new GenericFutureListener() {
 				@Override
 				public void operationComplete(Future future) throws Exception {
-					// Sleep for 1 second to allow Netty's GlobalEventExecutor thread to die
-					// TODO We need a better way of being sure that all of Netty's threads have died
-					Thread.sleep(1000);
-					d.accept((Void) null);
+					latch.countDown();
 				}
 			});
+			if (latch.await(30, TimeUnit.SECONDS)) {
+				for (Registration<? extends TcpConnection<IN, OUT>> reg : connections) {
+					reg.getObject().close();
+				}
+				d.accept((Void) null);
+			} else {
+				d.accept(new TimeoutException("NettyTcpClient could not close connection after 30 seconds"));
+			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			d.accept(e);

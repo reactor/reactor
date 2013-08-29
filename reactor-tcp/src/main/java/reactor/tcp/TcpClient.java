@@ -31,6 +31,8 @@ import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
+import reactor.tcp.config.ClientSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -61,6 +63,8 @@ public abstract class TcpClient<IN, OUT> {
 	protected TcpClient(@Nonnull Environment env,
 											@Nonnull Reactor reactor,
 											@Nonnull InetSocketAddress connectAddress,
+											@Nullable ClientSocketOptions options,
+											@Nullable SslOptions sslOptions,
 											@Nullable Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(env, "A TcpClient cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpClient cannot be created without a properly-configured Reactor.");

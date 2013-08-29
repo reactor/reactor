@@ -16,6 +16,8 @@
 
 package reactor.tcp;
 
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,6 +28,7 @@ import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyTcpClient;
+import reactor.tcp.netty.NettyTcpConnection;
 import reactor.tcp.spec.TcpClientSpec;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -331,6 +334,17 @@ public class TcpClientTests {
 		long duration = System.currentTimeMillis() - start;
 
 		assertThat(duration, is(greaterThanOrEqualTo(1000L)));
+	}
+
+	@Test
+	public void nettyTcpConnectionAcceptsNettyChannelHandlers() throws InterruptedException {
+		TcpConnection<HttpRequest, HttpResponse> connection = new TcpClientSpec<HttpRequest, HttpResponse>(NettyTcpClient.class)
+				.env(env)
+				.connect("localhost", ECHO_SERVER_PORT)
+				.get().open().await();
+
+		io.netty.channel.socket.SocketChannel ch = ((NettyTcpConnection) connection).channel();
+
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();

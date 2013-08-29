@@ -27,7 +27,6 @@ import reactor.io.Buffer;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-
 class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapter {
 
 	private final NettyTcpConnection<?, ?> conn;
@@ -40,6 +39,8 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {
 		if (!(m instanceof ByteBuf)) {
+			conn.notifyRead(m);
+			ctx.fireChannelRead(m);
 			return;
 		}
 

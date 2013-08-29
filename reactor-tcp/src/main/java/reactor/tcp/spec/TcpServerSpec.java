@@ -8,10 +8,12 @@ import reactor.io.Buffer;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -20,9 +22,8 @@ import java.util.Collections;
 /**
  * A TcpServerSpec is used to specify a TcpServer
  *
- * @param <IN> The type that will be received by this client
+ * @param <IN>  The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
- *
  * @author Jon Brisbin
  */
 public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
@@ -31,6 +32,7 @@ public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerS
 
 	private InetSocketAddress   listenAddress = new InetSocketAddress("localhost", 3000);
 	private ServerSocketOptions options       = new ServerSocketOptions();
+	private SslOptions          sslOptions    = null;
 	private Codec<Buffer, IN, OUT>                       codec;
 	private Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers;
 
@@ -48,6 +50,7 @@ public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerS
 					Reactor.class,
 					InetSocketAddress.class,
 					ServerSocketOptions.class,
+					SslOptions.class,
 					Codec.class,
 					Collection.class
 			);
@@ -66,6 +69,17 @@ public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerS
 	public TcpServerSpec<IN, OUT> options(@Nonnull ServerSocketOptions options) {
 		Assert.notNull(options, "ServerSocketOptions cannot be null.");
 		this.options = options;
+		return this;
+	}
+
+	/**
+	 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the default).
+	 *
+	 * @param sslOptions The options to set when configuring SSL
+	 * @return {@literal this}
+	 */
+	public TcpServerSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		this.sslOptions = sslOptions;
 		return this;
 	}
 
@@ -137,6 +151,7 @@ public class TcpServerSpec<IN, OUT> extends EventRoutingComponentSpec<TcpServerS
 					reactor,
 					listenAddress,
 					options,
+					sslOptions,
 					codec,
 					connectionConsumers
 			);

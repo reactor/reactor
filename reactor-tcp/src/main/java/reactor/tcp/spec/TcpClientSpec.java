@@ -6,6 +6,7 @@ import reactor.core.spec.support.EventRoutingComponentSpec;
 import reactor.io.Buffer;
 import reactor.tcp.TcpClient;
 import reactor.tcp.config.ClientSocketOptions;
+import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.util.Assert;
 
@@ -26,7 +27,8 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;
 
 	private InetSocketAddress connectAddress;
-	private ClientSocketOptions options = new ClientSocketOptions();
+	private ClientSocketOptions options    = new ClientSocketOptions();
+	private SslOptions          sslOptions = null;
 	private Codec<Buffer, IN, OUT> codec;
 
 	/**
@@ -43,6 +45,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					Reactor.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
+					SslOptions.class,
 					Codec.class
 			);
 			this.clientImplConstructor.setAccessible(true);
@@ -60,6 +63,17 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	 */
 	public TcpClientSpec<IN, OUT> options(ClientSocketOptions options) {
 		this.options = options;
+		return this;
+	}
+
+	/**
+	 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the default).
+	 *
+	 * @param sslOptions The options to set when configuring SSL
+	 * @return {@literal this}
+	 */
+	public TcpClientSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		this.sslOptions = sslOptions;
 		return this;
 	}
 
@@ -106,6 +120,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 					reactor,
 					connectAddress,
 					options,
+					sslOptions,
 					codec
 			);
 		} catch (Throwable t) {
