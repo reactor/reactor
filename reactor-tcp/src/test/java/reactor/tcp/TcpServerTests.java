@@ -87,11 +87,13 @@ public class TcpServerTests {
 	public void tcpServerHandlesJsonPojosOverSsl() throws InterruptedException {
 		final int port = this.port.incrementAndGet();
 		SslOptions serverOpts = new SslOptions()
-				.keystoreFile("./src/test/resources/server.jks")
+				//.keystoreFile("./src/test/resources/server.jks")
+				.keystoreFile("server.jks")
 				.keystorePasswd("changeit");
 
 		SslOptions clientOpts = new SslOptions()
-				.keystoreFile("./src/test/resources/client.jks")
+				//.keystoreFile("./src/test/resources/client.jks")
+				.keystoreFile("client.jks")
 				.keystorePasswd("changeit")
 				.trustManagers(new Supplier<TrustManager[]>() {
 					@Override
