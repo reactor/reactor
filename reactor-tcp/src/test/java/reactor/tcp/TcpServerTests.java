@@ -88,12 +88,12 @@ public class TcpServerTests {
 		final int port = this.port.incrementAndGet();
 		SslOptions serverOpts = new SslOptions()
 				//.keystoreFile("./src/test/resources/server.jks")
-				.keystoreFile("server.jks")
+				.keystoreFile("reactor/tcp/server.jks")
 				.keystorePasswd("changeit");
 
 		SslOptions clientOpts = new SslOptions()
 				//.keystoreFile("./src/test/resources/client.jks")
-				.keystoreFile("client.jks")
+				.keystoreFile("reactor/tcp/client.jks")
 				.keystorePasswd("changeit")
 				.trustManagers(new Supplier<TrustManager[]>() {
 					@Override
