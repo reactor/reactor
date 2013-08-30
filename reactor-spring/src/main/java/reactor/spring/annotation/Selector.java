@@ -36,7 +36,7 @@ public @interface Selector {
 	 *
 	 * @return An expression to be evaluated.
 	 */
-	String value();
+	String value() default "";
 
 	/**
 	 * An expression that evaluates to the {@link reactor.core.Reactor} on which to place this handler.
