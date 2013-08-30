@@ -226,7 +226,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		return bean;
 	}
 
-	private Set<Method> findHandlerMethods(Class<?> handlerType,
+	public static Set<Method> findHandlerMethods(Class<?> handlerType,
 	                                       final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
