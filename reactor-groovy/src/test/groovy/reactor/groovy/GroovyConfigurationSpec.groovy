@@ -77,4 +77,12 @@ class GroovyConfigurationSpec extends Specification {
 			groovySystem['test2'].dispatcher == groovySystem.dispatcher('testDispatcher')
 			res
 	}
+	def "GroovyEnvironment filters per extension"() {
+		when:
+			"Building a simple dispatcher"
+			GroovyEnvironment groovySystem = StaticConfiguration.test2()
+
+		then:
+			groovySystem.reactorBuildersByExtension('a').size() == 2
+	}
 }

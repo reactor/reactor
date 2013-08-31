@@ -42,9 +42,12 @@ class StaticConfiguration {
 					println it
 				}
 
-				reactor('child_test1'){
+				reactor('child_test1') {
 					ext 'a', 'rw'
 				}
+			}
+			reactor('test2') {
+				ext 'a', '2'
 			}
 		}
 	}
@@ -63,13 +66,13 @@ class StaticConfiguration {
 
 	static GroovyEnvironment test4() {
 		def parentEnvironment = GroovyEnvironment.create {
-			environment{
+			environment {
 				defaultDispatcher = 'testDispatcher'
 
 				dispatcher 'testDispatcher', new SynchronousDispatcher()
 			}
 
-			reactor('test1'){
+			reactor('test1') {
 				dispatcher 'testDispatcher'
 				on('test') {
 					reply it
@@ -80,12 +83,12 @@ class StaticConfiguration {
 		GroovyEnvironment.create {
 			include parentEnvironment
 
-			reactor('test1'){
+			reactor('test1') {
 				on('test2') {
 					reply it
 				}
 			}
-			reactor('test2'){
+			reactor('test2') {
 				dispatcher 'testDispatcher'
 			}
 		}

@@ -83,8 +83,8 @@ class SelectorSpec extends Specification {
 	def "Selectors can be matched on URI"() {
 
 		given: "A UriTemplateSelector"
-		def sel1 = U("/path/to/{resource}")
-		def key = "/path/to/resourceId"
+		def sel1 = U("/path/**/{resource}")
+		def key = "/path/to/some/resourceId"
 		def r = Reactors.reactor().synchronousDispatcher().get()
 		def resourceId = ""
 		r.on(sel1, consumer { Event<String> ev ->
@@ -95,7 +95,7 @@ class SelectorSpec extends Specification {
 		r.notify key, Event.wrap("")
 
 		then: "The resourceId has been set when the headers"
-		resourceId
+		resourceId == 'resourceId'
 
 	}
 

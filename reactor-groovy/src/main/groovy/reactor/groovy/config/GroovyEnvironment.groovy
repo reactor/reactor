@@ -131,11 +131,15 @@ class GroovyEnvironment {
 		putAt reactorName, reactor
 	}
 
+	Collection<ReactorBuilder> reactorBuildersByExtension(String extensionKey) {
+		reactors.findAll {String k, ReactorBuilder v -> v.ext(extensionKey) }.values()
+	}
+
 	ReactorBuilder reactorBuilder(String reactor) {
 		reactors[reactor]
 	}
 
-	ReactorBuilder reactor(String reactorName, ReactorBuilder reactor) {
+	ReactorBuilder reactorBuilder(String reactorName, ReactorBuilder reactor) {
 		reactors[reactorName] = reactor
 	}
 
