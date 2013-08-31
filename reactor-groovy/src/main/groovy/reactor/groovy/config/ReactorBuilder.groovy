@@ -1,14 +1,12 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.dispatch.Dispatcher
-import reactor.event.registry.Registration
+import reactor.event.routing.EventRouter
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
 import reactor.filter.Filter
@@ -38,6 +36,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	Environment env
 	Converter converter
 	Filter filter
+	EventRouter router
 	Dispatcher dispatcher
 	boolean linkParent = true
 
@@ -98,7 +97,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 				break
 			default:
 				filter = new PassThroughFilter()
-				break
 		}
 	}
 
@@ -145,7 +143,10 @@ class ReactorBuilder implements Supplier<Reactor> {
 			spec.converters(converter)
 		}
 		if (filter) {
-			spec.eventRoutingFilter(filter)
+			spec.eventFilter(filter)
+		}
+		if (router) {
+			spec.eventRouter(router)
 		}
 		if (linked) {
 			spec.link(linked.get())

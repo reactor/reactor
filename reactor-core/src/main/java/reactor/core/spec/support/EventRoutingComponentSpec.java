@@ -45,6 +45,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
+	private EventRouter          eventRouter;
 	private Filter               eventFilter;
 
 	/**
@@ -71,13 +72,22 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 
 	/**
-	 * Configures the component's EventRouter to broadcast events to all matching
-	 * consumers
+	 * Assigns the component's Filter
 	 *
 	 * @return {@code this}
 	 */
-	public final SPEC eventRoutingFilter(Filter filter) {
+	public final SPEC eventFilter(Filter filter) {
 		this.eventFilter = filter;
+		return (SPEC) this;
+	}
+
+	/**
+	 * Assigns the component's EventRouter
+	 *
+	 * @return {@code this}
+	 */
+	public final SPEC eventRouter(EventRouter router) {
+		this.eventRouter = router;
 		return (SPEC) this;
 	}
 
