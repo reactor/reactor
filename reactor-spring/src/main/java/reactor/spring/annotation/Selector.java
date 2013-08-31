@@ -24,6 +24,7 @@ import java.lang.annotation.Target;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -33,6 +34,8 @@ public @interface Selector {
 	/**
 	 * An expression that evaluates to a {@link reactor.event.selector.Selector} to register this handler with the {@link
 	 * reactor.core.Reactor}.
+	 * If empty, consumer will be subscribed on the global reactor selector
+	 * {@link reactor.core.Reactor#on(reactor.function.Consumer)}
 	 *
 	 * @return An expression to be evaluated.
 	 */

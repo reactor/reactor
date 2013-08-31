@@ -37,6 +37,14 @@ class ReactorBeanDefinitionRegistrarSpec extends Specification {
       "the method will have been invoked"
       consumer.count == 2
 
+    when:
+      "notifying the injected Reactor with replyTo header"
+      reactor.notify("test2", Event.wrap("World").setReplyTo("reply2"))
+
+    then:
+      "the method will have been invoked"
+      consumer.count == 4
+
   }
 
   def "ReplyTo annotation causes replies to be handled"() {
@@ -64,6 +72,21 @@ class LoggingConsumer {
   @Autowired Reactor reactor
   long count = 0
   Logger log = LoggerFactory.getLogger(LoggingConsumer)
+
+
+	@Selector("test2")
+	@ReplyTo
+	String onTest2(String s) {
+		log.info("Hello again ${s}!")
+		"Goodbye again ${s}!"
+		count++
+	}
+
+	@Selector("reply2")
+	void onReply2(String s) {
+		log.info("Got reply: ${s}")
+		count++
+	}
 
   @Selector("test")
   @ReplyTo("reply")

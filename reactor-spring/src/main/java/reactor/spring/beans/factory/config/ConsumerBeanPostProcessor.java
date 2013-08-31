@@ -55,15 +55,17 @@ import reactor.util.StringUtils;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ConsumerBeanPostProcessor implements BeanPostProcessor,
-                                                  BeanFactoryAware,
-                                                  Ordered {
+		BeanFactoryAware,
+		Ordered {
 
 	private static final Logger                       LOG                    = LoggerFactory.getLogger(
 			ConsumerBeanPostProcessor.class);
 	private static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
-		@Override public boolean matches(Method method) {
+		@Override
+		public boolean matches(Method method) {
 			return null != AnnotationUtils.findAnnotation(method, Selector.class);
 		}
 	};
@@ -86,7 +88,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		beanResolver = new BeanFactoryResolver(beanFactory);
 	}
 
-	@Override public int getOrder() {
+	@Override
+	public int getOrder() {
 		return Ordered.LOWEST_PRECEDENCE;
 	}
 
@@ -100,7 +103,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	public Object postProcessAfterInitialization(final Object bean,
 	                                             String beanName) throws BeansException {
 		Class<?> type = bean.getClass();
-		for(final Method method : findHandlerMethods(type, CONSUMER_METHOD_FILTER)) {
+		for (final Method method : findHandlerMethods(type, CONSUMER_METHOD_FILTER)) {
 			StandardEvaluationContext evalCtx = new StandardEvaluationContext();
 			evalCtx.setRootObject(bean);
 			evalCtx.setBeanResolver(beanResolver);
@@ -108,13 +111,13 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 			Selector selectorAnno = method.getAnnotation(Selector.class);
 			ReplyTo replyToAnno = method.getAnnotation(ReplyTo.class);
 
-			final Observable reactor = (Observable)expressionParser.parseExpression(selectorAnno.reactor()).getValue(evalCtx);
+			final Observable reactor = (Observable) expressionParser.parseExpression(selectorAnno.reactor()).getValue(evalCtx);
 			Assert.notNull(reactor, "Reactor cannot be null");
 
 			reactor.event.selector.Selector selector = null;
-			if(StringUtils.hasText(selectorAnno.value())) {
+			if (StringUtils.hasText(selectorAnno.value())) {
 				try {
-					switch(selectorAnno.type()) {
+					switch (selectorAnno.type()) {
 						case OBJECT: {
 							Expression selectorExpr = expressionParser.parseExpression(selectorAnno.value());
 							Object selObj = selectorExpr.getValue(evalCtx);
@@ -132,14 +135,14 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 						case TYPE: {
 							try {
 								selector = Selectors.type(Class.forName(selectorAnno.value()));
-							} catch(ClassNotFoundException e) {
+							} catch (ClassNotFoundException e) {
 								throw new IllegalArgumentException(e.getMessage(), e);
 							}
 							break;
 						}
 					}
-				} catch(EvaluationException e) {
-					if(LOG.isTraceEnabled()) {
+				} catch (EvaluationException e) {
+					if (LOG.isTraceEnabled()) {
 						LOG.trace("Creating ObjectSelector for '" + selectorAnno.value() + "' due to " + e.getMessage(), e);
 					}
 					selector = Selectors.object(selectorAnno.value());
@@ -151,33 +154,33 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 				@Override
 				public Object apply(Event<Object> ev) {
-					if(argTypes.length == 0) {
-						if(LOG.isDebugEnabled()) {
+					if (argTypes.length == 0) {
+						if (LOG.isDebugEnabled()) {
 							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
 						}
 						return ReflectionUtils.invokeMethod(method, bean);
 					}
 
-					if(argTypes.length > 1) {
+					if (argTypes.length > 1) {
 						// TODO: handle more than one parameter
 						throw new IllegalStateException("Multiple parameters not yet supported.");
 					}
 
-					if(null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
-						if(LOG.isDebugEnabled()) {
+					if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
+						if (LOG.isDebugEnabled()) {
 							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev.getData());
 						}
 						return ReflectionUtils.invokeMethod(method, bean, ev.getData());
 					}
 
-					if(!argTypes[0].isAssignableFrom(ev.getClass())
+					if (!argTypes[0].isAssignableFrom(ev.getClass())
 							&& conversionService.canConvert(ev.getClass(), argTypes[0])) {
 						ReflectionUtils.invokeMethod(method, bean, conversionService.convert(ev, argTypes[0]));
 					}
 
-					if(conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
+					if (conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
 						Object convertedObj = conversionService.convert(ev.getData(), argTypes[0]);
-						if(LOG.isDebugEnabled()) {
+						if (LOG.isDebugEnabled()) {
 							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + convertedObj);
 						}
 						return ReflectionUtils.invokeMethod(method, bean, convertedObj);
@@ -187,37 +190,43 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 				}
 			};
 
-			String replyTo = (null != replyToAnno ? replyToAnno.value() : null);
 			Consumer<Event<Object>> consumer;
-			if(StringUtils.hasText(replyTo)) {
+			if (null != replyToAnno) {
+				String replyTo = replyToAnno.value();
 				Expression replyToExpr = expressionParser.parseExpression(replyTo);
-				Object replyToObj;
-				try {
-					replyToObj = replyToExpr.getValue(evalCtx);
-				} catch(EvaluationException ignored) {
-					replyToObj = replyTo;
+				Object replyToObj = null;
+				if (StringUtils.hasText(replyTo)) {
+					try {
+						replyToObj = replyToExpr.getValue(evalCtx);
+					} catch (EvaluationException ignored) {
+						replyToObj = replyTo;
+					}
 				}
 
 				final Object replyToKey = replyToObj;
 				consumer = new Consumer<Event<Object>>() {
-					@Override public void accept(Event<Object> ev) {
+					@Override
+					public void accept(Event<Object> ev) {
 						Object result = handler.apply(ev);
-						reactor.notify(replyToKey, Event.wrap(result));
+						Object _replyToKey = null == replyToKey ? ev.getReplyTo() : replyToKey;
+						if (null != _replyToKey)
+							reactor.notify(_replyToKey, Event.wrap(result));
 					}
 				};
 			} else {
 				consumer = new Consumer<Event<Object>>() {
-					@Override public void accept(Event<Object> ev) {
+					@Override
+					public void accept(Event<Object> ev) {
 						handler.apply(ev);
 					}
 				};
 			}
 
-			if(LOG.isDebugEnabled()) {
+			if (LOG.isDebugEnabled()) {
 				LOG.debug("Attaching Consumer to Reactor[" + reactor + "] using Selector[" + selector + "]");
 			}
 
-			if(null == selector) {
+			if (null == selector) {
 				reactor.on(consumer);
 			} else {
 				reactor.on(selector, consumer);
@@ -227,23 +236,23 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	}
 
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
-	                                       final ReflectionUtils.MethodFilter handlerMethodFilter) {
+	                                             final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
 		Class<?> specificHandlerType = null;
-		if(!Proxy.isProxyClass(handlerType)) {
+		if (!Proxy.isProxyClass(handlerType)) {
 			handlerTypes.add(handlerType);
 			specificHandlerType = handlerType;
 		}
 		handlerTypes.addAll(Arrays.asList(handlerType.getInterfaces()));
-		for(Class<?> currentHandlerType : handlerTypes) {
+		for (Class<?> currentHandlerType : handlerTypes) {
 			final Class<?> targetClass = (specificHandlerType != null ? specificHandlerType : currentHandlerType);
 			ReflectionUtils.doWithMethods(currentHandlerType, new ReflectionUtils.MethodCallback() {
 				@Override
 				public void doWith(Method method) {
 					Method specificMethod = ClassUtils.getMostSpecificMethod(method, targetClass);
 					Method bridgedMethod = BridgeMethodResolver.findBridgedMethod(specificMethod);
-					if(handlerMethodFilter.matches(specificMethod) &&
+					if (handlerMethodFilter.matches(specificMethod) &&
 							(bridgedMethod == specificMethod || !handlerMethodFilter.matches(bridgedMethod))) {
 						handlerMethods.add(specificMethod);
 					}

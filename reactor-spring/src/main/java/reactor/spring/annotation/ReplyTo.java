@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
  * Indicate a method return is to be sent to the key referenced by the given expression.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -34,9 +35,10 @@ public @interface ReplyTo {
 
 	/**
 	 * An expression which evaluates to a key to which is sent the method return value.
+	 * If empty, consumer will try to use {@link reactor.event.Event#getReplyTo()} header.
 	 *
 	 * @return The expression.
 	 */
-	String value();
+	String value() default "";
 
 }
