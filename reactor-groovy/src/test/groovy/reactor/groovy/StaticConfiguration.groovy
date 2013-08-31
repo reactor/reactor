@@ -74,7 +74,7 @@ class StaticConfiguration {
 
 			reactor('test1') {
 				dispatcher 'testDispatcher'
-				routingStrategy RANDOM
+				routingStrategy 'random'
 				on('test') {
 					reply it
 				}
