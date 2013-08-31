@@ -31,6 +31,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	Dispatcher dispatcher
 	boolean linkParent = true
 
+	private final Map<String, Object> ext = [:]
 	private final Map<Selector, List<Consumer>> consumers = [:]
 	private final String name
 	private final Map<String, ReactorBuilder> reactorMap
@@ -55,6 +56,18 @@ class ReactorBuilder implements Supplier<Reactor> {
 			}
 			reactorMap[name] = this
 		}
+	}
+
+	def ext(String k){
+		ext[k]
+	}
+
+	void ext(String k, v){
+		ext[k] = v
+	}
+
+	void exts(Map<String, Object> map){
+		ext.putAll map
 	}
 
 	Dispatcher dispatcher(String dispatcher) {

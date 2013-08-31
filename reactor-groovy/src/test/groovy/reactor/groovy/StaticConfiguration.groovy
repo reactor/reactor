@@ -42,7 +42,9 @@ class StaticConfiguration {
 					println it
 				}
 
-				reactor('child_test1'){}
+				reactor('child_test1'){
+					ext 'a', 'rw'
+				}
 			}
 		}
 	}

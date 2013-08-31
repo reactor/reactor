@@ -131,6 +131,14 @@ class GroovyEnvironment {
 		putAt reactorName, reactor
 	}
 
+	ReactorBuilder reactorBuilder(String reactor) {
+		reactors[reactor]
+	}
+
+	ReactorBuilder reactor(String reactorName, ReactorBuilder reactor) {
+		reactors[reactorName] = reactor
+	}
+
 	/**
 	 * initialize a {@link Environment}
 	 * @param c DSL
