@@ -11,6 +11,11 @@ import reactor.event.dispatch.Dispatcher
 import reactor.event.registry.Registration
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
+import reactor.filter.Filter
+import reactor.filter.FirstFilter
+import reactor.filter.PassThroughFilter
+import reactor.filter.RandomFilter
+import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
@@ -23,11 +28,16 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	static private Selector noSelector = Selectors.anonymous().t1
 
+	static final String ROUND_ROBIN = 'round-robin'
+	static final String PUB_SUB = 'all'
+	static final String RANDOM = 'random'
+	static final String FIRST = 'first'
+
 	ReactorBuilder linked
 
 	Environment env
 	Converter converter
-	def eventRoutingStrategy
+	Filter filter
 	Dispatcher dispatcher
 	boolean linkParent = true
 
@@ -51,8 +61,13 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	void init() {
 		if (name) {
-			if (reactorMap.containsKey(name)) {
-				copyConsumersFrom(reactorMap[name])
+			def r = reactorMap[name]
+			if (r) {
+				copyConsumersFrom(r)
+				converter = r.converter
+				filter = r.filter
+				dispatcher = r.dispatcher
+				linked = r.linked ? reactorMap[r.linked.name] : null
 			}
 			reactorMap[name] = this
 		}
@@ -68,6 +83,23 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	void exts(Map<String, Object> map){
 		ext.putAll map
+	}
+
+	Filter routingStrategy(String strategy){
+		switch (strategy){
+			case ROUND_ROBIN:
+				filter = new RoundRobinFilter()
+				break
+			case RANDOM:
+				filter = new RandomFilter()
+				break
+			case FIRST:
+				filter = new FirstFilter()
+				break
+			default:
+				filter = new PassThroughFilter()
+				break
+		}
 	}
 
 	Dispatcher dispatcher(String dispatcher) {
@@ -112,8 +144,8 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (converter) {
 			spec.converters(converter)
 		}
-		if (eventRoutingStrategy) {
-			throw new Exception("not yet implemented")
+		if (filter) {
+			spec.eventRoutingFilter(filter)
 		}
 		if (linked) {
 			spec.link(linked.get())
