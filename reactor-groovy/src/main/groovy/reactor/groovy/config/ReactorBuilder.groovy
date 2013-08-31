@@ -216,8 +216,9 @@ class ReactorBuilder implements Supplier<Reactor> {
 			env = parent.env
 			converter = parent.converter
 			dispatcher = parent.dispatcher
+			filter = parent.filter
+			linked = parent.linked
 			consumers.putAll(parent.consumers)
-			eventRoutingStrategy = parent.eventRoutingStrategy
 		}
 	}
 
