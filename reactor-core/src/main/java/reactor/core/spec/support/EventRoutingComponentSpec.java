@@ -24,12 +24,14 @@ import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
+import reactor.event.routing.ConsumerInvoker;
 import reactor.event.routing.EventRouter;
 import reactor.filter.Filter;
 import reactor.filter.FirstFilter;
 import reactor.filter.PassThroughFilter;
 import reactor.filter.RandomFilter;
 import reactor.filter.RoundRobinFilter;
+import reactor.util.Assert;
 
 
 /**
@@ -46,6 +48,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
 	private EventRouter          eventRouter;
+	private ConsumerInvoker      consumerInvoker;
 	private Filter               eventFilter;
 
 	/**
@@ -77,7 +80,19 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public final SPEC eventFilter(Filter filter) {
+		Assert.isNull(eventRouter, "Cannot set both a filter and a router. Use one or the other.");
 		this.eventFilter = filter;
+		return (SPEC) this;
+	}
+
+	/**
+	 * Assigns the component's Consumer Invoker
+	 *
+	 * @return {@code this}
+	 */
+	public final SPEC consumerInvoker(ConsumerInvoker consumerInvoker) {
+		Assert.isNull(eventRouter, "Cannot set both a consumerInvoker and a router. Use one or the other.");
+		this.consumerInvoker = consumerInvoker;
 		return (SPEC) this;
 	}
 
@@ -87,6 +102,8 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public final SPEC eventRouter(EventRouter router) {
+		Assert.isNull(eventFilter, "Cannot set both a filter and a router. Use one or the other.");
+		Assert.isNull(consumerInvoker, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.eventRouter = router;
 		return (SPEC) this;
 	}
@@ -144,13 +161,13 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Reactor createReactor(Dispatcher dispatcher) {
-		return new Reactor(dispatcher, createEventRouter());
+		return new Reactor(dispatcher, eventRouter != null ? eventRouter : createEventRouter());
 	}
 
 	private EventRouter createEventRouter() {
 		return new ConsumerFilteringEventRouter(
 				eventFilter != null ? eventFilter : createFilter(),
-				new ArgumentConvertingConsumerInvoker(converter));
+				consumerInvoker != null ? consumerInvoker : new ArgumentConvertingConsumerInvoker(converter));
 	}
 
 	private Filter createFilter() {
