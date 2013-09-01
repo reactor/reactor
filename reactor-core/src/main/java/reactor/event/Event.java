@@ -33,9 +33,7 @@ import reactor.util.UUIDUtils;
 /**
  * Wrapper for an object that needs to be processed by {@link reactor.function.Consumer}s.
  *
- * @param <T>
- * 		The type of the wrapped object
- *
+ * @param <T> The type of the wrapped object
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
@@ -55,10 +53,8 @@ public class Event<T> implements Serializable {
 	/**
 	 * Creates a new Event with the given {@code headers} and {@code data}.
 	 *
-	 * @param headers
-	 * 		The headers
-	 * @param data
-	 * 		The data
+	 * @param headers The headers
+	 * @param data    The data
 	 */
 	public Event(Headers headers, T data) {
 		this.headers = headers;
@@ -69,8 +65,7 @@ public class Event<T> implements Serializable {
 	 * Creates a new Event with the given {@code data}. The event will have
 	 * empty headers.
 	 *
-	 * @param data
-	 * 		The data
+	 * @param data The data
 	 */
 	public Event(T data) {
 		this.data = data;
@@ -79,9 +74,7 @@ public class Event<T> implements Serializable {
 	/**
 	 * Wrap the given object with an {@link Event}.
 	 *
-	 * @param obj
-	 * 		The object to wrap.
-	 *
+	 * @param obj The object to wrap.
 	 * @return The new {@link Event}.
 	 */
 	public static <T> Event<T> wrap(T obj) {
@@ -92,13 +85,9 @@ public class Event<T> implements Serializable {
 	 * Wrap the given object with an {@link Event} and set the {@link Event#getReplyTo() replyTo} to the given {@code
 	 * replyToKey}.
 	 *
-	 * @param obj
-	 * 		The object to wrap.
-	 * @param replyToKey
-	 * 		The key to use as a {@literal replyTo}.
-	 * @param <T>
-	 * 		The type of the given object.
-	 *
+	 * @param obj        The object to wrap.
+	 * @param replyToKey The key to use as a {@literal replyTo}.
+	 * @param <T>        The type of the given object.
 	 * @return The new {@link Event}.
 	 */
 	public static <T> Event<T> wrap(T obj, Object replyToKey) {
@@ -111,7 +100,7 @@ public class Event<T> implements Serializable {
 	 * @return Unique {@link UUID} of this event.
 	 */
 	public synchronized UUID getId() {
-		if(null == id) {
+		if (null == id) {
 			id = UUIDUtils.create();
 		}
 		return id;
@@ -123,7 +112,7 @@ public class Event<T> implements Serializable {
 	 * @return The Event's Headers
 	 */
 	public synchronized Headers getHeaders() {
-		if(null == headers) {
+		if (null == headers) {
 			headers = new Headers();
 		}
 		return headers;
@@ -141,9 +130,7 @@ public class Event<T> implements Serializable {
 	/**
 	 * Set the {@code key} that interested parties should send replies to.
 	 *
-	 * @param replyTo
-	 * 		The key to use to notify sender of replies.
-	 *
+	 * @param replyTo The key to use to notify sender of replies.
 	 * @return {@literal this}
 	 */
 	public Event<T> setReplyTo(Object replyTo) {
@@ -164,9 +151,7 @@ public class Event<T> implements Serializable {
 	/**
 	 * Set the internal data to wrap.
 	 *
-	 * @param data
-	 * 		Data to wrap.
-	 *
+	 * @param data Data to wrap.
 	 * @return {@literal this}
 	 */
 	public Event<T> setData(T data) {
@@ -174,7 +159,30 @@ public class Event<T> implements Serializable {
 		return this;
 	}
 
-	@Override public String toString() {
+	/**
+	 * Create a copy of this event, reusing same headers, data and replyTo
+	 *
+	 * @return {@literal event copy}
+	 */
+	public Event<T> copy() {
+		return copy(data);
+	}
+
+	/**
+	 * Create a copy of this event, reusing same headers and replyTo
+	 *
+	 * @return {@literal event copy}
+	 */
+	public <E> Event<E> copy(E data) {
+		if (null != replyTo)
+			return new Event<E>(headers, data).setReplyTo(replyTo);
+		else
+			return new Event<E>(headers, data);
+	}
+
+
+	@Override
+	public String toString() {
 		return "Event{" +
 				"id=" + id +
 				", headers=" + headers +
@@ -207,7 +215,7 @@ public class Event<T> implements Serializable {
 		private Headers(boolean sealed, Map<String, String> headers) {
 			Map<String, String> copy = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
 			copyHeaders(headers, copy);
-			if(sealed) {
+			if (sealed) {
 				this.headers = Collections.unmodifiableMap(copy);
 			} else {
 				this.headers = copy;
@@ -219,8 +227,7 @@ public class Event<T> implements Serializable {
 		 * Note that, as the map is copied, subsequent changes to its contents will have no
 		 * effect upon the Headers.
 		 *
-		 * @param headers
-		 * 		The map to copy.
+		 * @param headers The map to copy.
 		 */
 		public Headers(Map<String, String> headers) {
 			this(false, headers);
@@ -238,16 +245,14 @@ public class Event<T> implements Serializable {
 		 * Any entry with a null value will cause the header matching the entry's name to
 		 * be removed.
 		 *
-		 * @param headers
-		 * 		The map of headers to set.
-		 *
+		 * @param headers The map of headers to set.
 		 * @return {@code this}
 		 */
 		public Headers setAll(Map<String, String> headers) {
-			if(null == headers || headers.isEmpty()) {
+			if (null == headers || headers.isEmpty()) {
 				return this;
 			} else {
-				synchronized(this.monitor) {
+				synchronized (this.monitor) {
 					copyHeaders(headers, this.headers);
 				}
 			}
@@ -258,15 +263,12 @@ public class Event<T> implements Serializable {
 		 * Set the header value. If {@code value} is {@code null} the header with the given {@code
 		 * name} will be removed.
 		 *
-		 * @param name
-		 * 		The name of the header.
-		 * @param value
-		 * 		The header's value.
-		 *
+		 * @param name  The name of the header.
+		 * @param value The header's value.
 		 * @return {@code this}
 		 */
 		public Headers set(String name, String value) {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				setHeader(name, value, headers);
 			}
 			return this;
@@ -276,9 +278,7 @@ public class Event<T> implements Serializable {
 		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
 		 * it should send replies. If {@code id} is {@code null} the origin header will be removed.
 		 *
-		 * @param id
-		 * 		The id of the origin component.
-		 *
+		 * @param id The id of the origin component.
 		 * @return {@code this}
 		 */
 		public Headers setOrigin(UUID id) {
@@ -290,13 +290,11 @@ public class Event<T> implements Serializable {
 		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
 		 * it should send replies. If {@code id} is {@code null} this origin header will be removed.
 		 *
-		 * @param id
-		 * 		The id of the origin component.
-		 *
+		 * @param id The id of the origin component.
 		 * @return {@code this}
 		 */
 		public Headers setOrigin(String id) {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				setHeader(ORIGIN, id, headers);
 			}
 			return this;
@@ -308,7 +306,7 @@ public class Event<T> implements Serializable {
 		 * @return The origin header, may be {@code null}.
 		 */
 		public String getOrigin() {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				return headers.get(ORIGIN);
 			}
 		}
@@ -316,13 +314,11 @@ public class Event<T> implements Serializable {
 		/**
 		 * Get the value for the given header.
 		 *
-		 * @param name
-		 * 		The header name.
-		 *
+		 * @param name The header name.
 		 * @return The value of the header, or {@code null} if none exists.
 		 */
 		public String get(String name) {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return headers.get(name);
 			}
 		}
@@ -330,13 +326,11 @@ public class Event<T> implements Serializable {
 		/**
 		 * Determine whether the headers contain a value for the given name.
 		 *
-		 * @param name
-		 * 		The header name.
-		 *
+		 * @param name The header name.
 		 * @return {@code true} if a value exists, {@code false} otherwise.
 		 */
 		public boolean contains(String name) {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return headers.containsKey(name);
 			}
 		}
@@ -347,7 +341,7 @@ public class Event<T> implements Serializable {
 		 * @return The unmodifiable header map
 		 */
 		public Map<String, String> asMap() {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return Collections.unmodifiableMap(headers);
 			}
 		}
@@ -358,7 +352,7 @@ public class Event<T> implements Serializable {
 		 * @return A read-only version of the headers.
 		 */
 		public Headers readOnly() {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return new Headers(true, headers);
 			}
 		}
@@ -368,9 +362,9 @@ public class Event<T> implements Serializable {
 		 */
 		@Override
 		public Iterator<Tuple2<String, String>> iterator() {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				List<Tuple2<String, String>> headers = new ArrayList<Tuple2<String, String>>(this.headers.size());
-				for(Map.Entry<String, String> header : this.headers.entrySet()) {
+				for (Map.Entry<String, String> header : this.headers.entrySet()) {
 					headers.add(Tuple.of(header.getKey(), header.getValue()));
 				}
 				return Collections.unmodifiableList(headers).iterator();
@@ -378,15 +372,15 @@ public class Event<T> implements Serializable {
 		}
 
 		private void copyHeaders(Map<String, String> source, Map<String, String> target) {
-			if(source != null) {
-				for(Map.Entry<String, String> entry : source.entrySet()) {
+			if (source != null) {
+				for (Map.Entry<String, String> entry : source.entrySet()) {
 					setHeader(entry.getKey(), entry.getValue(), target);
 				}
 			}
 		}
 
 		private void setHeader(String name, String value, Map<String, String> target) {
-			if(value == null) {
+			if (value == null) {
 				target.remove(name);
 			} else {
 				target.put(name, value);

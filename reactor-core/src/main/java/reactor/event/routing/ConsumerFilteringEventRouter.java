@@ -34,7 +34,7 @@ import java.util.List;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public final class ConsumerFilteringEventRouter implements EventRouter {
+public class ConsumerFilteringEventRouter implements EventRouter {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private final Filter          filter;
