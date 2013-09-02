@@ -151,6 +151,11 @@ public class Stream<T> extends Composable<T> {
 		return (Stream<T>) super.filter(p);
 	}
 
+	@Override
+	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> composable) {
+		return (Stream<T>) super.filter(p, composable);
+	}
+
 	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to

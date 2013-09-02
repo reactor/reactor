@@ -107,7 +107,7 @@ class StaticConfiguration {
 			reactor('test1') {
 				stream{
 					map({ Event<?> ev->
-						ev.copy('intercepted')
+						ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
 					} as Function)
 				}
 				stream(object('test')){

@@ -48,7 +48,6 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	@Override
 	void accept(Event<T> arg) {
 		def callback = this.callback
-		println arg
 		if (Reactor.ReplyToEvent.class.isAssignableFrom(arg.class)) {
 			callback = (Closure) callback.clone()
 			callback.delegate = new ReplyDecorator(arg.replyTo, (((Reactor.ReplyToEvent) arg).replyToObservable))

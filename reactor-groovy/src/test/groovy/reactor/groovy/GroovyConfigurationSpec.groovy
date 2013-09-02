@@ -100,7 +100,7 @@ class GroovyConfigurationSpec extends Specification {
 			res == 'intercepted twice'
 		when:
 			res = null
-			groovySystem['test1'].send('test', 'test') {
+			groovySystem['test1'].send('test2', 'test') {
 				res = it
 			}
 		then:
