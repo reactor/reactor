@@ -62,7 +62,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 	private static final Logger                       LOG                    = LoggerFactory.getLogger(
 			ConsumerBeanPostProcessor.class);
-	private static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
+	public static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
 		@Override
 		public boolean matches(Method method) {
 			return null != AnnotationUtils.findAnnotation(method, Selector.class);
