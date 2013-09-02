@@ -288,7 +288,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 		@Override
 		boolean test(Event<?> event) {
-			println 'predicate:' + event.headers.asMap() + ' -' + event
 			sel.matches(event.headers.get(StreamEventRouter.KEY_HEADER))
 		}
 	}

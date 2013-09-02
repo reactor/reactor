@@ -42,7 +42,7 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 				new Consumer<Event<?>>() {
 					@Override
 					public void accept(Event<?> _event) {
-						StreamEventRouter.super.route(key,  event.copy((((Event)_event.getData()).getData())), consumers,
+						StreamEventRouter.super.route(key,  event.copy(_event.getData()), consumers,
 								completionConsumer,
 								errorConsumer);
 					}
