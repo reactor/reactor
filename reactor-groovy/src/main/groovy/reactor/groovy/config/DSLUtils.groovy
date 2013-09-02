@@ -12,13 +12,14 @@ class DSLUtils {
 
 	static public final Closure EMPTY_CLOSURE = {...args->}
 
+	static int i = 0
 	/**
 	 * Helper for recurrent use-case : Delegating a closure to a builder and resolving it first
 	 * @param builder
 	 * @param closure
 	 * @return possible closure result
 	 */
-	static delegateFirstAndRun(builder, Closure closure){
+	static <T> T delegateFirstAndRun(builder, Closure<T> closure){
 		closure.delegate = builder
 		closure.resolveStrategy = DELEGATE_FIRST
 		closure()

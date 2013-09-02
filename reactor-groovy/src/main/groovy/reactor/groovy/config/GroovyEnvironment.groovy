@@ -72,7 +72,7 @@ class GroovyEnvironment {
 				key = ((Map.Entry<String, Reactor>) reactorEntry).key
 
 				if (reactors.containsKey(key)) {
-					reactorBuilder.copyConsumersFrom reactors[key]
+					reactorBuilder.addConsumersFrom reactors[key]
 				} else {
 					reactors[key] = reactorBuilder
 				}

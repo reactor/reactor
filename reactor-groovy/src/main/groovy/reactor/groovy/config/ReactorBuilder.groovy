@@ -4,8 +4,14 @@ import groovy.transform.CompileStatic
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
+import reactor.core.composable.Deferred
+import reactor.core.composable.Stream
+import reactor.core.composable.spec.Streams
 import reactor.core.spec.Reactors
+import reactor.event.Event
 import reactor.event.dispatch.Dispatcher
+import reactor.event.routing.ArgumentConvertingConsumerInvoker
+import reactor.event.routing.ConsumerInvoker
 import reactor.event.routing.EventRouter
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
@@ -15,6 +21,7 @@ import reactor.filter.PassThroughFilter
 import reactor.filter.RandomFilter
 import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
+import reactor.function.Predicate
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 
@@ -25,6 +32,7 @@ import reactor.groovy.support.ClosureEventConsumer
 class ReactorBuilder implements Supplier<Reactor> {
 
 	static private Selector noSelector = Selectors.anonymous().t1
+	static private Filter DEFAULT_FILTER = new PassThroughFilter()
 
 	static final String ROUND_ROBIN = 'round-robin'
 	static final String PUB_SUB = 'all'
@@ -32,14 +40,15 @@ class ReactorBuilder implements Supplier<Reactor> {
 	static final String FIRST = 'first'
 
 	ReactorBuilder linked
-
 	Environment env
 	Converter converter
-	Filter filter
 	EventRouter router
+	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
+	Filter filter = DEFAULT_FILTER
 	boolean linkParent = true
 
+	private final SortedSet<HeadAndTail> streams = new TreeSet<HeadAndTail>()
 	private final Map<String, Object> ext = [:]
 	private final Map<Selector, List<Consumer>> consumers = [:]
 	private final String name
@@ -58,34 +67,41 @@ class ReactorBuilder implements Supplier<Reactor> {
 		this.reactor = reactor
 	}
 
+	void rehydrate(ReactorBuilder r) {
+		converter = r.converter
+		filter = r.filter
+		dispatcher = r.dispatcher
+		router = r.router
+		streams.addAll r.streams
+		consumerInvoker = r.consumerInvoker
+	}
+
 	void init() {
 		if (name) {
 			def r = reactorMap[name]
 			if (r) {
-				copyConsumersFrom(r)
-				converter = r.converter
-				filter = r.filter
-				dispatcher = r.dispatcher
+				rehydrate r
+				addConsumersFrom r
 				linked = r.linked ? reactorMap[r.linked.name] : null
 			}
 			reactorMap[name] = this
 		}
 	}
 
-	def ext(String k){
+	def ext(String k) {
 		ext[k]
 	}
 
-	void ext(String k, v){
+	void ext(String k, v) {
 		ext[k] = v
 	}
 
-	void exts(Map<String, Object> map){
+	void exts(Map<String, Object> map) {
 		ext.putAll map
 	}
 
-	Filter routingStrategy(String strategy){
-		switch (strategy){
+	Filter routingStrategy(String strategy) {
+		switch (strategy) {
 			case ROUND_ROBIN:
 				filter = new RoundRobinFilter()
 				break
@@ -95,8 +111,9 @@ class ReactorBuilder implements Supplier<Reactor> {
 			case FIRST:
 				filter = new FirstFilter()
 				break
+			case PUB_SUB:
 			default:
-				filter = new PassThroughFilter()
+				filter = DEFAULT_FILTER
 		}
 	}
 
@@ -133,6 +150,26 @@ class ReactorBuilder implements Supplier<Reactor> {
 		this
 	}
 
+	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream) Closure<Stream> closure) {
+		stream(null, closure)
+	}
+
+	void stream(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
+		stream(null, head, tail)
+	}
+
+	void stream(Selector selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+			value = Stream) Closure<Stream> closure) {
+		Deferred<Event<?>, Stream<Event<?>>> head = Streams.<Event<?>> defer().get()
+		Stream newTail = DSLUtils.delegateFirstAndRun(head.compose(), closure)
+		stream selector, head, newTail
+	}
+
+
+	void stream(Selector selector, Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
+		streams << new HeadAndTail(head, tail, selector)
+	}
+
 	@Override
 	Reactor get() {
 		if (reactor)
@@ -142,11 +179,42 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (converter) {
 			spec.converters(converter)
 		}
-		if (filter) {
-			spec.eventFilter(filter)
-		}
 		if (router) {
 			spec.eventRouter(router)
+		} else if (streams) {
+			Deferred<Event<?>, Stream<Event<?>>> deferred = null
+			Stream<Event<?>> tail = null
+			HeadAndTail stream
+			Iterator<HeadAndTail> it = streams.iterator()
+			boolean first = true
+
+			while (it.hasNext()) {
+				stream = it.next()
+				if (first) {
+					first = false
+					deferred = stream.head
+					tail = stream.tail
+					continue
+				}
+				tail.clearCallbackTrigger()
+				if (stream.selector) {
+					tail.filter(new EventRouterPredicate(stream.selector), stream.tail).consume(stream.head.compose())
+				} else {
+					tail.consume(stream.head.compose())
+				}
+				tail = stream.tail.callback()
+			}
+
+			spec.eventRouter(new StreamEventRouter(filter,
+					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), deferred))
+
+		} else {
+			if (filter) {
+				spec.eventFilter(filter)
+			}
+			if (consumerInvoker) {
+				spec.consumerInvoker(consumerInvoker)
+			}
 		}
 		if (linked) {
 			spec.link(linked.get())
@@ -174,7 +242,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		reactor
 	}
 
-	void copyConsumersFrom(ReactorBuilder from) {
+	void addConsumersFrom(ReactorBuilder from) {
 		Map<Selector, List<Consumer>> fromConsumers = from.consumers
 		Map.Entry<Selector, List<Consumer>> consumerEntry
 
@@ -210,14 +278,47 @@ class ReactorBuilder implements Supplier<Reactor> {
 		builder
 	}
 
+	@CompileStatic
+	private final class EventRouterPredicate extends Predicate<Event<?>> {
+		final Selector sel
+
+		EventRouterPredicate(Selector sel) {
+			this.sel = sel
+		}
+
+		@Override
+		boolean test(Event<?> event) {
+			println 'predicate:' + event.headers.asMap() + ' -' + event
+			sel.matches(event.headers.get(StreamEventRouter.KEY_HEADER))
+		}
+	}
+
+	@CompileStatic
+	final class HeadAndTail implements Comparable<HeadAndTail> {
+		final Deferred<Event<?>, Stream<Event<?>>> head
+		final Stream<Event<?>> tail
+		final Selector selector
+
+		HeadAndTail(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail, Selector selector) {
+			this.head = head
+			this.tail = tail
+			this.selector = selector
+		}
+
+		@Override
+		int compareTo(HeadAndTail o) {
+			selector ? 1 : 0
+		}
+	}
+
+	@CompileStatic
 	final class NestedReactorBuilder extends ReactorBuilder {
 
 		NestedReactorBuilder(String reactorName, ReactorBuilder parent, Reactor reactor) {
 			super(reactorName, parent.reactorMap, reactor)
+			rehydrate parent
+
 			env = parent.env
-			converter = parent.converter
-			dispatcher = parent.dispatcher
-			filter = parent.filter
 			linked = parent.linked
 			consumers.putAll(parent.consumers)
 		}

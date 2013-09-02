@@ -77,6 +77,7 @@ class GroovyConfigurationSpec extends Specification {
 			groovySystem['test2'].dispatcher == groovySystem.dispatcher('testDispatcher')
 			res
 	}
+
 	def "GroovyEnvironment filters per extension"() {
 		when:
 			"Building a simple dispatcher"
@@ -85,4 +86,25 @@ class GroovyConfigurationSpec extends Specification {
 		then:
 			groovySystem.reactorBuildersByExtension('a').size() == 2
 	}
+
+	def "GroovyEnvironment intercept with Stream properly"() {
+		when:
+			"Building a simple dispatcher"
+			GroovyEnvironment groovySystem = StaticConfiguration.test5()
+			def res = null
+			groovySystem['test1'].send('test', 'test') {
+				res = it
+			}
+		then:
+			groovySystem['test1'].dispatcher instanceof SynchronousDispatcher
+			res
+		when:
+			res = null
+			groovySystem['test1'].send('test', 'test') {
+				res = it
+			}
+		then:
+			res
+	}
+
 }

@@ -18,7 +18,10 @@ package reactor.groovy
 import groovy.transform.CompileStatic
 import reactor.core.configuration.DispatcherType
 import reactor.event.dispatch.SynchronousDispatcher
+import reactor.function.Function
 import reactor.groovy.config.GroovyEnvironment
+import reactor.event.Event
+import static reactor.event.selector.Selectors.*
 
 @CompileStatic
 class StaticConfiguration {
@@ -39,7 +42,6 @@ class StaticConfiguration {
 		GroovyEnvironment.create {
 			reactor('test1') {
 				on('test') {
-					println it
 				}
 
 				reactor('child_test1') {
@@ -91,6 +93,37 @@ class StaticConfiguration {
 			}
 			reactor('test2') {
 				dispatcher 'testDispatcher'
+			}
+		}
+	}
+
+	static GroovyEnvironment test5() {
+		GroovyEnvironment.create {
+			environment {
+				defaultDispatcher = 'testDispatcher'
+				dispatcher 'testDispatcher', new SynchronousDispatcher()
+			}
+
+			reactor('test1') {
+				stream{
+					map({ Event<?> ev->
+						ev.copy('intercepted')
+					} as Function)
+				}
+				stream(object('test')){
+					map({ Event<?> ev->
+						ev.copy("$ev.data again")
+					} as Function)
+				}
+				on('test') {
+					println 'test-on:'+it
+					reply it
+				}
+				on('test2') {
+					println 'test2-on:'+it
+					reply it
+				}
+
 			}
 		}
 	}
