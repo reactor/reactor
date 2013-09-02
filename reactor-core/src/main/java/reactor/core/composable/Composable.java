@@ -367,7 +367,7 @@ public abstract class Composable<T> {
 	}
 
 	/**
-	 * Get the parent {@link Composable} for end callback.
+	 * Get the parent {@link Composable} for callback callback.
 	 *
 	 * @return
 	 */

@@ -22,7 +22,6 @@ import reactor.core.composable.Stream
 import reactor.function.Function
 import reactor.core.Observable
 import reactor.tuple.Tuple2
-import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -299,7 +298,7 @@ class StreamsSpec extends Specification {
     given:
       'a source composable with a mapping function'
       Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
-      Stream s = source.compose().map(function { it * 2 }).end()
+      Stream s = source.compose().map(function { it * 2 }).callback()
 
     when:
       'the source accepts a value and a callback'
@@ -311,9 +310,9 @@ class StreamsSpec extends Specification {
       res == 3
 
     when:
-      'Stream have more than 1 end()'
+      'Stream have more than 1 callbackTrigger()'
 	    res = null
-      s.map(function{ it * 2}).end()
+      s.map(function{ it * 2}).callback()
       source.accept(1, consumer {res = it})
 
     then:

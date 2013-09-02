@@ -69,7 +69,7 @@ public class Stream<T> extends Composable<T> {
 	private final Tuple2<Selector, Object> last  = Selectors.$();
 	private final int                              batchSize;
 	private final Iterable<T>                      values;
-	private       Registration<Consumer<Event<T>>> end;
+	private       Registration<Consumer<Event<T>>> callbackTrigger;
 
 	/**
 	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
@@ -146,10 +146,9 @@ public class Stream<T> extends Composable<T> {
 	}
 
 
-
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p) {
-		return (Stream<T>)super.filter(p);
+		return (Stream<T>) super.filter(p);
 	}
 
 	/**
@@ -345,23 +344,23 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @return {@literal this}
 	 */
-	public Stream<T> end() {
-		if(this.end != null) {
+	public Stream<T> callback() {
+		if(this.callbackTrigger != null) {
 			return this;
 		}
 
 		Stream cursor = (Stream)getParent();
 		boolean found = false;
 		while (cursor != null && !found) {
-			if (cursor.end != null){
-				cursor.end.cancel();
-				cursor.end = null;
+			if (cursor.callbackTrigger != null){
+				cursor.callbackTrigger.cancel();
+				cursor.callbackTrigger = null;
 				found = true;
 			}
 			cursor = (Stream)cursor.getParent();
 		}
 
-		this.end = getObservable().on(getAccept().getT1(), new Consumer<Event<T>>() {
+		this.callbackTrigger = getObservable().on(getAccept().getT1(), new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> event) {
 				if (event.getClass().equals(CallbackEvent.class)) {
@@ -373,22 +372,22 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	/**
-	 * Return the actual end callback registration, mainly to allow external components to interact with its state,
+	 * Return the actual callbackTrigger registration, mainly to allow external components to interact with its state,
 	 * like cancelling.
 	 *
 	 * @return registration
 	 */
-	public Registration<Consumer<Event<T>>> getEnd() {
-		return end;
+	public Registration<Consumer<Event<T>>> getCallbackTrigger() {
+		return callbackTrigger;
 	}
 
 	/**
 	 * Clear callback status
 	 */
-	public void clearEnd() {
-		if(end != null)
-			end.cancel();
-		end = null;
+	public void clearCallbackTrigger() {
+		if(callbackTrigger != null)
+			callbackTrigger.cancel();
+		callbackTrigger = null;
 	}
 
 	@Override
