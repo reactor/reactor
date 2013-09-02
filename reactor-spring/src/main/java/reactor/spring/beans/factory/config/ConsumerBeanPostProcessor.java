@@ -16,12 +16,6 @@
 
 package reactor.spring.beans.factory.config;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -36,22 +30,27 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.EvaluationException;
-import org.springframework.expression.Expression;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.format.support.DefaultFormattingConversionService;
-import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
+import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.core.Observable;
 import reactor.spring.annotation.ReplyTo;
 import reactor.spring.annotation.Selector;
 import reactor.util.StringUtils;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import static reactor.event.selector.Selectors.*;
 
 /**
  * @author Jon Brisbin
@@ -102,125 +101,32 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	@Override
 	public Object postProcessAfterInitialization(final Object bean,
 	                                             String beanName) throws BeansException {
-		Class<?> type = bean.getClass();
-		for (final Method method : findHandlerMethods(type, CONSUMER_METHOD_FILTER)) {
-			StandardEvaluationContext evalCtx = new StandardEvaluationContext();
-			evalCtx.setRootObject(bean);
-			evalCtx.setBeanResolver(beanResolver);
+		return initBean(bean, findHandlerMethods(bean.getClass(), CONSUMER_METHOD_FILTER));
+	}
 
-			Selector selectorAnno = method.getAnnotation(Selector.class);
-			ReplyTo replyToAnno = method.getAnnotation(ReplyTo.class);
+	public Object initBean(final Object bean, final Set<Method> methods) {
+		if (methods == null || methods.isEmpty())
+			return bean;
 
-			final Observable reactor = (Observable) expressionParser.parseExpression(selectorAnno.reactor()).getValue(evalCtx);
-			Assert.notNull(reactor, "Reactor cannot be null");
+		Consumer consumer;
+		Observable reactor;
+		Selector selectorAnno;
+		ReplyTo replyToAnno;
+		reactor.event.selector.Selector selector;
 
-			reactor.event.selector.Selector selector = null;
-			if (StringUtils.hasText(selectorAnno.value())) {
-				try {
-					switch (selectorAnno.type()) {
-						case OBJECT: {
-							Expression selectorExpr = expressionParser.parseExpression(selectorAnno.value());
-							Object selObj = selectorExpr.getValue(evalCtx);
-							selector = Selectors.object(selObj);
-							break;
-						}
-						case REGEX: {
-							selector = Selectors.regex(selectorAnno.value());
-							break;
-						}
-						case URI: {
-							selector = Selectors.uri(selectorAnno.value());
-							break;
-						}
-						case TYPE: {
-							try {
-								selector = Selectors.type(Class.forName(selectorAnno.value()));
-							} catch (ClassNotFoundException e) {
-								throw new IllegalArgumentException(e.getMessage(), e);
-							}
-							break;
-						}
-					}
-				} catch (EvaluationException e) {
-					if (LOG.isTraceEnabled()) {
-						LOG.trace("Creating ObjectSelector for '" + selectorAnno.value() + "' due to " + e.getMessage(), e);
-					}
-					selector = Selectors.object(selectorAnno.value());
-				}
-			}
+		for (final Method method : methods) {
+			//scanAnnotation method
+			selectorAnno = AnnotationUtils.findAnnotation(method, Selector.class);
+			replyToAnno = AnnotationUtils.findAnnotation(method, ReplyTo.class);
+			reactor = fetchObservable(selectorAnno, bean);
+			selector = fetchSelector(selectorAnno, bean, method);
 
-			final Function<Event<Object>, Object> handler = new Function<Event<Object>, Object>() {
-				Class<?>[] argTypes = method.getParameterTypes();
-
-				@Override
-				public Object apply(Event<Object> ev) {
-					if (argTypes.length == 0) {
-						if (LOG.isDebugEnabled()) {
-							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
-						}
-						return ReflectionUtils.invokeMethod(method, bean);
-					}
-
-					if (argTypes.length > 1) {
-						// TODO: handle more than one parameter
-						throw new IllegalStateException("Multiple parameters not yet supported.");
-					}
-
-					if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
-						if (LOG.isDebugEnabled()) {
-							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev.getData());
-						}
-						return ReflectionUtils.invokeMethod(method, bean, ev.getData());
-					}
-
-					if (!argTypes[0].isAssignableFrom(ev.getClass())
-							&& conversionService.canConvert(ev.getClass(), argTypes[0])) {
-						ReflectionUtils.invokeMethod(method, bean, conversionService.convert(ev, argTypes[0]));
-					}
-
-					if (conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
-						Object convertedObj = conversionService.convert(ev.getData(), argTypes[0]);
-						if (LOG.isDebugEnabled()) {
-							LOG.debug("Invoking method[" + method + "] on " + bean + " using " + convertedObj);
-						}
-						return ReflectionUtils.invokeMethod(method, bean, convertedObj);
-					}
-
-					throw new IllegalArgumentException("Cannot invoke method " + method + " passing parameter " + ev.getData());
-				}
-			};
-
-			Consumer<Event<Object>> consumer;
-			if (null != replyToAnno) {
-				String replyTo = replyToAnno.value();
-				Expression replyToExpr = expressionParser.parseExpression(replyTo);
-				Object replyToObj = null;
-				if (StringUtils.hasText(replyTo)) {
-					try {
-						replyToObj = replyToExpr.getValue(evalCtx);
-					} catch (EvaluationException ignored) {
-						replyToObj = replyTo;
-					}
-				}
-
-				final Object replyToKey = replyToObj;
-				consumer = new Consumer<Event<Object>>() {
-					@Override
-					public void accept(Event<Object> ev) {
-						Object result = handler.apply(ev);
-						Object _replyToKey = null == replyToKey ? ev.getReplyTo() : replyToKey;
-						if (null != _replyToKey)
-							reactor.notify(_replyToKey, Event.wrap(result));
-					}
-				};
-			} else {
-				consumer = new Consumer<Event<Object>>() {
-					@Override
-					public void accept(Event<Object> ev) {
-						handler.apply(ev);
-					}
-				};
-			}
+			//register [replyTo]consumer
+			Object replyTo = replyToAnno != null ? parseReplyTo(replyToAnno, bean) : null;
+			Invoker handler = new Invoker(method, bean);
+			consumer = null != replyToAnno ?
+					new ReplyToServiceConsumer(reactor, replyTo, handler) :
+					new ServiceConsumer(handler);
 
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Attaching Consumer to Reactor[" + reactor + "] using Selector[" + selector + "]");
@@ -233,6 +139,154 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 			}
 		}
 		return bean;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T expression(String selector, Object bean) {
+		if (selector == null)
+			return null;
+
+		StandardEvaluationContext evalCtx = new StandardEvaluationContext();
+		evalCtx.setRootObject(bean);
+		evalCtx.setBeanResolver(beanResolver);
+
+		return (T) expressionParser.parseExpression(selector).getValue(evalCtx);
+	}
+
+	protected Observable fetchObservable(Selector selectorAnno, Object bean) {
+		return expression(selectorAnno.reactor(), bean);
+	}
+
+	protected Object parseSelector(Selector selector, Object bean, Method method) {
+		if (!StringUtils.hasText(selector.value())) {
+			return method.getName();
+		}
+
+		try {
+			return expression(selector.value(), bean);
+		} catch (EvaluationException ee) {
+			return selector.value();
+		}
+
+	}
+
+	protected Object parseReplyTo(ReplyTo selector, Object bean) {
+		if (!StringUtils.hasText(selector.value())) {
+			return null;
+		}
+		try {
+			return expression(selector.value(), bean);
+		} catch (EvaluationException ee) {
+			return selector.value();
+		}
+	}
+
+	protected reactor.event.selector.Selector fetchSelector(Selector selectorAnno, Object bean, Method method) {
+		Object sel = parseSelector(selectorAnno, bean, method);
+		try {
+			switch (selectorAnno.type()) {
+				case OBJECT:
+					return object(sel);
+				case REGEX:
+					return regex(sel.toString());
+				case URI:
+					return uri(sel.toString());
+				case TYPE:
+					try {
+						return type(Class.forName(sel.toString()));
+					} catch (ClassNotFoundException e) {
+						throw new IllegalArgumentException(e.getMessage(), e);
+					}
+			}
+		} catch (EvaluationException e) {
+			if (LOG.isTraceEnabled()) {
+				LOG.trace("Creating ObjectSelector for '" + sel + "' due to " + e.getMessage(), e);
+			}
+		}
+		return object(sel);
+	}
+
+	private final static class ReplyToServiceConsumer implements Consumer<Event> {
+
+		final private Observable reactor;
+		final private Object     replyToKey;
+		final private Invoker    handler;
+
+		ReplyToServiceConsumer(Observable reactor, Object replyToKey, Invoker handler) {
+			this.reactor = reactor;
+			this.replyToKey = replyToKey;
+			this.handler = handler;
+		}
+
+		@Override
+		public void accept(Event ev) {
+			Object result = handler.apply(ev);
+			Object _replyToKey = replyToKey != null ? replyToKey : ev.getReplyTo();
+			if (_replyToKey != null)
+				reactor.notify(_replyToKey, Event.wrap(result));
+		}
+	}
+
+	private final static class ServiceConsumer implements Consumer<Event> {
+		final private Invoker handler;
+
+		ServiceConsumer(Invoker handler) {
+			this.handler = handler;
+		}
+
+		@Override
+		public void accept(Event ev) {
+			handler.apply(ev);
+		}
+	}
+
+	private final class Invoker implements Function<Event, Object> {
+
+		final private Method     method;
+		final private Object     bean;
+		final private Class<?>[] argTypes;
+
+		Invoker(Method method, Object bean) {
+			this.method = method;
+			this.bean = bean;
+			this.argTypes = method.getParameterTypes();
+		}
+
+		@Override
+		public Object apply(Event ev) {
+			if (argTypes.length == 0) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
+				}
+				return ReflectionUtils.invokeMethod(method, bean);
+			}
+
+			if (argTypes.length > 1) {
+				throw new IllegalStateException("Multiple parameters not yet supported.");
+			}
+
+			if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev.getData());
+				}
+				return ReflectionUtils.invokeMethod(method, bean, ev.getData());
+			}
+
+			if (!argTypes[0].isAssignableFrom(ev.getClass())
+					&& conversionService.canConvert(ev.getClass(), argTypes[0])) {
+				ReflectionUtils.invokeMethod(method, bean, conversionService.convert(ev, argTypes[0]));
+			}
+
+			if (conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
+				Object convertedObj = conversionService.convert(ev.getData(), argTypes[0]);
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + convertedObj);
+				}
+				return ReflectionUtils.invokeMethod(method, bean, convertedObj);
+			}
+
+			throw new IllegalArgumentException("Cannot invoke method " + method + " passing parameter " + ev.getData());
+		}
 	}
 
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
