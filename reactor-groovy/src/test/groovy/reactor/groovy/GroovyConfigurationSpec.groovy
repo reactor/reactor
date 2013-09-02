@@ -97,14 +97,14 @@ class GroovyConfigurationSpec extends Specification {
 			}
 		then:
 			groovySystem['test1'].dispatcher instanceof SynchronousDispatcher
-			res
+			res == 'intercepted twice'
 		when:
 			res = null
 			groovySystem['test1'].send('test', 'test') {
 				res = it
 			}
 		then:
-			res
+			res == 'intercepted'
 	}
 
 }

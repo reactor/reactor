@@ -112,7 +112,7 @@ class StaticConfiguration {
 				}
 				stream(object('test')){
 					map({ Event<?> ev->
-						println 'test-map-test:'+ev
+						ev.copy("$ev.data twice")
 					} as Function)
 				}
 				on('test') {
