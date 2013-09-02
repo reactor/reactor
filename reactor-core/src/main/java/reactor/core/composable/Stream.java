@@ -28,8 +28,10 @@ import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.event.support.CallbackEvent;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -65,8 +67,9 @@ public class Stream<T> extends Composable<T> {
 
 	private final Tuple2<Selector, Object> first = Selectors.$();
 	private final Tuple2<Selector, Object> last  = Selectors.$();
-	private final int         batchSize;
-	private final Iterable<T> values;
+	private final int                              batchSize;
+	private final Iterable<T>                      values;
+	private       Registration<Consumer<Event<T>>> end;
 
 	/**
 	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
@@ -100,11 +103,12 @@ public class Stream<T> extends Composable<T> {
 		this.values = values;
 
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
-			@Override public void accept(Event<Void> ev) {
-				if(null == Stream.this.values) {
+			@Override
+			public void accept(Event<Void> ev) {
+				if (null == Stream.this.values) {
 					return;
 				}
-				for(T val : Stream.this.values) {
+				for (T val : Stream.this.values) {
 					Stream.this.notifyValue(val);
 				}
 			}
@@ -113,33 +117,35 @@ public class Stream<T> extends Composable<T> {
 
 	@Override
 	public Stream<T> consume(@Nonnull Consumer<T> consumer) {
-		return (Stream<T>)super.consume(consumer);
+		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Composable<T> consumer) {
-		return (Stream<T>)super.consume(consumer);
+		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		return (Stream<T>)super.consume(key, observable);
+		return (Stream<T>) super.consume(key, observable);
 	}
 
 	@Override
 	public Stream<T> flush() {
-		return (Stream<T>)super.flush();
+		return (Stream<T>) super.flush();
 	}
 
 	@Override
 	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		return (Stream<T>)super.when(exceptionType, onError);
+		return (Stream<T>) super.when(exceptionType, onError);
 	}
 
 	@Override
 	public <V> Stream<V> map(@Nonnull Function<T, V> fn) {
-		return (Stream<V>)super.map(fn);
+		return (Stream<V>) super.map(fn);
 	}
+
+
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p) {
@@ -228,15 +234,15 @@ public class Stream<T> extends Composable<T> {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 		final List<T> values = new ArrayList<T>();
 
-		consume(new Consumer<T>() {
+		consumeEvent(new Consumer<Event<T>>() {
 			@Override
-			public void accept(T value) {
+			public void accept(Event<T> value) {
 				synchronized(values) {
-					values.add(value);
+					values.add(value.getData());
 					if(values.size() % batchSize != 0) {
 						return;
 					}
-					d.accept(new ArrayList<T>(values));
+					d.acceptEvent(value.copy((List<T>)new ArrayList<T>(values)));
 					values.clear();
 				}
 			}
@@ -297,21 +303,21 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
 
-		consume(new Consumer<T>() {
+		consumeEvent(new Consumer<Event<T>>() {
 			private final AtomicLong count = new AtomicLong(0);
 			private A acc;
 
 			@Override
-			public void accept(T value) {
+			public void accept(Event<T> value) {
 				if(null == acc) {
 					acc = (null != accumulators ? accumulators.get() : null);
 				}
-				acc = fn.apply(Tuple.of(value, acc));
+				acc = fn.apply(Tuple.of(value.getData(), acc));
 
 				if(isBatch() && count.incrementAndGet() % batchSize == 0) {
-					d.accept(acc);
+					d.acceptEvent(value.copy(acc));
 				} else if(!isBatch()) {
-					d.accept(acc);
+					d.acceptEvent(value.copy(acc));
 				}
 			}
 		});
@@ -331,6 +337,58 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
 		return reduce(fn, (Supplier<A>)null);
+	}
+
+	/**
+	 * Attach a {@link Consumer<  reactor.event.support.CallbackEvent  >} to this {@code Composable} that will
+	 * consume any values accepted by this {@code Composable}. ConsumerEvent callbacks will be called.
+	 *
+	 * @return {@literal this}
+	 */
+	public Stream<T> end() {
+		if(this.end != null) {
+			return this;
+		}
+
+		Stream cursor = (Stream)getParent();
+		boolean found = false;
+		while (cursor != null && !found) {
+			if (cursor.end != null){
+				cursor.end.cancel();
+				cursor.end = null;
+				found = true;
+			}
+			cursor = (Stream)cursor.getParent();
+		}
+
+		this.end = getObservable().on(getAccept().getT1(), new Consumer<Event<T>>() {
+			@Override
+			public void accept(Event<T> event) {
+				if (event.getClass().equals(CallbackEvent.class)) {
+					((CallbackEvent<T>) event).callback();
+				}
+			}
+		});
+		return this;
+	}
+
+	/**
+	 * Return the actual end callback registration, mainly to allow external components to interact with its state,
+	 * like cancelling.
+	 *
+	 * @return registration
+	 */
+	public Registration<Consumer<Event<T>>> getEnd() {
+		return end;
+	}
+
+	/**
+	 * Clear callback status
+	 */
+	public void clearEnd() {
+		if(end != null)
+			end.cancel();
+		end = null;
 	}
 
 	@Override

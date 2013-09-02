@@ -314,10 +314,19 @@ public class Reactor implements Observable, Linkable<Observable> {
 	public static class ReplyToEvent<T> extends Event<T> {
 		private final Observable replyToObservable;
 
-		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
-			super(delegate.getHeaders(), delegate.getData());
-			setReplyTo(delegate.getReplyTo());
+		@Override
+		public <X> Event<X> copy(X data) {
+				return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable);
+		}
+
+		private ReplyToEvent(Headers headers, T data, Object replyTo, Observable replyToObservable) {
+			super(headers, data);
+			setReplyTo(replyTo);
 			this.replyToObservable = replyToObservable;
+		}
+
+		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
+			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable);
 		}
 
 		public Observable getReplyToObservable() {

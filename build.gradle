@@ -191,7 +191,7 @@ project('reactor-groovy') {
 	dependencies {
 		compile project(':reactor-core')
 
-		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
+		compile "org.codehaus.groovy:groovy-all:$groovyVersion", optional
 	}
 }
 

@@ -16,6 +16,8 @@
 
 package reactor.core.composable;
 
+import reactor.event.Event;
+import reactor.event.support.CallbackEvent;
 import reactor.function.Consumer;
 
 /**
@@ -65,7 +67,27 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 */
 	@Override
 	public void accept(T value) {
+		composable.notifyValue(Event.wrap(value));
+	}
+	/**
+	 * Accepts the given {@code value} such that is can be consumed by the underlying
+	 * {@code Composable}.
+	 *
+	 * @param value The value to accept
+	 */
+	public void acceptEvent(Event<T> value) {
 		composable.notifyValue(value);
+	}
+
+	/**
+	 * Accepts the given {@code value} such that is can be consumed by the underlying
+	 * {@code Composable}.
+	 *
+	 * @param value The value to accept
+	 * @param callback the callback
+	 */
+	public void accept(T value, Consumer<Object> callback) {
+		composable.notifyValue(new CallbackEvent<T>(value, callback));
 	}
 
 	/**

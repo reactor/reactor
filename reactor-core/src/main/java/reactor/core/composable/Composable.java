@@ -16,10 +16,6 @@
 
 package reactor.core.composable;
 
-import java.util.concurrent.locks.ReentrantLock;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.core.support.NotifyConsumer;
@@ -33,6 +29,10 @@ import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Abstract base class for components designed to provide a succinct API for working with future values. Provides base
@@ -54,8 +54,8 @@ public abstract class Composable<T> {
 	private final Tuple2<Selector, Object> accept = Selectors.$();
 	private final Tuple2<Selector, Object> flush  = Selectors.$();
 
-	private final Observable    events;
-	private final Composable<?> parent;
+	private final Observable             events;
+	private final Composable<?>          parent;
 
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
@@ -65,7 +65,7 @@ public abstract class Composable<T> {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.events = new Reactor(dispatcher);
 		this.parent = parent;
-		if(parent != null) {
+		if (parent != null) {
 			parent.cascadeErrors(this);
 		}
 	}
@@ -80,12 +80,12 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
-		this.events.on(accept.getT1(), new EventConsumer<T>(new Consumer<T>() {
+		consumeEvent(new Consumer<Event<T>>() {
 			@Override
-			public void accept(T event) {
+			public void accept(Event<T> event) {
 				composable.notifyValue(event);
 			}
-		}));
+		});
 		cascadeErrors(composable);
 		return this;
 	}
@@ -101,6 +101,20 @@ public abstract class Composable<T> {
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
 		this.events.on(accept.getT1(), new EventConsumer<T>(consumer));
+		return this;
+	}
+
+	/**
+	 * Attach a {@link Consumer<Event>} to this {@code Composable} that will consume any values accepted by this {@code
+	 * Composable}.
+	 *
+	 * @param consumer
+	 * 		the conumer to invoke on each value
+	 *
+	 * @return {@literal this}
+	 */
+	protected Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
+		this.events.on(accept.getT1(), consumer);
 		return this;
 	}
 
@@ -150,13 +164,13 @@ public abstract class Composable<T> {
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		consume(new Consumer<T>() {
+		consumeEvent(new Consumer<Event<T>>() {
 			@Override
-			public void accept(T value) {
+			public void accept(Event<T> value) {
 				try {
-					V val = fn.apply(value);
-					d.accept(val);
-				} catch(Throwable e) {
+					V val = fn.apply(value.getData());
+					d.acceptEvent(value.copy(val));
+				} catch (Throwable e) {
 					d.accept(e);
 				}
 			}
@@ -175,14 +189,33 @@ public abstract class Composable<T> {
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
+		return filter(p, null);
+	}
+
+	/**
+	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
+	 * passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the new {@code
+	 * Composable}.
+	 *
+	 * @param p
+	 * 		the {@link Predicate} to test values against
+	 * @param elseComposable
+	 * 		the optional {@link reactor.core.composable.Composable} to pass rejected values
+	 *
+	 * @return a new {@code Composable} containing only values that pass the predicate test
+	 */
+	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		consume(new Consumer<T>() {
+		consumeEvent(new Consumer<Event<T>>() {
 			@Override
-			public void accept(T value) {
-				boolean b = p.test(value);
-				if(b) {
-					d.accept(value);
+			public void accept(Event<T> value) {
+				boolean b = p.test(value.getData());
+				if (b) {
+					d.acceptEvent(value);
 				} else {
+					if(null != elseComposable){
+						elseComposable.notifyValue(value);
+					}
 					// GH-154: Verbose error level logging of every event filtered out by a Stream filter
 					// Fix: ignore Predicate failures and drop values rather than notifying of errors.
 					//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
@@ -240,14 +273,18 @@ public abstract class Composable<T> {
 	 * 		the value to accept
 	 */
 	void notifyValue(T value) {
+		notifyValue(Event.wrap(value));
+	}
+
+	void notifyValue(Event<T> value) {
 		lock.lock();
 		try {
 			acceptCount++;
-			valueAccepted(value);
+			valueAccepted(value.getData());
 		} finally {
 			lock.unlock();
 		}
-		events.notify(accept.getT2(), Event.wrap(value));
+		events.notify(accept.getT2(), value);
 	}
 
 	/**
@@ -327,6 +364,15 @@ public abstract class Composable<T> {
 	 */
 	protected Tuple2<Selector, Object> getAccept() {
 		return this.accept;
+	}
+
+	/**
+	 * Get the parent {@link Composable} for end callback.
+	 *
+	 * @return
+	 */
+	protected Composable<?> getParent() {
+		return this.parent;
 	}
 
 	/**

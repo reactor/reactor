@@ -295,6 +295,32 @@ class StreamsSpec extends Specification {
       value.get() == 2
   }
 
+  def "A Stream's values can be listening for a producer-defined callback"() {
+    given:
+      'a source composable with a mapping function'
+      Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
+      Stream s = source.compose().map(function { it * 2 }).end()
+
+    when:
+      'the source accepts a value and a callback'
+      def res
+      source.accept(1, consumer {res = it+1})
+
+    then:
+      'the callback is called'
+      res == 3
+
+    when:
+      'Stream have more than 1 end()'
+	    res = null
+      s.map(function{ it * 2}).end()
+      source.accept(1, consumer {res = it})
+
+    then:
+      'the callback is only called once'
+      res == 4
+  }
+
   def "A Stream's values can be filtered"() {
     given:
       'a source composable with a filter that rejects odd values'
@@ -317,6 +343,17 @@ class StreamsSpec extends Specification {
     then:
       'it is blocked by the filter'
       value.get() == 2
+
+    when:
+      'add a rejected stream'
+	    Deferred rejectedSource = Streams.<Integer>defer().get()
+	    def rejectedTap = rejectedSource.compose().tap()
+	    filtered.filter(predicate { false }, rejectedSource.compose())
+	    source.accept(2)
+
+    then:
+      'it is rejected by the filter'
+	    rejectedTap.get() == 2
   }
 
   def "When a mapping function throws an exception, the mapped composable accepts the error"() {
