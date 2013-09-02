@@ -12,13 +12,13 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  */
 public class CallbackEvent<T> extends Event<T>{
-	final Consumer<Object> callback;
+	final Consumer callback;
 
-	public CallbackEvent(T data, Consumer<Object> callback) {
+	public CallbackEvent(T data, Consumer callback) {
 		this(null, data, callback);
 	}
 
-	public CallbackEvent(Headers headers, T data, Consumer<Object> callback) {
+	public CallbackEvent(Headers headers, T data, Consumer callback) {
 		super(headers, data);
 		this.callback = callback;
 	}
@@ -35,6 +35,7 @@ public class CallbackEvent<T> extends Event<T>{
 	/**
 	 * Trigger callback with current payload
 	 */
+	@SuppressWarnings("unchecked")
 	public void callback(){
 		if(null != callback){
 			callback.accept(getData());
