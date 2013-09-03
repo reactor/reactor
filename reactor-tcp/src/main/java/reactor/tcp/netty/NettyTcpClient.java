@@ -196,9 +196,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				}
 			});
 			if (latch.await(30, TimeUnit.SECONDS)) {
-				for (Registration<? extends TcpConnection<IN, OUT>> reg : connections) {
-					reg.getObject().close();
-				}
 				d.accept((Void) null);
 			} else {
 				d.accept(new TimeoutException("NettyTcpClient could not close connection after 30 seconds"));
