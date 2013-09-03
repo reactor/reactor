@@ -19,16 +19,19 @@ public class CallbackEvent<T> extends Event<T>{
 	}
 
 	public CallbackEvent(Headers headers, T data, Consumer callback) {
-		super(headers, data);
+		this(headers, data, callback, null);
+	}
+	public CallbackEvent(Headers headers, T data, Consumer callback, Consumer<Throwable> throwableConsumer) {
+		super(headers, data, throwableConsumer);
 		this.callback = callback;
 	}
 
 	@Override
 	public <X> Event<X> copy(X data) {
 		if (null != getReplyTo())
-			return new CallbackEvent<X>(getHeaders(), data, callback).setReplyTo(getReplyTo());
+			return new CallbackEvent<X>(getHeaders(), data, callback, getErrorConsumer()).setReplyTo(getReplyTo());
 		else
-			return new CallbackEvent<X>(getHeaders(), data, callback);
+			return new CallbackEvent<X>(getHeaders(), data, callback, getErrorConsumer());
 	}
 
 

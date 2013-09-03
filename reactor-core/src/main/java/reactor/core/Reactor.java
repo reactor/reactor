@@ -316,17 +316,20 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 		@Override
 		public <X> Event<X> copy(X data) {
-				return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable);
+				return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
 		}
 
-		private ReplyToEvent(Headers headers, T data, Object replyTo, Observable replyToObservable) {
-			super(headers, data);
+		private ReplyToEvent(Headers headers, T data, Object replyTo,
+		                     Observable replyToObservable,
+		                     Consumer<Throwable> errorConsumer) {
+			super(headers, data, errorConsumer);
 			setReplyTo(replyTo);
 			this.replyToObservable = replyToObservable;
 		}
 
 		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
-			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable);
+			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable,
+					delegate.getErrorConsumer());
 		}
 
 		public Observable getReplyToObservable() {
