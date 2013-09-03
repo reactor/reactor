@@ -171,7 +171,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	}
 
 	protected Object parseReplyTo(ReplyTo selector, Object bean) {
-		if (!StringUtils.hasText(selector.value())) {
+		if (StringUtils.isEmpty(selector.value())) {
 			return null;
 		}
 		try {
