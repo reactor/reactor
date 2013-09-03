@@ -65,7 +65,9 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 				try {
 					invokeConsumer(key, event, consumer);
 				} catch (Throwable t) {
-					if (null != errorConsumer) {
+					if(null != event.getErrorConsumer()){
+						event.consumeError(t);
+					} else if (null != errorConsumer) {
 						errorConsumer.accept(t);
 					} else {
 						logger.error("Event routing failed for {}: {}", consumer.getObject(), t.getMessage(), t);

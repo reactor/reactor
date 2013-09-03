@@ -491,6 +491,38 @@ class ReactorsSpec extends Specification {
 
   }
 
+  def "A Producer can override consumer for errors"() {
+
+    given:
+      "a synchronous Reactor"
+      def r = Reactors.reactor().synchronousDispatcher().get()
+
+    when:
+      "an error consumer is registered"
+      def latch = new CountDownLatch(1)
+      def e = null
+      def x
+      r.on(T(Exception),
+           consumer { x = false}
+           as Consumer<Exception>
+      )
+
+    and:
+      "a normal consumer that rise exceptions"
+      r.on(consumer { throw new Exception('bad') })
+
+    and:
+      "the consumer is invoked with an error consumer bound event"
+      r.notify(new Event(null,null, consumer{Exception ex -> e = ex; latch.countDown()}))
+
+    then:
+      "consumer has been invoked and e is an exception but x is not set"
+      latch.await(3, TimeUnit.SECONDS)
+      e && e instanceof Exception
+      !x
+
+  }
+
   def "A Reactor can run arbitrary consumer"() {
 
     given:

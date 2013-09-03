@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import reactor.function.Consumer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -50,6 +51,8 @@ public class Event<T> implements Serializable {
 	private volatile Object  replyTo;
 	private volatile T       data;
 
+	private final transient Consumer<Throwable> errorConsumer;
+
 	/**
 	 * Creates a new Event with the given {@code headers} and {@code data}.
 	 *
@@ -59,6 +62,21 @@ public class Event<T> implements Serializable {
 	public Event(Headers headers, T data) {
 		this.headers = headers;
 		this.data = data;
+		this.errorConsumer = null;
+	}
+
+	/**
+	 * Creates a new Event with the given {@code headers}, {@code data} and
+	 * {@link reactor.function.Consumer<java.lang.Throwable>}.
+	 *
+	 * @param headers The headers
+	 * @param data    The data
+	 * @param errorConsumer    error consumer callback
+	 */
+	public Event(Headers headers, T data, Consumer<Throwable> errorConsumer) {
+		this.headers = headers;
+		this.data = data;
+		this.errorConsumer = errorConsumer;
 	}
 
 	/**
@@ -69,6 +87,7 @@ public class Event<T> implements Serializable {
 	 */
 	public Event(T data) {
 		this.data = data;
+		this.errorConsumer = null;
 	}
 
 	/**
@@ -160,6 +179,15 @@ public class Event<T> implements Serializable {
 	}
 
 	/**
+	 * Get the internal error consumer callback being wrapped.
+	 *
+	 * @return the consumer.
+	 */
+	public Consumer<Throwable> getErrorConsumer() {
+		return errorConsumer;
+	}
+
+	/**
 	 * Create a copy of this event, reusing same headers, data and replyTo
 	 *
 	 * @return {@literal event copy}
@@ -175,10 +203,21 @@ public class Event<T> implements Serializable {
 	 */
 	public <E> Event<E> copy(E data) {
 		if (null != replyTo)
-			return new Event<E>(headers, data).setReplyTo(replyTo);
+			return new Event<E>(headers, data, errorConsumer).setReplyTo(replyTo);
 		else
-			return new Event<E>(headers, data);
+			return new Event<E>(headers, data, errorConsumer);
 	}
+
+	/**
+	 * Consumes error, using a producer defined callback
+	 *
+	 * @param throwable The error to consume
+	 */
+  public void consumeError(Throwable throwable){
+	  if(null != errorConsumer){
+		  errorConsumer.accept(throwable);
+	  }
+  }
 
 
 	@Override
