@@ -23,7 +23,7 @@ public class SslOptions {
 	private String sslProtocol                  = "TLS";
 
 	public String keystoreFile() {
-		return keystoreFile.getPath();
+		return (null != keystoreFile ? keystoreFile.getPath() : null);
 	}
 
 	public SslOptions keystoreFile(String keystoreFile) {
