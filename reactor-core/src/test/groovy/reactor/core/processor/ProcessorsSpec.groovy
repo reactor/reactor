@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Jon Brisbin
  */
-class ProcessorSpec extends Specification {
+class ProcessorsSpec extends Specification {
 
 	def "Processor provides high-speed event processor"() {
 
