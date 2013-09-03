@@ -28,8 +28,8 @@ import reactor.util.Assert;
 import java.util.List;
 
 /**
- * An {@link reactor.event.routing.EventRouter} that {@link Filter#filter filters} consumers before
- * routing events to them.
+ * An {@link reactor.event.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to
+ * them.
  *
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -41,16 +41,11 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	private final ConsumerInvoker consumerInvoker;
 
 	/**
-	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to
-	 * filter consumers.
+	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to filter consumers.
 	 *
-	 * @param filter
-	 * 		The filter to use. Must not be {@code null}.
-	 * @param consumerInvoker
-	 * 		Used to invoke consumers. Must not be {@code null}.
-	 *
-	 * @throws IllegalArgumentException
-	 * 		if {@code filter} or {@code consumerInvoker} is null.
+	 * @param filter          The filter to use. Must not be {@code null}.
+	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
+	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
 		Assert.notNull(filter, "filter must not be null");
@@ -62,43 +57,51 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 
 	@Override
 	public void route(Object key, Event<?> event,
-	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
-	                  Consumer<?> completionConsumer,
-	                  Consumer<Throwable> errorConsumer) {
-		try {
-			if (null != consumers) {
-				for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
+										List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+										Consumer<?> completionConsumer,
+										Consumer<Throwable> errorConsumer) {
+		if (null != consumers) {
+			for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
+				try {
 					invokeConsumer(key, event, consumer);
+				} catch (Throwable t) {
+					if (null != errorConsumer) {
+						errorConsumer.accept(t);
+					} else {
+						logger.error("Event routing failed for {}: {}", consumer.getObject(), t.getMessage(), t);
+					}
 				}
 			}
-			if (null != completionConsumer) {
+		}
+		if (null != completionConsumer) {
+			try {
 				consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
-			}
-		} catch(Exception e) {
-			if(null != errorConsumer) {
-				errorConsumer.accept(e);
-			} else {
-				logger.error("Event routing failed: {}", e.getMessage(), e);
+			} catch (Exception e) {
+				if (null != errorConsumer) {
+					errorConsumer.accept(e);
+				} else {
+					logger.error("Completion Consumer {} failed: {}", completionConsumer, e.getMessage(), e);
+				}
 			}
 		}
 	}
 
 	protected void invokeConsumer(Object key,
-	                              Event<?> event,
-	                              Registration<? extends Consumer<? extends Event<?>>> registeredConsumer)
-			throws Exception {
-		if(isRegistrationActive(registeredConsumer)) {
-			if(null != registeredConsumer.getSelector().getHeaderResolver()) {
-				event.getHeaders().setAll(registeredConsumer.getSelector().getHeaderResolver().resolve(key));
-			}
-			try {
-				consumerInvoker.invoke(registeredConsumer.getObject(), Void.TYPE, event);
-			} catch(CancelConsumerException cancel) {
-				registeredConsumer.cancel();
-			}
-			if(registeredConsumer.isCancelAfterUse()) {
-				registeredConsumer.cancel();
-			}
+																Event<?> event,
+																Registration<? extends Consumer<? extends Event<?>>> registeredConsumer) throws Exception {
+		if (!isRegistrationActive(registeredConsumer)) {
+			return;
+		}
+		if (null != registeredConsumer.getSelector().getHeaderResolver()) {
+			event.getHeaders().setAll(registeredConsumer.getSelector().getHeaderResolver().resolve(key));
+		}
+		try {
+			consumerInvoker.invoke(registeredConsumer.getObject(), Void.TYPE, event);
+		} catch (CancelConsumerException cancel) {
+			registeredConsumer.cancel();
+		}
+		if (registeredConsumer.isCancelAfterUse()) {
+			registeredConsumer.cancel();
 		}
 	}
 

@@ -152,7 +152,8 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the error consumer is invoked"
-		1 * errorConsumer.accept(_)
+		2 * errorConsumer.accept(_)
 		0 * consumerInvoker.invoke(completionConsumer, _, event)
 	}
+
 }
