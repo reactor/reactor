@@ -47,6 +47,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
 	private volatile SocketChannel     channel;
 	private volatile InetSocketAddress remoteAddress;
+	private volatile boolean           closing = false;
 
 	NettyTcpConnection(final Environment env,
 										 Codec<Buffer, IN, OUT> codec,
@@ -84,6 +85,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 	@Override
 	public void close() {
 		super.close();
+		closing = true;
 		try {
 			channel.close().await();
 		} catch (InterruptedException e) {
@@ -104,6 +106,10 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 	@Override
 	public InetSocketAddress remoteAddress() {
 		return remoteAddress;
+	}
+
+	boolean isClosing() {
+		return closing;
 	}
 
 	void notifyRead(Object obj) {

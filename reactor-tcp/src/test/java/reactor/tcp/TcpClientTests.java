@@ -52,6 +52,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -210,7 +211,7 @@ public class TcpClientTests {
 	}
 
 	@Test
-	public void smartReconnectWillReconnect() throws InterruptedException {
+	public void connectionWillRetryConnectionAttemptWhenItFails() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicLong totalDelay = new AtomicLong();
 
@@ -240,6 +241,33 @@ public class TcpClientTests {
 
 		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
+	}
+
+	@Test
+	public void connectionWillAttemptToReconnectWhenItIsDropped() throws InterruptedException, IOException {
+		final CountDownLatch connectionLatch = new CountDownLatch(1);
+		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
+		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+		.env(env)
+		.connect("localhost", ECHO_SERVER_PORT)
+		.get()
+		.open(new Reconnect() {
+			@Override
+			public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
+				reconnectionLatch.countDown();
+				return null;
+			}
+		}).consume(new Consumer<TcpConnection<Buffer, Buffer>>() {
+			@Override
+			public void accept(TcpConnection<Buffer, Buffer> connection) {
+				connectionLatch.countDown();
+			}
+		});
+
+		assertTrue(connectionLatch.await(30, TimeUnit.SECONDS));
+		echoServer.close();
+
+		assertTrue(reconnectionLatch.await(30, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -349,6 +377,7 @@ public class TcpClientTests {
 	private static final class EchoServer implements Runnable {
 		private volatile ServerSocketChannel server;
 		private final    int                 port;
+		private volatile Thread              thread;
 
 		private EchoServer(int port) {
 			this.port = port;
@@ -360,6 +389,7 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
+				thread = Thread.currentThread();
 				while (true) {
 					SocketChannel ch = server.accept();
 
@@ -383,6 +413,10 @@ public class TcpClientTests {
 		}
 
 		public void close() throws IOException {
+			Thread thread = this.thread;
+			if (thread != null) {
+				thread.interrupt();
+			}
 			ServerSocketChannel server = this.server;
 			if (server != null) {
 				server.close();
