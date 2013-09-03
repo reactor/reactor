@@ -78,7 +78,7 @@ class GroovyEnvironment {
 				}
 			}
 
-			if (reactorEnvironment) {
+			if (reactorEnvironment && groovyEnvironment.reactorEnvironment) {
 				for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
 					for (dispatcher in dispatcherEntry.value) {
 						reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)

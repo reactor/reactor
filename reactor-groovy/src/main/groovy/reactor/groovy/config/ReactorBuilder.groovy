@@ -56,6 +56,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	private final List<ReactorBuilder> childNodes = []
 
 	private Reactor reactor
+	private Stream<Event<?>> compose
 
 	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap) {
 		this.reactorMap = reactorMap
@@ -192,9 +193,8 @@ class ReactorBuilder implements Supplier<Reactor> {
 				stream = it.next()
 				if (first) {
 					first = false
-					deferred = stream.head
-					tail = stream.tail
-					continue
+					deferred = Streams.<Event<?>>defer().get()
+					tail = deferred.compose()
 				}
 				tail.clearCallbackTrigger()
 				if (stream.selector) {
