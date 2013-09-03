@@ -73,6 +73,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final    EventLoopGroup          ioGroup;
 	private final    Supplier<ChannelFuture> connectionSupplier;
 	private volatile InetSocketAddress       connectAddress;
+	private volatile boolean                 closing;
 
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor} to
@@ -128,7 +129,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
 			public ChannelFuture get() {
-				return bootstrap.connect(NettyTcpClient.this.connectAddress);
+				if (!closing) {
+					return bootstrap.connect(NettyTcpClient.this.connectAddress);
+				} else {
+					return null;
+				}
 			}
 		};
 	}
@@ -140,7 +145,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 																																																 .dispatcher(eventsReactor.getDispatcher())
 																																																 .get();
 
-		connectionSupplier.get().addListener(createConnectListener(connection));
+		createConnection(createConnectListener(connection));
 
 		return connection.compose();
 	}
@@ -151,8 +156,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 																																																.env(env)
 																																																.dispatcher(eventsReactor.getDispatcher())
 																																																.get();
-
-		connectionSupplier.get().addListener(createReconnectListener(connections, reconnect));
+		createConnection(createReconnectListener(connections, reconnect));
 
 		return connections.compose();
 	}
@@ -187,6 +191,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	protected void doClose(final Deferred<Void, Promise<Void>> d) {
+		this.closing = true;
 		try {
 			final CountDownLatch latch = new CountDownLatch(1);
 			this.ioGroup.shutdownGracefully().addListener(new GenericFutureListener() {
@@ -196,9 +201,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				}
 			});
 			if (latch.await(30, TimeUnit.SECONDS)) {
-				for (Registration<? extends TcpConnection<IN, OUT>> reg : connections) {
-					reg.getObject().close();
-				}
 				d.accept((Void) null);
 			} else {
 				d.accept(new TimeoutException("NettyTcpClient could not close connection after 30 seconds"));
@@ -272,7 +274,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							new TimerTask() {
 								@Override
 								public void run() {
-									connectionSupplier.get().addListener(self);
+									createConnection(self);
 								}
 							},
 							delay
@@ -290,7 +292,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							}
 							NettyTcpClient.this.connections.unregister(future.channel());
 							notifyClose(conn);
-							connectionSupplier.get().addListener(self);
+							if (!conn.isClosing()) {
+								createConnection(self);
+							}
 						}
 					});
 					// hopefully avoid a race condition with user code currently assigning handlers
@@ -306,6 +310,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				}
 			}
 		};
+	}
+
+	private void createConnection(ChannelFutureListener listener) {
+		ChannelFuture channel = connectionSupplier.get();
+		if (channel != null) {
+			channel.addListener(listener);
+		}
 	}
 
 }
