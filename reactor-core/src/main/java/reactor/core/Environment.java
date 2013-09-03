@@ -287,6 +287,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
+		timer.cancel();
 	}
 
 	@Override
