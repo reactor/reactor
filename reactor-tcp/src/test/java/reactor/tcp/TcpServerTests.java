@@ -85,7 +85,6 @@ public class TcpServerTests {
 	}
 
 	@Test
-	@Ignore // build servers can't find the .jks files...run this test manually
 	public void tcpServerHandlesJsonPojosOverSsl() throws InterruptedException {
 		final int port = this.port.incrementAndGet();
 		SslOptions serverOpts = new SslOptions()
