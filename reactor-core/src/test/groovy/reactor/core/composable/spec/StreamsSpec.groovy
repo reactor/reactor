@@ -294,32 +294,6 @@ class StreamsSpec extends Specification {
       value.get() == 2
   }
 
-  def "A Stream's values can be listening for a producer-defined callback"() {
-    given:
-      'a source composable with a mapping function'
-      Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
-      Stream s = source.compose().map(function { it * 2 }).callback()
-
-    when:
-      'the source accepts a value and a callback'
-      def res
-      source.accept(1, consumer {res = it+1})
-
-    then:
-      'the callback is called'
-      res == 3
-
-    when:
-      'Stream have more than 1 callbackTrigger()'
-	    res = null
-      s.map(function{ it * 2}).callback()
-      source.accept(1, consumer {res = it})
-
-    then:
-      'the callback is only called once'
-      res == 4
-  }
-
   def "A Stream's values can be filtered"() {
     given:
       'a source composable with a filter that rejects odd values'

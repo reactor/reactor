@@ -69,7 +69,6 @@ public class Stream<T> extends Composable<T> {
 	private final Tuple2<Selector, Object> last  = Selectors.$();
 	private final int                              batchSize;
 	private final Iterable<T>                      values;
-	private       Registration<Consumer<Event<T>>> callbackTrigger;
 
 	/**
 	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
@@ -341,58 +340,6 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
 		return reduce(fn, (Supplier<A>)null);
-	}
-
-	/**
-	 * Attach a {@link Consumer<  reactor.event.support.CallbackEvent  >} to this {@code Composable} that will
-	 * consume any values accepted by this {@code Composable}. ConsumerEvent callbacks will be called.
-	 *
-	 * @return {@literal this}
-	 */
-	public Stream<T> callback() {
-		if(this.callbackTrigger != null) {
-			return this;
-		}
-
-		Stream cursor = (Stream)getParent();
-		boolean found = false;
-		while (cursor != null && !found) {
-			if (cursor.callbackTrigger != null){
-				cursor.callbackTrigger.cancel();
-				cursor.callbackTrigger = null;
-				found = true;
-			}
-			cursor = (Stream)cursor.getParent();
-		}
-
-		this.callbackTrigger = getObservable().on(getAccept().getT1(), new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> event) {
-				if (event.getClass().equals(CallbackEvent.class)) {
-					((CallbackEvent<T>) event).callback();
-				}
-			}
-		});
-		return this;
-	}
-
-	/**
-	 * Return the actual callbackTrigger registration, mainly to allow external components to interact with its state,
-	 * like cancelling.
-	 *
-	 * @return registration
-	 */
-	public Registration<Consumer<Event<T>>> getCallbackTrigger() {
-		return callbackTrigger;
-	}
-
-	/**
-	 * Clear callback status
-	 */
-	public void clearCallbackTrigger() {
-		if(callbackTrigger != null)
-			callbackTrigger.cancel();
-		callbackTrigger = null;
 	}
 
 	@Override

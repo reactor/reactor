@@ -113,7 +113,7 @@ public abstract class Composable<T> {
 	 *
 	 * @return {@literal this}
 	 */
-	protected Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
+	public Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
 		this.events.on(accept.getT1(), consumer);
 		return this;
 	}

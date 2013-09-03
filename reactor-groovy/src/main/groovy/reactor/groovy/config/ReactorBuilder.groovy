@@ -15,6 +15,7 @@ import reactor.event.routing.ConsumerInvoker
 import reactor.event.routing.EventRouter
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
+import reactor.event.support.CallbackEvent
 import reactor.filter.Filter
 import reactor.filter.FirstFilter
 import reactor.filter.PassThroughFilter
@@ -196,15 +197,21 @@ class ReactorBuilder implements Supplier<Reactor> {
 					deferred = Streams.<Event<?>>defer().get()
 					tail = deferred.compose()
 				}
-				tail.clearCallbackTrigger()
 				if (stream.selector) {
 					tail.filter(new EventRouterPredicate(stream.selector), stream.tail).consume(stream.head.compose())
 				} else {
 					tail.consume(stream.head.compose())
 				}
-				tail = stream.tail.callback()
+				tail = stream.tail
 			}
 
+			tail.consumeEvent(new Consumer<Event>() {
+				@Override
+				void accept(Event eventEvent) {
+					if(eventEvent.class == CallbackEvent)
+						((CallbackEvent)eventEvent).callback()
+				}
+			})
 			spec.eventRouter(new StreamEventRouter(filter,
 					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), deferred))
 
