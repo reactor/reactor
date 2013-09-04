@@ -24,12 +24,6 @@
 
 package reactor.dispatch
 
-import static reactor.GroovyTestUtils.$
-import static reactor.GroovyTestUtils.consumer
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
 import reactor.core.Environment
 import reactor.core.spec.Reactors
 import reactor.event.Event
@@ -41,6 +35,12 @@ import reactor.event.routing.ConsumerFilteringEventRouter
 import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
 import spock.lang.Specification
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+import static reactor.GroovyTestUtils.$
+import static reactor.GroovyTestUtils.consumer
 
 /**
  * @author Jon Brisbin
@@ -57,7 +57,7 @@ class DispatcherSpec extends Specification {
 		Thread taskThread = null
 		def registry = new CachingRegistry<Consumer<Event>>()
 		def eventRouter = new ConsumerFilteringEventRouter(
-				new PassThroughFilter(),  new ArgumentConvertingConsumerInvoker())
+				new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
 		def sel = $('test')
 		registry.register(sel, consumer {
 			taskThread = Thread.currentThread()
@@ -88,7 +88,7 @@ class DispatcherSpec extends Specification {
 		def latch = new CountDownLatch(2)
 
 		when: "listen for recursive event"
-		r.on(consumer { int i->
+		r.on(consumer { int i ->
 			if (i < 2) {
 				latch.countDown()
 				r.notify(Event.wrap(++i))
@@ -100,6 +100,32 @@ class DispatcherSpec extends Specification {
 
 		then: "a task is submitted to the thread pool dispatcher"
 		latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+	}
+
+	def "Dispatchers can be shutdown awaiting tasks to complete"() {
+
+		given: "a Reactor with a ThreadPoolExecutorDispatcher"
+		def r = Reactors.reactor().
+				env(new Environment()).
+				dispatcher(Environment.THREAD_POOL).
+				get()
+		long start = System.currentTimeMillis()
+		def hello = ""
+		r.on($("pause"), { Event<String> ev ->
+			hello = ev.data
+			Thread.sleep(1000)
+		} as Consumer<Event<?>>)
+
+		when: "the Dispatcher is shutdown and tasks are awaited"
+		r.notify("pause", Event.wrap("Hello World!"))
+		def success = r.dispatcher.awaitAndShutdown()
+		long end = System.currentTimeMillis()
+
+		then: "the Consumer was run, this thread was blocked, and the Dispatcher is shut down"
+		hello == "Hello World!"
+		success
+		(end - start) >= 1000
+
 	}
 
 }

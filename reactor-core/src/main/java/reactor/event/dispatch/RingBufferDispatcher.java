@@ -26,6 +26,7 @@ import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Implementation of a {@link Dispatcher} that uses a {@link RingBuffer} to queue tasks to execute.
@@ -112,9 +113,20 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	}
 
 	@Override
+	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+		shutdown();
+		try {
+			return executor.awaitTermination(timeout, timeUnit);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		return false;
+	}
+
+	@Override
 	public void shutdown() {
-		executor.shutdown();
 		disruptor.shutdown();
+		executor.shutdown();
 		super.shutdown();
 	}
 

@@ -16,6 +16,7 @@
 
 package reactor.event.dispatch;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -26,11 +27,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class BaseLifecycleDispatcher extends BaseDispatcher {
 
-	private final AtomicBoolean   alive   = new AtomicBoolean(true);
+	private final AtomicBoolean alive = new AtomicBoolean(true);
 
 	@Override
 	public boolean alive() {
 		return alive.get();
+	}
+
+	@Override
+	public boolean awaitAndShutdown() {
+		return awaitAndShutdown(Integer.MAX_VALUE, TimeUnit.SECONDS);
 	}
 
 	@Override

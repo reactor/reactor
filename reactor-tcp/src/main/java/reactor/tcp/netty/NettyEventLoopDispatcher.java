@@ -17,11 +17,13 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
+import reactor.cache.Cache;
+import reactor.cache.LoadingCache;
 import reactor.event.Event;
 import reactor.event.dispatch.BaseLifecycleDispatcher;
 import reactor.function.Supplier;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
@@ -35,11 +37,11 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 	private final Cache<Task> readyTasks;
 
 	/**
-	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given
-	 * {@code eventLoop} with the given {@code backlog} size.
+	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given {@code eventLoop} with the given
+	 * {@code backlog} size.
 	 *
 	 * @param eventLoop The event loop to run tasks on
-	 * @param backlog The size of the backlog of unexecuted tasks
+	 * @param backlog   The size of the backlog of unexecuted tasks
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
 		this.eventLoop = eventLoop;
@@ -53,6 +55,17 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 				backlog,
 				150L
 		);
+	}
+
+	@Override
+	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+		shutdown();
+		try {
+			return eventLoop.awaitTermination(timeout, timeUnit);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		return false;
 	}
 
 	@Override

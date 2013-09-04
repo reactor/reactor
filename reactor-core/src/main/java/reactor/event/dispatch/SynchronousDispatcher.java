@@ -18,6 +18,8 @@ package reactor.event.dispatch;
 
 import reactor.event.Event;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * A {@link Dispatcher} implementation that dispatches events using the calling thread.
  *
@@ -28,6 +30,16 @@ public class SynchronousDispatcher extends BaseDispatcher {
 
 	@Override
 	public boolean alive() {
+		return true;
+	}
+
+	@Override
+	public boolean awaitAndShutdown() {
+		return true;
+	}
+
+	@Override
+	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		return true;
 	}
 

@@ -21,6 +21,8 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Event, Registry, Consumer, EventRouter, Consumer)
  * dispatch} {@link Event}s to {@link Consumer}s. The details of how the dispatching is performed, for example on the
@@ -38,6 +40,16 @@ public interface Dispatcher {
 	 * @return {@literal true} if this {@code Dispatcher} is alive and can be used, {@literal false} otherwise.
 	 */
 	boolean alive();
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	boolean awaitAndShutdown();
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
 
 	/**
 	 * Shutdown this {@code Dispatcher} such that it can no longer be used.

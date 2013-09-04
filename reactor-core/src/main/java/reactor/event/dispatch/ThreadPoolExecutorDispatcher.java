@@ -16,19 +16,19 @@
 
 package reactor.event.dispatch;
 
+import reactor.cache.Cache;
+import reactor.cache.LoadingCache;
+import reactor.event.Event;
+import reactor.function.Supplier;
+import reactor.support.NamedDaemonThreadFactory;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-
-import reactor.event.Event;
-import reactor.function.Supplier;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
-import reactor.support.NamedDaemonThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
- * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to
- * dispatch events.
+ * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to dispatch events.
  *
  * @author Andy Wilkinson
  * @author Jon Brisbin
@@ -40,8 +40,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 	private final Cache<ThreadPoolTask> readyTasks;
 
 	/**
-	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize}
-	 * and {@literal backlog}.
+	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
 	 *
 	 * @param poolSize the pool size
 	 * @param backlog  the backlog size
@@ -65,6 +64,17 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 				backlog,
 				200l
 		);
+	}
+
+	@Override
+	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+		shutdown();
+		try {
+			return executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		return false;
 	}
 
 	@Override

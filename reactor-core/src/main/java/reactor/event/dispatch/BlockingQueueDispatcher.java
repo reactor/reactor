@@ -16,18 +16,17 @@
 
 package reactor.event.dispatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.cache.Cache;
+import reactor.cache.LoadingCache;
+import reactor.event.Event;
+import reactor.function.Supplier;
+import reactor.queue.BlockingQueueFactory;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import reactor.event.Event;
-import reactor.function.Supplier;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
-import reactor.queue.BlockingQueueFactory;
 
 /**
  * Implementation of {@link Dispatcher} that uses a {@link BlockingQueue} to queue tasks to be executed.
@@ -72,6 +71,24 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 	}
 
 	@Override
+	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+		if (taskQueue.isEmpty()) {
+			shutdown();
+			return true;
+		}
+		synchronized (taskQueue) {
+			try {
+				taskQueue.wait();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return false;
+			}
+		}
+		shutdown();
+		return true;
+	}
+
+	@Override
 	public void shutdown() {
 		taskExecutor.interrupt();
 		super.shutdown();
@@ -91,7 +108,6 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 	}
 
 	private class BlockingQueueTask<E extends Event<?>> extends Task<E> {
-
 		@Override
 		public void submit() {
 			taskQueue.add(this);
@@ -119,6 +135,11 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 					if (null != t) {
 						t.reset();
 						readyTasks.deallocate(t);
+					}
+					if (taskQueue.isEmpty()) {
+						synchronized (taskQueue) {
+							taskQueue.notifyAll();
+						}
 					}
 				}
 			}
