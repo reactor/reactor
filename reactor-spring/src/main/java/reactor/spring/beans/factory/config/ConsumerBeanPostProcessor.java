@@ -208,14 +208,26 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 	protected final static class ReplyToServiceConsumer implements Consumer<Event> {
 
-		final protected Observable reactor;
-		final protected Object     replyToKey;
-		final protected Invoker    handler;
+		final private Observable reactor;
+		final private Object     replyToKey;
+		final private Invoker    handler;
 
 		ReplyToServiceConsumer(Observable reactor, Object replyToKey, Invoker handler) {
 			this.reactor = reactor;
 			this.replyToKey = replyToKey;
 			this.handler = handler;
+		}
+
+		public Observable getReactor() {
+			return reactor;
+		}
+
+		public Object getReplyToKey() {
+			return replyToKey;
+		}
+
+		public Invoker getHandler() {
+			return handler;
 		}
 
 		@Override
@@ -228,10 +240,14 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	}
 
 	protected final static class ServiceConsumer implements Consumer<Event> {
-		final protected Invoker handler;
+		final private Invoker handler;
 
 		ServiceConsumer(Invoker handler) {
 			this.handler = handler;
+		}
+
+		public Invoker getHandler() {
+			return handler;
 		}
 
 		@Override
@@ -242,14 +258,26 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 	protected final class Invoker implements Function<Event, Object> {
 
-		final protected Method     method;
-		final protected Object     bean;
-		final protected Class<?>[] argTypes;
+		final private Method     method;
+		final private Object     bean;
+		final private Class<?>[] argTypes;
 
 		Invoker(Method method, Object bean) {
 			this.method = method;
 			this.bean = bean;
 			this.argTypes = method.getParameterTypes();
+		}
+
+		public Method getMethod() {
+			return method;
+		}
+
+		public Object getBean() {
+			return bean;
+		}
+
+		public Class<?>[] getArgTypes() {
+			return argTypes;
 		}
 
 		@Override
