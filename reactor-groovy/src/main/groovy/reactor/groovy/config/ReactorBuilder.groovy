@@ -48,6 +48,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	Dispatcher dispatcher
 	Filter filter
 	boolean linkParent = true
+	boolean override = false
 
 	private final SortedSet<HeadAndTail> streams = new TreeSet<HeadAndTail>()
 	private final Map<String, Object> ext = [:]
@@ -73,8 +74,17 @@ class ReactorBuilder implements Supplier<Reactor> {
 		filter = filter ?: r.filter
 		dispatcher = dispatcher ?: r.dispatcher
 		router = router ?: r.router
-		streams.addAll r.streams
 		consumerInvoker = consumerInvoker ?: r.consumerInvoker
+
+		if(!override){
+			streams.addAll r.streams
+			childNodes.addAll r.childNodes
+		}
+
+		for(entry in r.ext){
+			if(!ext[((Map.Entry<String, Object>)entry).key]) ext[((Map.Entry<String, Object>)entry).key] =
+					((Map.Entry<String, Object>)entry).value
+		}
 	}
 
 	void init() {
