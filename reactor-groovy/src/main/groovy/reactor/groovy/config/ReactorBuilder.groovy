@@ -46,18 +46,17 @@ class ReactorBuilder implements Supplier<Reactor> {
 	EventRouter router
 	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
-	Filter filter = DEFAULT_FILTER
+	Filter filter
 	boolean linkParent = true
 
 	private final SortedSet<HeadAndTail> streams = new TreeSet<HeadAndTail>()
 	private final Map<String, Object> ext = [:]
 	private final Map<Selector, List<Consumer>> consumers = [:]
-	private final String name
 	private final Map<String, ReactorBuilder> reactorMap
 	private final List<ReactorBuilder> childNodes = []
-
 	private Reactor reactor
-	private Stream<Event<?>> compose
+
+	final String name
 
 	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap) {
 		this.reactorMap = reactorMap
@@ -70,12 +69,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	void rehydrate(ReactorBuilder r) {
-		converter = r.converter
-		filter = r.filter
-		dispatcher = r.dispatcher
-		router = r.router
+		converter = converter ?: r.converter
+		filter = filter ?: r.filter
+		dispatcher = dispatcher ?: r.dispatcher
+		router = router ?: r.router
 		streams.addAll r.streams
-		consumerInvoker = r.consumerInvoker
+		consumerInvoker = consumerInvoker ?: r.consumerInvoker
 	}
 
 	void init() {
@@ -212,7 +211,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 						((CallbackEvent)eventEvent).callback()
 				}
 			})
-			spec.eventRouter(new StreamEventRouter(filter,
+			spec.eventRouter(new StreamEventRouter(filter ?: DEFAULT_FILTER,
 					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), deferred))
 
 		} else {

@@ -64,6 +64,7 @@ class GroovyEnvironment {
 
 	GroovyEnvironment include(GroovyEnvironment... groovyEnvironments) {
 		ReactorBuilder reactorBuilder
+		ReactorBuilder current
 		String key
 
 		for (groovyEnvironment in groovyEnvironments) {
@@ -71,17 +72,25 @@ class GroovyEnvironment {
 				reactorBuilder = ((Map.Entry<String, ReactorBuilder>) reactorEntry).value
 				key = ((Map.Entry<String, Reactor>) reactorEntry).key
 
-				if (reactors.containsKey(key)) {
-					reactorBuilder.addConsumersFrom reactors[key]
+				current = reactors[key]
+				if (current) {
+					reactorBuilder.rehydrate current
+					reactorBuilder.addConsumersFrom current
+					if(current.linked && reactors[current.linked.name]){
+						 current.linked = reactors[current.linked.name]
+					}
+					reactorBuilder.linked = current.linked ?: reactorBuilder.linked
 				} else {
 					reactors[key] = reactorBuilder
 				}
 			}
 
-			if (reactorEnvironment && groovyEnvironment.reactorEnvironment) {
-				for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
-					for (dispatcher in dispatcherEntry.value) {
-						reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)
+			if (reactorEnvironment) {
+				if (groovyEnvironment.reactorEnvironment) {
+					for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
+						for (dispatcher in dispatcherEntry.value) {
+							reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)
+						}
 					}
 				}
 			} else {
@@ -132,7 +141,7 @@ class GroovyEnvironment {
 	}
 
 	Collection<ReactorBuilder> reactorBuildersByExtension(String extensionKey) {
-		reactors.findAll {String k, ReactorBuilder v -> v.ext(extensionKey) }.values()
+		reactors.findAll { String k, ReactorBuilder v -> v.ext(extensionKey) }.values()
 	}
 
 	ReactorBuilder reactorBuilder(String reactor) {
