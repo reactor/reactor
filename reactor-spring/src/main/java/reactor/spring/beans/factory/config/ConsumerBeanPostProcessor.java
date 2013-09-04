@@ -206,11 +206,11 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		return object(sel);
 	}
 
-	public final static class ReplyToServiceConsumer implements Consumer<Event> {
+	protected final static class ReplyToServiceConsumer implements Consumer<Event> {
 
-		final private Observable reactor;
-		final private Object     replyToKey;
-		final private Invoker    handler;
+		final protected Observable reactor;
+		final protected Object     replyToKey;
+		final protected Invoker    handler;
 
 		ReplyToServiceConsumer(Observable reactor, Object replyToKey, Invoker handler) {
 			this.reactor = reactor;
@@ -227,8 +227,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		}
 	}
 
-	public final static class ServiceConsumer implements Consumer<Event> {
-		final private Invoker handler;
+	protected final static class ServiceConsumer implements Consumer<Event> {
+		final protected Invoker handler;
 
 		ServiceConsumer(Invoker handler) {
 			this.handler = handler;
@@ -240,11 +240,11 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		}
 	}
 
-	public final class Invoker implements Function<Event, Object> {
+	protected final class Invoker implements Function<Event, Object> {
 
-		final private Method     method;
-		final private Object     bean;
-		final private Class<?>[] argTypes;
+		final protected Method     method;
+		final protected Object     bean;
+		final protected Class<?>[] argTypes;
 
 		Invoker(Method method, Object bean) {
 			this.method = method;
