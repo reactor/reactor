@@ -141,10 +141,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 		try {
 			return expression(selector.value(), bean);
-		} catch (EvaluationException ee) {
+		} catch (Exception e) {
 			return selector.value();
 		}
-
 	}
 
 	protected Object parseReplyTo(ReplyTo selector, Object bean) {
@@ -268,6 +267,13 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 			if (argTypes.length > 1) {
 				throw new IllegalStateException("Multiple parameters not yet supported.");
+			}
+
+			if (Event.class.isAssignableFrom(argTypes[0])) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
+				}
+				return ReflectionUtils.invokeMethod(method, bean, ev);
 			}
 
 			if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
