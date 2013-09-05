@@ -1,31 +1,13 @@
-/*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.spring.beans.factory.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.BridgeMethodResolver;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.expression.BeanResolver;
@@ -33,9 +15,9 @@ import org.springframework.expression.EvaluationException;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
+import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.function.Consumer;
@@ -54,14 +36,9 @@ import static reactor.event.selector.Selectors.*;
 
 /**
  * @author Jon Brisbin
- * @author Stephane Maldini
  */
-public class ConsumerBeanPostProcessor implements BeanPostProcessor,
-		BeanFactoryAware,
-		Ordered {
+public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent> {
 
-	private static final Logger                       LOG                    = LoggerFactory.getLogger(
-			ConsumerBeanPostProcessor.class);
 	public static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
 		@Override
 		public boolean matches(Method method) {
@@ -69,44 +46,45 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		}
 	};
 
-	private BeanResolver beanResolver;
+	private static final Logger LOG = LoggerFactory.getLogger(ConsumerBeanAutoConfiguration.class);
+
+	private final Environment env;
+
+	private BeanResolver      beanResolver;
+	private ConversionService conversionService;
 	private TemplateAwareExpressionParser expressionParser = new SpelExpressionParser();
-	private final ConversionService conversionService;
 
-	public ConsumerBeanPostProcessor() {
-		this.conversionService = new DefaultFormattingConversionService();
-	}
-
-	@Autowired(required = false)
-	public ConsumerBeanPostProcessor(ConversionService conversionService) {
-		this.conversionService = conversionService;
+	@Autowired
+	public ConsumerBeanAutoConfiguration(Environment env) {
+		this.env = env;
 	}
 
 	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		beanResolver = new BeanFactoryResolver(beanFactory);
+	public void onApplicationEvent(ContextRefreshedEvent ev) {
+		ApplicationContext ctx = ev.getApplicationContext();
+
+		if (null == beanResolver) {
+			beanResolver = new BeanFactoryResolver(ctx);
+		}
+
+		for (String beanName : ctx.getBeanDefinitionNames()) {
+			Object bean = ctx.getBean(beanName);
+			Class<?> type = bean.getClass();
+
+			if (ConversionService.class.isAssignableFrom(type) && null == conversionService) {
+				conversionService = (ConversionService) bean;
+			} else {
+				wireBean(bean, findHandlerMethods(type, CONSUMER_METHOD_FILTER));
+			}
+		}
+
 	}
 
-	@Override
-	public int getOrder() {
-		return Ordered.LOWEST_PRECEDENCE;
-	}
-
-	@Override
-	public Object postProcessBeforeInitialization(Object bean,
-	                                              String beanName) throws BeansException {
-		return bean;
-	}
-
-	@Override
-	public Object postProcessAfterInitialization(final Object bean,
-	                                             String beanName) throws BeansException {
-		return initBean(bean, findHandlerMethods(bean.getClass(), CONSUMER_METHOD_FILTER));
-	}
-
-	public Object initBean(final Object bean, final Set<Method> methods) {
-		if (methods == null || methods.isEmpty())
-			return bean;
+	@SuppressWarnings("unchecked")
+	public void wireBean(final Object bean, final Set<Method> methods) {
+		if (methods == null || methods.isEmpty()) {
+			return;
+		}
 
 		Consumer consumer;
 		Observable reactor;
@@ -125,8 +103,8 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 			Object replyTo = replyToAnno != null ? parseReplyTo(replyToAnno, bean) : null;
 			Invoker handler = new Invoker(method, bean);
 			consumer = null != replyToAnno ?
-					new ReplyToServiceConsumer(reactor, replyTo, handler) :
-					new ServiceConsumer(handler);
+								 new ReplyToServiceConsumer(reactor, replyTo, handler) :
+								 new ServiceConsumer(handler);
 
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Attaching Consumer to Reactor[" + reactor + "] using Selector[" + selector + "]");
@@ -138,7 +116,6 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 				reactor.on(selector, consumer);
 			}
 		}
-		return bean;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -318,7 +295,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	}
 
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
-	                                             final ReflectionUtils.MethodFilter handlerMethodFilter) {
+																							 final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
 		Class<?> specificHandlerType = null;
