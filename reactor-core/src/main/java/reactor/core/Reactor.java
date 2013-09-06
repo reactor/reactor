@@ -85,26 +85,23 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * EventRouter} that broadcast events to all of the registered consumers that {@link Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param dispatcher
-	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
-	 * 		SynchronousDispatcher} is used
+	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
+	 *                   SynchronousDispatcher} is used
 	 */
 	public Reactor(Dispatcher dispatcher) {
 		this(dispatcher,
-		     null);
+				null);
 	}
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
 	 *
-	 * @param dispatcher
-	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
-	 * 		used.
-	 * @param eventRouter
-	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
-	 * 		in which case the default event router that broadcasts events to all of the registered consumers
-	 * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
-	 * 		conversion will be used.
+	 * @param dispatcher  The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
+	 *                    used.
+	 * @param eventRouter The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
+	 *                    in which case the default event router that broadcasts events to all of the registered consumers
+	 *                    that {@link Selector#matches(Object) match} the notification key and does not perform any type
+	 *                    conversion will be used.
 	 */
 	public Reactor(Dispatcher dispatcher,
 	               EventRouter eventRouter) {
@@ -115,30 +112,32 @@ public class Reactor implements Observable, Linkable<Observable> {
 		this.on(new Consumer<Event>() {
 			@Override
 			public void accept(Event event) {
-				if(Tuple2.class.isInstance(event.getData())) {
-					Object consumer = ((Tuple2)event.getData()).getT1();
-					Object data = ((Tuple2)event.getData()).getT2();
-					if(Consumer.class.isInstance(consumer)) {
+				if (Tuple2.class.isInstance(event.getData())) {
+					Object consumer = ((Tuple2) event.getData()).getT1();
+					Object data = ((Tuple2) event.getData()).getT2();
+					if (Consumer.class.isInstance(consumer)) {
 						try {
-							((Consumer)consumer).accept(data);
-						} catch(Throwable t) {
+							((Consumer) consumer).accept(data);
+						} catch (Throwable t) {
 							Reactor.this.notify(t.getClass(), Event.wrap(t));
 						}
 					}
 				}
 			}
 		});
-		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
-			Logger log;
+		if (LoggerFactory.getLogger(Reactor.class).isDebugEnabled()) {
+			this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
+				Logger log;
 
-			@Override
-			public void accept(Event<Throwable> ev) {
-				if(null == log) {
-					log = LoggerFactory.getLogger(Reactor.class);
+				@Override
+				public void accept(Event<Throwable> ev) {
+					if (null == log) {
+						log = LoggerFactory.getLogger(Reactor.class);
+					}
+					log.error(ev.getData().getMessage(), ev.getData());
 				}
-				log.error(ev.getData().getMessage(), ev.getData());
-			}
-		});
+			});
+		}
 	}
 
 	/**
@@ -210,8 +209,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
 
-		if(!linkedReactors.isEmpty()) {
-			for(Observable r : linkedReactors) {
+		if (!linkedReactors.isEmpty()) {
+			for (Observable r : linkedReactors) {
 				r.notify(key, ev);
 			}
 		}
@@ -293,14 +292,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public boolean equals(Object o) {
-		if(this == o) {
+		if (this == o) {
 			return true;
 		}
-		if(o == null || getClass() != o.getClass()) {
+		if (o == null || getClass() != o.getClass()) {
 			return false;
 		}
 
-		Reactor reactor = (Reactor)o;
+		Reactor reactor = (Reactor) o;
 
 		return id.equals(reactor.id);
 
@@ -316,7 +315,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 		@Override
 		public <X> Event<X> copy(X data) {
-				return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
+			return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
 		}
 
 		private ReplyToEvent(Headers headers, T data, Object replyTo,
@@ -348,9 +347,9 @@ public class Reactor implements Observable, Linkable<Observable> {
 		public void accept(E ev) {
 			Observable replyToObservable = Reactor.this;
 
-			if(ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
-				Observable o = ((ReplyToEvent<?>)ev).getReplyToObservable();
-				if(null != o) {
+			if (ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
+				Observable o = ((ReplyToEvent<?>) ev).getReplyToObservable();
+				if (null != o) {
 					replyToObservable = o;
 				}
 			}
@@ -359,14 +358,14 @@ public class Reactor implements Observable, Linkable<Observable> {
 				V reply = fn.apply(ev);
 
 				Event<?> replyEv;
-				if(null == reply) {
+				if (null == reply) {
 					replyEv = Event.NULL_EVENT;
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
-			} catch(Throwable x) {
+			} catch (Throwable x) {
 				replyToObservable.notify(x.getClass(), Event.wrap(x));
 			}
 		}

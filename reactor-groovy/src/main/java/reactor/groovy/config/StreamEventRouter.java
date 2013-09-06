@@ -42,13 +42,14 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 				new Consumer<Event<?>>() {
 					@Override
 					public void accept(Event<?> _event) {
+						Event<?> hydratedEvent = event.copy(_event != null ? _event.getData() : null);
 						if (null != consumers) {
 							for (Registration<? extends Consumer<? extends Event<?>>> consumer : getFilter().filter(consumers, key)) {
 								try {
-									invokeConsumer(key, event, consumer);
+									invokeConsumer(key, hydratedEvent, consumer);
 								} catch (Throwable t) {
-									if(null != event.getErrorConsumer()){
-										event.consumeError(t);
+									if(null != hydratedEvent.getErrorConsumer()){
+										hydratedEvent.consumeError(t);
 									} else if (null != errorConsumer) {
 										errorConsumer.accept(t);
 									}
@@ -58,7 +59,7 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 						}
 						if (null != completionConsumer) {
 							try {
-								getConsumerInvoker().invoke(completionConsumer, Void.TYPE, event);
+								getConsumerInvoker().invoke(completionConsumer, Void.TYPE, hydratedEvent);
 							} catch (Exception e) {
 								if (null != errorConsumer) {
 									errorConsumer.accept(e);
