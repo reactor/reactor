@@ -78,10 +78,13 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 				}
 			}
 
+			Set<Method> methods;
 			for (String beanName : ctx.getBeanDefinitionNames()) {
-				Object bean = ctx.getBean(beanName);
-				Class<?> type = bean.getClass();
-				wireBean(bean, findHandlerMethods(type, CONSUMER_METHOD_FILTER));
+				Class<?> type = ctx.getType(beanName);
+				methods = findHandlerMethods(type, CONSUMER_METHOD_FILTER);
+				if (methods != null && methods.size() > 0) {
+					wireBean(ctx.getBean(beanName), methods);
+				}
 			}
 
 			started = true;
@@ -243,9 +246,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 	protected final static class Invoker implements Function<Event, Object> {
 
-		final private Method     method;
-		final private Object     bean;
-		final private Class<?>[] argTypes;
+		final private Method            method;
+		final private Object            bean;
+		final private Class<?>[]        argTypes;
 		final private ConversionService conversionService;
 
 		Invoker(Method method, Object bean, ConversionService conversionService) {
