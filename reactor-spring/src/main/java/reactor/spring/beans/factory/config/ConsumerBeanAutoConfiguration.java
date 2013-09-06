@@ -1,31 +1,13 @@
-/*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.spring.beans.factory.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.BridgeMethodResolver;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.expression.BeanResolver;
@@ -33,7 +15,6 @@ import org.springframework.expression.EvaluationException;
 import org.springframework.expression.common.TemplateAwareExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 import reactor.core.Observable;
@@ -56,12 +37,10 @@ import static reactor.event.selector.Selectors.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ConsumerBeanPostProcessor implements BeanPostProcessor,
-		BeanFactoryAware,
-		Ordered {
+public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent> {
 
-	private static final Logger                       LOG                    = LoggerFactory.getLogger(
-			ConsumerBeanPostProcessor.class);
+	public static final String REACTOR_CONVERSION_SERVICE_BEAN_NAME = "reactorConversionService";
+
 	public static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
 		@Override
 		public boolean matches(Method method) {
@@ -69,44 +48,58 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		}
 	};
 
-	private BeanResolver beanResolver;
-	private TemplateAwareExpressionParser expressionParser = new SpelExpressionParser();
-	private final ConversionService conversionService;
+	private static final Logger LOG = LoggerFactory.getLogger(ConsumerBeanAutoConfiguration.class);
 
-	public ConsumerBeanPostProcessor() {
-		this.conversionService = new DefaultFormattingConversionService();
-	}
+	private BeanResolver                  beanResolver;
+	private ConversionService             conversionService;
+	private TemplateAwareExpressionParser expressionParser;
 
-	@Autowired(required = false)
-	public ConsumerBeanPostProcessor(ConversionService conversionService) {
-		this.conversionService = conversionService;
-	}
+	private boolean started = false;
 
-	@Override
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		beanResolver = new BeanFactoryResolver(beanFactory);
+	public ConsumerBeanAutoConfiguration() {
+		this.expressionParser = new SpelExpressionParser();
 	}
 
 	@Override
-	public int getOrder() {
-		return Ordered.LOWEST_PRECEDENCE;
+	public void onApplicationEvent(ContextRefreshedEvent ev) {
+		ApplicationContext ctx = ev.getApplicationContext();
+
+		synchronized (this) {
+			if (started)
+				return;
+
+			if (null == beanResolver) {
+				beanResolver = new BeanFactoryResolver(ctx);
+			}
+
+			if (null == conversionService) {
+				try {
+					conversionService = ctx.getBean(REACTOR_CONVERSION_SERVICE_BEAN_NAME, ConversionService.class);
+				} catch (BeansException be) {
+					LOG.info(REACTOR_CONVERSION_SERVICE_BEAN_NAME+" has not been found in the context. Skipping.");
+				}
+			}
+
+			Set<Method> methods;
+			Class<?> type;
+			for (String beanName : ctx.getBeanDefinitionNames()) {
+				type = ctx.getType(beanName);
+				methods = findHandlerMethods(type, CONSUMER_METHOD_FILTER);
+				if (methods != null && methods.size() > 0) {
+					wireBean(ctx.getBean(beanName), methods);
+				}
+			}
+
+			started = true;
+		}
+
 	}
 
-	@Override
-	public Object postProcessBeforeInitialization(Object bean,
-	                                              String beanName) throws BeansException {
-		return bean;
-	}
-
-	@Override
-	public Object postProcessAfterInitialization(final Object bean,
-	                                             String beanName) throws BeansException {
-		return initBean(bean, findHandlerMethods(bean.getClass(), CONSUMER_METHOD_FILTER));
-	}
-
-	public Object initBean(final Object bean, final Set<Method> methods) {
-		if (methods == null || methods.isEmpty())
-			return bean;
+	@SuppressWarnings("unchecked")
+	public void wireBean(final Object bean, final Set<Method> methods) {
+		if (methods == null || methods.isEmpty()) {
+			return;
+		}
 
 		Consumer consumer;
 		Observable reactor;
@@ -123,7 +116,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 			//register [replyTo]consumer
 			Object replyTo = replyToAnno != null ? parseReplyTo(replyToAnno, bean) : null;
-			Invoker handler = new Invoker(method, bean);
+			Invoker handler = new Invoker(method, bean, conversionService);
 			consumer = null != replyToAnno ?
 					new ReplyToServiceConsumer(reactor, replyTo, handler) :
 					new ServiceConsumer(handler);
@@ -138,7 +131,6 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 				reactor.on(selector, consumer);
 			}
 		}
-		return bean;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -164,10 +156,9 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 
 		try {
 			return expression(selector.value(), bean);
-		} catch (EvaluationException ee) {
+		} catch (Exception e) {
 			return selector.value();
 		}
-
 	}
 
 	protected Object parseReplyTo(ReplyTo selector, Object bean) {
@@ -256,15 +247,17 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		}
 	}
 
-	protected final class Invoker implements Function<Event, Object> {
+	protected final static class Invoker implements Function<Event, Object> {
 
-		final private Method     method;
-		final private Object     bean;
-		final private Class<?>[] argTypes;
+		final private Method            method;
+		final private Object            bean;
+		final private Class<?>[]        argTypes;
+		final private ConversionService conversionService;
 
-		Invoker(Method method, Object bean) {
+		Invoker(Method method, Object bean, ConversionService conversionService) {
 			this.method = method;
 			this.bean = bean;
+			this.conversionService = conversionService;
 			this.argTypes = method.getParameterTypes();
 		}
 
@@ -284,7 +277,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 		public Object apply(Event ev) {
 			if (argTypes.length == 0) {
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev);
 				}
 				return ReflectionUtils.invokeMethod(method, bean);
 			}
@@ -293,9 +286,16 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 				throw new IllegalStateException("Multiple parameters not yet supported.");
 			}
 
+			if (Event.class.isAssignableFrom(argTypes[0])) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev);
+				}
+				return ReflectionUtils.invokeMethod(method, bean, ev);
+			}
+
 			if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev.getData());
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev.getData());
 				}
 				return ReflectionUtils.invokeMethod(method, bean, ev.getData());
 			}
@@ -308,7 +308,7 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 			if (conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
 				Object convertedObj = conversionService.convert(ev.getData(), argTypes[0]);
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + convertedObj);
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + convertedObj);
 				}
 				return ReflectionUtils.invokeMethod(method, bean, convertedObj);
 			}
@@ -320,6 +320,9 @@ public class ConsumerBeanPostProcessor implements BeanPostProcessor,
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
 	                                             final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
+
+		if(handlerType == null) return handlerMethods;
+
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
 		Class<?> specificHandlerType = null;
 		if (!Proxy.isProxyClass(handlerType)) {

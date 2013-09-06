@@ -37,59 +37,60 @@ import java.util.concurrent.TimeUnit
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-class ConsumerBeanPostProcessorSpec extends Specification {
+class ConsumerBeanAutoConfigurationSpec extends Specification {
 
-  def "Annotated Consumer is wired to a Reactor"() {
+	def "Annotated Consumer is wired to a Reactor"() {
 
-    given:
-      "an ApplicationContext with an annotated bean handler"
-      def appCtx = new AnnotationConfigApplicationContext(AnnotatedHandlerConfig)
-      def handlerBean = appCtx.getBean(HandlerBean)
-      def reactor = appCtx.getBean(Reactor)
+		given:
+		"an ApplicationContext with an annotated bean handler"
+		def appCtx = new AnnotationConfigApplicationContext(AnnotatedHandlerConfig)
+		def handlerBean = appCtx.getBean(HandlerBean)
+		def reactor = appCtx.getBean(Reactor)
 
-    when:
-      "an Event is emitted onto the Reactor in context"
-      reactor.notify('test', Event.wrap("Hello World!"))
+		when:
+		"an Event is emitted onto the Reactor in context"
+		reactor.notify('test', Event.wrap("Hello World!"))
 
-    then:
-      "the method has been invoked"
-      handlerBean.latch.await(1, TimeUnit.SECONDS)
-  }
+		then:
+		"the method has been invoked"
+		handlerBean.latch.await(1, TimeUnit.SECONDS)
+	}
 
 }
 
 @Consumer
 class HandlerBean {
-  @Autowired
-  Reactor reactor
-  def latch = new CountDownLatch(1)
+	@Autowired
+	Reactor reactor
+	def latch = new CountDownLatch(1)
 
-  @Selector('test') void handleTest(String s) {
-    latch.countDown()
-  }
+	@Selector('test')
+	void handleTest(String s) {
+		latch.countDown()
+	}
 }
 
 @Configuration
 class AnnotatedHandlerConfig {
 
-  @Bean
-  Environment reactorSpringEnvironment() {
-    return new Environment()
-  }
+	@Bean
+	Environment reactorSpringEnvironment() {
+		return new Environment()
+	}
 
-  @Bean
-  Reactor rootReactor(Environment env) {
-    return env.rootReactor
-  }
+	@Bean
+	Reactor rootReactor(Environment env) {
+		return env.rootReactor
+	}
 
-  @Bean
-  ConsumerBeanPostProcessor handlerBeanPostProcessor() {
-    return new ConsumerBeanPostProcessor()
-  }
+	@Bean
+	ConsumerBeanAutoConfiguration consumerBeanAutoConfiguration(Environment env) {
+		return new ConsumerBeanAutoConfiguration()
+	}
 
-  @Bean
-  HandlerBean handlerBean() {
-    return new HandlerBean()
-  }
+	@Bean
+	HandlerBean handlerBean() {
+		return new HandlerBean()
+	}
 
 }
