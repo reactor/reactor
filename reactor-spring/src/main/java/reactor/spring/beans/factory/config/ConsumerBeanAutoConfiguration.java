@@ -39,6 +39,8 @@ import static reactor.event.selector.Selectors.*;
  */
 public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent> {
 
+	public static final String REACTOR_CONVERSION_SERVICE_BEAN_NAME = "reactorConversionService";
+
 	public static final ReflectionUtils.MethodFilter CONSUMER_METHOD_FILTER = new ReflectionUtils.MethodFilter() {
 		@Override
 		public boolean matches(Method method) {
@@ -72,9 +74,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 			if (null == conversionService) {
 				try {
-					conversionService = ctx.getBean(ConversionService.class);
+					conversionService = ctx.getBean(REACTOR_CONVERSION_SERVICE_BEAN_NAME, ConversionService.class);
 				} catch (BeansException be) {
-					LOG.warn("Cannot load a conversion Service", be);
+					LOG.info(REACTOR_CONVERSION_SERVICE_BEAN_NAME+" has not been found in the context. Skipping.");
 				}
 			}
 
