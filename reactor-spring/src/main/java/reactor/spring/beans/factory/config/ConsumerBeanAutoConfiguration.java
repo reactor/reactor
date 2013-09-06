@@ -277,7 +277,7 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 		public Object apply(Event ev) {
 			if (argTypes.length == 0) {
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev);
 				}
 				return ReflectionUtils.invokeMethod(method, bean);
 			}
@@ -288,14 +288,14 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 			if (Event.class.isAssignableFrom(argTypes[0])) {
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev);
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev);
 				}
 				return ReflectionUtils.invokeMethod(method, bean, ev);
 			}
 
 			if (null == ev.getData() || argTypes[0].isAssignableFrom(ev.getData().getClass())) {
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + ev.getData());
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + ev.getData());
 				}
 				return ReflectionUtils.invokeMethod(method, bean, ev.getData());
 			}
@@ -308,7 +308,7 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 			if (conversionService.canConvert(ev.getData().getClass(), argTypes[0])) {
 				Object convertedObj = conversionService.convert(ev.getData(), argTypes[0]);
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Invoking method[" + method + "] on " + bean + " using " + convertedObj);
+					LOG.debug("Invoking method[" + method + "] on " + bean.getClass() + " using " + convertedObj);
 				}
 				return ReflectionUtils.invokeMethod(method, bean, convertedObj);
 			}
