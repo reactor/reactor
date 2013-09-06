@@ -50,14 +50,16 @@ class ReactorBuilder implements Supplier<Reactor> {
 	boolean linkParent = true
 	boolean override = false
 
+	private String dispatcherName
+
+	final String name
+
 	private final SortedSet<HeadAndTail> streams = new TreeSet<HeadAndTail>()
 	private final Map<String, Object> ext = [:]
 	private final Map<Selector, List<Consumer>> consumers = [:]
 	private final Map<String, ReactorBuilder> reactorMap
 	private final List<ReactorBuilder> childNodes = []
 	private Reactor reactor
-
-	final String name
 
 	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap) {
 		this.reactorMap = reactorMap
@@ -73,6 +75,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		converter = converter ?: r.converter
 		filter = filter ?: r.filter
 		dispatcher = dispatcher ?: r.dispatcher
+		dispatcherName = dispatcherName ?: r.dispatcherName
 		router = router ?: r.router
 		consumerInvoker = consumerInvoker ?: r.consumerInvoker
 
@@ -128,9 +131,13 @@ class ReactorBuilder implements Supplier<Reactor> {
 		}
 	}
 
-	Dispatcher dispatcher(String dispatcher) {
+	ReactorBuilder dispatcher(String dispatcher) {
+		this.dispatcherName = dispatcher
 		this.dispatcher = env?.getDispatcher(dispatcher)
+		this
 	}
+
+
 
 	ReactorBuilder on(@DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
@@ -186,7 +193,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (reactor)
 			return reactor
 
-		def spec = Reactors.reactor().env(env).dispatcher(dispatcher)
+		def spec = Reactors.reactor().env(env)
+		if(dispatcherName){
+			spec.dispatcher(dispatcherName)
+		}else{
+			spec.dispatcher(dispatcher)
+		}
 		if (converter) {
 			spec.converters(converter)
 		}
