@@ -43,7 +43,6 @@ public class ReactorBeanDefinitionRegistrar implements ImportBeanDefinitionRegis
 		// Create a ConsumerBeanAutoConfiguration
 		if (!registry.containsBeanDefinition(ConsumerBeanAutoConfiguration.class.getName())) {
 			BeanDefinitionBuilder autoConfigDef = BeanDefinitionBuilder.rootBeanDefinition(ConsumerBeanAutoConfiguration.class);
-			autoConfigDef.addConstructorArgReference(DEFAULT_ENV_NAME);
 			registry.registerBeanDefinition(ConsumerBeanAutoConfiguration.class.getName(), autoConfigDef.getBeanDefinition());
 		}
 	}

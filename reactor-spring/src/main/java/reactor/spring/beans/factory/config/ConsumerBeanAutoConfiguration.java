@@ -79,8 +79,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 			}
 
 			Set<Method> methods;
+			Class<?> type;
 			for (String beanName : ctx.getBeanDefinitionNames()) {
-				Class<?> type = ctx.getType(beanName);
+				type = ctx.getType(beanName);
 				methods = findHandlerMethods(type, CONSUMER_METHOD_FILTER);
 				if (methods != null && methods.size() > 0) {
 					wireBean(ctx.getBean(beanName), methods);
@@ -317,6 +318,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
 	                                             final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
+
+		if(handlerType == null) return handlerMethods;
+
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
 		Class<?> specificHandlerType = null;
 		if (!Proxy.isProxyClass(handlerType)) {

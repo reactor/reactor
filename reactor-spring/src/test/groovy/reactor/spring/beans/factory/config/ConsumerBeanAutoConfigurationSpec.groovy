@@ -85,7 +85,7 @@ class AnnotatedHandlerConfig {
 
 	@Bean
 	ConsumerBeanAutoConfiguration consumerBeanAutoConfiguration(Environment env) {
-		return new ConsumerBeanAutoConfiguration(env)
+		return new ConsumerBeanAutoConfiguration()
 	}
 
 	@Bean
