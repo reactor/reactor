@@ -2,7 +2,7 @@ package reactor.spring.beans.factory.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -17,7 +17,6 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
-import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.function.Consumer;
@@ -36,6 +35,7 @@ import static reactor.event.selector.Selectors.*;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent> {
 
@@ -48,34 +48,43 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConsumerBeanAutoConfiguration.class);
 
-	private final Environment env;
+	private BeanResolver                  beanResolver;
+	private ConversionService             conversionService;
+	private TemplateAwareExpressionParser expressionParser;
 
-	private BeanResolver      beanResolver;
-	private ConversionService conversionService;
-	private TemplateAwareExpressionParser expressionParser = new SpelExpressionParser();
+	private boolean started = false;
 
-	@Autowired
-	public ConsumerBeanAutoConfiguration(Environment env) {
-		this.env = env;
+	public ConsumerBeanAutoConfiguration() {
+		this.expressionParser = new SpelExpressionParser();
 	}
 
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent ev) {
 		ApplicationContext ctx = ev.getApplicationContext();
 
-		if (null == beanResolver) {
-			beanResolver = new BeanFactoryResolver(ctx);
-		}
+		synchronized (this) {
+			if (started)
+				return;
 
-		for (String beanName : ctx.getBeanDefinitionNames()) {
-			Object bean = ctx.getBean(beanName);
-			Class<?> type = bean.getClass();
+			if (null == beanResolver) {
+				beanResolver = new BeanFactoryResolver(ctx);
+			}
 
-			if (ConversionService.class.isAssignableFrom(type) && null == conversionService) {
-				conversionService = (ConversionService) bean;
-			} else {
+			if (null == conversionService) {
+				try {
+					conversionService = ctx.getBean(ConversionService.class);
+				} catch (BeansException be) {
+					LOG.warn("Cannot load a conversion Service", be);
+				}
+			}
+
+			for (String beanName : ctx.getBeanDefinitionNames()) {
+				Object bean = ctx.getBean(beanName);
+				Class<?> type = bean.getClass();
 				wireBean(bean, findHandlerMethods(type, CONSUMER_METHOD_FILTER));
 			}
+
+			started = true;
 		}
 
 	}
@@ -101,10 +110,10 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 			//register [replyTo]consumer
 			Object replyTo = replyToAnno != null ? parseReplyTo(replyToAnno, bean) : null;
-			Invoker handler = new Invoker(method, bean);
+			Invoker handler = new Invoker(method, bean, conversionService);
 			consumer = null != replyToAnno ?
-								 new ReplyToServiceConsumer(reactor, replyTo, handler) :
-								 new ServiceConsumer(handler);
+					new ReplyToServiceConsumer(reactor, replyTo, handler) :
+					new ServiceConsumer(handler);
 
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Attaching Consumer to Reactor[" + reactor + "] using Selector[" + selector + "]");
@@ -232,15 +241,17 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 		}
 	}
 
-	protected final class Invoker implements Function<Event, Object> {
+	protected final static class Invoker implements Function<Event, Object> {
 
 		final private Method     method;
 		final private Object     bean;
 		final private Class<?>[] argTypes;
+		final private ConversionService conversionService;
 
-		Invoker(Method method, Object bean) {
+		Invoker(Method method, Object bean, ConversionService conversionService) {
 			this.method = method;
 			this.bean = bean;
+			this.conversionService = conversionService;
 			this.argTypes = method.getParameterTypes();
 		}
 
@@ -301,7 +312,7 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 	}
 
 	public static Set<Method> findHandlerMethods(Class<?> handlerType,
-																							 final ReflectionUtils.MethodFilter handlerMethodFilter) {
+	                                             final ReflectionUtils.MethodFilter handlerMethodFilter) {
 		final Set<Method> handlerMethods = new LinkedHashSet<Method>();
 		Set<Class<?>> handlerTypes = new LinkedHashSet<Class<?>>();
 		Class<?> specificHandlerType = null;
