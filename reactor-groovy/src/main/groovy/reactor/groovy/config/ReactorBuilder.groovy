@@ -169,11 +169,16 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream) Closure<Stream> closure) {
-		stream(null, closure)
+		stream((Selector)null, closure)
 	}
 
 	void stream(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
-		stream(null, head, tail)
+		stream((Selector)null, head, tail)
+	}
+
+	void stream(String selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
+			value = Stream) Closure<Stream> closure) {
+		stream Selectors.$(selector), closure
 	}
 
 	void stream(Selector selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
@@ -208,18 +213,27 @@ class ReactorBuilder implements Supplier<Reactor> {
 			Deferred<Event<?>, Stream<Event<?>>> deferred = null
 			Stream<Event<?>> tail = null
 			HeadAndTail stream
+			HeadAndTail anticipatedStream
 			Iterator<HeadAndTail> it = streams.iterator()
 			boolean first = true
 
-			while (it.hasNext()) {
-				stream = it.next()
+			while (it.hasNext() || anticipatedStream) {
+				stream = anticipatedStream ?: it.next()
+				anticipatedStream = null
+
 				if (first) {
 					first = false
 					deferred = Streams.<Event<?>>defer().get()
 					tail = deferred.compose()
 				}
 				if (stream.selector) {
-					tail.filter(new EventRouterPredicate(stream.selector), stream.tail).consume(stream.head.compose())
+					if(it.hasNext()){
+						anticipatedStream = it.next()
+					}else{
+						def finalDeferred = Streams.<Event<?>>defer().get()
+						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred.compose(), null)
+					}
+					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).consume(stream.head.compose())
 				} else {
 					tail.consume(stream.head.compose())
 				}

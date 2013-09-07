@@ -68,6 +68,19 @@ class GroovyEnvironment {
 		String key
 
 		for (groovyEnvironment in groovyEnvironments) {
+
+			if (reactorEnvironment) {
+				if (groovyEnvironment.reactorEnvironment) {
+					for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
+						for (dispatcher in dispatcherEntry.value) {
+							reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)
+						}
+					}
+				}
+			} else {
+				reactorEnvironment = groovyEnvironment.reactorEnvironment
+			}
+
 			for (reactorEntry in groovyEnvironment.reactors) {
 				reactorBuilder = ((Map.Entry<String, ReactorBuilder>) reactorEntry).value
 				key = ((Map.Entry<String, Reactor>) reactorEntry).key
@@ -83,18 +96,6 @@ class GroovyEnvironment {
 				} else {
 					reactors[key] = reactorBuilder
 				}
-			}
-
-			if (reactorEnvironment) {
-				if (groovyEnvironment.reactorEnvironment) {
-					for (dispatcherEntry in groovyEnvironment.reactorEnvironment) {
-						for (dispatcher in dispatcherEntry.value) {
-							reactorEnvironment.addDispatcher(dispatcherEntry.key, dispatcher)
-						}
-					}
-				}
-			} else {
-				reactorEnvironment = groovyEnvironment.reactorEnvironment
 			}
 
 		}

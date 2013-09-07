@@ -18,7 +18,9 @@ package reactor.groovy
 import groovy.transform.CompileStatic
 import reactor.core.configuration.DispatcherType
 import reactor.event.dispatch.SynchronousDispatcher
+import reactor.function.Consumer
 import reactor.function.Function
+import reactor.function.Predicate
 import reactor.groovy.config.GroovyEnvironment
 import reactor.event.Event
 import static reactor.event.selector.Selectors.*
@@ -117,6 +119,22 @@ class StaticConfiguration {
 				}
 				on('test') {
 					reply it
+				}
+				on('test2') {
+					reply it
+				}
+
+			}
+
+			reactor('test2') {
+				stream('test'){
+					filter({ Event<?> ev->
+						false
+					} as Predicate)
+				}
+				on('test') {
+					reply it
+					throw new Exception('never')
 				}
 				on('test2') {
 					reply it
