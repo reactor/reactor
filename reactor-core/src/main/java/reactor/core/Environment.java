@@ -104,7 +104,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
 			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
+				int size = getSize(dispatcherConfiguration, 0);
+				for(int i = 0; i < size; i++) {
+					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
+				}
 			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
 			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
