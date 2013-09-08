@@ -4,6 +4,7 @@ import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.function.Consumer
 import reactor.function.support.Boundary
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
@@ -15,6 +16,7 @@ import static reactor.GroovyTestUtils.$
  */
 class BoundarySpec extends Specification {
 
+	@Ignore
 	def "A Boundary can wait on multiple Consumers"() {
 
 		given: "A Boundary with multiple Consumers bound to it"
