@@ -23,6 +23,7 @@ import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
 import reactor.core.composable.Stream
 import reactor.function.*
+import reactor.groovy.support.*
 import reactor.tuple.Tuple2
 
 /**
@@ -228,4 +229,3 @@ class ComposableExtensions {
 	}
 
 }
-import reactor.groovy.support.*
