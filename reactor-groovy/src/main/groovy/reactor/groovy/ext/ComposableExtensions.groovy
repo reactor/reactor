@@ -226,6 +226,7 @@ class ComposableExtensions {
 
 	static <T, X extends Composable<T>> Deferred<T, X> leftShift(final Deferred<T, X> selfType, T value) {
 		selfType.accept value
+		selfType
 	}
 
 }
