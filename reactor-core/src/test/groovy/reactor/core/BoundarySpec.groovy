@@ -16,7 +16,7 @@ import static reactor.GroovyTestUtils.$
  */
 class BoundarySpec extends Specification {
 
-	@Ignore
+	//@Ignore
 	def "A Boundary can wait on multiple Consumers"() {
 
 		given: "A Boundary with multiple Consumers bound to it"
@@ -25,7 +25,7 @@ class BoundarySpec extends Specification {
 				dispatcher(Environment.THREAD_POOL).
 				get()
 		def boundary = new Boundary()
-		def hellos = []
+		def hellos = Collections.synchronizedList([])
 		(1..5).each {
 			r.on($("test.$it"), boundary.bind({ Event<String> ev ->
 				hellos << ev.data
