@@ -61,7 +61,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final Timer                    timer            = new Timer();
+	private final Timer                    timer;
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -94,7 +94,19 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @param configurationReader The configuration reader to use to obtain additional configuration
 	 */
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
+		this(dispatchers, configurationReader, new Timer());
+	}
 
+	/**
+	 * Creates a new Environment that will contain the given {@code dispatchers}, will use the given {@code
+	 * configurationReader} to obtain additional configuration and given {@code timer} as a root timer.
+	 *
+	 * @param dispatchers         The dispatchers to add include in the Environment
+	 * @param configurationReader The configuration reader to use to obtain additional configuration
+	 * @param timer               The timer to use as a Root Timer
+	 */
+	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader, Timer timer) {
+		this.timer = timer;
 		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
 
 		ReactorConfiguration configuration = configurationReader.read();
@@ -290,7 +302,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
-		timer.cancel();
+		if (timer != null) {
+			timer.cancel();
+		}
 	}
 
 	@Override
