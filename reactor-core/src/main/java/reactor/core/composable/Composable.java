@@ -81,6 +81,9 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
+		if(composable == this){
+			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
+		}
 		consumeEvent(new Consumer<Event<T>>() {
 			@Override
 			public void accept(Event<T> event) {

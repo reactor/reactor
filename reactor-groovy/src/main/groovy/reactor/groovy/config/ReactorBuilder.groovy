@@ -79,14 +79,14 @@ class ReactorBuilder implements Supplier<Reactor> {
 		router = router ?: r.router
 		consumerInvoker = consumerInvoker ?: r.consumerInvoker
 
-		if(!override){
+		if (!override) {
 			streams.addAll r.streams
 			childNodes.addAll r.childNodes
 		}
 
-		for(entry in r.ext){
-			if(!ext[((Map.Entry<String, Object>)entry).key]) ext[((Map.Entry<String, Object>)entry).key] =
-					((Map.Entry<String, Object>)entry).value
+		for (entry in r.ext) {
+			if (!ext[((Map.Entry<String, Object>) entry).key]) ext[((Map.Entry<String, Object>) entry).key] =
+					((Map.Entry<String, Object>) entry).value
 		}
 	}
 
@@ -169,11 +169,11 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream) Closure<Stream> closure) {
-		stream((Selector)null, closure)
+		stream((Selector) null, closure)
 	}
 
 	void stream(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
-		stream((Selector)null, head, tail)
+		stream((Selector) null, head, tail)
 	}
 
 	void stream(String selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
@@ -190,7 +190,9 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 
 	void stream(Selector selector, Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
-		streams << new HeadAndTail(head, tail, selector)
+		if (tail) {
+			streams << new HeadAndTail(head, tail, selector)
+		}
 	}
 
 	@Override
@@ -199,9 +201,9 @@ class ReactorBuilder implements Supplier<Reactor> {
 			return reactor
 
 		def spec = Reactors.reactor().env(env)
-		if(dispatcherName){
+		if (dispatcherName) {
 			spec.dispatcher(dispatcherName)
-		}else{
+		} else {
 			spec.dispatcher(dispatcher)
 		}
 		if (converter) {
@@ -223,14 +225,14 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 				if (first) {
 					first = false
-					deferred = Streams.<Event<?>>defer().get()
+					deferred = Streams.<Event<?>> defer().get()
 					tail = deferred.compose()
 				}
 				if (stream.selector) {
-					if(it.hasNext()){
+					if (it.hasNext()) {
 						anticipatedStream = it.next()
-					}else{
-						def finalDeferred = Streams.<Event<?>>defer().get()
+					} else {
+						def finalDeferred = Streams.<Event<?>> defer().get()
 						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred.compose(), null)
 					}
 					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).consume(stream.head.compose())
@@ -243,8 +245,8 @@ class ReactorBuilder implements Supplier<Reactor> {
 			tail.consumeEvent(new Consumer<Event>() {
 				@Override
 				void accept(Event eventEvent) {
-					if(eventEvent.class == CallbackEvent)
-						((CallbackEvent)eventEvent).callback()
+					if (eventEvent.class == CallbackEvent)
+						((CallbackEvent) eventEvent).callback()
 				}
 			})
 			spec.eventRouter(new StreamEventRouter(filter ?: DEFAULT_FILTER,
