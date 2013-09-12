@@ -16,18 +16,24 @@
 
 package reactor.event.registry;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.selector.Selector;
 
-import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 /**
  * An optimized selectors registry working with a L1 Cache and ReadWrite reentrant locks.
  *
- * @param <T> the type of Registration held by this registry
+ * @param <T>
+ * 		the type of Registration held by this registry
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -41,6 +47,15 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final List<Registration<? extends T>>              registrations     = new ArrayList<Registration<? extends T>>();
 	private final Map<Object, List<Registration<? extends T>>> registrationCache = new HashMap<Object, List<Registration<? extends T>>>();
 	private final Logger                                       log               = LoggerFactory.getLogger(CachingRegistry.class);
+	private final boolean cache;
+
+	public CachingRegistry() {
+		this(true);
+	}
+
+	public CachingRegistry(boolean cache) {
+		this.cache = cache;
+	}
 
 	private boolean refreshRequired;
 
@@ -66,13 +81,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		writeLock.lock();
 		try {
-			if (registrations.isEmpty()) {
+			if(registrations.isEmpty()) {
 				return false;
 			}
 
 			List<Registration<? extends T>> regs = findMatchingRegistrations(key);
 
-			if (!regs.isEmpty()) {
+			if(!regs.isEmpty()) {
 				registrations.removeAll(regs);
 				refreshRequired = true;
 				return true;
@@ -91,11 +106,11 @@ public class CachingRegistry<T> implements Registry<T> {
 		readLock.lock();
 
 		try {
-			if (refreshRequired) {
+			if(refreshRequired) {
 				readLock.unlock();
 				writeLock.lock();
 				try {
-					if (refreshRequired) {
+					if(refreshRequired) {
 						registrationCache.clear();
 						refreshRequired = false;
 					}
@@ -107,12 +122,12 @@ public class CachingRegistry<T> implements Registry<T> {
 
 			matchingRegistrations = registrationCache.get(key);
 
-			if (null == matchingRegistrations) {
+			if(null == matchingRegistrations) {
 				readLock.unlock();
 				writeLock.lock();
 				try {
 					matchingRegistrations = registrationCache.get(key);
-					if (null == matchingRegistrations) {
+					if(null == matchingRegistrations) {
 						matchingRegistrations = find(key);
 					}
 				} finally {
@@ -144,13 +159,15 @@ public class CachingRegistry<T> implements Registry<T> {
 
 			List<Registration<? extends T>> regs;
 
-			if (registrations.isEmpty()) {
+			if(registrations.isEmpty()) {
 				regs = Collections.emptyList();
 			} else {
 				regs = findMatchingRegistrations(object);
 			}
 
-			registrationCache.put(object, regs);
+			if(cache) {
+				registrationCache.put(object, regs);
+			}
 
 			return regs;
 		} finally {
@@ -160,13 +177,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	private List<Registration<? extends T>> findMatchingRegistrations(Object object) {
 		List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
-		for (Registration<? extends T> reg : registrations) {
-			if (reg.getSelector().matches(object)) {
+		for(Registration<? extends T> reg : registrations) {
+			if(reg.getSelector().matches(object)) {
 				regs.add(reg);
 			}
 		}
-		if (regs.isEmpty()) {
-			if (log.isTraceEnabled()) {
+		if(regs.isEmpty()) {
+			if(log.isTraceEnabled()) {
 				log.trace("No objects registered for key {}", object);
 			}
 		}
