@@ -16,8 +16,23 @@
 
 package reactor.tcp.netty;
 
+import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.net.ssl.SSLEngine;
+
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -33,7 +48,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
-import reactor.event.registry.Registration;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -46,21 +61,14 @@ import reactor.tcp.encoding.Codec;
 import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.tuple.Tuple2;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLEngine;
-import java.net.InetSocketAddress;
-import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * A Netty-based {@code TcpClient}.
  *
- * @param <IN>  The type that will be received by this client
- * @param <OUT> The type that will be sent by this client
+ * @param <IN>
+ * 		The type that will be received by this client
+ * @param <OUT>
+ * 		The type that will be sent by this client
+ *
  * @author Jon Brisbin
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
@@ -76,25 +84,31 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private volatile boolean                 closing;
 
 	/**
-	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor} to
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor}
+	 * to
 	 * send events. The number of IO threads used by the client is configured by the environment's {@code
 	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
 	 * Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env            The configuration environment
-	 * @param reactor        The reactor used to send events
-	 * @param connectAddress The address the client will connect to
-	 * @param opts           The configuration options for the client's socket
-	 * @param codec          The codec used to encode and decode data
+	 * @param env
+	 * 		The configuration environment
+	 * @param reactor
+	 * 		The reactor used to send events
+	 * @param connectAddress
+	 * 		The address the client will connect to
+	 * @param opts
+	 * 		The configuration options for the client's socket
+	 * @param codec
+	 * 		The codec used to encode and decode data
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
-												@Nonnull Reactor reactor,
-												@Nonnull InetSocketAddress connectAddress,
-												@Nonnull ClientSocketOptions opts,
-												@Nullable final SslOptions sslOpts,
-												@Nullable Codec<Buffer, IN, OUT> codec) {
+	                      @Nonnull Reactor reactor,
+	                      @Nonnull InetSocketAddress connectAddress,
+	                      @Nonnull ClientSocketOptions opts,
+	                      @Nullable final SslOptions sslOpts,
+	                      @Nullable Codec<Buffer, IN, OUT> codec) {
 		super(env, reactor, connectAddress, opts, sslOpts, codec);
 		this.eventsReactor = reactor;
 		this.connectAddress = connectAddress;
@@ -117,9 +131,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
 
-						if (null != sslOpts) {
+						if(null != sslOpts) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOpts, true).get();
-							log.debug("SSL enabled using keystore {}", (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							log.debug("SSL enabled using keystore {}",
+							          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
@@ -129,7 +144,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
 			public ChannelFuture get() {
-				if (!closing) {
+				if(!closing) {
 					return bootstrap.connect(NettyTcpClient.this.connectAddress);
 				} else {
 					return null;
@@ -141,9 +156,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
 		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection = Promises.<TcpConnection<IN, OUT>>defer()
-																																																 .env(env)
-																																																 .dispatcher(eventsReactor.getDispatcher())
-																																																 .get();
+		                                                                                             .env(env)
+		                                                                                             .dispatcher(
+				                                                                                             eventsReactor.getDispatcher())
+		                                                                                             .get();
 
 		createConnection(createConnectListener(connection));
 
@@ -153,9 +169,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Stream<TcpConnection<IN, OUT>> open(final Reconnect reconnect) {
 		final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections = Streams.<TcpConnection<IN, OUT>>defer()
-																																																.env(env)
-																																																.dispatcher(eventsReactor.getDispatcher())
-																																																.get();
+		                                                                                            .env(env)
+		                                                                                            .dispatcher(
+				                                                                                            eventsReactor.getDispatcher())
+		                                                                                            .get();
 		createConnection(createReconnectListener(connections, reconnect));
 
 		return connections.compose();
@@ -163,7 +180,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected <C> TcpConnection<IN, OUT> createConnection(C channel) {
-		SocketChannel ch = (SocketChannel) channel;
+		SocketChannel ch = (SocketChannel)channel;
 		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		return new NettyTcpConnection<IN, OUT>(
@@ -177,7 +194,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
+		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>)select(ch);
 		return new ChannelHandler[]{
 				new NettyTcpConnectionChannelInboundHandler(conn) {
 					@Override
@@ -200,12 +217,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					latch.countDown();
 				}
 			});
-			if (latch.await(30, TimeUnit.SECONDS)) {
-				d.accept((Void) null);
+			if(latch.await(30, TimeUnit.SECONDS)) {
+				d.accept((Void)null);
 			} else {
 				d.accept(new TimeoutException("NettyTcpClient could not close connection after 30 seconds"));
 			}
-		} catch (InterruptedException e) {
+		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 			d.accept(e);
 		}
@@ -215,22 +232,22 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		return new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
-				if (!future.isSuccess()) {
-					if (log.isErrorEnabled()) {
+				if(!future.isSuccess()) {
+					if(log.isErrorEnabled()) {
 						log.error(future.cause().getMessage(), future.cause());
 					}
 					connection.accept(future.cause());
 					return;
 				}
 
-				if (log.isInfoEnabled()) {
+				if(log.isInfoEnabled()) {
 					log.info("CONNECT: " + future.channel());
 				}
-				final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
+				final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>)select(future.channel());
 				future.channel().closeFuture().addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) throws Exception {
-						if (log.isInfoEnabled()) {
+						if(log.isInfoEnabled()) {
 							log.info("CLOSED: " + future.channel());
 						}
 						NettyTcpClient.this.connections.unregister(future.channel());
@@ -244,19 +261,19 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	private ChannelFutureListener createReconnectListener(final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections,
-																												final Reconnect reconnect) {
+	                                                      final Reconnect reconnect) {
 		return new ChannelFutureListener() {
 			final AtomicInteger attempts = new AtomicInteger(0);
 			final ChannelFutureListener self = this;
 
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
-				if (!future.isSuccess()) {
+				if(!future.isSuccess()) {
 					int attempt = attempts.incrementAndGet();
 					Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
-					if (null == tup) {
+					if(null == tup) {
 						// do not attempt a reconnect
-						if (log.isErrorEnabled()) {
+						if(log.isErrorEnabled()) {
 							log.error("Reconnection to {} failed after {} attempts.", connectAddress, attempt - 1);
 						}
 						connections.accept(future.cause());
@@ -267,32 +284,32 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					bootstrap.remoteAddress(connectAddress);
 					long delay = tup.getT2();
 
-					if (log.isInfoEnabled()) {
+					if(log.isInfoEnabled()) {
 						log.info("Attempting to reconnect to {} after {}ms", connectAddress, delay);
 					}
 					env.getRootTimer().schedule(
-							new TimerTask() {
-								@Override
-								public void run() {
+							new Consumer<Long>() {
+								@Override public void accept(Long now) {
 									createConnection(self);
 								}
 							},
-							delay
+							delay,
+							TimeUnit.MILLISECONDS
 					);
 				} else {
-					if (log.isInfoEnabled()) {
+					if(log.isInfoEnabled()) {
 						log.info("CONNECT: " + future.channel());
 					}
-					final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(future.channel());
+					final NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>)select(future.channel());
 					future.channel().closeFuture().addListener(new ChannelFutureListener() {
 						@Override
 						public void operationComplete(ChannelFuture future) throws Exception {
-							if (log.isInfoEnabled()) {
+							if(log.isInfoEnabled()) {
 								log.info("CLOSED: " + future.channel());
 							}
 							NettyTcpClient.this.connections.unregister(future.channel());
 							notifyClose(conn);
-							if (!conn.isClosing()) {
+							if(!conn.isClosing()) {
 								createConnection(self);
 							}
 						}
@@ -314,7 +331,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private void createConnection(ChannelFutureListener listener) {
 		ChannelFuture channel = connectionSupplier.get();
-		if (channel != null) {
+		if(channel != null) {
 			channel.addListener(listener);
 		}
 	}

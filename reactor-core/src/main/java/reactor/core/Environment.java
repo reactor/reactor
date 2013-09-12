@@ -18,12 +18,10 @@ package reactor.core;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Timer;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
@@ -41,6 +39,8 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
+import reactor.util.LinkedMultiValueMap;
+import reactor.util.MultiValueMap;
 
 /**
  * @author Jon Brisbin
@@ -76,13 +76,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final Timer                    timer;
+	private final HashWheelTimer           timer            = new HashWheelTimer();
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
 
-	private final Map<String, List<Dispatcher>> dispatchers;
-	private final String                        defaultDispatcher;
+	private final MultiValueMap<String, Dispatcher> dispatchers;
+	private final String                            defaultDispatcher;
 
 	/**
 	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial
@@ -104,7 +104,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Creates a new Environment that will contain the given {@code dispatchers} and will use the given {@code
+	 * Creates a new Environment that will contain the given {@code dispatchers}, will use the given {@code
 	 * configurationReader} to obtain additional configuration.
 	 *
 	 * @param dispatchers
@@ -113,20 +113,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * 		The configuration reader to use to obtain additional configuration
 	 */
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
-		this(dispatchers, configurationReader, new Timer());
-	}
-
-	/**
-	 * Creates a new Environment that will contain the given {@code dispatchers}, will use the given {@code
-	 * configurationReader} to obtain additional configuration and given {@code timer} as a root timer.
-	 *
-	 * @param dispatchers         The dispatchers to add include in the Environment
-	 * @param configurationReader The configuration reader to use to obtain additional configuration
-	 * @param timer               The timer to use as a Root Timer
-	 */
-	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader, Timer timer) {
-		this.timer = timer;
-		this.dispatchers = new HashMap<String, List<Dispatcher>>(dispatchers);
+		this.dispatchers = new LinkedMultiValueMap<String, Dispatcher>(dispatchers);
 
 		ReactorConfiguration configuration = configurationReader.read();
 		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
@@ -278,21 +265,12 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
 		synchronized(monitor) {
-			doAddDispatcher(name, dispatcher);
+			this.dispatchers.add(name, dispatcher);
 			if(name.equals(defaultDispatcher)) {
-				doAddDispatcher(DEFAULT_DISPATCHER_NAME, dispatcher);
+				this.dispatchers.add(DEFAULT_DISPATCHER_NAME, dispatcher);
 			}
 		}
 		return this;
-	}
-
-	private void doAddDispatcher(String name, Dispatcher dispatcher) {
-		List<Dispatcher> dispatchers = this.dispatchers.get(name);
-		if(dispatchers == null) {
-			dispatchers = new ArrayList<Dispatcher>();
-			this.dispatchers.put(name, dispatchers);
-		}
-		dispatchers.add(dispatcher);
 	}
 
 	/**
@@ -323,7 +301,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		return rootReactor.get();
 	}
 
-	public Timer getRootTimer() {
+	public HashWheelTimer getRootTimer() {
 		return timer;
 	}
 
@@ -342,9 +320,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		for(Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
-		if (timer != null) {
-			timer.cancel();
-		}
+		timer.cancel();
 	}
 
 	@Override
