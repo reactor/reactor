@@ -20,6 +20,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import reactor.core.Environment;
@@ -58,6 +59,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class TcpClientTests {
 
 	private static final int ECHO_SERVER_PORT      = 27487;

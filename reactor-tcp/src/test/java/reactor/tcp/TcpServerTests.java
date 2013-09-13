@@ -60,6 +60,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class TcpServerTests {
 
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
