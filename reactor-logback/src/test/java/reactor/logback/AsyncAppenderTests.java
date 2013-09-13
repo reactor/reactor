@@ -16,19 +16,19 @@
 
 package reactor.logback;
 
-import ch.qos.logback.classic.Logger;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.LoggerFactory;
-
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import ch.qos.logback.classic.Logger;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Jon Brisbin
@@ -43,7 +43,7 @@ public class AsyncAppenderTests {
 
 		char[] chars = new char[20000];
 		int len = chars.length;
-		for (int i = 0; i < len; i++) {
+		for(int i = 0; i < len; i++) {
 			chars[i] = ABCS.charAt(r.nextInt(ABCS.length()));
 		}
 		MSG = new String(chars);
@@ -64,13 +64,13 @@ public class AsyncAppenderTests {
 
 	@Test
 	public void clockAsyncAppender() throws InterruptedException {
-		long n = benchmarkThread((Logger) LoggerFactory.getLogger("reactor"), timeout);
+		long n = benchmarkThread((Logger)LoggerFactory.getLogger("reactor"), timeout);
 		System.out.println("async: " + (n / timeout) + "/sec");
 	}
 
 	@Test
 	public void clockSyncAppender() throws InterruptedException {
-		long m = benchmarkThread((Logger) LoggerFactory.getLogger("sync"), timeout);
+		long m = benchmarkThread((Logger)LoggerFactory.getLogger("sync"), timeout);
 		System.out.println("sync: " + (m / timeout) + "/sec");
 	}
 
@@ -85,12 +85,12 @@ public class AsyncAppenderTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicLong throughput = new AtomicLong(0);
 
-		int threads = Runtime.getRuntime().availableProcessors();
-		for (int i = 0; i < threads; i++) {
+		int threads = Runtime.getRuntime().availableProcessors() * 4;
+		for(int i = 0; i < threads; i++) {
 			threadPool.submit(new Runnable() {
 				@Override
 				public void run() {
-					while (latch.getCount() > 0) {
+					while(latch.getCount() > 0) {
 						logger.warn("" + throughput.incrementAndGet());
 					}
 				}
