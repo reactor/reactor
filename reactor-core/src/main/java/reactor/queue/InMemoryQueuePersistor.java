@@ -16,12 +16,13 @@
 
 package reactor.queue;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nonnull;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMapLong;
 import reactor.function.Function;
 import reactor.function.Supplier;
 
@@ -32,7 +33,7 @@ import reactor.function.Supplier;
  */
 public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 
-	private final Map<Long, T> objects   = new NonBlockingHashMapLong<T>();
+	private final Map<Long, T> objects   = Collections.synchronizedMap(new HashMap<Long, T>());
 	private final AtomicLong   counter   = new AtomicLong();
 	private final AtomicLong   currentId = new AtomicLong();
 	private final Function<T, Long> offerFun;

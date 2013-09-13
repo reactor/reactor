@@ -163,12 +163,8 @@ project('reactor-core') {
 	apply plugin: 'osgi'
 	description = 'Core Reactor components'
 	dependencies {
-
 		// Type-1 UUIDs
 		compile "com.eaio.uuid:uuid:3.2"
-
-		// NonBlockingHashMap
-		compile "com.github.stephenc.high-scale-lib:high-scale-lib:1.1.4"
 
 		// High-speed Dispatching
 		compile "com.lmax:disruptor:$disruptorVersion"
@@ -224,10 +220,9 @@ project('reactor-spring') {
 }
 
 project('reactor-logback') {
-	description = 'Disruptor-based Logback async appender implementation'
+	description = 'Processor-based Logback async appender implementation'
 	dependencies {
-		// High-speed Dispatching
-		compile "com.lmax:disruptor:$disruptorVersion"
+    compile project(':reactor-core')
 
 		// Logback
 		compile "ch.qos.logback:logback-classic:$logbackVersion"
