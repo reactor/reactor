@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.expression.BeanFactoryResolver;
@@ -37,7 +38,8 @@ import static reactor.event.selector.Selectors.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent> {
+public class ConsumerBeanAutoConfiguration implements ApplicationListener<ContextRefreshedEvent>,
+                                                      ApplicationContextAware {
 
 	public static final String REACTOR_CONVERSION_SERVICE_BEAN_NAME = "reactorConversionService";
 
@@ -50,6 +52,7 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConsumerBeanAutoConfiguration.class);
 
+	private ApplicationContext appCtx;
 	private BeanResolver                  beanResolver;
 	private ConversionService             conversionService;
 	private TemplateAwareExpressionParser expressionParser;
@@ -61,8 +64,16 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 	}
 
 	@Override
+	public void setApplicationContext(ApplicationContext appCtx) throws BeansException {
+		this.appCtx = appCtx;
+	}
+
+	@Override
 	public void onApplicationEvent(ContextRefreshedEvent ev) {
 		ApplicationContext ctx = ev.getApplicationContext();
+		if (ctx != appCtx) {
+			return;
+		}
 
 		synchronized (this) {
 			if (started)
@@ -76,7 +87,9 @@ public class ConsumerBeanAutoConfiguration implements ApplicationListener<Contex
 				try {
 					conversionService = ctx.getBean(REACTOR_CONVERSION_SERVICE_BEAN_NAME, ConversionService.class);
 				} catch (BeansException be) {
-					LOG.info(REACTOR_CONVERSION_SERVICE_BEAN_NAME+" has not been found in the context. Skipping.");
+					if (LOG.isDebugEnabled()) {
+						LOG.debug(REACTOR_CONVERSION_SERVICE_BEAN_NAME + " has not been found in the context. Skipping.");
+					}
 				}
 			}
 

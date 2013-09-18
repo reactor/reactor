@@ -1,13 +1,17 @@
 package reactor.spring.context.config;
 
+import org.springframework.context.annotation.Import;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.context.annotation.Import;
-
 /**
+ * Helper annotation to be placed on {@link org.springframework.context.annotation.Configuration} classes to ensure
+ * an {@link reactor.core.Environment} is created in application context as well as create the necessary beans for
+ * automatic wiring of annotated beans.
+ *
  * @author Jon Brisbin
  */
 @Target(ElementType.TYPE)
@@ -18,16 +22,16 @@ public @interface EnableReactor {
 	/**
 	 * Name of the profile to use as the default.
 	 *
-	 * @return
+	 * @return default profile name
 	 */
 	String value() default "";
 
 	/**
-	 * The name of a {@link reactor.core.configuration.ConfigurationReader} bean to use to read the Reactor {@link
-	 * reactor.core.Environment}.
+	 * The bean name of {@link reactor.function.Supplier} that can provide an instance (or instances) of {@link reactor
+	 * .core.Environment} to be registered in the {@link org.springframework.context.ApplicationContext}.
 	 *
-	 * @return
+	 * @return bean name of {@link reactor.core.Environment} {@link reactor.function.Supplier}
 	 */
-	String configurationReader() default "";
+	String environmentSupplier() default "";
 
 }
