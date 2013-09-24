@@ -45,9 +45,9 @@ import java.util.List;
  */
 @NotThreadSafe
 public class Buffer implements Comparable<Buffer>,
-															 Iterable<Byte>,
-															 ReadableByteChannel,
-															 WritableByteChannel {
+                               Iterable<Byte>,
+                               ReadableByteChannel,
+                               WritableByteChannel {
 
 	/**
 	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
@@ -161,8 +161,8 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
-	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much faster than {@link
-	 * Integer#parseInt(String)}.
+	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much faster than
+	 * {@link Integer#parseInt(String)}.
 	 *
 	 * @param b     The {@literal Buffer} to slice.
 	 * @param start start of the range.
@@ -1164,6 +1164,7 @@ public class Buffer implements Comparable<Buffer>,
 		public int read(byte[] b) throws IOException {
 			int pos = buffer.position();
 			buffer.get(b);
+			syncPos();
 			return buffer.position() - pos;
 		}
 
@@ -1178,6 +1179,7 @@ public class Buffer implements Comparable<Buffer>,
 			if (len < bytesLen) {
 				buffer.position(position + len);
 			}
+			syncPos();
 			return bytesLen;
 		}
 
@@ -1188,6 +1190,7 @@ public class Buffer implements Comparable<Buffer>,
 			}
 			int pos = buffer.position();
 			buffer.position((int) (pos + n));
+			syncPos();
 			return buffer.position() - pos;
 		}
 
@@ -1199,6 +1202,7 @@ public class Buffer implements Comparable<Buffer>,
 		@Override
 		public void close() throws IOException {
 			buffer.position(buffer.limit());
+			syncPos();
 		}
 
 		@Override
@@ -1213,6 +1217,7 @@ public class Buffer implements Comparable<Buffer>,
 		@Override
 		public synchronized void reset() throws IOException {
 			buffer.reset();
+			syncPos();
 		}
 
 		@Override
@@ -1222,7 +1227,13 @@ public class Buffer implements Comparable<Buffer>,
 
 		@Override
 		public int read() throws IOException {
-			return buffer.get();
+			int b = buffer.get();
+			syncPos();
+			return b;
+		}
+
+		private void syncPos() {
+			Buffer.this.buffer.position(buffer.position());
 		}
 	}
 
