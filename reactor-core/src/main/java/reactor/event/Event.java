@@ -49,6 +49,7 @@ public class Event<T> implements Serializable {
 	private volatile UUID    id;
 	private volatile Headers headers;
 	private volatile Object  replyTo;
+	private volatile Object  key;
 	private volatile T       data;
 
 	private final transient Consumer<Throwable> errorConsumer;
@@ -155,6 +156,28 @@ public class Event<T> implements Serializable {
 	public Event<T> setReplyTo(Object replyTo) {
 		Assert.notNull(replyTo, "ReplyTo cannot be null.");
 		this.replyTo = replyTo;
+		return this;
+	}
+
+	/**
+	 * Get the key this event was notified on.
+	 *
+	 * @return The key used to notify consumers of this event.
+	 */
+	public Object getKey() {
+		return key;
+	}
+
+	/**
+	 * Set the key this event is being notified with.
+	 *
+	 * @param key
+	 * 		The key used to notify consumers of this event.
+	 *
+	 * @return {@literal this}
+	 */
+	public Event<T> setKey(Object key) {
+		this.key = key;
 		return this;
 	}
 

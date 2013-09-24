@@ -75,7 +75,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		@Override
 		public void accept(Throwable t) {
 			//avoid passing itself as error handler
-			dispatcher.dispatch(t.getClass(), Event.wrap(t), consumerRegistry, null, eventRouter, null);
+			dispatcher.dispatch(t.getClass(), Event.wrap(t).setKey(t.getClass()), consumerRegistry, null, eventRouter, null);
 		}
 	};
 	private final Set<Observable>     linkedReactors = Collections.synchronizedSet(new HashSet<Observable>());
@@ -211,7 +211,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 
-		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
+		dispatcher.dispatch(key, (E)ev.setKey(key), consumerRegistry, errorHandler, eventRouter, onComplete);
 
 		if(!linkedReactors.isEmpty()) {
 			for(Observable r : linkedReactors) {
@@ -273,10 +273,10 @@ public class Reactor implements Observable, Linkable<Observable> {
 			final int size = regs.size();
 
 			@Override
-			public void accept(Event<T> event) {
+			public void accept(Event<T> ev) {
 				for(int i = 0; i < size; i++) {
 					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>)regs.get(i);
-					dispatcher.dispatch(event, eventRouter, reg.getObject(), errorHandler);
+					dispatcher.dispatch(ev.setKey(key), eventRouter, reg.getObject(), errorHandler);
 				}
 			}
 		};
