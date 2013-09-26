@@ -91,7 +91,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream(@Nonnull Dispatcher dispatcher,
 	              int batchSize,
-	              @Nullable Iterable<T> values,
+                @Nullable Iterable<T> values,
 	              @Nullable Composable<?> parent) {
 		super(dispatcher, parent);
 		this.batchSize = batchSize;
@@ -164,7 +164,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> first() {
 		Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(first.getT1(), new EventConsumer<T>(d));
+    getObservable().on(first.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
 
@@ -178,7 +178,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> last() {
 		Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(last.getT1(), new EventConsumer<T>(d));
+    getObservable().on(last.getT1(), new EventConsumer<T>(d));
 		return d.compose();
 	}
 
@@ -301,11 +301,15 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
+    final Composable<A> c = d.compose();
 
-    ReduceConsumer reduceConsumer = new ReduceConsumer(d, fn, accumulators, this.batchSize);
+    ReduceConsumer reduceConsumer = new ReduceConsumer(c.getObservable(),
+                                                       c.getAccept().getT2(),
+                                                       fn,
+                                                       accumulators,
+                                                       this.batchSize);
     this.consumeEvent(reduceConsumer);
-    return reduceConsumer.getChildStream();
-
+    return (Stream<A>) c;
 	}
 
 	/**

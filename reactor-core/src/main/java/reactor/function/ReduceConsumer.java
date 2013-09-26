@@ -1,8 +1,6 @@
 package reactor.function;
 
-import reactor.core.composable.Composable;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
+import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -16,19 +14,22 @@ public class ReduceConsumer<T, A> implements Consumer<Event<T>> {
   private final Function<Tuple2<T, A>, A> fn;
   private final Supplier<A> accumulators;
   private A acc;
-  private final Deferred<A, Stream<A>> childDeferredStream;
+  private final Observable observable;
+  private final Object key;
 
   private final AtomicLong count;
   private final int batchSize;
 
-  public ReduceConsumer(@Nonnull final Deferred<A, Stream<A>> childDeferredStream,
+  public ReduceConsumer(@Nonnull Observable observable,
+                        @Nonnull Object key,
                         @Nonnull final Function<Tuple2<T, A>, A> fn,
                         @Nullable final Supplier<A> accumulators,
                         final int batchSize)
   {
     this.fn = fn;
     this.accumulators = accumulators;
-    this.childDeferredStream = childDeferredStream;
+    this.observable = observable;
+    this.key = key;
     this.count = new AtomicLong(0);
     this.batchSize = batchSize;
   }
@@ -41,16 +42,11 @@ public class ReduceConsumer<T, A> implements Consumer<Event<T>> {
     acc = fn.apply(Tuple.of(value.getData(), acc));
 
     if(isBatch() && count.incrementAndGet() % batchSize == 0) {
-      childDeferredStream.acceptEvent(value.copy(acc));
+      observable.notify(key, value.copy(acc));
     } else if(!isBatch()) {
-      childDeferredStream.acceptEvent(value.copy(acc));
+      observable.notify(key, value.copy(acc));
     }
   }
-
-  public Stream<A> getChildStream() {
-    return childDeferredStream.compose();
-  }
-
 
   public boolean isBatch() {
     return batchSize > 0;

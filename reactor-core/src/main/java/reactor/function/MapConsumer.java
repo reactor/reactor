@@ -1,32 +1,31 @@
 package reactor.function;
 
-import reactor.core.composable.Composable;
-import reactor.core.composable.Deferred;
+import reactor.core.Observable;
 import reactor.event.Event;
 import javax.annotation.Nonnull;
 
 public class MapConsumer<T, R> implements Consumer<Event<T>> {
 
   private final Function<T, R> fn;
-  private final Deferred<R, ? extends Composable<R>> childDeferredStream;
+  private final Observable observable;
+  private final Object key;
 
-  public MapConsumer(@Nonnull Deferred<R, ? extends Composable<R>> childDeferredStream,
+  public MapConsumer(@Nonnull Observable observable,
+                     @Nonnull Object key,
                      @Nonnull Function<T, R> fn) {
     this.fn = fn;
-    this.childDeferredStream = childDeferredStream;
+    this.observable = observable;
+    this.key = key;
   }
 
   @Override
   public void accept(Event<T> value) {
     try {
       R val = fn.apply(value.getData());
-      childDeferredStream.acceptEvent(value.copy(val));
-    } catch (Throwable e) {
-      childDeferredStream.accept(e);
-    }
-  }
 
-  public Composable<R> getChildStream() {
-    return childDeferredStream.compose();
+      observable.notify(key, value.copy(val));
+    } catch (Throwable e) {
+      observable.notify(e.getClass(), Event.wrap(e));
+    }
   }
 }
