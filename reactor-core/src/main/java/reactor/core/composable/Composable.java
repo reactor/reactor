@@ -26,6 +26,7 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.function.MapConsumer;
 import reactor.function.Predicate;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -99,7 +100,7 @@ public abstract class Composable<T> {
 	 *
 	 * @return {@literal this}
 	 */
-	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
+  public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
 		this.events.on(accept.getT1(), new EventConsumer<T>(consumer));
 		return this;
 	}
@@ -163,19 +164,11 @@ public abstract class Composable<T> {
 	 */
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
-		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		consumeEvent(new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> value) {
-				try {
-					V val = fn.apply(value.getData());
-					d.acceptEvent(value.copy(val));
-				} catch (Throwable e) {
-					d.accept(e);
-				}
-			}
-		});
-		return d.compose();
+    final Deferred<V, Composable<V>> d = createDeferred();
+    final Composable<V> c = d.compose();
+    MapConsumer<T, V> mapConsumer = new MapConsumer<T, V>(c.getObservable(), c.getAccept().getT2(), fn);
+    this.consumeEvent(mapConsumer);
+    return c;
 	}
 
 	/**
@@ -280,7 +273,7 @@ public abstract class Composable<T> {
 		lock.lock();
 		try {
 			acceptCount++;
-			valueAccepted(value.getData());
+      valueAccepted(value.getData());
 		} finally {
 			lock.unlock();
 		}
