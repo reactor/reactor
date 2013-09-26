@@ -33,11 +33,7 @@ import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.event.support.CallbackEvent;
 import reactor.event.support.EventConsumer;
-import reactor.function.Consumer;
-import reactor.function.Function;
-import reactor.function.Functions;
-import reactor.function.Predicate;
-import reactor.function.Supplier;
+import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -306,26 +302,10 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
 
-		consumeEvent(new Consumer<Event<T>>() {
-			private final AtomicLong count = new AtomicLong(0);
-			private A acc;
+    ReduceConsumer reduceConsumer = new ReduceConsumer(d, fn, accumulators, this.batchSize);
+    this.consumeEvent(reduceConsumer);
+    return reduceConsumer.getChildStream();
 
-			@Override
-			public void accept(Event<T> value) {
-				if(null == acc) {
-					acc = (null != accumulators ? accumulators.get() : null);
-				}
-				acc = fn.apply(Tuple.of(value.getData(), acc));
-
-				if(isBatch() && count.incrementAndGet() % batchSize == 0) {
-					d.acceptEvent(value.copy(acc));
-				} else if(!isBatch()) {
-					d.acceptEvent(value.copy(acc));
-				}
-			}
-		});
-
-		return d.compose();
 	}
 
 	/**
@@ -357,7 +337,7 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(new SynchronousDispatcher(),
+    return new Deferred<T, Stream<T>>(new Stream<T>(new SynchronousDispatcher(),
 		                                                batchSize,
 		                                                null,
 		                                                this));
