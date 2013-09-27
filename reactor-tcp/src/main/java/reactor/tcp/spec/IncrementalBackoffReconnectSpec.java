@@ -31,13 +31,15 @@ import java.util.List;
  *
  */
 public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
-    public static final int DEFAULT_INTERVAL   = 5000;
-    public static final int DEFAULT_MULTIPLIER = 1;
+    public static final int DEFAULT_INTERVAL     = 5000;
+    public static final int DEFAULT_MULTIPLIER   = 1;
+    public static final int DEFAULT_MAX_ATTEMPTS = -1;
 
     private final List<InetSocketAddress> addresses;
     private long interval;
     private long multiplier;
     private long maxInterval;
+    private long maxAttempts;
 
     /**
      *
@@ -47,12 +49,13 @@ public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
         this.interval    = DEFAULT_INTERVAL;
         this.multiplier  = DEFAULT_MULTIPLIER;
         this.maxInterval = Long.MAX_VALUE;
+        this.maxAttempts = DEFAULT_MAX_ATTEMPTS;
     }
 
     /**
-     * Set the reconnection delay.
+     * Set the reconnection interval.
      *
-     * @param interval
+     * @param interval the period reactor waits between attemps to reconnect disconnected peers
      * @return {@literal this}
      */
     public IncrementalBackoffReconnectSpec interval(long interval) {
@@ -80,6 +83,18 @@ public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
      */
     public IncrementalBackoffReconnectSpec multiplier(long multiplier) {
         this.multiplier = multiplier;
+        return this;
+    }
+
+    /**
+     * Sets the number of time that Reactor will attempt to connect or reconnect
+     * before giving up.
+     *
+     * @param maxAttempts The max number of attempts made before failing.
+     * @return {@literal this}
+     */
+    public IncrementalBackoffReconnectSpec maxAttempts(long maxAttempts) {
+        this.maxAttempts = maxAttempts;
         return this;
     }
 
@@ -117,13 +132,16 @@ public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
                 public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
                     Tuple2<InetSocketAddress, Long> rv = null;
                     synchronized(IncrementalBackoffReconnectSpec.this) {
-                        rv = Tuple.of(
-                            endpoints.get(),
-                            (IncrementalBackoffReconnectSpec.this.multiplier > 1)
-                                ? Math.min(
-                                    IncrementalBackoffReconnectSpec.this.maxInterval,
-                                    IncrementalBackoffReconnectSpec.this.interval * attempt)
-                                : IncrementalBackoffReconnectSpec.this.interval);
+                        if(IncrementalBackoffReconnectSpec.this.maxAttempts == -1       ||
+                           IncrementalBackoffReconnectSpec.this.maxAttempts > attempt ) {
+                            rv = Tuple.of(
+                                endpoints.get(),
+                                (IncrementalBackoffReconnectSpec.this.multiplier > 1)
+                                    ? Math.min(
+                                        IncrementalBackoffReconnectSpec.this.maxInterval,
+                                        IncrementalBackoffReconnectSpec.this.interval * attempt)
+                                    : IncrementalBackoffReconnectSpec.this.interval);
+                        }
                     }
 
                     return rv;
