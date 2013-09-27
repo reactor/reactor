@@ -41,4 +41,21 @@ public class IncrementalBackoffReconnectTest {
         assertEquals(10000L,(long)rec.reconnect(addr1,2).getT2());
         assertEquals(10000L,(long)rec.reconnect(addr1,3).getT2());
     }
+
+    @Test
+    public void testRoundRobinAddresses() {
+        InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1",1001);
+        InetSocketAddress addr2 = new InetSocketAddress("129.168.0.2",1002);
+        InetSocketAddress addr3 = new InetSocketAddress("129.168.0.3",1003);
+
+        Reconnect rec = new IncrementalBackoffReconnectSpec()
+            .address(addr1)
+            .address(addr2)
+            .address(addr3)
+            .get();
+
+        assertEquals(addr2,rec.reconnect(addr1,0).getT1());
+        assertEquals(addr3,rec.reconnect(addr2,1).getT1());
+        assertEquals(addr1,rec.reconnect(addr3,2).getT1());
+    }
 }
