@@ -37,8 +37,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Abstract base class for components designed to provide a succinct API for working with future values. Provides base
  * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)}
- * and
- * {@link #filter(reactor.function.Predicate)} methods.
+ * and {@link #filter(reactor.function.Predicate)} methods.
  *
  * @param <T>
  * 		The type of the values
@@ -54,18 +53,20 @@ public abstract class Composable<T> {
 	private final Tuple2<Selector, Object> accept = Selectors.$();
 	private final Tuple2<Selector, Object> flush  = Selectors.$();
 
-	private final Observable             events;
-	private final Composable<?>          parent;
+	private final Observable    events;
+	private final Composable<?> parent;
 
 	private volatile long acceptCount = 0l;
 	private volatile long errorCount  = 0l;
 
-	protected <U> Composable(@Nonnull Dispatcher dispatcher,
-	                         @Nullable Composable<U> parent) {
+	protected <U> Composable(
+			@Nonnull Dispatcher dispatcher,
+			@Nullable Composable<U> parent
+	) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.events = new Reactor(dispatcher);
 		this.parent = parent;
-		if (parent != null) {
+		if(parent != null) {
 			parent.cascadeErrors(this);
 		}
 	}
@@ -170,7 +171,7 @@ public abstract class Composable<T> {
 				try {
 					V val = fn.apply(value.getData());
 					d.acceptEvent(value.copy(val));
-				} catch (Throwable e) {
+				} catch(Throwable e) {
 					d.accept(e);
 				}
 			}
@@ -179,9 +180,27 @@ public abstract class Composable<T> {
 	}
 
 	/**
+	 * Evaluate each accepted value against the given predicate {@link Function}. If the predicate test succeeds, the
+	 * value is passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the
+	 * new {@code Composable}.
+	 *
+	 * @param fn
+	 * 		the predicate {@link Function} to test values against
+	 *
+	 * @return a new {@code Composable} containing only values that pass the predicate test
+	 */
+	public Composable<T> filter(@Nonnull final Function<T, Boolean> fn) {
+		return filter(new Predicate<T>() {
+			@Override
+			public boolean test(T t) {
+				return fn.apply(t);
+			}
+		}, null);
+	}
+
+	/**
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
-	 * passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the new {@code
-	 * Composable}.
+	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
 	 *
 	 * @param p
 	 * 		the {@link Predicate} to test values against
@@ -194,8 +213,8 @@ public abstract class Composable<T> {
 
 	/**
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
-	 * passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the new {@code
-	 * Composable}.
+	 * passed into the new {@code Composable}. If the predicate test fails, the value is propagated into the {@code
+	 * elseComposable}.
 	 *
 	 * @param p
 	 * 		the {@link Predicate} to test values against
@@ -210,10 +229,10 @@ public abstract class Composable<T> {
 			@Override
 			public void accept(Event<T> value) {
 				boolean b = p.test(value.getData());
-				if (b) {
+				if(b) {
 					d.acceptEvent(value);
 				} else {
-					if(null != elseComposable){
+					if(null != elseComposable) {
 						elseComposable.notifyValue(value);
 					}
 					// GH-154: Verbose error level logging of every event filtered out by a Stream filter
