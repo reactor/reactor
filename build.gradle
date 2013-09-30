@@ -42,7 +42,7 @@ ext {
 	spockVersion = '0.7-groovy-2.0'
 
 	// Code coverage
-	//jacocoVersion = '0.6.2.201302030002'
+	jacocoVersion = '0.6.2.201302030002'
 
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
@@ -95,16 +95,16 @@ configure(allprojects) { project ->
 	}
 
 	compileTestJava {
-		sourceCompatibility = 1.8
-		targetCompatibility = 1.8
-		compileTestJava.options.compilerArgs += "-parameters"
+		sourceCompatibility = 1.7
+		targetCompatibility = 1.7
+		//compileTestJava.options.compilerArgs += "-parameters"
 	}
 
 	sourceSets.test.resources.srcDirs = ["src/test/resources", "src/test/java"]
 
-//	configurations {
-//		jacoco
-//	}
+	configurations {
+		jacoco
+	}
 
 	configurations.all {
 		exclude group: 'commons-logging'
@@ -142,7 +142,7 @@ configure(allprojects) { project ->
 		testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
 
 		// Code coverage
-		//jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
+		jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
 	}
 
 	ext.javadocLinks = [
@@ -180,13 +180,13 @@ configure(subprojects) { subproject ->
 		archives groovydocJar
 	}
 
-//	test {
-//		testLogging {
-//			jvmArgs "-javaagent:${configurations.jacoco.asPath}=destfile=${buildDir}/jacoco.exec,includes=reactor.*"
-//			events "failed"
-//			exceptionFormat "full"
-//		}
-//	}
+	test {
+		testLogging {
+			jvmArgs "-javaagent:${configurations.jacoco.asPath}=destfile=${buildDir}/jacoco.exec,includes=reactor.*"
+			events "failed"
+			exceptionFormat "full"
+		}
+	}
 }
 
 configure(rootProject) {
@@ -244,11 +244,11 @@ project('reactor-groovy') {
 
 	apply plugin: 'osgi'
 
-//	sonarRunner {
-//		sonarProperties {
-//			property "sonar.language", "grvy"
-//		}
-//	}
+	sonarRunner {
+		sonarProperties {
+			property "sonar.language", "grvy"
+		}
+	}
 
 	dependencies {
 		compile project(':reactor-core')
@@ -296,9 +296,9 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
-//	sonarRunner {
-//		skipProject = true
-//	}
+	sonarRunner {
+		skipProject = true
+	}
 	dependencies {
 		compile project(':reactor-core')
 	}
