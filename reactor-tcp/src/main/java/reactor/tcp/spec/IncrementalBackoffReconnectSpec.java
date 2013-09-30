@@ -31,9 +31,9 @@ import java.util.List;
  *
  */
 public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
-    public static final int DEFAULT_INTERVAL     = 5000;
-    public static final int DEFAULT_MULTIPLIER   = 1;
-    public static final int DEFAULT_MAX_ATTEMPTS = -1;
+    public static final long DEFAULT_INTERVAL     = 5000;
+    public static final long DEFAULT_MULTIPLIER   = 1;
+    public static final long DEFAULT_MAX_ATTEMPTS = -1;
 
     private final List<InetSocketAddress> addresses;
     private long interval;
@@ -124,32 +124,36 @@ public class IncrementalBackoffReconnectSpec implements Supplier<Reconnect> {
 
     @Override
     public Reconnect get() {
-        if(!addresses.isEmpty()) {
-            final Supplier<InetSocketAddress> endpoints =
-                Suppliers.roundRobin(addresses.toArray(new InetSocketAddress[]{}));
+        final Supplier<InetSocketAddress> endpoints =
+            Suppliers.roundRobin(addresses.toArray(new InetSocketAddress[]{}));
 
-            return new Reconnect() {
-                public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
-                    Tuple2<InetSocketAddress, Long> rv = null;
-                    synchronized(IncrementalBackoffReconnectSpec.this) {
+        return new Reconnect() {
+            public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
+                Tuple2<InetSocketAddress, Long> rv = null;
+                synchronized(IncrementalBackoffReconnectSpec.this) {
+                    if(!addresses.isEmpty()) {
                         if(IncrementalBackoffReconnectSpec.this.maxAttempts == -1       ||
                            IncrementalBackoffReconnectSpec.this.maxAttempts > attempt ) {
-                            rv = Tuple.of(
-                                endpoints.get(),
-                                (IncrementalBackoffReconnectSpec.this.multiplier > 1)
-                                    ? Math.min(
-                                        IncrementalBackoffReconnectSpec.this.maxInterval,
-                                        IncrementalBackoffReconnectSpec.this.interval * attempt)
-                                    : IncrementalBackoffReconnectSpec.this.interval);
+                            rv = Tuple.of(endpoints.get(),determineInterval(attempt));
                         }
+                    } else {
+                        rv = Tuple.of(currentAddress,determineInterval(attempt));
                     }
-
-                    return rv;
                 }
-            };
-        } else {
-            throw new RuntimeException("...");
-        }
+
+                return rv;
+            }
+        };
+    }
+
+    /**
+     * Determine the period in milliseconds between reconnection attempts.
+     *
+     * @param attempt the number of times a reconnection has been attempted
+     * @return the reconnection period
+     */
+    public long determineInterval(int attempt) {
+        return (multiplier > 1) ? Math.min(maxInterval,interval * attempt) : interval;
     }
 }
 

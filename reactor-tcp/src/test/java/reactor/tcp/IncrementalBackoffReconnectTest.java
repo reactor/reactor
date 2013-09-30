@@ -19,12 +19,30 @@ package reactor.tcp;
 
 import org.junit.Test;
 import reactor.tcp.spec.IncrementalBackoffReconnectSpec;
+import reactor.tuple.Tuple2;
 
 import java.net.InetSocketAddress;
 
 import static org.junit.Assert.assertEquals;
 
 public class IncrementalBackoffReconnectTest {
+    @Test
+    public void testDefaultReconnect() {
+        Reconnect rec = new IncrementalBackoffReconnectSpec().get();
+
+        InetSocketAddress a1 = new InetSocketAddress("129.168.0.1",1001);
+        Tuple2<InetSocketAddress, Long> t1 = rec.reconnect(a1, 0);
+
+        assertEquals(IncrementalBackoffReconnectSpec.DEFAULT_INTERVAL,t1.getT2().longValue());
+        assertEquals(a1,t1.getT1());
+
+        InetSocketAddress a2 = new InetSocketAddress("129.168.0.1",1001);
+        Tuple2<InetSocketAddress, Long> t2 = rec.reconnect(a1, 0);
+
+        assertEquals(IncrementalBackoffReconnectSpec.DEFAULT_INTERVAL,t2.getT2().longValue());
+        assertEquals(a2,t2.getT1());
+    }
+
     @Test
     public void testReconnectIntervalWithCap() {
         InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1",1001);
@@ -54,8 +72,8 @@ public class IncrementalBackoffReconnectTest {
             .address(addr3)
             .get();
 
-        assertEquals(addr2,rec.reconnect(addr1,0).getT1());
-        assertEquals(addr3,rec.reconnect(addr2,1).getT1());
-        assertEquals(addr1,rec.reconnect(addr3,2).getT1());
+        assertEquals(addr1,rec.reconnect(addr1,0).getT1());
+        assertEquals(addr2,rec.reconnect(addr2,1).getT1());
+        assertEquals(addr3,rec.reconnect(addr3,2).getT1());
     }
 }
