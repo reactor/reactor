@@ -96,7 +96,7 @@ public abstract class Suppliers {
 
 		return new Supplier<T>() {
 			@Override public T get() {
-				return objs[count.incrementAndGet() % len];
+				return objs[count.getAndIncrement() % len];
 			}
 		};
 	}
