@@ -30,22 +30,9 @@ sonarRunner {
 	}
 }
 
-task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
-	group = 'Project Setup'
-	gradleVersion = "$gradleVersion"
-}
-
-subprojects { subproject ->
+configure(subprojects) { subproject ->
+	apply plugin: 'propdeps-maven'
 	apply plugin: 'maven'
-	apply plugin: 'java'
-	apply plugin: 'groovy'
-
-	ext.optionalDeps = []
-	ext.providedDeps = []
-
-	ext.optional = { optionalDeps << it }
-	ext.provided = { providedDeps << it }
-
 
 	install {
 		repositories.mavenInstaller {
@@ -56,16 +43,14 @@ subprojects { subproject ->
 
 def customizePom(def pom, def gradleProject) {
 	pom.whenConfigured { generatedPom ->
-		// respect 'optional' and 'provided' dependencies
-		gradleProject.optionalDeps.each { dep ->
-			generatedPom.dependencies.find { it.artifactId == dep.name }?.optional = true
-		}
-		gradleProject.providedDeps.each { dep ->
-			generatedPom.dependencies.find { it.artifactId == dep.name }?.scope = 'provided'
-		}
 		// eliminate test-scoped dependencies (no need in maven central poms)
 		generatedPom.dependencies.removeAll { dep ->
-			dep.scope == 'test'
+			dep.scope == "test"
+		}
+
+		// sort to make pom dependencies order consistent to ease comparison of older poms
+		generatedPom.dependencies = generatedPom.dependencies.sort { dep ->
+			"$dep.scope:$dep.groupId:$dep.artifactId"
 		}
 
 		// add all items necessary for maven central publication
@@ -105,6 +90,10 @@ def customizePom(def pom, def gradleProject) {
 					name = 'Andy Wilkinson'
 					email = 'awilkinson@gopivotal.com'
 				}
+			}
+			issueManagement {
+				system = "GitHub Issues"
+				url = "https://github.com/reactor/reactor/issues"
 			}
 		}
 	}

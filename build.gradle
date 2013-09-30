@@ -52,53 +52,107 @@ ext {
 
 buildscript {
 	repositories {
-		maven { url 'https://repo.springsource.org/libs-release' }
-		maven { url "http://repo.springsource.org/plugins-snapshot" }
+		maven { url "http://repo.spring.io/plugins-release" }
 	}
 	dependencies {
-		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:0.4.1'
-		classpath 'org.ajoberstar:gradle-git:0.4.0'
+		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4'
 	}
 }
-
 apply from: "$gradleScriptDir/setup.gradle"
 
-allprojects {
-	apply plugin: 'idea'
-
-	configurations.all {
-		exclude group: "commons-logging"
-		exclude module: "junit"
-	}
-
+configure(allprojects) { project ->
 	group = 'org.projectreactor'
-	repositories {
-		mavenCentral()
-		maven { url 'http://repo.springsource.org/libs-release' }
-		maven { url 'http://repo.springsource.org/libs-milestone' }
-		maven { url 'http://repo.springsource.org/plugins-release' }
-		//mavenLocal()
-	}
-}
 
-subprojects { subproject ->
+	apply plugin: 'propdeps'
 	apply plugin: 'java'
 	apply plugin: 'groovy'
-	apply plugin: 'eclipse'
+	apply from: "${gradleScriptDir}/ide.gradle"
 
-	sourceCompatibility = 1.6
-	targetCompatibility = 1.6
+	[compileJava, compileTestJava]*.options*.compilerArgs = [
+			"-Xlint:serial",
+			"-Xlint:varargs",
+			"-Xlint:cast",
+			"-Xlint:classfile",
+			"-Xlint:dep-ann",
+			"-Xlint:divzero",
+			"-Xlint:empty",
+			"-Xlint:finally",
+			"-Xlint:overrides",
+			"-Xlint:path",
+			"-Xlint:processing",
+			"-Xlint:static",
+			"-Xlint:try",
+			"-Xlint:-options",     // intentionally disabled
+			"-Xlint:-fallthrough", // intentionally disabled
+			"-Xlint:-rawtypes",    // TODO enable and fix warnings
+			"-Xlint:-deprecation", // TODO enable and fix warnings
+			"-Xlint:-unchecked"    // TODO enable and fix warnings
+	]
 
-	[compileJava, compileTestJava]*.options*.compilerArgs = ["-Xlint:none", "-g"]
-
-	sourceSets {
-		test {
-			resources {
-				srcDirs = ['src/test/resources', 'src/test/java']
-			}
-		}
+	compileJava {
+		sourceCompatibility = 1.6
+		targetCompatibility = 1.6
 	}
 
+	compileTestJava {
+		sourceCompatibility = 1.8
+		targetCompatibility = 1.8
+		compileTestJava.options.compilerArgs += "-parameters"
+	}
+
+	sourceSets.test.resources.srcDirs = ["src/test/resources", "src/test/java"]
+
+	configurations {
+		jacoco
+	}
+
+	configurations.all {
+		exclude group: 'commons-logging'
+		exclude module: 'junit'
+	}
+
+	test {
+		systemProperty("java.awt.headless", "true")
+		systemProperty("testGroups", project.properties.get("testGroups"))
+		scanForTestClasses = false
+		include '**/*Tests.*'
+		exclude '**/*Abstract*.*'
+	}
+
+	repositories {
+		maven { url 'http://repo.spring.io/libs-milestone' }
+		//mavenLocal()
+		mavenCentral()
+	}
+
+	// dependencies that are common across all java projects
+	dependencies {
+		// Logging
+		compile "org.slf4j:slf4j-api:$slf4jVersion"
+
+		// JSR-305 annotations
+		optional("com.google.code.findbugs:jsr305:2.0.0")
+
+		// Groovy
+		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
+
+		// Testing
+		testCompile "org.spockframework:spock-core:$spockVersion",
+				"org.hamcrest:hamcrest-library:1.3"
+		testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
+
+		// Code coverage
+		jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
+	}
+
+	ext.javadocLinks = [
+			"http://docs.oracle.com/javase/7/docs/api/",
+			"http://docs.oracle.com/javaee/6/api/",
+			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/"
+	] as String[]
+}
+
+configure(subprojects) { subproject ->
 	jar {
 		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
 		manifest.attributes["Implementation-Title"] = subproject.name
@@ -126,144 +180,11 @@ subprojects { subproject ->
 		archives groovydocJar
 	}
 
-	configurations {
-		jacoco
-	}
-
-	// dependencies that are common across all java projects
-	dependencies {
-		// Logging
-		compile "org.slf4j:slf4j-api:$slf4jVersion"
-
-		// JSR-305 annotations
-		compile("com.google.code.findbugs:jsr305:2.0.0", optional)
-
-		// Groovy
-		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
-
-		// Testing
-		testCompile "org.spockframework:spock-core:$spockVersion",
-				"org.hamcrest:hamcrest-library:1.3"
-		testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
-
-		// Code coverage
-		jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
-	}
-
 	test {
 		testLogging {
 			jvmArgs "-javaagent:${configurations.jacoco.asPath}=destfile=${buildDir}/jacoco.exec,includes=reactor.*"
 			events "failed"
 			exceptionFormat "full"
-		}
-	}
-}
-
-project('reactor-core') {
-	apply plugin: 'osgi'
-	description = 'Core Reactor components'
-	dependencies {
-		// Type-1 UUIDs
-		compile "com.eaio.uuid:uuid:3.2"
-
-		// High-speed Dispatching
-		compile "com.lmax:disruptor:$disruptorVersion"
-
-		// High-speed Messaging
-		compile("com.higherfrequencytrading:chronicle:$javaChronicleVersion", optional)
-	}
-}
-
-project('reactor-groovy') {
-	apply plugin: 'osgi'
-	description = 'Reactor Groovy components'
-
-
-	sonarRunner {
-		sonarProperties {
-			property "sonar.language", "grvy"
-		}
-	}
-	dependencies {
-		compile project(':reactor-core')
-
-		compile "org.codehaus.groovy:groovy-all:$groovyVersion", optional
-	}
-}
-
-project('reactor-spring') {
-	apply plugin: 'osgi'
-	description = 'Reactor Spring components'
-
-	eclipse {
-		project {
-			natures += 'org.springframework.ide.eclipse.core.springnature'
-		}
-	}
-
-	dependencies {
-		compile project(':reactor-core')
-
-		// Spring
-		compile "org.springframework:spring-beans:$springVersion",
-				"org.springframework:spring-context:$springVersion",
-				"org.springframework:spring-context-support:$springVersion",
-				"org.springframework:spring-core:$springVersion",
-				"org.springframework:spring-expression:$springVersion",
-				"org.springframework:spring-tx:$springVersion"
-
-		// Testing
-		testCompile "org.spockframework:spock-spring:$spockVersion",
-				"org.springframework:spring-test:$springVersion"
-		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
-	}
-}
-
-project('reactor-logback') {
-	description = 'Processor-based Logback async appender implementation'
-	dependencies {
-    compile project(':reactor-core')
-
-		// Logback
-		compile "ch.qos.logback:logback-classic:$logbackVersion"
-	}
-}
-
-project('reactor-benchmark') {
-	description = 'Performance tests'
-	sonarRunner {
-		skipProject = true
-	}
-	dependencies {
-		compile project(':reactor-core')
-	}
-}
-
-project('reactor-tcp') {
-	apply plugin: 'osgi'
-	description = 'Reactor TCP components'
-
-	ext.bundleImportPackages = [
-			'com.fasterxml.jackson.core;resolution:=optional',
-			'com.fasterxml.jackson.databind;resolution:=optional',
-			'*'
-	]
-
-	dependencies {
-		compile project(':reactor-core')
-
-		compile "io.netty:netty-all:$nettyVersion"
-		compile("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion", optional)
-
-		// Testing
-		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
-		testRuntime project(':reactor-logback'),
-				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
-	}
-
-	jar {
-		manifest {
-			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
 	}
 }
@@ -301,53 +222,118 @@ configure(rootProject) {
 	}
 }
 
-import org.ajoberstar.gradle.git.tasks.*
+project('reactor-core') {
+	description = 'Core Reactor components'
 
-task pullDocs(type: GitClone) {
-	if (project.gradle.startParameter.offline) {
-		enabled = false
+	apply plugin: 'osgi'
+
+	dependencies {
+		// Type-1 UUIDs
+		compile "com.eaio.uuid:uuid:3.2"
+
+		// High-speed Dispatching
+		compile "com.lmax:disruptor:$disruptorVersion"
+
+		// High-speed Messaging
+		optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
+	}
+}
+
+project('reactor-groovy') {
+	description = 'Reactor Groovy components'
+
+	apply plugin: 'osgi'
+
+	sonarRunner {
+		sonarProperties {
+			property "sonar.language", "grvy"
+		}
 	}
 
-	def destination = file("$buildDir/wiki")
+	dependencies {
+		compile project(':reactor-core')
+		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
+	}
+}
 
-	uri = "git://github.com/reactor/reactor.wiki.git"
-	destinationPath = destination
-	bare = false
+project('reactor-spring') {
+	apply plugin: 'osgi'
+	description = 'Reactor Spring components'
 
-	doFirst {
-		if (destination.exists()) {
-			destination.deleteDir()
+	eclipse {
+		project {
+			natures += 'org.springframework.ide.eclipse.core.springnature'
+		}
+	}
+
+	dependencies {
+		compile project(':reactor-core')
+
+		// Spring
+		compile "org.springframework:spring-beans:$springVersion",
+				"org.springframework:spring-context:$springVersion",
+				"org.springframework:spring-context-support:$springVersion",
+				"org.springframework:spring-core:$springVersion",
+				"org.springframework:spring-expression:$springVersion",
+				"org.springframework:spring-tx:$springVersion"
+
+		// Testing
+		testCompile "org.spockframework:spock-spring:$spockVersion",
+				"org.springframework:spring-test:$springVersion"
+		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+}
+
+project('reactor-logback') {
+	description = 'Processor-based Logback async appender implementation'
+	dependencies {
+		compile project(':reactor-core')
+
+		// Logback
+		compile "ch.qos.logback:logback-classic:$logbackVersion"
+	}
+}
+
+project('reactor-benchmark') {
+	description = 'Performance tests'
+	sonarRunner {
+		skipProject = true
+	}
+	dependencies {
+		compile project(':reactor-core')
+	}
+}
+
+project('reactor-tcp') {
+	apply plugin: 'osgi'
+	description = 'Reactor TCP components'
+
+	ext.bundleImportPackages = [
+			'com.fasterxml.jackson.core;resolution:=optional',
+			'com.fasterxml.jackson.databind;resolution:=optional',
+			'*'
+	]
+
+	dependencies {
+		compile project(':reactor-core')
+
+		compile "io.netty:netty-all:$nettyVersion"
+		optional("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion")
+
+		// Testing
+		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
+		testRuntime project(':reactor-logback'),
+				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
+	}
+
+	jar {
+		manifest {
+			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
 	}
 }
 
-import org.asciidoctor.gradle.*
-
-task asciidoctorHtml(type: AsciidoctorTask, dependsOn: [pullDocs]) {
-	sourceDocumentName = file("$buildDir/wiki/Home.asciidoc")
-	sourceDir = file("$buildDir/wiki")
-	outputDir = file("$buildDir/html")
-	backend = "html5"
-	options = [
-			attributes: [
-					docinfo: '',
-					toc2: '',
-					imagesdir: 'images',
-					stylesdir: 'stylesheets',
-					stylesheet: 'golo.css',
-					appversion: "$version",
-					'source-highlighter': 'highlightjs'
-			]
-	]
-
-	doLast {
-		copy {
-			from "$buildDir/wiki/images"
-			into "$buildDir/html/images"
-		}
-		copy {
-			from "$buildDir/wiki/stylesheets"
-			into "$buildDir/html/stylesheets"
-		}
-	}
+task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
+	group = 'Project Setup'
+	gradleVersion = "$gradleVersion"
 }
