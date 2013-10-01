@@ -192,6 +192,8 @@ configure(subprojects) { subproject ->
 configure(rootProject) {
 	description = "Reactor"
 
+	configurations.archives.artifacts.clear()
+
 	task api(type: Javadoc) {
 		group = "Documentation"
 		description = "Generates aggregated Javadoc API documentation."
@@ -296,9 +298,13 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
+
+	configurations.archives.artifacts.clear()
+
 	sonarRunner {
 		skipProject = true
 	}
+
 	dependencies {
 		compile project(':reactor-core')
 	}
