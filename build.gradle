@@ -152,7 +152,7 @@ configure(allprojects) { project ->
 	] as String[]
 }
 
-configure(subprojects) { subproject ->
+configure(subprojects - project(":reactor-benchmark")) { subproject ->
 	jar {
 		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
 		manifest.attributes["Implementation-Title"] = subproject.name
@@ -298,8 +298,6 @@ project('reactor-logback') {
 
 project('reactor-benchmark') {
 	description = 'Performance tests'
-
-	configurations.archives.artifacts.clear()
 
 	sonarRunner {
 		skipProject = true
