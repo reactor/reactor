@@ -44,12 +44,12 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 		@Override
 		public Map<String, String> resolve(Object key) {
 			Matcher m = getObject().matcher(key.toString());
-			if (!m.matches()) {
+			if(!m.matches()) {
 				return null;
 			}
 			int groups = m.groupCount();
 			Map<String, String> headers = new HashMap<String, String>();
-			for (int i = 1; i <= groups; i++) {
+			for(int i = 1; i <= groups; i++) {
 				String name = "group" + i;
 				String value = m.group(i);
 				headers.put(name, value);
@@ -61,7 +61,8 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 	/**
 	 * Create a {@link Selector} when the given regex pattern.
 	 *
-	 * @param pattern The regex String that will be compiled into a {@link Pattern}.
+	 * @param pattern
+	 * 		The regex String that will be compiled into a {@link Pattern}.
 	 */
 	public RegexSelector(String pattern) {
 		super(Pattern.compile(pattern));
@@ -70,10 +71,10 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 	/**
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
-	 * @param regex The regular expression to compile.
+	 * @param regex
+	 * 		The regular expression to compile.
 	 *
 	 * @return The new {@link Selector}.
-	 *
 	 */
 	public static Selector regexSelector(String regex) {
 		return new RegexSelector(regex);
@@ -81,7 +82,8 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 
 	@Override
 	public boolean matches(Object key) {
-		return getObject().matcher(key.toString()).matches();
+		return key instanceof String
+				&& getObject().matcher((String)key).matches();
 	}
 
 	@Override
