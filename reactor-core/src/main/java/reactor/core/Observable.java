@@ -193,6 +193,12 @@ public interface Observable {
 	 */
 	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier, Observable replyTo);
 
+	<E extends Event<?>, V> Observable sendAndReceive(Object key, E ev, Consumer<V> reply);
+
+	<S extends Supplier<? extends Event<?>>, V> Observable sendAndReceive(Object key,
+	                                                                      S supplier,
+	                                                                      Consumer<V> reply);
+
 	/**
 	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
 	 * triggered with a {@literal null} input argument.

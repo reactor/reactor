@@ -16,12 +16,6 @@
 
 package reactor.core;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.Event;
@@ -37,6 +31,7 @@ import reactor.event.routing.Linkable;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.event.support.EventConsumer;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -44,6 +39,8 @@ import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
+
+import java.util.*;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -264,6 +261,21 @@ public class Reactor implements Observable, Linkable<Observable> {
 	@Override
 	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
 		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
+	}
+
+	@Override
+	public <E extends Event<?>, V> Reactor sendAndReceive(Object key, E ev, Consumer<V> reply) {
+		Tuple2<Selector, Object> anon = Selectors.anonymous();
+		on(anon.getT1(), new EventConsumer<V>(reply)).cancelAfterUse();
+		notify(key, ev.setReplyTo(anon.getT2()));
+		return this;
+	}
+
+	@Override
+	public <S extends Supplier<? extends Event<?>>, V> Reactor sendAndReceive(Object key,
+	                                                                          S supplier,
+	                                                                          Consumer<V> reply) {
+		return sendAndReceive(key, supplier.get(), reply);
 	}
 
 	@Override
