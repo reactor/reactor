@@ -16,17 +16,7 @@
 
 package reactor.core.processor;
 
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import javax.annotation.Nonnull;
-
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.LifecycleAware;
-import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.event.registry.Registration;
@@ -36,6 +26,11 @@ import reactor.function.Supplier;
 import reactor.function.batch.BatchConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * A {@code Processor} is a highly-efficient data processor that is backed by an <a
@@ -104,8 +99,8 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
 				new BlockingWaitStrategy()
 		);
-		disruptor.handleEventsWith(new ConsumerEventHandler<T>(consumer));
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));
+		disruptor.handleEventsWith(new ConsumerEventHandler<T>(consumer));
 
 		ringBuffer = disruptor.start();
 	}
