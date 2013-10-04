@@ -16,20 +16,20 @@
 
 package reactor.tcp;
 
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponse;
+import io.netty.channel.ChannelPipeline;
+import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
 import reactor.function.Consumer;
+import reactor.function.support.Boundary;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
+import reactor.tcp.netty.NettyClientSocketOptions;
 import reactor.tcp.netty.NettyTcpClient;
-import reactor.tcp.netty.NettyTcpConnection;
 import reactor.tcp.spec.TcpClientSpec;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -53,7 +53,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -178,13 +177,14 @@ public class TcpClientTests {
 					}
 				});
 
-				for (int i = 0; i < messages; i++) {
+				for(int i = 0; i < messages; i++) {
 					conn.out().accept("Hello World!");
 				}
 			}
 		});
 
-		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings, latch.await(30, TimeUnit.SECONDS));
+		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
+		           latch.await(30, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
@@ -224,7 +224,7 @@ public class TcpClientTests {
 				.open(new Reconnect() {
 					@Override
 					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
-						switch (attempt) {
+						switch(attempt) {
 							case 1:
 								totalDelay.addAndGet(100);
 								return Tuple.of(currentAddress, 100L);
@@ -250,16 +250,16 @@ public class TcpClientTests {
 		final CountDownLatch connectionLatch = new CountDownLatch(1);
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
-		.env(env)
-		.connect("localhost", ECHO_SERVER_PORT)
-		.get()
-		.open(new Reconnect() {
-			@Override
-			public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
-				reconnectionLatch.countDown();
-				return null;
-			}
-		}).consume(new Consumer<TcpConnection<Buffer, Buffer>>() {
+				.env(env)
+				.connect("localhost", ECHO_SERVER_PORT)
+				.get()
+				.open(new Reconnect() {
+					@Override
+					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
+						reconnectionLatch.countDown();
+						return null;
+					}
+				}).consume(new Consumer<TcpConnection<Buffer, Buffer>>() {
 			@Override
 			public void accept(TcpConnection<Buffer, Buffer> connection) {
 				connectionLatch.countDown();
@@ -344,14 +344,14 @@ public class TcpClientTests {
 				.get().open().await();
 
 		connection.on()
-				.writeIdle(500, new Runnable() {
-					@Override
-					public void run() {
-						latch.countDown();
-					}
-				});
+		          .writeIdle(500, new Runnable() {
+			          @Override
+			          public void run() {
+				          latch.countDown();
+			          }
+		          });
 
-		for (int i = 0; i < 5; i++) {
+		for(int i = 0; i < 5; i++) {
 			Thread.sleep(100);
 			connection.send(Buffer.wrap("a"));
 		}
@@ -365,13 +365,30 @@ public class TcpClientTests {
 
 	@Test
 	public void nettyTcpConnectionAcceptsNettyChannelHandlers() throws InterruptedException {
-		TcpConnection<HttpRequest, HttpResponse> connection = new TcpClientSpec<HttpRequest, HttpResponse>(NettyTcpClient.class)
-				.env(env)
-				.connect("localhost", ECHO_SERVER_PORT)
-				.get().open().await();
+		TcpConnection<HttpResponse, HttpRequest> connection =
+				new TcpClientSpec<HttpResponse, HttpRequest>(NettyTcpClient.class)
+						.env(env)
+						.options(new NettyClientSocketOptions()
+								         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+									         @Override
+									         public void accept(ChannelPipeline pipeline) {
+										         pipeline.addLast(new HttpClientCodec());
+									         }
+								         }))
+						.connect("www.google.com", 80)
+						.get().open().await();
 
-		io.netty.channel.socket.SocketChannel ch = ((NettyTcpConnection) connection).channel();
+		Boundary b = new Boundary();
+		connection.in().consume(b.bind(new Consumer<HttpResponse>() {
+			@Override
+			public void accept(HttpResponse resp) {
+				System.out.println("resp: " + resp);
+			}
+		}));
 
+		connection.send(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"));
+
+		assertTrue("Boundary didn't time out", b.await(15, TimeUnit.SECONDS));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -392,35 +409,35 @@ public class TcpClientTests {
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				thread = Thread.currentThread();
-				while (true) {
+				while(true) {
 					SocketChannel ch = server.accept();
 
 					ByteBuffer buffer = ByteBuffer.allocate(Buffer.SMALL_BUFFER_SIZE);
-					while (true) {
+					while(true) {
 						int read = ch.read(buffer);
-						if (read > 0) {
+						if(read > 0) {
 							buffer.flip();
 						}
 
 						int written = ch.write(buffer);
-						if (written < 0) {
+						if(written < 0) {
 							throw new IOException("Cannot write to client");
 						}
 						buffer.rewind();
 					}
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			Thread thread = this.thread;
-			if (thread != null) {
+			if(thread != null) {
 				thread.interrupt();
 			}
 			ServerSocketChannel server = this.server;
-			if (server != null) {
+			if(server != null) {
 				server.close();
 			}
 		}
@@ -440,18 +457,18 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while (true) {
+				while(true) {
 					SocketChannel ch = server.accept();
 					ch.close();
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if (server != null) {
+			if(server != null) {
 				server.close();
 			}
 		}
@@ -471,19 +488,19 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while (true) {
+				while(true) {
 					SocketChannel ch = server.accept();
 					ByteBuffer buff = ByteBuffer.allocate(1);
 					ch.read(buff);
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if (server != null) {
+			if(server != null) {
 				server.close();
 			}
 		}
@@ -503,9 +520,9 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while (true) {
+				while(true) {
 					SocketChannel ch = server.accept();
-					while (true && server.isOpen()) {
+					while(true && server.isOpen()) {
 						ByteBuffer out = ByteBuffer.allocate(1);
 						out.put((byte)'\n');
 						out.flip();
@@ -513,16 +530,16 @@ public class TcpClientTests {
 						Thread.sleep(100);
 					}
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 				// Server closed
-			} catch (InterruptedException ie) {
+			} catch(InterruptedException ie) {
 
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if (server != null) {
+			if(server != null) {
 				server.close();
 			}
 		}

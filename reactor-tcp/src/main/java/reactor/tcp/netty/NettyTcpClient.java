@@ -137,6 +137,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
+						if(options instanceof NettyClientSocketOptions && null != ((NettyClientSocketOptions)options)
+								.pipelineConfigurer()) {
+							((NettyClientSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
+						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 					}
 				});
