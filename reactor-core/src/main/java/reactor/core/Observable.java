@@ -35,18 +35,23 @@ public interface Observable {
 	/**
 	 * Are there any {@link Registration}s with {@link Selector Selectors} that match the given {@code key}.
 	 *
-   * @param key The key to be matched by {@link Selector Selectors}
-   *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 *
 	 * @return {@literal true} if there are any matching {@literal Registration}s, {@literal false} otherwise
 	 */
 	boolean respondsToKey(Object key);
 
 	/**
-	 * Register a {@link reactor.function.Consumer} to be triggered when a notification matches the given {@link Selector}.
+	 * Register a {@link reactor.function.Consumer} to be triggered when a notification matches the given {@link
+	 * Selector}.
 	 *
-	 * @param sel      The {@literal Selector} to be used for matching
-	 * @param consumer The {@literal Consumer} to be triggered
-	 * @param <E>      The type of the {@link reactor.event.Event}
+	 * @param sel
+	 * 		The {@literal Selector} to be used for matching
+	 * @param consumer
+	 * 		The {@literal Consumer} to be triggered
+	 * @param <E>
+	 * 		The type of the {@link reactor.event.Event}
 	 *
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
@@ -56,8 +61,10 @@ public interface Observable {
 	 * Register an {@link Consumer} to be triggered using the internal key that is unique to each
 	 * {@literal Observable} instance.
 	 *
-	 * @param consumer The {@literal Consumer} to be triggered
-	 * @param <E>      The type of the {@link Event}
+	 * @param consumer
+	 * 		The {@literal Consumer} to be triggered
+	 * @param <E>
+	 * 		The type of the {@link Event}
 	 *
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 *
@@ -69,10 +76,14 @@ public interface Observable {
 	/**
 	 * Assign a {@link reactor.function.Function} to receive an {@link Event} and produce a reply of the given type.
 	 *
-	 * @param sel The {@link Selector} to be used for matching
-	 * @param fn  The transformative {@link reactor.function.Function} to call to receive an {@link Event}
-	 * @param <E> The type of the {@link Event}
-	 * @param <V> The type of the response data
+	 * @param sel
+	 * 		The {@link Selector} to be used for matching
+	 * @param fn
+	 * 		The transformative {@link reactor.function.Function} to call to receive an {@link Event}
+	 * @param <E>
+	 * 		The type of the {@link Event}
+	 * @param <V>
+	 * 		The type of the response data
 	 *
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
@@ -82,10 +93,14 @@ public interface Observable {
 	 * Notify this component that an {@link Event} is ready to be processed and {@link Consumer#accept
 	 * accept} {@code onComplete} after dispatching.
 	 *
-	 * @param key The key to be matched by {@link Selector Selectors}
-	 * @param ev         The {@literal Event}
-	 * @param onComplete The callback {@link Consumer}
-	 * @param <E>        The type of the {@link Event}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The {@literal Event}
+	 * @param onComplete
+	 * 		The callback {@link Consumer}
+	 * @param <E>
+	 * 		The type of the {@link Event}
 	 *
 	 * @return {@literal this}
 	 */
@@ -94,21 +109,27 @@ public interface Observable {
 	/**
 	 * Notify this component that an {@link Event} is ready to be processed.
 	 *
-	 * @param key The key to be matched by {@link Selector Selectors}
-	 * @param ev  The {@literal Event}
-   * @param <E> The type of the {@link Event}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The {@literal Event}
+	 * @param <E>
+	 * 		The type of the {@link Event}
 	 *
 	 * @return {@literal this}
 	 */
 	<E extends Event<?>> Observable notify(Object key, E ev);
 
 	/**
-	 * Notify this component that the given {@link reactor.function.Supplier} can provide an event that's ready to be processed.
+	 * Notify this component that the given {@link reactor.function.Supplier} can provide an event that's ready to be
+	 * processed.
 	 *
-	 * @param key      The key to be matched by {@link Selector Selectors}
-	 * @param supplier The {@link reactor.function.Supplier} that will provide the actual {@link Event}
-	 *
-	 * @param <S>      The type of the {@link reactor.function.Supplier}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param supplier
+	 * 		The {@link reactor.function.Supplier} that will provide the actual {@link Event}
+	 * @param <S>
+	 * 		The type of the {@link reactor.function.Supplier}
 	 *
 	 * @return {@literal this}
 	 */
@@ -118,7 +139,8 @@ public interface Observable {
 	 * Notify this component that an {@link Event} is ready to be processed using the internal key that is unique
 	 * to each {@literal Observable} instance.
 	 *
-	 * @param ev  The {@literal Event}
+	 * @param ev
+	 * 		The {@literal Event}
 	 *
 	 * @return {@literal this}
 	 *
@@ -131,8 +153,10 @@ public interface Observable {
 	 * to each {@link Observable} instance and that the given {@link Supplier} will provide the actual {@link
 	 * Event} to publish.
 	 *
-	 * @param supplier The {@link Supplier} to provide the actual {@link Event}
-	 * @param <S>      The type of the {@link Supplier}
+	 * @param supplier
+	 * 		The {@link Supplier} to provide the actual {@link Event}
+	 * @param <S>
+	 * 		The type of the {@link Supplier}
 	 *
 	 * @return {@literal this}
 	 *
@@ -141,69 +165,119 @@ public interface Observable {
 	<S extends Supplier<? extends Event<?>>> Observable notify(S supplier);
 
 	/**
-	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
-	 * of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal replyTo}
+	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the
+	 * output
+	 * of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal
+	 * replyTo}
 	 * property.
 	 *
-	 * @param key The key to be matched by {@link Selector Selectors}
-	 * @param ev  The {@literal Event}
-	 * @param <E> The type of the {@link Event}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The {@literal Event}
+	 * @param <E>
+	 * 		The type of the {@link Event}
 	 *
 	 * @return {@literal this}
 	 */
 	<E extends Event<?>> Observable send(Object key, E ev);
 
 	/**
-	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
+	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal
+	 * {@link
 	 * Consumer} that will take the output of a previously-registered {@link Function} and respond using the key set on
 	 * the {@link Event}'s {@literal replyTo} property.
 	 *
-	 * @param key      The key to be matched by {@link Selector Selectors}
-	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param supplier
+	 * 		The {@link Supplier} that will provide the actual {@link Event} instance
 	 *
 	 * @return {@literal this}
 	 */
 	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier);
 
 	/**
-	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the output
+	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the
+	 * output
 	 * of a previously-registered {@link Function} and respond to the key set on the {@link Event}'s {@literal replyTo}
 	 * property and will call the {@code notify} method on the given {@link Observable}.
 	 *
-	 * @param key     The key to be matched by {@link Selector Selectors}
-	 * @param ev      The {@literal Event}
-	 * @param replyTo The {@link Observable} on which to invoke the notify method
-	 * @param <E>     The type of the {@link Event}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The {@literal Event}
+	 * @param replyTo
+	 * 		The {@link Observable} on which to invoke the notify method
+	 * @param <E>
+	 * 		The type of the {@link Event}
 	 *
 	 * @return {@literal this}
 	 */
 	<E extends Event<?>> Observable send(Object key, E ev, Observable replyTo);
 
 	/**
-	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
+	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal
+	 * {@link
 	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the key set on the
-	 * {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link Observable}.
+	 * {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link
+	 * Observable}.
 	 *
-	 * @param key      The key to be matched by {@link Selector Selectors}
-	 * @param supplier The {@link Supplier} that will provide the actual {@link Event} instance
-	 * @param replyTo  The {@link Observable} on which to invoke the notify method
-	 * @param <S>      The type of the Supplier
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param supplier
+	 * 		The {@link Supplier} that will provide the actual {@link Event} instance
+	 * @param replyTo
+	 * 		The {@link Observable} on which to invoke the notify method
+	 * @param <S>
+	 * 		The type of the Supplier
 	 *
 	 * @return {@literal this}
 	 */
 	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier, Observable replyTo);
 
-	<E extends Event<?>, V> Observable sendAndReceive(Object key, E ev, Consumer<V> reply);
+	/**
+	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector}
+	 * and set the given event's {@code replyTo} property to the corresponding anonymous key, then register the
+	 * consumer to receive replies from the {@link reactor.function.Function} assigned to handle the given key.
+	 *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The event to notify.
+	 * @param reply
+	 * 		The consumer to register as a reply handler.
+	 * @param <E>
+	 * 		The type of the event.
+	 *
+	 * @return {@literal this}
+	 */
+	<E extends Event<?>> Observable sendAndReceive(Object key, E ev, Consumer<E> reply);
 
-	<S extends Supplier<? extends Event<?>>, V> Observable sendAndReceive(Object key,
-	                                                                      S supplier,
-	                                                                      Consumer<V> reply);
+	/**
+	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector}
+	 * and set the event's {@code replyTo} property to the corresponding anonymous key, then register the
+	 * consumer to receive replies from the {@link reactor.function.Function} assigned to handle the given key.
+	 *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param supplier
+	 * 		The supplier to supply the event.
+	 * @param reply
+	 * 		The consumer to register as a reply handler.
+	 * @param <S>
+	 * 		The type of the supplier.
+	 *
+	 * @return {@literal this}
+	 */
+	<E extends Event<?>, S extends Supplier<E>> Observable sendAndReceive(Object key, S supplier, Consumer<E> reply);
 
 	/**
 	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
 	 * triggered with a {@literal null} input argument.
 	 *
-	 * @param key The key to be matched by {@link Selector Selectors}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
 	 *
 	 * @return {@literal this}
 	 */
@@ -212,7 +286,9 @@ public interface Observable {
 	/**
 	 * Create an optimized path for publishing notifications to the given key.
 	 *
-	 * @param key The key to be matched by {@link Selector Selectors}
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 *
 	 * @return a {@link Consumer} to invoke with the {@link Event Events} to publish
 	 */
 	<T> Consumer<Event<T>> prepare(Object key);

@@ -31,11 +31,11 @@ import reactor.event.routing.Linkable;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
-import reactor.event.support.EventConsumer;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
+import reactor.function.support.SingleUseConsumer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
@@ -264,17 +264,17 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	@Override
-	public <E extends Event<?>, V> Reactor sendAndReceive(Object key, E ev, Consumer<V> reply) {
+	public <E extends Event<?>> Reactor sendAndReceive(Object key, E ev, Consumer<E> reply) {
 		Tuple2<Selector, Object> anon = Selectors.anonymous();
-		on(anon.getT1(), new EventConsumer<V>(reply)).cancelAfterUse();
+		on(anon.getT1(), new SingleUseConsumer<E>(reply)).cancelAfterUse();
 		notify(key, ev.setReplyTo(anon.getT2()));
 		return this;
 	}
 
 	@Override
-	public <S extends Supplier<? extends Event<?>>, V> Reactor sendAndReceive(Object key,
+	public <E extends Event<?>, S extends Supplier<E>> Reactor sendAndReceive(Object key,
 	                                                                          S supplier,
-	                                                                          Consumer<V> reply) {
+	                                                                          Consumer<E> reply) {
 		return sendAndReceive(key, supplier.get(), reply);
 	}
 
