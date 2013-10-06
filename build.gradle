@@ -89,6 +89,11 @@ configure(allprojects) { project ->
 			"-Xlint:-unchecked"    // TODO enable and fix warnings
 	]
 
+	compileGroovy{
+		sourceCompatibility = 1.6
+		targetCompatibility = 1.6
+	}
+
 	compileJava {
 		sourceCompatibility = 1.6
 		targetCompatibility = 1.6
