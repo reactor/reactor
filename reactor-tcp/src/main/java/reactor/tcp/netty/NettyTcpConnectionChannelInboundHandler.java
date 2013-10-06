@@ -40,7 +40,6 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {
 		if (!(m instanceof ByteBuf)) {
 			conn.notifyRead(m);
-			ctx.fireChannelRead(m);
 			return;
 		}
 
