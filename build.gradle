@@ -137,7 +137,7 @@ configure(allprojects) { project ->
 		compile "org.slf4j:slf4j-api:$slf4jVersion"
 
 		// JSR-305 annotations
-        compile "com.google.code.findbugs:jsr305:2.0.0"
+        optional "com.google.code.findbugs:jsr305:2.0.0"
 
 		// Groovy
 		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
@@ -244,7 +244,7 @@ project('reactor-core') {
 
 		// High-speed Messaging
 		//optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
-        compile "net.openhft:chronicle:$openHftChronicleVersion"
+        optional "net.openhft:chronicle:$openHftChronicleVersion"
 	}
 }
 
