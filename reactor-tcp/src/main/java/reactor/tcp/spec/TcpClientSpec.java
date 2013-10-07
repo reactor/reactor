@@ -24,7 +24,7 @@ import java.net.InetSocketAddress;
  */
 public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
 
-	private final Constructor<? extends TcpClient<IN, OUT>> clientImplConstructor;
+	private final Constructor<TcpClient<IN, OUT>> clientImplConstructor;
 
 	private InetSocketAddress connectAddress;
 	private ClientSocketOptions options    = new ClientSocketOptions();
@@ -40,7 +40,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	public TcpClientSpec(@Nonnull Class<? extends TcpClient> clientImpl) {
 		Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 		try {
-			this.clientImplConstructor = (Constructor<? extends TcpClient<IN, OUT>>) clientImpl.getDeclaredConstructor(
+			this.clientImplConstructor = (Constructor<TcpClient<IN, OUT>>) clientImpl.getDeclaredConstructor(
 					Environment.class,
 					Reactor.class,
 					InetSocketAddress.class,
