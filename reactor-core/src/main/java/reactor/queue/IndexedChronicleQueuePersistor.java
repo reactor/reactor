@@ -107,8 +107,6 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
                 ChronicleTools.deleteOnExit(basePath);
             }
         } catch(IOException e) {
-            //TODO: what to do ?
-            LOG.warn("IOException",e);
             throw new IllegalStateException(e.getMessage(), e);
         }
 	}
@@ -146,12 +144,14 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			}
 
 			public boolean hasNext() {
-                //TODO: may lead to resource content?
-                long index = iterFun.ex.index();
-				boolean has = iterFun.ex.nextIndex();
-                iterFun.ex.index(index);
+                boolean hasNextElement = false;
+                synchronized(IndexedChronicleQueuePersistor.this) {
+                    long index = iterFun.ex.index();
+                    hasNextElement = iterFun.ex.nextIndex();
+                    iterFun.ex.index(index);
+                }
 
-                return has;
+                return hasNextElement;
 			}
 
 			@Override public T next() {
@@ -241,12 +241,16 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		@Override public T get() {
-			if(!ex.nextIndex()) {
-				return null;
-			}
+            T obj = null;
+            synchronized(IndexedChronicleQueuePersistor.this) {
+                if(!ex.nextIndex()) {
+                    return null;
+                }
 
-			T obj = read(ex, ex.index());
-			count.decrementAndGet();
+                obj = read(ex, ex.index());
+                count.decrementAndGet();
+            }
+
 			return obj;
 		}
 	}
