@@ -19,6 +19,7 @@ import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
 import reactor.core.composable.spec.Promises
 import reactor.core.composable.spec.Streams
+import reactor.event.dispatch.TraceableDelegatingDispatcher
 import reactor.function.support.Tap
 import spock.lang.Specification
 
@@ -27,52 +28,63 @@ import spock.lang.Specification
  */
 class ComponentSpecSpec extends Specification {
 
-  def "Reactor correctly built"() {
+	def "Reactor correctly built"() {
 
-    when:
-      "we create a plain Reactor"
-      def reactor = Reactors.reactor().synchronousDispatcher().get()
+		when:
+			"we create a plain Reactor"
+			def reactor = Reactors.reactor().synchronousDispatcher().get()
 
-    then:
-      reactor.core.Reactor.isAssignableFrom(reactor.class)
-  }
+		then:
+			reactor.core.Reactor.isAssignableFrom(reactor.class)
+	}
 
-  def "Composable correctly built"() {
+	def "Tracing is enabled"() {
 
-    when:
-      "we create a plain Composable"
-      Deferred composable = Streams.defer().synchronousDispatcher().get()
-      Tap<String> tap = composable.compose().tap()
-      composable.accept('test')
+		when:
+			"a traceable Reactor is created"
+			def reactor = Reactors.reactor().synchronousDispatcher().traceEventPath().get()
 
-    then:
-      Deferred.isAssignableFrom(composable.class)
-      tap.get() == 'test'
+		then:
+			"Reactor uses tracelable components"
+			reactor.getDispatcher() instanceof TraceableDelegatingDispatcher
+	}
 
-  }
+	def "Composable correctly built"() {
 
-  def "Promise correctly built"() {
+		when:
+			"we create a plain Composable"
+			Deferred composable = Streams.defer().synchronousDispatcher().get()
+			Tap<String> tap = composable.compose().tap()
+			composable.accept('test')
 
-    when:
-      "we create a plain Promise"
-      Promise promise = Promises.success('test').synchronousDispatcher().get()
+		then:
+			Deferred.isAssignableFrom(composable.class)
+			tap.get() == 'test'
 
-    then:
-      Promise.isAssignableFrom(promise.class)
-      promise.get() == 'test'
-  }
+	}
 
-  def "Deferred Promise correctly built"() {
+	def "Promise correctly built"() {
 
-    when:
-      "we create a plain Promise"
-      Deferred promise = Promises.defer().get()
-      promise.accept 'test'
+		when:
+			"we create a plain Promise"
+			Promise promise = Promises.success('test').synchronousDispatcher().get()
 
-    then:
-      Deferred.isAssignableFrom(promise.class)
-      promise.compose().get() == 'test'
-  }
+		then:
+			Promise.isAssignableFrom(promise.class)
+			promise.get() == 'test'
+	}
+
+	def "Deferred Promise correctly built"() {
+
+		when:
+			"we create a plain Promise"
+			Deferred promise = Promises.defer().get()
+			promise.accept 'test'
+
+		then:
+			Deferred.isAssignableFrom(promise.class)
+			promise.compose().get() == 'test'
+	}
 
 }
 

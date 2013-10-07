@@ -15,62 +15,65 @@
  */
 package reactor.core.spec.support;
 
-import java.util.List;
-
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.routing.ArgumentConvertingConsumerInvoker;
-import reactor.event.routing.ConsumerFilteringEventRouter;
-import reactor.event.routing.ConsumerInvoker;
-import reactor.event.routing.EventRouter;
-import reactor.filter.Filter;
-import reactor.filter.FirstFilter;
-import reactor.filter.PassThroughFilter;
-import reactor.filter.RandomFilter;
-import reactor.filter.RoundRobinFilter;
+import reactor.event.dispatch.TraceableDelegatingDispatcher;
+import reactor.event.routing.*;
+import reactor.filter.*;
 import reactor.util.Assert;
+
+import java.util.List;
 
 
 /**
  * A generic environment-aware class for specifying components that need to be configured
  * with an {@link Environment}, {@link Dispatcher}, and {@link EventRouter}.
  *
- * @param <SPEC>   The DispatcherComponentSpec subclass
- * @param <TARGET> The type that this spec will create
+ * @param <SPEC>
+ * 		The DispatcherComponentSpec subclass
+ * @param <TARGET>
+ * 		The type that this spec will create
+ *
  * @author Jon Brisbin
  */
 @SuppressWarnings("unchecked")
-public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC, TARGET> {
+public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends
+                                                                                                              DispatcherComponentSpec<SPEC, TARGET> {
 
 	private Converter            converter;
 	private EventRoutingStrategy eventRoutingStrategy;
 	private EventRouter          eventRouter;
 	private ConsumerInvoker      consumerInvoker;
 	private Filter               eventFilter;
+	private boolean traceEventPath = false;
 
 	/**
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
-	 * @param converters The converters to be used by the event router
+	 * @param converters
+	 * 		The converters to be used by the event router
+	 *
 	 * @return {@code this}
 	 */
 	public final SPEC converters(Converter... converters) {
 		this.converter = new DelegatingConverter(converters);
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
-	 * @param converters The converters to be used by the event router
+	 * @param converters
+	 * 		The converters to be used by the event router
+	 *
 	 * @return {@code this}
 	 */
 	public final SPEC converters(List<Converter> converters) {
 		this.converter = new DelegatingConverter(converters);
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 
@@ -82,7 +85,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	public final SPEC eventFilter(Filter filter) {
 		Assert.isNull(eventRouter, "Cannot set both a filter and a router. Use one or the other.");
 		this.eventFilter = filter;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -93,7 +96,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	public final SPEC consumerInvoker(ConsumerInvoker consumerInvoker) {
 		Assert.isNull(eventRouter, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.consumerInvoker = consumerInvoker;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -105,7 +108,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		Assert.isNull(eventFilter, "Cannot set both a filter and a router. Use one or the other.");
 		Assert.isNull(consumerInvoker, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.eventRouter = router;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -116,7 +119,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC broadcastEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -127,7 +130,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC randomEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.RANDOM;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -138,7 +141,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC firstEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.FIRST;
-		return (SPEC) this;
+		return (SPEC)this;
 	}
 
 	/**
@@ -150,7 +153,29 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
-		return (SPEC) this;
+		return (SPEC)this;
+	}
+
+	/**
+	 * Configures this component to provide event tracing when dispatching and routing an event.
+	 *
+	 * @return {@code this}
+	 */
+	public final SPEC traceEventPath() {
+		return traceEventPath(true);
+	}
+
+	/**
+	 * Configures this component to provide or not provide event tracing when dispatching and routing an event.
+	 *
+	 * @param b
+	 * 		whether to trace the event path or not
+	 *
+	 * @return {@code this}
+	 */
+	public final SPEC traceEventPath(boolean b) {
+		this.traceEventPath = b;
+		return (SPEC)this;
 	}
 
 	protected abstract TARGET configure(Reactor reactor, Environment environment);
@@ -161,27 +186,35 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Reactor createReactor(Dispatcher dispatcher) {
+		if(traceEventPath) {
+			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
+		}
 		return new Reactor(dispatcher, eventRouter != null ? eventRouter : createEventRouter());
 	}
 
 	private EventRouter createEventRouter() {
-		return new ConsumerFilteringEventRouter(
+		EventRouter evr = new ConsumerFilteringEventRouter(
 				eventFilter != null ? eventFilter : createFilter(),
 				consumerInvoker != null ? consumerInvoker : new ArgumentConvertingConsumerInvoker(converter));
+		if(traceEventPath) {
+			return new TraceableDelegatingEventRouter(evr);
+		} else {
+			return evr;
+		}
 	}
 
 	private Filter createFilter() {
 		Filter filter;
-		if (EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
+		if(EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
 			filter = new RoundRobinFilter();
-		} else if (EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
+		} else if(EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
 			filter = new RandomFilter();
-		} else if (EventRoutingStrategy.FIRST == eventRoutingStrategy) {
+		} else if(EventRoutingStrategy.FIRST == eventRoutingStrategy) {
 			filter = new FirstFilter();
 		} else {
 			filter = new PassThroughFilter();
 		}
-		return filter;
+		return (traceEventPath ? new TraceableDelegatingFilter(filter) : filter);
 	}
 
 	protected enum EventRoutingStrategy {
