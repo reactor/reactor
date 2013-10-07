@@ -36,6 +36,7 @@ ext {
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
 	javaChronicleVersion = '1.7.2'
+    openHftChronicleVersion = '2.0.1'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -136,7 +137,7 @@ configure(allprojects) { project ->
 		compile "org.slf4j:slf4j-api:$slf4jVersion"
 
 		// JSR-305 annotations
-		optional("com.google.code.findbugs:jsr305:2.0.0")
+        compile "com.google.code.findbugs:jsr305:2.0.0"
 
 		// Groovy
 		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
@@ -242,7 +243,8 @@ project('reactor-core') {
 		compile "com.lmax:disruptor:$disruptorVersion"
 
 		// High-speed Messaging
-		optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
+		//optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
+        compile "net.openhft:chronicle:$openHftChronicleVersion"
 	}
 }
 

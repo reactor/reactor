@@ -1,23 +1,25 @@
 package reactor.queue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicLong;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import com.higherfrequencytrading.chronicle.Excerpt;
-import com.higherfrequencytrading.chronicle.impl.IndexedChronicle;
-import com.higherfrequencytrading.chronicle.tools.ChronicleTools;
+import net.openhft.chronicle.Excerpt;
+import net.openhft.chronicle.ExcerptAppender;
+import net.openhft.chronicle.IndexedChronicle;
+import net.openhft.chronicle.tools.ChronicleTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A {@link QueuePersistor} implementation that uses a <a href="https://github.com/peter-lawrey/Java-Chronicle">Java
@@ -78,19 +80,18 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		this.decoder = (null == decoder ? new SerializableDecoder<T>() : decoder);
 		this.deleteOnExit = deleteOnExit;
 
-		this.offerFun = new ChronicleOfferFunction(new IndexedChronicle(basePath));
-		if(clearOnStart) {
-			this.offerFun.chronicle.clear();
-		}
-		this.getFun = new ChronicleGetFunction(new IndexedChronicle(basePath));
-		if(clearOnStart) {
-			this.getFun.chronicle.clear();
-		}
-		this.removeFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
-		if(clearOnStart) {
-			this.removeFun.chronicle.clear();
-		}
+        if(clearOnStart) {
+            for (String name : new String[]{basePath + ".data", basePath + ".index"}) {
+                File file = new File(name);
+                if(file.exists()) {
+                    file.delete();
+                }
+            }
+        }
 
+		this.offerFun = new ChronicleOfferFunction(new IndexedChronicle(basePath));
+        this.getFun = new ChronicleGetFunction(new IndexedChronicle(basePath));
+        this.removeFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
 	}
 
 	/**
@@ -98,12 +99,18 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 */
 	@Override
 	public void close() {
-		offerFun.chronicle.close();
-		getFun.chronicle.close();
-		removeFun.chronicle.close();
-		if(deleteOnExit) {
-			ChronicleTools.deleteOnExit(basePath);
-		}
+        try {
+            offerFun.chronicle.close();
+            getFun.chronicle.close();
+            removeFun.chronicle.close();
+            if(deleteOnExit) {
+                ChronicleTools.deleteOnExit(basePath);
+            }
+        } catch(IOException e) {
+            //TODO: what to do ?
+            LOG.warn("IOException",e);
+            throw new IllegalStateException(e.getMessage(), e);
+        }
 	}
 
 	@Override public long lastId() {
@@ -139,7 +146,12 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			}
 
 			public boolean hasNext() {
-				return iterFun.ex.hasNextIndex();
+                //TODO: may lead to resource content?
+                long index = iterFun.ex.index();
+				boolean has = iterFun.ex.nextIndex();
+                iterFun.ex.index(index);
+
+                return has;
 			}
 
 			@Override public T next() {
@@ -178,11 +190,11 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
 	private class ChronicleOfferFunction implements Function<T, Long> {
 		private final IndexedChronicle chronicle;
-		private final Excerpt          ex;
+		private final ExcerptAppender ex;
 
-		private ChronicleOfferFunction(IndexedChronicle chronicle) {
+		private ChronicleOfferFunction(IndexedChronicle chronicle) throws IOException {
 			this.chronicle = chronicle;
-			this.ex = chronicle.createExcerpt();
+			this.ex = chronicle.createAppender();
 		}
 
 		@Override public Long apply(T t) {
@@ -207,9 +219,9 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
 	private class ChronicleGetFunction implements Function<Long, T> {
 		private final IndexedChronicle chronicle;
-		private final Excerpt          ex;
+		private final Excerpt ex;
 
-		private ChronicleGetFunction(IndexedChronicle chronicle) {
+		private ChronicleGetFunction(IndexedChronicle chronicle) throws IOException {
 			this.chronicle = chronicle;
 			this.ex = chronicle.createExcerpt();
 		}
@@ -223,7 +235,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		private final IndexedChronicle chronicle;
 		private final Excerpt          ex;
 
-		private ChronicleRemoveFunction(IndexedChronicle chronicle) {
+		private ChronicleRemoveFunction(IndexedChronicle chronicle) throws IOException {
 			this.chronicle = chronicle;
 			this.ex = chronicle.createExcerpt();
 		}
@@ -232,6 +244,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			if(!ex.nextIndex()) {
 				return null;
 			}
+
 			T obj = read(ex, ex.index());
 			count.decrementAndGet();
 			return obj;
