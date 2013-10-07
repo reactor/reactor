@@ -45,7 +45,7 @@ class ComponentSpecSpec extends Specification {
 			def reactor = Reactors.reactor().synchronousDispatcher().traceEventPath().get()
 
 		then:
-			"Reactor uses tracelable components"
+			"Reactor uses traceable components"
 			reactor.getDispatcher() instanceof TraceableDelegatingDispatcher
 	}
 
