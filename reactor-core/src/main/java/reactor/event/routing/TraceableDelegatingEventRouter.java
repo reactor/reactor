@@ -30,7 +30,7 @@ public class TraceableDelegatingEventRouter implements EventRouter {
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
-			log.trace("route({}, {}, {}, {}, {})");
+			log.trace("route({}, {}, {}, {}, {})", key, event, consumers, completionConsumer, errorConsumer);
 		}
 	}
 
