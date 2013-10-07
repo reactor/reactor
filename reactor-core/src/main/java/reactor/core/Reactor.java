@@ -327,6 +327,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {
+		private static final long serialVersionUID = 1937884784799135647L;
 		private final Observable replyToObservable;
 
 		@Override

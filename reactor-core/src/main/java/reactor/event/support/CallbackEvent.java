@@ -12,6 +12,7 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  */
 public class CallbackEvent<T> extends Event<T>{
+	private static final long serialVersionUID = -7173643160887108377L;
 	final Consumer callback;
 
 	public CallbackEvent(T data, Consumer callback) {
@@ -21,6 +22,7 @@ public class CallbackEvent<T> extends Event<T>{
 	public CallbackEvent(Headers headers, T data, Consumer callback) {
 		this(headers, data, callback, null);
 	}
+
 	public CallbackEvent(Headers headers, T data, Consumer callback, Consumer<Throwable> throwableConsumer) {
 		super(headers, data, throwableConsumer);
 		this.callback = callback;
