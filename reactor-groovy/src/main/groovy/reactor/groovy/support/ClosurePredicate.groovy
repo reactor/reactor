@@ -23,17 +23,17 @@ import reactor.function.Predicate
  * @author Jon Brisbin
  */
 @CompileStatic
-class ClosurePredicate<V> extends Predicate<V> {
+class ClosurePredicate<V> implements Predicate<V> {
 
-  final Closure<Boolean> callback
+	final Closure<Boolean> callback
 
-  ClosurePredicate(Closure<Boolean> callback) {
-    this.callback = callback
-  }
+	ClosurePredicate(Closure<Boolean> callback) {
+		this.callback = callback
+	}
 
-  @Override
-  boolean test(V value) {
-    callback value
-  }
+	@Override
+	boolean test(V value) {
+		callback value
+	}
 
 }
