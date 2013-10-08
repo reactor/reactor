@@ -53,8 +53,8 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 				} else {
 					data.release();
 				}
-				return;
 			}
+			return;
 		}
 
 		if (!bufferHasSufficientCapacity(remainder, data)) {
