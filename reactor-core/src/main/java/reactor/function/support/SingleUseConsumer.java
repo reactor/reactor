@@ -25,7 +25,8 @@ import reactor.function.Consumer;
  * ensure that this {@link reactor.function.Consumer Consumer's} {@link
  * reactor.event.registry.Registration} is cancelled as soon after its use as possible.
  *
- * @param <T> the type of the values that the consumer can accept
+ * @param <T>
+ * 		the type of the values that the consumer can accept
  *
  * @author Jon Brisbin
  */
@@ -36,23 +37,52 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 	private volatile boolean called  = false;
 
 	/**
+	 * Static helper method for creating {@code SingleUseConsumer SingleUseConsumers} in code with a little less noise.
+	 *
+	 * @param delegate
+	 * 		The delegate {@code Consumer} to invoke.
+	 * @param <T>
+	 * 		Type of the Consumer's argument.
+	 *
+	 * @return A new {@code Consumer} that will only be invoked once, then cancelled.
+	 */
+	public static <T> Consumer<T> once(Consumer<T> delegate) {
+		return new SingleUseConsumer<T>(delegate);
+	}
+
+	/**
+	 * Used to create anonymous subclasses.
+	 */
+	public SingleUseConsumer() {
+		this.delegate = null;
+	}
+
+	/**
 	 * Create a single-use {@link Consumer} using the given delgate.
 	 *
-	 * @param delegate The {@link Consumer} to delegate accept calls to.
+	 * @param delegate
+	 * 		The {@link Consumer} to delegate accept calls to.
 	 */
 	public SingleUseConsumer(Consumer<T> delegate) {
 		this.delegate = delegate;
 	}
 
 	@Override
-	public void accept(T t) {
-		synchronized (monitor) {
-			if (called) {
+	public final void accept(T t) {
+		synchronized(monitor) {
+			if(called) {
 				return;
 			}
 			called = true;
 		}
-		delegate.accept(t);
+		if(null != delegate) {
+			delegate.accept(t);
+		} else {
+			doAccept(t);
+		}
+		throw new CancelConsumerException();
 	}
+
+	protected void doAccept(T t) {}
 
 }
