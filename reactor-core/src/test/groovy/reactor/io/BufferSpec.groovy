@@ -298,6 +298,24 @@ class BufferSpec extends Specification {
 		strings == ['One', 'Two', 'Three']
 	}
 
+	def "A buffer can be split on a delimiter of multiple byte length"() {
+		given:
+			"A buffer with three segments"
+			def buff = Buffer.wrap "One\r\nTwo\r\nThree\r\n"
+			def delim = Buffer.wrap "\r\n"
+
+		when:
+			"the buffer is split on the delimiter and the delimiter is stripped"
+			def parts = buff.split(delim, true)
+
+		then:
+			"three parts with the expected contents are produced"
+			def strings = []
+			parts.each { part -> strings << part.get().asString() }
+			strings.size() == 3
+			strings == ['One', 'Two', 'Three']
+	}
+
 	def "A Buffer can be sliced into segments"() {
 		given: "a syslog message, buffered"
 		def buff = Buffer.wrap("<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n")
