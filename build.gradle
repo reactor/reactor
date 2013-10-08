@@ -36,7 +36,8 @@ ext {
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
 	javaChronicleVersion = '1.7.2'
-    openHftChronicleVersion = '2.0.1'
+        openHftChronicleVersion = '2.0.1'
+        openHftLangVersion = '6.0.2'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -244,7 +245,8 @@ project('reactor-core') {
 
 		// High-speed Messaging
 		//optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
-        optional "net.openhft:chronicle:$openHftChronicleVersion"
+                optional "net.openhft:chronicle:$openHftChronicleVersion"
+                optional "net.openhft:lang:$openHftLangVersion"
 	}
 }
 
