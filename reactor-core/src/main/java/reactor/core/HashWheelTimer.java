@@ -1,8 +1,5 @@
 package reactor.core;
 
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.registry.CachingRegistry;
@@ -11,10 +8,14 @@ import reactor.event.registry.Registry;
 import reactor.event.selector.HeaderResolver;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
+import reactor.function.support.CancelConsumerException;
 import reactor.function.support.SingleUseConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
+
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
@@ -73,7 +74,8 @@ public class HashWheelTimer {
 
 		this.loop = new NamedDaemonThreadFactory("hash-wheel-timer").newThread(
 				new Runnable() {
-					@Override public void run() {
+					@Override
+					public void run() {
 						while(!Thread.currentThread().isInterrupted()) {
 							long now = now(resolution);
 							for(Registration<? extends Consumer<Long>> reg : tasks.select(now)) {
@@ -82,6 +84,8 @@ public class HashWheelTimer {
 										continue;
 									}
 									reg.getObject().accept(now);
+								} catch(CancelConsumerException cce) {
+									reg.cancel();
 								} catch(Throwable t) {
 									LOG.error(t.getMessage(), t);
 								} finally {
@@ -219,21 +223,25 @@ public class HashWheelTimer {
 			this.createdMillis = now(resolution);
 		}
 
-		@Override public UUID getId() {
+		@Override
+		public UUID getId() {
 			return uuid;
 		}
 
-		@Override public Object getObject() {
+		@Override
+		public Object getObject() {
 			return period;
 		}
 
-		@Override public boolean matches(Object key) {
+		@Override
+		public boolean matches(Object key) {
 			long now = (Long)key;
 			long period = (long)(Math.ceil((now - createdMillis) / resolution) * resolution);
 			return period >= delay && period % this.period == 0;
 		}
 
-		@Override public HeaderResolver getHeaderResolver() {
+		@Override
+		public HeaderResolver getHeaderResolver() {
 			return null;
 		}
 	}
