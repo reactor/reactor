@@ -11,14 +11,14 @@ import static reactor.GroovyTestUtils.consumer
 /**
  * @author Jon Brisbin
  */
-class SequencersSpec extends Specification {
+class EventBatchersSpec extends Specification {
 
   def "A Reactor delays notification of events in a Sequencer"() {
 
     given:
-      "a synchronous Reactor Sequencer"
+      "a synchronous Reactor EventBatcher"
       def r = Reactors.reactor().synchronousDispatcher().get()
-      def c = new SequencerSpec().
+      def c = new EventBatcherSpec().
           observable(r).
           notifyKey("test").
           get()
@@ -29,7 +29,7 @@ class SequencersSpec extends Specification {
       })
 
     when:
-      "events are published to the Sequencer"
+      "events are published to the EventBatcher"
       events.each {
         c.accept(it)
       }
@@ -39,7 +39,7 @@ class SequencersSpec extends Specification {
       processedEvents.size() == 0
 
     when:
-      "the Sequencer is flushed"
+      "the EventBatcher is flushed"
       c.flush()
 
     then:
@@ -54,10 +54,10 @@ class SequencersSpec extends Specification {
   def "A Reactor persists Events in a Sequencer"() {
 
     given:
-      "a Sequencer backed by a PersistentQueue"
+      "a EventBatcher backed by a PersistentQueue"
       def r = Reactors.reactor().synchronousDispatcher().get()
       def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
-      def c = new SequencerSpec().
+      def c = new EventBatcherSpec().
           observable(r).
           notifyKey("test").
           eventQueue(new PersistentQueue<Event<String>>(persistor)).
@@ -69,7 +69,7 @@ class SequencersSpec extends Specification {
       })
 
     when:
-      "events are published to the Sequencer"
+      "events are published to the EventBatcher"
       events.each {
         c.accept(it)
       }
@@ -79,7 +79,7 @@ class SequencersSpec extends Specification {
       processedEvents.size() == 0
 
     when:
-      "the Sequencer is flushed"
+      "the EventBatcher is flushed"
       c.flush()
 
     then:
