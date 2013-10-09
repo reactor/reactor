@@ -20,17 +20,16 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
 import reactor.function.Consumer;
-import reactor.function.support.Boundary;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyClientSocketOptions;
 import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.spec.TcpClientSpec;
+import reactor.tcp.support.SocketUtils;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
@@ -58,27 +57,36 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpClientTests {
 
-	private static final int ECHO_SERVER_PORT      = 27487;
-	private static final int ABORT_SERVER_PORT     = 27488;
-	private static final int TIMEOUT_SERVER_PORT   = 27489;
-	private static final int HEARTBEAT_SERVER_PORT = 27490;
-
-	private final EchoServer              echoServer      = new EchoServer(ECHO_SERVER_PORT);
-	private final ConnectionAbortServer   abortServer     = new ConnectionAbortServer(ABORT_SERVER_PORT);
-	private final ConnectionTimeoutServer timeoutServer   = new ConnectionTimeoutServer(TIMEOUT_SERVER_PORT);
-	private final HeartbeatServer         heartbeatServer = new HeartbeatServer(HEARTBEAT_SERVER_PORT);
-
-	Environment env;
+	Environment             env;
+	int                     echoServerPort;
+	EchoServer              echoServer;
+	int                     abortServerPort;
+	ConnectionAbortServer   abortServer;
+	int                     timeoutServerPort;
+	ConnectionTimeoutServer timeoutServer;
+	int                     heartbeatServerPort;
+	HeartbeatServer         heartbeatServer;
 
 	@Before
 	public void setup() {
 		env = new Environment();
+
+		echoServerPort = SocketUtils.findAvailableTcpPort();
+		echoServer = new EchoServer(echoServerPort);
 		threadPool.submit(echoServer);
+
+		abortServerPort = SocketUtils.findAvailableTcpPort();
+		abortServer = new ConnectionAbortServer(abortServerPort);
 		threadPool.submit(abortServer);
+
+		timeoutServerPort = SocketUtils.findAvailableTcpPort();
+		timeoutServer = new ConnectionTimeoutServer(timeoutServerPort);
 		threadPool.submit(timeoutServer);
+
+		heartbeatServerPort = SocketUtils.findAvailableTcpPort();
+		heartbeatServer = new HeartbeatServer(heartbeatServerPort);
 		threadPool.submit(heartbeatServer);
 	}
 
@@ -88,8 +96,9 @@ public class TcpClientTests {
 		abortServer.close();
 		timeoutServer.close();
 		heartbeatServer.close();
-		threadPool.shutdownNow();
-		threadPool.awaitTermination(60, TimeUnit.SECONDS);
+		threadPool.shutdown();
+		threadPool.awaitTermination(5, TimeUnit.SECONDS);
+		Thread.sleep(5000);
 	}
 
 	@Test
@@ -99,7 +108,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect("localhost", ECHO_SERVER_PORT)
+				.connect("localhost", echoServerPort)
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -121,7 +130,6 @@ public class TcpClientTests {
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
-
 
 	@Test
 	public void testTcpClientWithInetSocketAddress() throws InterruptedException {
@@ -130,7 +138,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect(new InetSocketAddress("localhost", ECHO_SERVER_PORT))
+				.connect(new InetSocketAddress("localhost", echoServerPort))
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -152,7 +160,6 @@ public class TcpClientTests {
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
-
 
 	@Test
 	public void tcpClientHandlesLineFeedData() throws InterruptedException {
@@ -163,7 +170,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.connect("localhost", ECHO_SERVER_PORT)
+				.connect("localhost", echoServerPort)
 				.get();
 
 		client.open().consume(new Consumer<TcpConnection<String, String>>() {
@@ -184,7 +191,7 @@ public class TcpClientTests {
 		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
-		           latch.await(30, TimeUnit.SECONDS));
+		           latch.await(5, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
@@ -198,7 +205,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(null)
-				.connect("localhost", ECHO_SERVER_PORT)
+				.connect("localhost", echoServerPort)
 				.get();
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
@@ -209,7 +216,7 @@ public class TcpClientTests {
 				closeLatch.countDown();
 			}
 		});
-		assertTrue("Client was not closed within 30 seconds", closeLatch.await(30, TimeUnit.SECONDS));
+		assertTrue("Client was not closed within 30 seconds", closeLatch.await(5, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -219,7 +226,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ABORT_SERVER_PORT + 3)
+				.connect("localhost", abortServerPort + 3)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -241,7 +248,7 @@ public class TcpClientTests {
 					}
 				});
 
-		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
+		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
 	}
 
@@ -251,7 +258,7 @@ public class TcpClientTests {
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ECHO_SERVER_PORT)
+				.connect("localhost", echoServerPort)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -266,10 +273,10 @@ public class TcpClientTests {
 			}
 		});
 
-		assertTrue(connectionLatch.await(30, TimeUnit.SECONDS));
+		assertTrue(connectionLatch.await(5, TimeUnit.SECONDS));
 		echoServer.close();
 
-		assertTrue(reconnectionLatch.await(30, TimeUnit.SECONDS));
+		assertTrue(reconnectionLatch.await(5, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -280,8 +287,8 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", TIMEOUT_SERVER_PORT)
-				.get().open().await().on()
+				.connect("localhost", timeoutServerPort)
+				.get().open().await(5, TimeUnit.SECONDS).on()
 				.close(new Runnable() {
 					@Override
 					public void run() {
@@ -303,7 +310,7 @@ public class TcpClientTests {
 					}
 				});
 
-		assertTrue("latch was counted down", latch.await(30, TimeUnit.SECONDS));
+		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		assertThat("totalDelay was >500ms", totalDelay.get(), greaterThanOrEqualTo(500L));
 	}
 
@@ -314,7 +321,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", HEARTBEAT_SERVER_PORT)
+				.connect("localhost", heartbeatServerPort)
 				.get().open().await().on()
 				.readIdle(500, new Runnable() {
 					@Override
@@ -326,7 +333,7 @@ public class TcpClientTests {
 		Thread.sleep(700);
 		heartbeatServer.close();
 
-		assertTrue(latch.await(30, TimeUnit.SECONDS));
+		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
 		long duration = System.currentTimeMillis() - start;
 
@@ -340,7 +347,7 @@ public class TcpClientTests {
 
 		TcpConnection<Buffer, Buffer> connection = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", ECHO_SERVER_PORT)
+				.connect("localhost", echoServerPort)
 				.get().open().await();
 
 		connection.on()
@@ -356,7 +363,7 @@ public class TcpClientTests {
 			connection.send(Buffer.wrap("a"));
 		}
 
-		assertTrue(latch.await(30, TimeUnit.SECONDS));
+		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
 		long duration = System.currentTimeMillis() - start;
 
@@ -365,8 +372,8 @@ public class TcpClientTests {
 
 	@Test
 	public void nettyTcpConnectionAcceptsNettyChannelHandlers() throws InterruptedException {
-		TcpConnection<HttpResponse, HttpRequest> connection =
-				new TcpClientSpec<HttpResponse, HttpRequest>(NettyTcpClient.class)
+		TcpConnection<HttpObject, HttpRequest> connection =
+				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
 						.env(env)
 						.options(new NettyClientSocketOptions()
 								         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
@@ -378,17 +385,21 @@ public class TcpClientTests {
 						.connect("www.google.com", 80)
 						.get().open().await();
 
-		Boundary b = new Boundary();
-		connection.in().consume(b.bind(new Consumer<HttpResponse>() {
+		final CountDownLatch latch = new CountDownLatch(1);
+		connection.in().consume(new Consumer<HttpObject>() {
 			@Override
-			public void accept(HttpResponse resp) {
-				System.out.println("resp: " + resp);
+			public void accept(HttpObject resp) {
+				if(resp instanceof HttpContent) {
+					latch.countDown();
+				} else {
+					System.out.println("resp: " + resp);
+				}
 			}
-		}));
+		});
 
 		connection.send(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"));
 
-		assertTrue("Boundary didn't time out", b.await(15, TimeUnit.SECONDS));
+		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
