@@ -36,8 +36,8 @@ ext {
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
 	javaChronicleVersion = '1.7.2'
-        openHftChronicleVersion = '2.0.1'
-        openHftLangVersion = '6.0.2'
+	openHftChronicleVersion = '2.0.1'
+	openHftLangVersion = '6.0.2'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -91,7 +91,7 @@ configure(allprojects) { project ->
 			"-Xlint:-unchecked"    // TODO enable and fix warnings
 	]
 
-	compileGroovy{
+	compileGroovy {
 		sourceCompatibility = 1.6
 		targetCompatibility = 1.6
 	}
@@ -138,7 +138,7 @@ configure(allprojects) { project ->
 		compile "org.slf4j:slf4j-api:$slf4jVersion"
 
 		// JSR-305 annotations
-        optional "com.google.code.findbugs:jsr305:2.0.0"
+		optional "com.google.code.findbugs:jsr305:2.0.0"
 
 		// Groovy
 		testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
@@ -245,8 +245,8 @@ project('reactor-core') {
 
 		// High-speed Messaging
 		//optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
-                optional "net.openhft:chronicle:$openHftChronicleVersion"
-                optional "net.openhft:lang:$openHftLangVersion"
+		optional "net.openhft:chronicle:$openHftChronicleVersion"
+		optional "net.openhft:lang:$openHftLangVersion"
 	}
 }
 
@@ -335,8 +335,7 @@ project('reactor-tcp') {
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
-		testRuntime project(':reactor-logback'),
-				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
+		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}
 
 	jar {
