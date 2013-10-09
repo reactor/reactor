@@ -30,7 +30,7 @@ import reactor.util.Assert;
 /**
  * @author Jon Brisbin
  */
-public class Sequencer<T> implements Consumer<Event<T>> {
+public class EventBatcher<T> implements Consumer<Event<T>> {
 
 	private final AtomicLong count      = new AtomicLong();
 	private final AtomicLong flushCount = new AtomicLong();
@@ -40,11 +40,11 @@ public class Sequencer<T> implements Consumer<Event<T>> {
 	private final Predicate<Queue<Event<T>>> queueWhile;
 	private final Predicate<Queue<Event<T>>> flushWhen;
 
-	public Sequencer(@Nonnull Observable observable,
-	                 @Nonnull Object key,
-	                 @Nullable Queue<Event<T>> queue,
-	                 @Nullable Predicate<Queue<Event<T>>> queueWhile,
-	                 @Nullable Predicate<Queue<Event<T>>> flushWhen) {
+	public EventBatcher(@Nonnull Observable observable,
+	                    @Nonnull Object key,
+	                    @Nullable Queue<Event<T>> queue,
+	                    @Nullable Predicate<Queue<Event<T>>> queueWhile,
+	                    @Nullable Predicate<Queue<Event<T>>> flushWhen) {
 		Assert.notNull(observable, "Reactor cannot be null.");
 		Assert.notNull(key, "Event key cannot be null.");
 		this.observable = observable;
