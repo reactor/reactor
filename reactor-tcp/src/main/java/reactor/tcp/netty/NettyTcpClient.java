@@ -291,7 +291,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					if(log.isInfoEnabled()) {
 						log.info("Attempting to reconnect to {} after {}ms", connectAddress, delay);
 					}
-					env.getRootTimer().schedule(
+					env.getRootTimer().submit(
 							new Consumer<Long>() {
 								@Override public void accept(Long now) {
 									createConnection(self);
