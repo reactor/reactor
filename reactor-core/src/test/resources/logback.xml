@@ -16,18 +16,18 @@
 
 <configuration>
 
-  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>
-        %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
-      </pattern>
-    </encoder>
-  </appender>
+	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>
+				%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+			</pattern>
+		</encoder>
+	</appender>
 
-  <logger name="reactor" level="trace"/>
+	<logger name="reactor" level="debug"/>
 
-  <root level="info">
-    <appender-ref ref="stdout"/>
-  </root>
+	<root level="info">
+		<appender-ref ref="stdout"/>
+	</root>
 
 </configuration>
