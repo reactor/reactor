@@ -10,6 +10,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * A {@code Resequencer} allows claimants to ensure proper ordering of replies by allocating {@code long} values from a
+ * counter. When the claimant is ready to publish the results of the operation, it calls {@link #accept(Long, Object)},
+ * passing the slot number it claimed in addition to the value being published. The {@code Resequencer} will ensure
+ * that
+ * out-of-order replies are re-ordered by the claimed slot number and later replies are queued and only passed to the
+ * configured {@link reactor.function.Consumer} once the earlier replies have been published.
+ *
  * @author Jon Brisbin
  */
 public class Resequencer<T> {
@@ -21,15 +28,38 @@ public class Resequencer<T> {
 	private final Consumer<T> delegate;
 	private final long        maxBacklog;
 
+	/**
+	 * Create a {@code Resequencer} that delegates to the given {@link reactor.function.Consumer}.
+	 *
+	 * @param delegate
+	 * 		the {@link reactor.function.Consumer} to delegate values to.
+	 */
 	public Resequencer(@Nonnull Consumer<T> delegate) {
 		this(delegate, Integer.MAX_VALUE);
 	}
 
+	/**
+	 * Create a {@code Resequencer} that delegates to the given {@link reactor.function.Consumer}. Only queue {@code
+	 * maxBacklog} number of items before throwing an exception.
+	 *
+	 * @param delegate
+	 * 		the {@link reactor.function.Consumer} to delegate values to.
+	 * @param maxBacklog
+	 * 		the maximum number of items to queue in the backlog waiting on an earlier reply.
+	 */
 	public Resequencer(@Nonnull Consumer<T> delegate, long maxBacklog) {
 		this.delegate = delegate;
 		this.maxBacklog = maxBacklog;
 	}
 
+	/**
+	 * Accept and possibly queue a value for the given {@code slot}.
+	 *
+	 * @param slot
+	 * 		the slot id this value is a reply for.
+	 * @param t
+	 * 		the value to publish.
+	 */
 	public void accept(@Nonnull Long slot, T t) {
 		lock.lock();
 		try {

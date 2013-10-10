@@ -16,18 +16,24 @@
 
 package reactor.core;
 
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLong;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 import reactor.event.Event;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
 import reactor.queue.BlockingQueueFactory;
 import reactor.util.Assert;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
+ * Batches {@link reactor.event.Event Events} while the {@code queueWhile} {@link reactor.function.Predicate} returns
+ * {@code true}. Flushes events when the {@code flushWhen} {@link reactor.function.Predicate} returns {@code true}.
+ * Flushing occurs by notifying the given {@link reactor.core.Observable} using the given {@code key} and pulling
+ * events
+ * from the queue oldest to youngest.
+ *
  * @author Jon Brisbin
  */
 public class EventBatcher<T> implements Consumer<Event<T>> {
@@ -54,6 +60,9 @@ public class EventBatcher<T> implements Consumer<Event<T>> {
 		this.flushWhen = flushWhen;
 	}
 
+	/**
+	 * Flush queued events by notifying the configured {@link reactor.core.Observable}.
+	 */
 	public void flush() {
 		flushCount.set(count.get());
 

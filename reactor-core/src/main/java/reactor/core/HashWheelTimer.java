@@ -23,22 +23,26 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * A {@code HashWheelTimer} has two variations for scheduling tasks: {@link #schedule(reactor.function.Consumer, long,
  * java.util.concurrent.TimeUnit)} and {@link #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit,
- * long)} which a for scheduling repeating tasks, and {@link #submit(reactor.function.Consumer, long,
+ * long)} which are for scheduling repeating tasks, and {@link #submit(reactor.function.Consumer, long,
  * java.util.concurrent.TimeUnit)} which is for scheduling single-run delayed tasks.
  * </p>
  * <p>
  * To schedule a repeating task, specify the period of time which should elapse before invoking the given {@link
  * reactor.function.Consumer}. To schedule a task that repeats every 5 seconds, for example, one would do something
  * like:
+ * </p>
+ * <p>
  * <code><pre>
  *   HashWheelTimer timer = new HashWheelTimer();
- * <p/>
+ *
  *   timer.schedule(new Consumer&lt;Long&gt;() {
  *     public void accept(Long now) {
  *       // run a task
  *     }
  *   }, 5, TimeUnit.SECONDS);
  * </pre></code>
+ * </p>
+ * <p>
  * NOTE: Without delaying a task, it will be run immediately, in addition to being run after the elapsed time has
  * expired. To run a task only once every N time units and not immediately, use the {@link
  * #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit, long)} method, which allows you to specify
