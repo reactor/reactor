@@ -237,16 +237,12 @@ project('reactor-core') {
 	apply plugin: 'osgi'
 
 	dependencies {
-		// Type-1 UUIDs
-		compile "com.eaio.uuid:uuid:3.2"
-
 		// High-speed Dispatching
 		compile "com.lmax:disruptor:$disruptorVersion"
 
 		// High-speed Messaging
-		//optional("com.higherfrequencytrading:chronicle:$javaChronicleVersion")
-		optional "net.openhft:chronicle:$openHftChronicleVersion"
-		optional "net.openhft:lang:$openHftLangVersion"
+		optional "net.openhft:chronicle:$openHftChronicleVersion",
+				"net.openhft:lang:$openHftLangVersion"
 	}
 }
 
@@ -262,8 +258,8 @@ project('reactor-groovy') {
 	}
 
 	dependencies {
-		compile project(':reactor-core')
-		compile "org.codehaus.groovy:groovy-all:$groovyVersion"
+		compile project(':reactor-core'),
+				"org.codehaus.groovy:groovy-all:$groovyVersion"
 	}
 }
 
@@ -331,7 +327,7 @@ project('reactor-tcp') {
 		compile project(':reactor-core')
 
 		compile "io.netty:netty-all:$nettyVersion"
-		optional("com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion")
+		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"

@@ -15,8 +15,8 @@
  */
 package reactor.util;
 
-import com.eaio.uuid.UUIDGen;
-
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -27,9 +27,13 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public abstract class UUIDUtils {
 
-	private static final long          clockNodeAndSeq = UUIDGen.getClockSeqAndNode();
-	private static final ReentrantLock lock            = new ReentrantLock();
+	private static final long nodeSeed;
+	private static final ReentrantLock lock = new ReentrantLock();
 	private static long lastTime;
+
+	static {
+		nodeSeed = new BigInteger(new SecureRandom().generateSeed(8)).longValue();
+	}
 
 	private UUIDUtils() {
 	}
@@ -44,7 +48,7 @@ public abstract class UUIDUtils {
 
 		lock.lock();
 		try {
-			if (timeMillis > lastTime) {
+			if(timeMillis > lastTime) {
 				lastTime = timeMillis;
 			} else {
 				timeMillis = ++lastTime;
@@ -62,7 +66,7 @@ public abstract class UUIDUtils {
 		// time hi and version
 		time |= 0x1000 | ((timeMillis >> 48) & 0x0FFF); // version 1
 
-		return new UUID(time, clockNodeAndSeq);
+		return new UUID(time, nodeSeed);
 	}
 
 }
