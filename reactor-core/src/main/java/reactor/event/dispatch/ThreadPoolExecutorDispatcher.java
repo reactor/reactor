@@ -16,8 +16,8 @@
 
 package reactor.event.dispatch;
 
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
+import reactor.pool.LoadingPool;
+import reactor.pool.Pool;
 import reactor.event.Event;
 import reactor.function.Supplier;
 import reactor.support.NamedDaemonThreadFactory;
@@ -36,8 +36,8 @@ import java.util.concurrent.TimeUnit;
  */
 public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
-	private final ExecutorService       executor;
-	private final Cache<ThreadPoolTask> readyTasks;
+	private final ExecutorService      executor;
+	private final Pool<ThreadPoolTask> readyTasks;
 
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
@@ -54,7 +54,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 				poolSize,
 				new NamedDaemonThreadFactory(threadName)
 		);
-		this.readyTasks = new LoadingCache<ThreadPoolTask>(
+		this.readyTasks = new LoadingPool<ThreadPoolTask>(
 				new Supplier<ThreadPoolTask>() {
 					@Override
 					public ThreadPoolTask get() {
@@ -71,7 +71,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 		shutdown();
 		try {
 			return executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
+		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
 		return false;
@@ -92,7 +92,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		Task<E> t = (Task<E>) readyTasks.allocate();
+		Task<E> t = (Task<E>)readyTasks.allocate();
 		return (null != t ? t : (Task<E>) new ThreadPoolTask());
 	}
 

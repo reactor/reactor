@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package reactor.cache;
+package reactor.pool;
 
 import org.junit.Test;
-import reactor.cache.LoadingCache;
 import reactor.function.Supplier;
 
 import java.nio.ByteBuffer;
@@ -30,14 +29,14 @@ import static org.hamcrest.Matchers.*;
 /**
  * @author Jon Brisbin
  */
-public class LoadingCacheTests {
+public class LoadingPoolTests {
 
 	@Test
-	public void loadingCacheWarmsCache() {
+	public void loadingPoolWarmsPool() {
 		final int bufferCount = 100;
 		final long timeout = 1000L;
 
-		LoadingCache<ByteBuffer> bufferCache = new LoadingCache<ByteBuffer>(
+		LoadingPool<ByteBuffer> bufferPool = new LoadingPool<ByteBuffer>(
 				new Supplier<ByteBuffer>() {
 					@Override
 					public ByteBuffer get() {
@@ -51,15 +50,15 @@ public class LoadingCacheTests {
 		// exhaust cache
 		List<ByteBuffer> buffers = new ArrayList<ByteBuffer>(100);
 		for (int i = 0; i < bufferCount + 1; i++) {
-			buffers.add(bufferCache.allocate());
+			buffers.add(bufferPool.allocate());
 		}
 
 		long start = System.currentTimeMillis();
-		ByteBuffer b = bufferCache.allocate();
+		ByteBuffer b = bufferPool.allocate();
 		long end = System.currentTimeMillis();
 
 		assertThat("ByteBuffer was obtained despite cache exhaustion", b, is(notNullValue()));
-		assertThat("Cache miss timeout was exceeded", end - start, is(greaterThanOrEqualTo(timeout)));
+		assertThat("Pool miss timeout was exceeded", end - start, is(greaterThanOrEqualTo(timeout)));
 	}
 
 }

@@ -18,8 +18,8 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
+import reactor.pool.LoadingPool;
+import reactor.pool.Pool;
 import reactor.event.Event;
 import reactor.function.Supplier;
 import reactor.queue.BlockingQueueFactory;
@@ -42,8 +42,8 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 
 	private final ThreadGroup         threadGroup = new ThreadGroup("eventloop");
 	private final BlockingQueue<Task> taskQueue   = BlockingQueueFactory.createQueue();
-	private final Cache<Task> readyTasks;
-	private final Thread      taskExecutor;
+	private final Pool<Task> readyTasks;
+	private final Thread     taskExecutor;
 
 	/**
 	 * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
@@ -52,7 +52,7 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 	 * @param backlog The backlog size
 	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
-		this.readyTasks = new LoadingCache<Task>(
+		this.readyTasks = new LoadingPool<Task>(
 				new Supplier<Task>() {
 					@Override
 					public Task get() {
@@ -72,14 +72,14 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		if (taskQueue.isEmpty()) {
+		if(taskQueue.isEmpty()) {
 			shutdown();
 			return true;
 		}
-		synchronized (taskQueue) {
+		synchronized(taskQueue) {
 			try {
 				taskQueue.wait();
-			} catch (InterruptedException e) {
+			} catch(InterruptedException e) {
 				Thread.currentThread().interrupt();
 				return false;
 			}

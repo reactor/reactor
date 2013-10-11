@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.cache;
+package reactor.pool;
 
 import reactor.function.Supplier;
 import reactor.queue.BlockingQueueFactory;
@@ -24,7 +24,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A {@link Cache} implementaion that uses a {@link Supplier} to create the cached objects.
+ * A {@link Pool} implementaion that uses a {@link Supplier} to create the cached objects.
  * The cache is preloaded with a configurable number of instances. In the event of an
  * object not being available to meet an allocation request a new object will be created.
  *
@@ -33,21 +33,21 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class LoadingCache<T> implements Cache<T> {
+public class LoadingPool<T> implements Pool<T> {
 
 	private final BlockingQueue<T> cache = BlockingQueueFactory.createQueue();
 	private final Supplier<T> supplier;
 	private final long        cacheMissTimeout;
 
 	/**
-	 * Creates a new {@code LoadingCache} that will use the {@code supplier} to
+	 * Creates a new {@code LoadingPool} that will use the {@code supplier} to
 	 *
 	 * @param supplier The Supplier used to create objects
 	 * @param initial The number of objects to prepopulate the cache with
 	 * @param cacheMissTimeout The period of time to wait for an object to be available before
 	 *                         using the supplier to create a new one
 	 */
-	public LoadingCache(Supplier<T> supplier, int initial, long cacheMissTimeout) {
+	public LoadingPool(Supplier<T> supplier, int initial, long cacheMissTimeout) {
 		this.supplier = supplier;
 		this.cacheMissTimeout = cacheMissTimeout;
 

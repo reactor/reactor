@@ -14,29 +14,31 @@
  * limitations under the License.
  */
 
-package reactor.cache;
+package reactor.pool;
 
 /**
- * A cache provides access to a cache of objects.
+ * A {@code Pool} provides access to a pool of objects.
  *
- * @param <T> The type of object in the cache
+ * @param <T>
+ * 		The type of object in the pool
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface Cache<T> {
+public interface Pool<T> {
 
 	/**
-	 * Allocates a new object from the cache
+	 * Allocates a new object from the pool.
 	 *
 	 * @return the allocated object
 	 */
 	T allocate();
 
 	/**
-	 * Returns an object to the cache
+	 * Returns an object to the pool.
 	 *
-	 * @param obj The object to deallocate
+	 * @param obj
+	 * 		The object to deallocate
 	 */
 	void deallocate(T obj);
 

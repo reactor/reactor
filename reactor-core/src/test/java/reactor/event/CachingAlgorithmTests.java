@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.cache;
+package reactor.event;
 
 import org.junit.Test;
 

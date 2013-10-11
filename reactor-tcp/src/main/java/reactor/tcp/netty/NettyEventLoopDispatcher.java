@@ -17,8 +17,8 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.cache.Cache;
-import reactor.cache.LoadingCache;
+import reactor.pool.Pool;
+import reactor.pool.LoadingPool;
 import reactor.event.Event;
 import reactor.event.dispatch.BaseLifecycleDispatcher;
 import reactor.function.Supplier;
@@ -33,8 +33,8 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings({"rawtypes"})
 public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 
-	private final EventLoop   eventLoop;
-	private final Cache<Task> readyTasks;
+	private final EventLoop  eventLoop;
+	private final Pool<Task> readyTasks;
 
 	/**
 	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given {@code eventLoop} with the given
@@ -45,7 +45,7 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
 		this.eventLoop = eventLoop;
-		this.readyTasks = new LoadingCache<Task>(
+		this.readyTasks = new LoadingPool<Task>(
 				new Supplier<Task>() {
 					@Override
 					public Task get() {
@@ -62,7 +62,7 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 		shutdown();
 		try {
 			return eventLoop.awaitTermination(timeout, timeUnit);
-		} catch (InterruptedException e) {
+		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
 		return false;
