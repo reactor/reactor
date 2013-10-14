@@ -35,9 +35,8 @@ ext {
 	nettyVersion = '4.0.6.Final'
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
-	javaChronicleVersion = '1.7.2'
-	openHftChronicleVersion = '2.0.1'
-	openHftLangVersion = '6.0.2'
+	openHftChronicleVersion = '2.0.2'
+	openHftLangVersion = '6.1.1'
 
 	// Testing
 	mockitoVersion = '1.9.5'
