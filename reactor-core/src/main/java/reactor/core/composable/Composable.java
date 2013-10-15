@@ -32,6 +32,8 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -56,8 +58,8 @@ public abstract class Composable<T> {
 	private final Observable    events;
 	private final Composable<?> parent;
 
-	private volatile long acceptCount = 0l;
-	private volatile long errorCount  = 0l;
+	private AtomicLong acceptCount = new AtomicLong(0l);
+	private AtomicLong errorCount  = new AtomicLong(0l);
 
 	protected <U> Composable(
 			@Nonnull Dispatcher dispatcher,
@@ -253,12 +255,7 @@ public abstract class Composable<T> {
 	 * @return number of values accepted
 	 */
 	public long getAcceptCount() {
-		lock.lock();
-		try {
-			return acceptCount;
-		} finally {
-			lock.unlock();
-		}
+	    return acceptCount.get();
 	}
 
 	/**
@@ -267,12 +264,7 @@ public abstract class Composable<T> {
 	 * @return number of errors propagated
 	 */
 	public long getErrorCount() {
-		lock.lock();
-		try {
-			return errorCount;
-		} finally {
-			lock.unlock();
-		}
+	    return errorCount.get();
 	}
 
 	/**
@@ -299,13 +291,8 @@ public abstract class Composable<T> {
 	}
 
 	void notifyValue(Event<T> value) {
-		lock.lock();
-		try {
-			acceptCount++;
-			valueAccepted(value.getData());
-		} finally {
-			lock.unlock();
-		}
+		acceptCount.incrementAndGet();
+        valueAccepted(value.getData());
 		events.notify(accept.getT2(), value);
 	}
 
@@ -316,13 +303,8 @@ public abstract class Composable<T> {
 	 * 		the error to propagate
 	 */
 	void notifyError(Throwable error) {
-		lock.lock();
-		try {
-			errorCount++;
-			errorAccepted(error);
-		} finally {
-			lock.unlock();
-		}
+		errorCount.incrementAndGet();
+        errorAccepted(error);
 		events.notify(error.getClass(), Event.wrap(error));
 	}
 
