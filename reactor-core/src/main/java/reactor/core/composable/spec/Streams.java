@@ -16,12 +16,14 @@
 
 package reactor.core.composable.spec;
 
-import java.util.Arrays;
-import java.util.Collection;
-
+import reactor.core.Environment;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
+
+import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * A public factory to build {@link Stream Streams} that use a {@link SynchronousDispatcher}.
@@ -34,7 +36,54 @@ public abstract class Streams {
 	/**
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
-	 * @param <T> the type of values passing through the {@literal Stream}
+	 * @param env
+	 * 		the Reactor {@link reactor.core.Environment} to use
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
+	 *
+	 * @return a new {@link reactor.core.composable.Deferred}
+	 */
+	public static <T> Deferred<T, Stream<T>> defer(Environment env) {
+		return defer(env, env.getDefaultDispatcher());
+	}
+
+	/**
+	 * Build a deferred {@literal Stream}, ready to accept values.
+	 *
+	 * @param env
+	 * 		the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher
+	 * 		the name of the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
+	 *
+	 * @return a new {@link reactor.core.composable.Deferred}
+	 */
+	public static <T> Deferred<T, Stream<T>> defer(Environment env, String dispatcher) {
+		return defer(env, env.getDispatcher(dispatcher));
+	}
+
+	/**
+	 * Build a deferred {@literal Stream}, ready to accept values.
+	 *
+	 * @param env
+	 * 		the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher
+	 * 		the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
+	 *
+	 * @return a new {@link reactor.core.composable.Deferred}
+	 */
+	public static <T> Deferred<T, Stream<T>> defer(Environment env, Dispatcher dispatcher) {
+		return new DeferredStreamSpec<T>().env(env).dispatcher(dispatcher).get();
+	}
+
+	/**
+	 * Build a deferred {@literal Stream}, ready to accept values.
+	 *
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
 	 *
 	 * @return a new {@link DeferredStreamSpec}
 	 */
@@ -47,8 +96,10 @@ public abstract class Streams {
 	 * the given value whenever the {@link reactor.core.composable.Stream#flush()} function
 	 * is invoked.
 	 *
-	 * @param value The value to {@code accept()}
-	 * @param <T>   type of the value
+	 * @param value
+	 * 		The value to {@code accept()}
+	 * @param <T>
+	 * 		type of the value
 	 *
 	 * @return a {@link DeferredStreamSpec} based on the given value
 	 */
@@ -63,13 +114,15 @@ public abstract class Streams {
 	 * is invoked. If the {@code values} are a {@code Collection} the Stream's batch size will
 	 * be set to the Collection's {@link Collection#size()}.
 	 *
-	 * @param values The values to {@code accept()}
-	 * @param <T>    type of the values
+	 * @param values
+	 * 		The values to {@code accept()}
+	 * @param <T>
+	 * 		type of the values
 	 *
 	 * @return a {@link DeferredStreamSpec} based on the given values
 	 */
 	public static <T> DeferredStreamSpec<T> defer(Iterable<T> values) {
-		int batchSize = (values instanceof Collection ? ((Collection<?>) values).size() : -1);
+		int batchSize = (values instanceof Collection ? ((Collection<?>)values).size() : -1);
 		return new DeferredStreamSpec<T>().each(values).batchSize(batchSize);
 	}
 
