@@ -17,25 +17,64 @@ package reactor.util;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Helper for creating Type-1 time-based UUIDs.
+ * Helper for creating random and Type 1 (time-based) UUIDs.
  *
  * @author Jon Brisbin
  */
 public abstract class UUIDUtils {
 
-	private static final long nodeSeed;
+	private static boolean IS_THREADLOCALRANDOM_AVAILABLE = false;
+	private static       Random random;
+	private static final long   leastSigBits;
 	private static final ReentrantLock lock = new ReentrantLock();
 	private static long lastTime;
 
 	static {
-		nodeSeed = new BigInteger(new SecureRandom().generateSeed(8)).longValue();
+		try {
+			IS_THREADLOCALRANDOM_AVAILABLE = null != UUIDUtils.class.getClassLoader().loadClass(
+					"java.util.concurrent.ThreadLocalRandom"
+			);
+		} catch(ClassNotFoundException e) {
+		}
+
+		byte[] seed = new SecureRandom().generateSeed(8);
+		leastSigBits = new BigInteger(seed).longValue();
+		if(!IS_THREADLOCALRANDOM_AVAILABLE) {
+			random = new Random(leastSigBits);
+		}
 	}
 
 	private UUIDUtils() {
+	}
+
+	/**
+	 * Create a new random UUID.
+	 *
+	 * @return the new UUID
+	 */
+	public static UUID random() {
+		byte[] randomBytes = new byte[16];
+		if(IS_THREADLOCALRANDOM_AVAILABLE) {
+			java.util.concurrent.ThreadLocalRandom.current().nextBytes(randomBytes);
+		} else {
+			random.nextBytes(randomBytes);
+		}
+
+		long mostSigBits = 0;
+		for(int i = 0; i < 8; i++) {
+			mostSigBits = (mostSigBits << 8) | (randomBytes[i] & 0xff);
+		}
+		long leastSigBits = 0;
+		for(int i = 8; i < 16; i++) {
+			leastSigBits = (leastSigBits << 8) | (randomBytes[i] & 0xff);
+		}
+
+		return new UUID(mostSigBits, leastSigBits);
 	}
 
 	/**
@@ -58,15 +97,15 @@ public abstract class UUIDUtils {
 		}
 
 		// time low
-		long time = timeMillis << 32;
+		long mostSigBits = timeMillis << 32;
 
 		// time mid
-		time |= (timeMillis & 0xFFFF00000000L) >> 16;
+		mostSigBits |= (timeMillis & 0xFFFF00000000L) >> 16;
 
 		// time hi and version
-		time |= 0x1000 | ((timeMillis >> 48) & 0x0FFF); // version 1
+		mostSigBits |= 0x1000 | ((timeMillis >> 48) & 0x0FFF); // version 1
 
-		return new UUID(time, nodeSeed);
+		return new UUID(mostSigBits, leastSigBits);
 	}
 
 }
