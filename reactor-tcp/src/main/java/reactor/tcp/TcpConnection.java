@@ -16,6 +16,7 @@
 
 package reactor.tcp;
 
+import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -25,8 +26,11 @@ import java.net.InetSocketAddress;
 /**
  * Implementations of this class provide functionality for reading and writing to TCP connections.
  *
- * @param <IN>  The type that will be received by this connection
- * @param <OUT> The type that will be sent by this connection
+ * @param <IN>
+ * 		The type that will be received by this connection
+ * @param <OUT>
+ * 		The type that will be sent by this connection
+ *
  * @author Jon Brisbin
  */
 public interface TcpConnection<IN, OUT> {
@@ -75,9 +79,13 @@ public interface TcpConnection<IN, OUT> {
 	/**
 	 * Set an error {@link Consumer} for errors that happen on the connection.
 	 *
-	 * @param errorType     The type of error to handle.
-	 * @param errorConsumer The {@link Consumer} when the given error occurs.
-	 * @param <T>           The type of the error.
+	 * @param errorType
+	 * 		The type of error to handle.
+	 * @param errorConsumer
+	 * 		The {@link Consumer} when the given error occurs.
+	 * @param <T>
+	 * 		The type of the error.
+	 *
 	 * @return {@literal this}
 	 */
 	<T extends Throwable> TcpConnection<IN, OUT> when(Class<T> errorType, Consumer<T> errorConsumer);
@@ -85,7 +93,9 @@ public interface TcpConnection<IN, OUT> {
 	/**
 	 * Set a callback for consuming decoded data.
 	 *
-	 * @param consumer The data {@link Consumer}.
+	 * @param consumer
+	 * 		The data {@link Consumer}.
+	 *
 	 * @return {@literal this}
 	 */
 	TcpConnection<IN, OUT> consume(Consumer<IN> consumer);
@@ -94,16 +104,20 @@ public interface TcpConnection<IN, OUT> {
 	 * Use the given {@link Function} to handle incoming data, like in {@link #consume(reactor.function.Consumer)}, but
 	 * this method expects the {@link Function} to return a response object.
 	 *
-	 * @param fn The data-consuming {@link Function}.
+	 * @param fn
+	 * 		The data-consuming {@link Function}.
+	 *
 	 * @return {@literal this}
 	 */
 	TcpConnection<IN, OUT> receive(Function<IN, OUT> fn);
 
 	/**
-	 * Send data on this connection as a {@link Stream}. The implementation is expected to place a {@link Consumer} on this
-	 * {@link Stream} to handle data coming in.
+	 * Send data on this connection as a {@link Stream}. The implementation is expected to place a {@link Consumer} on
+	 * this {@link Stream} to handle data coming in.
 	 *
-	 * @param data The outgoing data as a {@link Stream}.
+	 * @param data
+	 * 		The outgoing data as a {@link Stream}.
+	 *
 	 * @return {@literal this}
 	 */
 	TcpConnection<IN, OUT> send(Stream<OUT> data);
@@ -112,7 +126,9 @@ public interface TcpConnection<IN, OUT> {
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
 	 * reactor.io.Buffer}.
 	 *
-	 * @param data The outgoing data.
+	 * @param data
+	 * 		The outgoing data.
+	 *
 	 * @return {@literal this}
 	 */
 	TcpConnection<IN, OUT> send(OUT data);
@@ -121,11 +137,25 @@ public interface TcpConnection<IN, OUT> {
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
 	 * reactor.io.Buffer}. The given callback will be invoked when the write has completed.
 	 *
-	 * @param data       The outgoing data.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param data
+	 * 		The outgoing data.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
+	 *
 	 * @return {@literal this}
 	 */
 	TcpConnection<IN, OUT> send(OUT data, Consumer<Boolean> onComplete);
+
+	/**
+	 * Send data on this connection and return a {@link reactor.core.composable.Promise} that will be fulfilled by the
+	 * response from the peer or by an exception generated during the attempt to send.
+	 *
+	 * @param data
+	 * 		The outgoing data.
+	 *
+	 * @return A {@link reactor.core.composable.Promise} that will be fulfilled by the peer's response or an error.
+	 */
+	Promise<IN> sendAndReceive(OUT data);
 
 	/**
 	 * Provide the caller with a spec-style configuration object that allows a user to attach multiple event handlers to
@@ -138,14 +168,18 @@ public interface TcpConnection<IN, OUT> {
 	/**
 	 * Spec class for assigning multiple event handlers on a connection.
 	 *
-	 * @param <IN>  type of the input
-	 * @param <OUT> type of the output
+	 * @param <IN>
+	 * 		type of the input
+	 * @param <OUT>
+	 * 		type of the output
 	 */
 	public static interface ConsumerSpec<IN, OUT> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when the connection is closed.
 		 *
-		 * @param onClose the close event handler
+		 * @param onClose
+		 * 		the close event handler
+		 *
 		 * @return {@literal this}
 		 */
 		ConsumerSpec close(Runnable onClose);
@@ -153,8 +187,11 @@ public interface TcpConnection<IN, OUT> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when reads have become idle for the given timeout.
 		 *
-		 * @param idleTimeout the idle timeout
-		 * @param onReadIdle  the idle timeout handler
+		 * @param idleTimeout
+		 * 		the idle timeout
+		 * @param onReadIdle
+		 * 		the idle timeout handler
+		 *
 		 * @return {@literal this}
 		 */
 		ConsumerSpec readIdle(long idleTimeout, Runnable onReadIdle);
@@ -162,8 +199,11 @@ public interface TcpConnection<IN, OUT> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when writes have become idle for the given timeout.
 		 *
-		 * @param idleTimeout the idle timeout
-		 * @param onWriteIdle the idle timeout handler
+		 * @param idleTimeout
+		 * 		the idle timeout
+		 * @param onWriteIdle
+		 * 		the idle timeout handler
+		 *
 		 * @return {@literal this}
 		 */
 		ConsumerSpec writeIdle(long idleTimeout, Runnable onWriteIdle);
