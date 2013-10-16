@@ -247,6 +247,22 @@ class PromisesSpec extends Specification {
       value == 'test'
   }
 
+  def "A promise can be fulfilled with null"() {
+    given:
+      "a promise"
+      def deferred = Promises.<Object> defer().get()
+      def promise = deferred.compose()
+
+    when:
+      "the promise is fulfilled with null"
+      deferred.accept null
+
+    then:
+      "the promise was successful"
+      promise.isComplete()
+      promise.isSuccess()
+  }
+
   def "An Observable can be used to consume a promise's value when it's fulfilled"() {
     given:
       "a promise with a consuming Observable"
