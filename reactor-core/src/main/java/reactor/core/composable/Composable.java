@@ -56,8 +56,8 @@ public abstract class Composable<T> {
 	private final Observable    events;
 	private final Composable<?> parent;
 
-	private volatile long acceptCount = 0l;
-	private volatile long errorCount  = 0l;
+	private long acceptCount = 0l;
+	private long errorCount  = 0l;
 
 	protected <U> Composable(
 			@Nonnull Dispatcher dispatcher,
