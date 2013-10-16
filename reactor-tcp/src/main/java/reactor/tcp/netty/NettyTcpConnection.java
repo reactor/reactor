@@ -26,9 +26,10 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.Environment;
 import reactor.core.Reactor;
+import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.AbstractTcpConnection;
 import reactor.tcp.encoding.Codec;
@@ -47,22 +48,22 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
 	private volatile SocketChannel     channel;
 	private volatile InetSocketAddress remoteAddress;
-	private volatile boolean           closing = false;
+	private volatile boolean closing = false;
 
 	NettyTcpConnection(final Environment env,
-										 Codec<Buffer, IN, OUT> codec,
-										 Dispatcher ioDispatcher,
-										 Reactor eventsReactor,
-										 SocketChannel channel) {
+	                   Codec<Buffer, IN, OUT> codec,
+	                   Dispatcher ioDispatcher,
+	                   Reactor eventsReactor,
+	                   SocketChannel channel) {
 		this(env, codec, ioDispatcher, eventsReactor, channel, null);
 	}
 
 	NettyTcpConnection(final Environment env,
-										 Codec<Buffer, IN, OUT> codec,
-										 Dispatcher ioDispatcher,
-										 Reactor eventsReactor,
-										 SocketChannel channel,
-										 InetSocketAddress remoteAddress) {
+	                   Codec<Buffer, IN, OUT> codec,
+	                   Dispatcher ioDispatcher,
+	                   Reactor eventsReactor,
+	                   SocketChannel channel,
+	                   InetSocketAddress remoteAddress) {
 		super(env, codec, ioDispatcher, eventsReactor);
 		this.channel = channel;
 		this.remoteAddress = remoteAddress;
@@ -88,7 +89,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 		closing = true;
 		try {
 			channel.close().await();
-		} catch (InterruptedException e) {
+		} catch(InterruptedException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
@@ -113,35 +114,37 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 	}
 
 	void notifyRead(Object obj) {
-		eventsReactor.notify(read.getT2(), (Event.class.isInstance(obj) ? (Event) obj : Event.wrap(obj)));
+		eventsReactor.notify(read.getT2(), (Event.class.isInstance(obj) ? (Event)obj : Event.wrap(obj)));
 	}
 
 	@Override
-	protected void write(Buffer data, final Consumer<Boolean> onComplete) {
+	protected void write(Buffer data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
 		write(data.byteBuffer(), onComplete);
 	}
 
-	protected void write(ByteBuffer data, final Consumer<Boolean> onComplete) {
+	protected void write(ByteBuffer data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
 		ByteBuf buf = channel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
-
 		write(buf, onComplete);
 	}
 
 	@Override
-	protected void write(Object data, final Consumer<Boolean> onComplete) {
+	protected void write(Object data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
 		ChannelFuture writeFuture = channel.writeAndFlush(data);
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
-				if (!success) {
+				if(!success) {
 					Throwable t = future.cause();
 					eventsReactor.notify(t, Event.wrap(t));
+					if(null != onComplete) {
+						onComplete.accept(t);
+					}
 				}
 
-				if (null != onComplete) {
+				if(null != onComplete) {
 					onComplete.accept(success);
 				}
 			}
@@ -174,7 +177,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 			channel.pipeline().addFirst(new IdleStateHandler(idleTimeout, 0, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if (evt.state() == IdleState.READER_IDLE) {
+					if(evt.state() == IdleState.READER_IDLE) {
 						onReadIdle.run();
 					}
 					super.channelIdle(ctx, evt);
@@ -188,7 +191,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 			channel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if (evt.state() == IdleState.WRITER_IDLE) {
+					if(evt.state() == IdleState.WRITER_IDLE) {
 						onWriteIdle.run();
 					}
 					super.channelIdle(ctx, evt);

@@ -16,6 +16,7 @@
 
 package reactor.tcp;
 
+import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.function.Consumer;
@@ -131,7 +132,7 @@ public interface TcpConnection<IN, OUT> {
 	 *
 	 * @return {@literal this}
 	 */
-	TcpConnection<IN, OUT> send(OUT data);
+	Promise<Boolean> send(OUT data);
 
 	/**
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
@@ -144,7 +145,7 @@ public interface TcpConnection<IN, OUT> {
 	 *
 	 * @return {@literal this}
 	 */
-	TcpConnection<IN, OUT> send(OUT data, Consumer<Boolean> onComplete);
+	TcpConnection<IN, OUT> send(OUT data, Deferred<Boolean, Promise<Boolean>> onComplete);
 
 	/**
 	 * Send data on this connection and return a {@link reactor.core.composable.Promise} that will be fulfilled by the

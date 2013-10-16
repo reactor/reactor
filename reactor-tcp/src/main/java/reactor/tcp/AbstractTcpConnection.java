@@ -178,12 +178,14 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public TcpConnection<IN, OUT> send(OUT data) {
-		return send(data, null);
+	public Promise<Boolean> send(OUT data) {
+		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		send(data, d);
+		return d.compose();
 	}
 
 	@Override
-	public TcpConnection<IN, OUT> send(OUT data, final Consumer<Boolean> onComplete) {
+	public TcpConnection<IN, OUT> send(OUT data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
 		Reactors.schedule(
 				new Consumer<OUT>() {
 					@Override
@@ -203,6 +205,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 							}
 						} catch(Throwable t) {
 							eventsReactor.notify(t.getClass(), Event.wrap(t));
+							if(null != onComplete) {
+								onComplete.accept(t);
+							}
 						}
 					}
 				},
@@ -213,7 +218,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	public Promise<IN> sendAndReceive(OUT data) {
-		final Deferred<IN, Promise<IN>> d = Promises.<IN>defer(env, eventsReactor.getDispatcher());
+		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
 		responses.add(d);
 		send(data, null);
 		return d.compose();
@@ -246,7 +251,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Buffer data, Consumer<Boolean> onComplete);
+	protected abstract void write(Buffer data, Deferred<Boolean, Promise<Boolean>> onComplete);
 
 	/**
 	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
@@ -256,6 +261,6 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Object data, Consumer<Boolean> onComplete);
+	protected abstract void write(Object data, Deferred<Boolean, Promise<Boolean>> onComplete);
 
 }
