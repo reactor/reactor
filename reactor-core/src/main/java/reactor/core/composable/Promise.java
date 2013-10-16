@@ -17,6 +17,8 @@
 package reactor.core.composable;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -57,14 +59,13 @@ import reactor.util.Assert;
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
-	private final Object                   monitor  = new Object();
 	private final Tuple2<Selector, Object> complete = Selectors.$();
 
 	private final long defaultTimeout;
-
 	private final Environment environment;
+	private final Condition pendingCondition;
 
-	private volatile State state = State.PENDING;
+	private State state = State.PENDING;
 	private T           value;
 	private Throwable   error;
 	private Supplier<T> supplier;
@@ -91,6 +92,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		super(dispatcher, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.environment = env;
+		this.pendingCondition = lock.newCondition();
 	}
 
 	/**
@@ -197,7 +199,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed
+	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed
 	 * with
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
 	 * current {@link Dispatcher}.
@@ -212,7 +214,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	/**
-	 * Assing a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
+	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
 	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
 	 * {@link Dispatcher}.
 	 *
@@ -390,21 +392,24 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			return get();
 		}
 
-		hasBlockers = true;
-		synchronized(monitor) {
+		lock.lock();
+		try {
+			hasBlockers = true;
 			if(timeout >= 0) {
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
 				while(state == State.PENDING && (System.currentTimeMillis()) < endTime) {
-					this.monitor.wait(200);
+					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			} else {
 				while(state == State.PENDING) {
-					this.monitor.wait(200);
+					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			}
+		} finally {
+			hasBlockers = false;
+			lock.unlock();
 		}
-		hasBlockers = false;
 
 		return get();
 	}
@@ -423,16 +428,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		if(isPending()) {
 			flush();
 		}
-		if(isSuccess()) {
-			return value;
-		} else if(isError()) {
-			if(RuntimeException.class.isInstance(error)) {
-				throw (RuntimeException)error;
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				return value;
+			} else if(state == State.FAILURE) {
+				if(RuntimeException.class.isInstance(error)) {
+					throw (RuntimeException)error;
+				} else {
+					throw new RuntimeException(error);
+				}
 			} else {
-				throw new RuntimeException(error);
+				return null;
 			}
-		} else {
-			return null;
+		} finally {
+			lock.unlock();
 		}
 	}
 
@@ -443,44 +453,61 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @return the error (if any)
 	 */
 	public Throwable reason() {
-		if(isError()) {
+		lock.lock();
+		try {
 			return error;
-		} else {
-			return null;
+		} finally {
+			lock.unlock();
 		}
 	}
 
 	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
-		if(isSuccess()) {
-			Reactors.schedule(consumer, value, getObservable());
-		} else {
-			super.consume(consumer);
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				Reactors.schedule(consumer, value, getObservable());
+			} else {
+				super.consume(consumer);
+			}
+		} finally {
+			lock.unlock();
 		}
 		return this;
 	}
 
 	@Override
 	public Promise<T> consume(@Nonnull final Composable<T> composable) {
-		if(isSuccess()) {
-			Reactors.schedule(new Consumer<T>() {
-				@Override
-				public void accept(T t) {
-					composable.notifyValue(t);
-				}
-			}, value, getObservable());
-		} else {
-			super.consume(composable);
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				Reactors.schedule(new Consumer<T>() {
+					@Override
+					public void accept(T t) {
+						composable.notifyValue(t);
+					}
+				}, value, getObservable());
+			} else {
+				super.consume(composable);
+			}
+			return this;
+		} finally {
+			lock.unlock();
 		}
-		return this;
+
 	}
 
 	@Override
 	public Promise<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		if(isSuccess()) {
-			observable.notify(key, Event.wrap(value));
-		} else {
-			super.consume(key, observable);
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				observable.notify(key, Event.wrap(value));
+			} else {
+				super.consume(key, observable);
+			}
+		} finally {
+			lock.unlock();
 		}
 		return this;
 	}
@@ -488,11 +515,17 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		if(isError() && exceptionType.isAssignableFrom(error.getClass())) {
-			Reactors.schedule(onError, (E)error, getObservable());
-		} else {
-			super.when(exceptionType, onError);
+		lock.lock();
+		try {
+			if(state == State.FAILURE && exceptionType.isAssignableFrom(error.getClass())) {
+				Reactors.schedule(onError, (E)error, getObservable());
+			} else {
+				super.when(exceptionType, onError);
+			}
+		} finally {
+			lock.unlock();
 		}
+
 		return this;
 	}
 
@@ -503,25 +536,31 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		}
 
 		final Deferred<V, Promise<V>> d = createDeferred();
-		if(isSuccess()) {
-			Reactors.schedule(
-					new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							try {
-								d.accept(fn.apply(value));
-							} catch(Throwable throwable) {
-								d.accept(throwable);
+
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				Reactors.schedule(
+						new Consumer<Void>() {
+							@Override
+							public void accept(Void aVoid) {
+								try {
+									d.accept(fn.apply(value));
+								} catch(Throwable throwable) {
+									d.accept(throwable);
+								}
 							}
-						}
-					},
-					null,
-					getObservable()
-			);
-		} else if(isError()) {
-			d.accept(error);
+						},
+						null,
+						getObservable()
+				);
+			} else if(state == State.FAILURE) {
+					d.accept(error);
+			}
+			return d.compose();
+		} finally {
+			lock.unlock();
 		}
-		return d.compose();
 	}
 
 	@Override
@@ -531,31 +570,37 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		}
 
 		final Deferred<T, Promise<T>> d = createDeferred();
-		if(isSuccess()) {
-			Reactors.schedule(
-					new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							try {
-								if(p.test(value)) {
-									d.accept(value);
-								} else {
-									// GH-154: Verbose error level logging of every event filtered out by a Stream filter
-									// Fix: ignore Predicate failures and drop values rather than notifying of errors.
-									//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
+
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				Reactors.schedule(
+						new Consumer<Void>() {
+							@Override
+							public void accept(Void aVoid) {
+								try {
+									if(p.test(value)) {
+										d.accept(value);
+									} else {
+										// GH-154: Verbose error level logging of every event filtered out by a Stream filter
+										// Fix: ignore Predicate failures and drop values rather than notifying of errors.
+										//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
+									}
+								} catch(Throwable throwable) {
+									d.accept(throwable);
 								}
-							} catch(Throwable throwable) {
-								d.accept(throwable);
 							}
-						}
-					},
-					null,
-					getObservable()
-			);
-		} else if(isError()) {
-			d.accept(error);
+						},
+						null,
+						getObservable()
+				);
+			} else if(state == State.FAILURE) {
+				d.accept(error);
+			}
+			return d.compose();
+		} finally {
+			lock.unlock();
 		}
-		return d.compose();
 	}
 
 	@Override
@@ -574,12 +619,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		lock.lock();
 		try {
 			assertPending();
-			this.state = State.FAILURE;
 			this.error = error;
+			this.state = State.FAILURE;
 			if(hasBlockers) {
-				synchronized(monitor) {
-					monitor.notifyAll();
-				}
+				pendingCondition.signalAll();
+				hasBlockers = false;
 			}
 		} finally {
 			lock.unlock();
@@ -593,12 +637,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		lock.lock();
 		try {
 			assertPending();
-			this.state = State.SUCCESS;
 			this.value = value;
+			this.state = State.SUCCESS;
 			if(hasBlockers) {
-				synchronized(monitor) {
-					monitor.notifyAll();
-				}
+				pendingCondition.signalAll();
+				hasBlockers = false;
 			}
 		} finally {
 			lock.unlock();
@@ -608,20 +651,24 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	private void assertPending() {
-		Assert.state(state == State.PENDING, "Promise has already completed. ");
+		Assert.state(isPending(), "Promise has already completed. ");
 	}
 
 	private enum State {
-		PENDING, SUCCESS, FAILURE
+		PENDING, SUCCESS, FAILURE;
 	}
 
 	@Override
 	public String toString() {
-		return "Promise{" +
-				"value=" + value +
-				", state=" + state +
-				", error=" + error +
-				'}';
+		lock.lock();
+		try {
+			return "Promise{" +
+					"value=" + value +
+					", error=" + error +
+					'}';
+		} finally {
+			lock.unlock();
+		}
 	}
 
 }
