@@ -202,18 +202,15 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		@Override
 		public Long apply(T t) {
 			synchronized(monitor) {
-				try {
-					Buffer buff = codec.encoder().apply(t);
+				Buffer buff = codec.encoder().apply(t);
 
-					int len = buff.remaining();
-					ex.startExcerpt(4 + len);
-					ex.writeInt(len);
-					ex.write(buff.byteBuffer());
+				int len = buff.remaining();
+				ex.startExcerpt(4 + len);
+				ex.writeInt(len);
+				ex.write(buff.byteBuffer());
+				ex.finish();
 
-					size.incrementAndGet();
-				} finally {
-					ex.finish();
-				}
+				size.incrementAndGet();
 				lastId.set(ex.lastWrittenIndex());
 			}
 
