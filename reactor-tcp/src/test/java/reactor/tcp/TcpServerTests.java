@@ -101,12 +101,14 @@ public class TcpServerTests {
 						return new TrustManager[]{
 								new X509TrustManager() {
 									@Override
-									public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+									public void checkClientTrusted(X509Certificate[] x509Certificates, String s)
+											throws CertificateException {
 										// trust all
 									}
 
 									@Override
-									public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+									public void checkServerTrusted(X509Certificate[] x509Certificates, String s)
+											throws CertificateException {
 										// trust all
 									}
 
@@ -140,7 +142,7 @@ public class TcpServerTests {
 						conn.consume(new Consumer<Pojo>() {
 							@Override
 							public void accept(Pojo data) {
-								if ("John Doe".equals(data.getName())) {
+								if("John Doe".equals(data.getName())) {
 									latch.countDown();
 								}
 							}
@@ -153,7 +155,7 @@ public class TcpServerTests {
 					public void accept(Void v) {
 						try {
 							client.open().await().send(new Pojo("John Doe"));
-						} catch (InterruptedException e) {
+						} catch(InterruptedException e) {
 							throw new IllegalStateException(e.getMessage(), e);
 						}
 					}
@@ -173,9 +175,9 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-										 .backlog(1000)
-										 .reuseAddr(true)
-										 .tcpNoDelay(true))
+						         .backlog(1000)
+						         .reuseAddr(true)
+						         .tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {
@@ -188,11 +190,11 @@ public class TcpServerTests {
 							public void accept(byte[] bytes) {
 								latch.countDown();
 								ByteBuffer bb = ByteBuffer.wrap(bytes);
-								if (bb.remaining() < 4) {
+								if(bb.remaining() < 4) {
 									System.err.println("insufficient len: " + bb.remaining());
 								}
 								int next = bb.getInt();
-								if (next != num++) {
+								if(next != num++) {
 									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
 								}
 							}
@@ -204,7 +206,7 @@ public class TcpServerTests {
 					@Override
 					public void accept(Void v) {
 						start.set(System.currentTimeMillis());
-						for (int i = 0; i < threads; i++) {
+						for(int i = 0; i < threads; i++) {
 							threadPool.submit(new LengthFieldMessageWriter(port));
 						}
 					}
@@ -214,8 +216,8 @@ public class TcpServerTests {
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int) elapsed + "ms");
-		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int)elapsed + "ms");
+		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown().await();
 	}
@@ -229,9 +231,9 @@ public class TcpServerTests {
 						//.synchronousDispatcher()
 				.dispatcher(Environment.RING_BUFFER)
 				.options(new ServerSocketOptions()
-										 .backlog(1000)
-										 .reuseAddr(true)
-										 .tcpNoDelay(true))
+						         .backlog(1000)
+						         .reuseAddr(true)
+						         .tcpNoDelay(true))
 				.listen(port)
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.consume(new Consumer<TcpConnection<Frame, Frame>>() {
@@ -255,7 +257,7 @@ public class TcpServerTests {
 					@Override
 					public void accept(Void v) {
 						start.set(System.currentTimeMillis());
-						for (int i = 0; i < threads; i++) {
+						for(int i = 0; i < threads; i++) {
 							threadPool.submit(new FramedLengthFieldMessageWriter(port));
 						}
 					}
@@ -265,8 +267,8 @@ public class TcpServerTests {
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int) elapsed + "ms");
-		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int)elapsed + "ms");
+		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown().await();
 	}
@@ -297,12 +299,12 @@ public class TcpServerTests {
 		TcpServer<String, String> server = new TcpServerSpec<String, String>(NettyTcpServer.class)
 				.env(env)
 				.options(new NettyServerSocketOptions()
-										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-											 @Override
-											 public void accept(ChannelPipeline pipeline) {
-												 pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
-											 }
-										 }))
+						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+							         @Override
+							         public void accept(ChannelPipeline pipeline) {
+								         pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
+							         }
+						         }))
 				.listen("localhost", port)
 				.codec(StandardCodecs.STRING_CODEC)
 				.consume(serverHandler)
@@ -313,8 +315,8 @@ public class TcpServerTests {
 						client.open().onSuccess(new Consumer<TcpConnection<String, String>>() {
 							@Override
 							public void accept(TcpConnection<String, String> conn) {
-								conn.send("Hello World!")
-										.send("Hello World!");
+								conn.send("Hello World!");
+								conn.send("Hello World!");
 							}
 						});
 					}
@@ -371,7 +373,7 @@ public class TcpServerTests {
 
 				int num = 1;
 				start.set(System.currentTimeMillis());
-				for (int j = 0; j < msgs; j++) {
+				for(int j = 0; j < msgs; j++) {
 					ByteBuffer buff = ByteBuffer.allocate(length + 4);
 					buff.putInt(length);
 					buff.putInt(num++);
@@ -382,7 +384,7 @@ public class TcpServerTests {
 
 					count.incrementAndGet();
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 			}
 		}
 	}
@@ -403,12 +405,12 @@ public class TcpServerTests {
 				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
 
 				start.set(System.currentTimeMillis());
-				for (int j = 0; j < msgs; j++) {
+				for(int j = 0; j < msgs; j++) {
 					ByteBuffer buff = ByteBuffer.allocate(length + 4);
-					buff.putShort((short) 0);
+					buff.putShort((short)0);
 					buff.putShort(length);
-					for (int i = 4; i < length; i++) {
-						buff.put((byte) 1);
+					for(int i = 4; i < length; i++) {
+						buff.put((byte)1);
 					}
 					buff.flip();
 					buff.limit(length + 4);
@@ -417,7 +419,7 @@ public class TcpServerTests {
 
 					count.incrementAndGet();
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 			}
 		}
 	}
