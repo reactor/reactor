@@ -235,6 +235,12 @@ project('reactor-core') {
 
 	apply plugin: 'osgi'
 
+	ext.bundleImportPackages = [
+		'net.openhft.chronicle;resolution:=optional',
+		'net.openhft.chronicle.tools;resolution:=optional',
+		'*'
+	]
+
 	dependencies {
 		// High-speed Dispatching
 		compile "com.lmax:disruptor:$disruptorVersion"
@@ -242,6 +248,12 @@ project('reactor-core') {
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",
 				"net.openhft:lang:$openHftLangVersion"
+	}
+
+	jar {
+		manifest {
+			instruction 'Import-Package' , bundleImportPackages.join(',')
+		}
 	}
 }
 
