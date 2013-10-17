@@ -16,34 +16,102 @@
 
 package reactor.queue
 
+import net.openhft.chronicle.ChronicleConfig
+import net.openhft.chronicle.tools.ChronicleTools
+import reactor.queue.encoding.JsonCodec
+import reactor.queue.encoding.StandardCodecs
 import spock.lang.Specification
-
 /**
  * @author Jon Brisbin
  */
 class PersistentQueueSpec extends Specification {
 
-  def "File-based PersistentQueue is sharable"() {
+	static QueuePersistor<String> persistor() {
+		def config = ChronicleConfig.TEST.clone()
 
-    given:
-      "a pair of IndexedChroniclePersistentQueues"
-      def wq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./persistent-queue"))
-      def rq = new PersistentQueue<String>(new IndexedChronicleQueuePersistor("./persistent-queue"))
+		new IndexedChronicleQueuePersistor<String>(
+				"persistent-queue",
+				StandardCodecs.stringCodec(),
+				false,
+				false,
+				config
+		)
+	}
 
-    when:
-      "data is written to the queue using a write Queue"
-      for (i in 1..100) {
-        wq.offer("test $i")
-      }
-      def count = 0
-      for (String s : rq) {
-        ++count
-      }
+	static <T> QueuePersistor<T> jsonPersistor(Class<T> type) {
+		def config = ChronicleConfig.TEST.clone()
 
-    then:
-      "data was readable from the read Queue"
-      count == 100
+		new IndexedChronicleQueuePersistor<T>(
+				"persistent-queue",
+				new JsonCodec<T>(type),
+				false,
+				false,
+				config
+		)
+	}
 
-  }
+	def cleanup() {
+		ChronicleTools.deleteOnExit("persistent-queue")
+	}
+
+	def "File-based PersistentQueue is sharable"() {
+
+		given:
+			def wq = new PersistentQueue<String>(persistor())
+			def strings1 = []
+			def rq = new PersistentQueue<String>(persistor())
+			def strings2 = []
+
+		when:
+			"data is written to a write Queue"
+			(1..100).each {
+				def s = "test $it".toString()
+				wq.offer(s)
+				strings1 << s
+			}
+
+		then:
+			"all data was written"
+			wq.size() == 100
+
+		when:
+			"data is read from a shared read Queue"
+			rq.each {
+				strings2 << it
+			}
+
+		then:
+			"all data was read"
+			strings1 == strings2
+
+	}
+
+	def "Java Chronicle-based PersistentQueue is performant"() {
+
+		given:
+			def wq = new PersistentQueue(jsonPersistor(Map))
+			def msgs = 10000
+
+		when:
+			"data is written to the Queue"
+			def start = System.currentTimeMillis()
+			def count = 0
+			for (int i in 1..msgs) {
+				wq.offer(["test": i])
+			}
+			for (def m in wq) {
+				count++
+			}
+			def end = System.currentTimeMillis()
+			double elapsed = end - start
+			int throughput = msgs / (elapsed / 1000)
+			println "throughput: ${throughput}/sec in ${(int) elapsed}ms"
+
+		then:
+			"throughput is sufficient"
+			count == msgs
+			throughput > 1000
+
+	}
 
 }

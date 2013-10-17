@@ -1,12 +1,12 @@
 package reactor.queue.spec;
 
-import java.io.IOException;
-
+import net.openhft.chronicle.ChronicleConfig;
 import reactor.function.Supplier;
-import reactor.queue.InMemoryQueuePersistor;
 import reactor.queue.IndexedChronicleQueuePersistor;
 import reactor.queue.PersistentQueue;
-import reactor.util.Assert;
+import reactor.queue.encoding.Codec;
+
+import java.io.IOException;
 
 /**
  * Helper spec to create a {@link PersistentQueue} instance.
@@ -15,27 +15,73 @@ import reactor.util.Assert;
  */
 public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 
-	private PersistentQueue<T> queue;
+	private String  basePath     = System.getProperty("java.io.tmpdir") + "/persistent-queue";
+	private boolean clearOnStart = false;
+	private boolean deleteOnExit = false;
+	private Codec<T> codec;
+	private ChronicleConfig config = ChronicleConfig.DEFAULT.clone();
 
-	public PersistentQueueSpec<T> inMemory() {
-		Assert.isNull(queue, "PersistentQueue type already set (" + queue.getClass().getName() + ")");
-		this.queue = new PersistentQueue<T>(new InMemoryQueuePersistor<T>());
+	public PersistentQueueSpec<T> codec(Codec<T> codec) {
+		this.codec = codec;
 		return this;
 	}
 
-	public PersistentQueueSpec<T> indexedChronicle(String basePath) {
-		Assert.isNull(queue, "PersistentQueue type already set (" + queue.getClass().getName() + ")");
-		try {
-			this.queue = new PersistentQueue<T>(new IndexedChronicleQueuePersistor<T>(basePath));
-		} catch(IOException e) {
-			throw new IllegalArgumentException(e.getMessage(), e);
-		}
+	public PersistentQueueSpec<T> basePath(String basePath) {
+		this.basePath = basePath;
+		return this;
+	}
+
+	public PersistentQueueSpec<T> clearOnStart(boolean clearOnStart) {
+		this.clearOnStart = clearOnStart;
+		return this;
+	}
+
+	public PersistentQueueSpec<T> deleteOnExit(boolean deleteOnExit) {
+		this.deleteOnExit = deleteOnExit;
+		return this;
+	}
+
+	public PersistentQueueSpec<T> cacheLineSize(int size) {
+		config.cacheLineSize(size);
+		return this;
+	}
+
+	public PersistentQueueSpec<T> dataBlockSize(int size) {
+		config.dataBlockSize(size);
+		return this;
+	}
+
+	public PersistentQueueSpec<T> indexFileCapacity(int size) {
+		config.indexFileCapacity(size);
+		return this;
+	}
+
+	public PersistentQueueSpec<T> indexFileCapacity(boolean synchronousMode) {
+		config.synchronousMode(synchronousMode);
+		return this;
+	}
+
+	public PersistentQueueSpec<T> indexFileExcerpts(int excerpts) {
+		config.indexFileExcerpts(excerpts);
+		return this;
+	}
+
+	public PersistentQueueSpec<T> minimiseFootprint(boolean minimiseFootprint) {
+		config.minimiseFootprint(minimiseFootprint);
 		return this;
 	}
 
 	@Override
 	public PersistentQueue<T> get() {
-		return queue;
+		try {
+			return new PersistentQueue<T>(new IndexedChronicleQueuePersistor<T>(basePath,
+			                                                                    codec,
+			                                                                    clearOnStart,
+			                                                                    deleteOnExit,
+			                                                                    config));
+		} catch(IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 	}
 
 }

@@ -1,23 +1,19 @@
 package reactor.queue;
 
-import net.openhft.chronicle.Excerpt;
-import net.openhft.chronicle.ExcerptAppender;
-import net.openhft.chronicle.IndexedChronicle;
+import net.openhft.chronicle.*;
 import net.openhft.chronicle.tools.ChronicleTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
+import reactor.queue.encoding.Codec;
+import reactor.queue.encoding.JavaSerializationCodec;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -30,13 +26,16 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
-	private static final Logger     LOG    = LoggerFactory.getLogger(IndexedChronicleQueuePersistor.class);
-	private final        AtomicLong count  = new AtomicLong();
-	private final        AtomicLong lastId = new AtomicLong();
+	private static final Logger LOG = LoggerFactory.getLogger(IndexedChronicleQueuePersistor.class);
+
+	private final Object     monitor = new Object();
+	private final AtomicLong lastId  = new AtomicLong();
+	private final AtomicLong size    = new AtomicLong(0);
+
 	private final String                  basePath;
+	private final Codec<T>                codec;
 	private final boolean                 deleteOnExit;
-	private final Function<T, Buffer>     encoder;
-	private final Function<Buffer, T>     decoder;
+	private final IndexedChronicle        data;
 	private final ChronicleOfferFunction  offerFun;
 	private final ChronicleGetFunction    getFun;
 	private final ChronicleRemoveFunction removeFun;
@@ -50,7 +49,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
-		this(basePath, null, null, true, false);
+		this(basePath, new JavaSerializationCodec<T>(), false, true, ChronicleConfig.DEFAULT.clone());
 	}
 
 	/**
@@ -59,39 +58,49 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 *
 	 * @param basePath
 	 * 		Directory in which to create the Chronicle.
-	 * @param encoder
-	 * 		Encoder to turn objects into a {@link Buffer}.
-	 * @param decoder
-	 * 		Decoder to turn {@link Buffer Buffers} into an object.
+	 * @param codec
+	 * 		Codec to turn objects into {@link reactor.io.Buffer Buffers} and visa-versa.
 	 * @param clearOnStart
 	 * 		Whether or not to clear the Chronicle on start.
 	 * @param deleteOnExit
 	 * 		Whether or not to delete the Chronicle when the program exits.
+	 * @param config
+	 * 		ChronicleConfig to use.
 	 *
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath,
-	                                      @Nullable Function<T, Buffer> encoder,
-	                                      @Nullable Function<Buffer, T> decoder,
+	                                      @Nonnull Codec<T> codec,
 	                                      boolean clearOnStart,
-	                                      boolean deleteOnExit) throws IOException {
+	                                      boolean deleteOnExit,
+	                                      @Nonnull ChronicleConfig config) throws IOException {
 		this.basePath = basePath;
-		this.encoder = (null == encoder ? new SerializableEncoder<T>() : encoder);
-		this.decoder = (null == decoder ? new SerializableDecoder<T>() : decoder);
+		this.codec = codec;
 		this.deleteOnExit = deleteOnExit;
 
-        if(clearOnStart) {
-            for (String name : new String[]{basePath + ".data", basePath + ".index"}) {
-                File file = new File(name);
-                if(file.exists()) {
-                    file.delete();
-                }
-            }
-        }
+		if(clearOnStart) {
+			for(String name : new String[]{basePath + ".data", basePath + ".index"}) {
+				File file = new File(name);
+				if(file.exists()) {
+					file.delete();
+				}
+			}
+		}
 
-		this.offerFun = new ChronicleOfferFunction(new IndexedChronicle(basePath));
-        this.getFun = new ChronicleGetFunction(new IndexedChronicle(basePath));
-        this.removeFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
+		ChronicleTools.warmup();
+		data = new IndexedChronicle(basePath, config);
+		lastId.set(data.findTheLastIndex());
+
+		Excerpt ex = data.createExcerpt();
+		while(ex.nextIndex()) {
+			int len = ex.readInt();
+			size.incrementAndGet();
+			ex.skip(len);
+		}
+
+		offerFun = new ChronicleOfferFunction();
+		getFun = new ChronicleGetFunction();
+		removeFun = new ChronicleRemoveFunction(data.createTailer());
 	}
 
 	/**
@@ -99,118 +108,117 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 */
 	@Override
 	public void close() {
-        try {
-            offerFun.chronicle.close();
-            getFun.chronicle.close();
-            removeFun.chronicle.close();
-            if(deleteOnExit) {
-                ChronicleTools.deleteOnExit(basePath);
-            }
-        } catch(IOException e) {
-            throw new IllegalStateException(e.getMessage(), e);
-        }
+		try {
+			data.close();
+
+			if(deleteOnExit) {
+				ChronicleTools.deleteOnExit(basePath);
+			}
+		} catch(IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 	}
 
-	@Override public long lastId() {
+	@Override
+	public long lastId() {
 		return lastId.get();
 	}
 
-	@Override public long size() {
-		return count.get();
+	@Override
+	public long size() {
+		return size.get();
 	}
 
-	@Nonnull @Override public Function<T, Long> offer() {
+	@Override
+	public boolean hasNext() {
+		return removeFun.hasNext();
+	}
+
+	@Nonnull
+	@Override
+	public Function<T, Long> offer() {
 		return offerFun;
 	}
 
-	@Nonnull @Override public Function<Long, T> get() {
+	@Nonnull
+	@Override
+	public Function<Long, T> get() {
 		return getFun;
 	}
 
-	@Nonnull @Override public Supplier<T> remove() {
+	@Nonnull
+	@Override
+	public Supplier<T> remove() {
 		return removeFun;
 	}
 
-	@Override public Iterator<T> iterator() {
+	@Override
+	public Iterator<T> iterator() {
+		final ChronicleRemoveFunction fn;
+		try {
+			fn = new ChronicleRemoveFunction(data.createTailer());
+		} catch(IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+
 		return new Iterator<T>() {
-			private final ChronicleRemoveFunction iterFun;
-
-			{
-				try {
-					iterFun = new ChronicleRemoveFunction(new IndexedChronicle(basePath));
-				} catch(IOException e) {
-					throw new IllegalArgumentException(e.getMessage(), e);
-				}
-			}
-
 			public boolean hasNext() {
-                boolean hasNextElement = false;
-                synchronized(IndexedChronicleQueuePersistor.this) {
-                    long index = iterFun.ex.index();
-                    hasNextElement = iterFun.ex.nextIndex();
-                    iterFun.ex.index(index);
-                }
-
-                return hasNextElement;
+				return fn.hasNext();
 			}
 
-			@Override public T next() {
-				return iterFun.get();
+			@SuppressWarnings("unchecked")
+			@Override
+			public T next() {
+				return fn.get();
 			}
 
-			@Override public void remove() {
+			@Override
+			public void remove() {
+				throw new IllegalStateException("This Iterator is read-only.");
 			}
 		};
 	}
 
-	private T read(Excerpt ex, long index) {
-		if(!ex.index(index)) {
-			if(LOG.isDebugEnabled()) {
-				LOG.debug("Could not read requested index [" + index + "]");
-			}
-			return null;
-		}
-
-		int len = -1;
+	@SuppressWarnings("unchecked")
+	private T read(ExcerptCommon ex) {
 		try {
-			len = ex.readInt();
-			byte[] bytes = new byte[len];
-			ex.read(bytes);
+			int len = ex.readInt();
+			ByteBuffer bb = ByteBuffer.allocate(len);
+			ex.read(bb);
+			bb.flip();
+			return codec.decoder().apply(new Buffer(bb));
+		} finally {
 			ex.finish();
-
-			return decoder.apply(Buffer.wrap(bytes));
-		} catch(Throwable t) {
-			if(LOG.isDebugEnabled()) {
-				LOG.debug("Asked to read: " + len + "b from index " + ex.index());
-				LOG.debug(t.getMessage(), t);
-			}
-			return null;
 		}
 	}
 
 	private class ChronicleOfferFunction implements Function<T, Long> {
-		private final IndexedChronicle chronicle;
 		private final ExcerptAppender ex;
 
-		private ChronicleOfferFunction(IndexedChronicle chronicle) throws IOException {
-			this.chronicle = chronicle;
-			this.ex = chronicle.createAppender();
+		private ChronicleOfferFunction() throws IOException {
+			this.ex = data.createAppender();
 		}
 
-		@Override public Long apply(T t) {
-			Buffer buff = encoder.apply(t);
+		@Override
+		public Long apply(T t) {
+			synchronized(monitor) {
+				try {
+					Buffer buff = codec.encoder().apply(t);
 
-			ex.startExcerpt(4 + buff.remaining());
-			ex.writeInt(buff.remaining());
-			ex.write(buff.asBytes());
+					int len = buff.remaining();
+					ex.startExcerpt(4 + len);
+					ex.writeInt(len);
+					ex.write(buff.byteBuffer());
 
-			count.incrementAndGet();
-			lastId.set(ex.index());
-
-			ex.finish();
+					size.incrementAndGet();
+				} finally {
+					ex.finish();
+				}
+				lastId.set(ex.lastWrittenIndex());
+			}
 
 			if(LOG.isTraceEnabled()) {
-				LOG.trace("Offered " + t + " to " + chronicle + " at index " + lastId());
+				LOG.trace("Offered {} to Chronicle at index {}, size {}", t, lastId(), size());
 			}
 
 			return lastId();
@@ -218,71 +226,41 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	}
 
 	private class ChronicleGetFunction implements Function<Long, T> {
-		private final IndexedChronicle chronicle;
-		private final Excerpt ex;
+		private final ExcerptTailer ex;
 
-		private ChronicleGetFunction(IndexedChronicle chronicle) throws IOException {
-			this.chronicle = chronicle;
-			this.ex = chronicle.createExcerpt();
+		private ChronicleGetFunction() throws IOException {
+			this.ex = data.createTailer();
 		}
 
-		@Override public T apply(Long id) {
-			return read(ex, id);
+		@SuppressWarnings("unchecked")
+		@Override
+		public T apply(Long id) {
+			if(!ex.index(id)) {
+				return null;
+			}
+			return read(ex);
 		}
 	}
 
 	private class ChronicleRemoveFunction implements Supplier<T> {
-		private final IndexedChronicle chronicle;
-		private final Excerpt          ex;
+		private final ExcerptTailer ex;
 
-		private ChronicleRemoveFunction(IndexedChronicle chronicle) throws IOException {
-			this.chronicle = chronicle;
-			this.ex = chronicle.createExcerpt();
+		private ChronicleRemoveFunction(ExcerptTailer ex) throws IOException {
+			this.ex = ex;
 		}
 
-		@Override public T get() {
-            T obj = null;
-            synchronized(IndexedChronicleQueuePersistor.this) {
-                if(!ex.nextIndex()) {
-                    return null;
-                }
-
-                obj = read(ex, ex.index());
-                count.decrementAndGet();
-            }
-
-			return obj;
-		}
-	}
-
-	private static class SerializableEncoder<T> implements Function<T, Buffer> {
-		@Override public Buffer apply(T t) {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			try {
-				ObjectOutputStream oos = new ObjectOutputStream(baos);
-				oos.writeObject(t);
-				oos.flush();
-				oos.close();
-			} catch(IOException e) {
-				throw new IllegalStateException(e.getMessage(), e);
-			}
-
-			return Buffer.wrap(baos.toByteArray());
-		}
-	}
-
-	private static class SerializableDecoder<T> implements Function<Buffer, T> {
 		@SuppressWarnings("unchecked")
-		@Override public T apply(Buffer buff) {
-			try {
-				ByteArrayInputStream bais = new ByteArrayInputStream(buff.asBytes());
-				ObjectInputStream ois = new ObjectInputStream(bais);
-				return (T)ois.readObject();
-			} catch(IOException e) {
-				throw new IllegalStateException(e.getMessage(), e);
-			} catch(ClassNotFoundException e) {
-				throw new IllegalStateException(e.getMessage(), e);
+		@Override
+		public T get() {
+			synchronized(monitor) {
+				T obj = read(ex);
+				size.decrementAndGet();
+				return obj;
 			}
+		}
+
+		public boolean hasNext() {
+			return ex.nextIndex();
 		}
 	}
 

@@ -33,7 +33,7 @@ ext {
 	springVersion = '3.2.3.RELEASE'
 	siVersion = '3.0.0.M2'
 	nettyVersion = '4.0.10.Final'
-	jacksonDatabindVersion = '2.2.2'
+	jacksonDatabindVersion = '2.2.3'
 	hadoopVersion = '1.1.2'
 	openHftChronicleVersion = '2.0.2'
 	openHftLangVersion = '6.1.1'
@@ -122,6 +122,7 @@ configure(allprojects) { project ->
 		systemProperty("testGroups", project.properties.get("testGroups"))
 		scanForTestClasses = false
 		include '**/*Tests.*'
+		include '**/*Spec.*'
 		exclude '**/*Abstract*.*'
 	}
 
@@ -248,6 +249,10 @@ project('reactor-core') {
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",
 				"net.openhft:lang:$openHftLangVersion"
+
+		// JSON handling
+		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
+				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion"
 	}
 
 	jar {
@@ -331,6 +336,7 @@ project('reactor-tcp') {
 	ext.bundleImportPackages = [
 			'com.fasterxml.jackson.core;resolution:=optional',
 			'com.fasterxml.jackson.databind;resolution:=optional',
+			'com.fasterxml.jackson.module;resolution:=optional',
 			'*'
 	]
 
@@ -338,7 +344,8 @@ project('reactor-tcp') {
 		compile project(':reactor-core')
 
 		compile "io.netty:netty-all:$nettyVersion"
-		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
+				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion"
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"

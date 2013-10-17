@@ -16,15 +16,15 @@
 
 package reactor.queue;
 
+import reactor.function.Function;
+import reactor.function.Supplier;
+
+import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.annotation.Nonnull;
-
-import reactor.function.Function;
-import reactor.function.Supplier;
 
 /**
  * A {@link QueuePersistor} implementations that stores items in-memory.
@@ -57,6 +57,11 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 	}
 
 	@Override
+	public boolean hasNext() {
+		return !objects.isEmpty();
+	}
+
+	@Override
 	public Iterator<T> iterator() {
 		return objects.values().iterator();
 	}
@@ -79,7 +84,8 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 		return removeFun;
 	}
 
-	@Override public void close() {
+	@Override
+	public void close() {
 	}
 
 	private class MapOfferFunction implements Function<T, Long> {

@@ -16,70 +16,78 @@
 
 package reactor.queue
 
+import net.openhft.chronicle.ChronicleConfig
+import reactor.queue.encoding.StandardCodecs
 import spock.lang.Specification
-
 /**
  * @author Jon Brisbin
  */
 class QueuePersistorSpec extends Specification {
 
-  def "InMemoryQueuePersistor persists objects"() {
+	def "InMemoryQueuePersistor persists objects"() {
 
-    given:
-      "an InMemoryQueuePersistor"
-      def persistor = new InMemoryQueuePersistor()
-      def obj = new Object()
+		given:
+			"an InMemoryQueuePersistor"
+			def persistor = new InMemoryQueuePersistor()
+			def obj = new Object()
 
-    when:
-      "an Object is persisted"
-      def id = persistor.offer().apply(obj)
+		when:
+			"an Object is persisted"
+			def id = persistor.offer().apply(obj)
 
-    then:
-      "the Object was persisted"
-      id > -1
-      persistor.get().apply(id) == obj
+		then:
+			"the Object was persisted"
+			id > -1
+			persistor.get().apply(id) == obj
 
-    when:
-      "an Object is removed"
-      persistor.remove().get()
+		when:
+			"an Object is removed"
+			persistor.remove().get()
 
-    then:
-      "the Object was removed"
-      null == persistor.get().apply(id)
-      persistor.size() == 0
+		then:
+			"the Object was removed"
+			null == persistor.get().apply(id)
+			persistor.size() == 0
 
-    cleanup:
-      persistor.close()
+		cleanup:
+			persistor.close()
 
-  }
+	}
 
-  def "IndexedChronicleQueuePersistor persists objects"() {
+	def "IndexedChronicleQueuePersistor persists objects"() {
 
-    given:
-      "an IndexedChronicleQueuePersistor"
-      def persistor = new IndexedChronicleQueuePersistor("./queue-persistor")
-      def obj = "Hello World!"
+		given:
+			"an IndexedChronicleQueuePersistor"
+			def persistor = new IndexedChronicleQueuePersistor<String>(
+					"queue-persistor",
+					StandardCodecs.stringCodec(),
+					true,
+					true,
+					ChronicleConfig.TEST.clone()
+			)
+			def obj = "Hello World!"
 
-    when:
-      "an object is persisted"
-      def id = persistor.offer().apply(obj)
+		when:
+			"an object is persisted"
+			def id = persistor.offer().apply(obj)
 
-    then:
-      "the object was persisted"
-      id > -1
-      persistor.get().apply(id) == obj
+		then:
+			"the object was persisted"
+			id > -1
+			persistor.get().apply(id) == obj
+			persistor.hasNext()
 
-    when:
-      "the object is removed"
-      persistor.remove().get()
+		when:
+			"the object is removed"
+			persistor.remove().get()
 
-    then:
-      "the object was removed"
-      persistor.size() == 0
+		then:
+			"the object was removed"
+			persistor.size() == 0
 
-    cleanup:
-      persistor.close()
+		cleanup:
+			persistor.close()
 
-  }
+	}
 
 }

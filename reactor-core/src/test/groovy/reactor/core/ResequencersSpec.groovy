@@ -15,12 +15,11 @@ class ResequencersSpec extends Specification {
 			"a Resequencer"
 			def nums = []
 			def outOfOrderNums = [2, 3, 1, 5, 4] as Long[]
-			long next = 1
-			def seq = new Resequencer<Long>({ l -> nums << next } as Consumer<Long>)
+			def seq = new Resequencer<Long>({ l -> nums << l } as Consumer<Long>)
 
 		when:
 			"slots are allocated and claimed"
-			outOfOrderNums.each {
+			(1..5).each {
 				seq.next()
 			}
 			outOfOrderNums.each {

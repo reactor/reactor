@@ -16,10 +16,10 @@
 
 package reactor.queue;
 
-import java.util.AbstractQueue;
-import java.util.Iterator;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.AbstractQueue;
+import java.util.Iterator;
 
 /**
  * A {@literal PersistentQueue} is a {@link java.util.Queue} implementation that delegates the actual storage of the
@@ -57,11 +57,17 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 
 	@Override
 	public T poll() {
+		if(size() == 0 || !persistor.hasNext()) {
+			return null;
+		}
 		return persistor.remove().get();
 	}
 
 	@Override
 	public T peek() {
+		if(size() == 0 || !persistor.hasNext()) {
+			return null;
+		}
 		Long lastId = persistor.lastId();
 		return persistor.get().apply(lastId);
 	}

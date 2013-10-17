@@ -56,7 +56,7 @@ class EventBatchersSpec extends Specification {
     given:
       "a EventBatcher backed by a PersistentQueue"
       def r = Reactors.reactor().synchronousDispatcher().get()
-      def persistor = new IndexedChronicleQueuePersistor("./persistent-queue")
+      def persistor = new IndexedChronicleQueuePersistor("event-batcher")
       def c = new EventBatcherSpec().
           observable(r).
           notifyKey("test").

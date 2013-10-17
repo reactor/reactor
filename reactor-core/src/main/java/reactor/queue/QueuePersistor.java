@@ -16,10 +16,10 @@
 
 package reactor.queue;
 
-import javax.annotation.Nonnull;
-
 import reactor.function.Function;
 import reactor.function.Supplier;
+
+import javax.annotation.Nonnull;
 
 /**
  * Implementations of this interface are responsible for persisting the elements of a {@link PersistentQueue}.
@@ -45,25 +45,35 @@ public interface QueuePersistor<T> extends Iterable<T> {
 	long size();
 
 	/**
+	 * Are there more items waiting to be returned?
+	 *
+	 * @return {@code true} if items can be retrieved from this persistor, {@code false} otherwise
+	 */
+	boolean hasNext();
+
+	/**
 	 * Returns a {@link Function} that will persist the item and return a Long id for the item.
 	 *
 	 * @return id of the item just persisted
 	 */
-	@Nonnull Function<T, Long> offer();
+	@Nonnull
+	Function<T, Long> offer();
 
 	/**
 	 * Returns a {@link Function} that will return the item with the given id.
 	 *
 	 * @return item persisted under the given id
 	 */
-	@Nonnull Function<Long, T> get();
+	@Nonnull
+	Function<Long, T> get();
 
 	/**
 	 * Returns a {@link Supplier} that will simply remove the oldest item from the persistence queue.
 	 *
 	 * @return the oldest item in the queue
 	 */
-	@Nonnull Supplier<T> remove();
+	@Nonnull
+	Supplier<T> remove();
 
 	/**
 	 * Release any internal resources used by the persistence mechanism.

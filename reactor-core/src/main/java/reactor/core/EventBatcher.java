@@ -65,7 +65,6 @@ public class EventBatcher<T> implements Consumer<Event<T>> {
 	 */
 	public void flush() {
 		flushCount.set(count.get());
-
 		Event<T> ev;
 		while(flushCount.getAndDecrement() > 0 && null != (ev = queue.poll())) {
 			observable.notify(key, ev);
