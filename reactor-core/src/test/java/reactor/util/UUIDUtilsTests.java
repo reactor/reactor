@@ -170,6 +170,22 @@ public class UUIDUtilsTests {
 		});
 	}
 
+	@Test
+	public void timeBasedVersusRandom() throws InterruptedException {
+		doTest("Create time-based", new Supplier<UUID>() {
+			@Override
+			public UUID get() {
+				return UUIDUtils.random();
+			}
+		});
+		doTest("Create random", new Supplier<UUID>() {
+			@Override
+			public UUID get() {
+				return UUIDUtils.random();
+			}
+		});
+	}
+
 	private void doTest(String description, final Supplier<UUID> uuidSupplier) throws InterruptedException {
 		for(int t = 0; t < THREADS.length; t++) {
 			int threads = THREADS[t];

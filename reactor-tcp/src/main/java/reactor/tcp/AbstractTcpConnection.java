@@ -19,7 +19,9 @@ package reactor.tcp;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
+import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
+import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
 import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
@@ -31,14 +33,20 @@ import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
+import reactor.queue.BlockingQueueFactory;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
+
+import java.util.Queue;
 
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
  *
- * @param <IN>  The type that will be received by this connection
- * @param <OUT> The type that will be sent by this connection
+ * @param <IN>
+ * 		The type that will be received by this connection
+ * @param <OUT>
+ * 		The type that will be sent by this connection
+ *
  * @author Jon Brisbin
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
@@ -46,31 +54,50 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	protected final long                     created = System.currentTimeMillis();
 	protected final Tuple2<Selector, Object> read    = Selectors.$();
 
-	protected final Function<Buffer, IN>  decoder;
-	protected final Function<OUT, Buffer> encoder;
-	protected final Dispatcher            ioDispatcher;
-	protected final Reactor               ioReactor;
-	protected final Reactor               eventsReactor;
-	protected final Environment           env;
+	protected final Environment                      env;
+	protected final Dispatcher                       ioDispatcher;
+	protected final Reactor                          ioReactor;
+	protected final Reactor                          eventsReactor;
+	protected final Function<Buffer, IN>             decoder;
+	protected final Function<OUT, Buffer>            encoder;
+	protected final Queue<Deferred<IN, Promise<IN>>> responses;
 
 	protected AbstractTcpConnection(Environment env,
-																	Codec<Buffer, IN, OUT> codec,
-																	Dispatcher ioDispatcher,
-																	Reactor eventsReactor) {
+	                                Codec<Buffer, IN, OUT> codec,
+	                                Dispatcher ioDispatcher,
+	                                Reactor eventsReactor) {
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.ioReactor = Reactors.reactor()
-														 .env(env)
-														 .dispatcher(ioDispatcher)
-														 .get();
+		                         .env(env)
+		                         .dispatcher(ioDispatcher)
+		                         .get();
 		this.eventsReactor = eventsReactor;
-		if (null != codec) {
+		if(null != codec) {
 			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getT2(), eventsReactor));
 			this.encoder = codec.encoder();
 		} else {
 			this.decoder = null;
 			this.encoder = null;
 		}
+		this.responses = BlockingQueueFactory.createQueue();
+
+		consume(new Consumer<IN>() {
+			@Override
+			public void accept(IN in) {
+				if(null != responses.peek()) {
+					responses.remove().accept(in);
+				}
+			}
+		});
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				if(null != responses.peek()) {
+					responses.remove().accept(throwable);
+				}
+			}
+		});
 	}
 
 	/**
@@ -89,10 +116,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Stream<IN> in() {
-		final Deferred<IN, Stream<IN>> d = Streams.<IN>defer()
-																							.env(env)
-																							.dispatcher(eventsReactor.getDispatcher())
-																							.get();
+		final Deferred<IN, Stream<IN>> d = Streams.<IN>defer(env, eventsReactor.getDispatcher());
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -104,10 +128,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Deferred<OUT, Stream<OUT>> out() {
-		Deferred<OUT, Stream<OUT>> d = Streams.<OUT>defer()
-																					.env(env)
-																					.dispatcher(eventsReactor.getDispatcher())
-																					.get();
+		Deferred<OUT, Stream<OUT>> d = Streams.<OUT>defer(env, eventsReactor.getDispatcher());
 		d.compose().consume(new Consumer<OUT>() {
 			@Override
 			public void accept(OUT out) {
@@ -168,19 +189,19 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 					@Override
 					public void accept(OUT data) {
 						try {
-							if (null != encoder) {
+							if(null != encoder) {
 								Buffer bytes = encoder.apply(data);
-								if (bytes.remaining() > 0) {
+								if(bytes.remaining() > 0) {
 									write(bytes, onComplete);
 								}
 							} else {
-								if (Buffer.class.isInstance(data)) {
-									write((Buffer) data, onComplete);
+								if(Buffer.class.isInstance(data)) {
+									write((Buffer)data, onComplete);
 								} else {
 									write(data, onComplete);
 								}
 							}
-						} catch (Throwable t) {
+						} catch(Throwable t) {
 							eventsReactor.notify(t.getClass(), Event.wrap(t));
 						}
 					}
@@ -191,15 +212,24 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		return this;
 	}
 
+	public Promise<IN> sendAndReceive(OUT data) {
+		final Deferred<IN, Promise<IN>> d = Promises.<IN>defer(env, eventsReactor.getDispatcher());
+		responses.add(d);
+		send(data, null);
+		return d.compose();
+	}
+
 	/**
 	 * Perfoming necessary decoding on the data and notify the internal {@link Reactor} of any results.
 	 *
-	 * @param data The data to decode.
+	 * @param data
+	 * 		The data to decode.
+	 *
 	 * @return {@literal true} if any more data is remaining to be consumed in the given {@link Buffer}, {@literal false}
-	 *         otherwise.
+	 * otherwise.
 	 */
 	public boolean read(Buffer data) {
-		if (null != decoder && null != data.byteBuffer()) {
+		if(null != decoder && null != data.byteBuffer()) {
 			decoder.apply(data);
 		} else {
 			eventsReactor.notify(read.getT2(), Event.wrap(data));
@@ -211,16 +241,20 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	/**
 	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data       The data to write, as a {@link Buffer}.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param data
+	 * 		The data to write, as a {@link Buffer}.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
 	 */
 	protected abstract void write(Buffer data, Consumer<Boolean> onComplete);
 
 	/**
 	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data       The data to write.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param data
+	 * 		The data to write.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
 	 */
 	protected abstract void write(Object data, Consumer<Boolean> onComplete);
 

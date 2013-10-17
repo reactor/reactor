@@ -386,18 +386,14 @@ public class TcpClientTests {
 						.get().open().await();
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		connection.in().consume(new Consumer<HttpObject>() {
-			@Override
-			public void accept(HttpObject resp) {
-				if(resp instanceof HttpContent) {
-					latch.countDown();
-				} else {
-					System.out.println("resp: " + resp);
-				}
-			}
-		});
-
-		connection.send(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"));
+		connection.sendAndReceive(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))
+		          .onSuccess(new Consumer<HttpObject>() {
+			          @Override
+			          public void accept(HttpObject resp) {
+				          latch.countDown();
+				          System.out.println("resp: " + resp);
+			          }
+		          });
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}
