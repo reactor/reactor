@@ -16,19 +16,28 @@
 
 package reactor.event;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
+import reactor.event.selector.JsonPathSelector;
 import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.tuple.Tuple;
+import reactor.tuple.Tuple2;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static reactor.event.selector.Selectors.$;
+import static reactor.event.selector.Selectors.U;
 
 /**
  * @author Jon Brisbin
@@ -41,74 +50,82 @@ public class SelectorUnitTests {
 
 	@Test
 	public void testSelectionThroughput() throws Exception {
-		final AtomicLong counter = new AtomicLong(selectors * iterations);
-		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
-
-		Consumer<?> hello = new Consumer<Object>() {
+		runTest("ObjectSelector", new Function<Integer, Tuple2<Selector, Object>>() {
 			@Override
-			public void accept(Object obj) {
-				counter.decrementAndGet();
+			public Tuple2<Selector, Object> apply(Integer i) {
+				String key = "test" + i;
+				return Tuple.<Selector, Object>of($(key), key);
 			}
-		};
-
-		Selector[] sels = new Selector[selectors];
-		Object[] keys = new Object[selectors];
-
-		for (int i = 0; i < selectors; i++) {
-			keys[i] = "test" + i;
-			sels[i] = Selectors.$(keys[i]);
-			registry.register(sels[i], hello);
-		}
-
-		long start = System.currentTimeMillis();
-		for (int i = 0; i < selectors * iterations; i++) {
-			int j = i % selectors;
-			for (Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
-				reg.getObject().accept(null);
-			}
-		}
-		long end = System.currentTimeMillis();
-		double elapsed = (end - start);
-		long throughput = Math.round((selectors * iterations) / (elapsed / 1000));
-		LOG.info("Selector throughput: " + throughput + "/s");
-
-		assertThat("All handlers have been found and executed.", counter.get() == 0);
+		});
 	}
 
 	@Test
 	public void testUriTemplateSelectorThroughput() throws Exception {
+		runTest("UriTemplateSelector", new Function<Integer, Tuple2<Selector, Object>>() {
+			@Override
+			public Tuple2<Selector, Object> apply(Integer i) {
+				String key = "/test/" + i;
+				return Tuple.<Selector, Object>of(U(key), key);
+			}
+		});
+	}
+
+	@Test
+	public void testJsonPathSelectorThroughput() {
+		runTest("JsonPath", new Function<Integer, Tuple2<Selector, Object>>() {
+			ObjectMapper mapper = new ObjectMapper();
+
+			{
+				mapper.registerModule(new AfterburnerModule());
+			}
+
+			@Override
+			public Tuple2<Selector, Object> apply(Integer i) {
+				String json = "{\"data\": [{\"run\":\"" + i + "\"}]}";
+				Object key;
+				try {
+					key = mapper.readValue(json, Map.class);
+//					key = mapper.readTree(json);
+				} catch(IOException e) {
+					throw new IllegalStateException(e);
+				}
+				return Tuple.<Selector, Object>of(new JsonPathSelector("$.data[?(@.run == '" + i + "')]"), key);
+			}
+		});
+	}
+
+	private void runTest(String type, Function<Integer, Tuple2<Selector, Object>> fn) {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
 		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
 
-		Consumer<?> hello = new Consumer<Object>() {
+		Consumer<?> countDown = new Consumer<Object>() {
 			@Override
 			public void accept(Object obj) {
 				counter.decrementAndGet();
 			}
 		};
 
-		Selector sel1 = Selectors.U("/test/{i}");
-		registry.register(sel1, hello);
-
 		Selector[] sels = new Selector[selectors];
 		Object[] keys = new Object[selectors];
-		for (int i = 0; i < selectors; i++) {
-			keys[i] = "/test/" + i;
-			sels[i] = Selectors.$(keys[i]);
+
+		for(int i = 0; i < selectors; i++) {
+			Tuple2<Selector, Object> tup = fn.apply(i);
+			sels[i] = tup.getT1();
+			keys[i] = tup.getT2();
+			registry.register(sels[i], countDown);
 		}
 
-
 		long start = System.currentTimeMillis();
-		for (int i = 0; i < selectors * iterations; i++) {
+		for(int i = 0; i < selectors * iterations; i++) {
 			int j = i % selectors;
-			for (Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
+			for(Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
 				reg.getObject().accept(null);
 			}
 		}
 		long end = System.currentTimeMillis();
 		double elapsed = (end - start);
 		long throughput = Math.round((selectors * iterations) / (elapsed / 1000));
-		LOG.info("UriTemplateSelector throughput: " + throughput + "/s");
+		LOG.info("{} throughput: {}/s", type, throughput);
 
 		assertThat("All handlers have been found and executed.", counter.get() == 0);
 	}
