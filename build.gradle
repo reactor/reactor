@@ -35,10 +35,6 @@ ext {
 	nettyVersion = '4.0.10.Final'
 	jacksonDatabindVersion = '2.2.2'
 	hadoopVersion = '1.1.2'
-<<<<<<< HEAD
-	javaChronicleVersion = '1.7.2'
-=======
->>>>>>> upstream/master
 	openHftChronicleVersion = '2.0.2'
 	openHftLangVersion = '6.1.1'
 
