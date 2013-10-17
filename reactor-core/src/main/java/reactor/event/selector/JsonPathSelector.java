@@ -14,6 +14,7 @@ import com.jayway.jsonpath.internal.Utils;
 import com.jayway.jsonpath.spi.JsonProvider;
 import com.jayway.jsonpath.spi.MappingProvider;
 import com.jayway.jsonpath.spi.Mode;
+import reactor.io.Buffer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,15 +29,26 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 
 	// Only need one of these
 	private static ObjectMapper MAPPER = new ObjectMapper();
+
+	private final ObjectMapper  mapper;
 	private final Configuration jsonPathConfig;
 
 	public JsonPathSelector(ObjectMapper mapper, String jsonPath, Filter... filters) {
 		super(JsonPath.compile(jsonPath, filters));
+		this.mapper = mapper;
 		this.jsonPathConfig = Configuration.builder().jsonProvider(new Jackson2JsonProvider(mapper)).build();
 	}
 
 	public JsonPathSelector(String jsonPath, Filter... filters) {
 		this(MAPPER, jsonPath, filters);
+	}
+
+	public static Selector J(String jsonPath, Filter... filters) {
+		return jsonPathSelector(jsonPath, filters);
+	}
+
+	public static Selector jsonPathSelector(String jsonPath, Filter... filters) {
+		return new JsonPathSelector(jsonPath, filters);
 	}
 
 	@Override
@@ -48,11 +60,13 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 		Object result = read(key);
 		if(null == result) {
 			return false;
-		} else if(result instanceof List) {
-			return ((List)result).size() > 0;
-		} else if(result instanceof Map) {
-			return !((Map)result).isEmpty();
-		} else if(result instanceof JsonNode) {
+		}
+		Class<?> type = result.getClass();
+		if(Collection.class.isAssignableFrom(type)) {
+			return ((Collection)result).size() > 0;
+		} else if(Map.class.isAssignableFrom(type)) {
+			return ((Map)result).size() > 0;
+		} else if(JsonNode.class.isAssignableFrom(type)) {
 			return ((JsonNode)result).size() > 0;
 		} else {
 			return true;
@@ -60,12 +74,17 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 	}
 
 	private Object read(Object key) {
-		if(key instanceof String) {
+		Class<?> type = key.getClass();
+		if(type == String.class) {
 			return getObject().read((String)key, jsonPathConfig);
-		} else if(key instanceof byte[]) {
-			return getObject().read(new String((byte[])key), jsonPathConfig);
-		} else {
+		} else if(type == byte[].class) {
+			return getObject().read(Buffer.wrap((byte[])key).asString(), jsonPathConfig);
+		} else if(type == Buffer.class) {
+			return getObject().read(((Buffer)key).asString(), jsonPathConfig);
+		} else if(JsonNode.class.isAssignableFrom(type)) {
 			return getObject().read(key, jsonPathConfig);
+		} else {
+			return getObject().read(mapper.convertValue(key, Object.class), jsonPathConfig);
 		}
 	}
 
@@ -85,7 +104,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 		@Override
 		public Object parse(String json) throws InvalidJsonException {
 			try {
-				return mapper.readTree(json);
+				return mapper.readValue(json, Object.class);
 			} catch(IOException e) {
 				throw new InvalidJsonException(e.getMessage(), e);
 			}
@@ -94,7 +113,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 		@Override
 		public Object parse(Reader jsonReader) throws InvalidJsonException {
 			try {
-				return mapper.readTree(jsonReader);
+				return mapper.readValue(jsonReader, Object.class);
 			} catch(IOException e) {
 				throw new InvalidJsonException(e.getMessage(), e);
 			}
@@ -103,7 +122,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 		@Override
 		public Object parse(InputStream jsonStream) throws InvalidJsonException {
 			try {
-				return mapper.readTree(jsonStream);
+				return mapper.readValue(jsonStream, Object.class);
 			} catch(IOException e) {
 				throw new InvalidJsonException(e.getMessage(), e);
 			}
@@ -120,12 +139,12 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 
 		@Override
 		public Object createMap() {
-			return new HashMap<String, Object>();
+			return new HashMap();
 		}
 
 		@Override
 		public Iterable createArray() {
-			return new LinkedList<Object>();
+			return new ArrayList();
 		}
 
 		@Override
@@ -151,7 +170,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 
 		@Override
 		public boolean isContainer(Object obj) {
-			return isMap(obj) || isArray(obj);
+			return (isMap(obj) || isArray(obj));
 		}
 
 		@Override
@@ -175,7 +194,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 			} else if(obj instanceof ObjectNode) {
 				return ((ObjectNode)obj).size();
 			} else {
-				return 0;
+				return length(mapper.convertValue(obj, JsonNode.class));
 			}
 		}
 
@@ -186,7 +205,7 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 			} else if(obj instanceof Map) {
 				return ((Map)obj).values();
 			} else {
-				return Collections.emptyList();
+				return toIterable(mapper.convertValue(obj, JsonNode.class));
 			}
 		}
 
@@ -217,8 +236,9 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 					keys.add(String.valueOf(node.get(i)));
 				}
 				return keys;
+			} else {
+				return getPropertyKeys(mapper.convertValue(obj, JsonNode.class));
 			}
-			return Collections.emptyList();
 		}
 
 		@Override
@@ -233,8 +253,9 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 			} else if(obj instanceof ArrayNode) {
 				int idx = key instanceof Integer ? (Integer)key : Integer.parseInt(key.toString());
 				return unwrap(((ArrayNode)obj).get(idx));
+			} else {
+				return getProperty(mapper.convertValue(obj, JsonNode.class), key);
 			}
-			return null;
 		}
 
 		@Override
@@ -249,6 +270,8 @@ public class JsonPathSelector extends ObjectSelector<JsonPath> {
 			} else if(obj instanceof ArrayNode) {
 				int idx = key instanceof Integer ? (Integer)key : Integer.parseInt(key.toString());
 				((ArrayNode)obj).set(idx, (JsonNode)value);
+			} else {
+				setProperty(mapper.convertValue(obj, JsonNode.class), key, value);
 			}
 		}
 

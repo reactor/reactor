@@ -17,14 +17,12 @@
 package reactor.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
-import reactor.event.selector.JsonPathSelector;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -32,10 +30,13 @@ import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static reactor.event.selector.JsonPathSelector.J;
 import static reactor.event.selector.Selectors.$;
 import static reactor.event.selector.Selectors.U;
 
@@ -45,8 +46,10 @@ import static reactor.event.selector.Selectors.U;
 public class SelectorUnitTests {
 
 	static final Logger LOG        = LoggerFactory.getLogger(SelectorUnitTests.class);
-	static final int    selectors  = 500;
-	static final int    iterations = 5000;
+	final        int    selectors  = 50;
+	final        int    iterations = 10000;
+
+	final ObjectMapper mapper = new ObjectMapper();
 
 	@Test
 	public void testSelectionThroughput() throws Exception {
@@ -72,24 +75,54 @@ public class SelectorUnitTests {
 
 	@Test
 	public void testJsonPathSelectorThroughput() {
-		runTest("JsonPath", new Function<Integer, Tuple2<Selector, Object>>() {
-			ObjectMapper mapper = new ObjectMapper();
+		final String jsonTmpl = "{\"data\": [{\"run\": %s}]}";
+		final String jsonPathTmpl = "$.data[?(@.run == %s)]";
 
-			{
-				mapper.registerModule(new AfterburnerModule());
-			}
-
+		runTest("JsonPath[String]", new Function<Integer, Tuple2<Selector, Object>>() {
 			@Override
 			public Tuple2<Selector, Object> apply(Integer i) {
-				String json = "{\"data\": [{\"run\":\"" + i + "\"}]}";
+				Selector sel = J(String.format(jsonPathTmpl, i));
+				String json = String.format(jsonTmpl, i);
+				return Tuple.<Selector, Object>of(sel, json);
+			}
+		});
+
+		runTest("JsonPath[POJO]", new Function<Integer, Tuple2<Selector, Object>>() {
+			@Override
+			public Tuple2<Selector, Object> apply(Integer i) {
+				Selector sel = J(String.format(jsonPathTmpl, i));
+				DataNode node = new DataNode(new DataNode.Run(i));
+				return Tuple.<Selector, Object>of(sel, node);
+			}
+		});
+
+		runTest("JsonPath[Map]", new Function<Integer, Tuple2<Selector, Object>>() {
+			@Override
+			public Tuple2<Selector, Object> apply(Integer i) {
+				Selector sel = J(String.format(jsonPathTmpl, i));
+				String json = String.format(jsonTmpl, i);
 				Object key;
 				try {
 					key = mapper.readValue(json, Map.class);
-//					key = mapper.readTree(json);
 				} catch(IOException e) {
 					throw new IllegalStateException(e);
 				}
-				return Tuple.<Selector, Object>of(new JsonPathSelector("$.data[?(@.run == '" + i + "')]"), key);
+				return Tuple.<Selector, Object>of(sel, key);
+			}
+		});
+
+		runTest("JsonPath[Tree]", new Function<Integer, Tuple2<Selector, Object>>() {
+			@Override
+			public Tuple2<Selector, Object> apply(Integer i) {
+				Selector sel = J(String.format(jsonPathTmpl, i));
+				String json = String.format(jsonTmpl, i);
+				Object key;
+				try {
+					key = mapper.readTree(json);
+				} catch(IOException e) {
+					throw new IllegalStateException(e);
+				}
+				return Tuple.<Selector, Object>of(sel, key);
 			}
 		});
 	}
@@ -125,9 +158,33 @@ public class SelectorUnitTests {
 		long end = System.currentTimeMillis();
 		double elapsed = (end - start);
 		long throughput = Math.round((selectors * iterations) / (elapsed / 1000));
-		LOG.info("{} throughput: {}/s", type, throughput);
+		LOG.info("{} throughput: {}M/s in {}ms", type, throughput, Math.round(elapsed));
 
 		assertThat("All handlers have been found and executed.", counter.get() == 0);
+	}
+
+	public static class DataNode {
+		private final List<Run> data = new ArrayList<>();
+
+		private DataNode(Run data) {
+			this.data.add(data);
+		}
+
+		public List<Run> getData() {
+			return data;
+		}
+
+		public static class Run {
+			private final int run;
+
+			Run(int run) {
+				this.run = run;
+			}
+
+			public int getRun() {
+				return run;
+			}
+		}
 	}
 
 }
