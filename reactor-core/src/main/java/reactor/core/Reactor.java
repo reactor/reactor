@@ -240,7 +240,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, Event.NULL_EVENT, null);
+		return notify(key, new Event<Void>(null), null);
 	}
 
 	@Override
@@ -376,7 +376,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 				Event<?> replyEv;
 				if(null == reply) {
-					replyEv = Event.NULL_EVENT;
+					replyEv = new Event<Void>(null);
 				} else {
 					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
 				}

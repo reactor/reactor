@@ -39,11 +39,6 @@ public class Event<T> implements Serializable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 
-	/**
-	 * An {@code Event} with {@code null} data.
-	 */
-	public static final Event<Void> NULL_EVENT = new Event<Void>(null);
-
 	private volatile UUID    id;
 	private volatile Headers headers;
 	private volatile Object  replyTo;

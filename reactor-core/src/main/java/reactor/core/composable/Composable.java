@@ -284,7 +284,7 @@ public abstract class Composable<T> {
 		if(null != parent) {
 			parent.flush();
 		}
-		events.notify(flush.getT2(), Event.NULL_EVENT);
+		events.notify(flush.getT2(), new Event<Void>(null));
 		return this;
 	}
 
