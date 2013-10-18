@@ -360,7 +360,7 @@ public class TcpClientTests {
 
 		for(int i = 0; i < 5; i++) {
 			Thread.sleep(100);
-			connection.send(Buffer.wrap("a"));
+			connection.sendAndForget(Buffer.wrap("a"));
 		}
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));

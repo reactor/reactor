@@ -16,7 +16,6 @@
 
 package reactor.tcp;
 
-import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.function.Consumer;
@@ -125,27 +124,26 @@ public interface TcpConnection<IN, OUT> {
 
 	/**
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
-	 * reactor.io.Buffer}.
+	 * reactor.io.Buffer}. If the send fails for some reason, the returned {@link Promise} will be fulfilled with an
+	 * error
+	 * indicating the cause of the failure.
 	 *
 	 * @param data
 	 * 		The outgoing data.
 	 *
-	 * @return {@literal this}
+	 * @return A {@link reactor.core.composable.Promise} that will be completed on successful send to the peer.
 	 */
-	Promise<Boolean> send(OUT data);
+	Promise<Void> send(OUT data);
 
 	/**
-	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
-	 * reactor.io.Buffer}. The given callback will be invoked when the write has completed.
+	 * Send data on this connection in a fire-and-forget manner. If an error occurs during send, it will be reported in
+	 * the usual manner and can be handle by calling {@link #when(Class, reactor.function.Consumer)}.
 	 *
 	 * @param data
-	 * 		The outgoing data.
-	 * @param onComplete
-	 * 		The callback to invoke when the write is complete.
 	 *
-	 * @return {@literal this}
+	 * @return
 	 */
-	TcpConnection<IN, OUT> send(OUT data, Deferred<Boolean, Promise<Boolean>> onComplete);
+	TcpConnection<IN, OUT> sendAndForget(OUT data);
 
 	/**
 	 * Send data on this connection and return a {@link reactor.core.composable.Promise} that will be fulfilled by the

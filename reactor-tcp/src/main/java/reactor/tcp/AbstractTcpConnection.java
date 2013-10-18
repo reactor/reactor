@@ -178,14 +178,38 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public Promise<Boolean> send(OUT data) {
-		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(env, eventsReactor.getDispatcher());
+	public Promise<Void> send(OUT data) {
+		Deferred<Void, Promise<Void>> d = Promises.defer(env, eventsReactor.getDispatcher());
 		send(data, d);
 		return d.compose();
 	}
 
 	@Override
-	public TcpConnection<IN, OUT> send(OUT data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	public TcpConnection<IN, OUT> sendAndForget(OUT data) {
+		send(data, null);
+		return this;
+	}
+
+	@Override
+	public Promise<IN> sendAndReceive(OUT data) {
+		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		responses.add(d);
+		send(data, null);
+		return d.compose();
+	}
+
+	/**
+	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
+	 * reactor.io.Buffer}. The given callback will be invoked when the write has completed.
+	 *
+	 * @param data
+	 * 		The outgoing data.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
+	 *
+	 * @return {@literal this}
+	 */
+	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
 		Reactors.schedule(
 				new Consumer<OUT>() {
 					@Override
@@ -214,14 +238,6 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 				data,
 				ioReactor
 		);
-		return this;
-	}
-
-	public Promise<IN> sendAndReceive(OUT data) {
-		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
-		responses.add(d);
-		send(data, null);
-		return d.compose();
 	}
 
 	/**
@@ -251,7 +267,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Buffer data, Deferred<Boolean, Promise<Boolean>> onComplete);
+	protected abstract void write(Buffer data, Deferred<Void, Promise<Void>> onComplete);
 
 	/**
 	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
@@ -261,6 +277,6 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Object data, Deferred<Boolean, Promise<Boolean>> onComplete);
+	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete);
 
 }

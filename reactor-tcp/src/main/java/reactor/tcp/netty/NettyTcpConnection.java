@@ -118,18 +118,18 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 	}
 
 	@Override
-	protected void write(Buffer data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	protected void write(Buffer data, final Deferred<Void, Promise<Void>> onComplete) {
 		write(data.byteBuffer(), onComplete);
 	}
 
-	protected void write(ByteBuffer data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	protected void write(ByteBuffer data, final Deferred<Void, Promise<Void>> onComplete) {
 		ByteBuf buf = channel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
 		write(buf, onComplete);
 	}
 
 	@Override
-	protected void write(Object data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	protected void write(Object data, final Deferred<Void, Promise<Void>> onComplete) {
 		ChannelFuture writeFuture = channel.writeAndFlush(data);
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
@@ -145,7 +145,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 				}
 
 				if(null != onComplete) {
-					onComplete.accept(success);
+					onComplete.accept((Void)null);
 				}
 			}
 		});

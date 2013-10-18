@@ -20,7 +20,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.function.Consumer;
@@ -38,6 +37,7 @@ import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.netty.NettyTcpServer;
 import reactor.tcp.spec.TcpClientSpec;
 import reactor.tcp.spec.TcpServerSpec;
+import reactor.tcp.support.SocketUtils;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -51,7 +51,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -60,11 +59,9 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpServerTests {
 
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
-	final AtomicInteger   port       = new AtomicInteger(24887);
 	final int             msgs       = 100;
 	final int             threads    = 2;
 
@@ -87,7 +84,7 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesJsonPojosOverSsl() throws InterruptedException {
-		final int port = this.port.incrementAndGet();
+		final int port = SocketUtils.findAvailableTcpPort();
 		SslOptions serverOpts = new SslOptions()
 				.keystoreFile("./src/test/resources/server.jks")
 				.keystorePasswd("changeit");
@@ -169,7 +166,7 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
-		final int port = this.port.incrementAndGet();
+		final int port = SocketUtils.findAvailableTcpPort();
 
 		TcpServer<byte[], byte[]> server = new TcpServerSpec<byte[], byte[]>(NettyTcpServer.class)
 				.env(env)
@@ -224,7 +221,7 @@ public class TcpServerTests {
 
 	@Test
 	public void tcpServerHandlesFrameData() throws InterruptedException {
-		final int port = this.port.incrementAndGet();
+		final int port = SocketUtils.findAvailableTcpPort();
 
 		TcpServer<Frame, Frame> server = new TcpServerSpec<Frame, Frame>(NettyTcpServer.class)
 				.env(env)
@@ -275,7 +272,7 @@ public class TcpServerTests {
 
 	@Test
 	public void exposesNettyPipelineConfiguration() throws InterruptedException {
-		final int port = this.port.incrementAndGet();
+		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
 
 		final TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
@@ -315,8 +312,7 @@ public class TcpServerTests {
 						client.open().onSuccess(new Consumer<TcpConnection<String, String>>() {
 							@Override
 							public void accept(TcpConnection<String, String> conn) {
-								conn.send("Hello World!");
-								conn.send("Hello World!");
+								conn.sendAndForget("Hello World!").sendAndForget("Hello World!");
 							}
 						});
 					}
