@@ -142,9 +142,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 					if(null != onComplete) {
 						onComplete.accept(t);
 					}
-				}
-
-				if(null != onComplete) {
+				} else if(null != onComplete) {
 					onComplete.accept((Void)null);
 				}
 			}
