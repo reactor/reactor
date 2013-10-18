@@ -136,16 +136,16 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
-				if(!success) {
+				if (success) {
+					if (onComplete != null) {
+						onComplete.accept(success);
+					}
+				} else {
 					Throwable t = future.cause();
 					eventsReactor.notify(t, Event.wrap(t));
-					if(null != onComplete) {
+					if (onComplete != null) {
 						onComplete.accept(t);
 					}
-				}
-
-				if(null != onComplete) {
-					onComplete.accept(success);
 				}
 			}
 		});
