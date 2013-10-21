@@ -16,23 +16,8 @@
 
 package reactor.tcp.netty;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLEngine;
-
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -60,6 +45,15 @@ import reactor.tcp.config.SslOptions;
 import reactor.tcp.encoding.Codec;
 import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.tuple.Tuple2;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.net.ssl.SSLEngine;
+import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A Netty-based {@code TcpClient}.
@@ -159,11 +153,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
-		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection = Promises.<TcpConnection<IN, OUT>>defer()
-		                                                                                             .env(env)
-		                                                                                             .dispatcher(
-				                                                                                             eventsReactor.getDispatcher())
-		                                                                                             .get();
+		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection
+				= Promises.defer(env, eventsReactor.getDispatcher());
 
 		createConnection(createConnectListener(connection));
 
@@ -172,11 +163,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Stream<TcpConnection<IN, OUT>> open(final Reconnect reconnect) {
-		final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections = Streams.<TcpConnection<IN, OUT>>defer()
-		                                                                                            .env(env)
-		                                                                                            .dispatcher(
-				                                                                                            eventsReactor.getDispatcher())
-		                                                                                            .get();
+		final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections
+				= Streams.defer(env, eventsReactor.getDispatcher());
 		createConnection(createReconnectListener(connections, reconnect));
 
 		return connections.compose();
@@ -199,14 +187,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
 		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>)select(ch);
-		return new ChannelHandler[]{
-				new NettyTcpConnectionChannelInboundHandler(conn) {
-					@Override
-					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-						NettyTcpClient.this.notifyError(cause);
-					}
-				}
-		};
+		return new ChannelHandler[]{new NettyTcpConnectionChannelInboundHandler(conn)};
 	}
 
 	@Override
@@ -232,7 +213,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 	}
 
-	private ChannelFutureListener createConnectListener(final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection) {
+	private ChannelFutureListener createConnectListener(final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN,
+			OUT>>> connection) {
 		return new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
@@ -293,7 +275,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					}
 					env.getRootTimer().submit(
 							new Consumer<Long>() {
-								@Override public void accept(Long now) {
+								@Override
+								public void accept(Long now) {
 									createConnection(self);
 								}
 							},

@@ -19,6 +19,8 @@ package reactor.tcp.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.io.Buffer;
 
 /**
@@ -29,6 +31,7 @@ import reactor.io.Buffer;
  */
 class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapter {
 
+	private final Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
 	private final NettyTcpConnection<?, ?> conn;
 	private       ByteBuf                  remainder;
 
@@ -37,18 +40,31 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	}
 
 	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
+			// TODO: do we even care?
+			if(log.isInfoEnabled()) {
+				log.info(ctx.channel().toString() + " " + cause.getMessage());
+			}
+		} else {
+			conn.notifyError(cause);
+		}
+		ctx.close();
+	}
+
+	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {
-		if (!(m instanceof ByteBuf)) {
+		if(!(m instanceof ByteBuf)) {
 			conn.notifyRead(m);
 			return;
 		}
 
-		ByteBuf data = (ByteBuf) m;
-		if (remainder == null) {
+		ByteBuf data = (ByteBuf)m;
+		if(remainder == null) {
 			try {
 				passToConnection(data);
 			} finally {
-				if (data.isReadable()) {
+				if(data.isReadable()) {
 					remainder = data;
 				} else {
 					data.release();
@@ -57,7 +73,7 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 			return;
 		}
 
-		if (!bufferHasSufficientCapacity(remainder, data)) {
+		if(!bufferHasSufficientCapacity(remainder, data)) {
 			ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
 			remainder.release();
 			remainder = combined;
@@ -69,13 +85,18 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 		try {
 			passToConnection(remainder);
 		} finally {
-			if (remainder.isReadable()) {
+			if(remainder.isReadable()) {
 				remainder.discardSomeReadBytes();
 			} else {
 				remainder.release();
 				remainder = null;
 			}
 		}
+	}
+
+	@Override
+	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+		ctx.flush();
 	}
 
 	private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {

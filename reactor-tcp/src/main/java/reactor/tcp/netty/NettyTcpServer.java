@@ -52,8 +52,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN>  The type that will be received by this server
- * @param <OUT> The type that will be sent by this server
+ * @param <IN>
+ * 		The type that will be received by this server
+ * @param <OUT>
+ * 		The type that will be sent by this server
+ *
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
@@ -67,18 +70,19 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup      ioGroup;
 
 	protected NettyTcpServer(Environment env,
-													 Reactor reactor,
-													 InetSocketAddress listenAddress,
-													 final ServerSocketOptions opts,
-													 final SslOptions sslOpts,
-													 Codec<Buffer, IN, OUT> codec,
-													 Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
+	                         Reactor reactor,
+	                         InetSocketAddress listenAddress,
+	                         final ServerSocketOptions opts,
+	                         final SslOptions sslOpts,
+	                         Codec<Buffer, IN, OUT> codec,
+	                         Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		super(env, reactor, listenAddress, opts, sslOpts, codec, connectionConsumers);
 		this.eventsReactor = reactor;
 		Assert.notNull(opts, "ServerSocketOptions cannot be null");
 		this.options = opts;
 
-		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class, Environment.PROCESSORS / 2);
+		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class,
+		                                        Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
 		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -102,28 +106,28 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
 
-						log.debug("CONNECT {}", ch.remoteAddress());
+						log.debug("CONNECT {}", ch);
 
-						if (null != sslOpts) {
+						if(null != sslOpts) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOpts, false).get();
-							log.debug("SSL enabled using keystore {}", (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							log.debug("SSL enabled using keystore {}",
+							          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if (options instanceof NettyServerSocketOptions && null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
-							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
+						if(options instanceof NettyServerSocketOptions && null != ((NettyServerSocketOptions)options)
+								.pipelineConfigurer()) {
+							((NettyServerSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
+								if(log.isDebugEnabled()) {
+									log.debug("CLOSE {}", ch);
+								}
 								close(ch);
 							}
 						});
-					}
-
-					@Override
-					public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-						NettyTcpServer.this.notifyError(cause);
 					}
 				});
 	}
@@ -131,7 +135,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	public NettyTcpServer<IN, OUT> start(final Consumer<Void> started) {
 		ChannelFuture bindFuture = bootstrap.bind();
-		if (null != started) {
+		if(null != started) {
 			bindFuture.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
@@ -146,7 +150,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(getReactor().getDispatcher()).get();
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(getReactor().getDispatcher())
+		                                                .get();
 		Reactors.schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})
@@ -157,9 +162,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 							@Override
 							public void operationComplete(Future future) throws Exception {
-								if (groupsToShutdown.decrementAndGet() == 0) {
+								if(groupsToShutdown.decrementAndGet() == 0) {
 									notifyShutdown();
-									d.accept((Void) null);
+									d.accept((Void)null);
 								}
 							}
 						};
@@ -176,7 +181,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	protected <C> NettyTcpConnection<IN, OUT> createConnection(C channel) {
-		SocketChannel ch = (SocketChannel) channel;
+		SocketChannel ch = (SocketChannel)channel;
 		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		return new NettyTcpConnection<IN, OUT>(
@@ -189,7 +194,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>) select(ch);
+		NettyTcpConnection<IN, OUT> conn = (NettyTcpConnection<IN, OUT>)select(ch);
 		return new ChannelHandler[]{new NettyTcpConnectionChannelInboundHandler(conn)};
 	}
 
