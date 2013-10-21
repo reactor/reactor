@@ -117,6 +117,10 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 		eventsReactor.notify(read.getT2(), (Event.class.isInstance(obj) ? (Event)obj : Event.wrap(obj)));
 	}
 
+	void notifyError(Throwable throwable) {
+		eventsReactor.notify(throwable.getClass(), Event.wrap(throwable));
+	}
+
 	@Override
 	protected void write(Buffer data, final Deferred<Void, Promise<Void>> onComplete) {
 		write(data.byteBuffer(), onComplete);
