@@ -352,7 +352,8 @@ project('reactor-tcp') {
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
-		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+		testRuntime project(':reactor-logback'),
+				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}
 
 	jar {
