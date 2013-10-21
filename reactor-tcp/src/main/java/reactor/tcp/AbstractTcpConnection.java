@@ -37,7 +37,10 @@ import reactor.queue.BlockingQueueFactory;
 import reactor.tcp.encoding.Codec;
 import reactor.tuple.Tuple2;
 
+import java.util.NoSuchElementException;
 import java.util.Queue;
+
+import static reactor.event.selector.Selectors.$;
 
 /**
  * Implementations of this class should provide concrete functionality for doing real IO.
@@ -52,15 +55,15 @@ import java.util.Queue;
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
 
 	protected final long                     created = System.currentTimeMillis();
-	protected final Tuple2<Selector, Object> read    = Selectors.$();
+	protected final Tuple2<Selector, Object> read    = $();
 
-	protected final Environment                      env;
-	protected final Dispatcher                       ioDispatcher;
-	protected final Reactor                          ioReactor;
-	protected final Reactor                          eventsReactor;
-	protected final Function<Buffer, IN>             decoder;
-	protected final Function<OUT, Buffer>            encoder;
-	protected final Queue<Deferred<IN, Promise<IN>>> responses;
+	protected final Environment           env;
+	protected final Dispatcher            ioDispatcher;
+	protected final Reactor               ioReactor;
+	protected final Reactor               eventsReactor;
+	protected final Function<Buffer, IN>  decoder;
+	protected final Function<OUT, Buffer> encoder;
+	protected final Queue<Object>         replyToKeys;
 
 	protected AbstractTcpConnection(Environment env,
 	                                Codec<Buffer, IN, OUT> codec,
@@ -80,21 +83,14 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 			this.decoder = null;
 			this.encoder = null;
 		}
-		this.responses = BlockingQueueFactory.createQueue();
+		this.replyToKeys = BlockingQueueFactory.createQueue();
 
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
-				if(null != responses.peek()) {
-					responses.remove().accept(in);
-				}
-			}
-		});
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				if(null != responses.peek()) {
-					responses.remove().accept(throwable);
+				try {
+					AbstractTcpConnection.this.eventsReactor.notify(replyToKeys.remove(), Event.wrap(in));
+				} catch(NoSuchElementException ignored) {
 				}
 			}
 		});
@@ -193,7 +189,9 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	@Override
 	public Promise<IN> sendAndReceive(OUT data) {
 		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
-		responses.add(d);
+		Tuple2<Selector, Object> tup = $();
+		eventsReactor.on(tup.getT1(), new EventConsumer<IN>(d)).cancelAfterUse();
+		replyToKeys.add(tup.getT2());
 		send(data, null);
 		return d.compose();
 	}
@@ -206,8 +204,6 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * 		The outgoing data.
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
-	 *
-	 * @return {@literal this}
 	 */
 	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
 		Reactors.schedule(
