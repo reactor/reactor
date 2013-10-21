@@ -32,7 +32,7 @@ ext {
 	disruptorVersion = '3.2.0'
 	springVersion = '3.2.3.RELEASE'
 	siVersion = '3.0.0.M2'
-	nettyVersion = '4.0.10.Final'
+	nettyVersion = '4.0.11.Final'
 	jacksonDatabindVersion = '2.2.3'
 	jsonPathVersion = '0.9.0'
 	hadoopVersion = '1.1.2'
