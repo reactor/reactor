@@ -40,6 +40,13 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 		this.persistor = (null == persistor ? new InMemoryQueuePersistor<T>() : persistor);
 	}
 
+	/**
+	 * Close the underlying {@link reactor.queue.QueuePersistor} and release any resources.
+	 */
+	public void close() {
+		persistor.close();
+	}
+
 	@Nonnull
 	public Iterator<T> iterator() {
 		return persistor.iterator();
