@@ -71,10 +71,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	                                Reactor eventsReactor) {
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
-		this.ioReactor = Reactors.reactor()
-		                         .env(env)
-		                         .dispatcher(ioDispatcher)
-		                         .get();
+		this.ioReactor = Reactors.reactor(env, ioDispatcher);
 		this.eventsReactor = eventsReactor;
 		if(null != codec) {
 			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getT2(), eventsReactor));
