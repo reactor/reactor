@@ -1,3 +1,18 @@
+/*
+ * Copyright 2002-2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package reactor.tcp.support;
 
 import reactor.util.Assert;
@@ -10,8 +25,20 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 /**
- * @author Jon Brisbin
- */
+ * NOTE: This code is a copy of that available in the Spring Framework.
+ *
+ * <p>Simple utility methods for working with network sockets &mdash; for example,
+ * for finding available ports on {@code localhost}.</p>
+ *
+ * <p>Within this class, a TCP port refers to a port for a {@link ServerSocket};
+ * whereas, a UDP port refers to a port for a {@link DatagramSocket}.</p>
+ *
+ * @author Sam Brannen
+ * @author Ben Hale
+ * @author Arjen Poutsma
+ * @author Gunnar Hillert
+ * @see <a href="http://spring.io">Borrowed from the Spring Framework</a>
+ * */
 public final class SocketUtils {
 
 	/**
