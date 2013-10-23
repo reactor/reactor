@@ -16,11 +16,16 @@
 
 package reactor.tcp;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
@@ -61,9 +66,10 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpServerTests {
 
+	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
 	final ExecutorService threadPool = Executors.newCachedThreadPool();
-	final int             msgs       = 100;
-	final int             threads    = 2;
+	final int             msgs       = 150;
+	final int             threads    = 4;
 
 	Environment    env;
 	CountDownLatch latch;
@@ -225,8 +231,7 @@ public class TcpServerTests {
 
 		TcpServer<Frame, Frame> server = new TcpServerSpec<Frame, Frame>(NettyTcpServer.class)
 				.env(env)
-						//.synchronousDispatcher()
-				.dispatcher(Environment.RING_BUFFER)
+				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
 						         .backlog(1000)
 						         .reuseAddr(true)
@@ -260,7 +265,7 @@ public class TcpServerTests {
 					}
 				});
 
-		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(60, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -324,6 +329,71 @@ public class TcpServerTests {
 		server.shutdown().await();
 	}
 
+	@Test
+	public void exposesHttpServer() throws InterruptedException {
+		final int port = SocketUtils.findAvailableTcpPort();
+
+		final TcpServer<HttpRequest, HttpResponse> server
+				= new TcpServerSpec<HttpRequest, HttpResponse>(NettyTcpServer.class)
+				.env(env)
+				.listen(port)
+				.options(new NettyServerSocketOptions()
+						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+							         @Override
+							         public void accept(ChannelPipeline pipeline) {
+								         pipeline.addLast(new HttpRequestDecoder());
+								         pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+								         pipeline.addLast(new HttpResponseEncoder());
+							         }
+						         }))
+				.consume(new Consumer<TcpConnection<HttpRequest, HttpResponse>>() {
+					@Override
+					public void accept(final TcpConnection<HttpRequest, HttpResponse> conn) {
+						conn.in().consume(new Consumer<HttpRequest>() {
+							@Override
+							public void accept(HttpRequest req) {
+								ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
+								int len = buf.readableBytes();
+								DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
+										HttpVersion.HTTP_1_1,
+										HttpResponseStatus.OK,
+										buf
+								);
+								resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
+								resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
+								resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
+
+								conn.send(resp);
+
+								if(req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
+									latch.countDown();
+								}
+							}
+						});
+					}
+				})
+				.get();
+
+		log.info("Starting HTTP server on http://localhost:{}/", port);
+		server.start(new Consumer<Void>() {
+			@Override
+			public void accept(Void v) {
+				for(int i = 0; i < threads; i++) {
+					threadPool.submit(new HttpRequestWriter(port));
+				}
+			}
+		});
+
+		assertTrue("Latch was counted down", latch.await(15, TimeUnit.SECONDS));
+		end.set(System.currentTimeMillis());
+
+		double elapsed = (end.get() - start.get());
+		System.out.println("HTTP elapsed: " + (int)elapsed + "ms");
+		System.out.println("HTTP throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+
+		server.shutdown().await();
+	}
+
 	public static class Pojo {
 		private String name;
 
@@ -350,7 +420,7 @@ public class TcpServerTests {
 		}
 	}
 
-	private class LengthFieldMessageWriter extends Thread {
+	private class LengthFieldMessageWriter implements Runnable {
 		private final Random rand = new Random();
 		private final int port;
 		private final int length;
@@ -385,7 +455,7 @@ public class TcpServerTests {
 		}
 	}
 
-	private class FramedLengthFieldMessageWriter extends Thread {
+	private class FramedLengthFieldMessageWriter implements Runnable {
 		private final short length = 128;
 		private final int port;
 
@@ -415,6 +485,30 @@ public class TcpServerTests {
 
 					count.incrementAndGet();
 				}
+				ch.close();
+			} catch(IOException e) {
+			}
+		}
+	}
+
+	private class HttpRequestWriter implements Runnable {
+		private final int port;
+
+		private HttpRequestWriter(int port) {
+			this.port = port;
+		}
+
+		@Override
+		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
+				start.set(System.currentTimeMillis());
+				for(int i = 0; i < msgs; i++) {
+					ch.write(Buffer.wrap("GET /test HTTP/1.1\r\nConnection: Close\r\n\r\n").byteBuffer());
+					ByteBuffer buff = ByteBuffer.allocate(4 * 1024);
+					ch.read(buff);
+				}
+				ch.close();
 			} catch(IOException e) {
 			}
 		}

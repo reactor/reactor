@@ -106,16 +106,20 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
 
-						log.debug("CONNECT {}", ch);
+						if(log.isDebugEnabled()) {
+							log.debug("CONNECT {}", ch);
+						}
 
 						if(null != sslOpts) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOpts, false).get();
-							log.debug("SSL enabled using keystore {}",
-							          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							if(log.isDebugEnabled()) {
+								log.debug("SSL enabled using keystore {}",
+								          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if(options instanceof NettyServerSocketOptions && null != ((NettyServerSocketOptions)options)
-								.pipelineConfigurer()) {
+						if(options instanceof NettyServerSocketOptions
+								&& null != ((NettyServerSocketOptions)options).pipelineConfigurer()) {
 							((NettyServerSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
@@ -150,8 +154,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(getReactor().getDispatcher())
-		                                                .get();
+		final Deferred<Void, Promise<Void>> d = Promises.defer(env, getReactor().getDispatcher());
 		Reactors.schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})

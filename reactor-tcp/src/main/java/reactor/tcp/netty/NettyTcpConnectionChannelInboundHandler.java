@@ -40,26 +40,13 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	}
 
 	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			// TODO: do we even care?
-			if(log.isInfoEnabled()) {
-				log.info(ctx.channel().toString() + " " + cause.getMessage());
-			}
-		} else {
-			conn.notifyError(cause);
-		}
-		ctx.close();
-	}
-
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object m) throws Exception {
-		if(!(m instanceof ByteBuf)) {
-			conn.notifyRead(m);
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		if(!(msg instanceof ByteBuf)) {
+			conn.notifyRead(msg);
 			return;
 		}
 
-		ByteBuf data = (ByteBuf)m;
+		ByteBuf data = (ByteBuf)msg;
 		if(remainder == null) {
 			try {
 				passToConnection(data);
@@ -95,8 +82,16 @@ class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapt
 	}
 
 	@Override
-	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		ctx.flush();
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+		if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
+			// TODO: do we even care?
+			if(log.isInfoEnabled()) {
+				log.info(ctx.channel().toString() + " " + cause.getMessage());
+			}
+		} else {
+			conn.notifyError(cause);
+		}
+		ctx.close();
 	}
 
 	private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {
