@@ -24,6 +24,7 @@ import org.junit.Test;
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
 import reactor.function.Consumer;
+import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
 import reactor.tcp.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyClientSocketOptions;
@@ -184,9 +185,12 @@ public class TcpClientTests {
 					}
 				});
 
+				BatchConsumer<String> out = conn.out();
+				out.start();
 				for(int i = 0; i < messages; i++) {
-					conn.out().accept("Hello World!");
+					out.accept("Hello World!");
 				}
+				out.end();
 			}
 		});
 
@@ -275,6 +279,9 @@ public class TcpClientTests {
 
 		assertTrue(connectionLatch.await(5, TimeUnit.SECONDS));
 		echoServer.close();
+		// ensure ports are closed
+		threadPool.shutdown();
+		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 
 		assertTrue(reconnectionLatch.await(5, TimeUnit.SECONDS));
 	}

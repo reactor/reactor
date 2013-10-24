@@ -32,6 +32,7 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
 import reactor.queue.BlockingQueueFactory;
 import reactor.tcp.encoding.Codec;
@@ -120,15 +121,8 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	@Override
-	public Deferred<OUT, Stream<OUT>> out() {
-		Deferred<OUT, Stream<OUT>> d = Streams.<OUT>defer(env, eventsReactor.getDispatcher());
-		d.compose().consume(new Consumer<OUT>() {
-			@Override
-			public void accept(OUT out) {
-				send(out, null);
-			}
-		});
-		return d;
+	public BatchConsumer<OUT> out() {
+		return new WriteConsumer(null);
 	}
 
 	@Override
@@ -203,34 +197,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	 * 		The callback to invoke when the write is complete.
 	 */
 	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
-		Reactors.schedule(
-				new Consumer<OUT>() {
-					@Override
-					public void accept(OUT data) {
-						try {
-							if(null != encoder) {
-								Buffer bytes = encoder.apply(data);
-								if(bytes.remaining() > 0) {
-									write(bytes, onComplete);
-								}
-							} else {
-								if(Buffer.class.isInstance(data)) {
-									write((Buffer)data, onComplete);
-								} else {
-									write(data, onComplete);
-								}
-							}
-						} catch(Throwable t) {
-							eventsReactor.notify(t.getClass(), Event.wrap(t));
-							if(null != onComplete) {
-								onComplete.accept(t);
-							}
-						}
-					}
-				},
-				data,
-				ioReactor
-		);
+		Reactors.schedule(new WriteConsumer(onComplete), data, ioReactor);
 	}
 
 	/**
@@ -253,23 +220,71 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	/**
-	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
+	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
 	 * @param data
 	 * 		The data to write, as a {@link Buffer}.
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Buffer data, Deferred<Void, Promise<Void>> onComplete);
+	protected abstract void write(Buffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
 
 	/**
-	 * Subclasses should override this method to perform the actual IO of writing data to the connection.
+	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
 	 * @param data
 	 * 		The data to write.
 	 * @param onComplete
 	 * 		The callback to invoke when the write is complete.
 	 */
-	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete);
+	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
+
+	/**
+	 * Subclasses must implement this method to perform IO flushes.
+	 */
+	protected abstract void flush();
+
+	private final class WriteConsumer implements BatchConsumer<OUT> {
+		private final Deferred<Void, Promise<Void>> onComplete;
+		private volatile boolean autoflush = true;
+
+		private WriteConsumer(Deferred<Void, Promise<Void>> onComplete) {
+			this.onComplete = onComplete;
+		}
+
+		@Override
+		public void start() {
+			autoflush = false;
+		}
+
+		@Override
+		public void end() {
+			flush();
+			autoflush = true;
+		}
+
+		@Override
+		public void accept(OUT data) {
+			try {
+				if(null != encoder) {
+					Buffer bytes = encoder.apply(data);
+					if(bytes.remaining() > 0) {
+						write(bytes, onComplete, autoflush);
+					}
+				} else {
+					if(Buffer.class.isInstance(data)) {
+						write((Buffer)data, onComplete, autoflush);
+					} else {
+						write(data, onComplete, autoflush);
+					}
+				}
+			} catch(Throwable t) {
+				eventsReactor.notify(t.getClass(), Event.wrap(t));
+				if(null != onComplete) {
+					onComplete.accept(t);
+				}
+			}
+		}
+	}
 
 }

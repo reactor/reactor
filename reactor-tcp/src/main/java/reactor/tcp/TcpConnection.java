@@ -20,6 +20,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.function.batch.BatchConsumer;
 
 import java.net.InetSocketAddress;
 
@@ -74,7 +75,7 @@ public interface TcpConnection<IN, OUT> {
 	 *
 	 * @return An output {@link Consumer}.
 	 */
-	Consumer<OUT> out();
+	BatchConsumer<OUT> out();
 
 	/**
 	 * Set an error {@link Consumer} for errors that happen on the connection.
