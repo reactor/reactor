@@ -353,7 +353,7 @@ public class Reactor implements Observable, Linkable<Observable> {
 		}
 	}
 
-	private class ReplyToConsumer<E extends Event<?>, V> implements Consumer<E> {
+	public class ReplyToConsumer<E extends Event<?>, V> implements Consumer<E> {
 		private final Function<E, V> fn;
 
 		private ReplyToConsumer(Function<E, V> fn) {
@@ -385,6 +385,10 @@ public class Reactor implements Observable, Linkable<Observable> {
 			} catch(Throwable x) {
 				replyToObservable.notify(x.getClass(), Event.wrap(x));
 			}
+		}
+
+		public Function<E, V> getDelegate() {
+			return fn;
 		}
 	}
 
