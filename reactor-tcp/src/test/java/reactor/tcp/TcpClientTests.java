@@ -262,7 +262,7 @@ public class TcpClientTests {
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", echoServerPort)
+				.connect("localhost", abortServerPort)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -270,20 +270,16 @@ public class TcpClientTests {
 						reconnectionLatch.countDown();
 						return null;
 					}
-				}).consume(new Consumer<TcpConnection<Buffer, Buffer>>() {
-			@Override
-			public void accept(TcpConnection<Buffer, Buffer> connection) {
-				connectionLatch.countDown();
-			}
-		});
+				})
+				.consume(new Consumer<TcpConnection<Buffer, Buffer>>() {
+					@Override
+					public void accept(TcpConnection<Buffer, Buffer> connection) {
+						connectionLatch.countDown();
+					}
+				});
 
-		assertTrue(connectionLatch.await(5, TimeUnit.SECONDS));
-		echoServer.close();
-		// ensure ports are closed
-		threadPool.shutdown();
-		threadPool.awaitTermination(5, TimeUnit.SECONDS);
-
-		assertTrue(reconnectionLatch.await(5, TimeUnit.SECONDS));
+		assertTrue("Initial connection is made", connectionLatch.await(5, TimeUnit.SECONDS));
+		assertTrue("A reconnect attempt was made", reconnectionLatch.await(5, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -475,7 +471,7 @@ public class TcpClientTests {
 					SocketChannel ch = server.accept();
 					ch.close();
 				}
-			} catch(IOException e) {
+			} catch(Exception e) {
 				// Server closed
 			}
 		}

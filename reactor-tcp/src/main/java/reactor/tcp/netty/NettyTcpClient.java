@@ -246,14 +246,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		};
 	}
 
-	private ChannelFutureListener createReconnectListener(final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections,
+	private ChannelFutureListener createReconnectListener(final Deferred<TcpConnection<IN, OUT>,
+			Stream<TcpConnection<IN, OUT>>> connections,
 	                                                      final Reconnect reconnect) {
 		return new ChannelFutureListener() {
 			final AtomicInteger attempts = new AtomicInteger(0);
 			final ChannelFutureListener self = this;
 
 			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
+			public void operationComplete(final ChannelFuture future) throws Exception {
 				if(!future.isSuccess()) {
 					int attempt = attempts.incrementAndGet();
 					Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
@@ -262,7 +263,16 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						if(log.isErrorEnabled()) {
 							log.error("Reconnection to {} failed after {} attempts.", connectAddress, attempt - 1);
 						}
-						connections.accept(future.cause());
+						// hopefully avoid a race condition with user code currently assigning handlers
+						// by accepting on the 'next tick' of the event loop
+						future.channel().eventLoop().execute(
+								new Runnable() {
+									@Override
+									public void run() {
+										connections.accept(future.cause());
+									}
+								}
+						);
 						return;
 					}
 
@@ -297,7 +307,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							NettyTcpClient.this.connections.unregister(future.channel());
 							notifyClose(conn);
 							if(!conn.isClosing()) {
-								createConnection(self);
+								int attempt = attempts.incrementAndGet();
+								Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
+								if(null == tup) {
+									// do not attempt a reconnect
+								} else {
+									createConnection(self);
+								}
 							}
 						}
 					});
