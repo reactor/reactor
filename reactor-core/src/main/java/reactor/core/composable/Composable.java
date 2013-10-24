@@ -59,10 +59,7 @@ public abstract class Composable<T> {
 	private long acceptCount = 0l;
 	private long errorCount  = 0l;
 
-	protected <U> Composable(
-			@Nonnull Dispatcher dispatcher,
-			@Nullable Composable<U> parent
-	) {
+	protected <U> Composable(@Nonnull Dispatcher dispatcher, @Nullable Composable<U> parent) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.events = new Reactor(dispatcher);
 		this.parent = parent;
@@ -81,7 +78,7 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
-		if(composable == this){
+		if(composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
 		consumeEvent(new Consumer<Event<T>>() {
@@ -301,8 +298,8 @@ public abstract class Composable<T> {
 	void notifyValue(Event<T> value) {
 		lock.lock();
 		try {
-			acceptCount++;
 			valueAccepted(value.getData());
+			acceptCount++;
 		} finally {
 			lock.unlock();
 		}
@@ -318,8 +315,8 @@ public abstract class Composable<T> {
 	void notifyError(Throwable error) {
 		lock.lock();
 		try {
-			errorCount++;
 			errorAccepted(error);
+			errorCount++;
 		} finally {
 			lock.unlock();
 		}

@@ -16,22 +16,11 @@
 
 package reactor.core.composable;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.number.OrderingComparison.lessThan;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.hamcrest.Matcher;
 import org.junit.Test;
-
 import reactor.AbstractReactorTest;
 import reactor.core.Reactor;
+import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
@@ -42,6 +31,18 @@ import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.support.Tap;
 import reactor.tuple.Tuple2;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.number.OrderingComparison.lessThan;
+import static org.junit.Assert.assertEquals;
 
 /**
  * @author Jon Brisbin
@@ -105,9 +106,9 @@ public class ComposableTests extends AbstractReactorTest {
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Deferred<String, Stream<String>> d =
 				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"))
-				 .env(env)
-				 .dispatcher("eventLoop")
-				 .get();
+				       .env(env)
+				       .dispatcher("eventLoop")
+				       .get();
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
@@ -116,7 +117,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 					 @Override
 					 public Integer apply(Integer i) {
-						 if (i >= 5) {
+						 if(i >= 5) {
 							 throw new IllegalArgumentException();
 						 }
 						 sum += i;
@@ -200,7 +201,7 @@ public class ComposableTests extends AbstractReactorTest {
 			@Override
 			public void accept(List<Integer> is) {
 				batchCount.incrementAndGet();
-				for (int i : is) {
+				for(int i : is) {
 					count.addAndGet(i);
 				}
 			}
@@ -222,7 +223,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 					 @Override
 					 public Integer apply(Integer i) {
-						 if (i >= 5) {
+						 if(i >= 5) {
 							 throw new IllegalArgumentException();
 						 }
 						 sum += i;
@@ -238,6 +239,45 @@ public class ComposableTests extends AbstractReactorTest {
 
 		await(2, s, is(7));
 		assertThat("error handler was invoked", latch.getCount(), is(0L));
+	}
+
+	@Test
+	public void promiseAcceptCountCannotExceedOne() {
+		Deferred<Object, Promise<Object>> deferred = Promises.<Object>defer().get();
+		deferred.accept("alpha");
+		try {
+			deferred.accept("bravo");
+		} catch(IllegalStateException ise) {
+			// Swallow
+		}
+		assertEquals(1, deferred.compose().getAcceptCount());
+	}
+
+	@Test
+	public void promiseErrorCountCannotExceedOne() {
+		Deferred<Object, Promise<Object>> deferred = Promises.<Object>defer().get();
+		Throwable error = new Exception();
+		deferred.accept(error);
+		try {
+			deferred.accept(error);
+		} catch(IllegalStateException ise) {
+			// Swallow
+		}
+		assertEquals(1, deferred.compose().getErrorCount());
+	}
+
+	@Test
+	public void promiseAcceptCountAndErrorCountCannotExceedOneInTotal() {
+		Deferred<Object, Promise<Object>> deferred = Promises.<Object>defer().get();
+		Throwable error = new Exception();
+		deferred.accept(error);
+		try {
+			deferred.accept("alpha");
+		} catch(IllegalStateException ise) {
+			// Swallow
+		}
+		assertEquals(1, deferred.compose().getErrorCount());
+		assertEquals(0, deferred.compose().getAcceptCount());
 	}
 
 	<T> void await(Stream<T> s, Matcher<T> expected) throws InterruptedException {
@@ -266,7 +306,7 @@ public class ComposableTests extends AbstractReactorTest {
 		try {
 			latch.await(1, TimeUnit.SECONDS);
 			result = ref.get();
-		} catch (Exception e) {
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
 		long duration = System.currentTimeMillis() - startTime;
