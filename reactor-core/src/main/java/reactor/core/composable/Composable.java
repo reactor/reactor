@@ -336,7 +336,7 @@ public abstract class Composable<T> {
 	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
 
 	/**
-	 * Called after {@code errorCount} has been incremented, but before {@link Consumer}s have been notified.
+	 * Called before {@code errorCount} has been incremented and {@link Consumer}s have been notified.
 	 *
 	 * @param error
 	 * 		the error being propagated
@@ -344,7 +344,7 @@ public abstract class Composable<T> {
 	protected abstract void errorAccepted(Throwable error);
 
 	/**
-	 * Called after {@code acceptCount} has been incremented, but before {@link Consumer}s have been notified.
+	 * Called before {@code acceptCount} has been incremented and {@link Consumer}s have been notified.
 	 *
 	 * @param value
 	 * 		the value being accepted
