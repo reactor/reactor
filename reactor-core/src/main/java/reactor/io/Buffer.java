@@ -1183,6 +1183,47 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
+	 * Search the buffer and find the position of the first occurrence of the given {@code byte}.
+	 *
+	 * @param b
+	 * 		the {@code byte} to search for
+	 *
+	 * @return the position of the char in the buffer or {@code -1} if not found
+	 */
+	public int indexOf(byte b) {
+		return indexOf(b, buffer.position(), buffer.remaining());
+	}
+
+	/**
+	 * Search the buffer and find the position of the first occurrence of the given {@code byte} staring at the start
+	 * position and searching until (and including) the end position.
+	 *
+	 * @param b
+	 * 		the {@code byte} to search for
+	 * @param start
+	 * 		the position to start searching
+	 * @param end
+	 * 		the position at which to stop searching
+	 *
+	 * @return the position of the char in the buffer or {@code -1} if not found
+	 */
+	public int indexOf(byte b, int start, int end) {
+		snapshot();
+		if(buffer.position() != start) {
+			buffer.position(start);
+		}
+		int pos = -1;
+		while(buffer.hasRemaining() && buffer.position() < end) {
+			if(buffer.get() == b) {
+				pos = buffer.position();
+				break;
+			}
+		}
+		reset();
+		return pos;
+	}
+
+	/**
 	 * Create a {@link View} of the current range of this {@link Buffer}.
 	 *
 	 * @return The view of the buffer

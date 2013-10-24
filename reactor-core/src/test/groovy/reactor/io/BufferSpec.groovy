@@ -399,4 +399,21 @@ class BufferSpec extends Specification {
 		copy.asString() == "Hello World!"
 	}
 
+	def "A Buffer can be searched"() {
+		given: "A Buffer"
+			def buffer = Buffer.wrap("Hello World!")
+
+		when: "the Buffer is searched"
+		def pos = buffer.indexOf((byte)0x21)
+
+		then: "the char is found"
+		pos == 12
+
+		when: "the Buffer is searched within a range"
+		pos = buffer.indexOf((byte)0x21, 0, 11)
+
+		then: "the char is not found"
+		pos == -1
+	}
+
 }
