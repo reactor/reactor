@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * <p/>
  * An example of creating a regex Selector would be:
  * <p/>
- * <code>Fn.R("event([0-9]+)")</code>
+ * <code>Selectors.R("event([0-9]+)")</code>
  * <p/>
  * This would match keys like:
  * <p/>
