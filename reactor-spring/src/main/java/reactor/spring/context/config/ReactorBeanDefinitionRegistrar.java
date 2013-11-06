@@ -1,4 +1,4 @@
-package reactor.spring.config;
+package reactor.spring.context.config;
 
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;

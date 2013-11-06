@@ -1,4 +1,4 @@
-package reactor.spring.config;
+package reactor.spring.context.config;
 
 import org.springframework.context.annotation.Import;
 
