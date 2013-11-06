@@ -48,7 +48,9 @@ ext {
 
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
-			"http://docs.oracle.com/javaee/6/api/"
+			"http://docs.oracle.com/javaee/6/api/",
+			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/",
+			"http://docs.spring.io/spring/docs/3.2.x/javadoc-api/"
 	] as String[]
 }
 
@@ -152,12 +154,6 @@ configure(allprojects) { project ->
 		// Code coverage
 		jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
 	}
-
-	ext.javadocLinks = [
-			"http://docs.oracle.com/javase/7/docs/api/",
-			"http://docs.oracle.com/javaee/6/api/",
-			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/"
-	] as String[]
 }
 
 configure(subprojects - project(":reactor-benchmark")) { subproject ->
@@ -215,7 +211,7 @@ configure(rootProject) {
 		options.memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
 		options.author = true
 		options.header = rootProject.description
-		//options.overview = "src/api/overview.html"
+		options.overview = "src/api/overview.html"
 		options.stylesheetFile = file("src/api/stylesheet.css")
 		options.links(project.ext.javadocLinks)
 
@@ -238,9 +234,9 @@ project('reactor-core') {
 	apply plugin: 'osgi'
 
 	ext.bundleImportPackages = [
-		'net.openhft.chronicle;resolution:=optional',
-		'net.openhft.chronicle.tools;resolution:=optional',
-		'*'
+			'net.openhft.chronicle;resolution:=optional',
+			'net.openhft.chronicle.tools;resolution:=optional',
+			'*'
 	]
 
 	dependencies {
@@ -260,7 +256,7 @@ project('reactor-core') {
 
 	jar {
 		manifest {
-			instruction 'Import-Package' , bundleImportPackages.join(',')
+			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
 	}
 }
@@ -301,7 +297,8 @@ project('reactor-spring') {
 				"org.springframework:spring-context-support:$springVersion",
 				"org.springframework:spring-core:$springVersion",
 				"org.springframework:spring-expression:$springVersion",
-				"org.springframework:spring-tx:$springVersion"
+				"org.springframework:spring-tx:$springVersion",
+				"com.jayway.jsonpath:json-path:$jsonPathVersion"
 
 		// Testing
 		testCompile "org.spockframework:spock-spring:$spockVersion",

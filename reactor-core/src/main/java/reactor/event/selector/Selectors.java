@@ -79,7 +79,7 @@ public abstract class Selectors {
 	 * @return The new {@link ObjectSelector}.
 	 *
 	 * @see ObjectSelector
-	 * @see {@link String#format(String, Object...)}
+	 * @see String#format(String, Object...)
 	 */
 	public static Selector $(String fmt, Object... args) {
 		return object(String.format(fmt, args));
@@ -187,7 +187,7 @@ public abstract class Selectors {
 	 *
 	 * @return PredicateSelector
 	 *
-	 * @see {@link PredicateSelector}
+	 * @see PredicateSelector
 	 */
 	public static Selector predicate(Predicate<Object> predicate) {
 		return new PredicateSelector(predicate);
