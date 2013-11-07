@@ -7,7 +7,7 @@ import reactor.function.Predicate;
  *
  * @author Jon Brisbin
  */
-public class PredicateSelector extends ObjectSelector<Predicate<Object>> {
+public class PredicateSelector<T> extends ObjectSelector<Predicate<Object>,T> {
 
 	public PredicateSelector(Predicate<Object> object) {
 		super(object);

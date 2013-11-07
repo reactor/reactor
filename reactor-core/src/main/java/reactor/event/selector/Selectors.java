@@ -49,7 +49,7 @@ public abstract class Selectors {
 	 * @see ObjectSelector
 	 */
 	public static <T> Selector object(T obj) {
-		return new ObjectSelector<T>(obj);
+		return new ObjectSelector<T, T>(obj);
 	}
 
 	/**

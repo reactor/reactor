@@ -29,12 +29,12 @@ import java.util.*;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public class ObjectSelector<T> implements Selector {
+public class ObjectSelector<M, T> implements Selector<M, T> {
 
 	private final UUID   uuid    = UUIDUtils.create();
 	private final Object monitor = new Object();
 
-	private final T                 object;
+	private final M                 object;
 	private       SortedSet<String> tags;
 
 	/**
@@ -42,7 +42,7 @@ public class ObjectSelector<T> implements Selector {
 	 *
 	 * @param object The object to wrap.
 	 */
-	public ObjectSelector(T object) {
+	public ObjectSelector(M object) {
 		this.object = object;
 	}
 
@@ -53,8 +53,8 @@ public class ObjectSelector<T> implements Selector {
 	 * @param <T> The type of the object.
 	 * @return The new {@link Selector}.
 	 */
-	public static <T> Selector objectSelector(T obj) {
-		return new ObjectSelector<T>(obj);
+	public static <M, T> Selector objectSelector(M obj) {
+		return new ObjectSelector<M, T>(obj);
 	}
 
 	@Override
@@ -63,12 +63,12 @@ public class ObjectSelector<T> implements Selector {
 	}
 
 	@Override
-	public T getObject() {
+	public M getObject() {
 		return object;
 	}
 
 	@Override
-	public boolean matches(Object key) {
+	public boolean matches(T key) {
 		return !(null == object && null != key) && (object != null && object.equals(key));
 	}
 
@@ -79,7 +79,7 @@ public class ObjectSelector<T> implements Selector {
 
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
-		return new ObjectSelector<T>(object);
+    return new ObjectSelector<M, T>(object);
 	}
 
 	@Override

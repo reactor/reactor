@@ -25,7 +25,7 @@ import java.util.UUID;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector  {
+public interface Selector<M, T>  {
 
 	/**
 	 * Get the unique id of this Selector
@@ -39,7 +39,7 @@ public interface Selector  {
 	 *
 	 * @return The internal object.
 	 */
-	Object getObject();
+  M getObject();
 
 	/**
 	 * Indicates whether this Selector matches the {@code key}.
@@ -48,7 +48,7 @@ public interface Selector  {
 	 *
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
-	boolean matches(Object key);
+	boolean matches(T key);
 
 	/**
 	 * Return a component that can resolve headers from a key

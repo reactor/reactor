@@ -44,7 +44,7 @@ public class SimpleMethodSelectorResolver implements MethodSelectorResolver {
 			sel = methodNameToSelectorName(method.getName());
 		}
 
-		return (!"".equals(sel) ? new ObjectSelector<String>(sel) : null);
+		return (!"".equals(sel) ? new ObjectSelector<String, String>(sel) : null);
 	}
 
 	@Override

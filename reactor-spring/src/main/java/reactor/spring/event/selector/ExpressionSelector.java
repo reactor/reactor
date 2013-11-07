@@ -14,7 +14,7 @@ import reactor.event.selector.Selector;
  *
  * @author Jon Brisbin
  */
-public class ExpressionSelector extends ObjectSelector<Expression> {
+public class ExpressionSelector extends ObjectSelector<Expression, Object> {
 
 	private static final SpelExpressionParser SPEL_PARSER = new SpelExpressionParser();
 
@@ -27,7 +27,7 @@ public class ExpressionSelector extends ObjectSelector<Expression> {
 
 	@Override
 	public boolean matches(Object key) {
-		return getObject().getValue(evalCtx, key, Boolean.class);
+    return getObject().getValue(evalCtx, key, Boolean.class);
 	}
 
 	/**

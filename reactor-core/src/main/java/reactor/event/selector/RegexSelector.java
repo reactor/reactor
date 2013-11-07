@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public class RegexSelector extends ObjectSelector<Pattern> {
+public class RegexSelector extends ObjectSelector<Pattern, String> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
@@ -81,9 +81,8 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 	}
 
 	@Override
-	public boolean matches(Object key) {
-		return key instanceof String
-				&& getObject().matcher((String)key).matches();
+	public boolean matches(String key) {
+		return getObject().matcher(key).matches();
 	}
 
 	@Override

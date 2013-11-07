@@ -33,15 +33,15 @@ public abstract class GroovyTestUtils {
 	}
 
 	public static Selector $(long l) {
-		return new ObjectSelector<Long>(l);
+		return new ObjectSelector<Long, Long>(l);
 	}
 
 	public static Selector $(String s) {
-		return new ObjectSelector<String>(s);
+		return new ObjectSelector<String, String>(s);
 	}
 
 	public static Selector $(GString s) {
-		return new ObjectSelector<String>(s.toString());
+		return new ObjectSelector<String, String>(s.toString());
 	}
 
 	@SuppressWarnings({"rawtypes"})
