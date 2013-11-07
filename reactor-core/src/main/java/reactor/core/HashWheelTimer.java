@@ -6,15 +6,13 @@ import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.HeaderResolver;
-import reactor.event.selector.Selector;
+import reactor.event.selector.ObjectSelector;
 import reactor.function.Consumer;
 import reactor.function.support.CancelConsumerException;
 import reactor.function.support.SingleUseConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
-import reactor.util.UUIDUtils;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -213,35 +211,22 @@ public class HashWheelTimer {
 		return (long)(Math.ceil(System.currentTimeMillis() / resolution) * resolution);
 	}
 
-	private static class PeriodSelector implements Selector {
-		private final UUID uuid = UUIDUtils.create();
-		private final long period;
-		private final long delay;
+	private static class PeriodSelector extends ObjectSelector<Long, Long> {
+    private final long delay;
 		private final long createdMillis;
 		private final int  resolution;
 
 		private PeriodSelector(long period, long delay, int resolution) {
-			this.period = period;
+      super(period);
 			this.delay = delay;
 			this.resolution = resolution;
 			this.createdMillis = now(resolution);
 		}
 
 		@Override
-		public UUID getId() {
-			return uuid;
-		}
-
-		@Override
-		public Object getObject() {
-			return period;
-		}
-
-		@Override
-		public boolean matches(Object key) {
-			long now = (Long)key;
-			long period = (long)(Math.ceil((now - createdMillis) / resolution) * resolution);
-			return period >= delay && period % this.period == 0;
+		public boolean matches(Long key) {
+      long period = (long)(Math.ceil((key - createdMillis) / resolution) * resolution);
+			return period >= delay && period % this.getObject() == 0;
 		}
 
 		@Override
