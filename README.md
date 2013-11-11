@@ -1,6 +1,6 @@
 # Reactor
 
-`Reactor` is a foundation for asynchronous applications on the JVM. It provides abstractions for Java, Groovy and other JVM languages to make building event and data-driven applications easier. It’s also really fast. On modest hardware, it's possible to process around 15,000,000 events per second with the fastest non-blocking `Dispatcher`. Other dispatchers are available to provide the developer with a range of choices from thread-pool style, long-running task execution to non-blocking, high-volume task dispatching.
+`Reactor` is a foundational library building for reactive fast data applications on the JVM. It provides abstractions for Java, Groovy and other JVM languages to make building event and data-driven applications easier. It’s also really fast. On modest hardware, it's possible to process around 15,000,000 events per second with the fastest non-blocking `Dispatcher`. Other dispatchers are available to provide the developer with a range of choices from thread-pool style, long-running task execution to non-blocking, high-volume task dispatching.
 
 [![Build Status](https://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
 
@@ -21,14 +21,14 @@ This should cause the submodules to be compiled and the tests to be run. To inst
 Snapshot Maven artifacts are provided in the SpringSource snapshot repositories. To add this repo to your Gradle build, specify the URL like the following:
 
     ext {
-      reactorVersion = '1.0.0.BUILD-SNAPSHOT'
+      reactorVersion = '1.0.0.RELEASE'
     }
 
     repositories {
       mavenLocal()
-      //maven { url 'http://repo.springsource.org/libs-release' }
+      maven { url 'http://repo.springsource.org/libs-release' }
       //maven { url 'http://repo.springsource.org/libs-milestone' }
-      maven { url 'http://repo.springsource.org/libs-snapshot' }
+      //maven { url 'http://repo.springsource.org/libs-snapshot' }
       mavenCentral()
     }
 
@@ -46,6 +46,7 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
 * [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
 * [GitHub Issues](https://github.com/reactor/reactor/issues)
 * [Reference Documentation](https://github.com/reactor/reactor/wiki)
+* [API Documentation](http://reactor.github.io/docs/api/)
 
 ---
 
