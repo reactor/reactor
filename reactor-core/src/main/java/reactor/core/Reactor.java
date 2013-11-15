@@ -92,6 +92,24 @@ public class Reactor implements Observable, Linkable<Observable> {
 		     null);
 	}
 
+  /**
+   * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
+   * CachingRegistry}.
+   *
+   * @param dispatcher
+   * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
+   * 		used.
+   * @param eventRouter
+   * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
+   * 		in which case the default event router that broadcasts events to all of the registered consumers
+   * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
+   * 		conversion will be used.
+   */
+  public Reactor(Dispatcher dispatcher,
+                 EventRouter eventRouter) {
+    this(dispatcher, eventRouter, new CachingRegistry<Consumer<? extends Event<?>>>());
+  }
+
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
 	 *
@@ -103,12 +121,13 @@ public class Reactor implements Observable, Linkable<Observable> {
 	 * 		in which case the default event router that broadcasts events to all of the registered consumers
 	 * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
 	 * 		conversion will be used.
+   * @param consumerRegistry
+   *    The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
 	 */
-	public Reactor(Dispatcher dispatcher,
-	               EventRouter eventRouter) {
+  public Reactor(Dispatcher dispatcher, EventRouter eventRouter, Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
-		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>();
+		this.consumerRegistry = consumerRegistry;
 
 		this.on(new Consumer<Event>() {
 			@Override
