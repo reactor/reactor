@@ -71,8 +71,8 @@ public class Reactor implements Observable, Linkable<Observable> {
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
-			//avoid passing itself as error handler
-			dispatcher.dispatch(t.getClass(), Event.wrap(t).setKey(t.getClass()), consumerRegistry, null, eventRouter, null);
+			Class<? extends Throwable> type = t.getClass();
+			eventRouter.route(type, Event.wrap(t).setKey(type), consumerRegistry.select(type), null, null);
 		}
 	};
 	private final Set<Observable>     linkedReactors = Collections.synchronizedSet(new HashSet<Observable>());
