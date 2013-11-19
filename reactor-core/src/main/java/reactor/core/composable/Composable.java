@@ -18,15 +18,14 @@ package reactor.core.composable;
 
 import reactor.core.Observable;
 import reactor.core.Reactor;
-import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
-import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
+import reactor.operations.*;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -39,9 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)}
  * and {@link #filter(reactor.function.Predicate)} methods.
  *
- * @param <T>
- * 		The type of the values
- *
+ * @param <T> The type of the values
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -51,6 +48,7 @@ public abstract class Composable<T> {
 	protected final ReentrantLock lock = new ReentrantLock();
 
 	private final Tuple2<Selector, Object> accept = Selectors.$();
+	private final Tuple2<Selector, Object> error  = Selectors.$();
 	private final Tuple2<Selector, Object> flush  = Selectors.$();
 
 	private final Observable    events;
@@ -61,33 +59,48 @@ public abstract class Composable<T> {
 
 	protected <U> Composable(@Nonnull Dispatcher dispatcher, @Nullable Composable<U> parent) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
-		this.events = new Reactor(dispatcher);
+		this.events = parent == null ? new Reactor(dispatcher) : parent.events;
 		this.parent = parent;
-		if(parent != null) {
-			parent.cascadeErrors(this);
+		if (parent != null) {
+			events.on(parent.error.getT1(),
+					new ForwardOperation<Throwable>(events, error.getT2(), null));
 		}
 	}
 
+
+
+	/**
+	 * Assign an error handler to exceptions of the given type.
+	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param onError       the error handler for each exception
+	 * @param <E>           type of the exception to handle
+	 * @return {@literal this}
+	 */
+	public <E extends Throwable> Composable<T> when(@Nonnull final Class<E> exceptionType,
+	                                                @Nonnull final Consumer<E> onError) {
+		this.events.on(error.getT1(), new Consumer<Event<E>>(){
+			@Override
+			public void accept(Event<E> e) {
+				if(Selectors.T(exceptionType).matches(e.getData().getClass())){
+					onError.accept(e.getData());
+				}
+			}
+		});
+		return this;
+	}
 	/**
 	 * Attach another {@code Composable} to this one that will cascade the value received by this {@code Composable} into
 	 * the next.
 	 *
-	 * @param composable
-	 * 		the next {@code Composable} to cascade events to
-	 *
+	 * @param composable the next {@code Composable} to cascade events to
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Composable<T> composable) {
-		if(composable == this) {
+		if (composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
-		consumeEvent(new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> event) {
-				composable.notifyValue(event);
-			}
-		});
-		cascadeErrors(composable);
+		addOperation(new ForwardOperation<T>(composable.events, composable.accept.getT2(), error.getT2()));
 		return this;
 	}
 
@@ -95,13 +108,11 @@ public abstract class Composable<T> {
 	 * Attach a {@link Consumer} to this {@code Composable} that will consume any values accepted by this {@code
 	 * Composable}.
 	 *
-	 * @param consumer
-	 * 		the conumer to invoke on each value
-	 *
+	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
-		this.events.on(accept.getT1(), new EventConsumer<T>(consumer));
+		addOperation(new CallbackOperation<T>(consumer, events, error.getT2()));
 		return this;
 	}
 
@@ -109,45 +120,23 @@ public abstract class Composable<T> {
 	 * Attach a {@link Consumer<Event>} to this {@code Composable} that will consume any values accepted by this {@code
 	 * Composable}.
 	 *
-	 * @param consumer
-	 * 		the conumer to invoke on each value
-	 *
+	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
 	public Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
-		this.events.on(accept.getT1(), consumer);
+		addOperation(new CallbackEventOperation<T>(consumer, events, error.getT2()));
 		return this;
 	}
 
 	/**
 	 * Pass values accepted by this {@code Composable} into the given {@link Observable}, notifying with the given key.
 	 *
-	 * @param key
-	 * 		the key to notify on
-	 * @param observable
-	 * 		the {@link Observable} to notify
-	 *
+	 * @param key        the key to notify on
+	 * @param observable the {@link Observable} to notify
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		consume(new NotifyConsumer<T>(key, observable));
-		return this;
-	}
-
-	/**
-	 * Assign an error handler to exceptions of the given type.
-	 *
-	 * @param exceptionType
-	 * 		the type of exceptions to handle
-	 * @param onError
-	 * 		the error handler for each exception
-	 * @param <E>
-	 * 		type of the exception to handle
-	 *
-	 * @return {@literal this}
-	 */
-	public <E extends Throwable> Composable<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		this.events.on(Selectors.T(exceptionType), new EventConsumer<E>(onError));
+		this.events.on(accept.getT1(), new ForwardOperation<T>(observable, key, null));
 		return this;
 	}
 
@@ -155,27 +144,14 @@ public abstract class Composable<T> {
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code V} and pass it into
 	 * another {@code Composable}.
 	 *
-	 * @param fn
-	 * 		the transformation function
-	 * @param <V>
-	 * 		the type of the return value of the transformation function
-	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		consumeEvent(new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> value) {
-				try {
-					V val = fn.apply(value.getData());
-					d.acceptEvent(value.copy(val));
-				} catch(Throwable e) {
-					d.accept(e);
-				}
-			}
-		});
+		addOperation(new MapOperation<T, V>(fn, events, d.compose().getAccept().getT2(), error.getT2()));
 		return d.compose();
 	}
 
@@ -184,9 +160,7 @@ public abstract class Composable<T> {
 	 * value is passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the
 	 * new {@code Composable}.
 	 *
-	 * @param fn
-	 * 		the predicate {@link Function} to test values against
-	 *
+	 * @param fn the predicate {@link Function} to test values against
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Function<T, Boolean> fn) {
@@ -202,9 +176,7 @@ public abstract class Composable<T> {
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
 	 *
-	 * @param p
-	 * 		the {@link Predicate} to test values against
-	 *
+	 * @param p the {@link Predicate} to test values against
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
@@ -216,31 +188,15 @@ public abstract class Composable<T> {
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is propagated into the {@code
 	 * elseComposable}.
 	 *
-	 * @param p
-	 * 		the {@link Predicate} to test values against
-	 * @param elseComposable
-	 * 		the optional {@link reactor.core.composable.Composable} to pass rejected values
-	 *
+	 * @param p              the {@link Predicate} to test values against
+	 * @param elseComposable the optional {@link reactor.core.composable.Composable} to pass rejected values
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		consumeEvent(new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> value) {
-				boolean b = p.test(value.getData());
-				if(b) {
-					d.acceptEvent(value);
-				} else {
-					if(null != elseComposable) {
-						elseComposable.notifyValue(value);
-					}
-					// GH-154: Verbose error level logging of every event filtered out by a Stream filter
-					// Fix: ignore Predicate failures and drop values rather than notifying of errors.
-					//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
-				}
-			}
-		});
+		addOperation(new FilterOperation<T>(p, events, d.compose().getAccept().getT2(), error.getT2(),
+				elseComposable.events,
+				elseComposable.accept.getT2()));
 		return d.compose();
 	}
 
@@ -278,7 +234,7 @@ public abstract class Composable<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> flush() {
-		if(null != parent) {
+		if (null != parent) {
 			parent.flush();
 		}
 		events.notify(flush.getT2(), new Event<Void>(null));
@@ -288,8 +244,7 @@ public abstract class Composable<T> {
 	/**
 	 * Notify this {@code Composable} that a value is being accepted by this {@code Composable}.
 	 *
-	 * @param value
-	 * 		the value to accept
+	 * @param value the value to accept
 	 */
 	void notifyValue(T value) {
 		notifyValue(Event.wrap(value));
@@ -309,8 +264,7 @@ public abstract class Composable<T> {
 	/**
 	 * Notify this {@code Composable} that an error is being propagated through this {@code Composable}.
 	 *
-	 * @param error
-	 * 		the error to propagate
+	 * @param error the error to propagate
 	 */
 	void notifyError(Throwable error) {
 		lock.lock();
@@ -320,17 +274,24 @@ public abstract class Composable<T> {
 		} finally {
 			lock.unlock();
 		}
-		events.notify(error.getClass(), Event.wrap(error));
+		events.notify(this.error.getT2(), Event.wrap(error));
+	}
+
+	/**
+	 * Consume events with the passed {@code Operation}
+	 *
+	 * @param operation the operation listening for values
+	 */
+	protected Composable<T> addOperation(Operation<Event<T>> operation){
+		this.events.on(accept.getT1(), operation);
+		return this;
 	}
 
 	/**
 	 * Create a {@link Deferred} that is compatible with the subclass of {@code Composable} in use.
 	 *
-	 * @param <V>
-	 * 		type the {@code Composable} handles
-	 * @param <C>
-	 * 		type of the {@code Composable} returned by the {@link Deferred#compose()} method.
-	 *
+	 * @param <V> type the {@code Composable} handles
+	 * @param <C> type of the {@code Composable} returned by the {@link Deferred#compose()} method.
 	 * @return a new {@link Deferred} backed by a {@code Composable} compatible with the current subclass.
 	 */
 	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
@@ -338,34 +299,16 @@ public abstract class Composable<T> {
 	/**
 	 * Called before {@code errorCount} has been incremented and {@link Consumer}s have been notified.
 	 *
-	 * @param error
-	 * 		the error being propagated
+	 * @param error the error being propagated
 	 */
 	protected abstract void errorAccepted(Throwable error);
 
 	/**
 	 * Called before {@code acceptCount} has been incremented and {@link Consumer}s have been notified.
 	 *
-	 * @param value
-	 * 		the value being accepted
+	 * @param value the value being accepted
 	 */
 	protected abstract void valueAccepted(T value);
-
-	/**
-	 * Adds an error {@link Consumer} to this {@code Composable} that will propagate errors to the given {@link
-	 * Composable}.
-	 *
-	 * @param composable
-	 * 		the {@code Composable} to propagate errors to
-	 */
-	protected void cascadeErrors(final Composable<?> composable) {
-		when(Throwable.class, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable t) {
-				composable.notifyError(t);
-			}
-		});
-	}
 
 	/**
 	 * Get the current {@link Observable}.
@@ -402,5 +345,4 @@ public abstract class Composable<T> {
 	protected Tuple2<Selector, Object> getFlush() {
 		return this.flush;
 	}
-
 }

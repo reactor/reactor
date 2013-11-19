@@ -27,7 +27,8 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.*;
 import reactor.function.support.Tap;
-import reactor.tuple.Tuple;
+import reactor.operations.CollectOperation;
+import reactor.operations.ReduceOperation;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -35,7 +36,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A {@code Stream} is a stateless event processor that provides methods for attaching {@link
@@ -232,19 +232,7 @@ public class Stream<T> extends Composable<T> {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 		final List<T> values = new ArrayList<T>();
 
-		consumeEvent(new Consumer<Event<T>>() {
-			@Override
-			public void accept(Event<T> value) {
-				synchronized(values) {
-					values.add(value.getData());
-					if(values.size() % batchSize != 0) {
-						return;
-					}
-					d.acceptEvent(value.copy((List<T>)new ArrayList<T>(values)));
-					values.clear();
-				}
-			}
-		});
+		addOperation(new CollectOperation<T>(this, values, d));
 
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
 			@Override
@@ -303,24 +291,7 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
 
-		consumeEvent(new Consumer<Event<T>>() {
-			private final AtomicLong count = new AtomicLong(0);
-			private A acc;
-
-			@Override
-			public void accept(Event<T> value) {
-				if(null == acc) {
-					acc = (null != accumulators ? accumulators.get() : null);
-				}
-				acc = fn.apply(Tuple.of(value.getData(), acc));
-
-				if(isBatch() && count.incrementAndGet() % batchSize == 0) {
-					d.acceptEvent(value.copy(acc));
-				} else if(!isBatch()) {
-					d.acceptEvent(value.copy(acc));
-				}
-			}
-		});
+		addOperation(new ReduceOperation<T, A>(this, accumulators, fn, d));
 
 		return d.compose();
 	}
