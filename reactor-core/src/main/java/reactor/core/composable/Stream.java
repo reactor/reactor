@@ -24,7 +24,6 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
-import reactor.event.support.EventConsumer;
 import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.operations.*;
@@ -87,21 +86,24 @@ public class Stream<T> extends Composable<T> {
 		this.batchSize = batchSize;
 		this.values = values;
 
-		if(values != null){
-			attachFlush();
-		}
+		attachFlush();
 	}
 
 	private void attachFlush() {
-		final BaseOperation<Iterable<T>> operation =
-				new ForEachOperation<T>(getObservable(), getAccept().getT2(), getError().getT2());
 
-		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
-			@Override
-			public void accept(Event<Void> event) {
-				operation.accept(event.copy(values));
-			}
-		});
+		if (isBatch() && getParent() != null) {
+			getObservable().on(getParent().getFlush().getT1(),
+					new ForwardOperation<Void>(getObservable(), getFlush().getT2(), null));
+			getObservable().on(((Stream<?>) getParent()).first.getT1(),
+					new ForwardOperation<Void>(getObservable(), first.getT2(), null));
+			getObservable().on(((Stream<?>) getParent()).last.getT1(),
+					new ForwardOperation<Void>(getObservable(), last.getT2(), null));
+		}
+
+		if (values != null) {
+			new ForEachOperation<T>(values, getObservable(), getAccept().getT2(), getError().getT2()).
+					attach(getFlush().getT1());
+		}
 	}
 
 	@Override
@@ -156,8 +158,9 @@ public class Stream<T> extends Composable<T> {
 	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
-		Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(first.getT1(), new EventConsumer<T>(d));
+		final Deferred<T, Stream<T>> d = createDeferredChildStream();
+		getObservable().on(first.getT1(), new ForwardOperation<T>(getObservable(), d.compose().getAccept().getT2(),
+				getError().getT2()));
 		return d.compose();
 	}
 
@@ -171,8 +174,9 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last() {
-		Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(last.getT1(), new EventConsumer<T>(d));
+		final Deferred<T, Stream<T>> d = createDeferredChildStream();
+		getObservable().on(last.getT1(), new ForwardOperation<T>(getObservable(), d.compose().getAccept().getT2(),
+				getError().getT2()));
 		return d.compose();
 	}
 
@@ -234,7 +238,7 @@ public class Stream<T> extends Composable<T> {
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
 				getError().getT2())
-				.attachFlush(getFlush().getT1()));
+				.attach(getFlush().getT1(), first.getT1()));
 
 		return d.compose();
 	}
@@ -278,7 +282,7 @@ public class Stream<T> extends Composable<T> {
 					accumulators,
 					fn,
 					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()
-			).attachFlush(getFlush().getT1()));
+			).attach(getFlush().getT1(), first.getT1()));
 		} else {
 			addOperation(new ScanOperation<T, A>(
 					accumulators,

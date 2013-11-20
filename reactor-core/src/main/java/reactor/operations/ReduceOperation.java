@@ -51,15 +51,34 @@ public class ReduceOperation<T, A> extends BaseOperation<T> {
 		return acc;
 	}
 
-	public ReduceOperation<T, A> attachFlush(Selector selector) {
-		getObservable().on(selector, new Consumer<Event<Void>>() {
-			@Override
-			public void accept(Event<Void> ev) {
-				notifyValue(ev.copy(acc));
-				acc = null;
-			}
-		});
+	public ReduceOperation<T, A> attach(Selector flushSelector, Selector firstSelector) {
+		if(flushSelector != null)
+			getObservable().on(flushSelector, new ReduceFlushOperation());
 
+		if(firstSelector != null)
+			getObservable().on(firstSelector, new ReduceFirstOperation());
 		return this;
+	}
+
+	private class ReduceFlushOperation extends BaseOperation<Void> {
+		public ReduceFlushOperation() {
+			super(ReduceOperation.this.getObservable(), ReduceOperation.this.getSuccessKey());
+		}
+
+		@Override
+		public void doOperation(Event<Void> ev) {
+			notifyValue(ev.copy(acc));
+		}
+	}
+
+	private class ReduceFirstOperation extends BaseOperation<Void> {
+		public ReduceFirstOperation() {
+			super(ReduceOperation.this.getObservable(), ReduceOperation.this.getSuccessKey());
+		}
+
+		@Override
+		public void doOperation(Event<Void> ev) {
+			acc = null;
+		}
 	}
 }

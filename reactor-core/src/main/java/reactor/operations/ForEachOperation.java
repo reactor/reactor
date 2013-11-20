@@ -17,14 +17,27 @@ package reactor.operations;
 
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.selector.Selector;
 
 /**
  * @author Stephane Maldini
  */
 public class ForEachOperation<T> extends BaseOperation<Iterable<T>> {
 
+	final private Iterable<T> values;
+
 	public ForEachOperation(Observable d, Object successKey, Object failureKey) {
+		this(null, d, successKey, failureKey);
+	}
+
+	public ForEachOperation(Iterable<T> values, Observable d, Object successKey, Object failureKey) {
 		super(d, successKey, failureKey);
+		this.values = values;
+	}
+
+	public ForEachOperation<T> attach(Selector flushKey){
+		getObservable().on(flushKey, new ForEachFlushOperation());
+		return this;
 	}
 
 	@Override
@@ -33,6 +46,18 @@ public class ForEachOperation<T> extends BaseOperation<Iterable<T>> {
 			for (T val : value.getData()) {
 				notifyValue(value.copy(val));
 			}
+		}
+	}
+
+	private class ForEachFlushOperation extends BaseOperation<Void> {
+		public ForEachFlushOperation() {
+			super(ForEachOperation.this.getObservable(), ForEachOperation.this.getSuccessKey());
+		}
+
+		@Override
+		public void doOperation(Event<Void> ev) {
+			if(values != null)
+				ForEachOperation.this.doOperation(ev.copy(values));
 		}
 	}
 }

@@ -40,20 +40,41 @@ public class CollectOperation<T> extends BaseOperation<T> {
 		}
 	}
 
-	public CollectOperation<T> attachFlush(Selector selector) {
-		getObservable().on(selector, new Consumer<Event<Void>>() {
-			@Override
-			public void accept(Event<Void> ev) {
-				synchronized (values) {
-					if (values.isEmpty()) {
-						return;
-					}
-					notifyValue(ev.copy(new ArrayList<T>(values)));
-					values.clear();
-				}
-			}
-		});
-
+	public CollectOperation<T> attach(Selector flushSelector, Selector firstSelector) {
+		if(null != flushSelector)
+			getObservable().on(flushSelector, new CollectFlushOperation());
+		if(null != firstSelector)
+			getObservable().on(firstSelector, new CollectFirstOperation());
 		return this;
+	}
+
+	private class CollectFlushOperation extends BaseOperation<Void> {
+		public CollectFlushOperation() {
+			super(CollectOperation.this.getObservable(), CollectOperation.this.getSuccessKey());
+		}
+
+		@Override
+		public void doOperation(Event<Void> ev) {
+			synchronized (values) {
+				if (values.isEmpty()) {
+					return;
+				}
+				notifyValue(ev.copy(new ArrayList<T>(values)));
+				values.clear();
+			}
+		}
+	}
+
+	private class CollectFirstOperation extends BaseOperation<Void> {
+		public CollectFirstOperation() {
+			super(CollectOperation.this.getObservable(), CollectOperation.this.getSuccessKey());
+		}
+
+		@Override
+		public void doOperation(Event<Void> ev) {
+			synchronized (values) {
+				values.clear();
+			}
+		}
 	}
 }

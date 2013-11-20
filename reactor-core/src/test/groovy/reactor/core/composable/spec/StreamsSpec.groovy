@@ -76,6 +76,7 @@ class StreamsSpec extends Specification {
       'the last value is retrieved'
       def last = s.last().tap()
       s.flush()
+	  println s.debug()
 
     then:
       'first and last'
@@ -392,6 +393,7 @@ class StreamsSpec extends Specification {
       'a consumer is registered'
       def values = []
       reduced.consume(consumer { values << it }).flush()
+	  println reduced.debug()
 
     then:
       'the consumer only receives the final value'

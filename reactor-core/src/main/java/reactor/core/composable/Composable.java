@@ -85,9 +85,9 @@ public abstract class Composable<T> {
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull final Class<E> exceptionType,
 	                                                @Nonnull final Consumer<E> onError) {
-		this.events.on(error.getT1(), new Consumer<Event<E>>() {
+		this.events.on(error.getT1(), new BaseOperation<E>(getObservable(), getAccept()) {
 			@Override
-			public void accept(Event<E> e) {
+			protected void doOperation(Event<E> e) {
 				if (Selectors.T(exceptionType).matches(e.getData().getClass())) {
 					onError.accept(e.getData());
 				}
@@ -232,7 +232,9 @@ public abstract class Composable<T> {
 		while(that.parent != null){
 			that = that.parent;
 		}
-		return OperationUtils.browseReactorOperations((Reactor)that.events, that.accept.getT2(), that.error.getT2());
+		return OperationUtils.browseReactorOperations((Reactor)that.events,
+				that.accept.getT2(), that.error.getT2(), that.flush.getT2()
+		);
 	}
 
 	/**

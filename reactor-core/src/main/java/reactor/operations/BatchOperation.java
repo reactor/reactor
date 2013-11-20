@@ -65,15 +65,20 @@ public class BatchOperation<T> extends BaseOperation<T> {
 		lock.lock();
 		try {
 			long accepted = (++acceptCount) % batchSize;
-			doNext(value);
+
 			if (accepted == 1 && firstKey != null) {
 				getObservable().notify(firstKey, value);
-			} else if (accepted == 0) {
+			}
+
+			doNext(value);
+
+			if (accepted == 0) {
 				if (lastKey != null) {
 					getObservable().notify(lastKey, value);
 				}
 				doFlush(value);
 			}
+
 		} finally {
 			lock.unlock();
 		}
