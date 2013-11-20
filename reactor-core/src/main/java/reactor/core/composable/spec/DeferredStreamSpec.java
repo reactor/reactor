@@ -75,7 +75,8 @@ public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<Deferre
 
 	@Override
 	protected Deferred<T, Stream<T>> configure(Dispatcher dispatcher, Environment env) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(dispatcher, batchSize, values, parent));
+		Stream<T> stream = new Stream<T>(dispatcher, batchSize, values, parent);
+		return new Deferred<T, Stream<T>>(stream, batchSize > 0 ? stream.batch(batchSize) : stream);
 	}
 
 }

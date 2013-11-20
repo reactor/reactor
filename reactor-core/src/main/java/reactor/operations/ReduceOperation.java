@@ -15,47 +15,51 @@
  */
 package reactor.operations;
 
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
+import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
-* @author Stephane Maldini
-*/
-public class ReduceOperation<T, A> implements Consumer<Event<T>> {
-	private       Stream                    stream;
-	private final AtomicLong                count;
-	private final Supplier<A>               accumulators;
-	private final Function<Tuple2<T, A>, A> fn;
-	private final Deferred<A, Stream<A>>    d;
-	private       A                         acc;
+ * @author Stephane Maldini
+ */
+public class ReduceOperation<T, A> extends BaseOperation<T> {
+	private final    Supplier<A>               accumulators;
+	private final    Function<Tuple2<T, A>, A> fn;
+	private volatile A                         acc;
 
-	public ReduceOperation(Stream stream, Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn, Deferred<A, Stream<A>> d) {
-		this.stream = stream;
+	public ReduceOperation(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
+	                       Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
 		this.accumulators = accumulators;
 		this.fn = fn;
-		this.d = d;
-		count = new AtomicLong(0);
 	}
 
 	@Override
-	public void accept(Event<T> value) {
+	protected void doOperation(Event<T> ev) {
 		if (null == acc) {
 			acc = (null != accumulators ? accumulators.get() : null);
 		}
-		acc = fn.apply(Tuple.of(value.getData(), acc));
+		acc = fn.apply(Tuple.of(ev.getData(), acc));
+	}
 
-		if (stream.isBatch() && count.incrementAndGet() % stream.batchSize == 0) {
-			d.acceptEvent(value.copy(acc));
-		} else if (!stream.isBatch()) {
-			d.acceptEvent(value.copy(acc));
-		}
+	protected A getAcc() {
+		return acc;
+	}
+
+	public ReduceOperation<T, A> attachFlush(Selector selector) {
+		getObservable().on(selector, new Consumer<Event<Void>>() {
+			@Override
+			public void accept(Event<Void> ev) {
+				notifyValue(ev.copy(acc));
+				acc = null;
+			}
+		});
+
+		return this;
 	}
 }

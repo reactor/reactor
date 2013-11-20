@@ -79,7 +79,13 @@ public final class StreamSpec<T> extends DispatcherComponentSpec<StreamSpec<T>, 
 			throw new IllegalStateException("A bounded stream must be configured with some values. Use " +
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
-		return new Stream<T>(dispatcher, batchSize, values, parent);
+		Stream<T> stream = new Stream<T>(dispatcher, batchSize, values, parent);
+
+		if(batchSize>0){
+			stream = stream.batch(batchSize);
+		}
+
+		return stream;
 	}
 
 }

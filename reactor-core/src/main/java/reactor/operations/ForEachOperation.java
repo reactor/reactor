@@ -17,22 +17,22 @@ package reactor.operations;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
  */
-public class CallbackOperation<T> extends BaseOperation<T> {
+public class ForEachOperation<T> extends BaseOperation<Iterable<T>> {
 
-	private final Consumer<T> consumer;
-
-	public CallbackOperation(Consumer<T> consumer, Observable d, Object failureKey) {
-		super(d, null, failureKey);
-		this.consumer = consumer;
+	public ForEachOperation(Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
 	}
 
 	@Override
-	public void doOperation(Event<T> value) {
-		consumer.accept(value.getData());
+	public void doOperation(Event<Iterable<T>> value) {
+		if (value.getData() != null) {
+			for (T val : value.getData()) {
+				notifyValue(value.copy(val));
+			}
+		}
 	}
 }

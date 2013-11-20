@@ -27,14 +27,12 @@ import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
 import reactor.function.*;
 import reactor.function.support.Tap;
-import reactor.operations.CollectOperation;
-import reactor.operations.ReduceOperation;
+import reactor.operations.*;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -50,9 +48,7 @@ import java.util.List;
  * {@link Dispatcher}, and other settings, then call {@link Deferred#compose()}, which will
  * return a {@code Stream} that handles the values passed into the {@link Deferred}.
  *
- * @param <T>
- * 		the type of the values in the stream
- *
+ * @param <T> the type of the values in the stream
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -78,75 +74,75 @@ public class Stream<T> extends Composable<T> {
 	 * </p>
 	 * The stream will accept errors from the given {@code parent}.
 	 *
-	 * @param dispatcher
-	 * 		The dispatcher used to drive event handlers
-	 * @param batchSize
-	 * 		The size of the batches, or {@code -1} for no batching
-	 * @param values
-	 * 		The stream's initial values. May be {@code null}
-	 * @param parent
-	 * 		The stream's parent. May be {@code null}
+	 * @param dispatcher The dispatcher used to drive event handlers
+	 * @param batchSize  The size of the batches, or {@code -1} for no batching
+	 * @param values     The stream's initial values. May be {@code null}
+	 * @param parent     The stream's parent. May be {@code null}
 	 */
-	public Stream(@Nonnull Dispatcher dispatcher,
+	public Stream(@Nonnull final Dispatcher dispatcher,
 	              int batchSize,
 	              @Nullable Iterable<T> values,
-	              @Nullable Composable<?> parent) {
+	              @Nullable final Composable<?> parent) {
 		super(dispatcher, parent);
 		this.batchSize = batchSize;
 		this.values = values;
 
+		if(values != null){
+			attachFlush();
+		}
+	}
+
+	private void attachFlush() {
+		final BaseOperation<Iterable<T>> operation =
+				new ForEachOperation<T>(getObservable(), getAccept().getT2(), getError().getT2());
+
 		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
 			@Override
-			public void accept(Event<Void> ev) {
-				if(null == Stream.this.values) {
-					return;
-				}
-				for(T val : Stream.this.values) {
-					Stream.this.notifyValue(val);
-				}
+			public void accept(Event<Void> event) {
+				operation.accept(event.copy(values));
 			}
 		});
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Consumer<T> consumer) {
-		return (Stream<T>)super.consume(consumer);
+		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Composable<T> consumer) {
-		return (Stream<T>)super.consume(consumer);
+		return (Stream<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		return (Stream<T>)super.consume(key, observable);
+		return (Stream<T>) super.consume(key, observable);
 	}
 
 	@Override
 	public Stream<T> flush() {
-		return (Stream<T>)super.flush();
+		return (Stream<T>) super.flush();
 	}
 
 	@Override
 	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		return (Stream<T>)super.when(exceptionType, onError);
+		return (Stream<T>) super.when(exceptionType, onError);
 	}
 
 	@Override
 	public <V> Stream<V> map(@Nonnull Function<T, V> fn) {
-		return (Stream<V>)super.map(fn);
+		return (Stream<V>) super.map(fn);
 	}
 
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p) {
-		return (Stream<T>)super.filter(p);
+		return (Stream<T>) super.filter(p);
 	}
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> composable) {
-		return (Stream<T>)super.filter(p, composable);
+		return (Stream<T>) super.filter(p, composable);
 	}
 
 	/**
@@ -157,7 +153,6 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
-	 *
 	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
@@ -187,15 +182,20 @@ public class Stream<T> extends Composable<T> {
 	 * an unbounded {@code Stream}, those methods have no meaning because there is no beginning or end of an unbounded
 	 * {@code Stream}.
 	 *
-	 * @param batchSize
-	 * 		the batch size to use
-	 *
+	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} containing the values from the parent
 	 */
 	public Stream<T> batch(final int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		consume(d);
-		return d.compose();
+		final Stream<T> stream = d.compose();
+		addOperation(new BatchOperation<T>(batchSize,
+				stream.getObservable(),
+				stream.getAccept().getT2(),
+				getError().getT2(),
+				stream.getFlush().getT2(),
+				stream.first.getT2(),
+				stream.last.getT2()));
+		return stream;
 	}
 
 	/**
@@ -212,7 +212,6 @@ public class Stream<T> extends Composable<T> {
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
 	 * @return the new {@link Tap}
-	 *
 	 * @see Supplier
 	 */
 	public Tap<T> tap() {
@@ -230,22 +229,12 @@ public class Stream<T> extends Composable<T> {
 	public Stream<List<T>> collect() {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
-		final List<T> values = new ArrayList<T>();
 
-		addOperation(new CollectOperation<T>(this, values, d));
-
-		getObservable().on(getFlush().getT1(), new Consumer<Event<Void>>() {
-			@Override
-			public void accept(Event<Void> ev) {
-				synchronized(values) {
-					if(values.isEmpty()) {
-						return;
-					}
-					d.accept(new ArrayList<T>(values));
-					values.clear();
-				}
-			}
-		});
+		addOperation(new CollectOperation<T>(
+				d.compose().getObservable(),
+				d.compose().getAccept().getT2(),
+				getError().getT2())
+				.attachFlush(getFlush().getT1()));
 
 		return d.compose();
 	}
@@ -254,13 +243,9 @@ public class Stream<T> extends Composable<T> {
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
 	 * passed to the function's {@link Tuple2} argument.
 	 *
-	 * @param fn
-	 * 		the reduce function
-	 * @param initial
-	 * 		the initial argument to pass to the reduce function
-	 * @param <A>
-	 * 		the type of the reduced object
-	 *
+	 * @param fn      the reduce function
+	 * @param initial the initial argument to pass to the reduce function
+	 * @param <A>     the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
@@ -279,19 +264,28 @@ public class Stream<T> extends Composable<T> {
 	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
 	 * a new accumulator.
 	 *
-	 * @param fn
-	 * 		the reduce function
-	 * @param accumulators
-	 * 		the {@link Supplier} that will provide accumulators
-	 * @param <A>
-	 * 		the type of the reduced object
-	 *
+	 * @param fn           the reduce function
+	 * @param accumulators the {@link Supplier} that will provide accumulators
+	 * @param <A>          the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred();
+		final Stream<A> stream = d.compose();
 
-		addOperation(new ReduceOperation<T, A>(this, accumulators, fn, d));
+		if (isBatch()) {
+			addOperation(new ReduceOperation<T, A>(
+					accumulators,
+					fn,
+					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()
+			).attachFlush(getFlush().getT1()));
+		} else {
+			addOperation(new ScanOperation<T, A>(
+					accumulators,
+					fn,
+					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()
+			));
+		}
 
 		return d.compose();
 	}
@@ -299,15 +293,12 @@ public class Stream<T> extends Composable<T> {
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
 	 *
-	 * @param fn
-	 * 		the reduce function
-	 * @param <A>
-	 * 		the type of the reduced object
-	 *
+	 * @param fn  the reduce function
+	 * @param <A> the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
-		return reduce(fn, (Supplier<A>)null);
+		return reduce(fn, (Supplier<A>) null);
 	}
 
 	@Override
@@ -317,7 +308,7 @@ public class Stream<T> extends Composable<T> {
 
 	@SuppressWarnings("unchecked")
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
-		return (Deferred<V, C>)createDeferredChildStream(batchSize);
+		return (Deferred<V, C>) createDeferredChildStream(batchSize);
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream() {
@@ -326,35 +317,15 @@ public class Stream<T> extends Composable<T> {
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
 		return new Deferred<T, Stream<T>>(new Stream<T>(new SynchronousDispatcher(),
-		                                                batchSize,
-		                                                null,
-		                                                this));
-	}
-
-	@Override
-	protected void errorAccepted(Throwable error) {
-	}
-
-	@Override
-	protected void valueAccepted(final T value) {
-		if(!isBatch()) {
-			return;
-		}
-		long accepted = (getAcceptCount() + 1) % batchSize;
-		if(accepted == 1) {
-			getObservable().notify(first.getT2(), Event.wrap(value));
-		} else if(accepted == 0) {
-			getObservable().notify(last.getT2(), Event.wrap(value));
-		}
+				batchSize,
+				null,
+				this));
 	}
 
 	@Override
 	public String toString() {
 		return "Stream{" +
-				"acceptCount=" + getAcceptCount() +
-				", errorCount=" + getErrorCount() +
-				", batchSize=" + batchSize +
-				", values=" + values +
+				"values=" + values +
 				'}';
 	}
 

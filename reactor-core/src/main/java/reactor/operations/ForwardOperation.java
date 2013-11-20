@@ -16,10 +16,7 @@
 package reactor.operations;
 
 import reactor.core.Observable;
-import reactor.core.composable.Composable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
 
 /**
 * @author Stephane Maldini

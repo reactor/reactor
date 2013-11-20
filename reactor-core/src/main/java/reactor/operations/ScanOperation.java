@@ -17,22 +17,27 @@ package reactor.operations;
 
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.selector.Selector;
 import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.function.Supplier;
+import reactor.tuple.Tuple;
+import reactor.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
  */
-public class CallbackOperation<T> extends BaseOperation<T> {
+public class ScanOperation<T, A> extends ReduceOperation<T, A> {
 
-	private final Consumer<T> consumer;
-
-	public CallbackOperation(Consumer<T> consumer, Observable d, Object failureKey) {
-		super(d, null, failureKey);
-		this.consumer = consumer;
+	public ScanOperation(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
+	                     Observable d, Object successKey, Object failureKey) {
+		super(accumulators, fn, d, successKey, failureKey);
 	}
 
 	@Override
-	public void doOperation(Event<T> value) {
-		consumer.accept(value.getData());
+	protected void doOperation(Event<T> ev) {
+		super.doOperation(ev);
+		notifyValue(ev.copy(getAcc()));
 	}
+
 }

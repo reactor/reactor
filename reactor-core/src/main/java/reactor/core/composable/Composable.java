@@ -31,7 +31,6 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Abstract base class for components designed to provide a succinct API for working with future values. Provides base
@@ -45,28 +44,35 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public abstract class Composable<T> {
 
-	protected final ReentrantLock lock = new ReentrantLock();
-
-	private final Tuple2<Selector, Object> accept = Selectors.$();
-	private final Tuple2<Selector, Object> error  = Selectors.$();
-	private final Tuple2<Selector, Object> flush  = Selectors.$();
+	private final Tuple2<Selector, Object> accept;
+	private final Tuple2<Selector, Object> error = Selectors.$();
+	private final Tuple2<Selector, Object> flush = Selectors.$();
 
 	private final Observable    events;
 	private final Composable<?> parent;
 
-	private long acceptCount = 0l;
-	private long errorCount  = 0l;
-
 	protected <U> Composable(@Nonnull Dispatcher dispatcher, @Nullable Composable<U> parent) {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
-		this.events = parent == null ? new Reactor(dispatcher) : parent.events;
+		this.events = parent == null ?
+				new Reactor(dispatcher) :
+				new Reactor(dispatcher,
+						((Reactor) parent.getObservable()).getEventRouter(),
+						((Reactor) parent.getObservable()).getConsumerRegistry());
+
 		this.parent = parent;
+		this.accept = Selectors.$();
 		if (parent != null) {
 			events.on(parent.error.getT1(),
 					new ForwardOperation<Throwable>(events, error.getT2(), null));
 		}
 	}
 
+	protected Composable(@Nonnull Observable observable, @Nullable Tuple2<Selector, Object> acceptSelector) {
+		Assert.notNull(observable, "'observable' cannot be null.");
+		this.events = observable;
+		this.accept = null == acceptSelector ? Selectors.$() : acceptSelector;
+		this.parent = null;
+	}
 
 
 	/**
@@ -79,16 +85,17 @@ public abstract class Composable<T> {
 	 */
 	public <E extends Throwable> Composable<T> when(@Nonnull final Class<E> exceptionType,
 	                                                @Nonnull final Consumer<E> onError) {
-		this.events.on(error.getT1(), new Consumer<Event<E>>(){
+		this.events.on(error.getT1(), new Consumer<Event<E>>() {
 			@Override
 			public void accept(Event<E> e) {
-				if(Selectors.T(exceptionType).matches(e.getData().getClass())){
+				if (Selectors.T(exceptionType).matches(e.getData().getClass())) {
 					onError.accept(e.getData());
 				}
 			}
 		});
 		return this;
 	}
+
 	/**
 	 * Attach another {@code Composable} to this one that will cascade the value received by this {@code Composable} into
 	 * the next.
@@ -100,7 +107,9 @@ public abstract class Composable<T> {
 		if (composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
-		addOperation(new ForwardOperation<T>(composable.events, composable.accept.getT2(), error.getT2()));
+		addOperation(new ForwardOperation<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
+
+		events.on(error.getT1(), new ForwardOperation<Throwable>(composable.events, composable.error.getT2(), null));
 		return this;
 	}
 
@@ -151,7 +160,11 @@ public abstract class Composable<T> {
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		addOperation(new MapOperation<T, V>(fn, events, d.compose().getAccept().getT2(), error.getT2()));
+		addOperation(new MapOperation<T, V>(
+				fn,
+				d.compose().getObservable(),
+				d.compose().getAccept().getT2(),
+				error.getT2()));
 		return d.compose();
 	}
 
@@ -194,38 +207,10 @@ public abstract class Composable<T> {
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		addOperation(new FilterOperation<T>(p, events, d.compose().getAccept().getT2(), error.getT2(),
-				elseComposable.events,
-				elseComposable.accept.getT2()));
+		addOperation(new FilterOperation<T>(p, d.compose().getObservable(), d.compose().getAccept().getT2(), error.getT2(),
+				elseComposable != null ? elseComposable.events : null,
+				elseComposable != null ? elseComposable.accept.getT2() : null));
 		return d.compose();
-	}
-
-	/**
-	 * Get the total number of values accepted into this {@code Composable} since its creation.
-	 *
-	 * @return number of values accepted
-	 */
-	public long getAcceptCount() {
-		lock.lock();
-		try {
-			return acceptCount;
-		} finally {
-			lock.unlock();
-		}
-	}
-
-	/**
-	 * Get the total number of errors propagated through this {@code Composable} since its creation.
-	 *
-	 * @return number of errors propagated
-	 */
-	public long getErrorCount() {
-		lock.lock();
-		try {
-			return errorCount;
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	/**
@@ -236,9 +221,25 @@ public abstract class Composable<T> {
 	public Composable<T> flush() {
 		if (null != parent) {
 			parent.flush();
+		} else {
+			notifyFlush();
 		}
-		events.notify(flush.getT2(), new Event<Void>(null));
 		return this;
+	}
+
+	public String debug(){
+		Composable<?> that = this;
+		while(that.parent != null){
+			that = that.parent;
+		}
+		return OperationUtils.browseReactorOperations((Reactor)that.events, that.accept.getT2(), that.error.getT2());
+	}
+
+	/**
+	 * Notify this {@code Composable} that a flush is being requested by this {@code Composable}.
+	 */
+	void notifyFlush() {
+		events.notify(flush.getT2(), new Event<Void>(null));
 	}
 
 	/**
@@ -251,13 +252,6 @@ public abstract class Composable<T> {
 	}
 
 	void notifyValue(Event<T> value) {
-		lock.lock();
-		try {
-			valueAccepted(value.getData());
-			acceptCount++;
-		} finally {
-			lock.unlock();
-		}
 		events.notify(accept.getT2(), value);
 	}
 
@@ -267,13 +261,6 @@ public abstract class Composable<T> {
 	 * @param error the error to propagate
 	 */
 	void notifyError(Throwable error) {
-		lock.lock();
-		try {
-			errorAccepted(error);
-			errorCount++;
-		} finally {
-			lock.unlock();
-		}
 		events.notify(this.error.getT2(), Event.wrap(error));
 	}
 
@@ -282,7 +269,7 @@ public abstract class Composable<T> {
 	 *
 	 * @param operation the operation listening for values
 	 */
-	protected Composable<T> addOperation(Operation<Event<T>> operation){
+	protected Composable<T> addOperation(Operation<Event<T>> operation) {
 		this.events.on(accept.getT1(), operation);
 		return this;
 	}
@@ -296,19 +283,6 @@ public abstract class Composable<T> {
 	 */
 	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
 
-	/**
-	 * Called before {@code errorCount} has been incremented and {@link Consumer}s have been notified.
-	 *
-	 * @param error the error being propagated
-	 */
-	protected abstract void errorAccepted(Throwable error);
-
-	/**
-	 * Called before {@code acceptCount} has been incremented and {@link Consumer}s have been notified.
-	 *
-	 * @param value the value being accepted
-	 */
-	protected abstract void valueAccepted(T value);
 
 	/**
 	 * Get the current {@link Observable}.
@@ -329,12 +303,12 @@ public abstract class Composable<T> {
 	}
 
 	/**
-	 * Get the parent {@link Composable} for callback callback.
+	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing errors.
 	 *
 	 * @return
 	 */
-	protected Composable<?> getParent() {
-		return this.parent;
+	protected Tuple2<Selector, Object> getError() {
+		return this.error;
 	}
 
 	/**
@@ -345,4 +319,14 @@ public abstract class Composable<T> {
 	protected Tuple2<Selector, Object> getFlush() {
 		return this.flush;
 	}
+
+	/**
+	 * Get the parent {@link Composable} for callback callback.
+	 *
+	 * @return
+	 */
+	protected Composable<?> getParent() {
+		return this.parent;
+	}
+
 }

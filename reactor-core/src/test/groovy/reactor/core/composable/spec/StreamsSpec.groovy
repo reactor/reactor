@@ -562,6 +562,7 @@ class StreamsSpec extends Specification {
           get()
       Stream tail = head.compose().collect()
       tail.consume(consumer { List<Integer> ints ->
+	      println ints.size()
         sum.addAndGet(ints.size())
         latch.countDown()
       })

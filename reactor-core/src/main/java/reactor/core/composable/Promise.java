@@ -18,6 +18,7 @@ package reactor.core.composable;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -60,10 +61,11 @@ import reactor.util.Assert;
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	private final Tuple2<Selector, Object> complete = Selectors.$();
+	private final ReentrantLock lock = new ReentrantLock();
 
-	private final long defaultTimeout;
+	private final long        defaultTimeout;
 	private final Environment environment;
-	private final Condition pendingCondition;
+	private final Condition   pendingCondition;
 
 	private State state = State.PENDING;
 	private T           value;
@@ -93,6 +95,20 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.environment = env;
 		this.pendingCondition = lock.newCondition();
+
+		consumeEvent(new Consumer<Event<T>>(){
+			@Override
+			public void accept(Event<T> event) {
+				valueAccepted(event.getData());
+			}
+		});
+
+		when(Throwable.class, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				errorAccepted(throwable);
+			}
+		});
 	}
 
 	/**
@@ -614,7 +630,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		return (Deferred<V, C>)new Deferred<V, Promise<V>>(new Promise<V>(new SynchronousDispatcher(), environment, this));
 	}
 
-	@Override
 	protected void errorAccepted(Throwable error) {
 		lock.lock();
 		try {
@@ -632,7 +647,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	}
 
-	@Override
 	protected void valueAccepted(T value) {
 		lock.lock();
 		try {

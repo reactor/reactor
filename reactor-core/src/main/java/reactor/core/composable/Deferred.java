@@ -38,7 +38,8 @@ import reactor.function.Consumer;
  */
 public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 
-	private final C composable;
+	private final C head;
+	private final C tail;
 
 	/**
 	 * Creates a new Deferred using the given {@link Composable}
@@ -46,7 +47,18 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 * @param composable The composable that will provide access to values
 	 */
 	public Deferred(C composable) {
-		this.composable = composable;
+		this.head = composable;
+		this.tail = composable;
+	}
+	/**
+	 * Creates a new Deferred using decoupled given head and tail {@link Composable}
+	 *
+	 * @param head The composable that will provide access to values
+	 * @param tail The composable that will be used for consumption
+	 */
+	public Deferred(C head, C tail) {
+		this.head = head;
+		this.tail = tail;
 	}
 
 	/**
@@ -56,38 +68,46 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 * @param error The error to accept
 	 */
 	public void accept(Throwable error) {
-		composable.notifyError(error);
+		head.notifyError(error);
 	}
 
 	/**
-	 * Accepts the given {@code value} such that is can be consumed by the underlying
+	 * Accepts the given {@code value} such that it can be consumed by the underlying
 	 * {@code Composable}.
 	 *
 	 * @param value The value to accept
 	 */
 	@Override
 	public void accept(T value) {
-		composable.notifyValue(Event.wrap(value));
+		head.notifyValue(Event.wrap(value));
 	}
 	/**
-	 * Accepts the given {@code value} such that is can be consumed by the underlying
+	 * Accepts the given {@code value} such that it can be consumed by the underlying
 	 * {@code Composable}.
 	 *
 	 * @param value The value to accept
 	 */
 	public void acceptEvent(Event<T> value) {
-		composable.notifyValue(value);
+		head.notifyValue(value);
 	}
 
 	/**
-	 * Accepts the given {@code value} such that is can be consumed by the underlying
+	 * Accepts the given {@code value} such that it can be consumed by the underlying
 	 * {@code Composable}.
 	 *
 	 * @param value The value to accept
 	 * @param callback the callback
 	 */
 	public void accept(T value, Consumer<Object> callback) {
-		composable.notifyValue(new CallbackEvent<T>(value, callback));
+		head.notifyValue(new CallbackEvent<T>(value, callback));
+	}
+
+	/**
+	 * Flush the {@code Composable} such that it can trigger batch operations.
+	 *
+	 */
+	public void flush() {
+		head.notifyFlush();
 	}
 
 	/**
@@ -97,7 +117,7 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 * @return The underlying composable
 	 */
 	public C compose() {
-		return composable;
+		return tail;
 	}
 
 }

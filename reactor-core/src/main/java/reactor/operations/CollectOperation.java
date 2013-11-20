@@ -15,37 +15,45 @@
  */
 package reactor.operations;
 
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
+import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
-* @author Stephane Maldini
-*/
-public class CollectOperation<T> implements Consumer<Event<T>> {
-	private       Stream                             stream;
-	private final List<T>                            values;
-	private final Deferred<List<T>, Stream<List<T>>> d;
+ * @author Stephane Maldini
+ */
+public class CollectOperation<T> extends BaseOperation<T> {
+	private final List<T> values = new ArrayList<T>();
 
-	public CollectOperation(Stream stream, List<T> values, Deferred<List<T>, Stream<List<T>>> d) {
-		this.stream = stream;
-		this.values = values;
-		this.d = d;
+	public CollectOperation(Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
 	}
 
 	@Override
-	public void accept(Event<T> value) {
+	public void doOperation(Event<T> value) {
 		synchronized (values) {
 			values.add(value.getData());
-			if (values.size() % stream.batchSize != 0) {
-				return;
-			}
-			d.acceptEvent(value.copy((List<T>) new ArrayList<T>(values)));
-			values.clear();
 		}
+	}
+
+	public CollectOperation<T> attachFlush(Selector selector) {
+		getObservable().on(selector, new Consumer<Event<Void>>() {
+			@Override
+			public void accept(Event<Void> ev) {
+				synchronized (values) {
+					if (values.isEmpty()) {
+						return;
+					}
+					notifyValue(ev.copy(new ArrayList<T>(values)));
+					values.clear();
+				}
+			}
+		});
+
+		return this;
 	}
 }

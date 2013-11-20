@@ -16,11 +16,7 @@
 package reactor.operations;
 
 import reactor.core.Observable;
-import reactor.core.composable.Composable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
 
 /**
  * Marker interface for all Composable operations such as map, reduce, filter...
@@ -42,17 +38,11 @@ public abstract class BaseOperation<T> implements Operation<Event<T>>{
 		this.failureKey = failureKey;
 	}
 
-	protected abstract void doOperation(Event<T> ev);
-
-	/**
-	 * Notify this {@code Operation} that a value is being accepted by this {@code Obervable}.
-	 *
-	 * @param value
-	 * 		the value to accept
-	 */
-	protected void notifyValue(Object value) {
-		notifyValue(Event.wrap(value));
+	protected BaseOperation(Observable observable, Object successKey) {
+		this(observable, successKey, null);
 	}
+
+	protected abstract void doOperation(Event<T> ev);
 
 	@Override
 	public void accept(Event<T> tEvent) {
@@ -61,22 +51,19 @@ public abstract class BaseOperation<T> implements Operation<Event<T>>{
 		} catch (Throwable e) {
 			notifyError(e);
 		}
-
 	}
 
 	protected void notifyValue(Event<?> value) {
-		//valueAccepted(value.getData());
 		observable.notify(successKey, value);
 	}
 
 	/**
-	 * Notify this {@code Composable} that an error is being propagated through this {@code Composable}.
+	 * Notify this {@code Composable} that an error is being propagated through this {@code Observable}.
 	 *
 	 * @param error
 	 * 		the error to propagate
 	 */
 	protected void notifyError(Throwable error) {
-	  //errorAccepted(error);
 		observable.notify(failureKey != null ? failureKey : error.getClass(), Event.wrap(error));
 	}
 
