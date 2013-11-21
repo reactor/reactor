@@ -164,7 +164,7 @@ public class SelectorUnitTests {
 	}
 
 	public static class DataNode {
-		private final List<Run> data = new ArrayList<>();
+		private final List<Run> data = new ArrayList<Run>();
 
 		private DataNode(Run data) {
 			this.data.add(data);
