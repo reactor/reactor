@@ -19,11 +19,8 @@ package reactor.core.composable;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.spec.DeferredStreamSpec;
-import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
 import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.operations.*;
@@ -54,10 +51,7 @@ import java.util.List;
  */
 public class Stream<T> extends Composable<T> {
 
-	private final Tuple2<Selector, Object> first = Selectors.$();
-	private final Tuple2<Selector, Object> last  = Selectors.$();
 	private final int         batchSize;
-	private final Iterable<T> values;
 
 	/**
 	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
@@ -84,22 +78,11 @@ public class Stream<T> extends Composable<T> {
 	              @Nullable final Composable<?> parent) {
 		super(dispatcher, parent);
 		this.batchSize = batchSize;
-		this.values = values;
 
-		attachFlush();
+		attachFlush(values);
 	}
 
-	private void attachFlush() {
-
-		if (isBatch() && getParent() != null) {
-			getObservable().on(getParent().getFlush().getT1(),
-					new ForwardOperation<Void>(getObservable(), getFlush().getT2(), null));
-			getObservable().on(((Stream<?>) getParent()).first.getT1(),
-					new ForwardOperation<Void>(getObservable(), first.getT2(), null));
-			getObservable().on(((Stream<?>) getParent()).last.getT1(),
-					new ForwardOperation<Void>(getObservable(), last.getT2(), null));
-		}
-
+	private void attachFlush(Iterable<T> values) {
 		if (values != null) {
 			new ForEachOperation<T>(values, getObservable(), getAccept().getT2(), getError().getT2()).
 					attach(getFlush().getT1());
@@ -158,25 +141,42 @@ public class Stream<T> extends Composable<T> {
 	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
+		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(first.getT1(), new ForwardOperation<T>(getObservable(), d.compose().getAccept().getT2(),
-				getError().getT2()));
+		addOperation(new BatchOperation<T>(batchSize, getObservable(), null, getError().getT2(), null,
+				d.compose().getAccept().getT2(), null));
 		return d.compose();
 	}
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
-	 * to
-	 * have been set.
+	 *
+	 *@p
+	 *
+	 * @return a new {@code Stream} whose values are splitted values of each batch
+	 */
+	public Stream<T> last() {
+		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
+		final Deferred<T, Stream<T>> d = createDeferredChildStream();
+		addOperation(new BatchOperation<T>(batchSize, getObservable(), null, getError().getT2(), null,
+				null, d.compose().getAccept().getT2()));
+		return d.compose();
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
 	 * <p/>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
+	 * @param <E> the sub element type
+	 * @param <T> the enclosing type extending Iterable<E>
+	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
-	public Stream<T> last() {
-		final Deferred<T, Stream<T>> d = createDeferredChildStream();
-		getObservable().on(last.getT1(), new ForwardOperation<T>(getObservable(), d.compose().getAccept().getT2(),
-				getError().getT2()));
+	public <E, T extends Iterable<E>> Stream<E> split() {
+		final Deferred<E, Stream<E>> d = createDeferred(batchSize);
+		getObservable().on(getAccept().getT1(),
+				new ForEachOperation<T>(getObservable(), d.compose().getAccept().getT2(), getError().getT2()));
 		return d.compose();
 	}
 
@@ -196,9 +196,7 @@ public class Stream<T> extends Composable<T> {
 				stream.getObservable(),
 				stream.getAccept().getT2(),
 				getError().getT2(),
-				stream.getFlush().getT2(),
-				stream.first.getT2(),
-				stream.last.getT2()));
+				stream.getFlush().getT2()));
 		return stream;
 	}
 
@@ -232,13 +230,26 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> collect() {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
+		return collect(batchSize);
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
+	 * batchSize} has been reached.
+	 *
+	 * @param batchSize  the collected size
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> collect(int batchSize) {
+		Assert.state(batchSize > 0, "Cannot collect() an unbounded limit.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
 		addOperation(new CollectOperation<T>(
+				batchSize,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
-				getError().getT2())
-				.attach(getFlush().getT1(), first.getT1()));
+				getError().getT2()));
 
 		return d.compose();
 	}
@@ -279,10 +290,11 @@ public class Stream<T> extends Composable<T> {
 
 		if (isBatch()) {
 			addOperation(new ReduceOperation<T, A>(
+					batchSize,
 					accumulators,
 					fn,
 					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()
-			).attach(getFlush().getT1(), first.getT1()));
+			));
 		} else {
 			addOperation(new ScanOperation<T, A>(
 					accumulators,
@@ -320,17 +332,11 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(new SynchronousDispatcher(),
+		Stream<T> stream = new Stream<T>(new SynchronousDispatcher(),
 				batchSize,
 				null,
-				this));
-	}
-
-	@Override
-	public String toString() {
-		return "Stream{" +
-				"values=" + values +
-				'}';
+				this);
+		return new Deferred<T, Stream<T>>(stream);
 	}
 
 }

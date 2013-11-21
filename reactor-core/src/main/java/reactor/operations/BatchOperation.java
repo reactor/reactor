@@ -35,6 +35,10 @@ public class BatchOperation<T> extends BaseOperation<T> {
 	private volatile long errorCount  = 0l;
 	private volatile long acceptCount = 0l;
 
+	public BatchOperation(int batchSize, Observable d, Object successKey, Object failureKey) {
+		this(batchSize, d, successKey, failureKey, null, null, null);
+	}
+
 	public BatchOperation(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
 		this(batchSize, d, successKey, failureKey, flushKey, null, null);
 	}
@@ -52,12 +56,28 @@ public class BatchOperation<T> extends BaseOperation<T> {
 		getObservable().notify(flushKey, new Event<Void>(null));
 	}
 
-	protected void doFlush(Event<T> event) {
-		notifyFlush();
+	protected void doNext(Event<T> event) {
+		if (getSuccessKey() != null) {
+			notifyValue(event);
+		}
 	}
 
-	protected void doNext(Event<T> event) {
-		notifyValue(event);
+	protected void doFlush(Event<T> event) {
+		if (flushKey != null) {
+			notifyFlush();
+		}
+	}
+
+	protected void doFirst(Event<T> event) {
+		if (firstKey != null) {
+			getObservable().notify(firstKey, event);
+		}
+	}
+
+	protected void doLast(Event<T> event) {
+		if (lastKey != null) {
+			getObservable().notify(lastKey, event);
+		}
 	}
 
 	@Override
@@ -66,16 +86,14 @@ public class BatchOperation<T> extends BaseOperation<T> {
 		try {
 			long accepted = (++acceptCount) % batchSize;
 
-			if (accepted == 1 && firstKey != null) {
-				getObservable().notify(firstKey, value);
+			if (accepted == 1) {
+				doFirst(value);
 			}
 
 			doNext(value);
 
 			if (accepted == 0) {
-				if (lastKey != null) {
-					getObservable().notify(lastKey, value);
-				}
+				doLast(value);
 				doFlush(value);
 			}
 

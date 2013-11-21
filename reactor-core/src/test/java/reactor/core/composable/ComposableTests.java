@@ -274,7 +274,7 @@ public class ComposableTests extends AbstractReactorTest {
 		} catch(IllegalStateException ise) {
 			// Swallow
 		}
-		assertTrue(deferred.compose().reason() instanceof IllegalStateException);
+		assertTrue(deferred.compose().reason() instanceof Exception);
 	}
 
 	@Test
@@ -287,12 +287,12 @@ public class ComposableTests extends AbstractReactorTest {
 		} catch(IllegalStateException ise) {
 			// Swallow
 		}
-		assertTrue(deferred.compose().reason() instanceof IllegalStateException);
+		assertTrue(deferred.compose().reason() instanceof Exception);
 		try{
 			deferred.compose().get();
 			fail();
-		}catch(IllegalStateException ise){
-			assertEquals(deferred.compose().reason(), ise);
+		}catch(RuntimeException ise){
+			assertEquals(deferred.compose().reason(), ise.getCause());
 		}
 	}
 

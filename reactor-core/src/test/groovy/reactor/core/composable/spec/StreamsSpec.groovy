@@ -228,27 +228,37 @@ class StreamsSpec extends Specification {
       last.get() == 5
   }
 
+  def 'When the accepted event is Iterable, split can iterate over values'() {
+    given:
+      'a composable with a known number of values'
+      Deferred<Iterable<String>, Stream<Iterable<String>>> d = Streams.<Iterable<String>>defer().get()
+      Stream<String> composable = d.compose().split()
+
+    when:
+      'accept list of Strings'
+      def tap = composable.tap()
+      d.accept(['a','b','c'])
+
+    then:
+      'its value is the last of the initial values'
+      tap.get() == 'c'
+
+  }
+
   def 'When the number of values is unknown, last is never updated'() {
     given:
       'a composable that will accept an unknown number of values'
-      Deferred d = Streams.defer().synchronousDispatcher().get()
+      Deferred d = Streams.defer().get()
       Stream composable = d.compose()
 
     when:
       'last is retrieved'
-      def last = composable.last().tap()
+       composable.last().tap()
 
     then:
-      'its value is unknown'
-      last.get() == null
+	    "can't call last() on unbounded stream"
+      thrown(IllegalStateException)
 
-    when:
-      'a value is accepted'
-      d.accept(1)
-
-    then:
-      "last's value is still unknown"
-      last.get() == null
   }
 
   def 'Last value of a batch is accessible'() {
@@ -258,17 +268,9 @@ class StreamsSpec extends Specification {
       Stream composable = d.compose()
 
     when:
-      'last is retrieved'
-      Stream last = composable.last()
-
-    then:
-      'its value is unknown'
-      last.tap().get() == null
-
-    when:
       'the expected accept count is set and that number of values is accepted'
       def batched = composable.batch(3)
-      last = batched.last()
+      def last = batched.last()
       def tap = last.tap()
       d.accept(1)
       d.accept(2)

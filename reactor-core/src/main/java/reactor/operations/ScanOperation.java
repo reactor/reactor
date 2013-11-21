@@ -27,17 +27,27 @@ import reactor.tuple.Tuple2;
 /**
  * @author Stephane Maldini
  */
-public class ScanOperation<T, A> extends ReduceOperation<T, A> {
+public class ScanOperation<T, A> extends BaseOperation<T> {
+
+	private final    Supplier<A>               accumulators;
+	private final    Function<Tuple2<T, A>, A> fn;
+	private volatile A                         acc;
+
 
 	public ScanOperation(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
 	                     Observable d, Object successKey, Object failureKey) {
-		super(accumulators, fn, d, successKey, failureKey);
+		super(d, successKey, failureKey);
+		this.accumulators = accumulators;
+		this.fn = fn;
 	}
 
 	@Override
 	protected void doOperation(Event<T> ev) {
-		super.doOperation(ev);
-		notifyValue(ev.copy(getAcc()));
+		if (null == acc) {
+			acc = (null != accumulators ? accumulators.get() : null);
+		}
+		acc = fn.apply(Tuple.of(ev.getData(), acc));
+		notifyValue(ev.copy(acc));
 	}
 
 }
