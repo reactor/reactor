@@ -151,9 +151,7 @@ public class Stream<T> extends Composable<T> {
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
 	 *
-	 *@p
-	 *
-	 * @return a new {@code Stream} whose values are splitted values of each batch
+	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last() {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
@@ -171,7 +169,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param <E> the sub element type
 	 * @param <T> the enclosing type extending Iterable<E>
 	 *
-	 * @return a new {@code Stream} whose values are the last value of each batch
+	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
 	public <E, T extends Iterable<E>> Stream<E> split() {
 		final Deferred<E, Stream<E>> d = createDeferred(batchSize);
@@ -332,7 +330,7 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		Stream<T> stream = new Stream<T>(new SynchronousDispatcher(),
+		Stream<T> stream = new Stream<T>(null,
 				batchSize,
 				null,
 				this);
