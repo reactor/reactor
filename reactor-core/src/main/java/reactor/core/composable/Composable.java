@@ -55,9 +55,7 @@ public abstract class Composable<T> {
 		Assert.notNull(dispatcher, "'dispatcher' cannot be null.");
 		this.events = parent == null ?
 				new Reactor(dispatcher) :
-				new Reactor(dispatcher,
-						((Reactor) parent.getObservable()).getEventRouter(),
-						((Reactor) parent.getObservable()).getConsumerRegistry());
+				parent.events;
 
 		this.parent = parent;
 		this.accept = Selectors.$();
