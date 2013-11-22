@@ -88,7 +88,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @param parent
 	 * 		The parent, if any, from which errors are consumed
 	 */
-	public Promise(@Nonnull Dispatcher dispatcher,
+	public Promise(@Nullable Dispatcher dispatcher,
 	               @Nullable Environment env,
 	               @Nullable Composable<?> parent) {
 		super(dispatcher, parent);
@@ -125,7 +125,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * 		The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(T value,
-	               @Nonnull Dispatcher dispatcher,
+	               @Nullable Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env, null);
 		this.value = value;
@@ -627,7 +627,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>)new Deferred<V, Promise<V>>(new Promise<V>(new SynchronousDispatcher(), environment, this));
+		return (Deferred<V, C>)new Deferred<V, Promise<V>>(new Promise<V>(null, environment, this));
 	}
 
 	protected void errorAccepted(Throwable error) {

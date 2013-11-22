@@ -52,7 +52,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	private final Composable<?> parent;
 
 	protected <U> Composable(@Nullable Dispatcher dispatcher, @Nullable Composable<U> parent) {
-		Assert.state(dispatcher == null || parent == null, "One of 'dispatcher' or 'parent'  cannot be null.");
+		Assert.state(dispatcher != null || parent != null, "One of 'dispatcher' or 'parent'  cannot be null.");
 		this.events = parent == null ?
 				new Reactor(dispatcher) :
 				parent.events;
