@@ -26,7 +26,7 @@ import reactor.event.Event;
  *
  * @author Stephane Maldini
  */
-public abstract class BaseOperation<T> implements Operation<Event<T>>{
+public abstract class BaseOperation<T> implements Operation<T>{
 
 	private final Observable observable;
 	private final Object successKey;

@@ -17,22 +17,25 @@ package reactor.operations;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
+import reactor.function.Function;
 
 /**
- * Marker interface for all Composable operations such as map, reduce, filter...
- *
- * @param <T>
- * 		The type of the values
- *
  * @author Stephane Maldini
  */
-public interface Operation<T> extends Consumer<Event<T>> {
+public class FlatMapOperation<T, V, E extends OperationPipe<V>> extends BaseOperation<T> {
 
-	Observable getObservable();
+	private final Function<T, E> fn;
 
-	Object getSuccessKey();
-	Object getFailureKey();
+	public FlatMapOperation(Function<T,E> fn, Observable d, Object successKey,
+	                        Object failureKey) {
+		super(d, successKey, failureKey);
+		this.fn = fn;
+	}
+
+	@Override
+	public void doOperation(Event<T> value) {
+		E val = fn.apply(value.getData());
+		val.addOperation(new ForwardOperation<V>(getObservable(), getSuccessKey(), getFailureKey()));
+		val.flush();
+	}
 }

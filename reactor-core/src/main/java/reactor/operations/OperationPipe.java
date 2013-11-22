@@ -15,24 +15,24 @@
  */
 package reactor.operations;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
-
 /**
- * Marker interface for all Composable operations such as map, reduce, filter...
- *
- * @param <T>
- * 		The type of the values
+ * Component that can be injected with {@link Operation}s
  *
  * @author Stephane Maldini
  */
-public interface Operation<T> extends Consumer<Event<T>> {
+public interface OperationPipe<T>{
 
-	Observable getObservable();
+	/**
+	 * Consume events with the passed {@code Operation}
+	 *
+	 * @param operation the operation listening for values
+	 */
+	OperationPipe<T> addOperation(Operation<T> operation);
 
-	Object getSuccessKey();
-	Object getFailureKey();
+	/**
+	 * Flush any cached or unprocessed values through this {@literal OperationPipe}.
+	 *
+	 * @return {@literal this}
+	 */
+	OperationPipe<T> flush();
 }

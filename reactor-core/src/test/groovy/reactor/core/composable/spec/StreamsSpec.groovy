@@ -296,6 +296,21 @@ class StreamsSpec extends Specification {
       'the value is mapped'
       value.get() == 2
   }
+  def "A Stream's values can be flat mapped"() {
+    given:
+      'a source composable with a mapping function'
+      Deferred source = Streams.<Integer>defer().get()
+      Stream<Integer> mapped = source.compose().flatMap(function { Streams.<Integer>defer(it * 2).get().compose() })
+
+    when:
+      'the source accepts a value'
+      def value = mapped.tap()
+      source.accept(1)
+
+    then:
+      'the value is mapped'
+      value.get() == 2
+  }
 
   def "A Stream's values can be filtered"() {
     given:

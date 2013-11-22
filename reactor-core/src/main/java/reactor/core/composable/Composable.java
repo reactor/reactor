@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public abstract class Composable<T> {
+public abstract class Composable<T> implements OperationPipe<T> {
 
 	private final Tuple2<Selector, Object> accept;
 	private final Tuple2<Selector, Object> error = Selectors.$();
@@ -167,6 +167,25 @@ public abstract class Composable<T> {
 	}
 
 	/**
+	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Composable<V>} and pass
+	 * it into another {@code Composable}.
+	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
+	 * @return a new {@code Composable} containing the transformed values
+	 */
+	public <V> Composable<V> flatMap(@Nonnull final Function<T, Composable<V>> fn) {
+		Assert.notNull(fn, "FlatMap function cannot be null.");
+		final Deferred<V, ? extends Composable<V>> d = createDeferred();
+		addOperation(new FlatMapOperation<T, V, Composable<V>>(
+				fn,
+				d.compose().getObservable(),
+				d.compose().getAccept().getT2(),
+				error.getT2()));
+		return d.compose();
+	}
+
+	/**
 	 * Evaluate each accepted value against the given predicate {@link Function}. If the predicate test succeeds, the
 	 * value is passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the
 	 * new {@code Composable}.
@@ -216,12 +235,14 @@ public abstract class Composable<T> {
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	public Composable<T> flush() {
-		if (null != parent) {
-			parent.flush();
-		} else {
-			notifyFlush();
+		Composable<?> that = this;
+		while(that.parent != null) {
+			that = that.parent;
 		}
+
+		that.notifyFlush();
 		return this;
 	}
 
@@ -269,7 +290,7 @@ public abstract class Composable<T> {
 	 *
 	 * @param operation the operation listening for values
 	 */
-	protected Composable<T> addOperation(Operation<Event<T>> operation) {
+	public Composable<T> addOperation(Operation<T> operation) {
 		this.events.on(accept.getT1(), operation);
 		return this;
 	}
