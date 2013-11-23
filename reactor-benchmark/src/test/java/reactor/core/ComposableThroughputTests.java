@@ -55,14 +55,14 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			data.add(i);
 		}
 
-		latch = new CountDownLatch(length * runs * samples);
+		latch = new CountDownLatch(length);
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
-				.batchSize(length * runs * samples)
+				.batchSize(length)
 				.get();
 		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override
@@ -88,6 +88,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
 		Deferred<Integer, Stream<Integer>> d = createDeferred(dispatcher);
+		System.out.println("measuring: "+d.compose().debug());
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {

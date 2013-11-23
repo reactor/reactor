@@ -20,7 +20,6 @@ import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.operations.*;
@@ -72,7 +71,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param values     The stream's initial values. May be {@code null}
 	 * @param parent     The stream's parent. May be {@code null}
 	 */
-	public Stream(@Nonnull final Dispatcher dispatcher,
+	public Stream(@Nullable final Dispatcher dispatcher,
 	              int batchSize,
 	              @Nullable Iterable<T> values,
 	              @Nullable final Composable<?> parent) {
@@ -95,8 +94,8 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public Stream<T> consume(@Nonnull Composable<T> consumer) {
-		return (Stream<T>) super.consume(consumer);
+	public Stream<T> connect(@Nonnull Composable<T> consumer) {
+		return (Stream<T>) super.connect(consumer);
 	}
 
 	@Override
@@ -117,6 +116,11 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public <V> Stream<V> map(@Nonnull Function<T, V> fn) {
 		return (Stream<V>) super.map(fn);
+	}
+
+	@Override
+	public <V> Stream<V> flatMap(@Nonnull Function<T, Composable<V>> fn) {
+		return (Stream<V>) super.flatMap(fn);
 	}
 
 

@@ -28,14 +28,15 @@ import reactor.core.Observable;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
-import reactor.event.support.EventConsumer;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
+import reactor.operations.CallbackOperation;
+import reactor.operations.ForwardOperation;
+import reactor.operations.Operation;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -209,7 +210,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		if(isComplete()) {
 			Reactors.schedule(onComplete, this, getObservable());
 		} else {
-			getObservable().on(complete.getT1(), new EventConsumer<Promise<T>>(onComplete));
+			getObservable().on(complete.getT1(), new CallbackOperation<Promise<T>>(onComplete, getObservable(), null));
 		}
 		return this;
 	}
@@ -261,9 +262,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @see #onError(Consumer)
 	 */
 	public Promise<T> then(@Nonnull Consumer<T> onSuccess, @Nullable Consumer<Throwable> onError) {
-		onSuccess(onSuccess);
-		onError(onError);
-		return this;
+		return onSuccess(onSuccess).onError(onError);
 	}
 
 	/**
@@ -285,26 +284,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @return a new {@code Promise} that will be populated by the result of the transformation {@link Function}
 	 */
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
-		final Deferred<V, Promise<V>> d = createDeferred();
-
-		Promise<V> p = d.compose().onError(onError);
-		onSuccess(new Consumer<T>() {
-			@Override
-			public void accept(T value) {
-				try {
-					d.accept(onSuccess.apply(value));
-				} catch(Throwable throwable) {
-					d.accept(throwable);
-				}
-			}
-		});
-		onError(new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable t) {
-				d.accept(t);
-			}
-		});
-		return p;
+		onError(onError);
+		return map(onSuccess);
 	}
 
 	/**
@@ -479,149 +460,74 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
-		lock.lock();
-		try {
-			if(state == State.SUCCESS) {
-				Reactors.schedule(consumer, value, getObservable());
-			} else {
-				super.consume(consumer);
-			}
-		} finally {
-			lock.unlock();
-		}
-		return this;
+		return (Promise<T>)super.consume(consumer);
 	}
 
 	@Override
-	public Promise<T> consume(@Nonnull final Composable<T> composable) {
+	public Promise<T> connect(@Nonnull final Composable<T> composable) {
+		return (Promise<T>)super.connect(composable);
+	}
+
+	@Override
+	public Promise<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
+		return (Promise<T>)super.consume(key, observable);
+	}
+
+	@Override
+	public <V> Promise<V> flatMap(@Nonnull Function<T, Composable<V>> fn) {
+		return (Promise<V>)super.flatMap(fn);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		lock.lock();
 		try {
-			if(state == State.SUCCESS) {
-				Reactors.schedule(new Consumer<T>() {
-					@Override
-					public void accept(T t) {
-						composable.notifyValue(t);
-					}
-				}, value, getObservable());
+			if(state == State.FAILURE) {
+				Reactors.schedule(
+						new CallbackOperation<E>(onError, getObservable(), null),
+						Event.wrap((E)error), getObservable());
 			} else {
-				super.consume(composable);
+				super.when(exceptionType, onError);
 			}
 			return this;
 		} finally {
 			lock.unlock();
 		}
-
-	}
-
-	@Override
-	public Promise<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		lock.lock();
-		try {
-			if(state == State.SUCCESS) {
-				observable.notify(key, Event.wrap(value));
-			} else {
-				super.consume(key, observable);
-			}
-		} finally {
-			lock.unlock();
-		}
-		return this;
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		lock.lock();
-		try {
-			if(state == State.FAILURE && exceptionType.isAssignableFrom(error.getClass())) {
-				Reactors.schedule(onError, (E)error, getObservable());
-			} else {
-				super.when(exceptionType, onError);
-			}
-		} finally {
-			lock.unlock();
-		}
-
-		return this;
 	}
 
 	@Override
 	public <V> Promise<V> map(@Nonnull final Function<T, V> fn) {
-		if(isPending()) {
-			return (Promise<V>)super.map(fn);
-		}
-
-		final Deferred<V, Promise<V>> d = createDeferred();
-
-		lock.lock();
-		try {
-			if(state == State.SUCCESS) {
-				Reactors.schedule(
-						new Consumer<Void>() {
-							@Override
-							public void accept(Void aVoid) {
-								try {
-									d.accept(fn.apply(value));
-								} catch(Throwable throwable) {
-									d.accept(throwable);
-								}
-							}
-						},
-						null,
-						getObservable()
-				);
-			} else if(state == State.FAILURE) {
-					d.accept(error);
-			}
-			return d.compose();
-		} finally {
-			lock.unlock();
-		}
+		return (Promise<V>)super.map(fn);
 	}
 
 	@Override
 	public Promise<T> filter(@Nonnull final Predicate<T> p) {
-		if(isPending()) {
-			return (Promise<T>)super.filter(p);
-		}
-
-		final Deferred<T, Promise<T>> d = createDeferred();
-
-		lock.lock();
-		try {
-			if(state == State.SUCCESS) {
-				Reactors.schedule(
-						new Consumer<Void>() {
-							@Override
-							public void accept(Void aVoid) {
-								try {
-									if(p.test(value)) {
-										d.accept(value);
-									} else {
-										// GH-154: Verbose error level logging of every event filtered out by a Stream filter
-										// Fix: ignore Predicate failures and drop values rather than notifying of errors.
-										//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
-									}
-								} catch(Throwable throwable) {
-									d.accept(throwable);
-								}
-							}
-						},
-						null,
-						getObservable()
-				);
-			} else if(state == State.FAILURE) {
-				d.accept(error);
-			}
-			return d.compose();
-		} finally {
-			lock.unlock();
-		}
+		return (Promise<T>)super.filter(p);
 	}
 
 	@Override
 	public Promise<T> flush() {
 		return (Promise<T>)super.flush();
+	}
+
+	@Override
+	public Promise<T> addOperation(Operation<T> operation) {
+		lock.lock();
+		try {
+			if(state == State.SUCCESS) {
+				Reactors.schedule(operation, Event.wrap(value), getObservable());
+			} else if(state == State.FAILURE) {
+				Reactors.schedule(
+						new ForwardOperation<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
+						Event.wrap(error), getObservable());
+			} else {
+				super.addOperation(operation);
+			}
+			return this;
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -662,6 +568,28 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		}
 		getObservable().notify(complete.getT2(), Event.wrap(this));
 
+	}
+
+	@Override
+	void notifyValue(Event<T> value) {
+		lock.lock();
+		try {
+			assertPending();
+		} finally {
+			lock.unlock();
+		}
+		super.notifyValue(value);
+	}
+
+	@Override
+	void notifyError(Throwable error) {
+		lock.lock();
+		try {
+			assertPending();
+		} finally {
+			lock.unlock();
+		}
+		super.notifyError(error);
 	}
 
 	private void assertPending() {

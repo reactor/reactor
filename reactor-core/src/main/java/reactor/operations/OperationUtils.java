@@ -15,12 +15,10 @@
  */
 package reactor.operations;
 
-import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.util.StringUtils;
 
 import java.util.List;
 
@@ -29,70 +27,6 @@ import java.util.List;
  */
 public abstract class OperationUtils {
 
-	private static String drawReactorOperations(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
-	                                            int d) {
-//		List<Registration<? extends Consumer<? extends Event<?>>>> fOperations =
-//				reactor.getConsumerRegistry().select(failureKey);
-
-		return loopOperations(reactor.getConsumerRegistry().select(successKey), d, "accept") +
-				loopOperations(reactor.getConsumerRegistry().select(flushKey), d, "flush");
-	}
-
-	private static String loopOperations(List<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
-	                                     String marker) {
-		StringBuilder appender = new StringBuilder();
-		for (Registration<?> registration : operations) {
-			if (Operation.class.isAssignableFrom(registration.getObject().getClass())) {
-				appender.append("\n");
-				for (int i = 0; i < d; i++)
-					appender.append("|   ");
-				appender.append("|____" + marker + ":");
-
-				Operation<?> operation = ((Operation) registration.getObject());
-				appender.append(operation.getClass().getSimpleName());
-
-				renderBatch(appender, operation, d);
-
-				appender.append(drawReactorOperations(
-						(Reactor) operation.getObservable(),
-						operation.getSuccessKey(),
-						operation.getFailureKey(),
-						null,
-						d + 1
-				));
-			}
-		}
-		return appender.toString();
-	}
-
-	private static void renderBatch(StringBuilder appender, Object consumer, int d) {
-		if (BatchOperation.class.isAssignableFrom(consumer.getClass())) {
-			BatchOperation operation = (BatchOperation) consumer;
-			appender.append(" accepted:" + operation.getAcceptCount());
-			appender.append("|errors:" + operation.getErrorCount());
-			appender.append("|batchSize:" + operation.getBatchSize());
-
-			appender.append(
-					loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
-							d + 1, "flush")
-			);
-			appender.append(
-					loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
-							d + 1, "first")
-			);
-			appender.append(
-					loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getLastKey()),
-							d + 1, "last")
-			);
-		}
-	}
-
-	public static String browseReactorOperations(Reactor reactor, Object successKey, Object failureKey,
-	                                             Object flushKey) {
-		StringBuilder appender = new StringBuilder("\nreactor(" + reactor.getId() + ")");
-		appender.append(drawReactorOperations(reactor, successKey, failureKey, flushKey, 1));
-		return appender.toString();
-	}
 
 	public static String browseReactorOperations(Reactor reactor, Object successKey, Object errorKey) {
 		return browseReactorOperations(reactor, successKey, errorKey, null);
@@ -102,4 +36,87 @@ public abstract class OperationUtils {
 		return browseReactorOperations(reactor, successKey, null, null);
 	}
 
+	public static String browseReactorOperations(Reactor reactor, Object successKey, Object failureKey,
+	                                             Object flushKey) {
+		OperationVisitor operationVisitor = new OperationVisitor(reactor, true);
+		operationVisitor.drawReactorOperations(reactor, successKey, failureKey, flushKey, 1);
+		return operationVisitor.toString();
+	}
+
+	public static class OperationVisitor {
+
+		final private boolean       visitFailures;
+		final private StringBuilder appender;
+
+		private OperationVisitor(Reactor reactor, boolean visitFailures) {
+			this.appender = new StringBuilder("\nreactor(" + reactor.getId() + ")");
+			this.visitFailures = visitFailures;
+		}
+
+		private OperationVisitor(Reactor reactor) {
+			this(reactor, false);
+		}
+
+		private OperationVisitor drawReactorOperations(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
+		                                               int d) {
+			loopOperations(reactor.getConsumerRegistry().select(successKey), d, "accept");
+			loopOperations(reactor.getConsumerRegistry().select(flushKey), d, "flush");
+
+			if (visitFailures)
+				loopOperations(reactor.getConsumerRegistry().select(failureKey), d, "fail");
+
+			return this;
+		}
+
+		private void loopOperations(List<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
+		                            String marker) {
+			for (Registration<?> registration : operations) {
+
+				appender.append("\n");
+				for (int i = 0; i < d; i++)
+					appender.append("|   ");
+				appender.append("|____" + marker + ":");
+
+				appender.append(registration.getObject().getClass().getSimpleName().isEmpty() ? registration.getObject() :
+						registration.getObject()
+								.getClass()
+								.getSimpleName());
+
+				if (Operation.class.isAssignableFrom(registration.getObject().getClass())) {
+					Operation<?> operation = ((Operation) registration.getObject());
+
+					renderBatch(operation, d);
+
+					drawReactorOperations(
+							(Reactor) operation.getObservable(),
+							operation.getSuccessKey(),
+							operation.getFailureKey(),
+							null,
+							d + 1
+					);
+				}
+			}
+		}
+
+		private void renderBatch(Object consumer, int d) {
+			if (BatchOperation.class.isAssignableFrom(consumer.getClass())) {
+				BatchOperation operation = (BatchOperation) consumer;
+				appender.append(" accepted:" + operation.getAcceptCount());
+				appender.append("|errors:" + operation.getErrorCount());
+				appender.append("|batchSize:" + operation.getBatchSize());
+
+				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
+						d + 1, "flush");
+				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
+						d + 1, "first");
+				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getLastKey()),
+						d + 1, "last");
+			}
+		}
+
+		@Override
+		public String toString() {
+			return appender.toString();
+		}
+	}
 }

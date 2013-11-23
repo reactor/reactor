@@ -200,7 +200,7 @@ public abstract class Promises {
 		aggregatedStream.consume(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.consume(deferredStream);
+			promise.connect(deferredStream);
 		}
 
 		return resultPromise;
@@ -261,10 +261,10 @@ public abstract class Promises {
 				.get()
 				.compose();
 
-		firstStream.consume(resultPromise);
+		firstStream.connect(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.consume(deferredStream);
+			promise.connect(deferredStream);
 		}
 
 		return resultPromise;

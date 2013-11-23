@@ -199,7 +199,7 @@ class GroovyStreamSpec extends Specification {
 			def key = $()
 
 		when:
-			'we consume when this reactor and key'
+			'we connect when this reactor and key'
 			def latch = new CountDownLatch(5)
 			r.on(key.t1) {
 				latch.countDown()

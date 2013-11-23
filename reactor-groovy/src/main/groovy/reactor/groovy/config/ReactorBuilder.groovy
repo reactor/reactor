@@ -235,9 +235,9 @@ class ReactorBuilder implements Supplier<Reactor> {
 						def finalDeferred = Streams.<Event<?>> defer().get()
 						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred.compose(), null)
 					}
-					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).consume(stream.head.compose())
+					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).connect(stream.head.compose())
 				} else {
-					tail.consume(stream.head.compose())
+					tail.connect(stream.head.compose())
 				}
 				tail = stream.tail
 			}

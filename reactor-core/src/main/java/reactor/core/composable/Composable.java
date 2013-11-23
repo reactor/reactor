@@ -95,8 +95,21 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	}
 
 	/**
-	 * Attach another {@code Composable} to this one that will cascade the value received by this {@code Composable} into
-	 * the next.
+	 * Attach another {@code Composable} to this one that will cascade the value or error received by this {@code
+	 * Composable} into the next.
+	 *
+	 * @param composable the next {@code Composable} to cascade events to
+	 * @return {@literal this}
+	 */
+	public Composable<T> connect(@Nonnull final Composable<T> composable) {
+		this.consume(composable);
+		events.on(error.getT1(), new ForwardOperation<Throwable>(composable.events, composable.error.getT2(), null));
+		return this;
+	}
+
+	/**
+	 * Attach another {@code Composable} to this one that will only cascade the value received by this {@code
+	 * Composable} into the next.
 	 *
 	 * @param composable the next {@code Composable} to cascade events to
 	 * @return {@literal this}
@@ -107,7 +120,6 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		}
 		addOperation(new ForwardOperation<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
 
-		events.on(error.getT1(), new ForwardOperation<Throwable>(composable.events, composable.error.getT2(), null));
 		return this;
 	}
 
@@ -143,7 +155,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		this.events.on(accept.getT1(), new ForwardOperation<T>(observable, key, null));
+		addOperation(new ForwardOperation<T>(observable, key, null));
 		return this;
 	}
 
@@ -238,7 +250,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	@Override
 	public Composable<T> flush() {
 		Composable<?> that = this;
-		while(that.parent != null) {
+		while (that.parent != null) {
 			that = that.parent;
 		}
 
@@ -246,14 +258,24 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		return this;
 	}
 
-	public String debug(){
+	public String debug() {
 		Composable<?> that = this;
-		while(that.parent != null){
+		while (that.parent != null) {
 			that = that.parent;
 		}
-		return OperationUtils.browseReactorOperations((Reactor)that.events,
+		return OperationUtils.browseReactorOperations((Reactor) that.events,
 				that.accept.getT2(), that.error.getT2(), that.flush.getT2()
 		);
+	}
+
+	/**
+	 * Consume events with the passed {@code Operation}
+	 *
+	 * @param operation the operation listening for values
+	 */
+	public Composable<T> addOperation(Operation<T> operation) {
+		this.events.on(accept.getT1(), operation);
+		return this;
 	}
 
 	/**
@@ -283,16 +305,6 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	 */
 	void notifyError(Throwable error) {
 		events.notify(this.error.getT2(), Event.wrap(error));
-	}
-
-	/**
-	 * Consume events with the passed {@code Operation}
-	 *
-	 * @param operation the operation listening for values
-	 */
-	public Composable<T> addOperation(Operation<T> operation) {
-		this.events.on(accept.getT1(), operation);
-		return this;
 	}
 
 	/**

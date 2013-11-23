@@ -185,7 +185,7 @@ class StreamsSpec extends Specification {
       def error
       def value = s.tap()
       s.when(Exception, consumer { error = it })
-      parent.compose().consume(s)
+      parent.compose().connect(s)
 
     when:
       'the parent accepts a value'
