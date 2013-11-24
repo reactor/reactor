@@ -19,6 +19,8 @@ import reactor.core.Reactor;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.operations.BatchOperation;
+import reactor.operations.Operation;
 
 import java.util.List;
 
@@ -28,18 +30,24 @@ import java.util.List;
 public abstract class OperationUtils {
 
 
-	public static String browseReactorOperations(Reactor reactor, Object successKey, Object errorKey) {
-		return browseReactorOperations(reactor, successKey, errorKey, null);
+	public static String browseReactor(Reactor reactor, Object successKey, Object errorKey) {
+		return browseReactor(reactor, successKey, errorKey, null);
 	}
 
-	public static String browseReactorOperations(Reactor reactor, Object successKey) {
-		return browseReactorOperations(reactor, successKey, null, null);
+	public static String browseReactor(Reactor reactor, Object successKey) {
+		return browseReactor(reactor, successKey, null, null);
 	}
 
-	public static String browseReactorOperations(Reactor reactor, Object successKey, Object failureKey,
-	                                             Object flushKey) {
+	public static String browseReactor(Reactor reactor) {
 		OperationVisitor operationVisitor = new OperationVisitor(reactor, true);
-		operationVisitor.drawReactorOperations(reactor, successKey, failureKey, flushKey, 1);
+		operationVisitor.loopOperations(reactor.getConsumerRegistry(), 1, "accept");
+		return operationVisitor.toString();
+	}
+
+	public static String browseReactor(Reactor reactor, Object successKey, Object failureKey,
+	                                   Object flushKey) {
+		OperationVisitor operationVisitor = new OperationVisitor(reactor, true);
+		operationVisitor.drawReactorConsumers(reactor, successKey, failureKey, flushKey, 1);
 		return operationVisitor.toString();
 	}
 
@@ -57,18 +65,24 @@ public abstract class OperationUtils {
 			this(reactor, false);
 		}
 
-		private OperationVisitor drawReactorOperations(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
-		                                               int d) {
-			loopOperations(reactor.getConsumerRegistry().select(successKey), d, "accept");
-			loopOperations(reactor.getConsumerRegistry().select(flushKey), d, "flush");
+		private OperationVisitor drawReactorConsumers(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
+		                                              int d) {
 
-			if (visitFailures)
+			if (successKey != null) {
+				loopOperations(reactor.getConsumerRegistry().select(successKey), d, "accept");
+			}
+
+			if (flushKey != null) {
+				loopOperations(reactor.getConsumerRegistry().select(flushKey), d, "flush");
+			}
+
+			if (visitFailures && failureKey != null)
 				loopOperations(reactor.getConsumerRegistry().select(failureKey), d, "fail");
 
 			return this;
 		}
 
-		private void loopOperations(List<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
+		private void loopOperations(Iterable<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
 		                            String marker) {
 			for (Registration<?> registration : operations) {
 
@@ -87,7 +101,7 @@ public abstract class OperationUtils {
 
 					renderBatch(operation, d);
 
-					drawReactorOperations(
+					drawReactorConsumers(
 							(Reactor) operation.getObservable(),
 							operation.getSuccessKey(),
 							operation.getFailureKey(),

@@ -55,7 +55,9 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		Assert.state(dispatcher != null || parent != null, "One of 'dispatcher' or 'parent'  cannot be null.");
 		this.events = parent == null ?
 				new Reactor(dispatcher) :
-				parent.events;
+				new Reactor(dispatcher,
+						((Reactor) parent.getObservable()).getEventRouter(),
+						((Reactor) parent.getObservable()).getConsumerRegistry());
 
 		this.parent = parent;
 		this.accept = Selectors.$();
@@ -263,8 +265,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		while (that.parent != null) {
 			that = that.parent;
 		}
-		return OperationUtils.browseReactorOperations((Reactor) that.events,
-				that.accept.getT2(), that.error.getT2(), that.flush.getT2()
+		return OperationUtils.browseReactor((Reactor) that.events
 		);
 	}
 
