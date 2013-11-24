@@ -54,4 +54,12 @@ public class FilterOperation<T> extends BaseOperation<T> {
 			//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
 		}
 	}
+
+	public Object getElseSuccess() {
+		return elseSuccess;
+	}
+
+	public Observable getElseObservable() {
+		return elseObservable;
+	}
 }

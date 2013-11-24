@@ -35,7 +35,7 @@ public class FlatMapOperation<T, V, E extends OperationPipe<V>> extends BaseOper
 	@Override
 	public void doOperation(Event<T> value) {
 		E val = fn.apply(value.getData());
-		val.addOperation(new ForwardOperation<V>(getObservable(), getSuccessKey(), getFailureKey()));
+		val.addOperation(new ConnectOperation<V>(getObservable(), getSuccessKey(), getFailureKey()));
 		val.flush();
 	}
 }

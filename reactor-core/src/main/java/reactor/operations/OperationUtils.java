@@ -100,6 +100,7 @@ public abstract class OperationUtils {
 					Operation<?> operation = ((Operation) registration.getObject());
 
 					renderBatch(operation, d);
+					renderFilter(operation, d);
 
 					drawReactorConsumers(
 							(Reactor) operation.getObservable(),
@@ -111,6 +112,19 @@ public abstract class OperationUtils {
 				}
 			}
 		}
+
+		private void renderFilter(Object consumer, int d) {
+			if (FilterOperation.class.isAssignableFrom(consumer.getClass())) {
+				FilterOperation operation = (FilterOperation) consumer;
+
+				if (operation.getElseObservable() != null) {
+					loopOperations(((Reactor) operation.getElseObservable()).getConsumerRegistry()
+							.select(operation.getElseSuccess()),
+							d + 1, "else");
+				}
+			}
+		}
+
 
 		private void renderBatch(Object consumer, int d) {
 			if (BatchOperation.class.isAssignableFrom(consumer.getClass())) {

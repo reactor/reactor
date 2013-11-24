@@ -35,7 +35,7 @@ import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.operations.CallbackOperation;
-import reactor.operations.ForwardOperation;
+import reactor.operations.ConnectOperation;
 import reactor.operations.Operation;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -519,7 +519,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 				Reactors.schedule(operation, Event.wrap(value), getObservable());
 			} else if(state == State.FAILURE) {
 				Reactors.schedule(
-						new ForwardOperation<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
+						new ConnectOperation<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
 						Event.wrap(error), getObservable());
 			} else {
 				super.addOperation(operation);

@@ -63,7 +63,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		this.accept = Selectors.$();
 		if (parent != null) {
 			events.on(parent.error.getT1(),
-					new ForwardOperation<Throwable>(events, error.getT2(), null));
+					new ConnectOperation<Throwable>(events, error.getT2(), null));
 		}
 	}
 
@@ -105,7 +105,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
 		this.consume(composable);
-		events.on(error.getT1(), new ForwardOperation<Throwable>(composable.events, composable.error.getT2(), null));
+		events.on(error.getT1(), new ConnectOperation<Throwable>(composable.events, composable.error.getT2(), null));
 		return this;
 	}
 
@@ -120,7 +120,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 		if (composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
-		addOperation(new ForwardOperation<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
+		addOperation(new ConnectOperation<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
 
 		return this;
 	}
@@ -157,7 +157,7 @@ public abstract class Composable<T> implements OperationPipe<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		addOperation(new ForwardOperation<T>(observable, key, null));
+		addOperation(new ConnectOperation<T>(observable, key, null));
 		return this;
 	}
 

@@ -323,7 +323,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	@CompileStatic
-	private final class EventRouterPredicate extends Predicate<Event<?>> {
+	private final class EventRouterPredicate implements Predicate<Event<?>> {
 		final Selector sel
 
 		EventRouterPredicate(Selector sel) {

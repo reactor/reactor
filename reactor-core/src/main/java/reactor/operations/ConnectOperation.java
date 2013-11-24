@@ -21,9 +21,9 @@ import reactor.event.Event;
 /**
 * @author Stephane Maldini
 */
-public class ForwardOperation<T> extends BaseOperation<T> {
+public class ConnectOperation<T> extends BaseOperation<T> {
 
-	public ForwardOperation(Observable observable, Object successKey, Object failureKey) {
+	public ConnectOperation(Observable observable, Object successKey, Object failureKey) {
 		super(observable, successKey, failureKey);
 	}
 
