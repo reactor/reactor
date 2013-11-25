@@ -259,4 +259,40 @@ public class Tuple implements Iterable {
 		return entries.iterator();
 	}
 
+
+  @Override
+  public int hashCode() {
+    if (this.size == 0) {
+      return 0;
+    } else if (this.size == 1) {
+      return this.entries.get(0).hashCode();
+    } else {
+      int hashCode = 1;
+      for (Object entry: this.entries) {
+        hashCode = hashCode ^ entry.hashCode();
+      }
+      return hashCode;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null) return false;
+
+    if (!(o instanceof Tuple)) return false;
+
+    Tuple cast = (Tuple)o;
+
+    if (this.size != cast.size) return false;
+
+    boolean eq = true;
+
+    for (int i = 0; i < this.size; i++) {
+      if (!this.entries.get(i).equals(cast.entries.get(i))) {
+        return false;
+      }
+    }
+
+    return eq;
+  }
 }
