@@ -31,85 +31,85 @@ import reactor.io.Buffer;
  */
 class NettyTcpConnectionChannelInboundHandler extends ChannelInboundHandlerAdapter {
 
-	private final Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
-	private final NettyTcpConnection<?, ?> conn;
-	private       ByteBuf                  remainder;
+  private final Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
+  private final NettyTcpConnection<?, ?> conn;
+  private       ByteBuf                  remainder;
 
-	NettyTcpConnectionChannelInboundHandler(NettyTcpConnection<?, ?> conn) {
-		this.conn = conn;
-	}
+  NettyTcpConnectionChannelInboundHandler(NettyTcpConnection<?, ?> conn) {
+    this.conn = conn;
+  }
 
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		if(!(msg instanceof ByteBuf)) {
-			conn.notifyRead(msg);
-			return;
-		}
+  @Override
+  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    if(!(msg instanceof ByteBuf) || null == conn.codec()) {
+      conn.notifyRead(msg);
+      return;
+    }
 
-		ByteBuf data = (ByteBuf)msg;
-		if(remainder == null) {
-			try {
-				passToConnection(data);
-			} finally {
-				if(data.isReadable()) {
-					remainder = data;
-				} else {
-					data.release();
-				}
-			}
-			return;
-		}
+    ByteBuf data = (ByteBuf)msg;
+    if(remainder == null) {
+      try {
+        passToConnection(data);
+      } finally {
+        if(data.isReadable()) {
+          remainder = data;
+        } else {
+          data.release();
+        }
+      }
+      return;
+    }
 
-		if(!bufferHasSufficientCapacity(remainder, data)) {
-			ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
-			remainder.release();
-			remainder = combined;
-		} else {
-			remainder.writeBytes(data);
-		}
-		data.release();
+    if(!bufferHasSufficientCapacity(remainder, data)) {
+      ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
+      remainder.release();
+      remainder = combined;
+    } else {
+      remainder.writeBytes(data);
+    }
+    data.release();
 
-		try {
-			passToConnection(remainder);
-		} finally {
-			if(remainder.isReadable()) {
-				remainder.discardSomeReadBytes();
-			} else {
-				remainder.release();
-				remainder = null;
-			}
-		}
-	}
+    try {
+      passToConnection(remainder);
+    } finally {
+      if(remainder.isReadable()) {
+        remainder.discardSomeReadBytes();
+      } else {
+        remainder.release();
+        remainder = null;
+      }
+    }
+  }
 
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			// TODO: do we even care?
-			if(log.isInfoEnabled()) {
-				log.info(ctx.channel().toString() + " " + cause.getMessage());
-			}
-		} else {
-			conn.notifyError(cause);
-		}
-		ctx.close();
-	}
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
+      // TODO: do we even care?
+      if(log.isInfoEnabled()) {
+        log.info(ctx.channel().toString() + " " + cause.getMessage());
+      }
+    } else {
+      conn.notifyError(cause);
+    }
+    ctx.close();
+  }
 
-	private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {
-		return receiver.writerIndex() <= receiver.maxCapacity() - provider.readableBytes();
-	}
+  private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {
+    return receiver.writerIndex() <= receiver.maxCapacity() - provider.readableBytes();
+  }
 
-	private ByteBuf createCombinedBuffer(ByteBuf partOne, ByteBuf partTwo, ChannelHandlerContext ctx) {
-		ByteBuf combined = ctx.alloc().buffer(partOne.readableBytes() + partTwo.readableBytes());
-		combined.writeBytes(partOne);
-		combined.writeBytes(partTwo);
-		return combined;
-	}
+  private ByteBuf createCombinedBuffer(ByteBuf partOne, ByteBuf partTwo, ChannelHandlerContext ctx) {
+    ByteBuf combined = ctx.alloc().buffer(partOne.readableBytes() + partTwo.readableBytes());
+    combined.writeBytes(partOne);
+    combined.writeBytes(partTwo);
+    return combined;
+  }
 
-	private void passToConnection(ByteBuf data) {
-		Buffer b = new Buffer(data.nioBuffer());
-		int start = b.position();
-		conn.read(b);
-		data.skipBytes(b.position() - start);
-	}
+  private void passToConnection(ByteBuf data) {
+    Buffer b = new Buffer(data.nioBuffer());
+    int start = b.position();
+    conn.read(b);
+    data.skipBytes(b.position() - start);
+  }
 
 }
