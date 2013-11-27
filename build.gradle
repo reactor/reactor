@@ -249,7 +249,6 @@ project('reactor-core') {
 
 		// JSON handling
 		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
-				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion",
 				"com.jayway.jsonpath:json-path:$jsonPathVersion"
 
 	}
@@ -344,8 +343,7 @@ project('reactor-tcp') {
 		compile project(':reactor-core')
 
 		compile "io.netty:netty-all:$nettyVersion"
-		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
-				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion"
+		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
