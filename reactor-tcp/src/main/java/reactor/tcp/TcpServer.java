@@ -29,7 +29,7 @@ import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 

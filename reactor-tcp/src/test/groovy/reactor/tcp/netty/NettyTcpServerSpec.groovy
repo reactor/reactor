@@ -20,9 +20,9 @@ import reactor.core.Environment
 import reactor.function.Consumer
 import reactor.function.Function
 import reactor.io.Buffer
+import reactor.io.encoding.PassThroughCodec
 import reactor.tcp.TcpConnection
-import reactor.tcp.TcpServer
-import reactor.tcp.encoding.json.JsonCodec
+import reactor.io.encoding.json.JsonCodec
 import reactor.tcp.spec.TcpServerSpec
 import spock.lang.Specification
 
@@ -51,6 +51,7 @@ class NettyTcpServerSpec extends Specification {
 		def server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer).
 				env(env).
 				listen(port).
+				codec(new PassThroughCodec<Buffer>()).
 				consume({ TcpConnection<Buffer, Buffer> conn ->
 					conn.receive({ Buffer data ->
 						Buffer.wrap("Hello World!")

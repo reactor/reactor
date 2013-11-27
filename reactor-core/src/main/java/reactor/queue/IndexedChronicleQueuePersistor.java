@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
-import reactor.queue.encoding.Codec;
-import reactor.queue.encoding.JavaSerializationCodec;
+import reactor.io.encoding.Codec;
+import reactor.io.encoding.JavaSerializationCodec;
 
 import javax.annotation.Nonnull;
 import java.io.File;
@@ -33,7 +33,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private final AtomicLong size    = new AtomicLong(0);
 
 	private final String                  basePath;
-	private final Codec<T>                codec;
+	private final Codec<Buffer, T, T>     codec;
 	private final boolean                 deleteOnExit;
 	private final IndexedChronicle        data;
 	private final ChronicleOfferFunction  offerFun;
@@ -70,10 +70,10 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath,
-	                                      @Nonnull Codec<T> codec,
-	                                      boolean clearOnStart,
-	                                      boolean deleteOnExit,
-	                                      @Nonnull ChronicleConfig config) throws IOException {
+																				@Nonnull Codec<Buffer, T, T> codec,
+																				boolean clearOnStart,
+																				boolean deleteOnExit,
+																				@Nonnull ChronicleConfig config) throws IOException {
 		this.basePath = basePath;
 		this.codec = codec;
 		this.deleteOnExit = deleteOnExit;
@@ -186,7 +186,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			ByteBuffer bb = ByteBuffer.allocate(len);
 			ex.read(bb);
 			bb.flip();
-			return codec.decoder().apply(new Buffer(bb));
+			return codec.decoder(null).apply(new Buffer(bb));
 		} finally {
 			ex.finish();
 		}

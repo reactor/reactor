@@ -2,9 +2,10 @@ package reactor.queue.spec;
 
 import net.openhft.chronicle.ChronicleConfig;
 import reactor.function.Supplier;
+import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 import reactor.queue.IndexedChronicleQueuePersistor;
 import reactor.queue.PersistentQueue;
-import reactor.queue.encoding.Codec;
 
 import java.io.IOException;
 
@@ -18,10 +19,10 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 	private String  basePath     = System.getProperty("java.io.tmpdir") + "/persistent-queue";
 	private boolean clearOnStart = false;
 	private boolean deleteOnExit = false;
-	private Codec<T> codec;
+	private Codec<Buffer, T, T> codec;
 	private ChronicleConfig config = ChronicleConfig.DEFAULT.clone();
 
-	public PersistentQueueSpec<T> codec(Codec<T> codec) {
+	public PersistentQueueSpec<T> codec(Codec<Buffer, T, T> codec) {
 		this.codec = codec;
 		return this;
 	}
@@ -75,10 +76,10 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 	public PersistentQueue<T> get() {
 		try {
 			return new PersistentQueue<T>(new IndexedChronicleQueuePersistor<T>(basePath,
-			                                                                    codec,
-			                                                                    clearOnStart,
-			                                                                    deleteOnExit,
-			                                                                    config));
+																																					codec,
+																																					clearOnStart,
+																																					deleteOnExit,
+																																					config));
 		} catch(IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
