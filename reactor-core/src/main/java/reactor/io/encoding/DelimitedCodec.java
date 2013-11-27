@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
 import reactor.io.Buffer.View;
+import reactor.io.encoding.Codec;
 
 /**
- * An implementation of {@link Codec} that decodes by splitting a {@link Buffer} into segments
+ * An implementation of {@link reactor.io.encoding.Codec} that decodes by splitting a {@link Buffer} into segments
  * based on a delimiter and encodes by appending its delimiter to each piece of output.
  * During decoding the delegate is used to process each segment. During encoding the delegate
  * is used to create a buffer for each piece of output to which the delimiter is then appended.

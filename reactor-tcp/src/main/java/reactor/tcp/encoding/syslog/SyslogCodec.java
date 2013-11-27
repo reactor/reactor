@@ -19,7 +19,7 @@ package reactor.tcp.encoding.syslog;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 
 import java.util.Calendar;
 import java.util.Date;

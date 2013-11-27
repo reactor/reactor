@@ -1,4 +1,4 @@
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.io.Buffer;
 

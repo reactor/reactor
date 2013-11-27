@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding.json;
+package reactor.io.encoding.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 import reactor.util.Assert;
 
 import java.io.IOException;
@@ -31,8 +31,11 @@ import java.io.IOException;
 /**
  * A codec for decoding JSON into Java objects and encoding Java objects into JSON.
  *
- * @param <IN>  The type to decode JSON into
- * @param <OUT> The type to encode into JSON
+ * @param <IN>
+ * 		The type to decode JSON into
+ * @param <OUT>
+ * 		The type to encode into JSON
+ *
  * @author Jon Brisbin
  */
 public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
@@ -44,7 +47,8 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
 	 * decoding.
 	 *
-	 * @param inputType The type to create when decoding.
+	 * @param inputType
+	 * 		The type to create when decoding.
 	 */
 	public JsonCodec(Class<IN> inputType) {
 		this(inputType, null);
@@ -55,16 +59,18 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * decoding. The {@code customModule} will be registered with the underlying {@link
 	 * ObjectMapper}.
 	 *
-	 * @param inputType    The type to create when decoding.
-	 * @param customModule The module to register with the underlying ObjectMapper
+	 * @param inputType
+	 * 		The type to create when decoding.
+	 * @param customModule
+	 * 		The module to register with the underlying ObjectMapper
 	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule) {
 		Assert.notNull(inputType, "inputType must not be null");
-		this.inputType = (null == inputType ? (Class<IN>) JsonNode.class : inputType);
+		this.inputType = (null == inputType ? (Class<IN>)JsonNode.class : inputType);
 
 		this.mapper = new ObjectMapper();
-		if (null != customModule) {
+		if(null != customModule) {
 			this.mapper.registerModule(customModule);
 		}
 	}
@@ -91,18 +97,18 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		public IN apply(Buffer buffer) {
 			IN in;
 			try {
-				if (JsonNode.class.isAssignableFrom(inputType)) {
-					in = (IN) mapper.readTree(buffer.inputStream());
+				if(JsonNode.class.isAssignableFrom(inputType)) {
+					in = (IN)mapper.readTree(buffer.inputStream());
 				} else {
 					in = mapper.readValue(buffer.inputStream(), inputType);
 				}
-				if (null != next) {
+				if(null != next) {
 					next.accept(in);
 					return null;
 				} else {
 					return in;
 				}
-			} catch (IOException e) {
+			} catch(IOException e) {
 				throw new IllegalStateException(e);
 			}
 		}
@@ -113,7 +119,7 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		public Buffer apply(OUT out) {
 			try {
 				return Buffer.wrap(mapper.writeValueAsBytes(out));
-			} catch (JsonProcessingException e) {
+			} catch(JsonProcessingException e) {
 				throw new IllegalStateException(e);
 			}
 		}

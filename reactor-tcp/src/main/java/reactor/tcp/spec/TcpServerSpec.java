@@ -9,7 +9,7 @@ import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;

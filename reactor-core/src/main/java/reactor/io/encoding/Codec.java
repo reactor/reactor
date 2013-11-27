@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.function.Consumer;
 import reactor.function.Function;

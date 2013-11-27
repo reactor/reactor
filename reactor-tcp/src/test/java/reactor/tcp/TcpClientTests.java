@@ -26,7 +26,7 @@ import reactor.core.composable.Promise;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
-import reactor.tcp.encoding.StandardCodecs;
+import reactor.io.encoding.StandardCodecs;
 import reactor.tcp.netty.NettyClientSocketOptions;
 import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.spec.TcpClientSpec;
@@ -195,7 +195,7 @@ public class TcpClientTests {
 		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
-		           latch.await(5, TimeUnit.SECONDS));
+							 latch.await(5, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
@@ -354,12 +354,12 @@ public class TcpClientTests {
 				.get().open().await();
 
 		connection.on()
-		          .writeIdle(500, new Runnable() {
-			          @Override
-			          public void run() {
-				          latch.countDown();
-			          }
-		          });
+							.writeIdle(500, new Runnable() {
+								@Override
+								public void run() {
+									latch.countDown();
+								}
+							});
 
 		for(int i = 0; i < 5; i++) {
 			Thread.sleep(100);
@@ -379,24 +379,24 @@ public class TcpClientTests {
 				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
 						.env(env)
 						.options(new NettyClientSocketOptions()
-								         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-									         @Override
-									         public void accept(ChannelPipeline pipeline) {
-										         pipeline.addLast(new HttpClientCodec());
-									         }
-								         }))
+												 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+													 @Override
+													 public void accept(ChannelPipeline pipeline) {
+														 pipeline.addLast(new HttpClientCodec());
+													 }
+												 }))
 						.connect("www.google.com", 80)
 						.get().open().await();
 
 		final CountDownLatch latch = new CountDownLatch(1);
 		connection.sendAndReceive(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))
-		          .onSuccess(new Consumer<HttpObject>() {
-			          @Override
-			          public void accept(HttpObject resp) {
-				          latch.countDown();
-				          System.out.println("resp: " + resp);
-			          }
-		          });
+							.onSuccess(new Consumer<HttpObject>() {
+								@Override
+								public void accept(HttpObject resp) {
+									latch.countDown();
+									System.out.println("resp: " + resp);
+								}
+							});
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}

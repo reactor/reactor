@@ -18,9 +18,10 @@ package reactor.queue
 
 import net.openhft.chronicle.ChronicleConfig
 import net.openhft.chronicle.tools.ChronicleTools
-import reactor.queue.encoding.JsonCodec
-import reactor.queue.encoding.StandardCodecs
+import reactor.io.encoding.StandardCodecs
+import reactor.io.encoding.json.JsonCodec
 import spock.lang.Specification
+
 /**
  * @author Jon Brisbin
  */
@@ -31,7 +32,7 @@ class PersistentQueueSpec extends Specification {
 
 		new IndexedChronicleQueuePersistor<String>(
 				"persistent-queue",
-				StandardCodecs.stringCodec(),
+				StandardCodecs.STRING_CODEC,
 				false,
 				false,
 				config
@@ -43,7 +44,7 @@ class PersistentQueueSpec extends Specification {
 
 		new IndexedChronicleQueuePersistor<T>(
 				"persistent-queue",
-				new JsonCodec<T>(type),
+				new JsonCodec<T, T>(type),
 				false,
 				false,
 				config

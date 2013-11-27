@@ -32,7 +32,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.io.Buffer;
 import reactor.tcp.AbstractTcpConnection;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
