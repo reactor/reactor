@@ -13,12 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple;
@@ -27,13 +25,13 @@ import reactor.tuple.Tuple2;
 /**
  * @author Stephane Maldini
  */
-public class ReduceOperation<T, A> extends BatchOperation<T> {
+public class ReduceAction<T, A> extends BatchAction<T> {
 	private final    Supplier<A>               accumulators;
 	private final    Function<Tuple2<T, A>, A> fn;
 	private volatile A                         acc;
 
-	public ReduceOperation(int batchSize, Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
-	                       Observable d, Object successKey, Object failureKey) {
+	public ReduceAction(int batchSize, Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
+	                    Observable d, Object successKey, Object failureKey) {
 		super(batchSize, d, successKey, failureKey);
 		this.accumulators = accumulators;
 		this.fn = fn;

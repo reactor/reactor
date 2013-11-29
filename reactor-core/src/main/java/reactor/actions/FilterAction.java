@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -22,17 +22,17 @@ import reactor.function.Predicate;
 /**
  * @author Stephane Maldini
  */
-public class FilterOperation<T> extends BaseOperation<T> {
+public class FilterAction<T> extends Action<T> {
 	private final Predicate<T> p;
 	private final Observable   elseObservable;
 	private final Object   elseSuccess;
 
-	public FilterOperation(Predicate<T> p, Observable d, Object successKey, Object failureKey) {
+	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey) {
 		this(p, d, successKey, failureKey, null, null);
 	}
 
-	public FilterOperation(Predicate<T> p, Observable d, Object successKey, Object failureKey,
-	                       Observable elseObservable, Object elseSuccess
+	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey,
+	                    Observable elseObservable, Object elseSuccess
 	) {
 		super(d, successKey, failureKey);
 		this.p = p;

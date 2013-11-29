@@ -16,13 +16,13 @@
 
 package reactor.core.composable;
 
+import reactor.actions.*;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.*;
 import reactor.function.support.Tap;
-import reactor.operations.*;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -83,7 +83,7 @@ public class Stream<T> extends Composable<T> {
 
 	private void attachFlush(Iterable<T> values) {
 		if (values != null) {
-			new ForEachOperation<T>(values, getObservable(), getAccept().getT2(), getError().getT2()).
+			new ForEachAction<T>(values, getObservable(), getAccept().getT2(), getError().getT2()).
 					attach(getFlush().getT1());
 		}
 	}
@@ -147,7 +147,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> first() {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream();
-		addOperation(new BatchOperation<T>(batchSize, getObservable(), null, getError().getT2(), null,
+		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,
 				d.compose().getAccept().getT2(), null));
 		return d.compose();
 	}
@@ -160,7 +160,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> last() {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream();
-		addOperation(new BatchOperation<T>(batchSize, getObservable(), null, getError().getT2(), null,
+		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,
 				null, d.compose().getAccept().getT2()));
 		return d.compose();
 	}
@@ -178,7 +178,7 @@ public class Stream<T> extends Composable<T> {
 	public <E, T extends Iterable<E>> Stream<E> split() {
 		final Deferred<E, Stream<E>> d = createDeferred(batchSize);
 		getObservable().on(getAccept().getT1(),
-				new ForEachOperation<T>(getObservable(), d.compose().getAccept().getT2(), getError().getT2()));
+				new ForEachAction<T>(getObservable(), d.compose().getAccept().getT2(), getError().getT2()));
 		return d.compose();
 	}
 
@@ -194,7 +194,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> batch(final int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
 		final Stream<T> stream = d.compose();
-		addOperation(new BatchOperation<T>(batchSize,
+		addAction(new BatchAction<T>(batchSize,
 				stream.getObservable(),
 				stream.getAccept().getT2(),
 				getError().getT2(),
@@ -247,7 +247,7 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded limit.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
-		addOperation(new CollectOperation<T>(
+		addAction(new CollectAction<T>(
 				batchSize,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
@@ -291,14 +291,14 @@ public class Stream<T> extends Composable<T> {
 		final Stream<A> stream = d.compose();
 
 		if (isBatch()) {
-			addOperation(new ReduceOperation<T, A>(
+			addAction(new ReduceAction<T, A>(
 					batchSize,
 					accumulators,
 					fn,
 					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()
 			));
 		} else {
-			addOperation(new ScanOperation<T, A>(
+			addAction(new ScanAction<T, A>(
 					accumulators,
 					fn,
 					stream.getObservable(), stream.getAccept().getT2(), getError().getT2()

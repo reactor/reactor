@@ -13,27 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.function.Function;
+import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
  */
-public class MapOperation<T, V> extends BaseOperation<T> {
+public class CallbackAction<T> extends Action<T> {
 
-	private final Function<T, V> fn;
+	private final Consumer<T> consumer;
 
-	public MapOperation(Function<T, V> fn, Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
-		this.fn = fn;
+	public CallbackAction(Consumer<T> consumer, Observable d, Object failureKey) {
+		super(d, null, failureKey);
+		this.consumer = consumer;
 	}
 
 	@Override
 	public void doOperation(Event<T> value) {
-		V val = fn.apply(value.getData());
-		notifyValue(value.copy(val));
+		consumer.accept(value.getData());
 	}
 }

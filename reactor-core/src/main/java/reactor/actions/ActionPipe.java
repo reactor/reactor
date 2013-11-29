@@ -13,29 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
-
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.function.Function;
+package reactor.actions;
 
 /**
+ * Component that can be injected with {@link Action}s
+ *
  * @author Stephane Maldini
  */
-public class FlatMapOperation<T, V, E extends OperationPipe<V>> extends BaseOperation<T> {
+public interface ActionPipe<T>{
 
-	private final Function<T, E> fn;
+	/**
+	 * Consume events with the passed {@code Operation}
+	 *
+	 * @param operation the operation listening for values
+	 */
+	ActionPipe<T> addAction(Action<T> operation);
 
-	public FlatMapOperation(Function<T,E> fn, Observable d, Object successKey,
-	                        Object failureKey) {
-		super(d, successKey, failureKey);
-		this.fn = fn;
-	}
-
-	@Override
-	public void doOperation(Event<T> value) {
-		E val = fn.apply(value.getData());
-		val.addOperation(new ConnectOperation<V>(getObservable(), getSuccessKey(), getFailureKey()));
-		val.flush();
-	}
+	/**
+	 * Flush any cached or unprocessed values through this {@literal OperationPipe}.
+	 *
+	 * @return {@literal this}
+	 */
+	ActionPipe<T> flush();
 }

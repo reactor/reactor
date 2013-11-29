@@ -13,26 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Marker interface for all Composable operations such as map, reduce, filter...
- *
- * @param <T>
- * 		The type of the values
- *
  * @author Stephane Maldini
  */
-public interface Operation<T> extends Consumer<Event<T>> {
+public class CollectAction<T> extends BatchAction<T> {
+	private final List<T> values = new ArrayList<T>();
 
-	Observable getObservable();
+	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
+		super(batchsize, d, successKey, failureKey);
+	}
 
-	Object getSuccessKey();
-	Object getFailureKey();
+	@Override
+	public void doNext(Event<T> value) {
+		synchronized (values) {
+			values.add(value.getData());
+		}
+	}
+
+	@Override
+	public void doFlush(Event<T> ev) {
+		if (values.isEmpty()) {
+			return;
+		}
+		notifyValue(ev.copy(new ArrayList<T>(values)));
+		values.clear();
+	}
+
 }

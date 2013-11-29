@@ -13,22 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.function.Function;
 
 /**
-* @author Stephane Maldini
-*/
-public class ConnectOperation<T> extends BaseOperation<T> {
+ * @author Stephane Maldini
+ */
+public class FlatMapAction<T, V, E extends ActionPipe<V>> extends Action<T> {
 
-	public ConnectOperation(Observable observable, Object successKey, Object failureKey) {
-		super(observable, successKey, failureKey);
+	private final Function<T, E> fn;
+
+	public FlatMapAction(Function<T, E> fn, Observable d, Object successKey,
+	                     Object failureKey) {
+		super(d, successKey, failureKey);
+		this.fn = fn;
 	}
 
 	@Override
-	public void doOperation(Event<T> event) {
-		notifyValue(event);
+	public void doOperation(Event<T> value) {
+		E val = fn.apply(value.getData());
+		val.addAction(new ConnectAction<V>(getObservable(), getSuccessKey(), getFailureKey()));
+		val.flush();
 	}
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author Stephane Maldini
  */
-public class BatchOperation<T> extends BaseOperation<T> {
+public class BatchAction<T> extends Action<T> {
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
@@ -35,16 +35,16 @@ public class BatchOperation<T> extends BaseOperation<T> {
 	private volatile long errorCount  = 0l;
 	private volatile long acceptCount = 0l;
 
-	public BatchOperation(int batchSize, Observable d, Object successKey, Object failureKey) {
+	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey) {
 		this(batchSize, d, successKey, failureKey, null, null, null);
 	}
 
-	public BatchOperation(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
+	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
 		this(batchSize, d, successKey, failureKey, flushKey, null, null);
 	}
 
-	public BatchOperation(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey,
-	                      Object firstKey, Object lastKey) {
+	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey,
+	                   Object firstKey, Object lastKey) {
 		super(d, successKey, failureKey);
 		this.batchSize = batchSize;
 		this.flushKey = flushKey;

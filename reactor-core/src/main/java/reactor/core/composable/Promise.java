@@ -16,13 +16,9 @@
 
 package reactor.core.composable;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
+import reactor.actions.Action;
+import reactor.actions.CallbackAction;
+import reactor.actions.ConnectAction;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.spec.Reactors;
@@ -34,11 +30,14 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
-import reactor.operations.CallbackOperation;
-import reactor.operations.ConnectOperation;
-import reactor.operations.Operation;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A {@code Promise} is a stateful event processor that accepts a single value or error. In addition to {@link #get()
@@ -210,7 +209,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		if(isComplete()) {
 			Reactors.schedule(onComplete, this, getObservable());
 		} else {
-			getObservable().on(complete.getT1(), new CallbackOperation<Promise<T>>(onComplete, getObservable(), null));
+			getObservable().on(complete.getT1(), new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
 		}
 		return this;
 	}
@@ -485,7 +484,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		try {
 			if(state == State.FAILURE) {
 				Reactors.schedule(
-						new CallbackOperation<E>(onError, getObservable(), null),
+						new CallbackAction<E>(onError, getObservable(), null),
 						Event.wrap((E)error), getObservable());
 			} else {
 				super.when(exceptionType, onError);
@@ -512,17 +511,17 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public Promise<T> addOperation(Operation<T> operation) {
+	public Promise<T> addAction(Action<T> operation) {
 		lock.lock();
 		try {
 			if(state == State.SUCCESS) {
 				Reactors.schedule(operation, Event.wrap(value), getObservable());
 			} else if(state == State.FAILURE) {
 				Reactors.schedule(
-						new ConnectOperation<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
+						new ConnectAction<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
 						Event.wrap(error), getObservable());
 			} else {
-				super.addOperation(operation);
+				super.addAction(operation);
 			}
 			return this;
 		} finally {

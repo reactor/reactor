@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.operations;
+package reactor.actions;
 
 import reactor.core.Reactor;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.operations.BatchOperation;
-import reactor.operations.Operation;
-
-import java.util.List;
 
 /**
  * @author Stephane Maldini
  */
-public abstract class OperationUtils {
+public abstract class ActionUtils {
 
 
 	public static String browseReactor(Reactor reactor, Object successKey, Object errorKey) {
@@ -96,8 +92,8 @@ public abstract class OperationUtils {
 								.getClass()
 								.getSimpleName());
 
-				if (Operation.class.isAssignableFrom(registration.getObject().getClass())) {
-					Operation<?> operation = ((Operation) registration.getObject());
+				if (Action.class.isAssignableFrom(registration.getObject().getClass())) {
+					Action<?> operation = ((Action) registration.getObject());
 
 					renderBatch(operation, d);
 					renderFilter(operation, d);
@@ -114,8 +110,8 @@ public abstract class OperationUtils {
 		}
 
 		private void renderFilter(Object consumer, int d) {
-			if (FilterOperation.class.isAssignableFrom(consumer.getClass())) {
-				FilterOperation operation = (FilterOperation) consumer;
+			if (FilterAction.class.isAssignableFrom(consumer.getClass())) {
+				FilterAction operation = (FilterAction) consumer;
 
 				if (operation.getElseObservable() != null) {
 					loopOperations(((Reactor) operation.getElseObservable()).getConsumerRegistry()
@@ -127,8 +123,8 @@ public abstract class OperationUtils {
 
 
 		private void renderBatch(Object consumer, int d) {
-			if (BatchOperation.class.isAssignableFrom(consumer.getClass())) {
-				BatchOperation operation = (BatchOperation) consumer;
+			if (BatchAction.class.isAssignableFrom(consumer.getClass())) {
+				BatchAction operation = (BatchAction) consumer;
 				appender.append(" accepted:" + operation.getAcceptCount());
 				appender.append("|errors:" + operation.getErrorCount());
 				appender.append("|batchSize:" + operation.getBatchSize());
