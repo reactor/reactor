@@ -42,7 +42,7 @@ import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.tuple.Tuple2;
 

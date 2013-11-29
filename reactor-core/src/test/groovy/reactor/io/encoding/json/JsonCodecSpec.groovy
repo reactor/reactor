@@ -1,4 +1,4 @@
-package reactor.tcp.encoding.json
+package reactor.io.encoding.json
 
 import reactor.function.Consumer
 import reactor.function.Function

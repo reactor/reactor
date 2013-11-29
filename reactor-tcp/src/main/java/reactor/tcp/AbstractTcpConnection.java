@@ -35,7 +35,7 @@ import reactor.function.Function;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
 import reactor.queue.BlockingQueueFactory;
-import reactor.tcp.encoding.Codec;
+import reactor.io.encoding.Codec;
 import reactor.tuple.Tuple2;
 
 import java.util.NoSuchElementException;

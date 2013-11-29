@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 import reactor.util.Assert;
 
 /**

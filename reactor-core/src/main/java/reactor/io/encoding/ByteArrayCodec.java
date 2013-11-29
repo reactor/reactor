@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 
 /**
- * A simple {@link Codec} implementation that turns a {@link Buffer} into a {@code byte[]} and visa-versa.
+ * A simple {@link reactor.io.encoding.Codec} implementation that turns a {@link Buffer} into a {@code byte[]} and visa-versa.
  *
  * @author Jon Brisbin
  */

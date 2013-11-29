@@ -17,6 +17,7 @@
 package reactor.tcp;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufProcessor;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LineBasedFrameDecoder;
@@ -30,13 +31,13 @@ import reactor.core.Environment;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
+import reactor.io.encoding.Frame;
+import reactor.io.encoding.FrameCodec;
+import reactor.io.encoding.LengthFieldCodec;
+import reactor.io.encoding.StandardCodecs;
+import reactor.io.encoding.json.JsonCodec;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.tcp.encoding.Frame;
-import reactor.tcp.encoding.FrameCodec;
-import reactor.tcp.encoding.LengthFieldCodec;
-import reactor.tcp.encoding.StandardCodecs;
-import reactor.tcp.encoding.json.JsonCodec;
 import reactor.tcp.netty.NettyServerSocketOptions;
 import reactor.tcp.netty.NettyTcpClient;
 import reactor.tcp.netty.NettyTcpServer;
@@ -179,9 +180,9 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-						         .backlog(1000)
-						         .reuseAddr(true)
-						         .tcpNoDelay(true))
+										 .backlog(1000)
+										 .reuseAddr(true)
+										 .tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {
@@ -234,9 +235,9 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-						         .backlog(1000)
-						         .reuseAddr(true)
-						         .tcpNoDelay(true))
+										 .backlog(1000)
+										 .reuseAddr(true)
+										 .tcpNoDelay(true))
 				.listen(port)
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.consume(new Consumer<TcpConnection<Frame, Frame>>() {
@@ -302,12 +303,12 @@ public class TcpServerTests {
 		TcpServer<String, String> server = new TcpServerSpec<String, String>(NettyTcpServer.class)
 				.env(env)
 				.options(new NettyServerSocketOptions()
-						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-							         @Override
-							         public void accept(ChannelPipeline pipeline) {
-								         pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
-							         }
-						         }))
+										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+											 @Override
+											 public void accept(ChannelPipeline pipeline) {
+												 pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
+											 }
+										 }))
 				.listen("localhost", port)
 				.codec(StandardCodecs.STRING_CODEC)
 				.consume(serverHandler)
@@ -331,6 +332,50 @@ public class TcpServerTests {
 	}
 
 	@Test
+	public void exposesNettyByteBuf() throws InterruptedException {
+		final int port = SocketUtils.findAvailableTcpPort();
+		final CountDownLatch latch = new CountDownLatch(msgs);
+
+		TcpServer<ByteBuf, ByteBuf> server = new TcpServerSpec<ByteBuf, ByteBuf>(NettyTcpServer.class)
+				.env(env)
+				.listen(port)
+				.consume(new Consumer<TcpConnection<ByteBuf, ByteBuf>>() {
+					@Override
+					public void accept(TcpConnection<ByteBuf, ByteBuf> conn) {
+						conn.in().consume(new Consumer<ByteBuf>() {
+							@Override
+							public void accept(ByteBuf byteBuf) {
+								byteBuf.forEachByte(new ByteBufProcessor() {
+									@Override
+									public boolean process(byte value) throws Exception {
+										if(value == '\n') {
+											latch.countDown();
+										}
+										return true;
+									}
+								});
+							}
+						});
+					}
+				})
+				.get();
+
+		log.info("Starting raw server on tcp://localhost:{}", port);
+		server.start(new Consumer<Void>() {
+			@Override
+			public void accept(Void v) {
+				for(int i = 0; i < threads; i++) {
+					threadPool.submit(new DataWriter(port));
+				}
+			}
+		});
+
+		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+
+		server.shutdown().await();
+	}
+
+	@Test
 	public void exposesHttpServer() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
@@ -339,14 +384,14 @@ public class TcpServerTests {
 				.env(env)
 				.listen(port)
 				.options(new NettyServerSocketOptions()
-						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-							         @Override
-							         public void accept(ChannelPipeline pipeline) {
-								         pipeline.addLast(new HttpRequestDecoder());
-								         pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-								         pipeline.addLast(new HttpResponseEncoder());
-							         }
-						         }))
+										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+											 @Override
+											 public void accept(ChannelPipeline pipeline) {
+												 pipeline.addLast(new HttpRequestDecoder());
+												 pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+												 pipeline.addLast(new HttpResponseEncoder());
+											 }
+										 }))
 				.consume(new Consumer<TcpConnection<HttpRequest, HttpResponse>>() {
 					@Override
 					public void accept(final TcpConnection<HttpRequest, HttpResponse> conn) {
@@ -515,4 +560,24 @@ public class TcpServerTests {
 		}
 	}
 
+	private class DataWriter implements Runnable {
+		private final int port;
+
+		private DataWriter(int port) {
+			this.port = port;
+		}
+
+		@Override
+		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
+				start.set(System.currentTimeMillis());
+				for(int i = 0; i < msgs; i++) {
+					ch.write(Buffer.wrap("Hello World!\n").byteBuffer());
+				}
+				ch.close();
+			} catch(IOException e) {
+			}
+		}
+	}
 }

@@ -1,10 +1,12 @@
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
 
 /**
+ * {@code Codec} for decoding data into length-field-based {@link reactor.io.encoding.Frame Frames}.
+ *
  * @author Jon Brisbin
  */
 public class FrameCodec implements Codec<Buffer, Frame, Frame> {
@@ -44,12 +46,12 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 
 		@Override
 		public Frame apply(Buffer buffer) {
-			while (buffer.remaining() > minRequiredLen) {
+			while(buffer.remaining() > minRequiredLen) {
 				int pos = buffer.position();
 				int limit = buffer.limit();
 
 				Buffer.View prefix = readPrefix(buffer);
-				if (null == prefix) {
+				if(null == prefix) {
 					// insufficient data
 					buffer.limit(limit);
 					buffer.position(pos);
@@ -57,7 +59,7 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 				}
 
 				Buffer.View data = readData(buffer);
-				if (null == data) {
+				if(null == data) {
 					// insufficient data
 					buffer.limit(limit);
 					buffer.position(pos);
@@ -70,7 +72,7 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 				buffer.limit(limit);
 
 				Frame f = new Frame(prefixBuff, dataBuff);
-				if (null != next) {
+				if(null != next) {
 					next.accept(f);
 				} else {
 					return f;
@@ -80,7 +82,7 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 		}
 
 		private Buffer.View readPrefix(Buffer buffer) {
-			if (buffer.remaining() < prefixLength) {
+			if(buffer.remaining() < prefixLength) {
 				return null;
 			}
 
@@ -92,20 +94,20 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 		}
 
 		private int readLen(Buffer buffer) {
-			switch (lengthField) {
+			switch(lengthField) {
 				case SHORT:
-					if (buffer.remaining() > 2) {
+					if(buffer.remaining() > 2) {
 						return buffer.readShort();
 					}
 					break;
 				case INT:
-					if (buffer.remaining() > 4) {
+					if(buffer.remaining() > 4) {
 						return buffer.readInt();
 					}
 					break;
 				case LONG:
-					if (buffer.remaining() > 8) {
-						return (int) buffer.readLong();
+					if(buffer.remaining() > 8) {
+						return (int)buffer.readLong();
 					}
 					break;
 			}
@@ -118,7 +120,7 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 			int limit = buffer.limit();
 
 			int len = readLen(buffer);
-			if (len == -1 || buffer.remaining() < len) {
+			if(len == -1 || buffer.remaining() < len) {
 				buffer.limit(limit);
 				buffer.position(pos);
 				return null;
@@ -139,9 +141,8 @@ public class FrameCodec implements Codec<Buffer, Frame, Frame> {
 		}
 	}
 
-
 	private static int lengthFieldLength(LengthField lf) {
-		switch (lf) {
+		switch(lf) {
 			case SHORT:
 				return 2;
 			case INT:

@@ -17,8 +17,9 @@
 package reactor.queue
 
 import net.openhft.chronicle.ChronicleConfig
-import reactor.queue.encoding.StandardCodecs
+import reactor.io.encoding.StandardCodecs
 import spock.lang.Specification
+
 /**
  * @author Jon Brisbin
  */
@@ -60,7 +61,7 @@ class QueuePersistorSpec extends Specification {
 			"an IndexedChronicleQueuePersistor"
 			def persistor = new IndexedChronicleQueuePersistor<String>(
 					"queue-persistor",
-					StandardCodecs.stringCodec(),
+					StandardCodecs.STRING_CODEC,
 					true,
 					true,
 					ChronicleConfig.TEST.clone()

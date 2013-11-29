@@ -18,7 +18,7 @@
 description = 'Reactor-based application framework for the JVM.'
 
 ext {
-	gradleVersion = '1.8'
+	gradleVersion = '1.9'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
@@ -249,7 +249,6 @@ project('reactor-core') {
 
 		// JSON handling
 		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
-				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion",
 				"com.jayway.jsonpath:json-path:$jsonPathVersion"
 
 	}
@@ -344,8 +343,7 @@ project('reactor-tcp') {
 		compile project(':reactor-core')
 
 		compile "io.netty:netty-all:$nettyVersion"
-		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
-				"com.fasterxml.jackson.module:jackson-module-afterburner:$jacksonDatabindVersion"
+		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"

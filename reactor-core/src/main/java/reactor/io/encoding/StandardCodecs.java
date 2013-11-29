@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.tcp.encoding;
+package reactor.io.encoding;
 
 import reactor.io.Buffer;
 
@@ -28,10 +28,10 @@ public abstract class StandardCodecs {
 	private StandardCodecs() {
 	}
 
-	public static final Codec<Buffer, Buffer, Buffer> PASS_THROUGH_CODEC = new PassThroughCodec();
+	public static final Codec<Buffer, Buffer, Buffer> PASS_THROUGH_CODEC = new PassThroughCodec<Buffer>();
 
 	/**
-	 * A {@link ByteArrayCodec}.
+	 * A {@link reactor.io.encoding.ByteArrayCodec}.
 	 */
 	public static final ByteArrayCodec BYTE_ARRAY_CODEC = new ByteArrayCodec();
 
@@ -43,5 +43,7 @@ public abstract class StandardCodecs {
 	/**
 	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed ({@code '\n'}) character
 	 */
-	public static final DelimitedCodec<String, String> LINE_FEED_CODEC = new DelimitedCodec<String, String>(STRING_CODEC);
+	public static final DelimitedCodec<String, String> LINE_FEED_CODEC = new DelimitedCodec<String,
+			String>(STRING_CODEC);
+
 }
