@@ -21,6 +21,7 @@ import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
 import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.tuple.Tuple2;
@@ -53,9 +54,9 @@ public class Stream<T> extends Composable<T> {
 	private final int         batchSize;
 
 	/**
-	 * Create a new Stream that will use the {@link Dispatcher} to pass its values to registered
+	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
 	 * handlers.
-	 * </p>
+	 * <p>
 	 * The stream will batch values into batches of the given
 	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
 	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
@@ -63,19 +64,43 @@ public class Stream<T> extends Composable<T> {
 	 * The stream will be pre-populated with the given initial {@code values}. Once all event
 	 * handler have been registered, {@link #flush} must be called to pass the initial values
 	 * to those handlers.
-	 * </p>
 	 * The stream will accept errors from the given {@code parent}.
 	 *
-	 * @param dispatcher The dispatcher used to drive event handlers
+	 * @param observable The observable used to drive event handlers
 	 * @param batchSize  The size of the batches, or {@code -1} for no batching
 	 * @param values     The stream's initial values. May be {@code null}
 	 * @param parent     The stream's parent. May be {@code null}
 	 */
-	public Stream(@Nullable final Dispatcher dispatcher,
+	public Stream(@Nullable final Observable observable,
 	              int batchSize,
 	              @Nullable Iterable<T> values,
 	              @Nullable final Composable<?> parent) {
-		super(dispatcher, parent);
+		this(observable, batchSize, values, parent, null);
+	}
+	/**
+	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
+	 * handlers.
+	 * <p>
+	 * The stream will batch values into batches of the given
+	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
+	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
+	 * </p>
+	 * The stream will be pre-populated with the given initial {@code values}. Once all event
+	 * handler have been registered, {@link #flush} must be called to pass the initial values
+	 * to those handlers.
+	 * The stream will accept errors from the given {@code parent}.
+	 *
+	 * @param observable The observable used to drive event handlers
+	 * @param batchSize  The size of the batches, or {@code -1} for no batching
+	 * @param values     The stream's initial values. May be {@code null}
+	 * @param parent     The stream's parent. May be {@code null}
+	 * @param acceptSelector     The tuple Selector/Key to accept values on this observable. May be {@code null}
+	 */
+	public Stream(@Nullable final Observable observable,
+	              int batchSize,
+	              @Nullable Iterable<T> values,
+	              @Nullable final Composable<?> parent, Tuple2<Selector, Object> acceptSelector) {
+		super(observable, parent, acceptSelector);
 		this.batchSize = batchSize;
 
 		attachFlush(values);

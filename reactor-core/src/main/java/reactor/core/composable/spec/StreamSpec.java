@@ -16,20 +16,22 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Stream;
-import reactor.core.spec.support.DispatcherComponentSpec;
-import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 
 /**
  * A helper class for specifying a bounded {@link Stream}. {@link #each} must be called to
  * provide the stream with its values.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  *
  * @param <T> The type of values that the stream contains.
  */
-public final class StreamSpec<T> extends DispatcherComponentSpec<StreamSpec<T>, Stream<T>> {
+public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>> {
 
 	private Composable<?> parent;
 	private int batchSize = -1;
@@ -74,12 +76,13 @@ public final class StreamSpec<T> extends DispatcherComponentSpec<StreamSpec<T>, 
 	}
 
 	@Override
-	protected Stream<T> configure(Dispatcher dispatcher, Environment env) {
+	protected Stream<T> createComposable(Environment env, Observable observable,
+	                                     Tuple2<Selector, Object> accept) {
 		if (values == null) {
 			throw new IllegalStateException("A bounded stream must be configured with some values. Use " +
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
-		Stream<T> stream = new Stream<T>(dispatcher, batchSize, values, parent);
+		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept);
 
 		if(batchSize>0){
 			stream = stream.batch(batchSize);

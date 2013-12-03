@@ -20,7 +20,6 @@ import reactor.actions.*;
 import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.event.Event;
-import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
@@ -51,27 +50,22 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	private final Observable    events;
 	private final Composable<?> parent;
 
-	protected <U> Composable(@Nullable Dispatcher dispatcher, @Nullable Composable<U> parent) {
-		Assert.state(dispatcher != null || parent != null, "One of 'dispatcher' or 'parent'  cannot be null.");
-		this.events = parent == null ?
-				new Reactor(dispatcher) :
-				new Reactor(dispatcher,
-						((Reactor) parent.getObservable()).getEventRouter(),
-						((Reactor) parent.getObservable()).getConsumerRegistry());
+	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent) {
+		this(observable, parent, null);
+	}
 
+
+	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent,
+	                         @Nullable Tuple2<Selector, Object> acceptSelector) {
+		Assert.state(observable != null || parent != null, "One of 'observable' or 'parent'  cannot be null.");
 		this.parent = parent;
-		this.accept = Selectors.$();
+		this.events = parent == null ? observable : parent.events;
+		this.accept = null == acceptSelector ? Selectors.$() : acceptSelector;
+
 		if (parent != null) {
 			events.on(parent.error.getT1(),
 					new ConnectAction<Throwable>(events, error.getT2(), null));
 		}
-	}
-
-	protected Composable(@Nonnull Observable observable, @Nullable Tuple2<Selector, Object> acceptSelector) {
-		Assert.notNull(observable, "'observable' cannot be null.");
-		this.events = observable;
-		this.accept = null == acceptSelector ? Selectors.$() : acceptSelector;
-		this.parent = null;
 	}
 
 

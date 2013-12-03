@@ -76,22 +76,22 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	/**
 	 * Creates a new unfulfilled promise.
 	 * <p/>
-	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining the thread on which they are
+	 * The {@code observable} is used when notifying the Promise's consumers, determining the thread on which they are
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds. This Promise will consumer errors from its {@code parent} such that if
 	 * the parent completes in error then so too will this Promise.
 	 *
-	 * @param dispatcher
-	 * 		The Dispatcher to use to call Consumers
+	 * @param observable
+	 * 		The Observable to use to call Consumers
 	 * @param env
 	 * 		The Environment, if any, from which the default await timeout is obtained
 	 * @param parent
 	 * 		The parent, if any, from which errors are consumed
 	 */
-	public Promise(@Nullable Dispatcher dispatcher,
+	public Promise(@Nullable Observable observable,
 	               @Nullable Environment env,
 	               @Nullable Composable<?> parent) {
-		super(dispatcher, parent);
+		super(observable, parent);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.environment = env;
 		this.pendingCondition = lock.newCondition();
@@ -114,20 +114,20 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	/**
 	 * Creates a new promise that has been fulfilled with the given {@code value}.
 	 * <p/>
-	 * The {@code dispatcher} is used when notifying the Promise's consumers. The given {@code env} is used to determine
+	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to determine
 	 * the default await timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds.
 	 *
 	 * @param value
 	 * 		The value that fulfills the promise
-	 * @param dispatcher
-	 * 		The Dispatcher to use to call Consumers
+	 * @param observable
+	 * 		The Observable to use to call Consumers
 	 * @param env
 	 * 		The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(T value,
-	               @Nullable Dispatcher dispatcher,
+	               @Nullable Observable observable,
 	               @Nullable Environment env) {
-		this(dispatcher, env, null);
+		this(observable, env, null);
 		this.value = value;
 		this.state = State.SUCCESS;
 		init();
@@ -136,21 +136,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	/**
 	 * Creates a new promise that will be fulfilled with the value obtained from the given {@code valueSupplier}.
 	 * <p/>
-	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining the thread on which they are
+	 * The {@code observable} is used when notifying the Promise's consumers, determining the thread on which they are
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds.
 	 *
 	 * @param valueSupplier
 	 * 		The Supplier of the value that fulfills the promise
-	 * @param dispatcher
-	 * 		The Dispatcher to use to call Consumers
+	 * @param observable
+	 * 		The Observable to use to call Consumers
 	 * @param env
 	 * 		The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(Supplier<T> valueSupplier,
-	               @Nonnull Dispatcher dispatcher,
+	               @Nonnull Observable observable,
 	               @Nullable Environment env) {
-		this(dispatcher, env, null);
+		this(observable, env, null);
 		this.supplier = valueSupplier;
 		init();
 	}
@@ -158,7 +158,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	/**
 	 * Creates a new promise that has failed with the given {@code error}.
 	 * <p/>
-	 * The {@code dispatcher} is used when notifying the Promise's consumers, determining the thread on which they are
+	 * The {@code observable} is used when notifying the Promise's consumers, determining the thread on which they are
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds.
 	 *
@@ -166,13 +166,13 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * 		The error the completed the promise
 	 * @param env
 	 * 		The Environment, if any, from which the default await timeout is obtained
-	 * @param dispatcher
-	 * 		The Dispatcher to use to call Consumers
+	 * @param observable
+	 * 		The Observable to use to call Consumers
 	 */
 	public Promise(Throwable error,
-	               @Nonnull Dispatcher dispatcher,
+	               @Nonnull Observable observable,
 	               @Nullable Environment env) {
-		this(dispatcher, env, null);
+		this(observable, env, null);
 		this.error = error;
 		this.state = State.FAILURE;
 		init();
