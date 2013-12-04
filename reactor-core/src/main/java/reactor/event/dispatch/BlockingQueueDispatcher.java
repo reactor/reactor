@@ -42,6 +42,7 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 
 	private final ThreadGroup         threadGroup = new ThreadGroup("eventloop");
 	private final BlockingQueue<Task> taskQueue   = BlockingQueueFactory.createQueue();
+	private final BlockingQueue<Task> delayedTaskQueue   = BlockingQueueFactory.createQueue();
 	private final Pool<Task> readyTasks;
 	private final Thread     taskExecutor;
 
@@ -103,14 +104,21 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		Task t = readyTasks.allocate();
+		Task t = null;
+		if(!isInContext()){
+			t = readyTasks.allocate();
+		}
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
 	private class BlockingQueueTask<E extends Event<?>> extends Task<E> {
 		@Override
 		public void submit() {
-			taskQueue.add(this);
+			if(!isInContext()){
+				taskQueue.add(this);
+			}else{
+				delayedTaskQueue.add(this);
+			}
 		}
 	}
 
@@ -118,11 +126,20 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 		@Override
 		public void run() {
 			Task t = null;
+			Task delayedTask;
 			for (; ; ) {
 				try {
 					t = taskQueue.poll(200, TimeUnit.MILLISECONDS);
 					if (null != t) {
 						t.execute();
+					}
+					for (; ;){
+						delayedTask = delayedTaskQueue.poll();
+						if(null != delayedTask){
+							delayedTask.execute();
+						}else{
+							break;
+						}
 					}
 				} catch (InterruptedException e) {
 					break;

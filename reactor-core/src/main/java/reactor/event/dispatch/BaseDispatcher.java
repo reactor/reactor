@@ -23,21 +23,23 @@ import reactor.function.Consumer;
 
 abstract class BaseDispatcher implements Dispatcher {
 
+	private final ThreadLocal<Dispatcher> context = new ThreadLocal<Dispatcher>();
+
 	@Override
 	public <E extends Event<?>> void dispatch(E event,
-																						EventRouter eventRouter,
-																						Consumer<E> consumer,
-																						Consumer<Throwable> errorConsumer) {
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> consumer,
+	                                          Consumer<Throwable> errorConsumer) {
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key,
-																						E event,
-																						Registry<Consumer<? extends Event<?>>> consumerRegistry,
-																						Consumer<Throwable> errorConsumer,
-																						EventRouter eventRouter,
-																						Consumer<E> completionConsumer) {
+	public <E extends Event<?>> void dispatch(final Object key,
+	                                          final E event,
+	                                          final Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          final Consumer<Throwable> errorConsumer,
+	                                          final EventRouter eventRouter,
+	                                          final Consumer<E> completionConsumer) {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}
@@ -52,6 +54,7 @@ abstract class BaseDispatcher implements Dispatcher {
 		task.setCompletionConsumer(completionConsumer);
 
 		task.submit();
+
 	}
 
 	protected abstract <E extends Event<?>> Task<E> createTask();
@@ -106,12 +109,22 @@ abstract class BaseDispatcher implements Dispatcher {
 		protected abstract void submit();
 
 		protected void execute() {
+			context.set(BaseDispatcher.this);
 			eventRouter.route(key,
-												event,
-												(null != consumerRegistry ? consumerRegistry.select(key) : null),
-												completionConsumer,
-												errorConsumer);
+					event,
+					(null != consumerRegistry ? consumerRegistry.select(key) : null),
+					completionConsumer,
+					errorConsumer);
 		}
 	}
 
+	/**
+	 * Dispatchers can be traced through a {@code ThreadLocal} or equivalent to let producers adapting their
+	 * dispatching strategy
+	 *
+	 * @return  boolean true if the programs is already run by this dispatcher
+	 */
+	protected boolean isInContext() {
+		return context.get() != null;
+	}
 }

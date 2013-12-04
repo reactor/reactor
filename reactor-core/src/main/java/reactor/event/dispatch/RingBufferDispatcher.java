@@ -22,8 +22,10 @@ import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.Event;
+import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +43,7 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	private final ExecutorService               executor;
 	private final Disruptor<RingBufferTask<?>>  disruptor;
 	private final RingBuffer<RingBufferTask<?>> ringBuffer;
+	private final BlockingQueue<Task> delayedTaskQueue = BlockingQueueFactory.createQueue();
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
@@ -64,50 +67,25 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-															int bufferSize,
-															ProducerType producerType,
-															WaitStrategy waitStrategy) {
+	                            int bufferSize,
+	                            ProducerType producerType,
+	                            WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
 		this.disruptor = new Disruptor<RingBufferTask<?>>(
-				new EventFactory<RingBufferTask<?>>() {
-					@SuppressWarnings("rawtypes")
-					@Override
-					public RingBufferTask<?> newInstance() {
-						return new RingBufferTask();
-					}
-				},
+				new RingBufferTaskEventFactory(),
 				bufferSize,
 				executor,
 				producerType,
 				waitStrategy
 		);
+
 		// Exceptions are handled by the errorConsumer
-		disruptor.handleExceptionsWith(
-				new ExceptionHandler() {
-					@Override
-					public void handleEventException(Throwable ex, long sequence, Object event) {
-						// Handled by Task.execute
-					}
+		ExceptionHandler exceptionHandler = new MyExceptionHandler();
+		disruptor.handleExceptionsWith(exceptionHandler);
 
-					@Override
-					public void handleOnStartException(Throwable ex) {
-						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
-							log.error(ex.getMessage(), ex);
-						}
-					}
-
-					@Override
-					public void handleOnShutdownException(Throwable ex) {
-						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
-							log.error(ex.getMessage(), ex);
-						}
-					}
-				}
-		);
-		disruptor.handleEventsWith(new RingBufferTaskHandler());
+		EventHandler<RingBufferTask<?>> eventHandler = new RingBufferTaskHandler();
+		disruptor.handleEventsWith(eventHandler);
 
 		ringBuffer = disruptor.start();
 	}
@@ -140,10 +118,38 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		long l = ringBuffer.next();
-		RingBufferTask<?> t = ringBuffer.get(l);
-		t.setSequenceId(l);
+		RingBufferTask<?> t = null;
+		if (!isInContext()) {
+			long l = ringBuffer.next();
+			t = ringBuffer.get(l);
+			t.setSequenceId(l);
+		}else{
+			t = new RingBufferTask<E>();
+		}
 		return (Task<E>) t;
+	}
+
+	private static class MyExceptionHandler implements ExceptionHandler {
+		@Override
+		public void handleEventException(Throwable ex, long sequence, Object event) {
+			// Handled by Task.execute
+		}
+
+		@Override
+		public void handleOnStartException(Throwable ex) {
+			Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
+			if (log.isErrorEnabled()) {
+				log.error(ex.getMessage(), ex);
+			}
+		}
+
+		@Override
+		public void handleOnShutdownException(Throwable ex) {
+			Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
+			if (log.isErrorEnabled()) {
+				log.error(ex.getMessage(), ex);
+			}
+		}
 	}
 
 	private class RingBufferTask<E extends Event<?>> extends Task<E> {
@@ -156,7 +162,11 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 
 		@Override
 		public void submit() {
-			ringBuffer.publish(sequenceId);
+			if (!isInContext()) {
+				ringBuffer.publish(sequenceId);
+			}else{
+				delayedTaskQueue.add(this);
+			}
 		}
 	}
 
@@ -164,7 +174,23 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 		@Override
 		public void onEvent(RingBufferTask<?> t, long sequence, boolean endOfBatch) throws Exception {
 			t.execute();
+			Task<?> delayedTask;
+			for (; ;){
+				delayedTask = delayedTaskQueue.poll();
+				if(null != delayedTask){
+					delayedTask.execute();
+				}else{
+					break;
+				}
+			}
 		}
 	}
 
+	private class RingBufferTaskEventFactory implements EventFactory<RingBufferTask<?>> {
+		@SuppressWarnings("rawtypes")
+		@Override
+		public RingBufferTask<?> newInstance() {
+			return new RingBufferTask();
+		}
+	}
 }
