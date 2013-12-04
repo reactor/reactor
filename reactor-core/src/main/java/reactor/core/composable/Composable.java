@@ -259,7 +259,8 @@ public abstract class Composable<T> implements ActionPipe<T> {
 		while (that.parent != null) {
 			that = that.parent;
 		}
-		return ActionUtils.browseReactor((Reactor) that.events
+		return ActionUtils.browseReactor((Reactor) that.events,
+				that.accept.getT2(), that.error.getT2(), that.flush.getT2()
 		);
 	}
 

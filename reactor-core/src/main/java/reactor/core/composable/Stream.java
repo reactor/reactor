@@ -170,6 +170,22 @@ public class Stream<T> extends Composable<T> {
 	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
+		return first(batchSize);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
+	 * to
+	 * have been set.
+	 * <p/>
+	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @param batchSize the batch size to use
+	 *
+	 * @return a new {@code Stream} whose values are the first value of each batch
+	 * @see #batch(int)
+	 */
+	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream();
 		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,
@@ -183,6 +199,17 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last() {
+		return last(batchSize);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
+	 *
+	 * @param batchSize the batch size to use
+	 *
+	 * @return a new {@code Stream} whose values are the last value of each batch
+	 */
+	public Stream<T> last(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream();
 		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,

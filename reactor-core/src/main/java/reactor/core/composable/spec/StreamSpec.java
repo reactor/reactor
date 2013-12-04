@@ -82,13 +82,8 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 			throw new IllegalStateException("A bounded stream must be configured with some values. Use " +
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
-		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept);
 
-		if(batchSize>0){
-			stream = stream.batch(batchSize);
-		}
-
-		return stream;
+		return new Stream<T>(observable, batchSize, values, parent, accept);
 	}
 
 }
