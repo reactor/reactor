@@ -1,17 +1,17 @@
 package reactor.event.dispatch;
 
 import reactor.event.Event;
-import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
-import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Supplier;
 import reactor.util.Assert;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -23,10 +23,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class ActorDispatcher implements Dispatcher {
 
-	private final Function<Object,Dispatcher> delegateMapper;
-	private final Registry<Dispatcher> dispatcherCache = new CachingRegistry<Dispatcher>();
+	private final Function<Object, Dispatcher> delegateMapper;
+	private final Map<Object, Dispatcher> dispatcherCache = new ConcurrentHashMap<Object, Dispatcher>();
 
-	public ActorDispatcher(Function<Object,Dispatcher> delegate) {
+	public ActorDispatcher(Function<Object, Dispatcher> delegate) {
 		Assert.notNull(delegate, "Delegate Dispatcher Supplier cannot be null.");
 		this.delegateMapper = delegate;
 	}
@@ -34,9 +34,9 @@ public class ActorDispatcher implements Dispatcher {
 	@Override
 	public boolean alive() {
 		boolean alive = true;
-		for(Registration<? extends Dispatcher> dispatcherRegistration : dispatcherCache){
-			alive &= dispatcherRegistration.getObject().alive();
-			if(!alive) break;
+		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+			alive &= dispatcher.alive();
+			if (!alive) break;
 		}
 		return alive;
 	}
@@ -49,24 +49,26 @@ public class ActorDispatcher implements Dispatcher {
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		boolean alive = true;
-		for(Registration<? extends Dispatcher> dispatcherRegistration : dispatcherCache){
-			alive &= dispatcherRegistration.getObject().awaitAndShutdown(timeout, timeUnit);
-			if(!alive) break;
+		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+			if (dispatcher.alive()) {
+				alive &= dispatcher.awaitAndShutdown(timeout, timeUnit);
+			}
+			if (!alive) break;
 		}
 		return alive;
 	}
 
 	@Override
 	public void shutdown() {
-		for(Registration<? extends Dispatcher> dispatcherRegistration : dispatcherCache){
-			dispatcherRegistration.getObject().shutdown();
+		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+			dispatcher.shutdown();
 		}
 	}
 
 	@Override
 	public void halt() {
-		for(Registration<? extends Dispatcher> dispatcherRegistration : dispatcherCache){
-			dispatcherRegistration.getObject().halt();
+		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+			dispatcher.halt();
 		}
 	}
 
@@ -78,13 +80,10 @@ public class ActorDispatcher implements Dispatcher {
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> completionConsumer) {
 
-		List<Registration<? extends Dispatcher>> dispatchers = dispatcherCache.select(key);
-		Dispatcher delegate;
-		if(!dispatchers.isEmpty()){
-			delegate = dispatchers.get(0).getObject();
-		}else{
+		Dispatcher delegate = dispatcherCache.get(key);
+		if (delegate == null) {
 			delegate = delegateMapper.apply(key);
-			dispatcherCache.register(Selectors.$(key), delegate);
+			dispatcherCache.put(key, delegate);
 		}
 
 		delegate.dispatch(

@@ -24,12 +24,15 @@ import reactor.AbstractReactorTest;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Streams;
+import reactor.event.dispatch.ActorDispatcher;
+import reactor.event.dispatch.BlockingQueueDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.tuple.Tuple2;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -49,7 +52,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	CountDownLatch latch;
 
 	@Before
-	public void setup() {
+	public void setup() throws IOException, InterruptedException {
 		data = new ArrayList<Integer>();
 		for (int i = 0; i < length; i++) {
 			data.add(i);
@@ -88,7 +91,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
 		Deferred<Integer, Stream<Integer>> d = createDeferred(dispatcher);
-		System.out.println("measuring: "+d.compose().debug());
 		long start = System.currentTimeMillis();
 		for (int x = 0; x < samples; x++) {
 			for (int i = 0; i < runs; i++) {
@@ -118,12 +120,22 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(env.getDispatcher("eventLoop"), "event loop");
+		doTest(new BlockingQueueDispatcher("eventLoop", 256), "event loop");
 	}
 
 	@Test
 	public void testRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(env.getDispatcher("ringBuffer"), "ring buffer");
+	}
+
+	@Test
+	public void testActorDispatcherComposableThroughput() throws InterruptedException {
+		doTest(new ActorDispatcher(new Function<Object,Dispatcher>(){
+			@Override
+			public Dispatcher apply(Object o) {
+				return env.getDispatcher("eventLoop");
+			}
+		}), "actor system");
 	}
 
 	@Test

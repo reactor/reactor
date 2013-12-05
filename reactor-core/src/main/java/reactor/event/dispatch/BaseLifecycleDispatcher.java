@@ -29,6 +29,14 @@ public abstract class BaseLifecycleDispatcher extends BaseDispatcher {
 
 	private final AtomicBoolean alive = new AtomicBoolean(true);
 
+	protected BaseLifecycleDispatcher() {
+		super();
+	}
+
+	protected BaseLifecycleDispatcher(int backlogSize) {
+		super(backlogSize);
+	}
+
 	@Override
 	public boolean alive() {
 		return alive.get();

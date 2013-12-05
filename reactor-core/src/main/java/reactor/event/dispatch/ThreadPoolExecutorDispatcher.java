@@ -50,9 +50,10 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 	}
 
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog, String threadName) {
+		super(backlog);
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
-				new NamedDaemonThreadFactory(threadName)
+				new NamedDaemonThreadFactory(threadName, getContext())
 		);
 		this.readyTasks = new LoadingPool<ThreadPoolTask>(
 				new Supplier<ThreadPoolTask>() {
