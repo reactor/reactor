@@ -113,7 +113,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dispatcher.shutdown();
 	}
 
-	@Test
+	//@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
 		doTest(env.getDispatcher("threadPoolExecutor"), "thread pool");
 	}

@@ -1,7 +1,6 @@
 package reactor.event.dispatch;
 
 import reactor.event.Event;
-import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
@@ -9,7 +8,6 @@ import reactor.function.Function;
 import reactor.util.Assert;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
