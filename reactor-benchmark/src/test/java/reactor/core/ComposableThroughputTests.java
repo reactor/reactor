@@ -58,14 +58,14 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			data.add(i);
 		}
 
-		latch = new CountDownLatch(length);
+		latch = new CountDownLatch(length * runs * samples);
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
-				.batchSize(length * samples * runs)
+				.batchSize(length * runs * samples)
 				.get();
 		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override
