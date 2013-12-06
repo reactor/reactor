@@ -24,7 +24,7 @@ import reactor.function.Consumer;
 import java.util.ArrayList;
 import java.util.List;
 
-abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
+public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 
 	private final List<Task<?>> delayedTasks;
 	private final int           backlogSize;
