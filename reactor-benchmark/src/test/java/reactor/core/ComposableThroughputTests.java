@@ -65,7 +65,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
-				.batchSize(length)
+				.batchSize(length * samples * runs)
 				.get();
 		dInt.compose().map(new Function<Integer, Integer>() {
 			@Override
@@ -113,7 +113,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dispatcher.shutdown();
 	}
 
-	//@Test
+	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
 		doTest(env.getDispatcher("threadPoolExecutor"), "thread pool");
 	}
@@ -140,7 +140,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()), "single-producer ring buffer");
+		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
+				"single-producer ring buffer");
 	}
 
 }

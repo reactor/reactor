@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public class ActorDispatcher implements Dispatcher {
+public final class ActorDispatcher implements Dispatcher {
 
 	private final Function<Object, Dispatcher> delegateMapper;
 	private final Map<Object, Dispatcher> dispatcherCache = new ConcurrentHashMap<Object, Dispatcher>();

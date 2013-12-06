@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher extends BaseLifecycleDispatcher {
+public final class RingBufferDispatcher extends SingleThreadDispatcher {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -140,14 +140,14 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected <E extends Event<?>> Task<E> createTask() {
+	protected final <E extends Event<?>> Task<E> createTask() {
 		long l = ringBuffer.next();
 		RingBufferTask<?> t = ringBuffer.get(l);
 		t.setSequenceId(l);
 		return (Task<E>) t;
 	}
 
-	private class RingBufferTask<E extends Event<?>> extends Task<E> {
+	private final class RingBufferTask<E extends Event<?>> extends SingleThreadTask<E> {
 		private long sequenceId;
 
 		private RingBufferTask<E> setSequenceId(long sequenceId) {

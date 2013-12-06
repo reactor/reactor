@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Andy Wilkinson
  */
 @SuppressWarnings("rawtypes")
-public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
+public final class BlockingQueueDispatcher extends SingleThreadDispatcher {
 
 	private static final AtomicInteger INSTANCE_COUNT = new AtomicInteger();
 
@@ -109,14 +109,14 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
-	private class BlockingQueueTask<E extends Event<?>> extends Task<E> {
+	private class BlockingQueueTask<E extends Event<?>> extends SingleThreadTask<E> {
 		@Override
 		public void submit() {
 			taskQueue.add(this);
 		}
 	}
 
-	private class TaskExecutingRunnable implements Runnable {
+	private  class TaskExecutingRunnable implements Runnable {
 		@Override
 		public void run() {
 			Task t = null;

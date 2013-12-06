@@ -24,32 +24,22 @@ import reactor.function.Consumer;
 import java.util.ArrayList;
 import java.util.List;
 
-abstract class BaseDispatcher implements Dispatcher {
+abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 
-	private final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-	};
 	private final List<Task<?>> delayedTasks;
 	private final int           backlogSize;
 	private int delayedSequence = 0;
 
-	protected BaseDispatcher() {
+	protected SingleThreadDispatcher() {
 		this(-1);
 	}
 
-	protected BaseDispatcher(int backlogSize) {
+	protected SingleThreadDispatcher(int backlogSize) {
 		this.backlogSize = backlogSize;
 		this.delayedTasks = new ArrayList<Task<?>>(backlogSize > 0 ? backlogSize : 1);
 		for (int i = 0; i < backlogSize; i++) {
-			this.delayedTasks.add(new Task());
+			this.delayedTasks.add(new SingleThreadTask());
 		}
-	}
-
-	@Override
-	public <E extends Event<?>> void dispatch(E event,
-	                                          EventRouter eventRouter,
-	                                          Consumer<E> consumer,
-	                                          Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
 	@Override
@@ -68,7 +58,7 @@ abstract class BaseDispatcher implements Dispatcher {
 		boolean isInContext = isInContext();
 		if (isInContext) {
 			if(delayedSequence >= backlogSize){
-				task = new Task<E>();
+				task = new SingleThreadTask<E>();
 				delayedTasks.add(task);
 			}else{
 				task = (Task<E>) delayedTasks.get(delayedSequence);
@@ -91,59 +81,10 @@ abstract class BaseDispatcher implements Dispatcher {
 
 	}
 
-	protected abstract <E extends Event<?>> Task<E> createTask();
+	protected class SingleThreadTask<E extends Event<?>> extends Task<E> {
 
-	protected class Task<E extends Event<?>> {
-
-		private volatile Object                                 key;
-		private volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
-		private volatile E                                      event;
-		private volatile Consumer<E>                            completionConsumer;
-		private volatile Consumer<Throwable>                    errorConsumer;
-		private volatile EventRouter                            eventRouter;
-
-		Task<E> setKey(Object key) {
-			this.key = key;
-			return this;
-		}
-
-		Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
-			this.consumerRegistry = consumerRegistry;
-			return this;
-		}
-
-		Task<E> setEvent(E event) {
-			this.event = event;
-			return this;
-		}
-
-		Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
-			this.completionConsumer = completionConsumer;
-			return this;
-		}
-
-		Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
-			this.errorConsumer = errorConsumer;
-			return this;
-		}
-
-		Task<E> setEventRouter(EventRouter eventRouter) {
-			this.eventRouter = eventRouter;
-			return this;
-		}
-
-		protected void reset() {
-			key = null;
-			consumerRegistry = null;
-			event = null;
-			completionConsumer = null;
-			errorConsumer = null;
-		}
-
-		protected void submit(){
-		}
-
-		protected void execute() {
+		@Override
+		protected final void execute() {
 			eventRouter.route(key,
 					event,
 					(null != consumerRegistry ? consumerRegistry.select(key) : null),
@@ -171,20 +112,6 @@ abstract class BaseDispatcher implements Dispatcher {
 
 			delayedSequence = 0;
 		}
-	}
-
-	/**
-	 * Dispatchers can be traced through a {@code contextClassLoader} or equivalent to let producers adapting their
-	 * dispatching strategy
-	 *
-	 * @return boolean true if the programs is already run by this dispatcher
-	 */
-	protected boolean isInContext() {
-		return context == Thread.currentThread().getContextClassLoader();
-	}
-
-	protected ClassLoader getContext() {
-		return context;
 	}
 
 }

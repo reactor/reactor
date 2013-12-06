@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class SynchronousDispatcher extends BaseDispatcher {
+public final class SynchronousDispatcher extends SingleThreadDispatcher {
 
 	@Override
 	public boolean alive() {
