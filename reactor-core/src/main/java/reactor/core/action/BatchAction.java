@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -34,70 +34,31 @@ public class BatchAction<T> extends Action<T> {
 	private volatile long errorCount  = 0l;
 	private volatile long acceptCount = 0l;
 
-	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey) {
+	public BatchAction(int batchSize,
+	                   Observable d,
+	                   Object successKey,
+	                   Object failureKey) {
 		this(batchSize, d, successKey, failureKey, null, null);
 	}
 
-	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
+	public BatchAction(int batchSize,
+	                   Observable d,
+	                   Object successKey,
+	                   Object failureKey,
+	                   Object flushKey) {
 		this(batchSize, d, successKey, failureKey, flushKey, null);
 	}
 
-	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey,
+	public BatchAction(int batchSize,
+	                   Observable d,
+	                   Object successKey,
+	                   Object failureKey,
+	                   Object flushKey,
 	                   Object firstKey) {
 		super(d, successKey, failureKey);
 		this.batchSize = batchSize;
 		this.flushKey = flushKey;
 		this.firstKey = firstKey;
-	}
-
-	protected void doNext(Event<T> event) {
-		if (getSuccessKey() != null) {
-			notifyValue(event);
-		}
-	}
-
-	protected void doFlush(Event<T> event) {
-		if (flushKey != null) {
-			getObservable().notify(flushKey, event);
-		}
-	}
-
-	protected void doFirst(Event<T> event) {
-		if (firstKey != null) {
-			getObservable().notify(firstKey, event);
-		}
-	}
-
-	@Override
-	public void doOperation(Event<T> value) {
-		lock.lock();
-		try {
-			long accepted = (++acceptCount) % batchSize;
-
-			if (accepted == 1) {
-				doFirst(value);
-			}
-
-			doNext(value);
-
-			if (accepted == 0) {
-				doFlush(value);
-			}
-
-		} finally {
-			lock.unlock();
-		}
-	}
-
-	@Override
-	protected void notifyError(Throwable error) {
-		lock.lock();
-		try {
-			errorCount++;
-			super.notifyError(error);
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	public Object getFlushKey() {
@@ -129,4 +90,55 @@ public class BatchAction<T> extends Action<T> {
 	public int getBatchSize() {
 		return batchSize;
 	}
+
+	protected void doNext(Event<T> event) {
+		if(getSuccessKey() != null) {
+			notifyValue(event);
+		}
+	}
+
+	protected void doFlush(Event<T> event) {
+		if(flushKey != null) {
+			getObservable().notify(flushKey, event);
+		}
+	}
+
+	protected void doFirst(Event<T> event) {
+		if(firstKey != null) {
+			getObservable().notify(firstKey, event);
+		}
+	}
+
+	@Override
+	public void doAccept(Event<T> value) {
+		lock.lock();
+		try {
+			long accepted = (++acceptCount) % batchSize;
+
+			if(accepted == 1) {
+				doFirst(value);
+			}
+
+			doNext(value);
+
+			if(accepted == 0) {
+				doFlush(value);
+			}
+
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	@Override
+	protected void notifyError(Throwable error) {
+		lock.lock();
+		try {
+			errorCount++;
+			super.notifyError(error);
+		} finally {
+			lock.unlock();
+		}
+	}
+
 }

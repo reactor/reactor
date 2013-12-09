@@ -16,9 +16,9 @@
 
 package reactor.core.composable;
 
-import reactor.actions.Action;
-import reactor.actions.CallbackAction;
-import reactor.actions.ConnectAction;
+import reactor.core.action.Action;
+import reactor.core.action.CallbackAction;
+import reactor.core.action.ConnectAction;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.spec.Reactors;
@@ -473,8 +473,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public <V> Promise<V> flatMap(@Nonnull Function<T, Composable<V>> fn) {
-		return (Promise<V>)super.flatMap(fn);
+	public <V> Promise<V> mapMany(@Nonnull Function<T, Composable<V>> fn) {
+		return (Promise<V>)super.mapMany(fn);
 	}
 
 	@Override
@@ -511,7 +511,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public Promise<T> addAction(Action<T> operation) {
+	public Promise<T> add(Action<T> operation) {
 		lock.lock();
 		try {
 			if(state == State.SUCCESS) {
@@ -521,7 +521,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 						new ConnectAction<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
 						Event.wrap(error), getObservable());
 			} else {
-				super.addAction(operation);
+				super.add(operation);
 			}
 			return this;
 		} finally {

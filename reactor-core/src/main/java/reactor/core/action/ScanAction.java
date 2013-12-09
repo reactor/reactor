@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -40,7 +40,7 @@ public class ScanAction<T, A> extends Action<T> {
 	}
 
 	@Override
-	protected void doOperation(Event<T> ev) {
+	protected void doAccept(Event<T> ev) {
 		if (null == acc) {
 			acc = (null != accumulators ? accumulators.get() : null);
 		}

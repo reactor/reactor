@@ -305,11 +305,12 @@ class StreamsSpec extends Specification {
       'the value is mapped'
       value.get() == 2
   }
-  def "A Stream's values can be flat mapped"() {
+
+  def "A Stream's values can be exploded"() {
     given:
-      'a source composable with a mapping function'
+      'a source composable with a mapMany function'
       Deferred source = Streams.<Integer>defer().get()
-      Stream<Integer> mapped = source.compose().flatMap(function { Streams.<Integer>defer(it * 2).get().compose() })
+      Stream<Integer> mapped = source.compose().mapMany(function { Streams.<Integer>defer(it * 2).get().compose() })
 
     when:
       'the source accepts a value'

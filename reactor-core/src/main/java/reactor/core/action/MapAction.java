@@ -13,38 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-
-import java.util.ArrayList;
-import java.util.List;
+import reactor.function.Function;
 
 /**
  * @author Stephane Maldini
  */
-public class CollectAction<T> extends BatchAction<T> {
-	private final List<T> values = new ArrayList<T>();
+public class MapAction<T, V> extends Action<T> {
 
-	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
-		super(batchsize, d, successKey, failureKey);
+	private final Function<T, V> fn;
+
+	public MapAction(Function<T, V> fn, Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
+		this.fn = fn;
 	}
 
 	@Override
-	public void doNext(Event<T> value) {
-		synchronized (values) {
-			values.add(value.getData());
-		}
+	public void doAccept(Event<T> value) {
+		V val = fn.apply(value.getData());
+		notifyValue(value.copy(val));
 	}
-
-	@Override
-	public void doFlush(Event<T> ev) {
-		if (values.isEmpty()) {
-			return;
-		}
-		notifyValue(ev.copy(new ArrayList<T>(values)));
-		values.clear();
-	}
-
 }

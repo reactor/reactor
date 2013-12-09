@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -35,29 +35,28 @@ public class ForEachAction<T> extends Action<Iterable<T>> {
 		this.values = values;
 	}
 
-	public ForEachAction<T> attach(Selector flushKey){
-		getObservable().on(flushKey, new ForEachFlushOperation());
+	public ForEachAction<T> attach(Selector flushKey) {
+		getObservable().on(flushKey, new ForEachFlushAction());
 		return this;
 	}
 
 	@Override
-	public void doOperation(Event<Iterable<T>> value) {
-		if (value.getData() != null) {
-			for (T val : value.getData()) {
+	public void doAccept(Event<Iterable<T>> value) {
+		if(value.getData() != null) {
+			for(T val : value.getData()) {
 				notifyValue(value.copy(val));
 			}
 		}
 	}
 
-	private class ForEachFlushOperation extends Action<Void> {
-		public ForEachFlushOperation() {
+	private class ForEachFlushAction extends Action<Void> {
+		public ForEachFlushAction() {
 			super(ForEachAction.this.getObservable(), ForEachAction.this.getSuccessKey());
 		}
 
 		@Override
-		public void doOperation(Event<Void> ev) {
-			if(values != null)
-				ForEachAction.this.doOperation(ev.copy(values));
+		public void doAccept(Event<Void> ev) {
+			if(values != null) { ForEachAction.this.doAccept(ev.copy(values)); }
 		}
 	}
 }

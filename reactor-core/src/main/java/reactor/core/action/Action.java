@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -30,28 +30,8 @@ import reactor.function.Consumer;
 public abstract class Action<T> implements Consumer<Event<T>> {
 
 	private final Observable observable;
-	private final Object successKey;
-	private final Object failureKey;
-
-	@Override
-	public void accept(Event<T> tEvent) {
-		try {
-			doOperation(tEvent);
-		} catch (Throwable e) {
-			notifyError(e);
-		}
-	}
-
-	public Observable getObservable() {
-		return observable;
-	}
-
-	public Object getSuccessKey() {
-		return successKey;
-	}
-	public Object getFailureKey() {
-		return failureKey;
-	}
+	private final Object     successKey;
+	private final Object     failureKey;
 
 	protected Action(Observable observable, Object successKey, Object failureKey) {
 		this.observable = observable;
@@ -63,8 +43,26 @@ public abstract class Action<T> implements Consumer<Event<T>> {
 		this(observable, successKey, null);
 	}
 
-	protected abstract void doOperation(Event<T> ev);
+	@Override
+	public final void accept(Event<T> tEvent) {
+		try {
+			doAccept(tEvent);
+		} catch(Throwable e) {
+			notifyError(e);
+		}
+	}
 
+	public Observable getObservable() {
+		return observable;
+	}
+
+	public Object getSuccessKey() {
+		return successKey;
+	}
+
+	public Object getFailureKey() {
+		return failureKey;
+	}
 
 	protected void notifyValue(Event<?> value) {
 		observable.notify(successKey, value);
@@ -79,5 +77,7 @@ public abstract class Action<T> implements Consumer<Event<T>> {
 	protected void notifyError(Throwable error) {
 		observable.notify(failureKey != null ? failureKey : error.getClass(), Event.wrap(error));
 	}
+
+	protected abstract void doAccept(Event<T> ev);
 
 }

@@ -13,26 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
-
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.function.Consumer;
+package reactor.core.action;
 
 /**
+ * Component that can be injected with {@link Action}s
+ *
  * @author Stephane Maldini
+ * @author Jon Brisbin
  */
-public class CallbackAction<T> extends Action<T> {
+public interface Pipeline<T> {
 
-	private final Consumer<T> consumer;
+	/**
+	 * Consume events with the passed {@code Action}
+	 *
+	 * @param action
+	 * 		the action listening for values
+	 */
+	Pipeline<T> add(Action<T> action);
 
-	public CallbackAction(Consumer<T> consumer, Observable d, Object failureKey) {
-		super(d, null, failureKey);
-		this.consumer = consumer;
-	}
+	Pipeline<T> flush();
 
-	@Override
-	public void doOperation(Event<T> value) {
-		consumer.accept(value.getData());
-	}
 }

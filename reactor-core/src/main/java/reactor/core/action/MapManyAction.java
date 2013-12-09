@@ -13,22 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.function.Function;
 
 /**
-* @author Stephane Maldini
-*/
-public class ConnectAction<T> extends Action<T> {
+ * @author Stephane Maldini
+ * @author Jon Brisbin
+ */
+public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
 
-	public ConnectAction(Observable observable, Object successKey, Object failureKey) {
-		super(observable, successKey, failureKey);
+	private final Function<T, E> fn;
+	private final TapAction<T>   tap;
+
+	public MapManyAction(Function<T, E> fn,
+	                     Observable ob,
+	                     Object successKey,
+	                     Object failureKey) {
+		super(ob, successKey, failureKey);
+		this.fn = fn;
+		this.tap = new TapAction<T>(ob, successKey, failureKey);
 	}
 
 	@Override
-	public void doOperation(Event<T> event) {
-		notifyValue(event);
+	public void doAccept(Event<T> value) {
+		E val = fn.apply(value.getData());
+		val.add(new ConnectAction<V>(getObservable(), getSuccessKey(), getFailureKey()));
+		val.flush();
 	}
+
 }

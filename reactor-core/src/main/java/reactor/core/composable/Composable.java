@@ -16,7 +16,7 @@
 
 package reactor.core.composable;
 
-import reactor.actions.*;
+import reactor.core.action.*;
 import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.event.Event;
@@ -41,7 +41,7 @@ import javax.annotation.Nullable;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public abstract class Composable<T> implements ActionPipe<T> {
+public abstract class Composable<T> implements Pipeline<T> {
 
 	private final Tuple2<Selector, Object> accept;
 	private final Tuple2<Selector, Object> error = Selectors.$();
@@ -81,7 +81,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	                                                @Nonnull final Consumer<E> onError) {
 		this.events.on(error.getT1(), new Action<E>(getObservable(), getAccept()) {
 			@Override
-			protected void doOperation(Event<E> e) {
+			protected void doAccept(Event<E> e) {
 				if (Selectors.T(exceptionType).matches(e.getData().getClass())) {
 					onError.accept(e.getData());
 				}
@@ -114,7 +114,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 		if (composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
-		addAction(new ConnectAction<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
+		add(new ConnectAction<T>(composable.events, composable.accept.getT2(), composable.error.getT2()));
 
 		return this;
 	}
@@ -127,7 +127,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
-		addAction(new CallbackAction<T>(consumer, events, error.getT2()));
+		add(new CallbackAction<T>(consumer, events, error.getT2()));
 		return this;
 	}
 
@@ -139,7 +139,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
-		addAction(new CallbackEventAction<T>(consumer, events, error.getT2()));
+		add(new CallbackEventAction<T>(consumer, events, error.getT2()));
 		return this;
 	}
 
@@ -151,7 +151,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		addAction(new ConnectAction<T>(observable, key, null));
+		add(new ConnectAction<T>(observable, key, null));
 		return this;
 	}
 
@@ -166,7 +166,7 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		addAction(new MapAction<T, V>(
+		add(new MapAction<T, V>(
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
@@ -182,10 +182,10 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
-	public <V> Composable<V> flatMap(@Nonnull final Function<T, Composable<V>> fn) {
+	public <V> Composable<V> mapMany(@Nonnull final Function<T, Composable<V>> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
 		final Deferred<V, ? extends Composable<V>> d = createDeferred();
-		addAction(new FlatMapAction<T, V, Composable<V>>(
+		add(new MapManyAction<T, V, Composable<V>>(
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAccept().getT2(),
@@ -232,9 +232,9 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		addAction(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAccept().getT2(), error.getT2(),
-				elseComposable != null ? elseComposable.events : null,
-				elseComposable != null ? elseComposable.accept.getT2() : null));
+		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAccept().getT2(), error.getT2(),
+		                        elseComposable != null ? elseComposable.events : null,
+		                        elseComposable != null ? elseComposable.accept.getT2() : null));
 		return d.compose();
 	}
 
@@ -243,7 +243,6 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	 *
 	 * @return {@literal this}
 	 */
-	@Override
 	public Composable<T> flush() {
 		Composable<?> that = this;
 		while (that.parent != null) {
@@ -265,12 +264,12 @@ public abstract class Composable<T> implements ActionPipe<T> {
 	}
 
 	/**
-	 * Consume events with the passed {@code Operation}
+	 * Consume events with the passed {@code Action}
 	 *
-	 * @param operation the operation listening for values
+	 * @param action the action listening for values
 	 */
-	public Composable<T> addAction(Action<T> operation) {
-		this.events.on(accept.getT1(), operation);
+	public Composable<T> add(Action<T> action) {
+		this.events.on(accept.getT1(), action);
 		return this;
 	}
 

@@ -13,26 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.actions;
+package reactor.core.action;
+
+import reactor.core.Observable;
+import reactor.event.Event;
 
 /**
- * Component that can be injected with {@link Action}s
- *
  * @author Stephane Maldini
  */
-public interface ActionPipe<T>{
+public class ConnectAction<T> extends Action<T> {
 
-	/**
-	 * Consume events with the passed {@code Operation}
-	 *
-	 * @param operation the operation listening for values
-	 */
-	ActionPipe<T> addAction(Action<T> operation);
+	public ConnectAction(Observable observable, Object successKey, Object failureKey) {
+		super(observable, successKey, failureKey);
+	}
 
-	/**
-	 * Flush any cached or unprocessed values through this {@literal ActionPipe}.
-	 *
-	 * @return {@literal this}
-	 */
-	ActionPipe<T> flush();
+	@Override
+	public void doAccept(Event<T> event) {
+		notifyValue(event);
+	}
+
 }
