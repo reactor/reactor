@@ -129,12 +129,10 @@ public abstract class ActionUtils {
 				appender.append("|errors:" + operation.getErrorCount());
 				appender.append("|batchSize:" + operation.getBatchSize());
 
-				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
-						d + 1, "flush");
 				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
 						d + 1, "first");
-				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getLastKey()),
-						d + 1, "last");
+				loopOperations(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
+						d + 1, "flush");
 			}
 		}
 

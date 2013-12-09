@@ -264,21 +264,30 @@ class StreamsSpec extends Specification {
   def 'Last value of a batch is accessible'() {
     given:
       'a composable that will accept an unknown number of values'
-      Deferred d = Streams.defer().get()
+      Deferred d = Streams.defer().batchSize(3).get()
       Stream composable = d.compose()
 
-    when:
-      'the expected accept count is set and that number of values is accepted'
-      def batched = composable.batch(3)
-      def last = batched.last()
-      def tap = last.tap()
-      d.accept(1)
-      d.accept(2)
-      d.accept(3)
+	  when:
+		  'the expected accept count is set and that number of values is accepted'
+		  def tap = composable.last().tap()
+		  d.accept(1)
+		  d.accept(2)
+		  d.accept(3)
 
-    then:
-      "last's value is now that of the last value"
-      tap.get() == 3
+	  then:
+		  "last's value is now that of the last value"
+		  tap.get() == 3
+
+	  when:
+		  'the expected accept count is set and that number of values is accepted'
+	    tap = composable.last(3).tap()
+		  d.accept(1)
+		  d.accept(2)
+		  d.accept(3)
+
+	  then:
+		  "last's value is now that of the last value"
+		  tap.get() == 3
   }
 
   def "A Stream's values can be mapped"() {
@@ -624,7 +633,7 @@ class StreamsSpec extends Specification {
       'a composable consumer is registerd'
       composable.consume('key', observable)
 
-      composable.flush() //  TODO This will pass if get is called, but I don't think it should be necessary
+      composable.flush()
 
     then:
       'the observable is notified of the values'

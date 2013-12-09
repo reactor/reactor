@@ -167,7 +167,6 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
-	 * @see #batch(int)
 	 */
 	public Stream<T> first() {
 		return first(batchSize);
@@ -182,14 +181,13 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @param batchSize the batch size to use
 	 *
-	 * @return a new {@code Stream} whose values are the first value of each batch
-	 * @see #batch(int)
+	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
 	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
-		final Deferred<T, Stream<T>> d = createDeferredChildStream();
+		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
 		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,
-				d.compose().getAccept().getT2(), null));
+				d.compose().getAccept().getT2()));
 		return d.compose();
 	}
 
@@ -211,9 +209,9 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> last(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
-		final Deferred<T, Stream<T>> d = createDeferredChildStream();
-		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), null,
-				null, d.compose().getAccept().getT2()));
+		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
+		addAction(new BatchAction<T>(batchSize, getObservable(), null, getError().getT2(), d.compose().getAccept().getT2(),
+				null));
 		return d.compose();
 	}
 
@@ -245,13 +243,8 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> batch(final int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		final Stream<T> stream = d.compose();
-		addAction(new BatchAction<T>(batchSize,
-				stream.getObservable(),
-				stream.getAccept().getT2(),
-				getError().getT2(),
-				stream.getFlush().getT2()));
-		return stream;
+		connect(d.compose());
+		return d.compose();
 	}
 
 	/**

@@ -30,7 +30,7 @@ public interface ActionPipe<T>{
 	ActionPipe<T> addAction(Action<T> operation);
 
 	/**
-	 * Flush any cached or unprocessed values through this {@literal OperationPipe}.
+	 * Flush any cached or unprocessed values through this {@literal ActionPipe}.
 	 *
 	 * @return {@literal this}
 	 */

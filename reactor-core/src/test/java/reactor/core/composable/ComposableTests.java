@@ -202,7 +202,6 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<List<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
-				 .batch(5)
 				 .collect();
 
 		final AtomicInteger batchCount = new AtomicInteger();

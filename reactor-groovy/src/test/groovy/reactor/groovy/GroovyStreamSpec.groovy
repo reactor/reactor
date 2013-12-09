@@ -235,7 +235,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'set a batch size to tap value after 5 iterations'
-			def t = d.batch(5).tap()
+			def t = d.last(5).tap()
 
 			d.flush()
 

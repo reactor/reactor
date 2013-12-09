@@ -30,30 +30,24 @@ public class BatchAction<T> extends Action<T> {
 	private final int    batchSize;
 	private final Object flushKey;
 	private final Object firstKey;
-	private final Object lastKey;
 
 	private volatile long errorCount  = 0l;
 	private volatile long acceptCount = 0l;
 
 	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey) {
-		this(batchSize, d, successKey, failureKey, null, null, null);
+		this(batchSize, d, successKey, failureKey, null, null);
 	}
 
 	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
-		this(batchSize, d, successKey, failureKey, flushKey, null, null);
+		this(batchSize, d, successKey, failureKey, flushKey, null);
 	}
 
 	public BatchAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey,
-	                   Object firstKey, Object lastKey) {
+	                   Object firstKey) {
 		super(d, successKey, failureKey);
 		this.batchSize = batchSize;
 		this.flushKey = flushKey;
-		this.lastKey = lastKey;
 		this.firstKey = firstKey;
-	}
-
-	protected void notifyFlush() {
-		getObservable().notify(flushKey, new Event<Void>(null));
 	}
 
 	protected void doNext(Event<T> event) {
@@ -64,19 +58,13 @@ public class BatchAction<T> extends Action<T> {
 
 	protected void doFlush(Event<T> event) {
 		if (flushKey != null) {
-			notifyFlush();
+			getObservable().notify(flushKey, event);
 		}
 	}
 
 	protected void doFirst(Event<T> event) {
 		if (firstKey != null) {
 			getObservable().notify(firstKey, event);
-		}
-	}
-
-	protected void doLast(Event<T> event) {
-		if (lastKey != null) {
-			getObservable().notify(lastKey, event);
 		}
 	}
 
@@ -93,7 +81,6 @@ public class BatchAction<T> extends Action<T> {
 			doNext(value);
 
 			if (accepted == 0) {
-				doLast(value);
 				doFlush(value);
 			}
 
@@ -119,10 +106,6 @@ public class BatchAction<T> extends Action<T> {
 
 	public Object getFirstKey() {
 		return firstKey;
-	}
-
-	public Object getLastKey() {
-		return lastKey;
 	}
 
 	public long getErrorCount() {
