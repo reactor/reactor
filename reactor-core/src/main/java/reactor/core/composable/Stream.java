@@ -233,21 +233,6 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	/**
-	 * Create a new {@code Stream} with the given {@code batchSize}. When a {@code batchSize} has been set, {@link
-	 * #first()} and {@link #last()} and {@link #collect()} are available, since a fixed number of values is expected. In
-	 * an unbounded {@code Stream}, those methods have no meaning because there is no beginning or end of an unbounded
-	 * {@code Stream}.
-	 *
-	 * @param batchSize the batch size to use
-	 * @return a new {@code Stream} containing the values from the parent
-	 */
-	public Stream<T> batch(final int batchSize) {
-		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		connect(d.compose());
-		return d.compose();
-	}
-
-	/**
 	 * Indicates whether or not this {@code Stream} is unbounded.
 	 *
 	 * @return {@literal true} if a {@code batchSize} has been set, {@literal false} otherwise
