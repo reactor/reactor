@@ -26,7 +26,6 @@ import reactor.function.Function;
 public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
 
 	private final Function<T, E> fn;
-	private final TapAction<T>   tap;
 
 	public MapManyAction(Function<T, E> fn,
 	                     Observable ob,
@@ -34,7 +33,6 @@ public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
 	                     Object failureKey) {
 		super(ob, successKey, failureKey);
 		this.fn = fn;
-		this.tap = new TapAction<T>(ob, successKey, failureKey);
 	}
 
 	@Override
