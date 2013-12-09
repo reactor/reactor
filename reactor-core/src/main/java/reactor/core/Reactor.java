@@ -27,7 +27,6 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.EventRouter;
-import reactor.event.routing.Linkable;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
