@@ -148,18 +148,18 @@ public abstract class Selectors {
 	}
 
 	/**
-	 * Creates a {@link Selector} based on a URI template.
+	 * Creates a {@link Selector} based on a URI path template.
 	 *
-	 * @param uriTemplate
-	 * 		The string to compile into a URI template and use for matching
+	 * @param uriPathTmpl
+	 * 		The string to compile into a URI path template and use for matching
 	 *
-	 * @return The new {@link UriTemplateSelector}.
+	 * @return The new {@link UriPathSelector}.
 	 *
-	 * @see UriTemplate
-	 * @see UriTemplateSelector
+	 * @see UriPathTemplate
+	 * @see UriPathSelector
 	 */
-	public static Selector uri(String uriTemplate) {
-		return new UriTemplateSelector(uriTemplate);
+	public static Selector uri(String uriPathTmpl) {
+		return new UriPathSelector(uriPathTmpl);
 	}
 
 	/**
@@ -167,16 +167,16 @@ public abstract class Selectors {
 	 * <p/>
 	 * Creates a {@link Selector} based on a URI template.
 	 *
-	 * @param uriTemplate
-	 * 		The string to compile into a URI template and use for matching
+	 * @param uriPathTmpl
+	 * 		The string to compile into a URI path template and use for matching
 	 *
-	 * @return The new {@link UriTemplateSelector}.
+	 * @return The new {@link UriPathSelector}.
 	 *
-	 * @see UriTemplate
-	 * @see UriTemplateSelector
+	 * @see UriPathTemplate
+	 * @see UriPathSelector
 	 */
-	public static Selector U(String uriTemplate) {
-		return new UriTemplateSelector(uriTemplate);
+	public static Selector U(String uriPathTmpl) {
+		return new UriPathSelector(uriPathTmpl);
 	}
 
 	/**

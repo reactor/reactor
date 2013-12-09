@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  * @author Jon Brisbin
  * @see <a href="http://bitworking.org/projects/URI-Templates/">URI Templates</a>
  */
-public class UriTemplate {
+public class UriPathTemplate {
 
 	private static final Pattern FULL_SPLAT_PATTERN     = Pattern.compile("[\\*][\\*]");
 	private static final String  FULL_SPLAT_REPLACEMENT = ".*";
@@ -54,11 +54,11 @@ public class UriTemplate {
 	private final Pattern uriPattern;
 
 	/**
-	 * Creates a new {@code UriTrmplate} from the given {@code uriPattern}.
+	 * Creates a new {@code UriPathTemplate} from the given {@code uriPattern}.
 	 *
 	 * @param uriPattern The pattern to be used by the template
 	 */
-	public UriTemplate(String uriPattern) {
+	public UriPathTemplate(String uriPattern) {
 		String s = "^" + uriPattern;
 
 		Matcher m = NAME_SPLAT_PATTERN.matcher(s);

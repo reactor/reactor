@@ -64,7 +64,7 @@ public class SelectorUnitTests {
 
 	@Test
 	public void testUriTemplateSelectorThroughput() throws Exception {
-		runTest("UriTemplateSelector", new Function<Integer, Tuple2<Selector, Object>>() {
+		runTest("UriPathSelector", new Function<Integer, Tuple2<Selector, Object>>() {
 			@Override
 			public Tuple2<Selector, Object> apply(Integer i) {
 				String key = "/test/" + i;

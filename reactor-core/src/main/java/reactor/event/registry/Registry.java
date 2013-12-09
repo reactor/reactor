@@ -57,4 +57,5 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
 	 */
 	List<Registration<? extends T>> select(Object key);
+
 }
