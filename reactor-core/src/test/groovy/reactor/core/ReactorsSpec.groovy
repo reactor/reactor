@@ -364,66 +364,6 @@ class ReactorsSpec extends Specification {
       d1 && d2
   }
 
-  def "A Reactor can be linked to another Reactor"() {
-
-    given:
-      "normal reactors on the same thread"
-      def r1 = Reactors.reactor().synchronousDispatcher().get()
-      def r2 = Reactors.reactor().link(r1).get()
-      def r3 = Reactors.reactor().link(r1).get()
-      def r4 = Reactors.reactor().synchronousDispatcher().get()
-
-      def d1, d2, d3, d4
-
-
-    when:
-      "registering few handlers"
-      r1.on $('test'), Functions.consumer({ d1 = true })
-      r2.on $('test'), Functions.consumer({ d2 = true })
-      r3.on $('test'), Functions.consumer({ d3 = true })
-      r4.on $('test'), Functions.consumer({ d4 = true })
-
-      r1.notify 'test', new Event('bob')
-
-    then:
-      "r1,r2,r3 react"
-      d1 && d2 && d3
-
-    when:
-      "registering a level 3 consumer"
-      d1 = d2 = d3 = d4 = false
-
-      r2.link r4
-      r1.notify 'test', new Event('bob')
-
-    then:
-      "r1,r2,r3 and r4 react"
-      d1 && d2 && d3 && d4
-
-    when:
-      "r2 is unlinked"
-      d1 = d2 = d3 = d4 = false
-      r1.unlink r2
-
-    and:
-      "sending on r1"
-      r1.notify 'test', new Event('bob')
-
-    then:
-      "only r1,r3 react"
-      d1 && d3 && !d2 && !d4
-
-    when:
-      "sending on r2"
-      d1 = d2 = d3 = d4 = false
-      r2.notify 'test', new Event('bob')
-
-    then:
-      "only r2,r4 react"
-      d2 && d4 && !d1 && !d3
-
-  }
-
   def "A Reactor can support single-use Consumers"() {
 
     given:

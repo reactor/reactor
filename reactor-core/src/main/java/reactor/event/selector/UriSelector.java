@@ -93,6 +93,10 @@ public class UriSelector extends ObjectSelector<URI> {
 
 		URI uri = objectToURI(key);
 
+		if(uri == null){
+			return false;
+		}
+
 		boolean schemeMatches = "*".equals(scheme) || scheme.equals(uri.getScheme());
 		boolean hostMatches = "*".equals(host) || host.equals(uri.getHost());
 		boolean portMatches = -1 == port || port == uri.getPort();
@@ -112,9 +116,7 @@ public class UriSelector extends ObjectSelector<URI> {
 		} else if(key instanceof String) {
 			return URI.create(key.toString());
 		} else {
-			throw new IllegalArgumentException("Cannot convert " +
-					                                   key +
-					                                   " into a java.net.URI. Key should be a URI or a String.");
+			return null;
 		}
 	}
 
@@ -127,6 +129,11 @@ public class UriSelector extends ObjectSelector<URI> {
 			}
 
 			URI uri = objectToURI(key);
+
+			if(uri == null){
+				return null;
+			}
+
 			Map<String, String> headers = new HashMap<String, String>();
 
 			headers.put("authority", uri.getAuthority());

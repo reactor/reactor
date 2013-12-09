@@ -142,6 +142,48 @@ class StreamsSpec extends Specification {
       value.get() == 2
   }
 
+  def 'Streams can be controlled'() {
+    given:
+      'a composable with a registered consumer'
+      Deferred d = Streams.defer().synchronousDispatcher().get()
+      Stream composable = d.compose()
+      def value = composable.tap()
+
+
+	  when:
+		  'a stream is paused'
+	    composable.pause()
+	  and:
+		  'a value is accepted'
+		  d.accept(1)
+
+    then:
+      'it is not passed to the consumer'
+      value.get() != 1
+
+	  when:
+		  'a stream is resumed'
+	    composable.resume()
+		 and:
+      'another value is accepted'
+      d.accept(2)
+
+    then:
+      'it is passed to the consumer'
+      value.get() == 2
+
+	  when:
+		  'a stream is cancelled'
+	    composable.cancel()
+		 and:
+      'another value is accepted'
+      d.accept(3)
+
+    then:
+      'it is not passed to the consumer'
+      value.get() != 3
+  }
+
   def 'Accepted errors are passed to a registered Consumer'() {
     given:
       'a composable with a registered consumer of RuntimeExceptions'

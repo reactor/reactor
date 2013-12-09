@@ -31,6 +31,7 @@ import reactor.event.routing.Linkable;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.event.selector.UriSelector;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -54,7 +55,7 @@ import java.util.*;
  * @author Andy Wilkinson
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class Reactor implements Observable, Linkable<Observable> {
+public class Reactor implements Observable {
 
 	private static final EventRouter DEFAULT_EVENT_ROUTER = new ConsumerFilteringEventRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -75,8 +76,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 			eventRouter.route(type, Event.wrap(t).setKey(type), consumerRegistry.select(type), null, null);
 		}
 	};
-	private final Set<Observable>     linkedReactors = Collections.synchronizedSet(new HashSet<Observable>());
-
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
@@ -197,6 +196,76 @@ public class Reactor implements Observable, Linkable<Observable> {
 		return eventRouter;
 	}
 
+
+	/**
+	 * Attach control consumers to the passed {@param observable}. Control consumers react on specific key to
+	 * trigger operating actions such as pause and cancel to the selected consumers from {@link
+	 * this#getConsumerRegistry()}} matching the passed {@link reactor.event.Event#getData()}.
+	 * Key format is an URI : 'control://[host]/[pause|cancel|...]'
+	 *
+	 * @param observable the observable that controls {@link this#getConsumerRegistry()} and state
+	 *
+	 * @return  {@link this}.
+	 */
+	public Reactor control(Observable observable){
+		observable.on(new UriSelector("control://*/pause"), new Consumer<Event<?>>() {
+			@Override
+			public void accept(Event<?> event) {
+				for(Registration<? extends Consumer<? extends Event<?>>> registration :
+						consumerRegistry.select(event.getData())){
+					registration.pause();
+				}
+			}
+		});
+		observable.on(new UriSelector("control://*/resume"), new Consumer<Event<?>>() {
+			@Override
+			public void accept(Event<?> event) {
+				for(Registration<? extends Consumer<? extends Event<?>>> registration :
+						consumerRegistry.select(event.getData())){
+					registration.resume();
+				}
+			}
+		});
+		observable.on(new UriSelector("control://*/cancel"), new Consumer<Event<?>>() {
+			@Override
+			public void accept(Event<?> event) {
+				for(Registration<? extends Consumer<? extends Event<?>>> registration :
+						consumerRegistry.select(event.getData())){
+					registration.cancel();
+				}
+			}
+		});
+		return this;
+	}
+
+	/**
+	 * Attach control consumers to this reactor. Control consumers react on specific key to
+	 * trigger operating actions such as pause and cancel to the selected consumers from {@link
+	 * this#getConsumerRegistry()}} matching the passed {@link reactor.event.Event#getData()}.
+	 * Key format is an URI : 'control://[host]/[pause|cancel|...]'
+	 *
+	 * @return {@link this}.
+	 */
+	public Reactor control(){
+		return control(this);
+	}
+/**
+	 *TODO
+	 * @param observable the observable that monitor {@link this} Reactor
+	 *
+	 * @return {@link this}.
+	 */
+	public Reactor monitor(Observable observable){
+
+		return this;
+	}
+
+	/**TODO
+	 */
+	public Reactor monitor(){
+		return monitor(this);
+	}
+
 	@Override
 	public boolean respondsToKey(Object key) {
 		Assert.notNull(key, "Key cannot be null.");
@@ -229,11 +298,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 
 		dispatcher.dispatch(key, (E)ev.setKey(key), consumerRegistry, errorHandler, eventRouter, onComplete);
 
-		if(!linkedReactors.isEmpty()) {
-			for(Observable r : linkedReactors) {
-				r.notify(key, ev);
-			}
-		}
 		return this;
 	}
 
@@ -311,18 +375,6 @@ public class Reactor implements Observable, Linkable<Observable> {
 				}
 			}
 		};
-	}
-
-	@Override
-	public Reactor link(Observable reactor) {
-		linkedReactors.add(reactor);
-		return this;
-	}
-
-	@Override
-	public Reactor unlink(Observable reactor) {
-		linkedReactors.remove(reactor);
-		return this;
 	}
 
 	@Override

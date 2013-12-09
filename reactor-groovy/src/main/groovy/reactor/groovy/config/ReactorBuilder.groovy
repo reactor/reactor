@@ -40,14 +40,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 	static final String RANDOM = 'random'
 	static final String FIRST = 'first'
 
-	ReactorBuilder linked
 	Environment env
 	Converter converter
 	EventRouter router
 	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
 	Filter filter
-	boolean linkParent = true
 	boolean override = false
 
 	private String dispatcherName
@@ -96,7 +94,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 			if (r) {
 				rehydrate r
 				addConsumersFrom r
-				linked = r.linked ? reactorMap[r.linked.name] : null
 			}
 			reactorMap[name] = this
 		}
@@ -260,17 +257,11 @@ class ReactorBuilder implements Supplier<Reactor> {
 				spec.consumerInvoker(consumerInvoker)
 			}
 		}
-		if (linked) {
-			spec.link(linked.get())
-		}
 
 		reactor = spec.get()
 
 		if (childNodes) {
 			for (childNode in childNodes) {
-				if (childNode.@linkParent && !childNode.@linked) {
-					childNode.linked = this
-				}
 				childNode.get()
 			}
 		}
@@ -362,7 +353,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 			rehydrate parent
 
 			env = parent.env
-			linked = parent.linked
 			consumers.putAll(parent.consumers)
 		}
 	}

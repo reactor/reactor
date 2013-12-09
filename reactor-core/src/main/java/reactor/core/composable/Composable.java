@@ -233,8 +233,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
 		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAccept().getT2(), error.getT2(),
-		                        elseComposable != null ? elseComposable.events : null,
-		                        elseComposable != null ? elseComposable.accept.getT2() : null));
+				elseComposable != null ? elseComposable.events : null,
+				elseComposable != null ? elseComposable.accept.getT2() : null));
 		return d.compose();
 	}
 
@@ -267,14 +267,47 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Consume events with the passed {@code Action}
 	 *
 	 * @param action the action listening for values
+	 * @return {@literal this}
 	 */
 	public Composable<T> add(Action<T> action) {
 		this.events.on(accept.getT1(), action);
 		return this;
 	}
 
+
 	/**
-	 * Notify this {@code Composable} that a flush is being requested by this {@code Composable}.
+	 * Pause events in this Stream
+	 *
+	 * @return {@literal this}
+	 */
+	public Composable<T> pause() {
+		this.events.notify("control://localhost/pause", Event.wrap(accept.getT2()));
+		return this;
+	}
+
+	/**
+	 * Pause events in this Stream
+	 *
+	 * @return {@literal this}
+	 */
+	public Composable<T> resume() {
+		this.events.notify("control://localhost/resume", Event.wrap(accept.getT2()));
+		return this;
+	}
+
+	/**
+	 * Pause events in this Stream
+	 *
+	 * @return {@literal this}
+	 */
+	public Composable<T> cancel() {
+		this.events.notify("control://localhost/cancel", Event.wrap(accept.getT2()));
+		return this;
+	}
+
+
+	/**
+	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
 	 */
 	void notifyFlush() {
 		events.notify(flush.getT2(), new Event<Void>(null));
