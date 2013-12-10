@@ -42,7 +42,7 @@ public class ReduceAction<T, A> extends BatchAction<T> {
 		if (null == acc) {
 			acc = (null != accumulators ? accumulators.get() : null);
 		}
-		acc = fn.apply(Tuple.of(ev.getData(), acc));
+		acc = fn.apply(Tuple2.of(ev.getData(), acc));
 	}
 
 	@Override

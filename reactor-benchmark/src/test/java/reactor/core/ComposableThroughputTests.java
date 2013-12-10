@@ -115,7 +115,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testThreadPoolDispatcherComposableThroughput() throws InterruptedException {
-		Thread.sleep(15000);
 		doTest(env.getDispatcher("threadPoolExecutor"), "thread pool");
 	}
 

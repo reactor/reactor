@@ -16,6 +16,7 @@
 
 package reactor.event.registry;
 
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.Selector;
 
 /**
@@ -25,9 +26,10 @@ import reactor.event.selector.Selector;
  * @param <T> The type of object that is registered
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  *
  */
-public interface Registration<T> {
+public interface Registration<T> extends Lifecycle {
 
 	/**
 	 * The {@link reactor.event.selector.Selector} that was used when the registration was made.
@@ -65,6 +67,7 @@ public interface Registration<T> {
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	Registration<T> cancel();
 
 	/**
@@ -80,6 +83,7 @@ public interface Registration<T> {
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	Registration<T> pause();
 
 	/**
@@ -94,6 +98,7 @@ public interface Registration<T> {
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	Registration<T> resume();
 
 }

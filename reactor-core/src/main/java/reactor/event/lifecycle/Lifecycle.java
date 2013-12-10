@@ -13,37 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
-
-import reactor.core.Observable;
-import reactor.event.Event;
-
-import java.util.ArrayList;
-import java.util.List;
+package reactor.event.lifecycle;
 
 /**
  * @author Stephane Maldini
  */
-public class CollectAction<T> extends BatchAction<T> {
+public interface Lifecycle {
 
-	private final List<T> values = new ArrayList<T>();
 
-	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
-		super(batchsize, d, successKey, failureKey);
-	}
+	/**
+	 * Cancel this {@literal Lifecycle}. The implementing component should never react to any stimulus,
+	 * closing resources if necessary.
+	 *
+	 * @return {@literal this}
+	 */
+	Lifecycle cancel();
 
-	@Override
-	public void doNext(Event<T> value) {
-		values.add(value.getData());
-	}
+	/**
+	 * Pause this {@literal Lifecycle}. The implementing component should stop reacting, pausing resources if necessary.
+	 *
+	 * @return {@literal this}
+	 */
+	Lifecycle pause();
 
-	@Override
-	public void doFlush(Event<T> ev) {
-		if (values.isEmpty()) {
-			return;
-		}
-		notifyValue(ev.copy(new ArrayList<T>(values)));
-		values.clear();
-	}
-
+	/**
+	 * Unpause this {@literal Lifecycle}. The implementing component should resume back from a previous pause,
+	 * re-activating resources if necessary.
+	 *
+	 * @return {@literal this}
+	 */
+	Lifecycle resume();
 }

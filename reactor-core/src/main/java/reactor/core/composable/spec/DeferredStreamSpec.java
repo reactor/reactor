@@ -78,7 +78,7 @@ public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSp
 	@Override
 	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
 	                                                  Tuple2<Selector, Object> accept) {
-		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept);
+		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept, env);
 		return new Deferred<T, Stream<T>>(stream);
 	}
 

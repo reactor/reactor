@@ -83,7 +83,7 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
 
-		return new Stream<T>(observable, batchSize, values, parent, accept);
+		return new Stream<T>(observable, batchSize, values, parent, accept, env);
 	}
 
 }

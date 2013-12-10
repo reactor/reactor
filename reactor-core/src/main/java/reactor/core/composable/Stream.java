@@ -16,6 +16,7 @@
 
 package reactor.core.composable;
 
+import reactor.core.HashWheelTimer;
 import reactor.core.action.*;
 import reactor.core.Environment;
 import reactor.core.Observable;
@@ -30,6 +31,7 @@ import reactor.util.Assert;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@code Stream} is a stateless event processor that provides methods for attaching {@link
@@ -51,7 +53,8 @@ import java.util.List;
  */
 public class Stream<T> extends Composable<T> {
 
-	private final int         batchSize;
+	private final int             batchSize;
+	private final Environment     environment;
 
 	/**
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
@@ -74,8 +77,10 @@ public class Stream<T> extends Composable<T> {
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
 	              @Nullable Iterable<T> values,
-	              @Nullable final Composable<?> parent) {
-		this(observable, batchSize, values, parent, null);
+	              @Nullable final Composable<?> parent,
+	              @Nullable final Environment environment
+	              ) {
+		this(observable, batchSize, values, parent, null, environment);
 	}
 	/**
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
@@ -99,10 +104,11 @@ public class Stream<T> extends Composable<T> {
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
 	              @Nullable Iterable<T> values,
-	              @Nullable final Composable<?> parent, Tuple2<Selector, Object> acceptSelector) {
+	              @Nullable final Composable<?> parent, Tuple2<Selector, Object> acceptSelector,
+								@Nullable final Environment environment) {
 		super(observable, parent, acceptSelector);
 		this.batchSize = batchSize;
-
+		this.environment = environment;
 		attachFlush(values);
 	}
 
@@ -287,6 +293,76 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
+	 * time from the {@param period} in milliseconds. The window runs on a timer from the stream {@link
+	 * this#environment}.
+	 *
+	 * @param period  the time period when each window close and flush the attached consumer
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<List<T>> window(int period) {
+		return window(period, TimeUnit.MILLISECONDS);
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
+	 * time from the {@param period} and a {@param timeUnit}. The window
+	 * runs on a timer from the stream {@link this#environment}.
+	 *
+	 * @param period  the time period when each window close and flush the attached consumer
+	 * @param timeUnit  the time unit used for the period
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
+		return window(period, timeUnit, 0);
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
+	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
+	 * runs on a timer from the stream {@link this#environment}.
+	 *
+	 * @param period  the time period when each window close and flush the attached consumer
+	 * @param timeUnit  the time unit used for the period
+	 * @param delay  the initial delay in milliseconds
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
+		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
+		return window(period, timeUnit, delay, environment.getRootTimer());
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
+	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
+	 * runs on a supplied {@param timer}.
+	 *
+	 * @param period  the time period when each window close and flush the attached consumer
+	 * @param timeUnit  the time unit used for the period
+	 * @param delay  the initial delay in milliseconds
+	 * @param timer  the reactor timer to run the window on
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, HashWheelTimer timer) {
+		Assert.state(timer != null, "Timer must be supplied");
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
+
+		add(new WindowAction<T>(
+				d.compose().getObservable(),
+				d.compose().getAccept().getT2(),
+				getError().getT2(),
+				timer,
+				period, timeUnit, delay
+				));
+
+		return d.compose();
+	}
+
+	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
 	 * passed to the function's {@link Tuple2} argument.
 	 *
@@ -359,15 +435,12 @@ public class Stream<T> extends Composable<T> {
 		return (Deferred<V, C>) createDeferredChildStream(batchSize);
 	}
 
-	private Deferred<T, Stream<T>> createDeferredChildStream() {
-		return createDeferredChildStream(-1);
-	}
-
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
 		Stream<T> stream = new Stream<T>(null,
 				batchSize,
 				null,
-				this);
+				this,
+				environment);
 		return new Deferred<T, Stream<T>>(stream);
 	}
 

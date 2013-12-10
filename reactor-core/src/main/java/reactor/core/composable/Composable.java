@@ -20,6 +20,7 @@ import reactor.core.action.*;
 import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.event.Event;
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
@@ -41,7 +42,7 @@ import javax.annotation.Nullable;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public abstract class Composable<T> implements Pipeline<T> {
+public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 
 	private final Tuple2<Selector, Object> accept;
 	private final Tuple2<Selector, Object> error = Selectors.$();
@@ -276,30 +277,33 @@ public abstract class Composable<T> implements Pipeline<T> {
 
 
 	/**
-	 * Pause events in this Stream
+	 * Pause events in this Composable
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	public Composable<T> pause() {
 		this.events.notify("control://localhost/pause", Event.wrap(accept.getT2()));
 		return this;
 	}
 
 	/**
-	 * Pause events in this Stream
+	 * Pause events in this Composable
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	public Composable<T> resume() {
 		this.events.notify("control://localhost/resume", Event.wrap(accept.getT2()));
 		return this;
 	}
 
 	/**
-	 * Pause events in this Stream
+	 * Pause events in this Composable
 	 *
 	 * @return {@literal this}
 	 */
+	@Override
 	public Composable<T> cancel() {
 		this.events.notify("control://localhost/cancel", Event.wrap(accept.getT2()));
 		return this;
