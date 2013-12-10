@@ -8,6 +8,43 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * A {@link reactor.event.selector.Selector} implementation that matches on various components of a full URI.
+ * <p>
+ * The {@code UriSelector} will explode a URI into its component parts. If you use the following as a selector:
+ * <pre><code>
+ * reactor.on(U("scheme://host/path"), ...);
+ * </code></pre>
+ * Then any {@link java.net.URI} or String that matches those elements will be matched.
+ * </p>
+ * <p>
+ * It's not an exact string match but a match on components because you can pass parameters in the form of a query
+ * string. Consider the following example:
+ * <pre><code>
+ * reactor.on(U("tcp://*:3000/topic"), consumer);
+ * </code></pre>
+ * This means "match any URIs using scheme 'tcp' to port '3000' for the path '/topic' irregardless of host". When a URI
+ * is sent as the key to a notify like this:
+ * <pre><code>
+ * reactor.notify("tcp://user:ENCODEDPWD@192.168.0.10:3000/topic?param=value"), event);
+ * </code></pre>
+ * The match will succeed and the headers will be set as follows:
+ * <ul>
+ * <li>{@code scheme}: "tcp"</li>
+ * <li>{@code authorization}: "user:ENCODEDPWD@192.168.0.10:3000"</li>
+ * <li>{@code userInfo}: "user:ENCODEDPWD"</li>
+ * <li>{@code host}: "192.168.0.10"</li>
+ * <li>{@code port}: "3000"</li>
+ * <li>{@code path}: "/topic"</li>
+ * <li>{@code fragment}: {@code null}</li>
+ * <li>{@code query}: "param=value"</li>
+ * <li>{@code param}: "value"</li>
+ * </ul>
+ * </p>
+ * <p>
+ * Wildcards can be used in place of {@code host}, and {@code path}. The former by replacing the host with '*' and the
+ * latter by replacing the path with '/*'.
+ * </p>
+ *
  * @author Jon Brisbin
  */
 public class UriSelector extends ObjectSelector<URI> {
@@ -15,8 +52,6 @@ public class UriSelector extends ObjectSelector<URI> {
 	private static final UriHeaderResolver URI_HEADER_RESOLVER = new UriHeaderResolver();
 
 	private final String scheme;
-	private final String authority;
-	private final String userInfo;
 	private final String host;
 	private final int    port;
 	private final String path;
@@ -29,16 +64,14 @@ public class UriSelector extends ObjectSelector<URI> {
 	public UriSelector(URI uri) {
 		super(uri);
 		scheme = (null != uri.getScheme() ? uri.getScheme() : "*");
-		authority = uri.getAuthority();
-		userInfo = uri.getUserInfo();
+		String authority = uri.getAuthority();
 		host = (null != uri.getHost() ? uri.getHost() : "*");
 		if(authority.contains("*:")) {
-			int i = authority.indexOf("@");
-			int z = authority.lastIndexOf(":") + 1;
-			if(i < 0) {
-				port = Integer.parseInt(authority.substring(z));
+			int i = authority.lastIndexOf(":") + 1;
+			if(i > 1) {
+				port = Integer.parseInt(authority.substring(i));
 			} else {
-				port = Integer.parseInt(authority.substring(i, z));
+				port = -1;
 			}
 		} else {
 			port = uri.getPort();
@@ -61,14 +94,12 @@ public class UriSelector extends ObjectSelector<URI> {
 		URI uri = objectToURI(key);
 
 		boolean schemeMatches = "*".equals(scheme) || scheme.equals(uri.getScheme());
-		boolean userInfoMatches = null == userInfo || userInfo.equals(uri.getUserInfo());
 		boolean hostMatches = "*".equals(host) || host.equals(uri.getHost());
 		boolean portMatches = -1 == port || port == uri.getPort();
 		boolean pathMatches = "/*".equals(path) || path.equals(uri.getPath());
 		boolean fragmentMatches = null == fragment || fragment.equals(uri.getFragment());
 
 		return schemeMatches
-				&& userInfoMatches
 				&& hostMatches
 				&& portMatches
 				&& pathMatches

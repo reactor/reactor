@@ -115,9 +115,9 @@ class SelectorSpec extends Specification {
 
 		given:
 			"A UriSelector"
-			def sel1 = new UriSelector("http://user:pwd@host:80/path?param=value#fragment")
-			def sel2 = new UriSelector("http://*:80/path#fragment")
-			def sel3 = new UriSelector("http://*:3000/path#fragment")
+			def sel1 = new UriSelector("http://user:pwd@host:80/path/segment?param=value#fragment")
+			def sel2 = new UriSelector("http://*:80/path/segment#fragment")
+			def sel3 = new UriSelector("http://user:ENCODEDPWD@*:3000/path/segment#fragment")
 			def r = Reactors.reactor().synchronousDispatcher().get()
 			def vals = [:]
 			r.on(sel1, consumer { Event<String> ev ->
@@ -133,7 +133,7 @@ class SelectorSpec extends Specification {
 
 		when:
 			"The Selector is matched"
-			r.notify("http://user:pwd@host:80/path?param=value#fragment", Event.wrap(""))
+			r.notify("http://user:pwd@host:80/path/segment?param=value#fragment", Event.wrap(""))
 
 		then:
 			"The URI has been matched and data extracted"
@@ -141,7 +141,7 @@ class SelectorSpec extends Specification {
 			vals["userInfo"] == "user:pwd"
 			vals["host"] == "host"
 			vals["port"] == "80"
-			vals["path"] == "/path"
+			vals["path"] == "/path/segment"
 			vals["fragment"] == "fragment"
 			vals["query"] == "param=value"
 			vals["param"] == "value"
