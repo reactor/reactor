@@ -21,7 +21,6 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * A {@literal Tuple} is an immutable {@link Collection} of objects, each of which can be of an arbitrary type.
@@ -31,8 +30,8 @@ import java.util.List;
 @SuppressWarnings({"rawtypes"})
 public class Tuple implements Iterable {
 
-	protected final List<Object> entries;
-	protected final int          size;
+	protected final Object[] entries;
+	protected final int      size;
 
 	/**
 	 * Creates a new {@code Tuple} that holds the given {@code values}.
@@ -40,8 +39,8 @@ public class Tuple implements Iterable {
 	 * @param values The values to hold
 	 */
 	public Tuple(@Nonnull Collection<Object> values) {
-		this.entries = Arrays.asList(values.toArray());
-		this.size = entries.size();
+		this.entries = (null != values ? values.toArray() : new Object[0]);
+		this.size = entries.length;
 	}
 
 	/**
@@ -50,7 +49,7 @@ public class Tuple implements Iterable {
 	 * @param values The values to hold
 	 */
 	public Tuple(Object... values) {
-		this.entries = Arrays.asList(values);
+		this.entries = Arrays.copyOf(values, values.length);
 		this.size = values.length;
 	}
 
@@ -232,7 +231,7 @@ public class Tuple implements Iterable {
 	 */
 	@Nullable
 	public Object get(int index) {
-		return (!entries.isEmpty() && size > index ? entries.get(index) : null);
+		return (size > 0 && size > index ? entries[index] : null);
 	}
 
 	/**
@@ -241,7 +240,7 @@ public class Tuple implements Iterable {
 	 * @return A new Object array.
 	 */
 	public Object[] toArray() {
-		return entries.toArray();
+		return entries;
 	}
 
 	/**
@@ -256,7 +255,7 @@ public class Tuple implements Iterable {
 	@Override
 	@Nonnull
 	public Iterator<?> iterator() {
-		return entries.iterator();
+		return Arrays.asList(entries).iterator();
 	}
 
 
@@ -265,7 +264,7 @@ public class Tuple implements Iterable {
     if (this.size == 0) {
       return 0;
     } else if (this.size == 1) {
-      return this.entries.get(0).hashCode();
+      return this.entries[0].hashCode();
     } else {
       int hashCode = 1;
       for (Object entry: this.entries) {
@@ -288,7 +287,7 @@ public class Tuple implements Iterable {
     boolean eq = true;
 
     for (int i = 0; i < this.size; i++) {
-      if (!this.entries.get(i).equals(cast.entries.get(i))) {
+      if (!this.entries[i].equals(cast.entries[i])) {
         return false;
       }
     }
