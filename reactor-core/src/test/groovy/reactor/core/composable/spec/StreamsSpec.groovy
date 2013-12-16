@@ -582,15 +582,14 @@ class StreamsSpec extends Specification {
       'a source and a collected stream'
 	    Environment environment = new Environment()
       Deferred source = Streams.<Integer>defer().synchronousDispatcher().env(environment).get()
-      Stream reduced = source.compose().window(1000)
+      Stream reduced = source.compose().window(500)
       def value = reduced.tap()
 
     when:
       'the first values are accepted on the source'
       source.accept(1)
       source.accept(2)
-	    sleep(1100)
-
+	    sleep(1000)
 
     then:
       'the collected list is not yet available'
@@ -600,7 +599,7 @@ class StreamsSpec extends Specification {
       'the second value is accepted'
       source.accept(3)
       source.accept(4)
-	    sleep(1100)
+	    sleep(1000)
 
     then:
       'the collected list contains the first and second elements'
