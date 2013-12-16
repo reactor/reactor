@@ -35,8 +35,14 @@ public class ObjectSelector<T> implements Selector {
 	private final Object monitor = new Object();
 
 	private final T                 object;
-	private       SortedSet<String> tags;
 
+	/**
+	 * Create a new anonymous {@link Selector} instance based on itself.
+	 */
+	@SuppressWarnings("unchecked")
+	public ObjectSelector() {
+		this.object = (T)this;
+	}
 	/**
 	 * Create a new {@link Selector} instance from the given object.
 	 *
@@ -88,7 +94,6 @@ public class ObjectSelector<T> implements Selector {
 			return "Selector{" +
 					"object=" + object +
 					", uuid=" + uuid +
-					", tags=" + tags +
 					'}';
 		}
 	}

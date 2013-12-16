@@ -16,10 +16,10 @@
 
 package reactor.core.composable;
 
-import reactor.core.HashWheelTimer;
-import reactor.core.action.*;
 import reactor.core.Environment;
+import reactor.core.HashWheelTimer;
 import reactor.core.Observable;
+import reactor.core.action.*;
 import reactor.core.composable.spec.DeferredStreamSpec;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
@@ -150,7 +150,7 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public <V> Stream<V> mapMany(@Nonnull Function<T, Composable<V>> fn) {
+	public <V, C extends Composable<V>> Stream<V> mapMany(@Nonnull Function<T, C> fn) {
 		return (Stream<V>) super.mapMany(fn);
 	}
 
@@ -217,7 +217,7 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
 		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), d.compose().getAcceptKey(),
-		                       null));
+				null));
 		return d.compose();
 	}
 

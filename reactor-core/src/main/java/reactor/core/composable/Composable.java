@@ -16,11 +16,10 @@
 
 package reactor.core.composable;
 
-import reactor.core.action.*;
 import reactor.core.Observable;
 import reactor.core.Reactor;
+import reactor.core.action.*;
 import reactor.event.Event;
-import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -43,12 +42,12 @@ import javax.annotation.Nullable;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
+public abstract class Composable<T> implements Pipeline<T> {
 
 	private final Selector acceptSelector;
 	private final Object acceptKey;
-	private final Selector error = new ObjectSelector<Object>(new Object());
-	private final Selector flush = new ObjectSelector<Object>(new Object());
+	private final Selector error = new ObjectSelector<Object>();
+	private final Selector flush = new ObjectSelector<Object>();
 
 	private final Observable    events;
 	private final Composable<?> parent;
@@ -64,8 +63,8 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 		this.parent = parent;
 		this.events = parent == null ? observable : parent.events;
 		if(null == acceptSelectorTuple){
-			this.acceptKey = new Object();
-			this.acceptSelector =  new ObjectSelector<Object>(acceptKey);
+			this.acceptSelector =  new ObjectSelector<Object>();
+			this.acceptKey = this.acceptSelector.getObject();
 		}else{
 			this.acceptKey = acceptSelectorTuple.getT1();
 			this.acceptSelector =  new ObjectSelector<Object>(acceptSelectorTuple.getT2());

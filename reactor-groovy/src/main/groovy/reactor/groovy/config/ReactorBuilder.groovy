@@ -13,6 +13,7 @@ import reactor.event.dispatch.Dispatcher
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerInvoker
 import reactor.event.routing.EventRouter
+import reactor.event.selector.ObjectSelector
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
 import reactor.event.support.CallbackEvent
@@ -32,7 +33,7 @@ import reactor.groovy.support.ClosureEventConsumer
 @CompileStatic
 class ReactorBuilder implements Supplier<Reactor> {
 
-	static final private Selector noSelector = Selectors.anonymous().t1
+	static final private Selector noSelector = new ObjectSelector<Object>()
 	static final private Filter DEFAULT_FILTER = new PassThroughFilter()
 
 	static final String ROUND_ROBIN = 'round-robin'

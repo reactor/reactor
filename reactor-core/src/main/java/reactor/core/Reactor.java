@@ -27,10 +27,7 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.EventRouter;
-import reactor.event.selector.ClassSelector;
-import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
-import reactor.event.selector.UriSelector;
+import reactor.event.selector.*;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -64,7 +61,7 @@ public class Reactor implements Observable {
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
 
-	private final Object   defaultKey      = new Object();
+	private final Object   defaultKey      = this;
 	private final Selector defaultSelector = Selectors.$(defaultKey);
 
 	private final UUID                id             = UUIDUtils.create();
@@ -278,9 +275,9 @@ public class Reactor implements Observable {
 
 	@Override
 	public <E extends Event<?>> Reactor sendAndReceive(Object key, E ev, Consumer<E> reply) {
-		Tuple2<Selector, Object> anon = Selectors.anonymous();
-		on(anon.getT1(), new SingleUseConsumer<E>(reply)).cancelAfterUse();
-		notify(key, ev.setReplyTo(anon.getT2()));
+		Selector sel = new ObjectSelector<Object>();
+		on(sel, new SingleUseConsumer<E>(reply)).cancelAfterUse();
+		notify(key, ev.setReplyTo(sel));
 		return this;
 	}
 
