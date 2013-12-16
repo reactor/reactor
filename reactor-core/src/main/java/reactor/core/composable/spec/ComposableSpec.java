@@ -65,7 +65,7 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 	@Override
 	protected TARGET configure(final Dispatcher dispatcher, Environment env) {
 		if (observable == null) {
-			observable = new Reactor(dispatcher).control();
+			observable = new Reactor(dispatcher);
 		}
 		return createComposable(env, observable, acceptSelector);
 	}
