@@ -16,10 +16,6 @@
 
 package reactor.event.selector;
 
-import reactor.util.UUIDUtils;
-
-import java.util.*;
-
 /**
  * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)}
  * methods of the internal object to determine a match.
@@ -28,10 +24,10 @@ import java.util.*;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public class ObjectSelector<T> implements Selector {
 
-	private final UUID   uuid    = UUIDUtils.create();
 	private final Object monitor = new Object();
 
 	private final T                 object;
@@ -64,11 +60,6 @@ public class ObjectSelector<T> implements Selector {
 	}
 
 	@Override
-	public UUID getId() {
-		return uuid;
-	}
-
-	@Override
 	public T getObject() {
 		return object;
 	}
@@ -93,7 +84,6 @@ public class ObjectSelector<T> implements Selector {
 		synchronized (monitor) {
 			return "Selector{" +
 					"object=" + object +
-					", uuid=" + uuid +
 					'}';
 		}
 	}
