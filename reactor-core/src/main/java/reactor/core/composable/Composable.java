@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
+public abstract class Composable<T> implements Pipeline<T> {
 
 	private final Tuple2<Selector, Object> accept;
 	private final Tuple2<Selector, Object> error = Selectors.$();
@@ -274,41 +274,6 @@ public abstract class Composable<T> implements Pipeline<T>, Lifecycle {
 		this.events.on(accept.getT1(), action);
 		return this;
 	}
-
-
-	/**
-	 * Pause events in this Composable
-	 *
-	 * @return {@literal this}
-	 */
-	@Override
-	public Composable<T> pause() {
-		this.events.notify("control://localhost/pause", Event.wrap(accept.getT2()));
-		return this;
-	}
-
-	/**
-	 * Pause events in this Composable
-	 *
-	 * @return {@literal this}
-	 */
-	@Override
-	public Composable<T> resume() {
-		this.events.notify("control://localhost/resume", Event.wrap(accept.getT2()));
-		return this;
-	}
-
-	/**
-	 * Pause events in this Composable
-	 *
-	 * @return {@literal this}
-	 */
-	@Override
-	public Composable<T> cancel() {
-		this.events.notify("control://localhost/cancel", Event.wrap(accept.getT2()));
-		return this;
-	}
-
 
 	/**
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
