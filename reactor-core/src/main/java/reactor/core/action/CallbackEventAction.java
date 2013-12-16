@@ -13,36 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package reactor.core.action;
 
-package reactor.event.routing;
+import reactor.core.Observable;
+import reactor.event.Event;
+import reactor.function.Consumer;
 
 /**
- * Simple abstraction to provide linking components together.
- *
- * @param <T> the type that can be linked
- *
- * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public interface Linkable<T> {
+public class CallbackEventAction<T> extends Action<T> {
 
-	/**
-	 * Link components together.
-	 *
-	 * @param t
-	 * 		Array of components to link to this parent.
-	 *
-	 * @return {@literal this}
-	 */
-	Linkable<T> link(T t);
+	private final Consumer<Event<T>> consumer;
 
-	/**
-	 * Unlink components.
-	 *
-	 * @param t
-	 * 		Component to unlink when this parent.
-	 *
-	 * @return {@literal this}
-	 */
-	Linkable<T> unlink(T t);
+	public CallbackEventAction(Consumer<Event<T>> consumer, Observable d, Object failureKey) {
+		super(d, null, failureKey);
+		this.consumer = consumer;
+	}
+
+	@Override
+	public void doAccept(Event<T> value) {
+		consumer.accept(value);
+	}
 
 }

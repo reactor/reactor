@@ -13,22 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.spec;
-
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.core.spec.support.EventRoutingComponentSpec;
+package reactor.core.action;
 
 /**
- * A helper class for configuring a new {@link Reactor}.
+ * Component that can be injected with {@link Action}s
  *
+ * @author Stephane Maldini
  * @author Jon Brisbin
  */
-public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
+public interface Pipeline<T> {
 
-	@Override
-	protected final Reactor configure(Reactor reactor, Environment environment) {
-		return reactor;
-	}
+	/**
+	 * Consume events with the passed {@code Action}
+	 *
+	 * @param action
+	 * 		the action listening for values
+	 */
+	Pipeline<T> add(Action<T> action);
+
+	Pipeline<T> flush();
 
 }

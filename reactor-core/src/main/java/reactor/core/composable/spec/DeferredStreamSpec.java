@@ -16,11 +16,12 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
-import reactor.core.spec.support.DispatcherComponentSpec;
-import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 
 /**
  * A helper class for specifying a {@link Deferred} {@link Stream}.
@@ -28,8 +29,9 @@ import reactor.event.dispatch.Dispatcher;
  * @param <T> The type of values that the stream will contain
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
+public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
 
 	private Composable<?> parent;
 	private int batchSize = -1;
@@ -74,8 +76,10 @@ public final class DeferredStreamSpec<T> extends DispatcherComponentSpec<Deferre
 	}
 
 	@Override
-	protected Deferred<T, Stream<T>> configure(Dispatcher dispatcher, Environment env) {
-		return new Deferred<T, Stream<T>>(new Stream<T>(dispatcher, batchSize, values, parent));
+	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
+	                                                  Tuple2<Selector, Object> accept) {
+		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept, env);
+		return new Deferred<T, Stream<T>>(stream);
 	}
 
 }

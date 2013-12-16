@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -43,6 +44,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * @author Jon Brisbin
@@ -109,15 +112,23 @@ public class ComposableTests extends AbstractReactorTest {
 				       .env(env)
 				       .dispatcher("eventLoop")
 				       .get();
+
+		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
+				 .when(IllegalArgumentException.class, new Consumer<IllegalArgumentException>() {
+					 @Override
+					 public void accept(IllegalArgumentException e) {
+						  exception.set(true);
+					 }
+				 })
 				 .map(new Function<Integer, Integer>() {
 					 int sum = 0;
 
 					 @Override
 					 public Integer apply(Integer i) {
-						 if(i >= 5) {
+						 if (i >= 5) {
 							 throw new IllegalArgumentException();
 						 }
 						 sum += i;
@@ -126,7 +137,7 @@ public class ComposableTests extends AbstractReactorTest {
 				 });
 
 		await(5, s, is(10));
-		assertThat("error count is 1", s.getErrorCount(), is(1L));
+		assertThat("exception triggered", exception.get(), is(true));
 	}
 
 	@Test
@@ -141,7 +152,6 @@ public class ComposableTests extends AbstractReactorTest {
 						 return r.getT1() * r.getT2();
 					 }
 				 }, 1);
-
 		await(5, s, is(120));
 	}
 
@@ -192,7 +202,6 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<List<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
-				 .batch(5)
 				 .collect();
 
 		final AtomicInteger batchCount = new AtomicInteger();
@@ -250,7 +259,7 @@ public class ComposableTests extends AbstractReactorTest {
 		} catch(IllegalStateException ise) {
 			// Swallow
 		}
-		assertEquals(1, deferred.compose().getAcceptCount());
+		assertEquals(deferred.compose().get(), "alpha");
 	}
 
 	@Test
@@ -263,7 +272,7 @@ public class ComposableTests extends AbstractReactorTest {
 		} catch(IllegalStateException ise) {
 			// Swallow
 		}
-		assertEquals(1, deferred.compose().getErrorCount());
+		assertTrue(deferred.compose().reason() instanceof Exception);
 	}
 
 	@Test
@@ -276,8 +285,13 @@ public class ComposableTests extends AbstractReactorTest {
 		} catch(IllegalStateException ise) {
 			// Swallow
 		}
-		assertEquals(1, deferred.compose().getErrorCount());
-		assertEquals(0, deferred.compose().getAcceptCount());
+		assertTrue(deferred.compose().reason() instanceof Exception);
+		try{
+			deferred.compose().get();
+			fail();
+		}catch(RuntimeException ise){
+			assertEquals(deferred.compose().reason(), ise.getCause());
+		}
 	}
 
 	<T> void await(Stream<T> s, Matcher<T> expected) throws InterruptedException {
@@ -311,6 +325,7 @@ public class ComposableTests extends AbstractReactorTest {
 		}
 		long duration = System.currentTimeMillis() - startTime;
 
+		System.out.println(s.debug());
 		assertThat(result, expected);
 		assertThat(duration, is(lessThan(2000L)));
 	}

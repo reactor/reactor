@@ -89,10 +89,6 @@ class GroovyEnvironment {
 				if (current) {
 					reactorBuilder.rehydrate current
 					reactorBuilder.addConsumersFrom current
-					if(current.linked && reactors[current.linked.name]){
-						 current.linked = reactors[current.linked.name]
-					}
-					reactorBuilder.linked = current.linked ?: reactorBuilder.linked
 				} else {
 					reactors[key] = reactorBuilder
 				}

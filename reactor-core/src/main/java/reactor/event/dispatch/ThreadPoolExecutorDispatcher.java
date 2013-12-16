@@ -16,16 +16,17 @@
 
 package reactor.event.dispatch;
 
+import reactor.event.registry.Registry;
+import reactor.event.routing.EventRouter;
+import reactor.function.Consumer;
 import reactor.pool.LoadingPool;
 import reactor.pool.Pool;
 import reactor.event.Event;
 import reactor.function.Supplier;
+import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * A {@code Dispatcher} that uses a {@link ThreadPoolExecutor} with an unbounded queue to dispatch events.
@@ -34,10 +35,12 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
+public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 	private final ExecutorService      executor;
 	private final Pool<ThreadPoolTask> readyTasks;
+
+	private final BlockingQueue<Task> delayedTaskQueue = BlockingQueueFactory.createQueue();
 
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
@@ -52,7 +55,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog, String threadName) {
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
-				new NamedDaemonThreadFactory(threadName)
+				new NamedDaemonThreadFactory(threadName, getContext())
 		);
 		this.readyTasks = new LoadingPool<ThreadPoolTask>(
 				new Supplier<ThreadPoolTask>() {
@@ -71,7 +74,7 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 		shutdown();
 		try {
 			return executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
-		} catch(InterruptedException e) {
+		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
 		return false;
@@ -89,17 +92,66 @@ public final class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher 
 		super.halt();
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public <E extends Event<?>> void dispatch(Object key,
+	                                          E event,
+	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Consumer<Throwable> errorConsumer,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> completionConsumer) {
+		if (!alive()) {
+			throw new IllegalStateException("This Dispatcher has been shutdown");
+		}
+
+		boolean isInContext = isInContext();
+
+		Task<E> task = isInContext ? new ThreadPoolTask<E>() : (Task<E>)createTask();
+
+		task.setKey(key);
+		task.setEvent(event);
+		task.setConsumerRegistry(consumerRegistry);
+		task.setErrorConsumer(errorConsumer);
+		task.setEventRouter(eventRouter);
+		task.setCompletionConsumer(completionConsumer);
+
+		if (isInContext) {
+			delayedTaskQueue.add(task);
+		} else {
+			task.submit();
+		}
+	}
+
+
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		Task<E> t = (Task<E>)readyTasks.allocate();
+		Task<E> t = (Task<E>) readyTasks.allocate();
 		return (null != t ? t : (Task<E>) new ThreadPoolTask());
 	}
 
-	private class ThreadPoolTask extends Task<Event<Object>> implements Runnable {
+	private class ThreadPoolTask<E extends Event<?>> extends Task<E> implements Runnable {
 		@Override
 		public void submit() {
 			executor.submit(this);
+		}
+
+		@Override
+		protected void execute() {
+			eventRouter.route(key,
+					event,
+					(null != consumerRegistry ? consumerRegistry.select(key) : null),
+					completionConsumer,
+					errorConsumer);
+
+			Task<?> task;
+			for(;;){
+				task = delayedTaskQueue.poll();
+				if(null == task){
+					break;
+				}
+				task.execute();
+			}
 		}
 
 		@Override

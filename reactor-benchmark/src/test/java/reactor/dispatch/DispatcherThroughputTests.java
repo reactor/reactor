@@ -16,11 +16,11 @@
 
 package reactor.dispatch;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
+import reactor.event.dispatch.BlockingQueueDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 
@@ -79,7 +79,7 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void blockingQueueDispatcherThroughput() throws InterruptedException {
 		log.info("Starting blocking queue test...");
-		doTest(Reactors.reactor().env(env).dispatcher("eventLoop").get());
+		doTest(Reactors.reactor().env(env).dispatcher(new BlockingQueueDispatcher("eventLoop", 256)).get());
 	}
 
 	@Test
@@ -104,6 +104,11 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	public void preparedRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting prepared RingBuffer test...");
 		doPrepareTest(Reactors.reactor().env(env).dispatcher("ringBuffer").get());
+	}
+	@Test
+	public void actorDispatcherThroughput() throws InterruptedException {
+		log.info("Starting prepared ActorSystem test...");
+		doTest(Reactors.reactor().env(env).actorSystem("eventLoop").get());
 	}
 
 }

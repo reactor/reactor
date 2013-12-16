@@ -199,7 +199,7 @@ class GroovyStreamSpec extends Specification {
 			def key = $()
 
 		when:
-			'we consume when this reactor and key'
+			'we connect when this reactor and key'
 			def latch = new CountDownLatch(5)
 			r.on(key.t1) {
 				latch.countDown()
@@ -235,7 +235,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'set a batch size to tap value after 5 iterations'
-			def t = d.batch(5).tap()
+			def t = d.last(5).tap()
 
 			d.flush()
 

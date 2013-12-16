@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Andy Wilkinson
  */
 @SuppressWarnings("rawtypes")
-public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
+public final class BlockingQueueDispatcher extends SingleThreadDispatcher {
 
 	private static final AtomicInteger INSTANCE_COUNT = new AtomicInteger();
 
@@ -52,6 +52,7 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 	 * @param backlog The backlog size
 	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
+		super(backlog);
 		this.readyTasks = new LoadingPool<Task>(
 				new Supplier<Task>() {
 					@Override
@@ -62,24 +63,25 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 				backlog,
 				150l
 		);
-		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
 
+		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
 		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
 		this.taskExecutor.setDaemon(true);
 		this.taskExecutor.setPriority(Thread.NORM_PRIORITY);
+		this.taskExecutor.setContextClassLoader(getContext());
 		this.taskExecutor.start();
 	}
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		if(taskQueue.isEmpty()) {
+		if (taskQueue.isEmpty()) {
 			shutdown();
 			return true;
 		}
-		synchronized(taskQueue) {
+		synchronized (taskQueue) {
 			try {
 				taskQueue.wait();
-			} catch(InterruptedException e) {
+			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				return false;
 			}
@@ -107,14 +109,14 @@ public final class BlockingQueueDispatcher extends BaseLifecycleDispatcher {
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
-	private class BlockingQueueTask<E extends Event<?>> extends Task<E> {
+	private class BlockingQueueTask<E extends Event<?>> extends SingleThreadTask<E> {
 		@Override
 		public void submit() {
 			taskQueue.add(this);
 		}
 	}
 
-	private class TaskExecutingRunnable implements Runnable {
+	private  class TaskExecutingRunnable implements Runnable {
 		@Override
 		public void run() {
 			Task t = null;

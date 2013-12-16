@@ -607,6 +607,7 @@ class PromisesSpec extends Specification {
     when:
       "a combined promise is first created"
       def combined = Promises.when(promise1, promise2)
+	  println combined.debug()
 
     then:
       "it is rejected"
@@ -628,6 +629,7 @@ class PromisesSpec extends Specification {
 
     when:
       "the first promise is fulfilled"
+    println promise1.compose().debug()
       promise1.accept 1
 
     then:

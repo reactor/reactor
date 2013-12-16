@@ -16,11 +16,12 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
-import reactor.core.spec.support.DispatcherComponentSpec;
-import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 
 /**
  * A helper class for specifying a {@link Deferred} {@link Promise}.
@@ -28,8 +29,9 @@ import reactor.event.dispatch.Dispatcher;
  * @param <T> The type of the value that the promise will accept
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public final class DeferredPromiseSpec<T> extends DispatcherComponentSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
+public final class DeferredPromiseSpec<T> extends ComposableSpec<DeferredPromiseSpec<T>, Deferred<T, Promise<T>>> {
 
 	private Composable<?> parent;
 
@@ -46,7 +48,8 @@ public final class DeferredPromiseSpec<T> extends DispatcherComponentSpec<Deferr
 	}
 
 	@Override
-	protected Deferred<T, Promise<T>> configure(Dispatcher dispatcher, Environment env) {
-		return new Deferred<T, Promise<T>>(new Promise<T>(dispatcher, env, parent));
+	protected Deferred<T, Promise<T>> createComposable(Environment env, Observable observable,
+	                                                   Tuple2<Selector, Object> accept) {
+		return new Deferred<T, Promise<T>>(new Promise<T>(observable, env, parent));
 	}
 }

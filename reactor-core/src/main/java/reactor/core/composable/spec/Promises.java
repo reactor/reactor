@@ -192,7 +192,6 @@ public abstract class Promises {
 		Stream<List<T>> aggregatedStream = deferredStream.collect();
 
 		Promise<List<T>> resultPromise = new DeferredPromiseSpec<List<T>>()
-				.synchronousDispatcher()
 				.link(aggregatedStream)
 				.get()
 				.compose();
@@ -200,7 +199,7 @@ public abstract class Promises {
 		aggregatedStream.consume(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.consume(deferredStream);
+			promise.connect(deferredStream);
 		}
 
 		return resultPromise;
@@ -256,15 +255,14 @@ public abstract class Promises {
 		Stream<T> firstStream = deferredStream.first();
 
 		Promise<T> resultPromise = new DeferredPromiseSpec<T>()
-				.synchronousDispatcher()
 				.link(firstStream)
 				.get()
 				.compose();
 
-		firstStream.consume(resultPromise);
+		firstStream.connect(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.consume(deferredStream);
+			promise.connect(deferredStream);
 		}
 
 		return resultPromise;

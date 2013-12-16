@@ -27,6 +27,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.Selector;
 
 /**
@@ -235,6 +236,9 @@ public class CachingRegistry<T> implements Registry<T> {
 			try {
 				registrations.remove(CachableRegistration.this);
 				refreshRequired = true;
+				if(Lifecycle.class.isAssignableFrom(object.getClass())){
+					((Lifecycle)object).cancel();
+				}
 			} finally {
 				writeLock.unlock();
 			}
@@ -250,6 +254,9 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<V> pause() {
 			paused = true;
+			if(Lifecycle.class.isAssignableFrom(object.getClass())){
+				((Lifecycle)object).pause();
+			}
 			return this;
 		}
 
@@ -261,6 +268,9 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<V> resume() {
 			paused = false;
+			if(Lifecycle.class.isAssignableFrom(object.getClass())){
+				((Lifecycle)object).resume();
+			}
 			return this;
 		}
 	}

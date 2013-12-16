@@ -16,6 +16,11 @@
 
 package reactor.event.dispatch;
 
+import reactor.event.Event;
+import reactor.event.registry.Registry;
+import reactor.event.routing.EventRouter;
+import reactor.function.Consumer;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -25,9 +30,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class BaseLifecycleDispatcher extends BaseDispatcher {
+public abstract class BaseLifecycleDispatcher implements Dispatcher{
 
 	private final AtomicBoolean alive = new AtomicBoolean(true);
+	private final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	};
+
+	protected BaseLifecycleDispatcher() {
+		super();
+	}
 
 	@Override
 	public boolean alive() {
@@ -47,5 +58,83 @@ public abstract class BaseLifecycleDispatcher extends BaseDispatcher {
 	@Override
 	public void halt() {
 		alive.compareAndSet(true, false);
+	}
+
+	/**
+	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their
+	 * dispatching strategy
+	 *
+	 * @return boolean true if the programs is already run by this dispatcher
+	 */
+	protected final boolean isInContext() {
+		return context == Thread.currentThread().getContextClassLoader();
+	}
+
+	protected final ClassLoader getContext() {
+		return context;
+	}
+
+	@Override
+	public final <E extends Event<?>> void dispatch(E event,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> consumer,
+	                                                Consumer<Throwable> errorConsumer) {
+		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	}
+
+
+	protected abstract <E extends Event<?>> Task<E> createTask();
+
+	protected abstract class Task<E extends Event<?>> {
+
+		protected volatile Object                                 key;
+		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
+		protected volatile E                                      event;
+		protected volatile Consumer<E>                            completionConsumer;
+		protected volatile Consumer<Throwable>                    errorConsumer;
+		protected volatile EventRouter                            eventRouter;
+
+		final Task<E> setKey(Object key) {
+			this.key = key;
+			return this;
+		}
+
+		final Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+			this.consumerRegistry = consumerRegistry;
+			return this;
+		}
+
+		final Task<E> setEvent(E event) {
+			this.event = event;
+			return this;
+		}
+
+		final Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
+			this.completionConsumer = completionConsumer;
+			return this;
+		}
+
+		final Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
+			this.errorConsumer = errorConsumer;
+			return this;
+		}
+
+		final Task<E> setEventRouter(EventRouter eventRouter) {
+			this.eventRouter = eventRouter;
+			return this;
+		}
+
+		final protected void reset() {
+			key = null;
+			consumerRegistry = null;
+			event = null;
+			completionConsumer = null;
+			errorConsumer = null;
+		}
+
+		protected void submit() {
+		}
+
+		protected abstract void execute();
 	}
 }

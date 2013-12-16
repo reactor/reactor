@@ -13,22 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.spec;
+package reactor.core.action;
 
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.core.spec.support.EventRoutingComponentSpec;
+import reactor.core.Observable;
+import reactor.event.Event;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * A helper class for configuring a new {@link Reactor}.
- *
- * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
+public class CollectAction<T> extends BatchAction<T> {
+
+	private final List<T> values = new ArrayList<T>();
+
+	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
+		super(batchsize, d, successKey, failureKey);
+	}
 
 	@Override
-	protected final Reactor configure(Reactor reactor, Environment environment) {
-		return reactor;
+	public void doNext(Event<T> value) {
+		values.add(value.getData());
+	}
+
+	@Override
+	public void doFlush(Event<T> ev) {
+		if (values.isEmpty()) {
+			return;
+		}
+		notifyValue(ev.copy(new ArrayList<T>(values)));
+		values.clear();
 	}
 
 }

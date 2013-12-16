@@ -17,10 +17,13 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.event.selector.Selector;
+import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -89,6 +92,22 @@ public abstract class Streams {
 	 */
 	public static <T> DeferredStreamSpec<T> defer() {
 		return new DeferredStreamSpec<T>();
+	}
+
+	/**
+	 * Attach a Stream to the {@link Observable} with the specified {@link Selector}.
+	 *
+	 * @param observable
+	 * 		the {@link Observable} to observe
+	 * @param acceptSelector
+	 * 		the {@link Selector}/{@literal Object} tuple to listen/publish to
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
+	 *
+	 * @return a new {@link DeferredStreamSpec}
+	 */
+	public static <T> Stream<T> on(Observable observable, Selector acceptSelector) {
+		return new StreamSpec<T>().observable(observable).acceptSelector(Tuple2.of(acceptSelector,null)).get();
 	}
 
 	/**

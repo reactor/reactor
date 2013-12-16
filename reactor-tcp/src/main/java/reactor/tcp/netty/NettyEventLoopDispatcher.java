@@ -20,7 +20,7 @@ import io.netty.channel.EventLoop;
 import reactor.pool.Pool;
 import reactor.pool.LoadingPool;
 import reactor.event.Event;
-import reactor.event.dispatch.BaseLifecycleDispatcher;
+import reactor.event.dispatch.SingleThreadDispatcher;
 import reactor.function.Supplier;
 
 import java.util.concurrent.TimeUnit;
@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
+public class NettyEventLoopDispatcher extends SingleThreadDispatcher {
 
 	private final EventLoop  eventLoop;
 	private final Pool<Task> readyTasks;
@@ -87,7 +87,7 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 		return (null != t ? t : new NettyEventLoopTask());
 	}
 
-	private final class NettyEventLoopTask extends Task<Event<Object>> implements Runnable {
+	private final class NettyEventLoopTask extends SingleThreadTask<Event<Object>> implements Runnable {
 		@Override
 		public void submit() {
 			eventLoop.execute(this);

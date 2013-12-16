@@ -20,14 +20,14 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 /**
- * A {@link Selector} implementation based on a {@link UriTemplate}.
+ * A {@link Selector} implementation based on a {@link UriPathTemplate}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  *
- * @see UriTemplate
+ * @see UriPathTemplate
  */
-public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
+public class UriPathSelector extends ObjectSelector<UriPathTemplate> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
@@ -44,10 +44,10 @@ public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 	/**
 	 * Create a selector from the given uri template string.
 	 *
-	 * @param tmpl The string to compile into a {@link UriTemplate}.
+	 * @param uriPathTmpl The string to compile into a {@link UriPathTemplate}.
 	 */
-	public UriTemplateSelector(String tmpl) {
-		super(new UriTemplate(tmpl));
+	public UriPathSelector(String uriPathTmpl) {
+		super(new UriPathTemplate(uriPathTmpl));
 	}
 
 	/**
@@ -57,10 +57,10 @@ public class UriTemplateSelector extends ObjectSelector<UriTemplate> {
 	 *
 	 * @return The new {@link Selector}.
 	 *
-	 * @see UriTemplate
+	 * @see UriPathTemplate
 	 */
-	public static Selector uriTemplateSelector(String uriTemplate) {
-		return new UriTemplateSelector(uriTemplate);
+	public static Selector uriPathSelector(String uriTemplate) {
+		return new UriPathSelector(uriTemplate);
 	}
 
 	@Override

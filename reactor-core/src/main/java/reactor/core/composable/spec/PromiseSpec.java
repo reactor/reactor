@@ -16,10 +16,11 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.Observable;
 import reactor.core.composable.Promise;
-import reactor.core.spec.support.DispatcherComponentSpec;
-import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.Selector;
 import reactor.function.Supplier;
+import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 /**
@@ -30,7 +31,7 @@ import reactor.util.Assert;
  *
  * @param <T> the type of the value that the Promise will contain
  */
-public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>, Promise<T>> {
+public final class PromiseSpec<T> extends ComposableSpec<PromiseSpec<T>, Promise<T>> {
 
 	private T             value;
 	private Supplier<T>   valueSupplier;
@@ -80,13 +81,14 @@ public final class PromiseSpec<T> extends DispatcherComponentSpec<PromiseSpec<T>
 	}
 
 	@Override
-	protected Promise<T> configure(Dispatcher dispatcher, Environment env) {
+	protected Promise<T> createComposable(Environment env, Observable observable,
+	                                      Tuple2<Selector, Object> accept) {
 		if (value != null) {
-			return new Promise<T>(value, dispatcher, env);
+			return new Promise<T>(value, observable, env);
 		} else if (valueSupplier != null) {
-			return new Promise<T>(valueSupplier, dispatcher, env);
+			return new Promise<T>(valueSupplier, observable, env);
 		} else if (error != null) {
-			return new Promise<T>(error, dispatcher, env);
+			return new Promise<T>(error, observable, env);
 		} else {
 			throw new IllegalStateException("A success value/supplier or error reason must be provided. Use " +
 				DeferredPromiseSpec.class.getSimpleName() + " to create a deferred promise");

@@ -17,6 +17,9 @@
 package reactor.event.dispatch;
 
 import reactor.event.Event;
+import reactor.event.registry.Registry;
+import reactor.event.routing.EventRouter;
+import reactor.function.Consumer;
 
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class SynchronousDispatcher extends BaseDispatcher {
+public final class SynchronousDispatcher extends SingleThreadDispatcher {
 
 	@Override
 	public boolean alive() {
@@ -51,17 +54,19 @@ public class SynchronousDispatcher extends BaseDispatcher {
 	public void halt() {
 	}
 
-	@SuppressWarnings({"unchecked"})
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		return (Task<E>) new SyncTask();
+		return null;
 	}
 
-	private final class SyncTask extends Task<Event<?>> {
-		@Override
-		public void submit() {
-			execute();
-		}
-	}
+	@Override
+	public <E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>>
+			consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
 
+		eventRouter.route(key,
+				event,
+				(null != consumerRegistry ? consumerRegistry.select(key) : null),
+				completionConsumer,
+				errorConsumer);
+	}
 }

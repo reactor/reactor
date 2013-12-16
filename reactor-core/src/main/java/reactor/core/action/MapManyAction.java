@@ -13,22 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.spec;
+package reactor.core.action;
 
-import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.core.spec.support.EventRoutingComponentSpec;
+import reactor.core.Observable;
+import reactor.event.Event;
+import reactor.function.Function;
 
 /**
- * A helper class for configuring a new {@link Reactor}.
- *
+ * @author Stephane Maldini
  * @author Jon Brisbin
  */
-public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
+public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
+
+	private final Function<T, E> fn;
+
+	public MapManyAction(Function<T, E> fn,
+	                     Observable ob,
+	                     Object successKey,
+	                     Object failureKey) {
+		super(ob, successKey, failureKey);
+		this.fn = fn;
+	}
 
 	@Override
-	protected final Reactor configure(Reactor reactor, Environment environment) {
-		return reactor;
+	public void doAccept(Event<T> value) {
+		E val = fn.apply(value.getData());
+		val.add(new ConnectAction<V>(getObservable(), getSuccessKey(), getFailureKey()));
+		val.flush();
 	}
 
 }

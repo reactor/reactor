@@ -29,12 +29,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @see Thread#setName(String)
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NamedDaemonThreadFactory implements ThreadFactory {
 
 	private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
 	private final String prefix;
+	private final ClassLoader contextClassLoader;
 
 	/**
 	 * Creates a new thread factory that will name its threads &lt;prefix&gt;-&lt;n&gt;, where
@@ -44,7 +46,21 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	 * @param prefix The thread name prefix
 	 */
 	public NamedDaemonThreadFactory(String prefix) {
+		this(prefix, null);
+	}
+
+	/**
+	 * Creates a new thread factory that will name its threads &lt;prefix&gt;-&lt;n&gt;, where
+	 * &lt;prefix&gt; is the given {@code prefix} and &lt;n&gt; is the count of threads
+	 * created thus far by this class. If the contextClassLoader parameter is not null it will assign it to the forged
+	 * Thread
+	 *
+	 * @param prefix The thread name prefix
+	 * @param contextClassLoader An optional classLoader to assign to thread
+	 */
+	public NamedDaemonThreadFactory(String prefix, ClassLoader contextClassLoader) {
 		this.prefix = prefix;
+		this.contextClassLoader = contextClassLoader;
 	}
 
 	@Override
@@ -52,6 +68,9 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 		Thread t = new Thread(runnable);
 		t.setName(prefix + "-" + COUNTER.incrementAndGet());
 		t.setDaemon(true);
+		if(contextClassLoader != null){
+			t.setContextClassLoader(contextClassLoader);
+		}
 		return t;
 	}
 

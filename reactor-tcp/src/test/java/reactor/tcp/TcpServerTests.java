@@ -157,11 +157,12 @@ public class TcpServerTests {
 				.start(new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {
-						try {
-							client.open().await().send(new Pojo("John Doe"));
-						} catch(InterruptedException e) {
-							throw new IllegalStateException(e.getMessage(), e);
-						}
+							client.open().consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
+								@Override
+								public void accept(TcpConnection<Pojo, Pojo> pojoPojoTcpConnection) {
+								pojoPojoTcpConnection.send(new Pojo("John Doe"));
+								}
+							});
 					}
 				});
 
@@ -369,7 +370,7 @@ public class TcpServerTests {
 			}
 		});
 
-		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 
 		server.shutdown().await();
 	}
