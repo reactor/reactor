@@ -547,7 +547,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getObject(), Event.wrap(this));
+		getObservable().notify(complete, Event.wrap(this));
 
 	}
 
@@ -564,7 +564,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getObject(), Event.wrap(this));
+		getObservable().notify(complete, Event.wrap(this));
 	}
 
 	@Override

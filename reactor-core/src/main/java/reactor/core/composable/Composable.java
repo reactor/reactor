@@ -64,7 +64,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		this.events = parent == null ? observable : parent.events;
 		if(null == acceptSelectorTuple){
 			this.acceptSelector =  new ObjectSelector<Object>();
-			this.acceptKey = this.acceptSelector.getObject();
+			this.acceptKey = this.acceptSelector;
 		}else{
 			this.acceptKey = acceptSelectorTuple.getT1();
 			this.acceptSelector =  new ObjectSelector<Object>(acceptSelectorTuple.getT2());
@@ -72,7 +72,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 
 		if (parent != null) {
 			events.on(parent.error,
-					new ConnectAction<Throwable>(events, error.getObject(), null));
+					new ConnectAction<Throwable>(events, error, null));
 		}
 	}
 
@@ -107,7 +107,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
 		this.consume(composable);
-		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error.getObject(), null));
+		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error, null));
 		return this;
 	}
 
@@ -122,7 +122,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		if (composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
-		add(new ConnectAction<T>(composable.events, composable.acceptKey, composable.error.getObject()));
+		add(new ConnectAction<T>(composable.events, composable.acceptKey, composable.error));
 
 		return this;
 	}
@@ -135,7 +135,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
-		add(new CallbackAction<T>(consumer, events, error.getObject()));
+		add(new CallbackAction<T>(consumer, events, error));
 		return this;
 	}
 
@@ -147,7 +147,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
-		add(new CallbackEventAction<T>(consumer, events, error.getObject()));
+		add(new CallbackEventAction<T>(consumer, events, error));
 		return this;
 	}
 
@@ -178,7 +178,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
-				error.getObject()));
+				error));
 		return d.compose();
 	}
 
@@ -197,7 +197,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
-				error.getObject()));
+				error));
 		return d.compose();
 	}
 
@@ -240,7 +240,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAcceptKey(), error.getObject(),
+		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAcceptKey(), error,
 				elseComposable != null ? elseComposable.events : null,
 				elseComposable != null ? elseComposable.acceptKey : null));
 		return d.compose();
@@ -267,7 +267,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 			that = that.parent;
 		}
 		return ActionUtils.browseReactor((Reactor) that.events,
-				that.acceptKey, that.error.getObject(), that.flush.getObject()
+				that.acceptKey, that.error, that.flush
 		);
 	}
 
@@ -286,7 +286,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
 	 */
 	void notifyFlush() {
-		events.notify(flush.getObject(), new Event<Void>(null));
+		events.notify(flush, new Event<Void>(null));
 	}
 
 	/**
@@ -308,7 +308,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @param error the error to propagate
 	 */
 	void notifyError(Throwable error) {
-		events.notify(this.error.getObject(), Event.wrap(error));
+		events.notify(this.error, Event.wrap(error));
 	}
 
 	/**
