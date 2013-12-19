@@ -53,7 +53,7 @@ public class HashWheelTimer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(HashWheelTimer.class);
 
-	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>(false);
+	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>();
 	private final int    resolution;
 	private final Thread loop;
 

@@ -37,7 +37,8 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -64,7 +65,6 @@ public class Reactor implements Observable {
 	private final Object   defaultKey      = this;
 	private final Selector defaultSelector = Selectors.$(defaultKey);
 
-	private final UUID                id             = UUIDUtils.create();
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
@@ -72,6 +72,8 @@ public class Reactor implements Observable {
 			eventRouter.route(type, Event.wrap(t).setKey(type), consumerRegistry.select(type), null, null);
 		}
 	};
+
+	private volatile UUID id;
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
@@ -87,23 +89,22 @@ public class Reactor implements Observable {
 		     null);
 	}
 
-  /**
-   * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
-   * CachingRegistry}.
-   *
-   * @param dispatcher
-   * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
-   * 		used.
-   * @param eventRouter
-   * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
-   * 		in which case the default event router that broadcasts events to all of the registered consumers
-   * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
-   * 		conversion will be used.
-   */
-  public Reactor(Dispatcher dispatcher,
-                 EventRouter eventRouter) {
-    this(dispatcher, eventRouter, new CachingRegistry<Consumer<? extends Event<?>>>());
-  }
+	/**
+	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
+	 * CachingRegistry}.
+	 *
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
+	 * 		used.
+	 * @param eventRouter
+	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
+	 * 		in which case the default event router that broadcasts events to all of the registered consumers
+	 * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
+	 * 		conversion will be used.
+	 */
+	public Reactor(Dispatcher dispatcher, EventRouter eventRouter) {
+		this(dispatcher, eventRouter, new CachingRegistry<Consumer<? extends Event<?>>>());
+	}
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
@@ -116,10 +117,12 @@ public class Reactor implements Observable {
 	 * 		in which case the default event router that broadcasts events to all of the registered consumers
 	 * 		that {@link Selector#matches(Object) match} the notification key and does not perform any type
 	 * 		conversion will be used.
-   * @param consumerRegistry
-   *    The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
+	 * @param consumerRegistry
+	 * 		The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
 	 */
-  public Reactor(Dispatcher dispatcher, EventRouter eventRouter, Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+	public Reactor(Dispatcher dispatcher,
+	               EventRouter eventRouter,
+	               Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 		this.dispatcher = dispatcher == null ? new SynchronousDispatcher() : dispatcher;
 		this.eventRouter = eventRouter == null ? DEFAULT_EVENT_ROUTER : eventRouter;
 		this.consumerRegistry = consumerRegistry;
@@ -160,7 +163,10 @@ public class Reactor implements Observable {
 	 *
 	 * @return The {@link UUID} of this {@literal Reactor}.
 	 */
-	public UUID getId() {
+	public synchronized UUID getId() {
+		if(null == id) {
+			id = UUIDUtils.create();
+		}
 		return id;
 	}
 
@@ -315,13 +321,13 @@ public class Reactor implements Observable {
 
 		Reactor reactor = (Reactor)o;
 
-		return id.equals(reactor.id);
+		return hashCode() == o.hashCode();
 
 	}
 
 	@Override
 	public int hashCode() {
-		return id.hashCode();
+		return super.hashCode();
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {

@@ -91,6 +91,9 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	protected void invokeConsumer(Object key,
 																Event<?> event,
 																Registration<? extends Consumer<? extends Event<?>>> registeredConsumer) throws Exception {
+		if(null == registeredConsumer){
+			return;
+		}
 		if (!isRegistrationActive(registeredConsumer)) {
 			return;
 		}
