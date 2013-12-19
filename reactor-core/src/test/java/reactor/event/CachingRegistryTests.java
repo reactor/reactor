@@ -18,7 +18,6 @@ package reactor.event;
 
 import org.junit.Test;
 import reactor.event.registry.CachingRegistry;
-import reactor.event.registry.OptimizedRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
