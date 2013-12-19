@@ -18,6 +18,7 @@ package reactor.event.registry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 
@@ -32,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 		the type of Registration held by this registry
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class CachingRegistry<T> implements Registry<T> {
 
@@ -58,7 +60,6 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final Map<Integer, Registration<? extends T>[]> cache     = new HashMap<Integer,
 			Registration<? extends T>[]>();
 
-	private volatile int sizeExp   = 5;
 	private volatile int nextAvail = 0;
 	private volatile Registration<? extends T>[] registrations;
 
@@ -224,8 +225,10 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private class SimpleRegistration<T> implements Registration<T> {
-		private final Selector selector;
-		private final T        object;
+		private final Selector       selector;
+		private final T              object;
+		private final boolean        lifecycle;
+
 		private volatile boolean cancelled      = false;
 		private volatile boolean cancelAfterUse = false;
 		private volatile boolean paused         = false;
@@ -233,6 +236,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		private SimpleRegistration(Selector selector, T object) {
 			this.selector = selector;
 			this.object = object;
+			this.lifecycle = Lifecycle.class.isAssignableFrom(object.getClass());
 		}
 
 		@Override
@@ -259,6 +263,9 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<T> cancel() {
 			if(!cancelled) {
+				if(lifecycle){
+					((Lifecycle)object).cancel();
+				}
 				this.cancelled = true;
 			}
 			return this;
@@ -272,6 +279,9 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public Registration<T> pause() {
 			this.paused = true;
+			if(lifecycle){
+				((Lifecycle)object).pause();
+			}
 			return this;
 		}
 
@@ -282,7 +292,10 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		@Override
 		public Registration<T> resume() {
-			this.paused = false;
+			paused = false;
+			if(lifecycle){
+				((Lifecycle)object).resume();
+			}
 			return this;
 		}
 	}
