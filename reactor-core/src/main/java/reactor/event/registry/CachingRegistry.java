@@ -60,6 +60,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final Map<Integer, Registration<? extends T>[]> cache     = new HashMap<Integer,
 			Registration<? extends T>[]>();
 
+	@SuppressWarnings("unused")
+	private volatile int sizeExp   = 5;
+
 	private volatile int nextAvail = 0;
 	private volatile Registration<? extends T>[] registrations;
 
