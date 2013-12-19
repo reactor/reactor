@@ -22,7 +22,7 @@ import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -35,24 +35,31 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private static final Logger                      LOG      = LoggerFactory.getLogger(CachingRegistry.class);
-	private static final Selector                    NO_MATCH = new ObjectSelector<Void>(
+	private static final Logger                                     LOG                 = LoggerFactory.getLogger(
+			CachingRegistry
+					.class);
+	private static final Selector                                   NO_MATCH            = new ObjectSelector<Void>(
 			null) {
 		@Override
 		public boolean matches(Object key) {
 			return false;
 		}
 	};
+	private static final AtomicIntegerFieldUpdater<CachingRegistry> sizeExponentUpdater = AtomicIntegerFieldUpdater
+			.newUpdater(CachingRegistry.class, "sizeExp");
+	private static final AtomicIntegerFieldUpdater<CachingRegistry> nextAvailUpdater    = AtomicIntegerFieldUpdater
+			.newUpdater(CachingRegistry.class, "nextAvail");
+
 	@SuppressWarnings("unchecked")
-	private final        Registration<? extends T>[] empty    = new Registration[0];
+	private final Registration<? extends T>[] empty = new Registration[0];
 
 	private final ReentrantLock                             cacheLock = new ReentrantLock();
 	private final ReentrantLock                             regLock   = new ReentrantLock();
-	private final AtomicInteger                             sizeExp   = new AtomicInteger(5);
-	private final AtomicInteger                             next      = new AtomicInteger(0);
 	private final Map<Integer, Registration<? extends T>[]> cache     = new HashMap<Integer,
 			Registration<? extends T>[]>();
 
+	private volatile int sizeExp   = 5;
+	private volatile int nextAvail = 0;
 	private volatile Registration<? extends T>[] registrations;
 
 	@SuppressWarnings("unchecked")
@@ -63,14 +70,14 @@ public class CachingRegistry<T> implements Registry<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <V extends T> Registration<V> register(Selector sel, V obj) {
-		int nextIdx = next.getAndIncrement();
-		Registration<? extends T> reg = registrations[nextIdx] = new OptimizedRegistration<V>(sel, obj);
+		int nextIdx = nextAvailUpdater.getAndIncrement(this);
+		Registration<? extends T> reg = registrations[nextIdx] = new SimpleRegistration<V>(sel, obj);
 
-		// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
-		if(ObjectSelector.class.equals(sel.getObject().getClass())) {
-			int hashCode = obj.hashCode();
-			cacheLock.lock();
-			try {
+		cacheLock.lock();
+		try {
+			// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
+			if(ObjectSelector.class.equals(sel.getClass())) {
+				int hashCode = obj.hashCode();
 				Registration<? extends T>[] regs = cache.get(hashCode);
 				if(null == regs) {
 					regs = new Registration[]{reg};
@@ -78,9 +85,9 @@ public class CachingRegistry<T> implements Registry<T> {
 					regs = addToArray(reg, regs);
 				}
 				cache.put(hashCode, regs);
-			} finally {
-				cacheLock.unlock();
 			}
+		} finally {
+			cacheLock.unlock();
 		}
 
 		if(nextIdx > registrations.length * .75) {
@@ -138,12 +145,12 @@ public class CachingRegistry<T> implements Registry<T> {
 		try {
 			regs = new Registration[1];
 			int found = 0;
-			for(int i = 0; i < next.get(); i++) {
+			for(int i = 0; i < nextAvail; i++) {
 				Registration<? extends T> reg = registrations[i];
 				if(null == reg) {
 					break;
 				}
-				if(!reg.isCancelled() && reg.getSelector().matches(key)) {
+				if(!reg.isCancelled() && !reg.isPaused() && reg.getSelector().matches(key)) {
 					regs = addToArray(reg, regs);
 					found++;
 				}
@@ -173,9 +180,10 @@ public class CachingRegistry<T> implements Registry<T> {
 		return Arrays.asList(regs);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {
-		return Arrays.asList(Arrays.copyOf(registrations, next.get())).iterator();
+		return Arrays.asList(registrations).iterator();
 	}
 
 	protected void cacheMiss(Object key) {}
@@ -200,7 +208,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@SuppressWarnings("unchecked")
 	private void growRegistrationArray() {
-		int newSize = (int)Math.pow(2, sizeExp.getAndIncrement());
+		int newSize = (int)Math.pow(2, sizeExponentUpdater.getAndIncrement(this));
 		Registration<? extends T>[] newRegistrations = new Registration[newSize];
 		int i = 0;
 		for(Registration<? extends T> reg : registrations) {
@@ -212,17 +220,17 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		}
 		registrations = newRegistrations;
-		next.set(i);
+		nextAvailUpdater.set(this, i);
 	}
 
-	private class OptimizedRegistration<T> implements Registration<T> {
+	private class SimpleRegistration<T> implements Registration<T> {
 		private final Selector selector;
 		private final T        object;
 		private volatile boolean cancelled      = false;
 		private volatile boolean cancelAfterUse = false;
 		private volatile boolean paused         = false;
 
-		private OptimizedRegistration(Selector selector, T object) {
+		private SimpleRegistration(Selector selector, T object) {
 			this.selector = selector;
 			this.object = object;
 		}
