@@ -77,7 +77,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		try {
 			// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
 			if(ObjectSelector.class.equals(sel.getClass())) {
-				int hashCode = obj.hashCode();
+				int hashCode = sel.getObject().hashCode();
 				Registration<? extends T>[] regs = cache.get(hashCode);
 				if(null == regs) {
 					regs = new Registration[]{reg};
