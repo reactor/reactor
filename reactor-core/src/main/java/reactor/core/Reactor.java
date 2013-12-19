@@ -201,8 +201,12 @@ public class Reactor implements Observable {
 
 	@Override
 	public boolean respondsToKey(Object key) {
-		Assert.notNull(key, "Key cannot be null.");
-		return consumerRegistry.select(key).iterator().hasNext();
+		for(Registration<?> reg : consumerRegistry.select(key)) {
+			if(!reg.isCancelled()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override

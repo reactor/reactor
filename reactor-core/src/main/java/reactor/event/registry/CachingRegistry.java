@@ -46,11 +46,12 @@ public class CachingRegistry<T> implements Registry<T> {
 	@SuppressWarnings("unchecked")
 	private final        Registration<? extends T>[] empty    = new Registration[0];
 
-	private final ReentrantLock                            cacheLock = new ReentrantLock();
-	private final ReentrantLock                            regLock   = new ReentrantLock();
-	private final AtomicInteger                            sizeExp   = new AtomicInteger(5);
-	private final AtomicInteger                            next      = new AtomicInteger(0);
-	private final Map<Integer, Registration<? extends T>[]> cache     = new HashMap<Integer, Registration<? extends T>[]>();
+	private final ReentrantLock                             cacheLock = new ReentrantLock();
+	private final ReentrantLock                             regLock   = new ReentrantLock();
+	private final AtomicInteger                             sizeExp   = new AtomicInteger(5);
+	private final AtomicInteger                             next      = new AtomicInteger(0);
+	private final Map<Integer, Registration<? extends T>[]> cache     = new HashMap<Integer,
+			Registration<? extends T>[]>();
 
 	private volatile Registration<? extends T>[] registrations;
 
@@ -96,14 +97,17 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public boolean unregister(Object key) {
+		boolean updated = false;
 		regLock.lock();
 		try {
 			cacheLock.lock();
 			try {
 				for(Registration<? extends T> reg : select(key)) {
 					reg.cancel();
+					updated = true;
 				}
-				return null != cache.remove(System.identityHashCode(key));
+				cache.remove(key.hashCode());
+				return updated;
 			} finally {
 				cacheLock.unlock();
 			}
@@ -115,6 +119,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public List<Registration<? extends T>> select(Object key) {
+		if(null == key) {
+			return Collections.emptyList();
+		}
 		int hashCode = key.hashCode();
 		Registration<? extends T>[] regs = cache.get(hashCode);
 		if(null != regs) {
@@ -185,8 +192,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 
 		// no empty slots, grow the array
-		Registration<? extends T>[] newRegs = new Registration[regs.length + 1];
-		System.arraycopy(regs, 0, newRegs, 0, len);
+		Registration<? extends T>[] newRegs = Arrays.copyOf(regs, len + 1);
 		newRegs[len] = reg;
 
 		return newRegs;
@@ -198,6 +204,9 @@ public class CachingRegistry<T> implements Registry<T> {
 		Registration<? extends T>[] newRegistrations = new Registration[newSize];
 		int i = 0;
 		for(Registration<? extends T> reg : registrations) {
+			if(null == reg) {
+				break;
+			}
 			if(!reg.isCancelled()) {
 				newRegistrations[i++] = reg;
 			}
