@@ -71,6 +71,18 @@ public final class CachingRegistryTests {
 	}
 
 	@Test
+	public void nonEmptyResultsAreCachedImmediatelyIfObjectSelector() {
+		String key = "selector";
+		Selector selector = Selectors.$(key);
+
+		this.cachingRegistry.register(selector, "alpha");
+
+		this.cachingRegistry.select(key);
+
+		assertEquals(0, this.cacheMisses.get());
+	}
+
+	@Test
 	public void emptyResultsAreCached() {
 		this.cachingRegistry.register(Selectors.$("another-key"), "alpha");
 		this.cachingRegistry.select("key");
