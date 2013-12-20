@@ -610,6 +610,74 @@ class StreamsSpec extends Specification {
 
   }
 
+  def 'Moving Window accumulate items without dropping previous'() {
+    given:
+      'a source and a collected stream'
+      Environment environment = new Environment()
+      Deferred source = Streams.<Integer>defer().synchronousDispatcher().env(environment).get()
+      Stream reduced = source.compose().movingWindow(500, 5)
+      def value = reduced.tap()
+
+    when:
+      'the window accepts first items'
+      source.accept(1)
+      source.accept(2)
+      sleep(1000)
+
+    then:
+      'it outputs received values'
+      value.get() == [1,2]
+
+    when:
+      'the window accepts following items'
+      source.accept(3)
+      source.accept(4)
+      sleep(1000)
+
+    then:
+      'it outputs received values'
+      value.get() == [1,2,3,4]
+
+    when:
+      'the starts dropping items on overflow'
+      source.accept(5)
+      source.accept(6)
+      sleep(1000)
+
+    then:
+      'it outputs received values'
+      value.get() == [2,3,4,5,6]
+
+    cleanup:
+      environment.shutdown()
+  }
+
+  def 'Moving Window will drop overflown items'() {
+    given:
+    'a source and a collected stream'
+    Environment environment = new Environment()
+    Deferred source = Streams.<Integer>defer().synchronousDispatcher().env(environment).get()
+    Stream reduced = source.compose().movingWindow(500, 5)
+    def value = reduced.tap()
+
+    when:
+      'the window overflows'
+      source.accept(1)
+      source.accept(2)
+      source.accept(3)
+      source.accept(4)
+      source.accept(5)
+      source.accept(6)
+        sleep(1000)
+
+    then:
+     'it outputs values dismissing outdated ones'
+      value.get() == [2,3,4,5,6]
+
+    cleanup:
+      environment.shutdown()
+  }
+
   def 'Collect will accumulate values from multiple threads'() {
     given:
       'a source and a collected stream'
