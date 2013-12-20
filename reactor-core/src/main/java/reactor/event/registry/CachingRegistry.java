@@ -184,6 +184,26 @@ public class CachingRegistry<T> implements Registry<T> {
 		return Arrays.asList(regs);
 	}
 
+	@Override
+	public void clear() {
+		regLock.lock();
+		try{
+			cacheLock.lock();
+			try{
+				for(Registration registration : registrations){
+					if(registration != null){
+						registration.cancel();
+					}
+				}
+				cache.clear();
+			} finally {
+				cacheLock.unlock();
+			}
+		} finally {
+			regLock.unlock();
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {

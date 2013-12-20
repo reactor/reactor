@@ -48,6 +48,7 @@ import java.util.Iterator;
  * @param <IN>  The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class TcpClient<IN, OUT> {
 
@@ -108,10 +109,7 @@ public abstract class TcpClient<IN, OUT> {
 				new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {
-						for (Registration<? extends TcpConnection<IN, OUT>> reg : connections) {
-							reg.getObject().close();
-							reg.cancel();
-						}
+						connections.clear();
 						doClose(d);
 					}
 				},
