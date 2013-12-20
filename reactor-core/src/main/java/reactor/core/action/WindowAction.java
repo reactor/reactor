@@ -28,6 +28,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * WindowAction is collecting events on a steam until {@param period} is reached,
+ * after that streams collected events further, clears the internal collection and
+ * starts collecting items from empty list.
+ *
  * @author Stephane Maldini
  */
 public class WindowAction<T> extends Action<T> implements Lifecycle {
@@ -42,7 +46,7 @@ public class WindowAction<T> extends Action<T> implements Lifecycle {
 	                    Object failureKey,
 	                    HashWheelTimer timer,
 	                    int period, TimeUnit timeUnit, int delay
-	) {
+  ) {
 		super(d, successKey, failureKey);
 		this.timerRegistration = timer.schedule(new Consumer<Long>() {
 			@Override
@@ -54,7 +58,7 @@ public class WindowAction<T> extends Action<T> implements Lifecycle {
 
 	protected void doWindow(Long aLong) {
 		lock.lock();
-		try{
+		try {
 			if(!collectedWindow.isEmpty()){
 				notifyValue(Event.wrap(new ArrayList<T>(collectedWindow)));
 				collectedWindow.clear();
