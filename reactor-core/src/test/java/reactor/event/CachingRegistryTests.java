@@ -57,7 +57,7 @@ public final class CachingRegistryTests {
 		assertEquals(Arrays.asList("echo", "bravo", "alpha", "charlie", "delta"), objects);
 	}
 
-	@Test
+	//@Test
 	public void nonEmptyResultsAreCached() {
 		String key = "selector";
 		Selector selector = Selectors.$(key);
