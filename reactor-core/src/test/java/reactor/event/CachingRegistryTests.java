@@ -57,15 +57,15 @@ public final class CachingRegistryTests {
 		assertEquals(Arrays.asList("echo", "bravo", "alpha", "charlie", "delta"), objects);
 	}
 
-	//@Test
+	@Test
 	public void nonEmptyResultsAreCached() {
-		String key = "selector";
-		Selector selector = Selectors.$(key);
+		String key = "/**/selector";
+		Selector selector = Selectors.uri(key);
 
 		this.cachingRegistry.register(selector, "alpha");
 
-		this.cachingRegistry.select(key);
-		this.cachingRegistry.select(key);
+		this.cachingRegistry.select("/test/selector");
+		this.cachingRegistry.select("/test/selector");
 
 		assertEquals(1, this.cacheMisses.get());
 	}
