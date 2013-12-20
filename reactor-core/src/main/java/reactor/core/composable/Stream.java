@@ -305,6 +305,21 @@ public class Stream<T> extends Composable<T> {
 		return window(period, TimeUnit.MILLISECONDS);
 	}
 
+  /**
+   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+   * {@code Stream} every specified {@param period} in milliseconds. The window runs on a timer from the stream {@link
+   * this#environment}. After accepting {@param backlog} of items, every old item will be dropped. Resulting {@link
+   * List} will be at most {@param backlog} items long.
+   *
+   * @param period the time period when each window close and flush the attached consumer
+   * @param backlog maximum amount of items to keep
+   *
+   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+   */
+  public Stream<List<T>> movingWindow(int period, int backlog) {
+    return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
+  }
+
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
 	 * time from the {@param period} and a {@param timeUnit}. The window
@@ -318,6 +333,20 @@ public class Stream<T> extends Composable<T> {
 	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
 		return window(period, timeUnit, 0);
 	}
+
+  /**
+   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit}.
+   *
+   * @param period the time period when each window close and flush the attached consumer
+   * @param timeUnit  the time unit used for the period
+   * @param backlog maximum amount of items to keep
+   *
+   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+   */
+  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
+    return movingWindow(period, timeUnit, 0, backlog);
+  }
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
@@ -334,6 +363,23 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
 		return window(period, timeUnit, delay, environment.getRootTimer());
 	}
+
+  /**
+   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+   * in milliseconds.
+   *
+   * @param period the time period when each window close and flush the attached consumer
+   * @param timeUnit  the time unit used for the period
+   * @param delay  the initial delay in milliseconds
+   * @param backlog maximum amount of items to keep
+   *
+   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+   */
+  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
+    Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
+    return movingWindow(period, timeUnit, delay, backlog, environment.getRootTimer());
+  }
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
@@ -361,6 +407,34 @@ public class Stream<T> extends Composable<T> {
 
 		return d.compose();
 	}
+
+  /**
+   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+   * in milliseconds.
+   *
+   * @param period the time period when each window close and flush the attached consumer
+   * @param timeUnit  the time unit used for the period
+   * @param delay  the initial delay in milliseconds
+   * @param backlog maximum amount of items to keep
+   * @param timer  the reactor timer to run the window on
+   *
+   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+   */
+  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, HashWheelTimer timer) {
+    Assert.state(timer != null, "Timer must be supplied");
+    final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
+
+    add(new MovingWindowAction<T>(
+        d.compose().getObservable(),
+        d.compose().getAcceptKey(),
+        getError(),
+        timer,
+        period, timeUnit, delay, backlog
+        ));
+
+    return d.compose();
+  }
 
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
