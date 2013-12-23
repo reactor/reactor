@@ -53,6 +53,7 @@ import static reactor.event.selector.Selectors.$;
  * 		The type that will be sent by this connection
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
 

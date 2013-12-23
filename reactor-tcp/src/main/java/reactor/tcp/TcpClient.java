@@ -109,8 +109,8 @@ public abstract class TcpClient<IN, OUT> {
 				new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {
-						connections.clear();
 						doClose(d);
+						connections.clear();
 					}
 				},
 				null,
@@ -164,9 +164,8 @@ public abstract class TcpClient<IN, OUT> {
 		Assert.notNull(channel, "Channel cannot be null");
 		for (Registration<? extends TcpConnection<IN, OUT>> reg : connections.select(channel)) {
 			TcpConnection<IN, OUT> conn = reg.getObject();
-			reg.getObject().close();
-			notifyClose(conn);
 			reg.cancel();
+			notifyClose(conn);
 		}
 	}
 

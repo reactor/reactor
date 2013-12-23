@@ -64,6 +64,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 		The type that will be sent by this client
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
@@ -236,8 +237,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						if(log.isInfoEnabled()) {
 							log.info("CLOSED: " + future.channel());
 						}
-						NettyTcpClient.this.connections.unregister(future.channel());
 						notifyClose(conn);
+						NettyTcpClient.this.connections.unregister(future.channel());
 					}
 				});
 
@@ -304,7 +305,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							if(log.isInfoEnabled()) {
 								log.info("CLOSED: " + future.channel());
 							}
-							NettyTcpClient.this.connections.unregister(future.channel());
 							notifyClose(conn);
 							if(!conn.isClosing()) {
 								int attempt = attempts.incrementAndGet();
@@ -315,6 +315,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 									createConnection(self);
 								}
 							}
+							NettyTcpClient.this.connections.unregister(future.channel());
 						}
 					});
 					// hopefully avoid a race condition with user code currently assigning handlers
