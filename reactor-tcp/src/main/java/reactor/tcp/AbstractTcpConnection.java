@@ -27,6 +27,7 @@ import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
@@ -52,6 +53,7 @@ import static reactor.event.selector.Selectors.$;
  * 		The type that will be sent by this connection
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN, OUT> {
 
@@ -287,4 +289,19 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 		}
 	}
 
+	@Override
+	public TcpConnection<IN,OUT> cancel() {
+		close();
+		return this;
+	}
+
+	@Override
+	public TcpConnection<IN,OUT> pause() {
+		return this;
+	}
+
+	@Override
+	public TcpConnection<IN,OUT> resume() {
+		return this;
+	}
 }

@@ -4,12 +4,16 @@ import reactor.function.Predicate;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Helper methods for creating {@link Selector}s.
  *
  * @author Andy Wilkinson
  */
 public abstract class Selectors {
+
+	private static final AtomicInteger HASH_CODES = new AtomicInteger(Integer.MIN_VALUE);
 
 	/**
 	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple}
@@ -20,7 +24,14 @@ public abstract class Selectors {
 	 * @see ObjectSelector
 	 */
 	public static Tuple2<Selector, Object> anonymous() {
-		Object obj = new Object();
+		Object obj = new Object() {
+			private final int hashCode = HASH_CODES.getAndIncrement() << 2;
+
+			@Override
+			public int hashCode() {
+				return hashCode;
+			}
+		};
 		return Tuple.of($(obj), obj);
 	}
 

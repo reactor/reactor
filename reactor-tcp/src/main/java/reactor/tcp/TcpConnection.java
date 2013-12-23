@@ -18,6 +18,7 @@ package reactor.tcp;
 
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
+import reactor.event.lifecycle.Lifecycle;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.batch.BatchConsumer;
@@ -34,7 +35,7 @@ import java.net.InetSocketAddress;
  *
  * @author Jon Brisbin
  */
-public interface TcpConnection<IN, OUT> {
+public interface TcpConnection<IN, OUT> extends Lifecycle{
 
 	/**
 	 * Close this connection.

@@ -58,4 +58,10 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 */
 	List<Registration<? extends T>> select(Object key);
 
+	/**
+	 * Clear the {@link Registry}, resetting its state and calling {@link Registration#cancel()} for any active {@link
+	 * Registration}.
+	 */
+	void clear();
+
 }

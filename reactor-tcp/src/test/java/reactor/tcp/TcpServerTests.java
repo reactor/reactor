@@ -370,9 +370,13 @@ public class TcpServerTests {
 			}
 		});
 
-		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		try{
+			assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		}
+		finally{
+			server.shutdown().await();
+		}
 
-		server.shutdown().await();
 	}
 
 	@Test
