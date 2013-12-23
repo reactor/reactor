@@ -323,15 +323,8 @@ public class Reactor implements Observable {
 			return false;
 		}
 
-		Reactor reactor = (Reactor)o;
-
 		return hashCode() == o.hashCode();
 
-	}
-
-	@Override
-	public int hashCode() {
-		return super.hashCode();
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {
