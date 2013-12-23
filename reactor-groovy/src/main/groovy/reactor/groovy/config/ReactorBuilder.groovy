@@ -33,7 +33,7 @@ import reactor.groovy.support.ClosureEventConsumer
 @CompileStatic
 class ReactorBuilder implements Supplier<Reactor> {
 
-	static final private Selector noSelector = new ObjectSelector<Object>()
+	static final private Selector noSelector = Selectors.anonymous()
 	static final private Filter DEFAULT_FILTER = new PassThroughFilter()
 
 	static final String ROUND_ROBIN = 'round-robin'

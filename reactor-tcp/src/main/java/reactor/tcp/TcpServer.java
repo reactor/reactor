@@ -27,10 +27,9 @@ import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.io.encoding.Codec;
-import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -46,14 +45,15 @@ import java.util.Iterator;
  * @param <OUT> The type that will be sent by this server
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT> {
 
 	private final Event<TcpServer<IN, OUT>>        selfEvent   = Event.wrap(this);
-	private final Tuple2<Selector, Object>         start       = Selectors.$();
-	private final Tuple2<Selector, Object>         shutdown    = Selectors.$();
-	private final Tuple2<Selector, Object>         open        = Selectors.$();
-	private final Tuple2<Selector, Object>         close       = Selectors.$();
+	private final Selector         start       = Selectors.$();
+	private final Selector         shutdown    = Selectors.$();
+	private final Selector         open        = Selectors.$();
+	private final Selector         close       = Selectors.$();
 	private final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>();
 
 	private final Reactor                reactor;
@@ -76,7 +76,7 @@ public abstract class TcpServer<IN, OUT> {
 
 		Assert.notNull(connectionConsumers, "Connection Consumers cannot be null.");
 		for (final Consumer<TcpConnection<IN, OUT>> consumer : connectionConsumers) {
-			this.reactor.on(open.getT1(), new Consumer<Event<TcpConnection<IN, OUT>>>() {
+			this.reactor.on(open, new Consumer<Event<TcpConnection<IN, OUT>>>() {
 				@Override
 				public void accept(Event<TcpConnection<IN, OUT>> ev) {
 					consumer.accept(ev.getData());
@@ -186,21 +186,21 @@ public abstract class TcpServer<IN, OUT> {
 	 */
 	protected void notifyStart(@Nullable final Consumer<Void> started) {
 		if (null != started) {
-			reactor.on(start.getT1(), new Consumer<Event<Void>>() {
+			reactor.on(start, new Consumer<Event<Void>>() {
 				@Override
 				public void accept(Event<Void> ev) {
 					started.accept(null);
 				}
 			});
 		}
-		reactor.notify(start.getT2(), selfEvent);
+		reactor.notify(start.getObject(), selfEvent);
 	}
 
 	/**
 	 * Notify this server's consumers that the server has stopped.
 	 */
 	protected void notifyShutdown() {
-		reactor.notify(shutdown.getT2(), selfEvent);
+		reactor.notify(shutdown.getObject(), selfEvent);
 	}
 
 	/**
@@ -209,7 +209,7 @@ public abstract class TcpServer<IN, OUT> {
 	 * @param conn The {@link TcpConnection} that was opened.
 	 */
 	protected void notifyOpen(@Nonnull TcpConnection<IN, OUT> conn) {
-		reactor.notify(open.getT2(), Event.wrap(conn));
+		reactor.notify(open.getObject(), Event.wrap(conn));
 	}
 
 	/**
@@ -218,7 +218,7 @@ public abstract class TcpServer<IN, OUT> {
 	 * @param conn The {@link TcpConnection} that was closed.
 	 */
 	protected void notifyClose(@Nonnull TcpConnection<IN, OUT> conn) {
-		reactor.notify(close.getT2(), Event.wrap(conn));
+		reactor.notify(close.getObject(), Event.wrap(conn));
 	}
 
 	/**

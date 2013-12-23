@@ -114,7 +114,7 @@ public class Stream<T> extends Composable<T> {
 
 	private void attachFlush(Iterable<T> values) {
 		if (values != null) {
-			new ForEachAction<T>(values, getObservable(), getAcceptKey(), getError()).
+			new ForEachAction<T>(values, getObservable(), getAcceptKey(), getError().getObject()).
 					attach(getFlush());
 		}
 	}
@@ -192,7 +192,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError(), null,
+		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), null,
 		                       d.compose().getAcceptKey()));
 		return d.compose();
 	}
@@ -216,7 +216,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> last(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError(), d.compose().getAcceptKey(),
+		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), d.compose().getAcceptKey(),
 				null));
 		return d.compose();
 	}
@@ -234,7 +234,7 @@ public class Stream<T> extends Composable<T> {
 	public <E, T extends Iterable<E>> Stream<E> split() {
 		final Deferred<E, Stream<E>> d = createDeferred(batchSize);
 		getObservable().on(getAcceptSelector(),
-				new ForEachAction<T>(getObservable(), d.compose().getAcceptKey(), getError()));
+				new ForEachAction<T>(getObservable(), d.compose().getAcceptKey(), getError().getObject()));
 		return d.compose();
 	}
 
@@ -287,7 +287,7 @@ public class Stream<T> extends Composable<T> {
 				batchSize,
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
-				getError()));
+				getError().getObject()));
 
 		return d.compose();
 	}
@@ -400,7 +400,7 @@ public class Stream<T> extends Composable<T> {
 		add(new WindowAction<T>(
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
-				getError(),
+				getError().getObject(),
 				timer,
 				period, timeUnit, delay
 				));
@@ -428,7 +428,7 @@ public class Stream<T> extends Composable<T> {
     add(new MovingWindowAction<T>(
         d.compose().getObservable(),
         d.compose().getAcceptKey(),
-        getError(),
+        getError().getObject(),
         timer,
         period, timeUnit, delay, backlog
         ));
@@ -475,13 +475,13 @@ public class Stream<T> extends Composable<T> {
 					batchSize,
 					accumulators,
 					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError()
+					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
 			));
 		} else {
 			add(new ScanAction<T, A>(
 					accumulators,
 					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError()
+					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
 			));
 		}
 

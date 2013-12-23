@@ -226,7 +226,7 @@ class ReactorsSpec extends Specification {
       def replyTo = $()
 
       def result = ""
-      r.on(replyTo.t1, { ev ->
+      r.on(replyTo, { ev ->
         result = ev.data
       } as Consumer<Event<String>>)
 
@@ -236,7 +236,7 @@ class ReactorsSpec extends Specification {
 
     and:
       "an Event is triggered"
-      r.send("hello", Event.wrap("Hello World!", replyTo.t2))
+      r.send("hello", Event.wrap("Hello World!", replyTo.object))
 
     then:
       "the result should have been updated"
@@ -245,7 +245,7 @@ class ReactorsSpec extends Specification {
     when:
       "an event is triggered through Supplier#get()"
       result = ""
-      r.send("hello", supplier { Event.wrap("Hello World!", replyTo.t2) })
+      r.send("hello", supplier { Event.wrap("Hello World!", replyTo.object) })
 
     then:
       "the result should have been updated"
@@ -257,14 +257,14 @@ class ReactorsSpec extends Specification {
 
     and:
       "A new consumer is attached"
-      r2.on(replyTo.t1, consumer {
+      r2.on(replyTo, consumer {
         result = it.data
       })
 
     and:
       "an event is triggered using the provided reactor"
       result = ""
-      r.send("hello", Event.wrap("Hello World!", replyTo.t2), r2)
+      r.send("hello", Event.wrap("Hello World!", replyTo.object), r2)
 
     then:
       "the result should have been updated"
@@ -273,7 +273,7 @@ class ReactorsSpec extends Specification {
     when:
       "an event is triggered using the provided reactor through Supplier#get()"
       result = ""
-      r.send("hello", supplier { Event.wrap("Hello World!", replyTo.t2) }, r2)
+      r.send("hello", supplier { Event.wrap("Hello World!", replyTo.object) }, r2)
 
     then:
       "the result should have been updated"

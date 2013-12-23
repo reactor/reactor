@@ -33,13 +33,6 @@ public class ObjectSelector<T> implements Selector {
 	private final T object;
 
 	/**
-	 * Create a new anonymous {@link Selector} instance based on itself.
-	 */
-	@SuppressWarnings("unchecked")
-	public ObjectSelector() {
-		this.object = (T)this;
-	}
-	/**
 	 * Create a new {@link Selector} instance from the given object.
 	 *
 	 * @param object

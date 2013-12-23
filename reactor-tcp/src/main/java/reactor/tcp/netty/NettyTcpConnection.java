@@ -120,7 +120,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
   }
 
   void notifyRead(Object obj) {
-    eventsReactor.notify(read.getT2(), (Event.class.isInstance(obj) ? (Event)obj : Event.wrap(obj)));
+    eventsReactor.notify(read.getObject(), (Event.class.isInstance(obj) ? (Event)obj : Event.wrap(obj)));
   }
 
   void notifyError(Throwable throwable) {
