@@ -19,6 +19,7 @@ import groovy.transform.CompileStatic
 import reactor.core.Reactor
 import reactor.event.Event
 import reactor.event.selector.ObjectSelector
+import reactor.event.selector.Selectors
 import reactor.event.support.EventConsumer
 import reactor.function.*
 import reactor.event.registry.Registration
@@ -88,7 +89,7 @@ class ObservableExtensions {
 	                        Event<T> obj,
 	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler)
 	{
-		def replyTo = obj.replyTo ? $(obj.replyTo) : new ObjectSelector<Object>()
+		def replyTo = obj.replyTo ? $(obj.replyTo) : Selectors.anonymous()
 		selfType.on replyTo, new ClosureEventConsumer(handler)
 		selfType.send key, obj.setReplyTo(replyTo.object)
 	}

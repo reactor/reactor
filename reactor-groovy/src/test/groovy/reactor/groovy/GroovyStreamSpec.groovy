@@ -201,7 +201,7 @@ class GroovyStreamSpec extends Specification {
 		when:
 			'we connect when this reactor and key'
 			def latch = new CountDownLatch(5)
-			r.on(key.t1) {
+			r.on(key) {
 				latch.countDown()
 			}
 
@@ -211,7 +211,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'apply a transformation and call an explicit reactor'
-			def s = (c | { Integer.parseInt it }).to(key.t2, r)
+			def s = (c | { Integer.parseInt it }).to(key.object, r)
 			def t = s.tap()
 			s.flush()
 

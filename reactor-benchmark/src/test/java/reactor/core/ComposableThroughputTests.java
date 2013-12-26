@@ -102,12 +102,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			    public Composable<Integer> apply(Integer integer) {
 				    Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
 				    try {
-					    return deferred.compose().onSuccess(new Consumer<Integer>() {
-						    @Override
-						    public void accept(Integer integer) {
-
-						    }
-					    });
+					    return deferred.compose();
 				    } finally {
 					    deferred.accept(integer);
 				    }

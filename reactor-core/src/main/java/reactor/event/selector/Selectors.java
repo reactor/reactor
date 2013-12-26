@@ -16,14 +16,13 @@ public abstract class Selectors {
 	private static final AtomicInteger HASH_CODES = new AtomicInteger(Integer.MIN_VALUE);
 
 	/**
-	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple}
-	 * containing the {@link Selector} and the notification key that the selector matches.
+	 * Creates an anonymous {@link reactor.event.selector.Selector}.
 	 *
-	 * @return The Selector notification key tuple
+	 * @return a new Selector
 	 *
 	 * @see ObjectSelector
 	 */
-	public static Tuple2<Selector, Object> anonymous() {
+	public static Selector anonymous() {
 		Object obj = new Object() {
 			private final int hashCode = HASH_CODES.getAndIncrement() << 2;
 
@@ -32,20 +31,19 @@ public abstract class Selectors {
 				return hashCode;
 			}
 		};
-		return Tuple.of($(obj), obj);
+		return $(obj);
 	}
 
 	/**
 	 * A short-hand alias for {@link Selectors#anonymous()}.
 	 * <p/>
-	 * Creates an anonymous {@link reactor.event.selector.Selector}, returning a {@link Tuple}
-	 * containing the {@link Selector} and the notification key that the selector matches.
+	 * Creates an anonymous {@link reactor.event.selector.Selector}.
 	 *
-	 * @return The Selector notification key tuple
+	 * @return a new Selector
 	 *
 	 * @see ObjectSelector
 	 */
-	public static Tuple2<Selector, Object> $() {
+	public static Selector $() {
 		return anonymous();
 	}
 

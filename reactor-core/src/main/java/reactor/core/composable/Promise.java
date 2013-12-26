@@ -26,6 +26,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
@@ -59,7 +60,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
-	private final Selector      complete = new ObjectSelector<Object>();
+	private final Selector      complete = Selectors.anonymous();
 	private final ReentrantLock lock     = new ReentrantLock();
 
 	private final long        defaultTimeout;
@@ -547,7 +548,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete, Event.wrap(this));
+		getObservable().notify(complete.getObject(), Event.wrap(this));
 
 	}
 
@@ -564,7 +565,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete, Event.wrap(this));
+		getObservable().notify(complete.getObject(), Event.wrap(this));
 	}
 
 	@Override

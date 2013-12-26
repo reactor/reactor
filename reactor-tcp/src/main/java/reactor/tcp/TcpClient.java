@@ -52,8 +52,8 @@ import java.util.Iterator;
  */
 public abstract class TcpClient<IN, OUT> {
 
-	private final Tuple2<Selector, Object> open  = Selectors.$();
-	private final Tuple2<Selector, Object> close = Selectors.$();
+	private final Selector open  = Selectors.$();
+	private final Selector close = Selectors.$();
 
 	private final Reactor                reactor;
 	private final Codec<Buffer, IN, OUT> codec;
@@ -194,7 +194,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @param conn The {@link TcpConnection} that was opened.
 	 */
 	protected void notifyOpen(@Nonnull TcpConnection<IN, OUT> conn) {
-		reactor.notify(open.getT2(), Event.wrap(conn));
+		reactor.notify(open.getObject(), Event.wrap(conn));
 	}
 
 	/**
@@ -203,7 +203,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * @param conn The {@link TcpConnection} that was closed.
 	 */
 	protected void notifyClose(@Nonnull TcpConnection<IN, OUT> conn) {
-		reactor.notify(close.getT2(), Event.wrap(conn));
+		reactor.notify(close.getObject(), Event.wrap(conn));
 	}
 
 	/**

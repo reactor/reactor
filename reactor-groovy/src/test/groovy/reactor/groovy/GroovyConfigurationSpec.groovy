@@ -15,8 +15,8 @@
  */
 package reactor.groovy
 
-import reactor.event.Event
 import reactor.core.Environment
+import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
 import reactor.groovy.support.ClosureEventConsumer
@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static reactor.event.selector.Selectors.$
+
 /**
  * @author Stephane Maldini (smaldini)
  */
@@ -96,7 +97,7 @@ class GroovyConfigurationSpec extends Specification {
 			"Building a simple dispatcher"
 			GroovyEnvironment groovySystem = StaticConfiguration.test5()
 			def res = null
-			def replyTo = $().t1
+			def replyTo = $()
 			def consumer = new ClosureEventConsumer({ res = it })
 			groovySystem['test1'].on replyTo, consumer
 			groovySystem['test1'].send 'test', Event.wrap('test').setReplyTo(replyTo.object)
@@ -105,21 +106,21 @@ class GroovyConfigurationSpec extends Specification {
 			res == 'intercepted twice'
 		when:
 			res = null
-			replyTo = $().t1
+			replyTo = $()
 			groovySystem['test1'].on replyTo, consumer
 			groovySystem['test1'].send 'test2', Event.wrap('test').setReplyTo(replyTo.object)
 		then:
 			res == 'intercepted'
 		when:
 			res = null
-			replyTo = $().t1
+			replyTo = $()
 			groovySystem['test2'].on replyTo, consumer
 			groovySystem['test2'].send 'test', Event.wrap('test').setReplyTo(replyTo.object)
 		then:
 			res == null
 		when:
 			res = null
-			replyTo = $().t1
+			replyTo = $()
 			groovySystem['test2'].on replyTo, consumer
 			groovySystem['test2'].send 'test2', Event.wrap('test').setReplyTo(replyTo.object)
 		then:

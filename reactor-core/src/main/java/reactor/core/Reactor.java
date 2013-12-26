@@ -62,8 +62,8 @@ public class Reactor implements Observable {
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
 
-	private final Object   defaultKey      = this;
-	private final Selector defaultSelector = Selectors.$(defaultKey);
+	private final Selector defaultSelector = Selectors.anonymous();
+	private final Object   defaultKey      = defaultSelector.getObject();
 
 	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
 		@Override
@@ -232,8 +232,8 @@ public class Reactor implements Observable {
 	public <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
-
-		dispatcher.dispatch(key, (E)ev.setKey(key), consumerRegistry, errorHandler, eventRouter, onComplete);
+		ev.setKey(key);
+		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
 
 		return this;
 	}
@@ -285,9 +285,9 @@ public class Reactor implements Observable {
 
 	@Override
 	public <E extends Event<?>> Reactor sendAndReceive(Object key, E ev, Consumer<E> reply) {
-		Selector sel = new ObjectSelector<Object>();
+		Selector sel = Selectors.anonymous();
 		on(sel, new SingleUseConsumer<E>(reply)).cancelAfterUse();
-		notify(key, ev.setReplyTo(sel));
+		notify(key, ev.setReplyTo(sel.getObject()));
 		return this;
 	}
 
@@ -323,15 +323,8 @@ public class Reactor implements Observable {
 			return false;
 		}
 
-		Reactor reactor = (Reactor)o;
-
 		return hashCode() == o.hashCode();
 
-	}
-
-	@Override
-	public int hashCode() {
-		return super.hashCode();
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {
