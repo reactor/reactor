@@ -18,6 +18,7 @@ package reactor.core;
 
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
@@ -36,8 +37,6 @@ import reactor.function.Function;
 import reactor.tuple.Tuple2;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -51,74 +50,90 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	static int runs    = 1000;
 	static int samples = 3;
 
-	List<Integer>  data;
 	CountDownLatch latch;
 
 	@Before
 	public void setup() throws IOException, InterruptedException {
-		data = new ArrayList<Integer>();
-		for(int i = 0; i < length; i++) {
-			data.add(i);
-		}
-
 		latch = new CountDownLatch(length * runs * samples);
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
-		                                                 .env(env)
-		                                                 .dispatcher(dispatcher)
-		                                                 .batchSize(length * runs * samples)
-		                                                 .get();
+				.env(env)
+				.dispatcher(dispatcher)
+				.get();
+
 		dInt.compose()
-		    .map(new Function<Integer, Integer>() {
-			    @Override
-			    public Integer apply(Integer integer) {
-				    return integer;
-			    }
-		    })
-		    .reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
-			    @Override
-			    public Integer apply(Tuple2<Integer, Integer> r) {
-				    int last = (null != r.getT2() ? r.getT2() : 1);
-				    return last + r.getT1();
-			    }
-		    })
-		    .consume(new Consumer<Integer>() {
-			    @Override
-			    public void accept(Integer integer) {
-				    latch.countDown();
-			    }
-		    });
+				.map(new Function<Integer, Integer>() {
+					@Override
+					public Integer apply(Integer integer) {
+						return integer;
+					}
+				})
+				.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
+					@Override
+					public Integer apply(Tuple2<Integer, Integer> r) {
+						int last = (null != r.getT2() ? r.getT2() : 1);
+						return last + r.getT1();
+					}
+				})
+				.consume(new Consumer<Integer>() {
+					@Override
+					public void accept(Integer integer) {
+						latch.countDown();
+					}
+				});
+
+		//System.out.println(dInt.compose().debug());
 		return dInt;
+	}
+
+	private void compose(Stream<Integer> stream, final Dispatcher dispatcher) {
+		stream.mapMany(new Function<Integer, Composable<Integer>>() {
+			@Override
+			public Composable<Integer> apply(Integer integer) {
+				Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
+				try {
+					return deferred.compose();
+				} finally {
+					deferred.accept(integer + 1);
+				}
+			}
+		})
+				.consume(new Consumer<Integer>() {
+					@Override
+					public void accept(Integer integer) {
+						latch.countDown();
+					}
+				});
 	}
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
-		dInt.compose()
-		    .mapMany(new Function<Integer, Composable<Integer>>() {
-			    @Override
-			    public Composable<Integer> apply(Integer integer) {
-				    Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
-				    try {
-					    return deferred.compose();
-				    } finally {
-					    deferred.accept(integer);
-				    }
-			    }
-		    })
-		    .consume(new Consumer<Integer>() {
-			    @Override
-			    public void accept(Integer integer) {
-				    latch.countDown();
-			    }
-		    });
+		compose(dInt.compose(), dispatcher);
+		return dInt;
+	}
+
+
+	private Deferred<Integer, Stream<Integer>> createMapManyBatchedDeferred() {
+		final Dispatcher dispatcher = env.getDefaultDispatcher();
+		final Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
+				.env(env)
+				.dispatcher(dispatcher)
+				.batchSize(150)
+				.get();
+		compose(dInt.compose(), dispatcher);
 		return dInt;
 	}
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(env.getDefaultDispatcher(), name, createMapManyDeferred());
+	}
+
+
+	private void doTestMapManyBatched(String name) throws InterruptedException {
+		doTest(env.getDefaultDispatcher(), name, createMapManyBatchedDeferred());
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
@@ -129,25 +144,27 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	                    String name,
 	                    Deferred<Integer, Stream<Integer>> d) throws InterruptedException {
 		long start = System.currentTimeMillis();
-		for(int x = 0; x < samples; x++) {
-			for(int i = 0; i < runs; i++) {
-				for(int j = 0; j < length; j++) {
+		for (int x = 0; x < samples; x++) {
+			for (int i = 0; i < runs; i++) {
+				for (int j = 0; j < length; j++) {
 					d.accept(j);
 				}
 			}
 		}
 
-		latch.await(1, TimeUnit.SECONDS);
+		latch.await(30,TimeUnit.SECONDS);
+
+		Assert.assertEquals("All data have been accepted", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
 
 		System.out.println(String.format("%s throughput (%sms): %s",
-		                                 name,
-		                                 elapsed,
-		                                 Math.round((length * runs * samples) / (elapsed * 1.0 / 1000)) + "/sec"));
+				name,
+				elapsed,
+				Math.round((length * runs * samples) / (elapsed * 1.0 / 1000)) + "/sec"));
 
-		if(dispatcher != null) {
+		if (dispatcher != null) {
 			dispatcher.shutdown();
 		}
 	}
@@ -180,12 +197,17 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
-		       "single-producer ring buffer");
+				"single-producer ring buffer");
 	}
 
 	@Test
 	public void testRingBufferDispatcherMapManyComposableThroughput() throws InterruptedException {
 		doTestMapMany("single-producer ring buffer map many");
+	}
+
+	@Test
+	public void testRingBufferDispatcherMapManyBatchedComposableThroughput() throws InterruptedException {
+		doTestMapManyBatched("single-producer ring buffer batched map many");
 	}
 
 }

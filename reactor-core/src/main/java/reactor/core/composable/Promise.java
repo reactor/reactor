@@ -50,9 +50,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Reactor's {@code Promise} implementation is modeled largely after the <a href="https://github.com/promises-aplus/promises-spec">Promises/A+
  * specification</a>, which defines a number of methods and potential actions for promises.
  *
- * @param <T>
- * 		the type of the value that will be made available
- *
+ * @param <T> the type of the value that will be made available
  * @author Jon Brisbin
  * @author Stephane Maldini
  * @author Andy Wilkinson
@@ -81,12 +79,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * default await timeout will be 30 seconds. This Promise will consumer errors from its {@code parent} such that if
 	 * the parent completes in error then so too will this Promise.
 	 *
-	 * @param observable
-	 * 		The Observable to use to call Consumers
-	 * @param env
-	 * 		The Environment, if any, from which the default await timeout is obtained
-	 * @param parent
-	 * 		The parent, if any, from which errors are consumed
+	 * @param observable The Observable to use to call Consumers
+	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param parent     The parent, if any, from which errors are consumed
 	 */
 	public Promise(@Nullable Observable observable,
 	               @Nullable Environment env,
@@ -116,12 +111,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to determine
 	 * the default await timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds.
 	 *
-	 * @param value
-	 * 		The value that fulfills the promise
-	 * @param observable
-	 * 		The Observable to use to call Consumers
-	 * @param env
-	 * 		The Environment, if any, from which the default await timeout is obtained
+	 * @param value      The value that fulfills the promise
+	 * @param observable The Observable to use to call Consumers
+	 * @param env        The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(T value,
 	               @Nullable Observable observable,
@@ -129,7 +121,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this(observable, env, null);
 		this.value = value;
 		this.state = State.SUCCESS;
-		init();
 	}
 
 	/**
@@ -139,19 +130,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds.
 	 *
-	 * @param valueSupplier
-	 * 		The Supplier of the value that fulfills the promise
-	 * @param observable
-	 * 		The Observable to use to call Consumers
-	 * @param env
-	 * 		The Environment, if any, from which the default await timeout is obtained
+	 * @param valueSupplier The Supplier of the value that fulfills the promise
+	 * @param observable    The Observable to use to call Consumers
+	 * @param env           The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(Supplier<T> valueSupplier,
 	               @Nonnull Observable observable,
 	               @Nullable Environment env) {
 		this(observable, env, null);
 		this.supplier = valueSupplier;
-		init();
 	}
 
 	/**
@@ -161,12 +148,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds.
 	 *
-	 * @param error
-	 * 		The error the completed the promise
-	 * @param env
-	 * 		The Environment, if any, from which the default await timeout is obtained
-	 * @param observable
-	 * 		The Observable to use to call Consumers
+	 * @param error      The error the completed the promise
+	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param observable The Observable to use to call Consumers
 	 */
 	public Promise(Throwable error,
 	               @Nonnull Observable observable,
@@ -174,25 +158,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this(observable, env, null);
 		this.error = error;
 		this.state = State.FAILURE;
-		init();
-	}
-
-	/**
-	 * Watches for flush events and accept the delayed value passed via {@link Supplier}.
-	 */
-	private void init() {
-		getObservable().on(getFlush(), new Consumer<Event<Void>>() {
-			@Override
-			public void accept(Event<Void> ev) {
-				if (null != supplier && state == State.PENDING) {
-					try {
-						notifyValue(supplier.get());
-					} catch (Throwable t) {
-						notifyError(t);
-					}
-				}
-			}
-		});
 	}
 
 	/**
@@ -200,13 +165,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * setting a value or propagating an error, or, if this {@code Promise} has already been fulfilled, is immediately
 	 * scheduled to be executed on the current {@link reactor.event.dispatch.Dispatcher}.
 	 *
-	 * @param onComplete
-	 * 		the completion {@link Consumer}
-	 *
+	 * @param onComplete the completion {@link Consumer}
 	 * @return {@literal this}
 	 */
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
-		if(isComplete()) {
+		if (isComplete()) {
 			Reactors.schedule(onComplete, this, getObservable());
 		} else {
 			getObservable().on(complete, new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
@@ -220,9 +183,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
 	 * current {@link Dispatcher}.
 	 *
-	 * @param onSuccess
-	 * 		the success {@link Consumer}
-	 *
+	 * @param onSuccess the success {@link Consumer}
 	 * @return {@literal this}
 	 */
 	public Promise<T> onSuccess(@Nonnull final Consumer<T> onSuccess) {
@@ -234,13 +195,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
 	 * {@link Dispatcher}.
 	 *
-	 * @param onError
-	 * 		the error {@link Consumer}
-	 *
+	 * @param onError the error {@link Consumer}
 	 * @return {@literal this}
 	 */
 	public Promise<T> onError(@Nullable final Consumer<Throwable> onError) {
-		if(null != onError) {
+		if (null != onError) {
 			return when(Throwable.class, onError);
 		} else {
 			return this;
@@ -250,13 +209,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	/**
 	 * Assign both a success {@link Consumer} and an optional (possibly {@code null}) error {@link Consumer}.
 	 *
-	 * @param onSuccess
-	 * 		the success {@link Consumer}
-	 * @param onError
-	 * 		the error {@link Consumer}
-	 *
+	 * @param onSuccess the success {@link Consumer}
+	 * @param onError   the error {@link Consumer}
 	 * @return {@literal this}
-	 *
 	 * @see #onSuccess(Consumer)
 	 * @see #onError(Consumer)
 	 */
@@ -273,13 +228,9 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * that
 	 * turns the incoming {@code T} into a {@code V}.
 	 *
-	 * @param onSuccess
-	 * 		the success transformation {@link Function}
-	 * @param onError
-	 * 		the error {@link Consumer}
-	 * @param <V>
-	 * 		the type of the value returned by the transformation {@link Function}
-	 *
+	 * @param onSuccess the success transformation {@link Function}
+	 * @param onError   the error {@link Consumer}
+	 * @param <V>       the type of the value returned by the transformation {@link Function}
 	 * @return a new {@code Promise} that will be populated by the result of the transformation {@link Function}
 	 */
 	public <V> Promise<V> then(@Nonnull final Function<T, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
@@ -291,7 +242,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * Indicates whether this {@code Promise} has been completed with either an error or a value
 	 *
 	 * @return {@code true} if this {@code Promise} is complete, {@code false} otherwise.
-	 *
 	 * @see #isPending()
 	 */
 	public boolean isComplete() {
@@ -307,7 +257,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * Indicates whether this {@code Promise} has yet to be completed with a value or an error.
 	 *
 	 * @return {@code true} if this {@code Promise} is still pending, {@code false} otherwise.
-	 *
 	 * @see #isComplete()
 	 */
 	public boolean isPending() {
@@ -354,11 +303,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 *
 	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has not
 	 * completed
-	 *
-	 * @throws InterruptedException
-	 * 		if the thread is interruped while awaiting completion
-	 * @throws RuntimeException
-	 * 		if the promise is completed with an error
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
+	 * @throws RuntimeException     if the promise is completed with an error
 	 */
 	public T await() throws InterruptedException {
 		return await(defaultTimeout, TimeUnit.MILLISECONDS);
@@ -368,37 +314,32 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}. If the promise
 	 * is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
-	 * @param timeout
-	 * 		the timeout value
-	 * @param unit
-	 * 		the {@link TimeUnit} of the timeout value
-	 *
+	 * @param timeout the timeout value
+	 * @param unit    the {@link TimeUnit} of the timeout value
 	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has not
 	 * completed
-	 *
-	 * @throws InterruptedException
-	 * 		if the thread is interruped while awaiting completion
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
 	 */
 	public T await(long timeout, TimeUnit unit) throws InterruptedException {
-		if(isPending()) {
+		if (isPending()) {
 			flush();
 		}
 
-		if(!isPending()) {
+		if (!isPending()) {
 			return get();
 		}
 
 		lock.lock();
 		try {
 			hasBlockers = true;
-			if(timeout >= 0) {
+			if (timeout >= 0) {
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
-				while(state == State.PENDING && (System.currentTimeMillis()) < endTime) {
+				while (state == State.PENDING && (System.currentTimeMillis()) < endTime) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			} else {
-				while(state == State.PENDING) {
+				while (state == State.PENDING) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			}
@@ -415,22 +356,20 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
 	 * @return the value that completed the promise, or {@code null} if it has not been completed
-	 *
-	 * @throws RuntimeException
-	 * 		if the promise was completed with an error
+	 * @throws RuntimeException if the promise was completed with an error
 	 */
 	@Override
 	public T get() {
-		if(isPending()) {
+		if (isPending()) {
 			flush();
 		}
 		lock.lock();
 		try {
-			if(state == State.SUCCESS) {
+			if (state == State.SUCCESS) {
 				return value;
-			} else if(state == State.FAILURE) {
-				if(RuntimeException.class.isInstance(error)) {
-					throw (RuntimeException)error;
+			} else if (state == State.FAILURE) {
+				if (RuntimeException.class.isInstance(error)) {
+					throw (RuntimeException) error;
 				} else {
 					throw new RuntimeException(error);
 				}
@@ -459,22 +398,22 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
-		return (Promise<T>)super.consume(consumer);
+		return (Promise<T>) super.consume(consumer);
 	}
 
 	@Override
 	public Promise<T> connect(@Nonnull final Composable<T> composable) {
-		return (Promise<T>)super.connect(composable);
+		return (Promise<T>) super.connect(composable);
 	}
 
 	@Override
 	public Promise<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		return (Promise<T>)super.consume(key, observable);
+		return (Promise<T>) super.consume(key, observable);
 	}
 
 	@Override
 	public <V, C extends Composable<V>> Promise<V> mapMany(@Nonnull Function<T, C> fn) {
-		return (Promise<V>)super.mapMany(fn);
+		return (Promise<V>) super.mapMany(fn);
 	}
 
 	@Override
@@ -482,10 +421,10 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		lock.lock();
 		try {
-			if(state == State.FAILURE) {
+			if (state == State.FAILURE) {
 				Reactors.schedule(
 						new CallbackAction<E>(onError, getObservable(), null),
-						Event.wrap((E)error), getObservable());
+						Event.wrap((E) error), getObservable());
 			} else {
 				super.when(exceptionType, onError);
 			}
@@ -497,26 +436,26 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public <V> Promise<V> map(@Nonnull final Function<T, V> fn) {
-		return (Promise<V>)super.map(fn);
+		return (Promise<V>) super.map(fn);
 	}
 
 	@Override
 	public Promise<T> filter(@Nonnull final Predicate<T> p) {
-		return (Promise<T>)super.filter(p);
+		return (Promise<T>) super.filter(p);
 	}
 
 	@Override
 	public Promise<T> flush() {
-		return (Promise<T>)super.flush();
+		return (Promise<T>) super.flush();
 	}
 
 	@Override
 	public Promise<T> add(Action<T> operation) {
 		lock.lock();
 		try {
-			if(state == State.SUCCESS) {
+			if (state == State.SUCCESS) {
 				Reactors.schedule(operation, Event.wrap(value), getObservable());
-			} else if(state == State.FAILURE) {
+			} else if (state == State.FAILURE) {
 				Reactors.schedule(
 						new ConnectAction<Throwable>(operation.getObservable(), operation.getFailureKey(), null),
 						Event.wrap(error), getObservable());
@@ -532,7 +471,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>)new Deferred<V, Promise<V>>(new Promise<V>(null, environment, this));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(null, environment, this));
 	}
 
 	protected void errorAccepted(Throwable error) {
@@ -541,7 +480,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			assertPending();
 			this.error = error;
 			this.state = State.FAILURE;
-			if(hasBlockers) {
+			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
 			}
@@ -558,7 +497,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			assertPending();
 			this.value = value;
 			this.state = State.SUCCESS;
-			if(hasBlockers) {
+			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
 			}
@@ -588,6 +527,31 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 			lock.unlock();
 		}
 		super.notifyError(error);
+	}
+
+	@Override
+	void notifyFlush() {
+		if (null != supplier) {
+			lock.lock();
+			try {
+				assertPending();
+			} finally {
+				lock.unlock();
+			}
+
+			try {
+				final Consumer<Event<T>> consumer = getObservable().prepare(getAcceptKey());
+				Reactors.schedule(new Consumer<Void>() {
+					@Override
+					public void accept(Void v) {
+						consumer.accept(Event.wrap(value));
+					}
+				}, null, getObservable());
+
+			} catch (Throwable t) {
+				notifyError(t);
+			}
+		}
 	}
 
 	private void assertPending() {

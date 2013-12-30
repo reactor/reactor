@@ -45,14 +45,6 @@ public class BatchAction<T> extends Action<T> {
 	                   Observable d,
 	                   Object successKey,
 	                   Object failureKey,
-	                   Object flushKey) {
-		this(batchSize, d, successKey, failureKey, flushKey, null);
-	}
-
-	public BatchAction(int batchSize,
-	                   Observable d,
-	                   Object successKey,
-	                   Object failureKey,
 	                   Object flushKey,
 	                   Object firstKey) {
 		super(d, successKey, failureKey);
@@ -112,21 +104,21 @@ public class BatchAction<T> extends Action<T> {
 	@Override
 	public void doAccept(Event<T> value) {
 		lock.lock();
+		long accepted;
 		try {
-			long accepted = (++acceptCount) % batchSize;
-
-			if(accepted == 1) {
-				doFirst(value);
-			}
-
-			doNext(value);
-
-			if(accepted == 0) {
-				doFlush(value);
-			}
-
+			accepted = (++acceptCount) % batchSize;
 		} finally {
 			lock.unlock();
+		}
+
+		if(accepted == 1) {
+			doFirst(value);
+		}
+
+		doNext(value);
+
+		if(accepted == 0) {
+			doFlush(value);
 		}
 	}
 

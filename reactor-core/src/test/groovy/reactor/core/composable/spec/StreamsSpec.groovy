@@ -110,10 +110,14 @@ class StreamsSpec extends Specification {
     when:
       'a subsequent value is accepted'
       d.accept(6)
+      d.accept(7)
+      d.accept(8)
+      d.accept(9)
+      d.accept(10)
 
     then:
       'it passed to the consumer'
-      values == [1, 2, 3, 4, 5, 6]
+      values == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
   }

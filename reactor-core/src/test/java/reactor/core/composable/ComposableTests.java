@@ -201,16 +201,16 @@ public class ComposableTests extends AbstractReactorTest {
 	@Test
 	public void testStreamBatchesResults() {
 		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
-		Stream<List<Integer>> s =
+		Stream<Iterable<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)
 				 .collect();
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
-		s.consume(new Consumer<List<Integer>>() {
+		s.consume(new Consumer<Iterable<Integer>>() {
 			@Override
-			public void accept(List<Integer> is) {
+			public void accept(Iterable<Integer> is) {
 				batchCount.incrementAndGet();
 				for(int i : is) {
 					count.addAndGet(i);

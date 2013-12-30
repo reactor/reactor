@@ -106,14 +106,21 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 		boolean isInContext = isInContext();
 
-		Task<E> task = isInContext ? new ThreadPoolTask<E>() : (Task<E>)createTask();
+		Task<E> task;
 
+		if (isInContext) {
+			task = new ThreadPoolTask<E>();
+		} else {
+			task = createTask();
+		}
+
+
+		task.setCompletionConsumer(completionConsumer);
 		task.setKey(key);
 		task.setEvent(event);
 		task.setConsumerRegistry(consumerRegistry);
 		task.setErrorConsumer(errorConsumer);
 		task.setEventRouter(eventRouter);
-		task.setCompletionConsumer(completionConsumer);
 
 		if (isInContext) {
 			delayedTaskQueue.add(task);
@@ -145,9 +152,9 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 					errorConsumer);
 
 			Task<?> task;
-			for(;;){
+			for (; ; ) {
 				task = delayedTaskQueue.poll();
-				if(null == task){
+				if (null == task) {
 					break;
 				}
 				task.execute();

@@ -21,6 +21,7 @@ import reactor.core.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.core.action.*;
 import reactor.core.composable.spec.DeferredStreamSpec;
+import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.*;
@@ -53,8 +54,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class Stream<T> extends Composable<T> {
 
-	private final int             batchSize;
-	private final Environment     environment;
+	protected final int         batchSize;
+	protected final Environment environment;
 
 	/**
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
@@ -64,24 +65,22 @@ public class Stream<T> extends Composable<T> {
 	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
 	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
 	 * </p>
-	 * The stream will be pre-populated with the given initial {@code values}. Once all event
-	 * handler have been registered, {@link #flush} must be called to pass the initial values
+	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
 	 * to those handlers.
 	 * The stream will accept errors from the given {@code parent}.
 	 *
 	 * @param observable The observable used to drive event handlers
 	 * @param batchSize  The size of the batches, or {@code -1} for no batching
-	 * @param values     The stream's initial values. May be {@code null}
 	 * @param parent     The stream's parent. May be {@code null}
 	 */
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
-	              @Nullable Iterable<T> values,
 	              @Nullable final Composable<?> parent,
 	              @Nullable final Environment environment
-	              ) {
-		this(observable, batchSize, values, parent, null, environment);
+	) {
+		this(observable, batchSize, parent, null, environment);
 	}
+
 	/**
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
 	 * handlers.
@@ -90,33 +89,22 @@ public class Stream<T> extends Composable<T> {
 	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
 	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
 	 * </p>
-	 * The stream will be pre-populated with the given initial {@code values}. Once all event
-	 * handler have been registered, {@link #flush} must be called to pass the initial values
+	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
 	 * to those handlers.
 	 * The stream will accept errors from the given {@code parent}.
 	 *
-	 * @param observable The observable used to drive event handlers
-	 * @param batchSize  The size of the batches, or {@code -1} for no batching
-	 * @param values     The stream's initial values. May be {@code null}
-	 * @param parent     The stream's parent. May be {@code null}
-	 * @param acceptSelector     The tuple Selector/Key to accept values on this observable. May be {@code null}
+	 * @param observable     The observable used to drive event handlers
+	 * @param batchSize      The size of the batches, or {@code -1} for no batching
+	 * @param parent         The stream's parent. May be {@code null}
+	 * @param acceptSelector The tuple Selector/Key to accept values on this observable. May be {@code null}
 	 */
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
-	              @Nullable Iterable<T> values,
 	              @Nullable final Composable<?> parent, Tuple2<Selector, Object> acceptSelector,
-								@Nullable final Environment environment) {
+	              @Nullable final Environment environment) {
 		super(observable, parent, acceptSelector);
 		this.batchSize = batchSize;
 		this.environment = environment;
-		attachFlush(values);
-	}
-
-	private void attachFlush(Iterable<T> values) {
-		if (values != null) {
-			new ForEachAction<T>(values, getObservable(), getAcceptKey(), getError().getObject()).
-					attach(getFlush());
-		}
 	}
 
 	@Override
@@ -186,14 +174,13 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
-	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
 	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
 		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), null,
-		                       d.compose().getAcceptKey()));
+				d.compose().getAcceptKey()));
 		return d.compose();
 	}
 
@@ -210,7 +197,6 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
 	 *
 	 * @param batchSize the batch size to use
-	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last(int batchSize) {
@@ -221,20 +207,30 @@ public class Stream<T> extends Composable<T> {
 		return d.compose();
 	}
 
+
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
 	 * <p/>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param <E> the sub element type
-	 * @param <T> the enclosing type extending Iterable<E>
-	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
-	public <E, T extends Iterable<E>> Stream<E> split() {
-		final Deferred<E, Stream<E>> d = createDeferred(batchSize);
+	public Stream<T> split() {
+		return split(batchSize);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
+	 * <p/>
+	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @param batchSize the batch size to use
+	 * @return a new {@code Stream} whose values result from the iterable input
+	 */
+	public Stream<T> split(int batchSize) {
+		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
 		getObservable().on(getAcceptSelector(),
-				new ForEachAction<T>(getObservable(), d.compose().getAcceptKey(), getError().getObject()));
+				new ForEachAction<T>(batchSize, getObservable(), d.compose().getAcceptKey(), getError().getObject()));
 		return d.compose();
 	}
 
@@ -260,13 +256,42 @@ public class Stream<T> extends Composable<T> {
 		return tap;
 	}
 
+
+	/**
+	 * Use {@link reactor.core.Observable#batchNotify(Object)} to group dispatching by the current batch size.
+	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @return a new {@code Stream} whose values result from the iterable input
+	 */
+	public Stream<T> buffer() {
+		return buffer(batchSize);
+	}
+
+	/**
+	 * Use {@link reactor.core.Observable#batchNotify(Object)} to group dispatch by the passed {@param
+	 * batchSize}.
+	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+	 *
+	 * @param batchSize the batch size to use
+	 * @return a new {@code Stream} whose values result from the iterable input
+	 */
+	public Stream<T> buffer(int batchSize) {
+		Assert.state(batchSize > 0, "Cannot batch() an unbounded Stream. Try setting a batchSize greater than 0.");
+		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
+		add(new BufferAction<T>(batchSize,
+				d.compose().getObservable(),
+				d.compose().getAcceptKey(),
+				getError().getObject()));
+		return d.compose();
+	}
+
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * batchSize} has been reached.
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public Stream<List<T>> collect() {
+	public Stream<Iterable<T>> collect() {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		return collect(batchSize);
 	}
@@ -275,13 +300,12 @@ public class Stream<T> extends Composable<T> {
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * batchSize} has been reached.
 	 *
-	 * @param batchSize  the collected size
-	 *
+	 * @param batchSize the collected size
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public Stream<List<T>> collect(int batchSize) {
+	public Stream<Iterable<T>> collect(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded limit.");
-		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
+		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
 
 		add(new CollectAction<T>(
 				batchSize,
@@ -297,105 +321,98 @@ public class Stream<T> extends Composable<T> {
 	 * time from the {@param period} in milliseconds. The window runs on a timer from the stream {@link
 	 * this#environment}.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 *
+	 * @param period the time period when each window close and flush the attached consumer
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<List<T>> window(int period) {
+	public Stream<Iterable<T>> window(int period) {
 		return window(period, TimeUnit.MILLISECONDS);
 	}
 
-  /**
-   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-   * {@code Stream} every specified {@param period} in milliseconds. The window runs on a timer from the stream {@link
-   * this#environment}. After accepting {@param backlog} of items, every old item will be dropped. Resulting {@link
-   * List} will be at most {@param backlog} items long.
-   *
-   * @param period the time period when each window close and flush the attached consumer
-   * @param backlog maximum amount of items to keep
-   *
-   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-   */
-  public Stream<List<T>> movingWindow(int period, int backlog) {
-    return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
-  }
+	/**
+	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+	 * {@code Stream} every specified {@param period} in milliseconds. The window runs on a timer from the stream {@link
+	 * this#environment}. After accepting {@param backlog} of items, every old item will be dropped. Resulting {@link
+	 * List} will be at most {@param backlog} items long.
+	 *
+	 * @param period  the time period when each window close and flush the attached consumer
+	 * @param backlog maximum amount of items to keep
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<Iterable<T>> movingWindow(int period, int backlog) {
+		return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
+	}
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
 	 * time from the {@param period} and a {@param timeUnit}. The window
 	 * runs on a timer from the stream {@link this#environment}.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 * @param timeUnit  the time unit used for the period
-	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
+	public Stream<Iterable<T>> window(int period, TimeUnit timeUnit) {
 		return window(period, timeUnit, 0);
 	}
 
-  /**
-   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit}.
-   *
-   * @param period the time period when each window close and flush the attached consumer
-   * @param timeUnit  the time unit used for the period
-   * @param backlog maximum amount of items to keep
-   *
-   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-   */
-  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
-    return movingWindow(period, timeUnit, 0, backlog);
-  }
+	/**
+	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit}.
+	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
+	 * @param backlog  maximum amount of items to keep
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
+		return movingWindow(period, timeUnit, 0, backlog);
+	}
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
 	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
 	 * runs on a timer from the stream {@link this#environment}.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 * @param timeUnit  the time unit used for the period
-	 * @param delay  the initial delay in milliseconds
-	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
+	 * @param delay    the initial delay in milliseconds
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
+	public Stream<Iterable<T>> window(int period, TimeUnit timeUnit, int delay) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
 		return window(period, timeUnit, delay, environment.getRootTimer());
 	}
 
-  /**
-   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
-   * in milliseconds.
-   *
-   * @param period the time period when each window close and flush the attached consumer
-   * @param timeUnit  the time unit used for the period
-   * @param delay  the initial delay in milliseconds
-   * @param backlog maximum amount of items to keep
-   *
-   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-   */
-  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
-    Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
-    return movingWindow(period, timeUnit, delay, backlog, environment.getRootTimer());
-  }
+	/**
+	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+	 * in milliseconds.
+	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
+	 * @param delay    the initial delay in milliseconds
+	 * @param backlog  maximum amount of items to keep
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
+		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
+		return movingWindow(period, timeUnit, delay, backlog, environment.getRootTimer());
+	}
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
 	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
 	 * runs on a supplied {@param timer}.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 * @param timeUnit  the time unit used for the period
-	 * @param delay  the initial delay in milliseconds
-	 * @param timer  the reactor timer to run the window on
-	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
+	 * @param delay    the initial delay in milliseconds
+	 * @param timer    the reactor timer to run the window on
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, HashWheelTimer timer) {
+	public Stream<Iterable<T>> window(int period, TimeUnit timeUnit, int delay, HashWheelTimer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
+		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
 
 		add(new WindowAction<T>(
 				d.compose().getObservable(),
@@ -403,38 +420,37 @@ public class Stream<T> extends Composable<T> {
 				getError().getObject(),
 				timer,
 				period, timeUnit, delay
-				));
+		));
 
 		return d.compose();
 	}
 
-  /**
-   * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-   * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
-   * in milliseconds.
-   *
-   * @param period the time period when each window close and flush the attached consumer
-   * @param timeUnit  the time unit used for the period
-   * @param delay  the initial delay in milliseconds
-   * @param backlog maximum amount of items to keep
-   * @param timer  the reactor timer to run the window on
-   *
-   * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-   */
-  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, HashWheelTimer timer) {
-    Assert.state(timer != null, "Timer must be supplied");
-    final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
+	/**
+	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+	 * in milliseconds.
+	 *
+	 * @param period   the time period when each window close and flush the attached consumer
+	 * @param timeUnit the time unit used for the period
+	 * @param delay    the initial delay in milliseconds
+	 * @param backlog  maximum amount of items to keep
+	 * @param timer    the reactor timer to run the window on
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 */
+	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, HashWheelTimer timer) {
+		Assert.state(timer != null, "Timer must be supplied");
+		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
 
-    add(new MovingWindowAction<T>(
-        d.compose().getObservable(),
-        d.compose().getAcceptKey(),
-        getError().getObject(),
-        timer,
-        period, timeUnit, delay, backlog
-        ));
+		add(new MovingWindowAction<T>(
+				d.compose().getObservable(),
+				d.compose().getAcceptKey(),
+				getError().getObject(),
+				timer,
+				period, timeUnit, delay, backlog
+		));
 
-    return d.compose();
-  }
+		return d.compose();
+	}
 
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
@@ -510,12 +526,72 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		Stream<T> stream = new Stream<T>(null,
+		Stream<T> stream;
+		if (batchSize > 1) {
+			stream = new BufferStream<T>(null,
+					batchSize,
+					null,
+					this,
+					null,
+					environment);
+		} else {
+			stream = new Stream<T>(null,
+					batchSize,
+					this,
+					environment);
+		}
+		return new Deferred<T, Stream<T>>(stream);
+	}
+
+	private Deferred<Iterable<T>, Stream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
+		Stream<Iterable<T>> stream = new Stream<Iterable<T>>(null,
 				batchSize,
-				null,
 				this,
 				environment);
-		return new Deferred<T, Stream<T>>(stream);
+		return new Deferred<Iterable<T>, Stream<Iterable<T>>>(stream);
+	}
+
+	public static class BufferStream<T> extends Stream<T> {
+
+		final BufferAction<T> bufferAction;
+		final Iterable<T>     values;
+
+		public BufferStream(@Nullable Observable observable, int batchSize,
+		                    @Nullable Iterable<T> values,
+		                    @Nullable final Composable<?> parent,
+		                    @Nullable Tuple2<Selector, Object> acceptSelector,
+		                    @Nullable Environment environment) {
+			super(observable, batchSize, parent, acceptSelector, environment);
+			this.bufferAction = new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError().getObject());
+			this.values = values;
+		}
+
+		@Override
+		public String debug() {
+			Composable<?> that = this;
+			while (that.getParent() != null) {
+				that = that.getParent();
+			}
+			if(that == this){
+				return ActionUtils.browseAction(bufferAction);
+			}else{
+				return that.debug();
+			}
+		}
+
+		@Override
+		void notifyValue(Event<T> value) {
+			bufferAction.accept(value);
+		}
+
+		@Override
+		void notifyFlush() {
+			if (values != null) {
+				for (T val : values) {
+					bufferAction.accept(Event.wrap(val));
+				}
+			}
+		}
 	}
 
 }

@@ -26,10 +26,9 @@ import reactor.tuple.Tuple2;
  * A helper class for specifying a bounded {@link Stream}. {@link #each} must be called to
  * provide the stream with its values.
  *
+ * @param <T> The type of values that the stream contains.
  * @author Jon Brisbin
  * @author Stephane Maldini
- *
- * @param <T> The type of values that the stream contains.
  */
 public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>> {
 
@@ -42,7 +41,6 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 	 * for the stream to have no parent. The stream will consume errors from its parent.
 	 *
 	 * @param parent The parent of the stream.
-	 *
 	 * @return {@code this}
 	 */
 	public StreamSpec<T> link(Composable<?> parent) {
@@ -55,7 +53,6 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 	 * is the default configuration, configures the stream to not be batched.
 	 *
 	 * @param batchSize The batch size of the stream
-	 *
 	 * @return {@code this}
 	 */
 	public StreamSpec<T> batchSize(int batchSize) {
@@ -67,7 +64,6 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 	 * Configures the stream to contain the given {@code values}.
 	 *
 	 * @param values The stream's values
-	 *
 	 * @return {@code this}
 	 */
 	public StreamSpec<T> each(Iterable<T> values) {
@@ -83,7 +79,7 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
 
-		return new Stream<T>(observable, batchSize, values, parent, accept, env);
+		return new Stream.BufferStream<T>(observable, batchSize, values, parent, accept, env);
 	}
 
 }

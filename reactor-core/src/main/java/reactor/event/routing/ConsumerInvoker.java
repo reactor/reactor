@@ -24,6 +24,7 @@ import reactor.support.Supports;
  * automatic argument conversion, return values, and other situations that might be specific to a particular use-case.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public interface ConsumerInvoker extends Supports<Consumer<?>> {
 
@@ -33,13 +34,13 @@ public interface ConsumerInvoker extends Supports<Consumer<?>> {
 	 * @param consumer     The {@link reactor.function.Consumer} to invoke.
 	 * @param returnType   If the {@link reactor.function.Consumer} also implements a value-returning type, convert it to this type before
 	 *                     returning.
-	 * @param possibleArgs An array of possible arguments that may or may not be used.
+	 * @param possibleArg Possible argument that may or may not be used.
 	 * @param <T>          The return type.
 	 * @return A result if available, or {@literal null} otherwise.
 	 * @throws Exception
 	 */
 	<T> T invoke(Consumer<?> consumer,
 							 Class<? extends T> returnType,
-							 Object... possibleArgs) throws Exception;
+							 Object possibleArg) throws Exception;
 
 }

@@ -57,10 +57,10 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 		Task<E> task;
 		boolean isInContext = isInContext();
 		if (isInContext) {
-			if(delayedSequence >= backlogSize){
+			if (delayedSequence >= backlogSize) {
 				task = new SingleThreadTask<E>();
 				delayedTasks.add(task);
-			}else{
+			} else {
 				task = (Task<E>) delayedTasks.get(delayedSequence);
 			}
 			delayedSequence++;
@@ -69,13 +69,14 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 		}
 
 		task.setKey(key);
+		task.setCompletionConsumer(completionConsumer);
 		task.setEvent(event);
 		task.setConsumerRegistry(consumerRegistry);
 		task.setErrorConsumer(errorConsumer);
 		task.setEventRouter(eventRouter);
-		task.setCompletionConsumer(completionConsumer);
 
-		if(!isInContext){
+
+		if (!isInContext) {
 			task.submit();
 		}
 
@@ -85,32 +86,38 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 
 		@Override
 		protected final void execute() {
-			eventRouter.route(key,
-					event,
-					(null != consumerRegistry ? consumerRegistry.select(key) : null),
-					completionConsumer,
-					errorConsumer);
+			try {
+
+				eventRouter.route(key,
+						event,
+						(null != consumerRegistry ? consumerRegistry.select(key) : null),
+						completionConsumer,
+						errorConsumer);
 
 
-			//Process any lazy notify
-			Task<?> delayedTask;
-			int i = 0;
-			while (i < delayedSequence) {
-				delayedTask = delayedTasks.get(i++);
-				delayedTask.eventRouter.route(delayedTask.key,
-						delayedTask.event,
-						(null != delayedTask.consumerRegistry ? delayedTask.consumerRegistry.select(delayedTask.key) : null),
-						delayedTask.completionConsumer,
-						delayedTask.errorConsumer);
-				delayedTask.reset();
+				//Process any lazy notify
+				Task<?> delayedTask;
+				int i = 0;
+				while (i < delayedSequence) {
+					delayedTask = delayedTasks.get(i++);
+					delayedTask.eventRouter.route(delayedTask.key,
+							delayedTask.event,
+							(null != delayedTask.consumerRegistry ? delayedTask.consumerRegistry.select(delayedTask.key) : null),
+							delayedTask.completionConsumer,
+							delayedTask.errorConsumer);
+					delayedTask.reset();
+				}
+
+				i = delayedSequence - 1;
+				while (backlogSize > 0 && i >= backlogSize) {
+					delayedTasks.remove(i--);
+				}
+
+				delayedSequence = 0;
+			} catch (Throwable t) {
+				t.printStackTrace();
 			}
 
-			i = delayedSequence;
-			while (backlogSize > 0 && i > backlogSize) {
-				delayedTasks.remove(i--);
-			}
-
-			delayedSequence = 0;
 		}
 	}
 

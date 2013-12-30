@@ -151,7 +151,7 @@ public abstract class Promises {
 	 *
 	 * @return a {@link Promise}.
 	 */
-	public static <T> Promise<List<T>> when(Promise<T>... promises) {
+	public static <T> Promise<Iterable<T>> when(Promise<T>... promises) {
 		return when(Arrays.asList(promises));
 	}
 
@@ -167,7 +167,7 @@ public abstract class Promises {
 	 *
 	 * @return a {@link Promise}.
 	 */
-	public static <T> Promise<List<T>> when(Deferred<T, Promise<T>>... promises) {
+	public static <T> Promise<Iterable<T>> when(Deferred<T, Promise<T>>... promises) {
 		return when(deferredToPromises(promises));
 	}
 
@@ -182,16 +182,16 @@ public abstract class Promises {
 	 *
 	 * @return a {@link DeferredPromiseSpec}.
 	 */
-	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
+	public static <T> Promise<Iterable<T>> when(Collection<? extends Promise<T>> promises) {
 		Stream<T> deferredStream = new DeferredStreamSpec<T>()
 				.synchronousDispatcher()
 				.batchSize(promises.size())
 				.get()
 				.compose();
 
-		Stream<List<T>> aggregatedStream = deferredStream.collect();
+		Stream<Iterable<T>> aggregatedStream = deferredStream.collect();
 
-		Promise<List<T>> resultPromise = new DeferredPromiseSpec<List<T>>()
+		Promise<Iterable<T>> resultPromise = new DeferredPromiseSpec<Iterable<T>>()
 				.link(aggregatedStream)
 				.get()
 				.compose();

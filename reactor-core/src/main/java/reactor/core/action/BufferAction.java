@@ -26,25 +26,30 @@ import java.util.List;
 /**
  * @author Stephane Maldini
  */
-public class ForEachAction<T> extends Action<Iterable<T>> {
+public class BufferAction<T> extends BatchAction<T> {
+
+	private final List<Event<T>> values;
 
 	final private Consumer<Iterable<Event<T>>> batchConsumer;
-	final private int batchSize;
 
-	public ForEachAction(int batchSize, Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	public BufferAction(int batchSize, Observable d, Object successKey, Object failureKey) {
+		super(batchSize, d, successKey, failureKey);
 		this.batchConsumer = d.batchNotify(successKey);
-		this.batchSize = batchSize > 0 ? batchSize : 256;
+		this.values = new ArrayList<Event<T>>(batchSize > 0 ? batchSize : 256);
 	}
 
 	@Override
-	public void doAccept(Event<Iterable<T>> value) {
-		if (value.getData() != null) {
-			List<Event<T>> evs = new ArrayList<Event<T>>(batchSize);
-			for(T data : value.getData()){
-				evs.add(value.copy(data));
-			}
-			batchConsumer.accept(evs);
+	public void doNext(Event<T> value) {
+		values.add(value);
+	}
+
+
+	@Override
+	public void doFlush(Event<T> value) {
+		if (values.isEmpty()) {
+			return;
 		}
+		batchConsumer.accept(new ArrayList<Event<T>>(values));
+		values.clear();
 	}
 }

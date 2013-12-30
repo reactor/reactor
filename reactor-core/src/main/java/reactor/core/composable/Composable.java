@@ -47,7 +47,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 	private final Selector acceptSelector;
 	private final Object acceptKey;
 	private final Selector error = Selectors.anonymous();
-	private final Selector flush = Selectors.anonymous();
 
 	private final Observable    events;
 	private final Composable<?> parent;
@@ -267,7 +266,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 			that = that.parent;
 		}
 		return ActionUtils.browseReactor((Reactor) that.events,
-				that.acceptKey, that.error.getObject(), that.flush.getObject()
+				that.acceptKey, that.error.getObject()
 		);
 	}
 
@@ -285,8 +284,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	/**
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
 	 */
-	void notifyFlush() {
-		events.notify(flush.getObject(), new Event<Void>(null));
+	void notifyFlush(){
 	}
 
 	/**
@@ -354,15 +352,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	protected Selector getError() {
 		return this.error;
-	}
-
-	/**
-	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing flushes.
-	 *
-	 * @return
-	 */
-	protected Selector getFlush() {
-		return this.flush;
 	}
 
 	/**

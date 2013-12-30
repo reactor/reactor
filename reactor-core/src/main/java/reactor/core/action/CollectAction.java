@@ -26,10 +26,11 @@ import java.util.List;
  */
 public class CollectAction<T> extends BatchAction<T> {
 
-	private final List<T> values = new ArrayList<T>();
+	private final List<T> values;
 
 	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
 		super(batchsize, d, successKey, failureKey);
+		values = new ArrayList<T>(batchsize);
 	}
 
 	@Override
