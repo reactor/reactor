@@ -38,7 +38,7 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   private final AtomicInteger pointer = new AtomicInteger(0);
   private final T[]           collectedWindow;
 
-
+	@SuppressWarnings("unchecked")
   public MovingWindowAction(Observable d,
                             Object successKey,
                             Object failureKey,
@@ -46,7 +46,6 @@ public class MovingWindowAction<T> extends WindowAction<T> {
                             int period, TimeUnit timeUnit, int delay, int backlog
   ) {
     super(d, successKey, failureKey, timer, period, timeUnit, delay);
-    System.out.println("creating");
     this.collectedWindow = (T[]) new Object[backlog];
   }
 
@@ -80,7 +79,6 @@ public class MovingWindowAction<T> extends WindowAction<T> {
     lock.lock();
     try {
       int index = adjustPointer(pointer.getAndIncrement());
-      System.out.println(index);
       collectedWindow[index] = value.getData();
     } finally {
       lock.unlock();

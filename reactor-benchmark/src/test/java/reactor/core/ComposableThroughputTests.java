@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.Assert.assertEquals;
+
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -61,10 +63,11 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			data.add(i);
 		}
 
-		latch = new CountDownLatch(length * runs * samples);
+
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
+		latch = new CountDownLatch(1);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 		                                                 .env(env)
 		                                                 .dispatcher(dispatcher)
@@ -94,6 +97,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
+		latch = new CountDownLatch(length * runs * samples);
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
 		dInt.compose()
@@ -137,7 +141,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await(1, TimeUnit.SECONDS);
+		latch.await(10, TimeUnit.SECONDS);
+		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
@@ -180,7 +185,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
-		       "single-producer ring buffer");
+				"single-producer ring buffer");
 	}
 
 	@Test

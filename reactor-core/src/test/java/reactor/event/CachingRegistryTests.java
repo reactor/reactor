@@ -20,6 +20,7 @@ import org.junit.Test;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
+import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 
@@ -48,9 +49,9 @@ public final class CachingRegistryTests {
 
 		Iterable<Registration<? extends Object>> registrations = this.cachingRegistry.select(key);
 		List<Object> objects = new ArrayList<Object>();
-		for(Registration<? extends Object> registration : registrations) {
-			if(null != registration){
-			objects.add(registration.getObject());
+		for (Registration<? extends Object> registration : registrations) {
+			if (null != registration) {
+				objects.add(registration.getObject());
 			}
 		}
 
@@ -142,6 +143,56 @@ public final class CachingRegistryTests {
 		assertEquals(2, this.cacheMisses.get());
 	}
 
+
+	//Issue : https://github.com/reactor/reactor/issues/237
+	@Test
+	public void invokeConsumersWithCustomSelector() {
+
+		Subscription sub1 = new Subscription("client1", "test");
+		Selector s1 = new MySelector(sub1);
+
+		// consumer1
+		this.cachingRegistry.register(s1, "pseudo-consumer-1");
+
+		// notify1
+		List<Registration<?>> registrations = this.cachingRegistry.select("test");
+
+		assertEquals( "number of consumers incorrect", 1, registrations.size());
+
+
+		// consumer2
+		this.cachingRegistry.register(s1, "pseudo-consumer-2");
+
+		// consumer3
+		Subscription sub2 = new Subscription("client2", "test");
+		Selector s2 = new MySelector(sub2);
+		this.cachingRegistry.register(s2, "pseudo-consumer-3");
+
+		//consumer 4
+		Subscription sub3 = new Subscription("client2", "test2");
+		Selector s3 = new MySelector(sub3);
+		this.cachingRegistry.register(s3, "pseudo-consumer-4");
+
+		//prepopulate and add another consumer
+		this.cachingRegistry.select("test2");
+		this.cachingRegistry.register(s3, "pseudo-consumer-5");
+
+		// notify2
+		registrations = this.cachingRegistry.select("test");
+		assertEquals( "number of consumers incorrect", 3, registrations.size());
+
+		registrations = this.cachingRegistry.select("test2");
+		assertEquals( "number of consumers incorrect", 2, registrations.size());
+
+
+		/*for(Registration<?> registration : registrations){
+			System.out.println (registration.getObject());
+		}*/
+
+
+
+	}
+
 	private static final class CacheMissCountingCachingRegistry<T> extends CachingRegistry<T> {
 		private final AtomicInteger cacheMisses;
 
@@ -152,6 +203,31 @@ public final class CachingRegistryTests {
 		@Override
 		protected void cacheMiss(Object key) {
 			this.cacheMisses.incrementAndGet();
+		}
+	}
+
+	public static class Subscription {
+		public final String clientId;
+		public final String topic;
+
+		public Subscription(String clientId, String topic) {
+			this.clientId = clientId;
+			this.topic = topic;
+		}
+	}
+
+	static class MySelector extends ObjectSelector<Subscription> {
+		public MySelector(Subscription subscription) {
+			super(subscription);
+		}
+
+		@Override
+		public boolean matches(Object key) {
+			if (!(key instanceof String)) {
+				return false;
+			}
+
+			return key.equals(getObject().topic);
 		}
 	}
 }
