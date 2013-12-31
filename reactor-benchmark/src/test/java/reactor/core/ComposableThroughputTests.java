@@ -49,18 +49,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	static int runs    = 1000;
 	static int samples = 3;
 
-	List<Integer>  data;
 	CountDownLatch latch;
-
-	@Before
-	public void setup() throws IOException, InterruptedException {
-		data = new ArrayList<Integer>();
-		for(int i = 0; i < length; i++) {
-			data.add(i);
-		}
-
-
-	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		latch = new CountDownLatch(samples*runs*length);
@@ -137,7 +126,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await();
+		latch.await(10, TimeUnit.SECONDS);
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();

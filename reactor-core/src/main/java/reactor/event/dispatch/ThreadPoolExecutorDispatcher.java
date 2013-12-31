@@ -106,21 +106,14 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 		boolean isInContext = isInContext();
 
-		Task<E> task;
+		Task<E> task = isInContext ? new ThreadPoolTask<E>() : (Task<E>)createTask();
 
-		if (isInContext) {
-			task = new ThreadPoolTask<E>();
-		} else {
-			task = createTask();
-		}
-
-
-		task.setCompletionConsumer(completionConsumer);
 		task.setKey(key);
 		task.setEvent(event);
 		task.setConsumerRegistry(consumerRegistry);
 		task.setErrorConsumer(errorConsumer);
 		task.setEventRouter(eventRouter);
+		task.setCompletionConsumer(completionConsumer);
 
 		if (isInContext) {
 			delayedTaskQueue.add(task);
@@ -145,7 +138,6 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 		@Override
 		protected void execute() {
-			try {
 				eventRouter.route(key,
 						event,
 						(null != consumerRegistry ? consumerRegistry.select(key) : null),
@@ -165,10 +157,6 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 							task.errorConsumer);
 
 				}
-			} catch (Throwable t) {
-				t.printStackTrace();
-				System.exit(1);
-			}
 		}
 
 		@Override

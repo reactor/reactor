@@ -124,10 +124,10 @@ public class BatchAction<T> extends Action<T> {
 			if (accepted == 0) {
 				doFlush(value);
 			}
+
 		} finally {
 			lock.unlock();
 		}
-
 	}
 
 	@Override
