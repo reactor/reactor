@@ -24,7 +24,6 @@ import reactor.core.action.ConnectAction;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
@@ -539,18 +538,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 				lock.unlock();
 			}
 
-			try {
-				final Consumer<Event<T>> consumer = getObservable().prepare(getAcceptKey());
-				Reactors.schedule(new Consumer<Void>() {
-					@Override
-					public void accept(Void v) {
-						consumer.accept(Event.wrap(value));
-					}
-				}, null, getObservable());
 
-			} catch (Throwable t) {
-				notifyError(t);
-			}
+			final Consumer<Event<T>> consumer = getObservable().prepare(getAcceptKey());
+			Reactors.schedule(new Consumer<Void>() {
+				@Override
+				public void accept(Void v) {
+					try {
+						consumer.accept(Event.wrap(supplier.get()));
+					} catch (Throwable t) {
+						notifyError(t);
+					}
+				}
+
+			}, null, getObservable());
+
+
 		}
 	}
 
