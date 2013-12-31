@@ -145,19 +145,29 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 		@Override
 		protected void execute() {
-			eventRouter.route(key,
-					event,
-					(null != consumerRegistry ? consumerRegistry.select(key) : null),
-					completionConsumer,
-					errorConsumer);
+			try {
+				eventRouter.route(key,
+						event,
+						(null != consumerRegistry ? consumerRegistry.select(key) : null),
+						completionConsumer,
+						errorConsumer);
 
-			Task<?> task;
-			for (; ; ) {
-				task = delayedTaskQueue.poll();
-				if (null == task) {
-					break;
+				Task<?> task;
+				for (; ; ) {
+					task = delayedTaskQueue.poll();
+					if (null == task) {
+						break;
+					}
+					task.eventRouter.route(task.key,
+							task.event,
+							(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+							task.completionConsumer,
+							task.errorConsumer);
+
 				}
-				task.execute();
+			} catch (Throwable t) {
+				t.printStackTrace();
+				System.exit(1);
 			}
 		}
 

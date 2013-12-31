@@ -18,8 +18,6 @@ package reactor.core;
 
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.composable.Composable;
@@ -36,7 +34,6 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.tuple.Tuple2;
 
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -55,7 +52,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	CountDownLatch latch;
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		latch = new CountDownLatch(1);
+		latch = new CountDownLatch(samples*runs*length);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
@@ -152,7 +149,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await(10, TimeUnit.SECONDS);
+		latch.await();
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();

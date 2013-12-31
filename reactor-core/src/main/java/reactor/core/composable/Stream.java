@@ -483,7 +483,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
-		final Deferred<A, Stream<A>> d = createDeferred();
+		final Deferred<A, Stream<A>> d = createDeferred(1);
 		final Stream<A> stream = d.compose();
 
 		if (isBatch()) {

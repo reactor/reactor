@@ -22,7 +22,8 @@ import java.util.concurrent.TimeUnit;
 public final class ActorDispatcher implements Dispatcher {
 
 	private final Function<Object, Dispatcher> delegateMapper;
-	private final Map<Object, Dispatcher> dispatcherCache = new ConcurrentHashMap<Object, Dispatcher>();
+	private final Map<Integer, Dispatcher> dispatcherCache = new ConcurrentHashMap<Integer, Dispatcher>();
+	private final int emptyHashcode = this.hashCode();
 
 	public ActorDispatcher(Function<Object, Dispatcher> delegate) {
 		Assert.notNull(delegate, "Delegate Dispatcher Supplier cannot be null.");
@@ -78,10 +79,11 @@ public final class ActorDispatcher implements Dispatcher {
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> completionConsumer) {
 
-		Dispatcher delegate = dispatcherCache.get(key);
+		int hashCode = key == null ? emptyHashcode : key.hashCode();
+		Dispatcher delegate = dispatcherCache.get(hashCode);
 		if (delegate == null) {
 			delegate = delegateMapper.apply(key);
-			dispatcherCache.put(key, delegate);
+			dispatcherCache.put(hashCode, delegate);
 		}
 
 		delegate.dispatch(
