@@ -81,7 +81,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		Registration<? extends T> reg = registrations[nextIdx] = new SimpleRegistration<V>(sel, obj);
 
 		// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
-		if (ObjectSelector.class.equals(sel.getClass())) {
+		if (Object.class.equals(sel.getObject().getClass()) || Selectors.AnonymousKey.class.equals(sel.getObject().getClass())) {
 			int hashCode = sel.getObject().hashCode();
 			primeCacheLock.lock();
 			try {
@@ -97,7 +97,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		} else {
 			cacheLock.lock();
-			try{
+			try {
 				cache.clear();
 			} finally {
 				cacheLock.unlock();
@@ -119,26 +119,35 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public boolean unregister(Object key) {
-		boolean updated = false;
-		if (key.getClass().equals(Object.class)) {
-			primeCacheLock.lock();
-			try {
-				return primeCache.remove(key.hashCode()) != null;
-			} finally {
-				primeCacheLock.unlock();
-			}
-		} else {
-			cacheLock.lock();
-			try {
-				for (Registration<? extends T> reg : select(key)) {
-					reg.cancel();
-					updated = true;
+		regLock.lock();
+		try {
+			if (key.getClass().equals(Object.class)) {
+				primeCacheLock.lock();
+				try {
+					Registration<? extends T>[] registrations = primeCache.remove(key.hashCode());
+					for (Registration<? extends T> reg : registrations) {
+						reg.cancel();
+					}
+					return registrations != null;
+				} finally {
+					primeCacheLock.unlock();
 				}
-				cache.remove(key.hashCode());
-				return updated;
-			} finally {
-				cacheLock.unlock();
+			} else {
+				boolean updated = false;
+				cacheLock.lock();
+				try {
+					for (Registration<? extends T> reg : select(key)) {
+						reg.cancel();
+						updated = true;
+					}
+					cache.remove(key.hashCode());
+					return updated;
+				} finally {
+					cacheLock.unlock();
+				}
 			}
+		} finally {
+			regLock.unlock();
 		}
 	}
 
