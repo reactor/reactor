@@ -52,7 +52,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	CountDownLatch latch;
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		latch = new CountDownLatch(samples*runs*length);
+		latch = new CountDownLatch(1);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 		                                                 .env(env)
 		                                                 .dispatcher(dispatcher)

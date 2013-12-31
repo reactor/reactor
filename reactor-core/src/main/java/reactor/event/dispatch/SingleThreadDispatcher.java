@@ -105,8 +105,8 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 				delayedTask.reset();
 			}
 
-			i = delayedSequence;
-			while (backlogSize > 0 && i > backlogSize) {
+			i = delayedSequence - 1;
+			while (backlogSize > 0 && i >= backlogSize) {
 				delayedTasks.remove(i--);
 			}
 
