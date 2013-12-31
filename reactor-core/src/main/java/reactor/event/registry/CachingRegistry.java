@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import reactor.event.lifecycle.Lifecycle;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -149,7 +150,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 		int hashCode = key.hashCode();
 		Registration<? extends T>[] regs;
-		if (key.getClass().equals(Object.class)) {
+		if (key.getClass().equals(Object.class) || key.getClass().equals(Selectors.AnonymousKey.class)) {
 			primeCacheLock.lock();
 			try {
 				regs = primeCache.get(hashCode);

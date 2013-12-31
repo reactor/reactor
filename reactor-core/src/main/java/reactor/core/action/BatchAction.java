@@ -92,19 +92,19 @@ public class BatchAction<T> extends Action<T> {
 	}
 
 	protected void doNext(Event<T> event) {
-		if(getSuccessKey() != null) {
+		if (getSuccessKey() != null) {
 			notifyValue(event);
 		}
 	}
 
 	protected void doFlush(Event<T> event) {
-		if(flushKey != null) {
+		if (flushKey != null) {
 			getObservable().notify(flushKey, event);
 		}
 	}
 
 	protected void doFirst(Event<T> event) {
-		if(firstKey != null) {
+		if (firstKey != null) {
 			getObservable().notify(firstKey, event);
 		}
 	}
@@ -115,19 +115,19 @@ public class BatchAction<T> extends Action<T> {
 		try {
 			long accepted = (++acceptCount) % batchSize;
 
-			if(accepted == 1) {
+			if (accepted == 1) {
 				doFirst(value);
 			}
 
 			doNext(value);
 
-			if(accepted == 0) {
+			if (accepted == 0) {
 				doFlush(value);
 			}
-
 		} finally {
 			lock.unlock();
 		}
+
 	}
 
 	@Override

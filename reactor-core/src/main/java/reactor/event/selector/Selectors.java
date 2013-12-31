@@ -23,14 +23,7 @@ public abstract class Selectors {
 	 * @see ObjectSelector
 	 */
 	public static Selector anonymous() {
-		Object obj = new Object() {
-			private final int hashCode = HASH_CODES.getAndIncrement() << 2;
-
-			@Override
-			public int hashCode() {
-				return hashCode;
-			}
-		};
+		Object obj = new AnonymousKey();
 		return $(obj);
 	}
 
@@ -210,4 +203,12 @@ public abstract class Selectors {
 		return new PredicateSelector(predicate);
 	}
 
+	public static class AnonymousKey {
+		private final int hashCode = HASH_CODES.getAndIncrement() << 2;
+
+		@Override
+		public int hashCode() {
+			return hashCode;
+		}
+	}
 }
