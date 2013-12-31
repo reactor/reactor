@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static junit.framework.Assert.assertEquals;
+
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -52,12 +54,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	CountDownLatch latch;
 
-	@Before
-	public void setup() throws IOException, InterruptedException {
-		latch = new CountDownLatch(length * runs * samples);
-	}
-
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
+		latch = new CountDownLatch(1);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
@@ -109,6 +107,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
+		latch = new CountDownLatch(length * runs * samples);
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
 		compose(dInt.compose(), dispatcher);
@@ -117,6 +116,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 
 	private Deferred<Integer, Stream<Integer>> createMapManyBatchedDeferred() {
+		latch = new CountDownLatch((length * runs * samples)/150);
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
@@ -152,9 +152,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await(30,TimeUnit.SECONDS);
-
-		Assert.assertEquals("All data have been accepted", 0, latch.getCount());
+		latch.await(10, TimeUnit.SECONDS);
+		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
