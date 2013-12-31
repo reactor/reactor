@@ -145,7 +145,6 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 		@Override
 		protected void execute() {
-			try {
 				eventRouter.route(key,
 						event,
 						(null != consumerRegistry ? consumerRegistry.select(key) : null),
@@ -165,10 +164,6 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 							task.errorConsumer);
 
 				}
-			} catch (Throwable t) {
-				t.printStackTrace();
-				System.exit(1);
-			}
 		}
 
 		@Override
