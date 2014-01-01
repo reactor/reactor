@@ -69,6 +69,20 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 		);
 	}
 
+    public ThreadPoolExecutorDispatcher(ExecutorService executor, int backlog) {
+        this.executor = executor;
+        this.readyTasks = new LoadingPool<ThreadPoolTask>(
+                new Supplier<ThreadPoolTask>() {
+                    @Override
+                    public ThreadPoolTask get() {
+                        return new ThreadPoolTask();
+                    }
+                },
+                backlog,
+                200l
+        );
+    }
+
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		shutdown();
