@@ -52,25 +52,38 @@ public final class BlockingQueueDispatcher extends SingleThreadDispatcher {
 	 * @param backlog The backlog size
 	 */
 	public BlockingQueueDispatcher(String name, int backlog) {
-		super(backlog);
-		this.readyTasks = new LoadingPool<Task>(
-				new Supplier<Task>() {
-					@Override
-					public Task get() {
-						return new BlockingQueueTask();
-					}
-				},
-				backlog,
-				150l
-		);
-
-		String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
-		this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
-		this.taskExecutor.setDaemon(true);
-		this.taskExecutor.setPriority(Thread.NORM_PRIORITY);
-		this.taskExecutor.setContextClassLoader(getContext());
-		this.taskExecutor.start();
+		this(name, backlog, null);
 	}
+
+    /**
+     * Creates a new {@literal BlockingQueueDispatcher} with the given {@literal name} and {@literal backlog}.
+     *
+     * @param name    The name
+     * @param backlog The backlog size
+     * @param uncaughtExceptionHandler
+     */
+    public BlockingQueueDispatcher(String name, int backlog, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+        super(backlog);
+        this.readyTasks = new LoadingPool<Task>(
+                new Supplier<Task>() {
+                    @Override
+                    public Task get() {
+                        return new BlockingQueueTask();
+                    }
+                },
+                backlog,
+                150l
+        );
+
+        String threadName = name + "-dispatcher-" + INSTANCE_COUNT.incrementAndGet();
+        this.taskExecutor = new Thread(threadGroup, new TaskExecutingRunnable(), threadName);
+        this.taskExecutor.setDaemon(true);
+        this.taskExecutor.setPriority(Thread.NORM_PRIORITY);
+        this.taskExecutor.setContextClassLoader(getContext());
+        if (uncaughtExceptionHandler!=null)
+            this.taskExecutor.setUncaughtExceptionHandler(uncaughtExceptionHandler);
+        this.taskExecutor.start();
+    }
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
