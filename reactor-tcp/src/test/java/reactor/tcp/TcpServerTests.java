@@ -217,7 +217,7 @@ public class TcpServerTests {
 					}
 				});
 
-		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
