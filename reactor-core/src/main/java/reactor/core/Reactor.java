@@ -27,7 +27,9 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.EventRouter;
-import reactor.event.selector.*;
+import reactor.event.selector.ClassSelector;
+import reactor.event.selector.Selector;
+import reactor.event.selector.Selectors;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -65,7 +67,7 @@ public class Reactor implements Observable {
 	private final Selector defaultSelector = Selectors.anonymous();
 	private final Object   defaultKey      = defaultSelector.getObject();
 
-	private final Consumer<Throwable> errorHandler   = new Consumer<Throwable>() {
+	private final Consumer<Throwable> errorHandler = new Consumer<Throwable>() {
 		@Override
 		public void accept(Throwable t) {
 			Class<? extends Throwable> type = t.getClass();
@@ -143,19 +145,17 @@ public class Reactor implements Observable {
 				}
 			}
 		});
-		if(LoggerFactory.getLogger(Reactor.class).isDebugEnabled()) {
-			this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
-				Logger log;
+		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
+			Logger log;
 
-				@Override
-				public void accept(Event<Throwable> ev) {
-					if(null == log) {
-						log = LoggerFactory.getLogger(Reactor.class);
-					}
-					log.error(ev.getData().getMessage(), ev.getData());
+			@Override
+			public void accept(Event<Throwable> ev) {
+				if(null == log) {
+					log = LoggerFactory.getLogger(Reactor.class);
 				}
-			});
-		}
+				log.error(ev.getData().getMessage(), ev.getData());
+			}
+		});
 	}
 
 	/**
