@@ -236,6 +236,14 @@ project('reactor-core') {
 	ext.bundleImportPackages = [
 			'net.openhft.chronicle;resolution:=optional',
 			'net.openhft.chronicle.tools;resolution:=optional',
+			'com.fasterxml.jackson.core;resolution:=optional',
+			'com.fasterxml.jackson.databind;resolution:=optional',
+			'com.fasterxml.jackson.databind.node;resolution:=optional',
+			'com.fasterxml.jackson.databind.type;resolution:=optional',
+			'com.jayway.jsonpath;resolution:=optional',
+			'com.jayway.jsonpath.internal;resolution:=optional',
+			'com.jayway.jsonpath.spi;resolution:=optional',
+			'org.slf4j;version="[1.5.4,2)"',
 			'*'
 	]
 
