@@ -11,11 +11,12 @@ import java.util.concurrent.TimeUnit
  */
 class HashWheelTimerSpec extends Specification {
 
+	def period = 50
+
   def "HashWheelTimer can schedule recurring tasks"() {
 
-    given:
+	  given:
       "a new timer"
-      def period = 50
       def timer = new HashWheelTimer()
       def latch = new CountDownLatch(10)
 
