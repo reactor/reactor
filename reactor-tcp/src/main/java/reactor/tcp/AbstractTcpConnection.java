@@ -196,7 +196,7 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	}
 
 	/**
-	 * Perfoming necessary decoding on the data and notify the internal {@link Reactor} of any results.
+	 * Performing necessary decoding on the data and notify the internal {@link Reactor} of any results.
 	 *
 	 * @param data The data to decode.
 	 * @return {@literal true} if any more data is remaining to be consumed in the given {@link Buffer}, {@literal false}
