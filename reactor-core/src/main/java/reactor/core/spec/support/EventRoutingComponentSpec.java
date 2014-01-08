@@ -22,7 +22,9 @@ import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.routing.*;
+import reactor.event.selector.Selector;
 import reactor.filter.*;
+import reactor.function.Consumer;
 import reactor.util.Assert;
 
 import java.util.List;
@@ -48,6 +50,9 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	private EventRouter          eventRouter;
 	private ConsumerInvoker      consumerInvoker;
 	private Filter               eventFilter;
+	private Consumer<Throwable>  dispatchErrorHandler;
+	private Consumer<Throwable>  uncaughtErrorHandler;
+	private Selector             defaultSelector;
 	private boolean traceEventPath = false;
 
 	/**
@@ -157,6 +162,48 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	/**
+	 * Configures the component's error handler for any errors occurring during dispatch (e.g. Exceptions resulting from
+	 * calling a {@code Consumer#accept} method.
+	 *
+	 * @param dispatchErrorHandler
+	 * 		the error handler for dispatching errors
+	 *
+	 * @return {@code this}
+	 */
+	public SPEC dispatchErrorHandler(Consumer<Throwable> dispatchErrorHandler) {
+		this.dispatchErrorHandler = dispatchErrorHandler;
+		return (SPEC)this;
+	}
+
+	/**
+	 * Configures the component's uncaught error handler for any errors that get reported into this component but
+	 * aren't a
+	 * direct result of dispatching (e.g. errors that originate from another component).
+	 *
+	 * @param uncaughtErrorHandler
+	 * 		the error handler for uncaught errors
+	 *
+	 * @return {@code this}
+	 */
+	public SPEC uncaughtErrorHandler(Consumer<Throwable> uncaughtErrorHandler) {
+		this.uncaughtErrorHandler = uncaughtErrorHandler;
+		return (SPEC)this;
+	}
+
+	/**
+	 * Configures the component's default {@code Selector}.
+	 *
+	 * @param defaultSelector
+	 * 		the {@code Selector} to use as a default
+	 *
+	 * @return {@code this}
+	 */
+	public SPEC defaultSelector(Selector defaultSelector) {
+		this.defaultSelector = defaultSelector;
+		return (SPEC)this;
+	}
+
+	/**
 	 * Configures this component to provide event tracing when dispatching and routing an event.
 	 *
 	 * @return {@code this}
@@ -189,7 +236,11 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		if(traceEventPath) {
 			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
 		}
-		return new Reactor(dispatcher, eventRouter != null ? eventRouter : createEventRouter());
+		return new Reactor(dispatcher,
+		                   (eventRouter != null ? eventRouter : createEventRouter()),
+		                   defaultSelector,
+		                   dispatchErrorHandler,
+		                   uncaughtErrorHandler);
 	}
 
 	private EventRouter createEventRouter() {
