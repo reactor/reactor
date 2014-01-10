@@ -35,38 +35,22 @@ class StreamsSpec extends Specification {
   def 'A deferred Stream with an initial value makes that value available immediately'() {
     given:
       'a composable with an initial value'
-      Deferred d = Streams.defer('test').synchronousDispatcher().get()
+      Stream stream = Streams.defer('test').synchronousDispatcher().get()
 
     when:
       'the value is retrieved'
-      def value = d.compose().tap()
-      d.compose().flush()
+      def value = stream.tap()
+	    stream.flush()
 
     then:
       'it is available'
       value.get() == 'test'
   }
 
-  def 'A deferred Stream with an initial value passes the value to a consumer'() {
-    given:
-      'a composable with an initial value'
-      def values = []
-      Deferred d = Streams.defer(1).synchronousDispatcher().get()
-      d.compose().consume(consumer { values << it }).flush()
-
-    when:
-      'a value is accepted'
-      d.accept 2
-
-    then:
-      'the consumer has been passed the init value'
-      values == [1, 2]
-  }
-
   def 'A Stream with a known set of values makes those values available immediately'() {
     given:
       'a composable with values 1 to 5 inclusive'
-      Stream s = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get().compose()
+      Stream s = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
 
     when:
       'the first value is retrieved'
@@ -76,7 +60,6 @@ class StreamsSpec extends Specification {
       'the last value is retrieved'
       def last = s.last().tap()
       s.flush()
-	  println s.debug()
 
     then:
       'first and last'
@@ -87,13 +70,12 @@ class StreamsSpec extends Specification {
   def "A Stream's initial values are not passed to consumers but subsequent values are"() {
     given:
       'a composable with values 1 to 5 inclusive'
-      Deferred d = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
-      Composable composable = d.compose()
+      Stream stream = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
 
     when:
       'a Consumer is registered'
       def values = []
-      composable.consume(consumer { values << it })
+      stream.consume(consumer { values << it })
 
     then:
       'it is not called with the initial values'
@@ -101,20 +83,11 @@ class StreamsSpec extends Specification {
 
     when:
       'flush is called'
-      composable.flush()
+      stream.flush()
 
     then:
       'the initial values are passed'
       values == [1, 2, 3, 4, 5]
-
-    when:
-      'a subsequent value is accepted'
-      d.accept(6)
-
-    then:
-      'it passed to the consumer'
-      values == [1, 2, 3, 4, 5, 6]
-
 
   }
 
@@ -204,30 +177,6 @@ class StreamsSpec extends Specification {
       error instanceof Exception
   }
 
-  def 'When the expected accept count is exceeded, last is updated with each new value'() {
-    given:
-      'a composable with a known number of values'
-      Deferred d = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
-      Stream composable = d.compose()
-
-    when:
-      'last is retrieved'
-      def last = composable.last().tap()
-      composable.flush()
-
-    then:
-      'its value is the last of the initial values'
-      last.get() == 5
-
-    when:
-      'another value is accepted'
-      d.accept(6)
-
-    then:
-      'the value of last is not updated'
-      last.get() == 5
-  }
-
   def 'When the accepted event is Iterable, split can iterate over values'() {
     given:
       'a composable with a known number of values'
@@ -310,7 +259,7 @@ class StreamsSpec extends Specification {
     given:
       'a source composable with a mapMany function'
       Deferred source = Streams.<Integer>defer().get()
-      Stream<Integer> mapped = source.compose().mapMany(function { Streams.<Integer>defer(it * 2).get().compose() })
+      Stream<Integer> mapped = source.compose().mapMany(function { Streams.<Integer>defer(it * 2).get() })
 
     when:
       'the source accepts a value'
@@ -394,11 +343,11 @@ class StreamsSpec extends Specification {
   def "A known set of values can be reduced"() {
     given:
       'a composable with a known set of values'
-      Deferred source = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
+      Stream source = Streams.defer([1, 2, 3, 4, 5]).synchronousDispatcher().get()
 
     when:
       'a reduce function is registered'
-      def reduced = source.compose().reduce(new Reduction())
+      def reduced = source.reduce(new Reduction())
       def value = reduced.tap()
       reduced.flush()
 
@@ -413,7 +362,6 @@ class StreamsSpec extends Specification {
       Stream reduced = Streams.defer([1, 2, 3, 4, 5]).
           synchronousDispatcher().
           get().
-          compose().
           reduce(new Reduction())
 
     when:
@@ -726,15 +674,14 @@ class StreamsSpec extends Specification {
   def 'An observable can consume values from a Stream with a known set of values'() {
     given:
       'a Stream with 3 values'
-      Deferred d = Streams.defer([1, 2, 3]).synchronousDispatcher().get()
-      Stream composable = d.compose()
+      Stream stream = Streams.defer([1, 2, 3]).synchronousDispatcher().get()
       Observable observable = Mock(Observable)
 
     when:
-      'a composable consumer is registerd'
-      composable.consume('key', observable)
+      'a stream consumer is registerd'
+	    stream.consume('key', observable)
 
-      composable.flush()
+	    stream.flush()
 
     then:
       'the observable is notified of the values'
