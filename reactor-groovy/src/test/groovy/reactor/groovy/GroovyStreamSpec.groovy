@@ -47,12 +47,12 @@ class GroovyStreamSpec extends Specification {
 	def "Compose from multiple values"() {
 		when:
 			'Defer a composition'
-			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			Stream s = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation'
 			int sum = 0
-			Stream d = c | { Integer.parseInt it } | { sum += it; sum }
+			Stream d = s | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
 			d.flush()
@@ -207,7 +207,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'Defer a composition'
-			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			Stream c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation and call an explicit reactor'

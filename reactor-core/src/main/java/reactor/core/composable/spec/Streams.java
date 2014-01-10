@@ -123,8 +123,8 @@ public abstract class Streams {
 	 * @return a {@link DeferredStreamSpec} based on the given value
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> DeferredStreamSpec<T> defer(T value) {
-		return defer(Arrays.asList(value));
+	public static <T> StreamSpec<T> defer(T value) {
+		return  new StreamSpec<T>().each(Arrays.asList(value)).batchSize(1);
 	}
 
 	/**
@@ -138,11 +138,11 @@ public abstract class Streams {
 	 * @param <T>
 	 * 		type of the values
 	 *
-	 * @return a {@link DeferredStreamSpec} based on the given values
+	 * @return a {@link StreamSpec} based on the given values
 	 */
-	public static <T> DeferredStreamSpec<T> defer(Iterable<T> values) {
+	public static <T> StreamSpec<T> defer(Iterable<T> values) {
 		int batchSize = (values instanceof Collection ? ((Collection<?>)values).size() : -1);
-		return new DeferredStreamSpec<T>().each(values).batchSize(batchSize);
+		return new StreamSpec<T>().each(values).batchSize(batchSize);
 	}
 
 }
