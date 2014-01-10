@@ -1451,7 +1451,8 @@ public class Buffer implements Comparable<Buffer>,
 		}
 
 		private void syncPos() {
-			Buffer.this.buffer.position(buffer.position());
+			int oldPos = Buffer.this.buffer.position();
+			Buffer.this.buffer.position(buffer.position() + oldPos);
 		}
 	}
 
