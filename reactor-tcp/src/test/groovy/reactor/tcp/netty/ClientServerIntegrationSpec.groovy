@@ -18,6 +18,7 @@ package reactor.tcp.netty
 
 import reactor.core.Environment
 import reactor.function.Consumer
+import reactor.io.encoding.LengthFieldCodec
 import reactor.io.encoding.json.JsonCodec
 import reactor.tcp.TcpConnection
 import reactor.tcp.spec.TcpClientSpec
@@ -48,10 +49,12 @@ class ClientServerIntegrationSpec extends Specification {
 
         def consumerMock = Mock(Consumer) { data.size() * accept(_) }
 
+        def codec = new LengthFieldCodec(new JsonCodec(Pojo))
+
         def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer)
                 .env(env)
                 .listen(port)
-                .codec(new JsonCodec<Pojo, Pojo>(Pojo))
+                .codec(codec)
                 .consume({ conn ->
                     conn.in().consume({ pojo ->
                         dataLatch.countDown()
@@ -62,7 +65,7 @@ class ClientServerIntegrationSpec extends Specification {
 
         def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient)
                 .env(env)
-                .codec(new JsonCodec<Pojo, Pojo>(Pojo))
+                .codec(codec)
                 .connect("localhost", port)
                 .get()
 
@@ -77,7 +80,7 @@ class ClientServerIntegrationSpec extends Specification {
 
         and: "pojo is written"
         data.each { Pojo item -> connection.sendAndForget(item) }
-        [dataLatch, startLatch].each {it.await(5, TimeUnit.SECONDS)}
+        [dataLatch, startLatch].each {it.await(50, TimeUnit.SECONDS)}
 
         then: "everything went fine"
         startLatch.count == 0
@@ -96,7 +99,7 @@ class ClientServerIntegrationSpec extends Specification {
                     [new Pojo('John')],
                     [new Pojo('John'), new Pojo("Jane")],
                     [new Pojo('John'), new Pojo("Jane"), new Pojo("Blah")],
-                    [1..10].collect {new Pojo("Value_$it")}.toList(),
+                    (1..10).collect {new Pojo("Value_$it")}.toList(),
             ]
     }
 
@@ -109,18 +112,20 @@ class ClientServerIntegrationSpec extends Specification {
 
         final int port = SocketUtils.findAvailableTcpPort()
 
-        def consumerMock = Mock(Consumer) { 1 * accept(_) }
+        def consumerMock = Mock(Consumer) { data.size() * accept(_) }
+
+        def codec = new LengthFieldCodec(new JsonCodec(Pojo))
 
         def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer)
                 .env(env)
                 .listen(port)
-                .codec(new JsonCodec<Pojo, Pojo>(Pojo))
+                .codec(codec)
                 .consume({ conn -> data.each{pojo -> conn.out().accept(pojo)}} as Consumer)
                 .get()
 
         def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient)
                 .env(env)
-                .codec(new JsonCodec<Pojo, Pojo>(Pojo))
+                .codec(codec)
                 .connect("localhost", port)
                 .get()
 
@@ -130,7 +135,10 @@ class ClientServerIntegrationSpec extends Specification {
 
         and: "connection is established"
         client.open().consume({ TcpConnection conn ->
-            conn.consume({ Pojo pojo -> consumerMock.accept(pojo); dataLatch.countDown()} as Consumer)
+            conn.consume({ Pojo pojo ->
+                dataLatch.countDown()
+                consumerMock.accept(pojo)
+            } as Consumer)
             startLatch.countDown()
         } as Consumer).await()
 
@@ -154,7 +162,7 @@ class ClientServerIntegrationSpec extends Specification {
                 [new Pojo('John')],
                 [new Pojo('John'), new Pojo("Jane")],
                 [new Pojo('John'), new Pojo("Jane"), new Pojo("Blah")],
-                [1..10].collect {new Pojo("Value_$it")}.toList(),
+                (1..10).collect {new Pojo("Value_$it")}.toList(),
         ]
     }
 
