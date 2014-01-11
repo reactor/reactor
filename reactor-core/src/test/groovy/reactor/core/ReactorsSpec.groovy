@@ -183,7 +183,7 @@ class ReactorsSpec extends Specification {
 		when:
 			"a consumer is assigned based on a type selector"
 			reactor.on h
-			reactor.notify new Event<String>('Hello World!')
+			reactor.notify Event.wrap('Hello World!')
 
 		then:
 			"the data is updated"
@@ -205,7 +205,7 @@ class ReactorsSpec extends Specification {
 		when:
 			"an event is dispatched to the global reactor"
 			r.on($('say-hello'), a as Consumer<Event<String>>)
-			r.notify('say-hello', new Event<String>('Hello World!'))
+			r.notify('say-hello', Event.wrap('Hello World!'))
 
 		then:
 			"the data is updated"
@@ -360,7 +360,7 @@ class ReactorsSpec extends Specification {
 
 		then:
 			"both consumers are notified"
-			r.notify 'test', new Event('foo')
+			r.notify 'test', Event.wrap('foo')
 			d1 && d2
 	}
 
@@ -453,7 +453,7 @@ class ReactorsSpec extends Specification {
 
 		and:
 			"the consumer is invoked with an error consumer bound event"
-			r.notify(new Event(null, null, consumer { Exception ex -> e = ex; latch.countDown() }))
+			r.notify(Event.wrap(null, null, null, consumer { Exception ex -> e = ex; latch.countDown() }))
 
 		then:
 			"consumer has been invoked and e is an exception but x is not set"

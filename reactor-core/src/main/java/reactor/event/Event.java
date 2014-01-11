@@ -73,7 +73,7 @@ public class Event<T> implements Serializable, Poolable {
 	}
 
   public static <T> Event<T> lease(T obj) {
-    Class t = obj.getClass();
+    Class t = (obj != null) ? obj.getClass() : Void.class;
     if (!eventPools.containsKey(t)) {
       eventPools.put(t, new EventPool<T>(ObjectPool.DEFAULT_INITIAL_POOL_SIZE));
     }
@@ -113,6 +113,16 @@ public class Event<T> implements Serializable, Poolable {
     Event<T> e = lease(obj);
     e.setData(obj);
     e.setReplyTo(replyToKey);
+    return e;
+  }
+
+  public static <T> Event<T> wrap(T obj, Object replyToKey,
+                                  Headers headers, Consumer<Throwable> errorConsumer) {
+    Event<T> e = lease(obj);
+    e.setData(obj);
+    e.replyTo = replyToKey;
+    e.headers = headers;
+    e.errorConsumer = errorConsumer;
     return e;
   }
 
