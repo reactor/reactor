@@ -167,6 +167,7 @@ public class Reactor implements Observable {
 					if(Consumer.class.isInstance(consumer)) {
 						try {
 							((Consumer)consumer).accept(data);
+              event.free();
 						} catch(Throwable t) {
 							Reactor.this.notify(t.getClass(), Event.wrap(t));
 						}

@@ -279,11 +279,12 @@ public class Event<T> implements Serializable, Poolable {
 
   @Override
   public void free() {
+    Class t = (data != null) ? data.getClass() : Void.class;
     this.data = null;
     this.headers = null;
     this.replyTo = null;
     this.key = null;
-    eventPools.get(this.data.getClass()).deallocate(poolPosition);
+    eventPools.get(t).deallocate(poolPosition);
   }
 
   /**
@@ -501,12 +502,14 @@ public class Event<T> implements Serializable, Poolable {
 
   public static class EventPool<T> extends ObjectPool<Event<T>> {
 
+    int allocatedSoFar = 0;
     public EventPool(int prealloc) {
       super(prealloc);
     }
 
     @Override
     public Event<T> newInstance(int poolPosition) {
+      allocatedSoFar++;
       return new Event<T>(null, null, null, poolPosition);
     }
   }
