@@ -16,6 +16,8 @@
 
 package reactor.event;
 
+import reactor.core.ObjectPool;
+import reactor.core.Poolable;
 import reactor.function.Consumer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -35,32 +37,23 @@ import java.util.*;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Event<T> implements Serializable {
+public class Event<T> implements Serializable, Poolable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 
+  private volatile int     poolPosition;
 	private volatile UUID    id;
-	private volatile Headers headers;
+  private volatile Headers headers;
 	private volatile Object  replyTo;
 	private volatile Object  key;
 	private volatile T       data;
 
-	private final transient Consumer<Throwable> errorConsumer;
+	private transient Consumer<Throwable> errorConsumer;
 
-	/**
-	 * Creates a new Event with the given {@code headers} and {@code data}.
-	 *
-	 * @param headers
-	 * 		The headers
-	 * @param data
-	 * 		The data
-	 */
-	public Event(Headers headers, T data) {
-		this.headers = headers;
-		this.data = data;
-		this.errorConsumer = null;
-	}
+  protected Event(Class<T> eventType, Headers headers,
+                  T data, Consumer<Throwable> errorConsumer, int poolPosition) {
 
+  }
 	/**
 	 * Creates a new Event with the given {@code headers}, {@code data} and
 	 * {@link reactor.function.Consumer<java.lang.Throwable>}.
@@ -72,25 +65,24 @@ public class Event<T> implements Serializable {
 	 * @param errorConsumer
 	 * 		error consumer callback
 	 */
-	public Event(Headers headers, T data, Consumer<Throwable> errorConsumer) {
+	protected Event(Headers headers, T data, Consumer<Throwable> errorConsumer, int poolPosition) {
 		this.headers = headers;
 		this.data = data;
 		this.errorConsumer = errorConsumer;
+    this.poolPosition = poolPosition;
 	}
 
-	/**
-	 * Creates a new Event with the given {@code data}. The event will have
-	 * empty headers.
-	 *
-	 * @param data
-	 * 		The data
-	 */
-	public Event(T data) {
-		this.data = data;
-		this.errorConsumer = null;
-	}
+  public static <T> Event<T> lease(T obj) {
+    Class t = obj.getClass();
+    if (!eventPools.containsKey(t)) {
+      eventPools.put(t, new EventPool<T>(ObjectPool.DEFAULT_INITIAL_POOL_SIZE));
+    }
 
-	/**
+    EventPool<T> ep = eventPools.get(t);
+    return ep.allocate();
+  }
+
+  /**
 	 * Wrap the given object with an {@link Event}.
 	 *
 	 * @param obj
@@ -99,8 +91,10 @@ public class Event<T> implements Serializable {
 	 * @return The new {@link Event}.
 	 */
 	public static <T> Event<T> wrap(T obj) {
-		return new Event<T>(obj);
-	}
+    Event<T> e = lease(obj);
+    e.setData(obj);
+    return e;
+  }
 
 	/**
 	 * Wrap the given object with an {@link Event} and set the {@link Event#getReplyTo() replyTo} to the given {@code
@@ -116,8 +110,11 @@ public class Event<T> implements Serializable {
 	 * @return The new {@link Event}.
 	 */
 	public static <T> Event<T> wrap(T obj, Object replyToKey) {
-		return new Event<T>(obj).setReplyTo(replyToKey);
-	}
+    Event<T> e = lease(obj);
+    e.setData(obj);
+    e.setReplyTo(replyToKey);
+    return e;
+  }
 
 	/**
 	 * Get the globally-unique id of this event.
@@ -138,7 +135,7 @@ public class Event<T> implements Serializable {
 	 */
 	public synchronized Headers getHeaders() {
 		if(null == headers) {
-			headers = new Headers();
+      headers = new Headers();
 		}
 		return headers;
 	}
@@ -233,12 +230,18 @@ public class Event<T> implements Serializable {
 	 *
 	 * @return {@literal event copy}
 	 */
-	public <E> Event<E> copy(E data) {
+	public <T> Event<T> copy(T data) {
+    Event<T> e = lease(data);
+
+    e.setData(data);
+    e.headers = headers;
+    e.errorConsumer = errorConsumer;
+
 		if(null != replyTo) {
-			return new Event<E>(headers, data, errorConsumer).setReplyTo(replyTo);
-		} else {
-			return new Event<E>(headers, data, errorConsumer);
-		}
+      e.setReplyTo(replyTo);
+    }
+
+    return e;
 	}
 
 	/**
@@ -264,7 +267,16 @@ public class Event<T> implements Serializable {
 				'}';
 	}
 
-	/**
+  @Override
+  public void free() {
+    this.data = null;
+    this.headers = null;
+    this.replyTo = null;
+    this.key = null;
+    eventPools.get(this.data.getClass()).deallocate(poolPosition);
+  }
+
+  /**
 	 * Headers are a Map-like structure of name-value pairs. Header names are case-insensitive,
 	 * as determined by {@link String#CASE_INSENSITIVE_ORDER}. A header can be removed by
 	 * setting its value to {@code null}.
@@ -474,5 +486,19 @@ public class Event<T> implements Serializable {
 			}
 		}
 	}
+
+  public static HashMap<Class, EventPool> eventPools = new HashMap<Class, EventPool>();
+
+  public static class EventPool<T> extends ObjectPool<Event<T>> {
+
+    public EventPool(int prealloc) {
+      super(prealloc);
+    }
+
+    @Override
+    public Event<T> newInstance(int poolPosition) {
+      return new Event<T>(null, null, null, poolPosition);
+    }
+  }
 
 }

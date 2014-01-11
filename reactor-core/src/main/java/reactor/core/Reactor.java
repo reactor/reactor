@@ -294,7 +294,7 @@ public class Reactor implements Observable {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, new Event<Void>(null), null);
+		return notify(key, Event.wrap(null), null);
 	}
 
 	@Override
@@ -382,7 +382,7 @@ public class Reactor implements Observable {
 		private ReplyToEvent(Headers headers, T data, Object replyTo,
 		                     Observable replyToObservable,
 		                     Consumer<Throwable> errorConsumer) {
-			super(headers, data, errorConsumer);
+			super(headers, data, errorConsumer, 0); //TODO: FIXME
 			setReplyTo(replyTo);
 			this.replyToObservable = replyToObservable;
 		}
@@ -420,7 +420,7 @@ public class Reactor implements Observable {
 
 				Event<?> replyEv;
 				if(null == reply) {
-					replyEv = new Event<Void>(null);
+          replyEv = Event.wrap(null);
 				} else {
 					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
 				}
