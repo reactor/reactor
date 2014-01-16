@@ -19,7 +19,7 @@ class KryoCodecSpec extends Specification {
 	def "properly serializes and deserializes objects"() {
 
 		given: "a Kryo codec and a Buffer"
-			def codec = new KryoCodec(kryo)
+			def codec = new KryoCodec<RichObject, RichObject>(kryo, true)
 			RichObject obj = new RichObject("first", 0.5f, 100l)
 			Buffer buffer
 

@@ -21,7 +21,7 @@ class ProtobufCodecSpec extends Specification {
 	def "properly serializes and deserializes objects"() {
 
 		given: "a ProtobufCodec and a Buffer"
-			def codec = new ProtobufCodec()
+			def codec = new ProtobufCodec<TestObjects.RichObject, TestObjects.RichObject>()
 			Buffer buffer
 
 		when: "an object is serialized"

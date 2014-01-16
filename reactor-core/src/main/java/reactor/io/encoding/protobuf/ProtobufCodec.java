@@ -12,32 +12,37 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @author Jon Brisbin
  */
-public class ProtobufCodec extends SerializationCodec<Map<Class<?>, Message>> {
+public class ProtobufCodec<IN, OUT> extends SerializationCodec<Map<Class<?>, Message>, IN, OUT> {
 
 	public ProtobufCodec() {
-		super(new ConcurrentHashMap<Class<?>, Message>());
+		this(true);
+	}
+
+	public ProtobufCodec(boolean lengthFieldFraming) {
+		super(new ConcurrentHashMap<Class<?>, Message>(), lengthFieldFraming);
 	}
 
 	@Override
-	protected Function<byte[], Object> deserializer(final Map<Class<?>, Message> messages,
-	                                                final Class<?> type,
-	                                                final Consumer<Object> next) {
+	protected Function<byte[], IN> deserializer(final Map<Class<?>, Message> messages,
+	                                            final Class<IN> type,
+	                                            final Consumer<IN> next) {
 		Assert.isAssignable(Message.class,
 		                    type,
 		                    "Can only deserialize Protobuf messages. " +
 				                    type.getName() +
 				                    " is not an instance of " +
 				                    Message.class.getName());
-		return new Function<byte[], Object>() {
+		return new Function<byte[], IN>() {
+			@SuppressWarnings("unchecked")
 			@Override
-			public Object apply(byte[] bytes) {
+			public IN apply(byte[] bytes) {
 				try {
 					Message msg = messages.get(type);
 					if(null == msg) {
 						msg = (Message)type.getMethod("getDefaultInstance").invoke(null);
 						messages.put(type, msg);
 					}
-					Object obj = msg.newBuilderForType().mergeFrom(bytes).build();
+					IN obj = (IN)msg.newBuilderForType().mergeFrom(bytes).build();
 					if(null != next) {
 						next.accept(obj);
 						return null;
@@ -52,8 +57,8 @@ public class ProtobufCodec extends SerializationCodec<Map<Class<?>, Message>> {
 	}
 
 	@Override
-	protected Function<Object, byte[]> serializer(final Map<Class<?>, Message> messages) {
-		return new Function<Object, byte[]>() {
+	protected Function<OUT, byte[]> serializer(final Map<Class<?>, Message> messages) {
+		return new Function<OUT, byte[]>() {
 			@Override
 			public byte[] apply(Object o) {
 				Assert.isInstanceOf(Message.class,

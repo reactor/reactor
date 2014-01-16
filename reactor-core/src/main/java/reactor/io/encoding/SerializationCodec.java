@@ -11,35 +11,57 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * Abstract base class for {@code Codec Codecs} that perform serialization of objects. Optionally handles writing class
+ * names so that an object that is serialized can be properly instantiated with full type information on the other end.
+ *
  * @author Jon Brisbin
  */
-public abstract class SerializationCodec<E> implements Codec<Buffer, Object, Object> {
+public abstract class SerializationCodec<E, IN, OUT> implements Codec<Buffer, IN, OUT> {
 
-	private final Logger                log   = LoggerFactory.getLogger(getClass());
-	private final Map<String, Class<?>> types = new ConcurrentHashMap<String, Class<?>>();
-	private final E engine;
+	private final Logger                 log   = LoggerFactory.getLogger(getClass());
+	private final Map<String, Class<IN>> types = new ConcurrentHashMap<String, Class<IN>>();
+	private final E       engine;
+	private final boolean lengthFieldFraming;
 
-	protected SerializationCodec(E engine) {
+	/**
+	 * Create a {@code SerializationCodec} using the given engine and specifying whether or not to prepend a length field
+	 * to frame the message.
+	 *
+	 * @param engine
+	 * 		the engine which will perform the serialization
+	 * @param lengthFieldFraming
+	 * 		{@code true} to prepend a length field, or {@code false} to skip
+	 */
+	protected SerializationCodec(E engine, boolean lengthFieldFraming) {
 		this.engine = engine;
+		this.lengthFieldFraming = lengthFieldFraming;
 	}
 
 	@Override
-	public Function<Buffer, Object> decoder(Consumer<Object> next) {
-		return new LengthFieldCodec<Object, Object>(new DelegateCodec()).decoder(next);
+	public Function<Buffer, IN> decoder(Consumer<IN> next) {
+		if(lengthFieldFraming) {
+			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).decoder(next);
+		} else {
+			return new DelegateCodec().decoder(next);
+		}
 	}
 
 	@Override
-	public Function<Object, Buffer> encoder() {
-		return new LengthFieldCodec<Object, Object>(new DelegateCodec()).encoder();
+	public Function<OUT, Buffer> encoder() {
+		if(lengthFieldFraming) {
+			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).encoder();
+		} else {
+			return new DelegateCodec().encoder();
+		}
 	}
 
 	protected E getEngine() {
 		return engine;
 	}
 
-	protected abstract Function<byte[], Object> deserializer(E engine, Class<?> type, Consumer<Object> next);
+	protected abstract Function<byte[], IN> deserializer(E engine, Class<IN> type, Consumer<IN> next);
 
-	protected abstract Function<Object, byte[]> serializer(E engine);
+	protected abstract Function<OUT, byte[]> serializer(E engine);
 
 	private String readTypeName(Buffer buffer) {
 		int len = buffer.readInt();
@@ -62,16 +84,17 @@ public abstract class SerializationCodec<E> implements Codec<Buffer, Object, Obj
 
 	}
 
-	public Class<?> readType(Buffer buffer) {
+	public Class<IN> readType(Buffer buffer) {
 		String typeName = readTypeName(buffer);
 		return getType(typeName);
 	}
 
-	private Class<?> getType(String name) {
-		Class<?> type = types.get(name);
+	@SuppressWarnings("unchecked")
+	private Class<IN> getType(String name) {
+		Class<IN> type = types.get(name);
 		if(null == type) {
 			try {
-				type = Class.forName(name);
+				type = (Class<IN>)Class.forName(name);
 			} catch(ClassNotFoundException e) {
 				throw new IllegalArgumentException(e.getMessage(), e);
 			}
@@ -80,12 +103,12 @@ public abstract class SerializationCodec<E> implements Codec<Buffer, Object, Obj
 		return type;
 	}
 
-	private class DelegateCodec implements Codec<Buffer, Object, Object> {
+	private class DelegateCodec implements Codec<Buffer, IN, OUT> {
 		@Override
-		public Function<Buffer, Object> decoder(final Consumer<Object> next) {
-			return new Function<Buffer, Object>() {
+		public Function<Buffer, IN> decoder(final Consumer<IN> next) {
+			return new Function<Buffer, IN>() {
 				@Override
-				public Object apply(Buffer buffer) {
+				public IN apply(Buffer buffer) {
 					try {
 						return deserializer(engine, readType(buffer), next).apply(buffer.asBytes());
 					} catch(RuntimeException e) {
@@ -99,11 +122,11 @@ public abstract class SerializationCodec<E> implements Codec<Buffer, Object, Obj
 		}
 
 		@Override
-		public Function<Object, Buffer> encoder() {
-			final Function<Object, byte[]> fn = serializer(engine);
-			return new Function<Object, Buffer>() {
+		public Function<OUT, Buffer> encoder() {
+			final Function<OUT, byte[]> fn = serializer(engine);
+			return new Function<OUT, Buffer>() {
 				@Override
-				public Buffer apply(Object o) {
+				public Buffer apply(OUT o) {
 					try {
 						return writeTypeName(o.getClass(), fn.apply(o));
 					} catch(RuntimeException e) {

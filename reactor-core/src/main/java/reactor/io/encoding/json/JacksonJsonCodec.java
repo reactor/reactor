@@ -11,21 +11,25 @@ import java.io.IOException;
 /**
  * @author Jon Brisbin
  */
-public class JacksonJsonCodec extends SerializationCodec<ObjectMapper> {
+public class JacksonJsonCodec<IN, OUT> extends SerializationCodec<ObjectMapper, IN, OUT> {
+
+	public JacksonJsonCodec() {
+		this(new ObjectMapper());
+	}
 
 	public JacksonJsonCodec(ObjectMapper engine) {
-		super(engine);
+		super(engine, true);
 	}
 
 	@Override
-	protected Function<byte[], Object> deserializer(final ObjectMapper engine,
-	                                                final Class<?> type,
-	                                                final Consumer<Object> next) {
-		return new Function<byte[], Object>() {
+	protected Function<byte[], IN> deserializer(final ObjectMapper engine,
+	                                            final Class<IN> type,
+	                                            final Consumer<IN> next) {
+		return new Function<byte[], IN>() {
 			@Override
-			public Object apply(byte[] bytes) {
+			public IN apply(byte[] bytes) {
 				try {
-					Object o = engine.readValue(bytes, type);
+					IN o = engine.readValue(bytes, type);
 					if(null != next) {
 						next.accept(o);
 						return null;
@@ -40,10 +44,10 @@ public class JacksonJsonCodec extends SerializationCodec<ObjectMapper> {
 	}
 
 	@Override
-	protected Function<Object, byte[]> serializer(final ObjectMapper engine) {
-		return new Function<Object, byte[]>() {
+	protected Function<OUT, byte[]> serializer(final ObjectMapper engine) {
+		return new Function<OUT, byte[]>() {
 			@Override
-			public byte[] apply(Object o) {
+			public byte[] apply(OUT o) {
 				try {
 					return engine.writeValueAsBytes(o);
 				} catch(JsonProcessingException e) {

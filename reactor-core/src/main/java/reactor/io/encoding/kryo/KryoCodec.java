@@ -11,20 +11,24 @@ import reactor.io.encoding.SerializationCodec;
 /**
  * @author Jon Brisbin
  */
-public class KryoCodec extends SerializationCodec<Kryo> {
+public class KryoCodec<IN, OUT> extends SerializationCodec<Kryo, IN, OUT> {
 
-	public KryoCodec(Kryo engine) {
-		super(engine);
+	public KryoCodec() {
+		super(new Kryo(), true);
+	}
+
+	public KryoCodec(Kryo engine, boolean lengthFieldFraming) {
+		super(engine, lengthFieldFraming);
 	}
 
 	@Override
-	protected Function<byte[], Object> deserializer(final Kryo engine,
-	                                                final Class<?> type,
-	                                                final Consumer<Object> next) {
-		return new Function<byte[], Object>() {
+	protected Function<byte[], IN> deserializer(final Kryo engine,
+	                                            final Class<IN> type,
+	                                            final Consumer<IN> next) {
+		return new Function<byte[], IN>() {
 			@Override
-			public Object apply(byte[] bytes) {
-				Object obj = engine.readObject(new UnsafeMemoryInput(bytes), type);
+			public IN apply(byte[] bytes) {
+				IN obj = engine.readObject(new UnsafeMemoryInput(bytes), type);
 				if(null != next) {
 					next.accept(obj);
 					return null;
@@ -36,10 +40,10 @@ public class KryoCodec extends SerializationCodec<Kryo> {
 	}
 
 	@Override
-	protected Function<Object, byte[]> serializer(final Kryo engine) {
-		return new Function<Object, byte[]>() {
+	protected Function<OUT, byte[]> serializer(final Kryo engine) {
+		return new Function<OUT, byte[]>() {
 			@Override
-			public byte[] apply(Object o) {
+			public byte[] apply(OUT o) {
 				UnsafeMemoryOutput out = new UnsafeMemoryOutput(Buffer.SMALL_BUFFER_SIZE, Buffer.MAX_BUFFER_SIZE);
 				engine.writeObject(out, o);
 				out.flush();

@@ -37,6 +37,7 @@ ext {
 	jsonPathVersion = '0.9.0'
 	kryoVersion = '2.22'
 	protobufVersion = '2.5.0'
+	snappyVersion = '1.1.0.1'
 	hadoopVersion = '1.1.2'
 	openHftChronicleVersion = '2.0.2'
 	openHftLangVersion = '6.1.1'
@@ -263,7 +264,8 @@ project('reactor-core') {
 
 		// Serialization
 		optional "com.esotericsoftware.kryo:kryo:$kryoVersion",
-				"com.google.protobuf:protobuf-java:$protobufVersion"
+				"com.google.protobuf:protobuf-java:$protobufVersion",
+				"org.xerial.snappy:snappy-java:$snappyVersion"
 	}
 
 	jar {
