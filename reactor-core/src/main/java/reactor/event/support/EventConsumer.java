@@ -49,7 +49,7 @@ public class EventConsumer<T> implements Consumer<Event<T>> {
 
 	@Override
 	public void accept(Event<T> ev) {
-		delegate.accept(ev.getData());
+    delegate.accept(ev.getData());
 	}
 
 }

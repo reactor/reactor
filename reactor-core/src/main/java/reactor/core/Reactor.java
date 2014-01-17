@@ -62,6 +62,7 @@ public class Reactor implements Observable {
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
 
+  private final Event.GenericEventPool                 eventPool;
 	private final Dispatcher                             dispatcher;
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
@@ -80,8 +81,8 @@ public class Reactor implements Observable {
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
 	 * 		SynchronousDispatcher} is used
 	 */
-	public Reactor(@Nullable Dispatcher dispatcher) {
-		this(dispatcher, null);
+	public Reactor(@Nullable Dispatcher dispatcher, @Nonnull Event.GenericEventPool eventPool) {
+		this(dispatcher, null, eventPool);
 	}
 
 	/**
@@ -98,21 +99,24 @@ public class Reactor implements Observable {
 	 * 		conversion will be used.
 	 */
 	public Reactor(@Nullable Dispatcher dispatcher,
-	               @Nullable EventRouter eventRouter) {
-		this(dispatcher, eventRouter, null, null, null);
+	               @Nullable EventRouter eventRouter,
+                 @Nonnull  Event.GenericEventPool eventPool) {
+		this(dispatcher, eventRouter, null, null, null, eventPool);
 	}
 
 	public Reactor(@Nullable Dispatcher dispatcher,
 	               @Nullable EventRouter eventRouter,
 	               @Nullable Selector defaultSelector,
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	               @Nullable final Consumer<Throwable> uncaughtErrorHandler,
+                 @Nonnull  Event.GenericEventPool eventPool) {
 		this(new CachingRegistry<Consumer<? extends Event<?>>>(),
 		     dispatcher,
 		     eventRouter,
 		     defaultSelector,
 		     dispatchErrorHandler,
-		     uncaughtErrorHandler);
+		     uncaughtErrorHandler,
+         eventPool);
 	}
 
 	/**
@@ -134,21 +138,23 @@ public class Reactor implements Observable {
 	               @Nullable EventRouter eventRouter,
 	               @Nullable Selector defaultSelector,
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	               @Nullable final Consumer<Throwable> uncaughtErrorHandler,
+                 @Nonnull  Event.GenericEventPool ePool) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
 		this.dispatcher = (null == dispatcher ? new SynchronousDispatcher() : dispatcher);
 		this.eventRouter = (null == eventRouter ? DEFAULT_EVENT_ROUTER : eventRouter);
 		this.defaultSelector = (null == defaultSelector ? Selectors.anonymous() : defaultSelector);
 		this.defaultKey = this.defaultSelector.getObject();
+    this.eventPool = ePool;
 		if(null == dispatchErrorHandler) {
 			this.dispatchErrorHandler = new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable t) {
 					Class<? extends Throwable> type = t.getClass();
 					Reactor.this.eventRouter.route(type,
-					                               Event.wrap(t).setKey(type),
-					                               Reactor.this.consumerRegistry.select(type),
+                                         eventPool.lease(t, type),
+                                         Reactor.this.consumerRegistry.select(type),
 					                               null,
 					                               null);
 				}
@@ -167,8 +173,9 @@ public class Reactor implements Observable {
 					if(Consumer.class.isInstance(consumer)) {
 						try {
 							((Consumer)consumer).accept(data);
-						} catch(Throwable t) {
-							Reactor.this.notify(t.getClass(), Event.wrap(t));
+              eventPool.free(event);
+            } catch(Throwable t) {
+							Reactor.this.notify(t.getClass(), eventPool.lease(t));
 						}
 					}
 				}
@@ -294,7 +301,7 @@ public class Reactor implements Observable {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, new Event<Void>(null), null);
+		return notify(key, eventPool.lease(null), null);
 	}
 
 	@Override
@@ -352,7 +359,7 @@ public class Reactor implements Observable {
 		return new Consumer<T>() {
 			@Override
 			public void accept(T obj) {
-				Reactor.this.notify(Event.wrap(obj));
+				Reactor.this.notify(eventPool.lease(obj));
 			}
 		};
 	}
@@ -374,15 +381,10 @@ public class Reactor implements Observable {
 		private static final long serialVersionUID = 1937884784799135647L;
 		private final Observable replyToObservable;
 
-		@Override
-		public <X> Event<X> copy(X data) {
-			return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
-		}
-
 		private ReplyToEvent(Headers headers, T data, Object replyTo,
 		                     Observable replyToObservable,
 		                     Consumer<Throwable> errorConsumer) {
-			super(headers, data, errorConsumer);
+			super(headers, data, errorConsumer, 0); //TODO: FIXME
 			setReplyTo(replyTo);
 			this.replyToObservable = replyToObservable;
 		}
@@ -420,14 +422,14 @@ public class Reactor implements Observable {
 
 				Event<?> replyEv;
 				if(null == reply) {
-					replyEv = new Event<Void>(null);
+          replyEv = eventPool.lease(null);
 				} else {
-					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
+					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : eventPool.lease(reply));
 				}
 
 				replyToObservable.notify(ev.getReplyTo(), replyEv);
 			} catch(Throwable x) {
-				replyToObservable.notify(x.getClass(), Event.wrap(x));
+				replyToObservable.notify(x.getClass(), eventPool.lease(x));
 			}
 		}
 

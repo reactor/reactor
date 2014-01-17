@@ -24,7 +24,7 @@ public class CallbackEvent<T> extends Event<T>{
 	}
 
 	public CallbackEvent(Headers headers, T data, Consumer callback, Consumer<Throwable> throwableConsumer) {
-		super(headers, data, throwableConsumer);
+		super(headers, data, throwableConsumer, 0); // TODO: FIXME
 		this.callback = callback;
 	}
 

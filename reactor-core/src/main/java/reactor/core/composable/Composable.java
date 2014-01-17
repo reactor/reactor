@@ -286,8 +286,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
 	 */
 	void notifyFlush() {
-		events.notify(flush.getObject(), new Event<Void>(null));
-	}
+		events.notify(flush.getObject(), Event.wrap(null));
+  }
 
 	/**
 	 * Notify this {@code Composable} that a value is being accepted by this {@code Composable}.
