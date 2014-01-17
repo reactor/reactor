@@ -7,9 +7,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class ObjectPool<T extends Poolable> implements Pool<T> {
-
-  public static final int DEFAULT_INITIAL_POOL_SIZE = 2048;
+public abstract class ObjectPool<T extends Releasable> implements Pool<T> {
 
   private List<T> pool;
   private BitSet leaseMask;
@@ -24,8 +22,8 @@ public abstract class ObjectPool<T extends Poolable> implements Pool<T> {
 
   @Override
   public T allocate() {
+    lock.lock();
     try {
-      lock.lock();
       int nextClear = leaseMask.nextClearBit(0);
 
       if (nextClear == pool.size()) {
@@ -44,8 +42,8 @@ public abstract class ObjectPool<T extends Poolable> implements Pool<T> {
   }
 
   public void deallocate(int poolPosition) {
+    lock.lock();
     try {
-      lock.lock();
       leaseMask.clear(poolPosition);
     } finally {
       lock.unlock();

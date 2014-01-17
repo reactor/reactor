@@ -41,6 +41,7 @@ import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
+import reactor.event.Event;
 
 /**
  * @author Jon Brisbin
@@ -73,6 +74,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 	private static final String SYNC_DISPATCHER_NAME    = "sync";
+  private static final int    DEFAULT_INITIAL_POOL_SIZE = 1048;
 
 	private final Properties env;
 
@@ -83,6 +85,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final MultiValueMap<String, Dispatcher> dispatchers;
 	private final String                            defaultDispatcher;
+  private final Event.GenericEventPool            eventPool;
 
 	/**
 	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial
@@ -136,7 +139,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		}
 
 		addDispatcher(SYNC_DISPATCHER_NAME, new SynchronousDispatcher());
-	}
+    this.eventPool = new Event.GenericEventPool(DEFAULT_INITIAL_POOL_SIZE);
+  }
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int size = getSize(dispatcherConfiguration, 0);
@@ -297,7 +301,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @see Environment#getDefaultDispatcher()
 	 */
 	public Reactor getRootReactor() {
-		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
+		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher(), eventPool));
 		return rootReactor.get();
 	}
 
@@ -327,4 +331,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public Iterator<Map.Entry<String, List<Dispatcher>>> iterator() {
 		return this.dispatchers.entrySet().iterator();
 	}
+
+  public Event.GenericEventPool getEventPool() {
+    return this.eventPool;
+  }
 }

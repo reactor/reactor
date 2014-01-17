@@ -17,7 +17,7 @@
 package reactor.event;
 
 import reactor.core.ObjectPool;
-import reactor.core.Poolable;
+import reactor.core.Releasable;
 import reactor.function.Consumer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -37,7 +37,7 @@ import java.util.*;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Event<T> implements Serializable, Poolable {
+public class Event<T> implements Serializable, Releasable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 
@@ -71,60 +71,6 @@ public class Event<T> implements Serializable, Poolable {
 		this.errorConsumer = errorConsumer;
     this.poolPosition = poolPosition;
 	}
-
-  public static <T> Event<T> lease(T obj) {
-    Class t = (obj != null) ? obj.getClass() : Void.class;
-    if (!eventPools.containsKey(t)) {
-      eventPools.put(t, new EventPool<T>(ObjectPool.DEFAULT_INITIAL_POOL_SIZE));
-    }
-
-    EventPool<T> ep = eventPools.get(t);
-    return ep.allocate();
-  }
-
-  /**
-	 * Wrap the given object with an {@link Event}.
-	 *
-	 * @param obj
-	 * 		The object to wrap.
-	 *
-	 * @return The new {@link Event}.
-	 */
-	public static <T> Event<T> wrap(T obj) {
-    Event<T> e = lease(obj);
-    e.setData(obj);
-    return e;
-  }
-
-	/**
-	 * Wrap the given object with an {@link Event} and set the {@link Event#getReplyTo() replyTo} to the given {@code
-	 * replyToKey}.
-	 *
-	 * @param obj
-	 * 		The object to wrap.
-	 * @param replyToKey
-	 * 		The key to use as a {@literal replyTo}.
-	 * @param <T>
-	 * 		The type of the given object.
-	 *
-	 * @return The new {@link Event}.
-	 */
-	public static <T> Event<T> wrap(T obj, Object replyToKey) {
-    Event<T> e = lease(obj);
-    e.setData(obj);
-    e.setReplyTo(replyToKey);
-    return e;
-  }
-
-  public static <T> Event<T> wrap(T obj, Object replyToKey,
-                                  Headers headers, Consumer<Throwable> errorConsumer) {
-    Event<T> e = lease(obj);
-    e.setData(obj);
-    e.replyTo = replyToKey;
-    e.headers = headers;
-    e.errorConsumer = errorConsumer;
-    return e;
-  }
 
 	/**
 	 * Get the globally-unique id of this event.
@@ -227,34 +173,6 @@ public class Event<T> implements Serializable, Poolable {
 	}
 
 	/**
-	 * Create a copy of this event, reusing same headers, data and replyTo
-	 *
-	 * @return {@literal event copy}
-	 */
-	public Event<T> copy() {
-		return copy(data);
-	}
-
-	/**
-	 * Create a copy of this event, reusing same headers and replyTo
-	 *
-	 * @return {@literal event copy}
-	 */
-	public <T> Event<T> copy(T data) {
-    Event<T> e = lease(data);
-
-    e.setData(data);
-    e.headers = headers;
-    e.errorConsumer = errorConsumer;
-
-		if(null != replyTo) {
-      e.setReplyTo(replyTo);
-    }
-
-    return e;
-	}
-
-	/**
 	 * Consumes error, using a producer defined callback
 	 *
 	 * @param throwable
@@ -279,12 +197,10 @@ public class Event<T> implements Serializable, Poolable {
 
   @Override
   public void free() {
-    Class t = (data != null) ? data.getClass() : Void.class;
     this.data = null;
     this.headers = null;
     this.replyTo = null;
     this.key = null;
-    eventPools.get(t).deallocate(poolPosition);
   }
 
   /**
@@ -498,8 +414,6 @@ public class Event<T> implements Serializable, Poolable {
 		}
 	}
 
-  public static HashMap<Class, EventPool> eventPools = new HashMap<Class, EventPool>();
-
   public static class EventPool<T> extends ObjectPool<Event<T>> {
 
     public EventPool(int prealloc) {
@@ -512,4 +426,78 @@ public class Event<T> implements Serializable, Poolable {
     }
   }
 
+  public static class GenericEventPool {
+
+    public HashMap<Class, EventPool> eventPools = new HashMap<Class, EventPool>();
+    private final int initialPoolSize;
+
+    public GenericEventPool(int initialPoolSize) {
+      this.initialPoolSize = initialPoolSize;
+    }
+
+    public <T> Event<T> lease(T obj) {
+      Class t = (obj != null) ? obj.getClass() : Void.class;
+      if (!eventPools.containsKey(t)) {
+        eventPools.put(t, new EventPool<T>(initialPoolSize));
+      }
+
+      EventPool<T> ep = eventPools.get(t);
+
+      Event<T> event = ep.allocate();
+      event.setData(obj);
+      return event;
+    }
+
+    public <T> Event<T> lease(T obj, Object replyToKey) {
+      Event<T> e = lease(obj);
+      e.setData(obj);
+      e.setReplyTo(replyToKey);
+      return e;
+    }
+
+    public <T> Event<T> lease(T obj, Object replyToKey,
+                              Headers headers, Consumer<Throwable> errorConsumer) {
+      Event<T> e = lease(obj);
+      e.setData(obj);
+      e.replyTo = replyToKey;
+      e.headers = headers;
+      e.errorConsumer = errorConsumer;
+      return e;
+    }
+
+    /**
+     * Create a copy of this event, reusing same headers, data and replyTo
+     *
+     * @return {@literal event copy}
+     */
+    public <T> Event<T> copy(Event<T> other) {
+      return copy(other, other.data);
+    }
+
+    /**
+     * Create a copy of this event, reusing same headers and replyTo
+     *
+     * @return {@literal event copy}
+     */
+    public <T> Event<T> copy(Event<T> other, T data) {
+      Event<T> e = lease(data);
+
+      e.setData(data);
+      e.headers = other.headers;
+      e.errorConsumer = other.errorConsumer;
+
+      if(null != other.replyTo) {
+        e.setReplyTo(other.replyTo);
+      }
+
+      return e;
+    }
+
+    public void free(Event e) {
+      Class t = (e.data != null) ? e.data.getClass() : Void.class;
+      e.free();
+      eventPools.get(t).deallocate(e.poolPosition);
+    }
+
+  }
 }
