@@ -19,11 +19,10 @@ package reactor.core;
 /**
  * Common interface for all pollable objects.
  */
-public interface Poolable {
+public interface Releasable {
 
   /**
    * Returns an object to the pool
    */
   public void free();
-
 }
