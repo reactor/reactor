@@ -757,6 +757,26 @@ public class Buffer implements Comparable<Buffer>,
 	}
 
 	/**
+	 * Append the given {@code byte[]} to this {@literal Buffer}, starting at the given index and continuing for the
+	 * given
+	 * length.
+	 *
+	 * @param b
+	 * 		the bytes to append
+	 * @param start
+	 * 		the index of where to start copying bytes
+	 * @param len
+	 * 		the len of the bytes to copy
+	 *
+	 * @return {@literal this}
+	 */
+	public Buffer append(byte[] b, int start, int len) {
+		ensureCapacity(b.length);
+		buffer.put(b, start, len);
+		return this;
+	}
+
+	/**
 	 * Get the first {@code byte} from this {@literal Buffer}.
 	 *
 	 * @return The first {@code byte}.
