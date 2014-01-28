@@ -16,31 +16,23 @@
 
 package reactor.core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
-
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
-import reactor.core.configuration.ConfigurationReader;
-import reactor.core.configuration.DispatcherConfiguration;
-import reactor.core.configuration.DispatcherType;
-import reactor.core.configuration.PropertiesConfigurationReader;
-import reactor.core.configuration.ReactorConfiguration;
-import reactor.event.dispatch.BlockingQueueDispatcher;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.RingBufferDispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.core.configuration.*;
+import reactor.core.util.SystemUtils;
+import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
+import reactor.queue.BlockingQueueFactory;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
+
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author Jon Brisbin
@@ -83,6 +75,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final MultiValueMap<String, Dispatcher> dispatchers;
 	private final String                            defaultDispatcher;
+
+	{
+		SystemUtils.setTimer(timer);
+	}
 
 	/**
 	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial
@@ -138,11 +134,14 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		addDispatcher(SYNC_DISPATCHER_NAME, new SynchronousDispatcher());
 	}
 
-	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
+			                                                                        dispatcherConfiguration) {
 		int size = getSize(dispatcherConfiguration, 0);
 		int backlog = getBacklog(dispatcherConfiguration, 128);
 
-		return new ThreadPoolExecutorDispatcher(size, backlog, dispatcherConfiguration.getName());
+		return new ThreadPoolExecutorDispatcher(size,
+		                                        backlog,
+		                                        dispatcherConfiguration.getName());
 	}
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
@@ -153,10 +152,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		                                new BlockingWaitStrategy());
 	}
 
-	private BlockingQueueDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+	private EventLoopDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 128);
 
-		return new BlockingQueueDispatcher(dispatcherConfiguration.getName(), backlog);
+		return new EventLoopDispatcher(dispatcherConfiguration.getName(), backlog);
 	}
 
 	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
@@ -301,6 +300,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		return rootReactor.get();
 	}
 
+	/**
+	 * Get the {@code Environment}-wide {@link reactor.core.HashWheelTimer}.
+	 *
+	 * @return the timer.
+	 */
 	public HashWheelTimer getRootTimer() {
 		return timer;
 	}

@@ -16,13 +16,7 @@
 
 package reactor.core;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import org.junit.Test;
-
 import reactor.AbstractReactorTest;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
@@ -30,6 +24,11 @@ import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin
@@ -43,8 +42,11 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
-		for (int i = 0; i < 1000; i++) {
-			final Deferred<String, Promise<String>> deferred = Promises.<String>defer().env(env).dispatcher("threadPoolExecutor").get();
+		for(int i = 0; i < 1000; i++) {
+			final Deferred<String, Promise<String>> deferred = Promises.<String>defer()
+			                                                           .env(env)
+			                                                           .dispatcher("threadPoolExecutor")
+			                                                           .get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			Promise<String> promise = deferred.compose();

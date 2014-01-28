@@ -1,6 +1,9 @@
-package reactor.pool
+package reactor.core.alloc
 
+import reactor.event.Event
 import reactor.function.Supplier
+import reactor.util.TypeReference
+import reactor.util.TypeUtils
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -56,6 +59,26 @@ class AllocatorsSpec extends Specification {
 
 		and: "the references are all unique"
 			refs.findAll { ref -> ref == refToFind }.size() == 1
+
+	}
+
+	def "Allocators can be provided by Type"() {
+
+		given: "a generic type"
+			def type = TypeUtils.fromTypeRef(new TypeReference<Event<String>>() {})
+			def allocators = [:]
+			allocators[type] = new ReferenceCountingAllocator<Event<String>>(new Supplier<Event<String>>() {
+				@Override
+				Event<String> get() {
+					return Event.wrap("Hello World!")
+				}
+			})
+
+		when: "a pool is requested"
+			def pool = allocators[TypeUtils.fromTypeRef(new TypeReference<Event<String>>() {})]
+
+		then: "a pool was returned"
+			pool
 
 	}
 

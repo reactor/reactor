@@ -16,6 +16,8 @@
 
 package reactor.event.dispatch;
 
+import reactor.core.alloc.Recyclable;
+import reactor.core.alloc.Reference;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
@@ -30,13 +32,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class BaseLifecycleDispatcher implements Dispatcher{
+public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
-	private final AtomicBoolean alive = new AtomicBoolean(true);
-	private final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	private final AtomicBoolean alive   = new AtomicBoolean(true);
+	private final ClassLoader   context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
 	};
 
-	protected BaseLifecycleDispatcher() {
+	protected AbstractLifecycleDispatcher() {
 		super();
 	}
 
@@ -82,10 +84,9 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
+	protected abstract <E extends Event<?>> Reference<Task<E>> allocateTaskRef();
 
-	protected abstract <E extends Event<?>> Task<E> createTask();
-
-	protected abstract class Task<E extends Event<?>> {
+	protected abstract class Task<E extends Event<?>> implements Recyclable {
 
 		protected volatile Object                                 key;
 		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
@@ -124,7 +125,8 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 			return this;
 		}
 
-		final protected void reset() {
+		@Override
+		public void recycle() {
 			key = null;
 			consumerRegistry = null;
 			event = null;
@@ -136,5 +138,7 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 		}
 
 		protected abstract void execute();
+
 	}
+
 }

@@ -18,7 +18,7 @@ package reactor.event.registry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.lifecycle.Lifecycle;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -315,7 +315,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		private SimpleRegistration(Selector selector, T object) {
 			this.selector = selector;
 			this.object = object;
-			this.lifecycle = Lifecycle.class.isAssignableFrom(object.getClass());
+			this.lifecycle = Pausable.class.isAssignableFrom(object.getClass());
 		}
 
 		@Override
@@ -343,7 +343,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> cancel() {
 			if (!cancelled) {
 				if (lifecycle) {
-					((Lifecycle) object).cancel();
+					((Pausable) object).cancel();
 				}
 				this.cancelled = true;
 			}
@@ -359,7 +359,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> pause() {
 			this.paused = true;
 			if (lifecycle) {
-				((Lifecycle) object).pause();
+				((Pausable) object).pause();
 			}
 			return this;
 		}
@@ -373,7 +373,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> resume() {
 			paused = false;
 			if (lifecycle) {
-				((Lifecycle) object).resume();
+				((Pausable) object).resume();
 			}
 			return this;
 		}

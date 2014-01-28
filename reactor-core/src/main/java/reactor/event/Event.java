@@ -17,6 +17,7 @@
 package reactor.event;
 
 import reactor.function.Consumer;
+import reactor.core.alloc.Recyclable;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -35,7 +36,7 @@ import java.util.*;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Event<T> implements Serializable {
+public class Event<T> implements Serializable, Recyclable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 
@@ -253,6 +254,16 @@ public class Event<T> implements Serializable {
 		}
 	}
 
+	@Override
+	public void recycle() {
+		this.id = null;
+		if(null != this.headers) {
+			this.headers.headers.clear();
+		}
+		this.replyTo = null;
+		this.key = null;
+		this.data = null;
+	}
 
 	@Override
 	public String toString() {
@@ -260,6 +271,7 @@ public class Event<T> implements Serializable {
 				"id=" + id +
 				", headers=" + headers +
 				", replyTo=" + replyTo +
+				", key=" + key +
 				", data=" + data +
 				'}';
 	}

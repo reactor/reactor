@@ -1,4 +1,4 @@
-package reactor.pool;
+package reactor.core.alloc;
 
 import reactor.function.Supplier;
 

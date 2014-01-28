@@ -21,11 +21,10 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.core.Environment
-import reactor.core.composable.Deferred
 import reactor.core.composable.Stream
 import reactor.core.composable.spec.Streams
 import reactor.core.spec.Reactors
-import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.event.dispatch.EventLoopDispatcher
 import reactor.function.support.Tap
 import spock.lang.Shared
 import spock.lang.Specification
@@ -40,7 +39,7 @@ class GroovyStreamSpec extends Specification {
 
 	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop', new BlockingQueueDispatcher('eventLoop', 256))
+		testEnv.addDispatcher('eventLoop', new EventLoopDispatcher('eventLoop', 256))
 	}
 
 

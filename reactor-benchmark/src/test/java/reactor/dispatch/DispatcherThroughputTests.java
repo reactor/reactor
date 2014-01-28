@@ -20,7 +20,7 @@ import org.junit.Test;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
-import reactor.event.dispatch.BlockingQueueDispatcher;
+import reactor.event.dispatch.EventLoopDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 
@@ -34,30 +34,40 @@ import java.util.Random;
 public class DispatcherThroughputTests extends AbstractThroughputTests {
 
 	public void registerConsumersAndWarmCache(Reactor reactor) {
-		for (int i = 0; i < selectors; i++) {
+		for(int i = 0; i < selectors; i++) {
 			Object object = "test" + i;
 			sels[i] = Selectors.$(object);
 			objects[i] = object;
 			reactor.on(sels[i], countDownConsumer);
 		}
-		for (int i = 0; i < selectors; i++) {
+		for(int i = 0; i < selectors; i++) {
 			// pre-select everything to ensure it's in the cache
 			reactor.getConsumerRegistry().select(objects[i]);
 		}
 	}
 
+	protected void doTest(String dispatcher) throws InterruptedException {
+		doTest(Reactors.reactor().env(env).dispatcher(dispatcher).get());
+	}
+
 	protected void doTest(Reactor reactor) throws InterruptedException {
 		registerConsumersAndWarmCache(reactor);
 
-		for (int j = 0; j < testRuns; j++) {
+		for(int j = 0; j < testRuns; j++) {
 			preRun();
-			for (int i = 0; i < selectors * iterations; i++) {
-				reactor.notify(objects[i % selectors], hello);
-			}
+			long start = System.currentTimeMillis();
+			int i = 0;
+			do {
+				reactor.notify(objects[i++ % selectors], hello);
+			} while(System.currentTimeMillis() - start < testDuration);
 			postRun(reactor);
 		}
 
 		reactor.getDispatcher().shutdown();
+	}
+
+	protected void doPrepareTest(String dispatcher) throws InterruptedException {
+		doPrepareTest(Reactors.reactor().env(env).dispatcher(dispatcher).get());
 	}
 
 	protected void doPrepareTest(Reactor reactor) throws InterruptedException {
@@ -65,11 +75,12 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 
 		final int selectorIdx = new Random().nextInt(selectors);
 		Consumer<Event<String>> consumer = reactor.prepare(objects[selectorIdx]);
-		for (int j = 0; j < testRuns; j++) {
+		for(int j = 0; j < testRuns; j++) {
 			preRun();
-			for (int i = 0; i < selectors * iterations; i++) {
+			long start = System.currentTimeMillis();
+			do {
 				consumer.accept(hello);
-			}
+			} while(System.currentTimeMillis() - start < testDuration);
 			postRun(reactor);
 		}
 
@@ -77,21 +88,30 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	}
 
 	@Test
-	public void blockingQueueDispatcherThroughput() throws InterruptedException {
-		log.info("Starting blocking queue test...");
-		doTest(Reactors.reactor().env(env).dispatcher(new BlockingQueueDispatcher("eventLoop", 256)).get());
+	public void eventLoopDispatcherThroughput() throws InterruptedException {
+		log.info("Starting event loop test...");
+		doTest(Reactors.reactor()
+		               .env(env)
+		               .dispatcher(new EventLoopDispatcher("eventLoop", 16384))
+		               .get());
 	}
 
 	@Test
 	public void threadPoolDispatcherThroughput() throws InterruptedException {
 		log.info("Starting thread pool test...");
-		doTest(Reactors.reactor().env(env).dispatcher("threadPoolExecutor").get());
+		doTest("threadPoolExecutor");
+	}
+
+	@Test
+	public void preparedThreadPoolDispatcherThroughput() throws InterruptedException {
+		log.info("Starting prepared thread pool test...");
+		doPrepareTest("threadPoolExecutor");
 	}
 
 	@Test
 	public void defaultRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting root RingBuffer test...");
-		doTest(Reactors.reactor().env(env).dispatcher("ringBuffer").get());
+		doTest("ringBuffer");
 	}
 
 	@Test
@@ -103,8 +123,9 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void preparedRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting prepared RingBuffer test...");
-		doPrepareTest(Reactors.reactor().env(env).dispatcher("ringBuffer").get());
+		doPrepareTest("ringBuffer");
 	}
+
 	@Test
 	public void actorDispatcherThroughput() throws InterruptedException {
 		log.info("Starting prepared ActorSystem test...");

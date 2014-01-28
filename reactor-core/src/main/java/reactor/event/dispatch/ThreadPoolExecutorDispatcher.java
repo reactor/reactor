@@ -16,14 +16,7 @@
 
 package reactor.event.dispatch;
 
-import reactor.event.registry.Registry;
-import reactor.event.routing.EventRouter;
-import reactor.function.Consumer;
-import reactor.pool.LoadingPool;
-import reactor.pool.Pool;
 import reactor.event.Event;
-import reactor.function.Supplier;
-import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.*;
@@ -35,63 +28,100 @@ import java.util.concurrent.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
+public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispatcher {
 
-	private final ExecutorService      executor;
-	private final Pool<ThreadPoolTask> readyTasks;
-
-	private final BlockingQueue<Task> delayedTaskQueue = BlockingQueueFactory.createQueue();
+	private final ExecutorService executor;
 
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
+	 * By default, a {@link java.util.concurrent.RejectedExecutionHandler} is created which runs the submitted {@code
+	 * Runnable} in the calling thread. To change this behavior, specify your own.
 	 *
-	 * @param poolSize the pool size
-	 * @param backlog  the backlog size
+	 * @param poolSize
+	 * 		the pool size
+	 * @param backlog
+	 * 		the backlog size
 	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
 		this(poolSize, backlog, "thread-pool-executor-dispatcher");
 	}
 
-	public ThreadPoolExecutorDispatcher(int poolSize, int backlog, String threadName) {
-		this.executor = Executors.newFixedThreadPool(
+	/**
+	 * Create a new {@literal ThreadPoolExecutorDispatcher} with the given size, backlog, name, and {@link
+	 * java.util.concurrent.RejectedExecutionHandler}.
+	 *
+	 * @param poolSize
+	 * 		the pool size
+	 * @param backlog
+	 * 		the backlog size
+	 * @param threadName
+	 * 		the name prefix to use when creating threads
+	 */
+	public ThreadPoolExecutorDispatcher(int poolSize,
+	                                    int backlog,
+	                                    String threadName) {
+		this(poolSize,
+		     backlog,
+		     threadName,
+		     new LinkedBlockingQueue<Runnable>(backlog),
+		     new RejectedExecutionHandler() {
+			     @Override
+			     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+				     r.run();
+			     }
+		     });
+	}
+
+	/**
+	 * Create a new {@literal ThreadPoolExecutorDispatcher} with the given size, backlog, name, and {@link
+	 * java.util.concurrent.RejectedExecutionHandler}.
+	 *
+	 * @param poolSize
+	 * 		the pool size
+	 * @param backlog
+	 * 		the backlog size
+	 * @param threadName
+	 * 		the name prefix to use when creating threads
+	 * @param rejectedExecutionHandler
+	 * 		the {@code RejectedExecutionHandler} to use when jobs can't be submitted to the thread pool
+	 */
+	public ThreadPoolExecutorDispatcher(int poolSize,
+	                                    int backlog,
+	                                    String threadName,
+	                                    BlockingQueue<Runnable> workQueue,
+	                                    RejectedExecutionHandler rejectedExecutionHandler) {
+		super(backlog);
+		this.executor = new ThreadPoolExecutor(
 				poolSize,
-				new NamedDaemonThreadFactory(threadName, getContext())
-		);
-		this.readyTasks = new LoadingPool<ThreadPoolTask>(
-				new Supplier<ThreadPoolTask>() {
-					@Override
-					public ThreadPoolTask get() {
-						return new ThreadPoolTask();
-					}
-				},
-				backlog,
-				200l
+				poolSize,
+				0L,
+				TimeUnit.MILLISECONDS,
+				workQueue,
+				new NamedDaemonThreadFactory(threadName, getContext()),
+				rejectedExecutionHandler
 		);
 	}
 
-    public ThreadPoolExecutorDispatcher(ExecutorService executor, int backlog) {
-        this.executor = executor;
-        this.readyTasks = new LoadingPool<ThreadPoolTask>(
-                new Supplier<ThreadPoolTask>() {
-                    @Override
-                    public ThreadPoolTask get() {
-                        return new ThreadPoolTask();
-                    }
-                },
-                backlog,
-                200l
-        );
-    }
+	public ThreadPoolExecutorDispatcher(ExecutorService executor, int backlog) {
+		super(backlog);
+		this.executor = executor;
+	}
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		shutdown();
-		try {
-			return executor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+		if(!super.awaitAndShutdown(timeout, timeUnit)) {
+			return false;
 		}
-		return false;
+		try {
+			if(!executor.awaitTermination(timeout, timeUnit)) {
+				return false;
+			}
+		} catch(InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		}
+		return true;
 	}
 
 	@Override
@@ -107,79 +137,23 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <E extends Event<?>> void dispatch(Object key,
-	                                          E event,
-	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
-	                                          Consumer<Throwable> errorConsumer,
-	                                          EventRouter eventRouter,
-	                                          Consumer<E> completionConsumer) {
-		if (!alive()) {
-			throw new IllegalStateException("This Dispatcher has been shutdown");
-		}
-
-		boolean isInContext = isInContext();
-
-		Task<E> task = isInContext ? new ThreadPoolTask<E>() : (Task<E>)createTask();
-
-		task.setKey(key);
-		task.setEvent(event);
-		task.setConsumerRegistry(consumerRegistry);
-		task.setErrorConsumer(errorConsumer);
-		task.setEventRouter(eventRouter);
-		task.setCompletionConsumer(completionConsumer);
-
-		if (isInContext) {
-			delayedTaskQueue.add(task);
-		} else {
-			task.submit();
-		}
+	protected Task createTask() {
+		return new ThreadPoolTask();
 	}
 
-
-	@SuppressWarnings("unchecked")
-	@Override
-	protected <E extends Event<?>> Task<E> createTask() {
-		Task<E> t = (Task<E>) readyTasks.allocate();
-		return (null != t ? t : (Task<E>) new ThreadPoolTask());
-	}
-
-	private class ThreadPoolTask<E extends Event<?>> extends Task<E> implements Runnable {
+	private class ThreadPoolTask<E extends Event<?>> extends SingleThreadTask<E> implements Runnable {
 		@Override
 		public void submit() {
-			executor.submit(this);
-		}
-
-		@Override
-		protected void execute() {
-				eventRouter.route(key,
-						event,
-						(null != consumerRegistry ? consumerRegistry.select(key) : null),
-						completionConsumer,
-						errorConsumer);
-
-				Task<?> task;
-				for (; ; ) {
-					task = delayedTaskQueue.poll();
-					if (null == task) {
-						break;
-					}
-					task.eventRouter.route(task.key,
-							task.event,
-							(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
-							task.completionConsumer,
-							task.errorConsumer);
-
-				}
+			if(isInContext()) {
+				execute();
+			} else {
+				executor.submit(this);
+			}
 		}
 
 		@Override
 		public void run() {
-			try {
-				execute();
-			} finally {
-				readyTasks.deallocate(this);
-			}
+			execute();
 		}
 	}
 

@@ -1,4 +1,4 @@
-package reactor.pool;
+package reactor.core.alloc;
 
 /**
  * A simple interface that marks an object as being recyclable.

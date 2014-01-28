@@ -95,7 +95,8 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"ring buffer reactor"
-			def r = Reactors.reactor().env(new Environment()).dispatcher("ringBuffer").get()
+			def env = new Environment()
+			def r = Reactors.reactor().env(env).dispatcher("ringBuffer").get()
 			def latch = new CountDownLatch(2)
 
 		when:
@@ -120,8 +121,9 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
+			def env = new Environment()
 			def r = Reactors.reactor().
-					env(new Environment()).
+					env(env).
 					dispatcher(Environment.THREAD_POOL).
 					get()
 			long start = System.currentTimeMillis()
@@ -134,7 +136,7 @@ class DispatcherSpec extends Specification {
 		when:
 			"the Dispatcher is shutdown and tasks are awaited"
 			r.notify("pause", Event.wrap("Hello World!"))
-			def success = r.dispatcher.awaitAndShutdown()
+			def success = r.dispatcher.awaitAndShutdown(5, TimeUnit.SECONDS)
 			long end = System.currentTimeMillis()
 
 		then:

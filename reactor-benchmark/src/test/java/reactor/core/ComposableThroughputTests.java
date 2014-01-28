@@ -27,8 +27,8 @@ import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
 import reactor.event.dispatch.ActorDispatcher;
-import reactor.event.dispatch.BlockingQueueDispatcher;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.EventLoopDispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -149,7 +149,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new BlockingQueueDispatcher("eventLoop", 4096), "event loop");
+		doTest(new EventLoopDispatcher("eventLoop", 256), "event loop");
 	}
 
 	@Test
@@ -169,8 +169,12 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
-				"single-producer ring buffer");
+		doTest(new RingBufferDispatcher(
+				"test",
+				1024,
+				ProducerType.SINGLE,
+				new YieldingWaitStrategy()
+		), "single-producer ring buffer");
 	}
 
 	@Test
