@@ -18,6 +18,7 @@ package reactor.tuple;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -26,9 +27,10 @@ import java.util.Iterator;
  * A {@literal Tuple} is an immutable {@link Collection} of objects, each of which can be of an arbitrary type.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
-public class Tuple implements Iterable {
+public class Tuple implements Iterable, Serializable {
 
 	protected final Object[] entries;
 	protected final int      size;
