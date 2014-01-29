@@ -9,6 +9,7 @@ import java.lang.reflect.Constructor;
  * using reflection from a no-arg constructor.
  *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public class NoArgConstructorFactory<T> implements Supplier<T> {
 

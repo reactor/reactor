@@ -4,6 +4,7 @@ package reactor.core.alloc;
  * A simple interface that marks an object as being recyclable.
  *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public interface Recyclable {
 

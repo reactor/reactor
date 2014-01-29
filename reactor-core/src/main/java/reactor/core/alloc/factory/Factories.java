@@ -4,6 +4,7 @@ package reactor.core.alloc.factory;
  * Helper class for creating object factories.
  *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public abstract class Factories {
 

@@ -6,6 +6,7 @@ import reactor.function.Supplier;
  * A {@code Reference} provides access to and metadata about a poolable object.
  *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public interface Reference<T extends Recyclable> extends Supplier<T> {
 

@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * has been retrieved from the pool.
  *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public class BatchFactorySupplier<T> implements Supplier<T> {
 

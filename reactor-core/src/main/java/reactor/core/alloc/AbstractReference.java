@@ -3,7 +3,10 @@ package reactor.core.alloc;
 import reactor.core.util.SystemUtils;
 
 /**
+ * An abstract {@link reactor.core.alloc.Reference} implementation that does reference counting.
+ *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public abstract class AbstractReference<T extends Recyclable> implements Reference<T> {
 
