@@ -5,7 +5,6 @@ import reactor.function.Supplier;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * An implementation of {@link reactor.core.alloc.Allocator} that uses reference counting to determine when an object
@@ -19,9 +18,8 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 
 	private static final int DEFAULT_INITIAL_SIZE = 2048;
 
-	private final Object                  monitor    = new Object();
+	private final Object                  refMonitor = new Object();
 	private final ArrayList<Reference<T>> references = new ArrayList<Reference<T>>();
-	private final ReentrantLock           leaseLock  = new ReentrantLock();
 	private final Supplier<T> factory;
 	private final BitSet      leaseMask;
 
@@ -42,15 +40,12 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		int len = refCnt();
 		int next;
 
-		leaseLock.lock();
-		try {
+		synchronized(leaseMask) {
 			next = leaseMask.nextClearBit(0);
 			if(next >= len) {
 				expand(len);
 			}
 			leaseMask.set(next);
-		} finally {
-			leaseLock.unlock();
 		}
 
 		if(next < 0) {
@@ -61,7 +56,7 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		if(null == ref) {
 			// this reference has been nulled somehow.
 			// that's not really critical, just replace it.
-			synchronized(monitor) {
+			synchronized(refMonitor) {
 				ref = new ReferenceCountingAllocatorReference<T>(factory.get(), next);
 				references.set(next, ref);
 			}
@@ -90,13 +85,15 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 	}
 
 	private int refCnt() {
-		return references.size();
+		synchronized(refMonitor) {
+			return references.size();
+		}
 	}
 
 	private void expand(int num) {
-		int len = references.size();
-		int newLen = len + num;
-		synchronized(monitor) {
+		synchronized(refMonitor) {
+			int len = references.size();
+			int newLen = len + num;
 			for(int i = len; i <= newLen; i++) {
 				references.add(new ReferenceCountingAllocatorReference<T>(factory.get(), i));
 			}
