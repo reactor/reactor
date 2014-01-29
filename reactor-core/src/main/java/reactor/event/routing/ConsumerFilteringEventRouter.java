@@ -43,9 +43,13 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to filter consumers.
 	 *
-	 * @param filter          The filter to use. Must not be {@code null}.
-	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
-	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
+	 * @param filter
+	 * 		The filter to use. Must not be {@code null}.
+	 * @param consumerInvoker
+	 * 		Used to invoke consumers. Must not be {@code null}.
+	 *
+	 * @throws IllegalArgumentException
+	 * 		if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
 		Assert.notNull(filter, "filter must not be null");
@@ -57,29 +61,34 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 
 	@Override
 	public void route(Object key, Event<?> event,
-										List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
-										Consumer<?> completionConsumer,
-										Consumer<Throwable> errorConsumer) {
-		if (null != consumers) {
-			for (Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
+	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                  Consumer<?> completionConsumer,
+	                  Consumer<Throwable> errorConsumer) {
+		if(null != consumers) {
+			for(Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
 				try {
 					invokeConsumer(key, event, consumer);
-				} catch (Throwable t) {
-					if(null != event.getErrorConsumer()){
+				} catch(Throwable t) {
+					if(null != event.getErrorConsumer()) {
 						event.consumeError(t);
-					} else if (null != errorConsumer) {
+					} else if(null != errorConsumer) {
 						errorConsumer.accept(t);
 					} else {
 						logger.error("Event routing failed for {}: {}", consumer.getObject(), t.getMessage(), t);
+						if(RuntimeException.class.isInstance(t)) {
+							throw (RuntimeException)t;
+						} else {
+							throw new IllegalStateException(t);
+						}
 					}
 				}
 			}
 		}
-		if (null != completionConsumer) {
+		if(null != completionConsumer) {
 			try {
 				consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
-			} catch (Exception e) {
-				if (null != errorConsumer) {
+			} catch(Exception e) {
+				if(null != errorConsumer) {
 					errorConsumer.accept(e);
 				} else {
 					logger.error("Completion Consumer {} failed: {}", completionConsumer, e.getMessage(), e);
@@ -89,23 +98,24 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	}
 
 	protected void invokeConsumer(Object key,
-																Event<?> event,
-																Registration<? extends Consumer<? extends Event<?>>> registeredConsumer) throws Exception {
-		if(null == registeredConsumer){
+	                              Event<?> event,
+	                              Registration<? extends Consumer<? extends Event<?>>> registeredConsumer)
+			throws Exception {
+		if(null == registeredConsumer) {
 			return;
 		}
-		if (!isRegistrationActive(registeredConsumer)) {
+		if(!isRegistrationActive(registeredConsumer)) {
 			return;
 		}
-		if (null != registeredConsumer.getSelector().getHeaderResolver()) {
+		if(null != registeredConsumer.getSelector().getHeaderResolver()) {
 			event.getHeaders().setAll(registeredConsumer.getSelector().getHeaderResolver().resolve(key));
 		}
 		try {
 			consumerInvoker.invoke(registeredConsumer.getObject(), Void.TYPE, event);
-		} catch (CancelConsumerException cancel) {
+		} catch(CancelConsumerException cancel) {
 			registeredConsumer.cancel();
 		}
-		if (registeredConsumer.isCancelAfterUse()) {
+		if(registeredConsumer.isCancelAfterUse()) {
 			registeredConsumer.cancel();
 		}
 	}
