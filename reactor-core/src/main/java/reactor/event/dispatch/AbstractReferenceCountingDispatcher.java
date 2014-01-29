@@ -41,8 +41,8 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 			InheritableThreadLocal<Reference<Task<Event<?>>>>();
 	private final BlockingQueue<Reference<Task<Event<?>>>> taskQueue;
 
-	private final int                       backlogSize;
-	private       Allocator                 tasks;
+	private final int       backlogSize;
+	private       Allocator tasks;
 
 	protected AbstractReferenceCountingDispatcher(int backlogSize) {
 		this(backlogSize, null);
@@ -153,7 +153,11 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 
 		@Override
 		protected void submit() {
-			taskQueue.add(getRef());
+			if(isInContext()) {
+				execute();
+			} else {
+				taskQueue.add(getRef());
+			}
 		}
 
 		@Override
@@ -181,11 +185,11 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 
 	@SuppressWarnings("unchecked")
 	protected static void route(EventRouter eventRouter,
-	                          Object key,
-	                          Event event,
-	                          List<Registration<? extends Consumer<? extends Event<?>>>> registrations,
-	                          Consumer completionConsumer,
-	                          Consumer errorConsumer) {
+	                            Object key,
+	                            Event event,
+	                            List<Registration<? extends Consumer<? extends Event<?>>>> registrations,
+	                            Consumer completionConsumer,
+	                            Consumer errorConsumer) {
 		eventRouter.route(key,
 		                  event,
 		                  registrations,
