@@ -29,14 +29,13 @@ import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractThroughputTests extends AbstractReactorTest {
 
-	protected final int                     selectors         = 256;
+	protected final int                     selectors         = 2 * 1024;
 	protected final int                     testRuns          = 3;
-	protected final long                    testDuration      = 5000;
+	protected final long                    testDuration      = 3 * 1000;
 	protected final Object[]                objects           = new Object[selectors];
 	protected final Selector[]              sels              = new Selector[selectors];
 	protected final Event<String>           hello             = new Event<String>("Hello World!");

@@ -105,13 +105,14 @@ public final class EventLoopDispatcher extends AbstractReferenceCountingDispatch
 		@Override
 		protected void execute() {
 			try {
-				eventRouter.route(key,
-				                  event,
-				                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
-				                  completionConsumer,
-				                  errorConsumer);
+				route(eventRouter,
+				      key,
+				      event,
+				      (null != consumerRegistry ? consumerRegistry.select(key) : null),
+				      completionConsumer,
+				      errorConsumer);
 			} finally {
-				if(null != getRef() && getRef().getReferenceCount() > 0) {
+				if(null != getRef() && getRef().getReferenceCount() == 1) {
 					getRef().release();
 				}
 			}

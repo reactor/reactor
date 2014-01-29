@@ -2,15 +2,10 @@ package reactor.core.alloc;
 
 import reactor.core.util.SystemUtils;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
 /**
  * @author Jon Brisbin
  */
 public abstract class AbstractReference<T extends Recyclable> implements Reference<T> {
-
-	private static final AtomicIntegerFieldUpdater<AbstractReference> REF_CNT_UPDATER
-			= AtomicIntegerFieldUpdater.newUpdater(AbstractReference.class, "refCnt");
 
 	private volatile int refCnt = 0;
 
@@ -25,11 +20,6 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 	@Override
 	public long getAge() {
 		return SystemUtils.approxCurrentTimeMillis() - inception;
-	}
-
-	@Override
-	public long getIdleTime() {
-		return -1;
 	}
 
 	@Override
@@ -54,11 +44,9 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 
 	@Override
 	public void release(int decr) {
-		int cnt = (1 == decr ? --refCnt : (refCnt -= decr));
-		if(cnt == 0) {
+		refCnt -= Math.min(decr, refCnt);
+		if(refCnt < 1) {
 			obj.recycle();
-		} else if(cnt < 1) {
-			REF_CNT_UPDATER.set(this, 0);
 		}
 	}
 

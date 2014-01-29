@@ -45,8 +45,8 @@ import static junit.framework.Assert.assertEquals;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 500;
-	static int runs    = 1000;
+	static int length  = 256;
+	static int runs    = 2 * 1024;
 	static int samples = 3;
 
 	CountDownLatch latch;
@@ -149,7 +149,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new EventLoopDispatcher("eventLoop", 256), "event loop");
+		doTest(new EventLoopDispatcher("eventLoop", 2048), "event loop");
 	}
 
 	@Test

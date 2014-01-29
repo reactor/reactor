@@ -46,8 +46,8 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
-	private final ExecutorService           executor;
-	private final RingBufferAllocator<Task> tasks;
+	private final ExecutorService                     executor;
+	private final RingBufferAllocator<Task<Event<?>>> tasks;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
@@ -82,25 +82,33 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 	                            WaitStrategy waitStrategy) {
 		super(bufferSize, null);
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
-		this.tasks = new RingBufferAllocatorSpec<Task>()
+		this.tasks = new RingBufferAllocatorSpec<Task<Event<?>>>()
 				.name(name)
 				.ringSize(bufferSize)
 				.executor(executor)
-				.allocator(new Supplier<Task>() {
+				.allocator(new Supplier<Task<Event<?>>>() {
 					@Override
-					public Task get() {
+					public Task<Event<?>> get() {
 						return createTask();
 					}
 				})
-				.eventHandler(new Consumer<Reference<Task>>() {
+				.eventHandler(new Consumer<Reference<Task<Event<?>>>>() {
 					@Override
-					public void accept(Reference<Task> ref) {
-						ref.get().execute();
-
-						//						Reference<Task<Event<?>>> nextRef;
-						//						while(null != (nextRef = getTaskQueue().poll())) {
-						//							nextRef.get().execute();
-						//						}
+					public void accept(Reference<Task<Event<?>>> ref) {
+						Task<Event<?>> task = ref.get();
+						do {
+							try {
+								route(task.eventRouter,
+								      task.key,
+								      task.event,
+								      (null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+								      task.completionConsumer,
+								      task.errorConsumer);
+							} finally {
+								ref.release();
+							}
+							ref = getTaskQueue().poll();
+						} while(null != ref);
 					}
 				})
 				.errorHandler(new Consumer<Throwable>() {
@@ -162,7 +170,7 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 		@Override
 		protected void submit() {
 			if(isInContext()) {
-				getTaskQueue().add(getRef());
+				execute();
 			} else {
 				getRef().release();
 			}

@@ -17,13 +17,6 @@ public interface Reference<T extends Recyclable> extends Supplier<T> {
 	long getAge();
 
 	/**
-	 * Get the age of this {@code Reference} since it was lasted used.
-	 *
-	 * @return the number of milliseconds since this {@code Reference} was last used.
-	 */
-	long getIdleTime();
-
-	/**
 	 * Get the current number of references retained to this object.
 	 *
 	 * @return the reference count.

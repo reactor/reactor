@@ -33,23 +33,21 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		this.factory = factory;
 		this.references.ensureCapacity(initialSize);
 		this.leaseMask = new BitSet(initialSize);
-		preallocate(0, initialSize);
+		expand(initialSize);
 	}
 
 	@Override
 	public Reference<T> allocate() {
 		Reference<T> ref;
-		int len = references.size();
-		int next = leaseMask.nextClearBit(0);
-		if(next == len) {
-			// Try again immediately
-			if(len >= (next = leaseMask.nextClearBit(0))) {
-				preallocate(next, next);
-			}
-		}
+		int len = refCnt();
+		int next;
 
 		leaseLock.lock();
 		try {
+			next = leaseMask.nextClearBit(0);
+			if(next >= len) {
+				expand(len);
+			}
 			leaseMask.set(next);
 		} finally {
 			leaseLock.unlock();
@@ -60,6 +58,14 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		}
 
 		ref = references.get(next);
+		if(null == ref) {
+			// this reference has been nulled somehow.
+			// that's not really critical, just replace it.
+			synchronized(monitor) {
+				ref = new ReferenceCountingAllocatorReference<T>(factory.get(), next);
+				references.set(next, ref);
+			}
+		}
 		ref.retain();
 
 		return ref;
@@ -83,11 +89,17 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		}
 	}
 
-	private void preallocate(int startIndex, int num) {
+	private int refCnt() {
+		return references.size();
+	}
+
+	private void expand(int num) {
 		int len = references.size();
 		int newLen = len + num;
-		for(int i = startIndex; i < newLen; i++) {
-			references.add(new ReferenceCountingAllocatorReference<T>(factory.get(), i));
+		synchronized(monitor) {
+			for(int i = len; i <= newLen; i++) {
+				references.add(new ReferenceCountingAllocatorReference<T>(factory.get(), i));
+			}
 		}
 	}
 

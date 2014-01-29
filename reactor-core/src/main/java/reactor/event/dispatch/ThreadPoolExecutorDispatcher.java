@@ -147,7 +147,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 			if(isInContext()) {
 				execute();
 			} else {
-				executor.submit(this);
+				executor.execute(this);
 			}
 		}
 

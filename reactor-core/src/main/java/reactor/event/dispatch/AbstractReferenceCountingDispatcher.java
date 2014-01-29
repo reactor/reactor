@@ -16,30 +16,44 @@
 
 package reactor.event.dispatch;
 
-import reactor.core.alloc.*;
+import reactor.core.alloc.AbstractReference;
+import reactor.core.alloc.Allocator;
+import reactor.core.alloc.Reference;
+import reactor.core.alloc.ReferenceCountingAllocator;
 import reactor.event.Event;
+import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.queue.BlockingQueueFactory;
-import reactor.util.Assert;
 
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Base implementation of {@link reactor.event.dispatch.Dispatcher} that provides functionality
+ */
 public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecycleDispatcher {
 
+	private final ThreadLocal<Reference<Task<Event<?>>>> inContextTask = new
+			InheritableThreadLocal<Reference<Task<Event<?>>>>();
 	private final BlockingQueue<Reference<Task<Event<?>>>> taskQueue;
 
 	private final int                       backlogSize;
 	private       Allocator                 tasks;
-	private       Allocator<Task<Event<?>>> inContextTasks;
 
 	protected AbstractReferenceCountingDispatcher(int backlogSize) {
+		this(backlogSize, null);
+	}
+
+	protected AbstractReferenceCountingDispatcher(int backlogSize, Allocator tasks) {
 		this.backlogSize = backlogSize;
 		this.taskQueue = BlockingQueueFactory.createQueue();
-		if(backlogSize > 0) {
+		if(null != tasks) {
+			this.tasks = tasks;
+		} else {
 			this.tasks = new ReferenceCountingAllocator<Task>(
 					backlogSize,
 					new Supplier<Task>() {
@@ -50,30 +64,6 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 					}
 			);
 		}
-		this.inContextTasks = new ReferenceCountingAllocator<Task<Event<?>>>(
-				backlogSize,
-				new Supplier<Task<Event<?>>>() {
-					@Override
-					public Task<Event<?>> get() {
-						return createTask();
-					}
-				}
-		);
-	}
-
-	protected AbstractReferenceCountingDispatcher(int backlogSize, Allocator tasks) {
-		this.backlogSize = backlogSize;
-		this.taskQueue = BlockingQueueFactory.createQueue();
-		this.tasks = tasks;
-		this.inContextTasks = new ReferenceCountingAllocator<Task<Event<?>>>(
-				backlogSize,
-				new Supplier<Task<Event<?>>>() {
-					@Override
-					public Task<Event<?>> get() {
-						return createTask();
-					}
-				}
-		);
 	}
 
 	public int getBacklogSize() {
@@ -109,38 +99,18 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 	                                          Consumer<Throwable> errorConsumer,
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> completionConsumer) {
-		Assert.notNull(tasks, "An Allocator for tasks has not been set. This Dispatcher is unusable until that is done.");
-		Assert.isTrue(alive(), "This Dispatcher has already been shut down.");
-
-		boolean isInContext = isInContext();
-
-		Reference<Task<Event<?>>> ref;
-		if(isInContext) {
-			ref = inContextTasks.allocate();
-		} else {
-			ref = allocateTaskRef();
-		}
+		Reference<Task<Event<?>>> ref = allocateTaskRef();
 
 		// causes compilation errors with generic types if not cast to raw first
 		Consumer _completionConsumer = completionConsumer;
-		Task<Event<?>> task = ref.get()
-		                         .setKey(key)
-		                         .setEvent(event)
-		                         .setConsumerRegistry(consumerRegistry)
-		                         .setErrorConsumer(errorConsumer)
-		                         .setEventRouter(eventRouter)
-		                         .setCompletionConsumer((Consumer<Event<?>>)_completionConsumer);
-
-		if(isInContext) {
-			taskQueue.add(ref);
-
-			Reference<Task<Event<?>>> nextRef;
-			while(null != (nextRef = getTaskQueue().poll())) {
-				nextRef.get().execute();
-			}
-		} else {
-			task.submit();
-		}
+		ref.get()
+		   .setKey(key)
+		   .setEvent(event)
+		   .setConsumerRegistry(consumerRegistry)
+		   .setErrorConsumer(errorConsumer)
+		   .setEventRouter(eventRouter)
+		   .setCompletionConsumer((Consumer<Event<?>>)_completionConsumer)
+		   .submit();
 	}
 
 	protected void setAllocator(Allocator tasks) {
@@ -154,7 +124,18 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Reference<Task<E>> allocateTaskRef() {
-		Reference ref = tasks.allocate();
+		Reference ref;
+		if(isInContext()) {
+			ref = inContextTask.get();
+			if(null == ref) {
+				Task<Event<?>> task = createTask();
+				ref = new AbstractReference(task) {};
+				inContextTask.set(ref);
+			}
+			ref.retain();
+		} else {
+			ref = tasks.allocate();
+		}
 		((SingleThreadTask)ref.get()).setRef(ref);
 		return (Reference<Task<E>>)ref;
 	}
@@ -172,38 +153,44 @@ public abstract class AbstractReferenceCountingDispatcher extends AbstractLifecy
 
 		@Override
 		protected void submit() {
-			if(isInContext()) {
-				execute();
-			} else {
-				getTaskQueue().add(getRef());
-			}
+			taskQueue.add(getRef());
 		}
 
 		@Override
 		protected void execute() {
-			try {
-				eventRouter.route(key,
-				                  event,
-				                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
-				                  completionConsumer,
-				                  errorConsumer);
+			Reference<Task<Event<?>>> ref = getRef();
+			Task<Event<?>> task = ref.get();
+			do {
+				try {
+					route(task.eventRouter,
+					      task.key,
+					      task.event,
+					      (null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+					      task.completionConsumer,
+					      task.errorConsumer);
+				} finally {
+					if(ref.getReferenceCount() == 1) {
+						ref.release();
+					}
+				}
 
-				Reference<Task<Event<?>>> nextRef;
-				while(null != (nextRef = getTaskQueue().poll())) {
-					nextRef.get().execute();
-				}
-			} finally {
-				if(null != ref && ref.getReferenceCount() > 0) {
-					ref.release();
-				}
-			}
+				ref = taskQueue.poll();
+			} while(null != ref);
 		}
 	}
 
-	private class EphemeralReference<T extends Recyclable> extends AbstractReference<T> {
-		private EphemeralReference(T obj) {
-			super(obj);
-		}
+	@SuppressWarnings("unchecked")
+	protected static void route(EventRouter eventRouter,
+	                          Object key,
+	                          Event event,
+	                          List<Registration<? extends Consumer<? extends Event<?>>>> registrations,
+	                          Consumer completionConsumer,
+	                          Consumer errorConsumer) {
+		eventRouter.route(key,
+		                  event,
+		                  registrations,
+		                  completionConsumer,
+		                  errorConsumer);
 	}
 
 }

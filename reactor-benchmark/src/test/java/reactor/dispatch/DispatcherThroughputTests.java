@@ -92,7 +92,7 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 		log.info("Starting event loop test...");
 		doTest(Reactors.reactor()
 		               .env(env)
-		               .dispatcher(new EventLoopDispatcher("eventLoop", 16384))
+		               .dispatcher(new EventLoopDispatcher("eventLoop", 256))
 		               .get());
 	}
 
