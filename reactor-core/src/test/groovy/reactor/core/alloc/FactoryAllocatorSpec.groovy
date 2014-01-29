@@ -1,7 +1,6 @@
 package reactor.core.alloc
 
-import reactor.core.alloc.factory.FactoryAllocator
-import reactor.core.alloc.factory.NoArgConstructorFactory
+import reactor.core.alloc.factory.Factories
 import spock.lang.Specification
 
 /**
@@ -12,8 +11,7 @@ class FactoryAllocatorSpec extends Specification {
 	def "factory can provide objects from a delegate"() {
 
 		given: "a factory for objects and an allocator"
-			def delegate = new NoArgConstructorFactory<Pojo>(Pojo)
-			def pool = new FactoryAllocator<Pojo>(1024, delegate)
+			def pool = Factories.create(Pojo)
 
 		when: "items are requested from the pool"
 			def items = []
