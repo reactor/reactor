@@ -1,6 +1,6 @@
 package reactor.core.alloc;
 
-import reactor.core.HashWheelTimer;
+import reactor.timer.HashWheelTimer;
 import reactor.function.Consumer;
 
 import java.util.concurrent.TimeUnit;

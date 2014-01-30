@@ -23,6 +23,7 @@ import reactor.core.configuration.*;
 import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
+import reactor.timer.HashWheelTimer;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
 
@@ -292,7 +293,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Get the {@code Environment}-wide {@link reactor.core.HashWheelTimer}.
+	 * Get the {@code Environment}-wide {@link reactor.timer.HashWheelTimer}.
 	 *
 	 * @return the timer.
 	 */
