@@ -1,6 +1,7 @@
 package reactor.core
 
 import reactor.function.Consumer
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -35,6 +36,7 @@ class HashWheelTimerSpec extends Specification {
 
   }
 
+	@Ignore
   def "HashWheelTimer can delay submitted tasks"() {
 
     given:
