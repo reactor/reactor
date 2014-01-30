@@ -17,6 +17,7 @@ package reactor.core.composable.spec;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
+import reactor.core.composable.BufferedStream;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
@@ -79,8 +80,8 @@ public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSp
 	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
 	                                                  Tuple2<Selector, Object> accept) {
 		Stream<T> stream = values == null && batchSize < 1?
-				new Stream<T>(observable, batchSize, parent, accept, env) :
-				new Stream.BufferStream<T>(observable, batchSize, values, parent, accept, env);
+				new Stream<T>(observable, parent, accept, env) :
+				new BufferedStream<T>(observable, batchSize, values, parent, accept, env);
 		return new Deferred<T, Stream<T>>(stream);
 	}
 

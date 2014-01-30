@@ -17,6 +17,7 @@ package reactor.core.composable.spec;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
+import reactor.core.composable.BufferedStream;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Stream;
 import reactor.event.selector.Selector;
@@ -79,7 +80,7 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");
 		}
 
-		return new Stream.BufferStream<T>(observable, batchSize, values, parent, accept, env);
+		return new BufferedStream<T>(observable, batchSize, values, parent, accept, env);
 	}
 
 }

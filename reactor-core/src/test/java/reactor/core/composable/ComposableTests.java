@@ -167,7 +167,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 		s.flush();
 
-		assertThat("First is 1", first.get(), is(1));
+    assertThat("First is 1", first.get(), is(1));
 		assertThat("Last is 5", last.get(), is(5));
 	}
 
@@ -201,6 +201,7 @@ public class ComposableTests extends AbstractReactorTest {
 	@Test
 	public void testStreamBatchesResults() {
 		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+
 		Stream<Iterable<Integer>> s =
 				d.compose()
 				 .map(STRING_2_INTEGER)

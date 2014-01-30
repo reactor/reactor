@@ -33,6 +33,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A {@code Stream} is a stateless event processor that provides methods for attaching {@link
@@ -54,57 +55,26 @@ import java.util.concurrent.TimeUnit;
  */
 public class Stream<T> extends Composable<T> {
 
-	protected final int         batchSize;
 	protected final Environment environment;
 
-	/**
+  /**
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
 	 * handlers.
-	 * <p>
-	 * The stream will batch values into batches of the given
-	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
-	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
-	 * </p>
-	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
-	 * to those handlers.
-	 * The stream will accept errors from the given {@code parent}.
-	 *
-	 * @param observable The observable used to drive event handlers
-	 * @param batchSize  The size of the batches, or {@code -1} for no batching
-	 * @param parent     The stream's parent. May be {@code null}
-	 */
-	public Stream(@Nullable final Observable observable,
-	              int batchSize,
-	              @Nullable final Composable<?> parent,
-	              @Nullable final Environment environment
-	) {
-		this(observable, batchSize, parent, null, environment);
-	}
-
-	/**
-	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
-	 * handlers.
-	 * <p>
-	 * The stream will batch values into batches of the given
-	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
-	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
-	 * </p>
+   *
 	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
 	 * to those handlers.
 	 * The stream will accept errors from the given {@code parent}.
 	 *
 	 * @param observable     The observable used to drive event handlers
-	 * @param batchSize      The size of the batches, or {@code -1} for no batching
-	 * @param parent         The stream's parent. May be {@code null}
+   * @param parent         The stream's parent. May be {@code null}
 	 * @param acceptSelector The tuple Selector/Key to accept values on this observable. May be {@code null}
 	 */
 	public Stream(@Nullable final Observable observable,
-	              int batchSize,
-	              @Nullable final Composable<?> parent, Tuple2<Selector, Object> acceptSelector,
+                @Nullable final Composable<?> parent,
+                Tuple2<Selector, Object> acceptSelector,
 	              @Nullable final Environment environment) {
 		super(observable, parent, acceptSelector);
-		this.batchSize = batchSize;
-		this.environment = environment;
+    this.environment = environment;
 	}
 
 	@Override
@@ -127,7 +97,7 @@ public class Stream<T> extends Composable<T> {
 		return (Stream<T>) super.flush();
 	}
 
-	@Override
+  @Override
 	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		return (Stream<T>) super.when(exceptionType, onError);
 	}
@@ -163,26 +133,21 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the first value of each batch
 	 */
 	public Stream<T> first() {
-		return first(batchSize);
-	}
+    final Deferred<T, Stream<T>> d = createDeferredChildStream(0);
 
-	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
-	 * to
-	 * have been set.
-	 * <p/>
-	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
-	 *
-	 * @param batchSize the batch size to use
-	 * @return a new {@code Stream} whose values are the first value of each batch)
-	 */
-	public Stream<T> first(int batchSize) {
-		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
-		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), null,
-				d.compose().getAcceptKey()));
-		return d.compose();
-	}
+    final AtomicReference<Event<T>> ref = new AtomicReference();
+    add(new Action<T>(getObservable(), getError().getObject(), d.compose().getAcceptKey()) {
+      @Override
+      protected void doAccept(Event<T> ev) {
+        if (null == ref.get()) {
+          ref.set(ev);
+          getObservable().notify(d.compose().getAcceptKey(), ev);
+        }
+      }
+    });
+
+    return d.compose();
+  }
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
@@ -190,49 +155,36 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last() {
-		return last(batchSize);
-	}
+    final Deferred<T, Stream<T>> d = createDeferredChildStream(0);
 
-	/**
-	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
-	 *
-	 * @param batchSize the batch size to use
-	 * @return a new {@code Stream} whose values are the last value of each batch
-	 */
-	public Stream<T> last(int batchSize) {
-		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
-		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), d.compose().getAcceptKey(),
-				null));
-		return d.compose();
-	}
+    final AtomicReference<Event<T>> ref = new AtomicReference();
+    add(new Action<T>(getObservable(), getError().getObject(), d.compose().getAcceptKey()) {
+      @Override
+      protected void doAccept(Event<T> ev) {
+        ref.set(ev);
+        getObservable().notify(d.compose().getAcceptKey(), ev);
+      }
+    });
 
+    return d.compose();
+  }
 
-	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
-	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
-	 *
-	 * @return a new {@code Stream} whose values result from the iterable input
-	 */
-	public Stream<T> split() {
-		return split(batchSize);
-	}
-
-	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
-	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
-	 *
-	 * @param batchSize the batch size to use
-	 * @return a new {@code Stream} whose values result from the iterable input
-	 */
-	public Stream<T> split(int batchSize) {
-		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		getObservable().on(getAcceptSelector(),
-				new ForEachAction<T>(batchSize, getObservable(), d.compose().getAcceptKey(), getError().getObject()));
-		return d.compose();
-	}
+  /**
+   * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
+   * <p/>
+   * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+   *
+   * @return a new {@code Stream} whose values result from the iterable input
+   */
+  public Stream<T> split() {
+    final Deferred<T, Stream<T>> d = createDeferred();
+    getObservable().on(getAcceptSelector(),
+                       new ForEachAction<T>(0,
+                                            getObservable(),
+                                            d.compose().getAcceptKey(),
+                                            getError().getObject()));
+    return d.compose();
+  }
 
 	/**
 	 * Indicates whether or not this {@code Stream} is unbounded.
@@ -240,7 +192,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return {@literal true} if a {@code batchSize} has been set, {@literal false} otherwise
 	 */
 	public boolean isBatch() {
-		return batchSize > 0;
+		return false;
 	}
 
 	/**
@@ -264,7 +216,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
 	public Stream<T> buffer() {
-		return buffer(batchSize);
+		return buffer(0);
 	}
 
 	/**
@@ -292,8 +244,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<Iterable<T>> collect() {
-		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
-		return collect(batchSize);
+    throw new RuntimeException("Can't collect on unbounded stream");
 	}
 
 	/**
@@ -439,15 +390,16 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, HashWheelTimer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
+		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(0);
 
-		add(new MovingWindowAction<T>(
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject(),
-				timer,
-				period, timeUnit, delay, backlog
-		));
+		add(new MovingWindowAction<T>(d.compose().getObservable(),
+                                  d.compose().getAcceptKey(),
+                                  getError().getObject(),
+                                  timer,
+                                  period,
+                                  timeUnit,
+                                  delay,
+                                  backlog));
 
 		return d.compose();
 	}
@@ -483,23 +435,14 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
-		final Deferred<A, Stream<A>> d = createDeferred(1);
+		final Deferred<A, Stream<A>> d = createDeferred();
 		final Stream<A> stream = d.compose();
 
-		if (isBatch()) {
-			add(new ReduceAction<T, A>(
-					batchSize,
-					accumulators,
-					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-			));
-		} else {
-			add(new ScanAction<T, A>(
-					accumulators,
-					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-			));
-		}
+    add(new ScanAction<T, A>(accumulators,
+                             fn,
+                             stream.getObservable(),
+                             stream.getAcceptKey(),
+                             getError().getObject()));
 
 		return d.compose();
 	}
@@ -515,83 +458,45 @@ public class Stream<T> extends Composable<T> {
 		return reduce(fn, (Supplier<A>) null);
 	}
 
-	@Override
-	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return createDeferred(batchSize);
-	}
 
-	@SuppressWarnings("unchecked")
-	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
-		return (Deferred<V, C>) createDeferredChildStream(batchSize);
-	}
+  @SuppressWarnings("unchecked")
+  protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
+    return createDeferred(0);
+  }
 
-	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		Stream<T> stream;
-		if (batchSize > 1) {
-			stream = new BufferStream<T>(null,
-					batchSize,
-					null,
-					this,
-					null,
-					environment);
-		} else {
-			stream = new Stream<T>(null,
-					batchSize,
-					this,
-					environment);
-		}
-		return new Deferred<T, Stream<T>>(stream);
-	}
+  @SuppressWarnings("unchecked")
+  protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
+    return (Deferred<V, C>) createDeferredChildStream(batchSize);
+  }
 
-	private Deferred<Iterable<T>, Stream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
-		Stream<Iterable<T>> stream = new Stream<Iterable<T>>(null,
-				batchSize,
-				this,
-				environment);
-		return new Deferred<Iterable<T>, Stream<Iterable<T>>>(stream);
-	}
+  private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
+    Stream<T> stream;
+    if (batchSize > 1) {
+      stream = new BufferedStream<T>(null,
+                                   batchSize,
+                                   null,
+                                   this,
+                                   null,
+                                   environment);
+    } else {
+      stream = new Stream<T>(null,
+                             this,
+                             null,
+                             environment);
+    }
+    return new Deferred<T, Stream<T>>(stream);
+  }
 
-	public static class BufferStream<T> extends Stream<T> {
+  private Deferred<Iterable<T>, Stream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
+    Stream<Iterable<T>> stream = new BufferedStream<Iterable<T>>(null,
+                                                               batchSize,
+                                                               null,
+                                                               this,
+                                                               null,
+                                                               environment);
+    return new Deferred<Iterable<T>, Stream<Iterable<T>>>(stream);
+  }
 
-		final BufferAction<T> bufferAction;
-		final Iterable<T>     values;
 
-		public BufferStream(@Nullable Observable observable, int batchSize,
-		                    @Nullable Iterable<T> values,
-		                    @Nullable final Composable<?> parent,
-		                    @Nullable Tuple2<Selector, Object> acceptSelector,
-		                    @Nullable Environment environment) {
-			super(observable, batchSize, parent, acceptSelector, environment);
-			this.bufferAction = new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError().getObject());
-			this.values = values;
-		}
-
-		@Override
-		public String debug() {
-			Composable<?> that = this;
-			while (that.getParent() != null) {
-				that = that.getParent();
-			}
-			if(that == this){
-				return ActionUtils.browseAction(bufferAction);
-			}else{
-				return that.debug();
-			}
-		}
-
-		@Override
-		void notifyValue(Event<T> value) {
-			bufferAction.accept(value);
-		}
-
-		@Override
-		void notifyFlush() {
-			if (values != null) {
-				for (T val : values) {
-					bufferAction.accept(Event.wrap(val));
-				}
-			}
-		}
-	}
 
 }

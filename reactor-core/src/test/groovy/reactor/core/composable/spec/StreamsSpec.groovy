@@ -249,7 +249,7 @@ class StreamsSpec extends Specification {
 
   }
 
-  def 'When the number of values is unknown, last is never updated'() {
+  def 'When the number of values is unknown, last is always last seen'() {
     given:
       'a composable that will accept an unknown number of values'
       Deferred d = Streams.defer().get()
@@ -257,11 +257,16 @@ class StreamsSpec extends Specification {
 
     when:
       'last is retrieved'
-       composable.last().tap()
+       def tap = composable.last().tap()
+       d.accept(1)
+       d.accept(2)
+       d.accept(3)
+       d.accept(4)
+       d.accept(5)
 
     then:
 	    "can't call last() on unbounded stream"
-      thrown(IllegalStateException)
+      tap.get() == 5
 
   }
 
