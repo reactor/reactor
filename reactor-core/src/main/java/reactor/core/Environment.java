@@ -25,7 +25,6 @@ import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
-import reactor.util.TimerUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,10 +70,6 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final MultiValueMap<String, Dispatcher> dispatchers;
 	private final String                            defaultDispatcher;
-
-	{
-		TimerUtils.setTimer(timer);
-	}
 
 	/**
 	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial
