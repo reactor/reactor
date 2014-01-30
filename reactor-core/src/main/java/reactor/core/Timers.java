@@ -1,6 +1,5 @@
-package reactor.core.util;
+package reactor.core;
 
-import reactor.core.HashWheelTimer;
 import reactor.function.Consumer;
 
 import java.util.concurrent.TimeUnit;
@@ -9,16 +8,16 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Jon Brisbin
  */
-public abstract class SystemUtils {
+public abstract class Timers {
 
 	private static final int        DEFAULT_RESOLUTION = 100;
 	private static final AtomicLong now                = new AtomicLong();
 	private static HashWheelTimer timer;
 
-	protected SystemUtils() {
+	protected Timers() {
 	}
 
-	public static final long approxCurrentTimeMillis() {
+	public static long approxCurrentTimeMillis() {
 		getTimer();
 		return now.get();
 	}
@@ -31,7 +30,7 @@ public abstract class SystemUtils {
 			}
 		}, DEFAULT_RESOLUTION, TimeUnit.MILLISECONDS, DEFAULT_RESOLUTION);
 		now.set(System.currentTimeMillis());
-		SystemUtils.timer = timer;
+		Timers.timer = timer;
 	}
 
 	public static HashWheelTimer getTimer() {

@@ -20,18 +20,13 @@ import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
-import reactor.core.util.SystemUtils;
 import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
-import reactor.queue.BlockingQueueFactory;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
 
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -77,7 +72,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final String                            defaultDispatcher;
 
 	{
-		SystemUtils.setTimer(timer);
+		Timers.setTimer(timer);
 	}
 
 	/**

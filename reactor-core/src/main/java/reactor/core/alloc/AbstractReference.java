@@ -1,6 +1,6 @@
 package reactor.core.alloc;
 
-import reactor.core.util.SystemUtils;
+import reactor.core.Timers;
 
 /**
  * An abstract {@link reactor.core.alloc.Reference} implementation that does reference counting.
@@ -17,12 +17,12 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 
 	protected AbstractReference(T obj) {
 		this.obj = obj;
-		this.inception = SystemUtils.approxCurrentTimeMillis();
+		this.inception = Timers.approxCurrentTimeMillis();
 	}
 
 	@Override
 	public long getAge() {
-		return SystemUtils.approxCurrentTimeMillis() - inception;
+		return Timers.approxCurrentTimeMillis() - inception;
 	}
 
 	@Override
