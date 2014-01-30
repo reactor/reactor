@@ -294,7 +294,7 @@ public class Reactor implements Observable {
 
 	@Override
 	public Reactor notify(Object key) {
-		return notify(key, new Event<Void>(null), null);
+		return notify(key, new Event<Void>(Void.class), null);
 	}
 
 	@Override
@@ -420,7 +420,7 @@ public class Reactor implements Observable {
 
 				Event<?> replyEv;
 				if(null == reply) {
-					replyEv = new Event<Void>(null);
+					replyEv = new Event<Void>(Void.class);
 				} else {
 					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>)reply : Event.wrap(reply));
 				}
