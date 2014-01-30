@@ -48,7 +48,18 @@ public class Event<T> implements Serializable, Recyclable {
 
 	private final transient Consumer<Throwable> errorConsumer;
 
-	/**
+  /**
+   * Creates a new Event based on the type T of {@data data}
+   *
+   * @param klass
+   */
+  public Event(Class<T> klass) {
+    this.headers = null;
+    this.data = null;
+    this.errorConsumer = null;
+  }
+
+  /**
 	 * Creates a new Event with the given {@code headers} and {@code data}.
 	 *
 	 * @param headers
