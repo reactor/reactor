@@ -16,12 +16,19 @@
 
 package reactor.event.dispatch;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.alloc.Reference;
+import reactor.core.alloc.RingBufferAllocator;
+import reactor.core.alloc.spec.RingBufferAllocatorSpec;
 import reactor.event.Event;
+import reactor.function.Consumer;
+import reactor.function.Supplier;
+import reactor.support.Identifiable;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -34,20 +41,22 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class RingBufferDispatcher extends SingleThreadDispatcher {
+public final class RingBufferDispatcher extends AbstractReferenceCountingDispatcher {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
-	private final ExecutorService               executor;
-	private final Disruptor<RingBufferTask<?>>  disruptor;
-	private final RingBuffer<RingBufferTask<?>> ringBuffer;
+	private final Logger log = LoggerFactory.getLogger(getClass());
+	private final ExecutorService                     executor;
+	private final RingBufferAllocator<Task<Event<?>>> tasks;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
-	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+	 * wait
 	 * strategy}.
 	 *
-	 * @param name The name of the dispatcher.
+	 * @param name
+	 * 		The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
 		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new BlockingWaitStrategy());
@@ -57,114 +66,114 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher {
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with the given {@code producerType} and {@code waitStrategy}.
 	 *
-	 * @param name         The name of the dispatcher
-	 * @param bufferSize   The size to configure the ring buffer with
-	 * @param producerType The producer type to configure the ring buffer with
-	 * @param waitStrategy The wait strategy to configure the ring buffer with
+	 * @param name
+	 * 		The name of the dispatcher
+	 * @param bufferSize
+	 * 		The size to configure the ring buffer with
+	 * @param producerType
+	 * 		The producer type to configure the ring buffer with
+	 * @param waitStrategy
+	 * 		The wait strategy to configure the ring buffer with
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
 	                            int bufferSize,
 	                            ProducerType producerType,
 	                            WaitStrategy waitStrategy) {
-		super(bufferSize);
-		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer", getContext()));
-
-		this.disruptor = new Disruptor<RingBufferTask<?>>(
-				new EventFactory<RingBufferTask<?>>() {
-					@SuppressWarnings("rawtypes")
+		super(bufferSize, null);
+		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
+		this.tasks = new RingBufferAllocatorSpec<Task<Event<?>>>()
+				.name(name)
+				.ringSize(bufferSize)
+				.executor(executor)
+				.allocator(new Supplier<Task<Event<?>>>() {
 					@Override
-					public RingBufferTask<?> newInstance() {
-						return new RingBufferTask();
+					public Task<Event<?>> get() {
+						return createTask();
 					}
-				},
-				bufferSize,
-				executor,
-				producerType,
-				waitStrategy
-		);
-		// Exceptions are handled by the errorConsumer
-		disruptor.handleExceptionsWith(
-				new ExceptionHandler() {
+				})
+				.eventHandler(new Consumer<Reference<Task<Event<?>>>>() {
 					@Override
-					public void handleEventException(Throwable ex, long sequence, Object event) {
-						// Handled by Task.execute
+					public void accept(Reference<Task<Event<?>>> ref) {
+						Task<Event<?>> task = ref.get();
+						do {
+							try {
+								route(task.eventRouter,
+								      task.key,
+								      task.event,
+								      (null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+								      task.completionConsumer,
+								      task.errorConsumer);
+							} finally {
+								ref.release();
+							}
+							ref = getTaskQueue().poll();
+						} while(null != ref);
 					}
-
+				})
+				.errorHandler(new Consumer<Throwable>() {
 					@Override
-					public void handleOnStartException(Throwable ex) {
-						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
-							log.error(ex.getMessage(), ex);
-						}
+					public void accept(Throwable throwable) {
+						log.error(throwable.getMessage(), throwable);
 					}
-
-					@Override
-					public void handleOnShutdownException(Throwable ex) {
-						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
-							log.error(ex.getMessage(), ex);
-						}
-					}
-				}
-		);
-		disruptor.handleEventsWith(new RingBufferTaskHandler());
-
-		ringBuffer = disruptor.start();
+				})
+				.producerType(producerType)
+				.waitStrategy(waitStrategy)
+				.get();
+		setAllocator(this.tasks);
 	}
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		shutdown();
 		try {
-			return executor.awaitTermination(timeout, timeUnit);
-		} catch (InterruptedException e) {
+			executor.awaitTermination(timeout, timeUnit);
+			tasks.awaitAndShutdown(timeout, timeUnit);
+		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
-		return false;
+		return super.awaitAndShutdown(timeout, timeUnit);
 	}
 
 	@Override
 	public void shutdown() {
-		disruptor.shutdown();
 		executor.shutdown();
+		tasks.shutdown();
 		super.shutdown();
 	}
 
 	@Override
 	public void halt() {
 		executor.shutdownNow();
-		disruptor.halt();
+		tasks.halt();
 		super.halt();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	protected final <E extends Event<?>> Task<E> createTask() {
-		long l = ringBuffer.next();
-		RingBufferTask<?> t = ringBuffer.get(l);
-		t.setSequenceId(l);
-		return (Task<E>) t;
+	protected Task createTask() {
+		return new RingBufferEventHandlerTask();
 	}
 
-	private final class RingBufferTask<E extends Event<?>> extends SingleThreadTask<E> {
-		private long sequenceId;
+	private final class RingBufferEventHandlerTask extends SingleThreadTask<Event<?>> implements Identifiable<Long> {
+		private volatile Long sequenceId;
 
-		private RingBufferTask<E> setSequenceId(long sequenceId) {
+		@Override
+		public Identifiable<Long> setId(Long sequenceId) {
 			this.sequenceId = sequenceId;
 			return this;
 		}
 
 		@Override
-		public void submit() {
-			ringBuffer.publish(sequenceId);
+		public Long getId() {
+			return sequenceId;
 		}
-	}
 
-	private class RingBufferTaskHandler implements EventHandler<RingBufferTask<?>> {
 		@Override
-		public void onEvent(RingBufferTask<?> t, long sequence, boolean endOfBatch) throws Exception {
-			t.execute();
+		protected void submit() {
+			if(isInContext()) {
+				execute();
+			} else {
+				getRef().release();
+			}
 		}
 	}
 

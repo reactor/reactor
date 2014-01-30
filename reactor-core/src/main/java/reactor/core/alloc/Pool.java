@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.pool;
+package reactor.core.alloc;
 
 /**
  * A {@code Pool} provides access to a pool of objects.
@@ -24,7 +24,9 @@ package reactor.pool;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @since 1.1
  */
+@Deprecated
 public interface Pool<T> {
 
 	/**

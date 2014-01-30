@@ -17,6 +17,7 @@
 package reactor.io;
 
 import reactor.function.Supplier;
+import reactor.core.alloc.Recyclable;
 import reactor.util.Assert;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -45,7 +46,8 @@ import java.util.List;
  * @author Jon Brisbin
  */
 @NotThreadSafe
-public class Buffer implements Comparable<Buffer>,
+public class Buffer implements Recyclable,
+                               Comparable<Buffer>,
                                Iterable<Byte>,
                                ReadableByteChannel,
                                WritableByteChannel {
@@ -284,6 +286,16 @@ public class Buffer implements Comparable<Buffer>,
 		bb.position(origPos);
 
 		return num;
+	}
+
+	@Override
+	public void recycle() {
+		if(null != buffer) {
+			buffer.position(0);
+			position = 0;
+			limit = buffer.capacity();
+			buffer.limit(limit);
+		}
 	}
 
 	/**
@@ -1344,7 +1356,9 @@ public class Buffer implements Comparable<Buffer>,
 
 	private void expand() {
 		snapshot();
-		ByteBuffer newBuff = ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE);
+		ByteBuffer newBuff = (buffer.isDirect()
+		                      ? ByteBuffer.allocateDirect(buffer.limit() + SMALL_BUFFER_SIZE)
+		                      : ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE));
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;

@@ -27,8 +27,8 @@ import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
 import reactor.event.dispatch.ActorDispatcher;
-import reactor.event.dispatch.BlockingQueueDispatcher;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.EventLoopDispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -45,8 +45,8 @@ import static junit.framework.Assert.assertEquals;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 500;
-	static int runs    = 1000;
+	static int length  = 256;
+	static int runs    = 2 * 1024;
 	static int samples = 3;
 
 	CountDownLatch latch;
@@ -149,7 +149,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new BlockingQueueDispatcher("eventLoop", 4096), "event loop");
+		doTest(new EventLoopDispatcher("eventLoop", 2048), "event loop");
 	}
 
 	@Test
@@ -169,8 +169,12 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
-				"single-producer ring buffer");
+		doTest(new RingBufferDispatcher(
+				"test",
+				1024,
+				ProducerType.SINGLE,
+				new YieldingWaitStrategy()
+		), "single-producer ring buffer");
 	}
 
 	@Test

@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 import reactor.core.Environment
 import reactor.core.spec.Reactors
 import reactor.event.Event
-import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.event.dispatch.EventLoopDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -36,7 +36,7 @@ class GroovyReactorSpec extends Specification {
 
 	void setupSpec(){
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
+		testEnv.addDispatcher('eventLoop',new EventLoopDispatcher('eventLoop', 256))
 	}
 
 	def "Groovy Reactor dispatches events properly"() {

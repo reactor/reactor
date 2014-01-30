@@ -29,7 +29,10 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class SynchronousDispatcher extends SingleThreadDispatcher {
+public final class SynchronousDispatcher implements Dispatcher {
+
+	public SynchronousDispatcher() {
+	}
 
 	@Override
 	public boolean alive() {
@@ -55,18 +58,25 @@ public final class SynchronousDispatcher extends SingleThreadDispatcher {
 	}
 
 	@Override
-	protected <E extends Event<?>> Task<E> createTask() {
-		return null;
+	public <E extends Event<?>> void dispatch(E event,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> consumer,
+	                                          Consumer<Throwable> errorConsumer) {
+		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>>
-			consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
-
+	public <E extends Event<?>> void dispatch(Object key,
+	                                          E event,
+	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Consumer<Throwable> errorConsumer,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> completionConsumer) {
 		eventRouter.route(key,
-				event,
-				(null != consumerRegistry ? consumerRegistry.select(key) : null),
-				completionConsumer,
-				errorConsumer);
+		                  event,
+		                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
+		                  completionConsumer,
+		                  errorConsumer);
 	}
+
 }

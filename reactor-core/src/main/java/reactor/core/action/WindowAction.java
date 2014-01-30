@@ -18,7 +18,7 @@ package reactor.core.action;
 import reactor.core.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.lifecycle.Lifecycle;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Stephane Maldini
  */
-public class WindowAction<T> extends Action<T> implements Lifecycle {
+public class WindowAction<T> extends Action<T> implements Pausable {
 
 	private final ReentrantLock lock            = new ReentrantLock();
 	private final List<T>       collectedWindow = new ArrayList<T>();
@@ -79,19 +79,19 @@ public class WindowAction<T> extends Action<T> implements Lifecycle {
 	}
 
 	@Override
-	public Lifecycle cancel() {
+	public Pausable cancel() {
 		timerRegistration.cancel();
 		return this;
 	}
 
 	@Override
-	public Lifecycle pause() {
+	public Pausable pause() {
 		timerRegistration.pause();
 		return this;
 	}
 
 	@Override
-	public Lifecycle resume() {
+	public Pausable resume() {
 		timerRegistration.resume();
 		return this;
 	}
