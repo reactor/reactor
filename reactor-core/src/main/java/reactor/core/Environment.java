@@ -25,6 +25,7 @@ import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
+import reactor.util.TimerUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -72,7 +73,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final String                            defaultDispatcher;
 
 	{
-		Timers.setTimer(timer);
+		TimerUtils.setTimer(timer);
 	}
 
 	/**

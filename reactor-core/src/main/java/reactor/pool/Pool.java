@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.alloc;
+package reactor.pool;
 
 /**
  * A {@code Pool} provides access to a pool of objects.

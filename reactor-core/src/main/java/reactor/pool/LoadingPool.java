@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.alloc;
+package reactor.pool;
 
 import reactor.function.Supplier;
 import reactor.queue.BlockingQueueFactory;
