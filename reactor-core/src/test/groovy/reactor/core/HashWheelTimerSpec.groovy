@@ -44,7 +44,7 @@ class HashWheelTimerSpec extends Specification {
       def latch = new CountDownLatch(1)
       def start = System.currentTimeMillis()
       def elapsed = 0
-      def actualTimeWithinBounds = true
+      //def actualTimeWithinBounds = true
 
     when:
       "a task is submitted"
@@ -53,7 +53,7 @@ class HashWheelTimerSpec extends Specification {
             latch.countDown()
             elapsed = System.currentTimeMillis() - start
             start = System.currentTimeMillis()
-            actualTimeWithinBounds = actualTimeWithinBounds && elapsed >= period && elapsed < period * 2
+            //actualTimeWithinBounds = actualTimeWithinBounds && elapsed >= period && elapsed < period * 2
           } as Consumer<Long>,
           delay,
           TimeUnit.MILLISECONDS
@@ -62,7 +62,9 @@ class HashWheelTimerSpec extends Specification {
     then:
       "the latch was counted down"
       latch.await(1, TimeUnit.SECONDS)
-      actualTimeWithinBounds
+	    elapsed >= period
+	    elapsed < period * 2
+      //actualTimeWithinBounds
 
   }
 
