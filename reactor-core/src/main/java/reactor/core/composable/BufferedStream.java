@@ -13,18 +13,23 @@ import reactor.util.Assert;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public class BufferStream<T> extends Stream<T> {
+/**
+ * A {@code BufferedStream}, acting as a buffer between several parts in the topology.
+ *
+ * @param <T> the type of the values in the stream
+ */
+public class BufferedStream<T> extends Stream<T> {
 
   final int             batchSize;
   final BufferAction<T> bufferAction;
   final Iterable<T>     values;
 
-  public BufferStream(@Nullable Observable observable,
-                      int batchSize,
-                      @Nullable Iterable<T> values,
-                      @Nullable final Composable<?> parent,
-                      @Nullable Tuple2<Selector, Object> acceptSelector,
-                      @Nullable Environment environment) {
+  public BufferedStream(@Nullable Observable observable,
+                        int batchSize,
+                        @Nullable Iterable<T> values,
+                        @Nullable final Composable<?> parent,
+                        @Nullable Tuple2<Selector, Object> acceptSelector,
+                        @Nullable Environment environment) {
     super(observable, parent, acceptSelector, environment);
     this.batchSize = batchSize;
     this.bufferAction = new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError().getObject());
@@ -67,7 +72,7 @@ public class BufferStream<T> extends Stream<T> {
    *
    * @return a new {@code Stream} whose values are the first value of each batch
    */
-  public BufferStream<T> first() {
+  public BufferedStream<T> first() {
     return first(batchSize);
   }
 
@@ -81,9 +86,9 @@ public class BufferStream<T> extends Stream<T> {
    * @param batchSize the batch size to use
    * @return a new {@code Stream} whose values are the first value of each batch)
    */
-  public BufferStream<T> first(int batchSize) {
+  public BufferedStream<T> first(int batchSize) {
     Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
-    final Deferred<T, BufferStream<T>> d = createDeferredChildStream(batchSize);
+    final Deferred<T, BufferedStream<T>> d = createDeferredChildStream(batchSize);
     add(new BatchAction<T>(batchSize,
                            getObservable(),
                            null,
@@ -93,15 +98,15 @@ public class BufferStream<T> extends Stream<T> {
     return d.compose();
   }
 
-  private Deferred<T, BufferStream<T>> createDeferredChildStream(int batchSize) {
-    BufferStream<T> stream = new BufferStream<T>(null,
+  private Deferred<T, BufferedStream<T>> createDeferredChildStream(int batchSize) {
+    BufferedStream<T> stream = new BufferedStream<T>(null,
                                                  batchSize,
                                                  null,
                                                  this,
                                                  null,
                                                  environment);
 
-    return new Deferred<T, BufferStream<T>>(stream);
+    return new Deferred<T, BufferedStream<T>>(stream);
   }
 
 
@@ -110,7 +115,7 @@ public class BufferStream<T> extends Stream<T> {
    *
    * @return a new {@code Stream} whose values are the last value of each batch
    */
-  public BufferStream<T> last() {
+  public BufferedStream<T> last() {
     return last(batchSize);
   }
 
@@ -120,9 +125,9 @@ public class BufferStream<T> extends Stream<T> {
    * @param batchSize the batch size to use
    * @return a new {@code Stream} whose values are the last value of each batch
    */
-  public BufferStream<T> last(int batchSize) {
+  public BufferedStream<T> last(int batchSize) {
     Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
-    final Deferred<T, BufferStream<T>> d = createDeferredChildStream(batchSize);
+    final Deferred<T, BufferedStream<T>> d = createDeferredChildStream(batchSize);
     add(new BatchAction<T>(batchSize,
                            getObservable(),
                            null,
@@ -159,14 +164,14 @@ public class BufferStream<T> extends Stream<T> {
     return d.compose();
   }
 
-  private Deferred<Iterable<T>, BufferStream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
-    BufferStream<Iterable<T>> stream = new BufferStream<Iterable<T>>(null,
+  private Deferred<Iterable<T>, BufferedStream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
+    BufferedStream<Iterable<T>> stream = new BufferedStream<Iterable<T>>(null,
                                                                batchSize,
                                                                null,
                                                                this,
                                                                null,
                                                                environment);
-    return new Deferred<Iterable<T>, BufferStream<Iterable<T>>>(stream);
+    return new Deferred<Iterable<T>, BufferedStream<Iterable<T>>>(stream);
   }
 
   /**
@@ -209,10 +214,10 @@ public class BufferStream<T> extends Stream<T> {
   }
 
   /**
-   * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
+   * Collect incoming values into a {@link java.util.List} that will be pushed into the returned {@code Stream} every time {@code
    * batchSize} has been reached.
    *
-   * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+   * @return a new {@code Stream} whose values are a {@link java.util.List} of all values in this batch
    */
   public Stream<Iterable<T>> collect() {
     Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");

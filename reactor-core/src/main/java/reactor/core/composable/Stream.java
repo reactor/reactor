@@ -472,7 +472,7 @@ public class Stream<T> extends Composable<T> {
   private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
     Stream<T> stream;
     if (batchSize > 1) {
-      stream = new BufferStream<T>(null,
+      stream = new BufferedStream<T>(null,
                                    batchSize,
                                    null,
                                    this,
@@ -488,7 +488,7 @@ public class Stream<T> extends Composable<T> {
   }
 
   private Deferred<Iterable<T>, Stream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
-    Stream<Iterable<T>> stream = new BufferStream<Iterable<T>>(null,
+    Stream<Iterable<T>> stream = new BufferedStream<Iterable<T>>(null,
                                                                batchSize,
                                                                null,
                                                                this,
