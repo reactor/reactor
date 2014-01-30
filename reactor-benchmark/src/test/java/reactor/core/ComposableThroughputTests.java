@@ -45,8 +45,8 @@ import static junit.framework.Assert.assertEquals;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 256;
-	static int runs    = 2 * 1024;
+	static int length  = 128;
+	static int runs    = 200;
 	static int samples = 3;
 
 	CountDownLatch latch;
