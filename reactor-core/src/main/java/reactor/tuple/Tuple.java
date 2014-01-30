@@ -32,8 +32,10 @@ import java.util.Iterator;
 @SuppressWarnings({"rawtypes"})
 public class Tuple implements Iterable, Serializable {
 
+	private static final long serialVersionUID = 8777121214502020842L;
+
 	protected final Object[] entries;
-	protected final int      size;
+	protected final int size;
 
 	/**
 	 * Creates a new {@code Tuple} that holds the given {@code values}.
