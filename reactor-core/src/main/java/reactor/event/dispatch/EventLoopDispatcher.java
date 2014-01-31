@@ -18,8 +18,7 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.alloc.Reference;
-import reactor.event.Event;
+import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.BlockingQueue;
@@ -34,11 +33,12 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public final class EventLoopDispatcher extends AbstractReferenceCountingDispatcher {
+public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ExecutorService                 taskExecutor;
+	private final BlockingQueue<RunnableTask>     taskQueue;
 	private final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
 	/**
@@ -66,10 +66,11 @@ public final class EventLoopDispatcher extends AbstractReferenceCountingDispatch
 	public EventLoopDispatcher(final String name,
 	                           int backlog,
 	                           final Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
-		super(backlog);
+		super(backlog, null);
 		this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 		this.taskExecutor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.taskExecutor.submit(new TaskExecutingRunnable());
+		this.taskQueue = BlockingQueueFactory.createQueue();
 	}
 
 	@Override
@@ -97,37 +98,19 @@ public final class EventLoopDispatcher extends AbstractReferenceCountingDispatch
 	}
 
 	@Override
-	protected Task createTask() {
-		return new EventLoopTask();
-	}
-
-	private class EventLoopTask extends SingleThreadTask<Event<?>> {
-		@Override
-		protected void execute() {
-			try {
-				route(eventRouter,
-				      key,
-				      event,
-				      (null != consumerRegistry ? consumerRegistry.select(key) : null),
-				      completionConsumer,
-				      errorConsumer);
-			} finally {
-				if(null != getRef() && getRef().getReferenceCount() == 1) {
-					getRef().release();
-				}
-			}
-		}
+	protected void submit(RunnableTask task) {
+		taskQueue.add(task);
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
 		@Override
 		public void run() {
-			Reference<Task<Event<?>>> ref;
+			RunnableTask task;
 			for(; ; ) {
 				try {
-					while(null != (ref = getTaskQueue().poll(1, TimeUnit.SECONDS))) {
+					while(null != (task = taskQueue.poll(200, TimeUnit.MILLISECONDS))) {
 						try {
-							ref.get().execute();
+							task.run();
 						} catch(Throwable t) {
 							if(null != uncaughtExceptionHandler) {
 								uncaughtExceptionHandler.uncaughtException(Thread.currentThread(), t);

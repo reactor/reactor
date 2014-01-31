@@ -25,10 +25,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.alloc.Reference;
 import reactor.core.alloc.RingBufferAllocator;
 import reactor.core.alloc.spec.RingBufferAllocatorSpec;
-import reactor.event.Event;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
-import reactor.support.Identifiable;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
@@ -41,13 +39,13 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class RingBufferDispatcher extends AbstractReferenceCountingDispatcher {
+public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 	private final ExecutorService                     executor;
-	private final RingBufferAllocator<Task<Event<?>>> tasks;
+	private final RingBufferAllocator<RingBufferTask> tasks;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
@@ -82,33 +80,21 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 	                            WaitStrategy waitStrategy) {
 		super(bufferSize, null);
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
-		this.tasks = new RingBufferAllocatorSpec<Task<Event<?>>>()
+		this.tasks = new RingBufferAllocatorSpec<RingBufferTask>()
 				.name(name)
 				.ringSize(bufferSize)
 				.executor(executor)
-				.allocator(new Supplier<Task<Event<?>>>() {
+				.allocator(new Supplier<RingBufferTask>() {
 					@Override
-					public Task<Event<?>> get() {
-						return createTask();
+					public RingBufferTask get() {
+						return new RingBufferTask();
 					}
 				})
-				.eventHandler(new Consumer<Reference<Task<Event<?>>>>() {
+				.eventHandler(new Consumer<Reference<RingBufferTask>>() {
 					@Override
-					public void accept(Reference<Task<Event<?>>> ref) {
-						Task<Event<?>> task = ref.get();
-						do {
-							try {
-								route(task.eventRouter,
-								      task.key,
-								      task.event,
-								      (null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
-								      task.completionConsumer,
-								      task.errorConsumer);
-							} finally {
-								ref.release();
-							}
-							ref = getTaskQueue().poll();
-						} while(null != ref);
+					public void accept(Reference<RingBufferTask> ref) {
+						ref.get().run();
+						ref.release();
 					}
 				})
 				.errorHandler(new Consumer<Throwable>() {
@@ -120,7 +106,6 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 				.producerType(producerType)
 				.waitStrategy(waitStrategy)
 				.get();
-		setAllocator(this.tasks);
 	}
 
 	@Override
@@ -130,8 +115,9 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 			tasks.awaitAndShutdown(timeout, timeUnit);
 		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
+			return false;
 		}
-		return super.awaitAndShutdown(timeout, timeUnit);
+		return true;
 	}
 
 	@Override
@@ -149,31 +135,26 @@ public final class RingBufferDispatcher extends AbstractReferenceCountingDispatc
 	}
 
 	@Override
-	protected Task createTask() {
-		return new RingBufferEventHandlerTask();
+	protected RingBufferTask allocateTask() {
+		Reference<RingBufferTask> ref = tasks.allocate();
+		ref.get().setReference(ref);
+		return ref.get();
 	}
 
-	private final class RingBufferEventHandlerTask extends SingleThreadTask<Event<?>> implements Identifiable<Long> {
-		private volatile Long sequenceId;
+	@Override
+	protected void submit(RunnableTask task) {
+		((RingBufferTask)task).getReference().release();
+	}
 
-		@Override
-		public Identifiable<Long> setId(Long sequenceId) {
-			this.sequenceId = sequenceId;
-			return this;
+	private class RingBufferTask extends RunnableTask {
+		private Reference<RingBufferTask> reference;
+
+		public Reference<RingBufferTask> getReference() {
+			return reference;
 		}
 
-		@Override
-		public Long getId() {
-			return sequenceId;
-		}
-
-		@Override
-		protected void submit() {
-			if(isInContext()) {
-				execute();
-			} else {
-				getRef().release();
-			}
+		public void setReference(Reference<RingBufferTask> reference) {
+			this.reference = reference;
 		}
 	}
 

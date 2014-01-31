@@ -56,4 +56,13 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 		return obj;
 	}
 
+	@Override
+	public String toString() {
+		return "Reference{" +
+				"refCnt=" + refCnt +
+				", inception=" + inception +
+				", obj=" + obj +
+				'}';
+	}
+
 }

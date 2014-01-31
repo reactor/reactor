@@ -16,7 +16,6 @@
 
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.*;
@@ -28,7 +27,7 @@ import java.util.concurrent.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispatcher {
+public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher {
 
 	private final ExecutorService executor;
 
@@ -90,7 +89,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 	                                    String threadName,
 	                                    BlockingQueue<Runnable> workQueue,
 	                                    RejectedExecutionHandler rejectedExecutionHandler) {
-		super(backlog);
+		super(backlog, null);
 		this.executor = new ThreadPoolExecutor(
 				poolSize,
 				poolSize,
@@ -102,17 +101,9 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 		);
 	}
 
-	public ThreadPoolExecutorDispatcher(ExecutorService executor, int backlog) {
-		super(backlog);
-		this.executor = executor;
-	}
-
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		shutdown();
-		if(!super.awaitAndShutdown(timeout, timeUnit)) {
-			return false;
-		}
 		try {
 			if(!executor.awaitTermination(timeout, timeUnit)) {
 				return false;
@@ -137,24 +128,8 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 	}
 
 	@Override
-	protected Task createTask() {
-		return new ThreadPoolTask();
-	}
-
-	private class ThreadPoolTask<E extends Event<?>> extends SingleThreadTask<E> implements Runnable {
-		@Override
-		public void submit() {
-			if(isInContext()) {
-				execute();
-			} else {
-				executor.execute(this);
-			}
-		}
-
-		@Override
-		public void run() {
-			execute();
-		}
+	protected void submit(RunnableTask task) {
+		executor.submit(task);
 	}
 
 }

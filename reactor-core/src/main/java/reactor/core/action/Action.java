@@ -15,6 +15,8 @@
  */
 package reactor.core.action;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.function.Consumer;
@@ -29,6 +31,7 @@ import reactor.function.Consumer;
  */
 public abstract class Action<T> implements Consumer<Event<T>> {
 
+	private final Logger log = LoggerFactory.getLogger(getClass());
 	private final Observable observable;
 	private final Object     successKey;
 	private final Object     failureKey;
@@ -48,6 +51,7 @@ public abstract class Action<T> implements Consumer<Event<T>> {
 		try {
 			doAccept(tEvent);
 		} catch(Throwable e) {
+			log.error(e.getMessage(), e);
 			notifyError(e);
 		}
 	}
