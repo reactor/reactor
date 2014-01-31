@@ -121,7 +121,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		    .consume(new Consumer<Integer>() {
 			    @Override
 			    public void accept(Integer number) {
-				    total.set(number);
+				    total.getAndIncrement();
 				    latch.countDown();
 			    }
 		    });
@@ -130,10 +130,12 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(env.getDefaultDispatcher(), name, createMapManyDeferred());
+		assertThat("Totals matched expected", total.get(), is((long)length * runs * samples));
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
 		doTest(dispatcher, name, createDeferred(dispatcher));
+		assertThat("Totals matched expected", total.get(), is(expectedTotal));
 	}
 
 	private void doTest(Dispatcher dispatcher,
@@ -150,7 +152,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 		latch.await(30, TimeUnit.SECONDS);
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
-		assertThat("Totals matched expected", total.get(), is(expectedTotal));
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
