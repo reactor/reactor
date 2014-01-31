@@ -1,6 +1,7 @@
 package reactor.timer;
 
 import org.junit.Test;
+import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
 import java.util.concurrent.CountDownLatch;
@@ -90,7 +91,7 @@ public class HashWheelTests {
     final CountDownLatch latch10 = new CountDownLatch(50);
     final AtomicInteger count = new AtomicInteger(0);
 
-    HashWheelTimer.TimerRegistration r = timer.schedule(new Consumer<Long>() {
+    Registration r = timer.schedule(new Consumer<Long>() {
       @Override
       public void accept(Long _) {
         latch10.countDown();
@@ -154,4 +155,29 @@ public class HashWheelTests {
     assertThat(count.get(), is(20));
   }
 
+  @Test
+  public void pauseAndResumeTest() throws InterruptedException {
+    HashWheelTimer timer = new HashWheelTimer(10, 512);
+
+    final CountDownLatch latch10 = new CountDownLatch(100);
+    final AtomicInteger count = new AtomicInteger(0);
+
+    Registration r = timer.schedule(new Consumer<Long>() {
+      @Override
+      public void accept(Long aLong) {
+        latch10.countDown();
+        count.incrementAndGet();
+      }
+    }, 10, TimeUnit.MILLISECONDS);
+
+    Thread.sleep(500);
+    r.pause();
+    Thread.sleep(500);
+
+    latch10.await(500 + tolearance, TimeUnit.MILLISECONDS);
+    timer.cancel();
+
+    assertThat(latch10.getCount(), is(0L));
+    assertThat(count.get(), is(100));
+  }
 }

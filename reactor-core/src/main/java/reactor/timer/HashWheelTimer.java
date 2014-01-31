@@ -113,12 +113,13 @@ public class HashWheelTimer implements Timer {
                   registrations.remove(r);
                 } else if (r.ready()) {
                   executor.submit(r);
-                  r.reset();
                   registrations.remove(r);
 
-                  if(!r.isCancelled()) {
+                  if(!r.isCancelAfterUse()) {
                     reschedule(r);
                   }
+                } else if (r.isPaused()) {
+                  reschedule(r);
                 } else {
                   r.decrement();
                 }
@@ -232,6 +233,7 @@ public class HashWheelTimer implements Timer {
    * @param registration
    */
   public void reschedule(TimerRegistration registration) {
+    registration.reset();
     wheel.get(wheel.getCursor() + registration.getOffset() + 1).add(registration);
   }
 
@@ -304,9 +306,6 @@ public class HashWheelTimer implements Timer {
      */
     @Override
     public void run() {
-      if(cancelAfterUse.get()) {
-        this.status.set(STATUS_CANCELLED);
-      }
       delegate.accept(TimeUtils.approxCurrentTimeMillis());
     }
 
