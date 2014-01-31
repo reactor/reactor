@@ -44,8 +44,8 @@ public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
-	private final ExecutorService                     executor;
-	private final RingBufferAllocator<RingBufferTask> tasks;
+	private final RingBufferAllocator<RunnableTask> tasks;
+	private final ExecutorService                   executor;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
@@ -57,7 +57,7 @@ public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 	 * 		The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
-		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new BlockingWaitStrategy());
+		this(name, 1, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new BlockingWaitStrategy());
 	}
 
 	/**
@@ -76,25 +76,29 @@ public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
 	                            int bufferSize,
+	                            int eventThreads,
 	                            ProducerType producerType,
 	                            WaitStrategy waitStrategy) {
 		super(bufferSize, null);
-		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
-		this.tasks = new RingBufferAllocatorSpec<RingBufferTask>()
+		this.executor = Executors.newFixedThreadPool(
+				eventThreads,
+				new NamedDaemonThreadFactory("ringBufferDispatcher", getContext())
+		);
+		this.tasks = new RingBufferAllocatorSpec<RunnableTask>()
 				.name(name)
-				.ringSize(bufferSize)
 				.executor(executor)
-				.allocator(new Supplier<RingBufferTask>() {
+				.ringSize(bufferSize)
+				.eventThreads(eventThreads)
+				.allocator(new Supplier<RunnableTask>() {
 					@Override
-					public RingBufferTask get() {
-						return new RingBufferTask();
+					public RunnableTask get() {
+						return new RunnableTask();
 					}
 				})
-				.eventHandler(new Consumer<Reference<RingBufferTask>>() {
+				.eventHandler(new Consumer<Reference<RunnableTask>>() {
 					@Override
-					public void accept(Reference<RingBufferTask> ref) {
+					public void accept(Reference<RunnableTask> ref) {
 						ref.get().run();
-						ref.release();
 					}
 				})
 				.errorHandler(new Consumer<Throwable>() {
@@ -106,15 +110,16 @@ public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 				.producerType(producerType)
 				.waitStrategy(waitStrategy)
 				.get();
+		setTaskAllocator(tasks);
 	}
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+		shutdown();
 		try {
 			executor.awaitTermination(timeout, timeUnit);
 			tasks.awaitAndShutdown(timeout, timeUnit);
 		} catch(InterruptedException e) {
-			Thread.currentThread().interrupt();
 			return false;
 		}
 		return true;
@@ -135,27 +140,8 @@ public final class RingBufferDispatcher extends AbstractRunnableTaskDispatcher {
 	}
 
 	@Override
-	protected RingBufferTask allocateTask() {
-		Reference<RingBufferTask> ref = tasks.allocate();
-		ref.get().setReference(ref);
-		return ref.get();
-	}
-
-	@Override
 	protected void submit(RunnableTask task) {
-		((RingBufferTask)task).getReference().release();
-	}
-
-	private class RingBufferTask extends RunnableTask {
-		private Reference<RingBufferTask> reference;
-
-		public Reference<RingBufferTask> getReference() {
-			return reference;
-		}
-
-		public void setReference(Reference<RingBufferTask> reference) {
-			this.reference = reference;
-		}
+		task.getReference().release();
 	}
 
 }

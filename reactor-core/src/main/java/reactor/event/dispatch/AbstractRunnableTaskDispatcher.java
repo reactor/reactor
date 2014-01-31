@@ -1,48 +1,70 @@
 package reactor.event.dispatch;
 
-import reactor.core.alloc.factory.BatchFactorySupplier;
+import reactor.core.alloc.Allocator;
+import reactor.core.alloc.Reference;
+import reactor.core.alloc.ReferenceCountingAllocator;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
+import reactor.queue.BlockingQueueFactory;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * @author Jon Brisbin
  */
 public abstract class AbstractRunnableTaskDispatcher extends AbstractLifecycleDispatcher {
 
-	private final BatchFactorySupplier<RunnableTask> taskSupplier;
-	private final List<RunnableTask>                 tailRecursionPile;
-	private final int                                backlogSize;
-	private int tailRecurseIdx = 0;
+	private final BlockingQueue<RunnableTask> tailRecursionPile;
+	private       Allocator<RunnableTask>     taskAllocator;
+	private       Allocator<RunnableTask>     inContextTaskAllocator;
 
 	protected AbstractRunnableTaskDispatcher() {
-		this(-1, null);
+		this(1024, null);
 	}
 
-	protected AbstractRunnableTaskDispatcher(int backlogSize, BatchFactorySupplier<RunnableTask> taskSupplier) {
-		this.backlogSize = backlogSize;
-		if(null != taskSupplier) {
-			this.taskSupplier = taskSupplier;
+	protected AbstractRunnableTaskDispatcher(int backlogSize, Allocator<RunnableTask> taskAllocator) {
+		if(null != taskAllocator) {
+			this.taskAllocator = taskAllocator;
 		} else {
-			this.taskSupplier = new BatchFactorySupplier<RunnableTask>(
+			this.taskAllocator = new ReferenceCountingAllocator<RunnableTask>(
 					backlogSize,
 					new Supplier<RunnableTask>() {
 						@Override
 						public RunnableTask get() {
-							return new RunnableTask();
+							return new RunnableTask() {
+								@Override
+								public void run() {
+									super.run();
+									getReference().release();
+								}
+							};
 						}
 					}
 			);
 		}
-		this.tailRecursionPile = new ArrayList<RunnableTask>(backlogSize > 0 ? backlogSize : 1);
-		for(int i = 0; i < backlogSize; i++) {
-			this.tailRecursionPile.add(new RunnableTask());
-		}
+
+		this.inContextTaskAllocator = new ReferenceCountingAllocator<RunnableTask>(
+				backlogSize,
+				new Supplier<RunnableTask>() {
+					@Override
+					public RunnableTask get() {
+						return new RunnableTask();
+					}
+				}
+		);
+
+		this.tailRecursionPile = BlockingQueueFactory.createQueue();
+	}
+
+	protected void setTaskAllocator(Allocator<RunnableTask> taskAllocator) {
+		this.taskAllocator = taskAllocator;
+	}
+
+	protected BlockingQueue<RunnableTask> getTailRecursionPile() {
+		return tailRecursionPile;
 	}
 
 	@Override
@@ -57,19 +79,8 @@ public abstract class AbstractRunnableTaskDispatcher extends AbstractLifecycleDi
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}
 
-		RunnableTask task;
 		boolean isInContext = isInContext();
-		if(isInContext) {
-			if(tailRecurseIdx >= backlogSize) {
-				task = (null != taskSupplier ? taskSupplier.get() : new RunnableTask());
-				tailRecursionPile.add(task);
-			} else {
-				task = tailRecursionPile.get(tailRecurseIdx);
-			}
-			tailRecurseIdx++;
-		} else {
-			task = allocateTask();
-		}
+		RunnableTask task = allocateTask(isInContext);
 
 		task.setKey(key)
 		    .setEvent(event)
@@ -78,49 +89,68 @@ public abstract class AbstractRunnableTaskDispatcher extends AbstractLifecycleDi
 		    .setEventRouter(eventRouter)
 		    .setCompletionConsumer(completionConsumer);
 
-		if(!isInContext) {
+		if(isInContext) {
+			tailRecursionPile.offer(task);
+		} else {
 			submit(task);
 		}
 	}
 
-	protected RunnableTask allocateTask() {
-		return taskSupplier.get();
+	protected Allocator<RunnableTask> getTaskAllocator(boolean inContext) {
+		return (inContext ? inContextTaskAllocator : taskAllocator);
+	}
+
+	protected RunnableTask allocateTask(boolean inContext) {
+		Reference<RunnableTask> ref = getTaskAllocator(inContext).allocate();
+		ref.get().setReference(ref);
+		return ref.get();
 	}
 
 	protected abstract void submit(RunnableTask task);
 
 	protected class RunnableTask extends Task {
+		private Reference<RunnableTask> reference;
+
+		public Reference<RunnableTask> getReference() {
+			return reference;
+		}
+
+		public RunnableTask setReference(Reference<RunnableTask> reference) {
+			this.reference = reference;
+			return this;
+		}
+
 		@Override
-		public final void run() {
-			eventRouter.route(key,
-			                  event,
-			                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
-			                  completionConsumer,
-			                  errorConsumer);
+		public void run() {
+			try {
+				eventRouter.route(key,
+				                  event,
+				                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
+				                  completionConsumer,
+				                  errorConsumer);
+			} catch(Throwable t) {
+				if(null != errorConsumer) {
+					errorConsumer.accept(t);
+				}
+			}
 
 			//Process any lazy notify
-			Task delayedTask;
-			int i = 0;
-			while(i < tailRecurseIdx) {
-				delayedTask = tailRecursionPile.get(i++);
-				delayedTask.eventRouter.route(
-						delayedTask.key,
-						delayedTask.event,
-						(null != delayedTask.consumerRegistry ? delayedTask.consumerRegistry.select(delayedTask.key) : null),
-						delayedTask.completionConsumer,
-						delayedTask.errorConsumer
+			RunnableTask recursiveTask;
+			while(null != (recursiveTask = tailRecursionPile.poll())) {
+				recursiveTask.eventRouter.route(
+						recursiveTask.key,
+						recursiveTask.event,
+						(null != recursiveTask.consumerRegistry
+						 ? recursiveTask.consumerRegistry.select(recursiveTask.key)
+						 : null),
+						recursiveTask.completionConsumer,
+						recursiveTask.errorConsumer
 				);
-				delayedTask.recycle();
+				if(null != recursiveTask.getReference() && recursiveTask.getReference().getReferenceCount() > 0) {
+					recursiveTask.getReference().release();
+				}
 			}
-
-			i = tailRecurseIdx - 1;
-			while(backlogSize > 0 && i >= backlogSize) {
-				tailRecursionPile.remove(i--);
-			}
-
-			tailRecurseIdx = 0;
 		}
 	}
-
 
 }

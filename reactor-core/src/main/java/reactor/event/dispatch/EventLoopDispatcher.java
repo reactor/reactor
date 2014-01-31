@@ -18,7 +18,6 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.BlockingQueue;
@@ -38,7 +37,6 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ExecutorService                 taskExecutor;
-	private final BlockingQueue<RunnableTask>     taskQueue;
 	private final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
 	/**
@@ -70,7 +68,6 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 		this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 		this.taskExecutor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.taskExecutor.submit(new TaskExecutingRunnable());
-		this.taskQueue = BlockingQueueFactory.createQueue();
 	}
 
 	@Override
@@ -99,7 +96,7 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 
 	@Override
 	protected void submit(RunnableTask task) {
-		taskQueue.add(task);
+		getTailRecursionPile().add(task);
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
@@ -108,9 +105,10 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 			RunnableTask task;
 			for(; ; ) {
 				try {
-					while(null != (task = taskQueue.poll(200, TimeUnit.MILLISECONDS))) {
+					while(null != (task = getTailRecursionPile().poll(Integer.MAX_VALUE, TimeUnit.MILLISECONDS))) {
 						try {
 							task.run();
+							task.getReference().release();
 						} catch(Throwable t) {
 							if(null != uncaughtExceptionHandler) {
 								uncaughtExceptionHandler.uncaughtException(Thread.currentThread(), t);

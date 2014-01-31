@@ -16,6 +16,7 @@
 
 package reactor.event.dispatch;
 
+import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.*;
@@ -62,7 +63,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher
 		this(poolSize,
 		     backlog,
 		     threadName,
-		     new LinkedBlockingQueue<Runnable>(backlog),
+		     BlockingQueueFactory.<Runnable>createQueue(),
 		     new RejectedExecutionHandler() {
 			     @Override
 			     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {

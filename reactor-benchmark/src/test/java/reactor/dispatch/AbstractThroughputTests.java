@@ -35,7 +35,7 @@ public abstract class AbstractThroughputTests extends AbstractReactorTest {
 
 	protected final int                     selectors         = 2 * 1024;
 	protected final int                     testRuns          = 3;
-	protected final long                    testDuration      = 1000;
+	protected final long                    testDuration      = 10000;
 	protected final Object[]                objects           = new Object[selectors];
 	protected final Selector[]              sels              = new Selector[selectors];
 	protected final Event<String>           hello             = new Event<String>("Hello World!");
@@ -85,6 +85,6 @@ public abstract class AbstractThroughputTests extends AbstractReactorTest {
 	}
 
 	protected Dispatcher createRingBufferDispatcher() {
-		return new RingBufferDispatcher("test", 512, ProducerType.SINGLE, new YieldingWaitStrategy());
+		return new RingBufferDispatcher("test", 2048, 2, ProducerType.SINGLE, new YieldingWaitStrategy());
 	}
 }

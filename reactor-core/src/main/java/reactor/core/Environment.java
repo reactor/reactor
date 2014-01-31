@@ -137,9 +137,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int size = getSize(dispatcherConfiguration, 1);
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
 		return new RingBufferDispatcher(dispatcherConfiguration.getName(),
 		                                backlog,
+		                                size,
 		                                ProducerType.MULTI,
 		                                new BlockingWaitStrategy());
 	}

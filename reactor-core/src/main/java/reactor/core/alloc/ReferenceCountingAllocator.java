@@ -23,7 +23,8 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 	private final ReentrantLock           leaseLock  = new ReentrantLock();
 	private final ArrayList<Reference<T>> references = new ArrayList<Reference<T>>();
 	private final Supplier<T> factory;
-	private final BitSet      leaseMask;
+
+	private volatile BitSet leaseMask;
 
 	public ReferenceCountingAllocator(Supplier<T> factory) {
 		this(DEFAULT_INITIAL_SIZE, factory);
@@ -109,6 +110,12 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 			for(int i = len; i <= newLen; i++) {
 				references.add(new ReferenceCountingAllocatorReference<T>(factory.get(), i));
 			}
+			BitSet newLeaseMask = new BitSet(newLen);
+			int leases = leaseMask.length();
+			for(int i = 0; i < leases; i++) {
+				newLeaseMask.set(i, leaseMask.get(i));
+			}
+			leaseMask = newLeaseMask;
 		} finally {
 			refLock.unlock();
 		}

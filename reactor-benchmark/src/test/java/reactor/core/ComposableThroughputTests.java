@@ -16,7 +16,7 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.BusySpinWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
@@ -36,8 +36,11 @@ import reactor.tuple.Tuple2;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static junit.framework.Assert.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 
 /**
  * @author Jon Brisbin
@@ -45,10 +48,10 @@ import static junit.framework.Assert.assertEquals;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 128;
-	static int runs    = 200;
-	static int samples = 3;
-	static long total = sumSample();
+	static int  length        = (int)Math.pow(2, 8);
+	static int  runs          = (int)Math.pow(2, 10);
+	static int  samples       = 3;
+	static long expectedTotal = sumSample();
 
 	public static long sumSample() {
 		long sum = 1;
@@ -63,9 +66,11 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	CountDownLatch latch;
+	AtomicLong     total;
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
 		latch = new CountDownLatch(1);
+		total = new AtomicLong();
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 		                                                 .env(env)
 		                                                 .dispatcher(dispatcher)
@@ -88,7 +93,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		    .consume(new Consumer<Long>() {
 			    @Override
 			    public void accept(Long number) {
-				    System.out.println("final "+number+"/"+total);
+				    System.out.println("final " + number + "/" + expectedTotal);
+				    total.set(number);
 				    latch.countDown();
 			    }
 		    });
@@ -97,6 +103,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
 		latch = new CountDownLatch(length * runs * samples);
+		total = new AtomicLong();
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
 		dInt.compose()
@@ -114,6 +121,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		    .consume(new Consumer<Integer>() {
 			    @Override
 			    public void accept(Integer number) {
+				    total.set(number);
 				    latch.countDown();
 			    }
 		    });
@@ -142,6 +150,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 		latch.await(30, TimeUnit.SECONDS);
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
+		assertThat("Totals matched expected", total.get(), is(expectedTotal));
 
 		long end = System.currentTimeMillis();
 		long elapsed = end - start;
@@ -185,9 +194,10 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(new RingBufferDispatcher(
 				"test",
-				1024,
-				ProducerType.SINGLE,
-				new YieldingWaitStrategy()
+				16384,
+				8,
+				ProducerType.MULTI,
+				new BusySpinWaitStrategy()
 		), "single-producer ring buffer");
 	}
 
