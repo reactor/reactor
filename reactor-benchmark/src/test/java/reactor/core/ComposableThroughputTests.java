@@ -48,6 +48,19 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	static int length  = 128;
 	static int runs    = 200;
 	static int samples = 3;
+	static long total = sumSample();
+
+	public static long sumSample() {
+		long sum = 1;
+		for(int x = 0; x < samples; x++) {
+			for(int i = 0; i < runs; i++) {
+				for(int j = 0; j < length; j++) {
+					sum += j;
+				}
+			}
+		}
+		return sum;
+	}
 
 	CountDownLatch latch;
 
@@ -61,20 +74,21 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dInt.compose()
 		    .map(new Function<Integer, Integer>() {
 			    @Override
-			    public Integer apply(Integer integer) {
-				    return integer;
+			    public Integer apply(Integer number) {
+				    return number;
 			    }
 		    })
-		    .reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
+		    .reduce(new Function<Tuple2<Integer, Long>, Long>() {
 			    @Override
-			    public Integer apply(Tuple2<Integer, Integer> r) {
-				    int last = (null != r.getT2() ? r.getT2() : 1);
+			    public Long apply(Tuple2<Integer, Long> r) {
+				    long last = (null != r.getT2() ? r.getT2() : 1);
 				    return last + r.getT1();
 			    }
 		    })
-		    .consume(new Consumer<Integer>() {
+		    .consume(new Consumer<Long>() {
 			    @Override
-			    public void accept(Integer integer) {
+			    public void accept(Long number) {
+				    System.out.println("final "+number+"/"+total);
 				    latch.countDown();
 			    }
 		    });
@@ -88,18 +102,18 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		dInt.compose()
 		    .mapMany(new Function<Integer, Composable<Integer>>() {
 			    @Override
-			    public Composable<Integer> apply(Integer integer) {
+			    public Composable<Integer> apply(Integer number) {
 				    Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
 				    try {
 					    return deferred.compose();
 				    } finally {
-					    deferred.accept(integer);
+					    deferred.accept(number);
 				    }
 			    }
 		    })
 		    .consume(new Consumer<Integer>() {
 			    @Override
-			    public void accept(Integer integer) {
+			    public void accept(Integer number) {
 				    latch.countDown();
 			    }
 		    });
@@ -126,7 +140,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await(10, TimeUnit.SECONDS);
+		latch.await(30, TimeUnit.SECONDS);
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();

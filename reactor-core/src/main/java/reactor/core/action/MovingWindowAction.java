@@ -15,16 +15,14 @@
  */
 package reactor.core.action;
 
-import reactor.core.HashWheelTimer;
+import reactor.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
