@@ -157,7 +157,7 @@ public class Reactor implements Observable {
 			this.dispatchErrorHandler = dispatchErrorHandler;
 		}
 
-		// Register a special Consumer that will schedule arbitrary tasks on this Dispatcher
+		// Register a special Consumer that will reschedule arbitrary tasks on this Dispatcher
 		this.on(new Consumer<Event>() {
 			@Override
 			public void accept(Event event) {

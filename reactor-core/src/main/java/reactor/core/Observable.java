@@ -38,7 +38,7 @@ public interface Observable {
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
 	 *
-	 * @return {@literal true} if there are any matching {@literal Registration}s, {@literal false} otherwise
+	 * @return {@literal true} if there are any matching {@literal TimerRegistration}s, {@literal false} otherwise
 	 */
 	boolean respondsToKey(Object key);
 

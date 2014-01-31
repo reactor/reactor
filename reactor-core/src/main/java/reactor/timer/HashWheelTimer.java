@@ -1,19 +1,22 @@
 package reactor.timer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.event.registry.CachingRegistry;
+import com.lmax.disruptor.EventFactory;
+import com.lmax.disruptor.RingBuffer;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
-import reactor.event.registry.Registry;
-import reactor.event.selector.HeaderResolver;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
-import reactor.function.support.CancelConsumerException;
-import reactor.function.support.SingleUseConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
@@ -25,15 +28,15 @@ import java.util.concurrent.TimeUnit;
  * java.util.concurrent.TimeUnit)} which is for scheduling single-run delayed tasks.
  * </p>
  * <p>
- * To schedule a repeating task, specify the period of time which should elapse before invoking the given {@link
- * reactor.function.Consumer}. To schedule a task that repeats every 5 seconds, for example, one would do something
+ * To reschedule a repeating task, specify the period of time which should elapse before invoking the given {@link
+ * reactor.function.Consumer}. To reschedule a task that repeats every 5 seconds, for example, one would do something
  * like:
  * </p>
  * <p>
  * <code><pre>
  *   HashWheelTimer timer = new HashWheelTimer();
  *
- *   timer.schedule(new Consumer&lt;Long&gt;() {
+ *   timer.reschedule(new Consumer&lt;Long&gt;() {
  *     public void accept(Long now) {
  *       // run a task
  *     }
@@ -48,198 +51,367 @@ import java.util.concurrent.TimeUnit;
  * </p>
  *
  * @author Jon Brisbin
+ * @author Oleksandr Petrov
  */
-public class HashWheelTimer {
+public class HashWheelTimer implements Timer {
 
-	private static final Logger LOG = LoggerFactory.getLogger(HashWheelTimer.class);
+  public static final int DEFAULT_WHEEL_SIZE = 512;
 
-	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>();
-	private final int    resolution;
-	private final Thread loop;
-
-	/**
-	 * Create a new {@code HashWheelTimer} using the default resolution of 50ms.
-	 */
-	public HashWheelTimer() {
-		this(50);
-	}
-
-	/**
-	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
-	 * multiple of this resolution.
-	 *
-	 * @param resolution
-	 * 		the resolution of this timer, in milliseconds
-	 */
-	public HashWheelTimer(final int resolution) {
-		this.resolution = resolution;
-
-		this.loop = new NamedDaemonThreadFactory("hash-wheel-timer").newThread(
-				new Runnable() {
-					@Override
-					public void run() {
-						while(!Thread.currentThread().isInterrupted()) {
-							long now = now(resolution);
-							for(Registration<? extends Consumer<Long>> reg : tasks.select(now)) {
-								try {
-									if(reg.isCancelled() || reg.isPaused()) {
-										continue;
-									}
-									reg.getObject().accept(now);
-								} catch(CancelConsumerException cce) {
-									reg.cancel();
-								} catch(Throwable t) {
-									LOG.error(t.getMessage(), t);
-								} finally {
-									if(reg.isCancelAfterUse()) {
-										reg.cancel();
-									}
-								}
-							}
-							try {
-								Thread.sleep(resolution);
-							} catch(InterruptedException e) {
-								Thread.currentThread().interrupt();
-							}
-						}
-					}
-				}
-		);
-		this.loop.start();
-	}
-
-	/**
-	 * Schedule a recurring task. The given {@link reactor.function.Consumer} will be invoked once every N time units
-	 * after the given delay.
-	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke each period
-	 * @param period
-	 * 		the amount of time that should elapse between invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 * @param delayInMilliseconds
-	 * 		a number of milliseconds in which to delay any execution of the given {@code Consumer}
-	 *
-	 * @return a {@link reactor.event.registry.Registration} that can be used to {@link
-	 * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
-	 * {@link reactor.event.registry.Registration#resume() resume} the given task.
-	 */
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
-	                                                       long period,
-	                                                       TimeUnit timeUnit,
-	                                                       long delayInMilliseconds) {
-		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
-		return tasks.register(
-				new PeriodSelector(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, resolution),
-				consumer
-		);
-	}
-
-	/**
-	 * Schedule a recurring task. The given {@link reactor.function.Consumer} will be invoked immediately, as well as
-	 * once
-	 * every N time units.
-	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke each period
-	 * @param period
-	 * 		the amount of time that should elapse between invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 *
-	 * @return a {@link reactor.event.registry.Registration} that can be used to {@link
-	 * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
-	 * {@link reactor.event.registry.Registration#resume() resume} the given task.
-	 *
-	 * @see #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit, long)
-	 */
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
-	                                                       long period,
-	                                                       TimeUnit timeUnit) {
-		return schedule(consumer, period, timeUnit, 0);
-	}
-
-	/**
-	 * Submit a task for arbitrary execution after the given time delay.
-	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke
-	 * @param delay
-	 * 		the amount of time that should elapse before invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 *
-	 * @return a {@link reactor.event.registry.Registration} that can be used to {@link
-	 * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
-	 * {@link reactor.event.registry.Registration#resume() resume} the given task.
-	 */
-	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
-	                                                     long delay,
-	                                                     TimeUnit timeUnit) {
-		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
-		long ms = TimeUnit.MILLISECONDS.convert(delay, timeUnit);
-		return tasks.register(
-				new PeriodSelector(ms, ms, resolution),
-				new SingleUseConsumer<Long>(consumer)
-		).cancelAfterUse();
-	}
-
-	/**
-	 * Submit a task for arbitrary execution after the delay of this timer's resolution.
-	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke
-	 *
-	 * @return {@literal this}
-	 */
-	public HashWheelTimer submit(Consumer<Long> consumer) {
-		submit(consumer, resolution, TimeUnit.MILLISECONDS);
-		return this;
-	}
+  private final RingBuffer<Set<TimerRegistration>> wheel;
+  private final int                                resolution;
+  private final Thread                             loop;
+  private final ExecutorService                    executor;
 
 
-	/**
-	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after
-	 * cancellation.
-	 */
-	public void cancel() {
-		this.loop.interrupt();
-	}
+  /**
+   * Create a new {@code HashWheelTimer} using the given with default resolution of 10 milliseconds and
+   * default wheel size.
+   */
+  public HashWheelTimer() {
+    this(10, DEFAULT_WHEEL_SIZE);
+  }
 
-	private static long now(int resolution) {
-		return (long)(Math.ceil(System.currentTimeMillis() / resolution) * resolution);
-	}
+  /**
+   * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
+   * multiple of this resolution.
+   *
+   * @param resolution
+   * 		the resolution of this timer, in milliseconds
+   */
+  public HashWheelTimer(int resolution) {
+    this(resolution, DEFAULT_WHEEL_SIZE);
+  }
 
-	private static class PeriodSelector implements Selector {
-		private final long period;
-		private final long delay;
-		private final long createdMillis;
-		private final int  resolution;
+  /**
+   * Create a new {@code HashWheelTimer} using the given timer {@data resolution} and {@data wheelSize}. All times will
+   * rounded up to the closest multiple of this resolution.
+   *
+   * @param res resolution of this timer in milliseconds
+   * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
+   *                  for sparse timeouts. Sane default is 512.
+   */
+  public HashWheelTimer(int res, int wheelSize) {
+    this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerRegistration>>() {
+      @Override
+      public Set<TimerRegistration> newInstance() {
+        return new TreeSet<TimerRegistration>();
+      }
+    }, wheelSize);
 
-		private PeriodSelector(long period, long delay, int resolution) {
-			this.period = period;
-			this.delay = delay;
-			this.resolution = resolution;
-			this.createdMillis = now(resolution);
-		}
+    this.resolution = res;
+    this.loop = new NamedDaemonThreadFactory("hash-wheel-timer").newThread(
+        new Runnable() {
+          @Override
+          public void run() {
+            long lastTick = System.currentTimeMillis();
 
-		@Override
-		public Object getObject() {
-			return period;
-		}
+            while(true) {
+              Set<TimerRegistration> registrations = wheel.get(wheel.getCursor());
 
-		@Override
-		public boolean matches(Object key) {
-			long now = (Long)key;
-			long period = (long)(Math.ceil((now - createdMillis) / resolution) * resolution);
-			return period >= delay && period % this.period == 0;
-		}
+              for(TimerRegistration r: registrations) {
+                if (r.isCancelled()) {
+                  registrations.remove(r);
+                } else if (r.ready()) {
+                  executor.submit(r);
+                  r.reset();
+                  registrations.remove(r);
 
-		@Override
-		public HeaderResolver getHeaderResolver() {
-			return null;
-		}
-	}
+                  if(!r.isCancelled()) {
+                    reschedule(r);
+                  }
+                } else {
+                  r.decrement();
+                }
+              }
+
+              long currentTime = System.currentTimeMillis();
+              lastTick = lastTick + resolution;
+
+              long sleepTimeMs = lastTick - currentTime;
+              try {
+                Thread.sleep(sleepTimeMs);
+              } catch (InterruptedException e) {
+                return;
+              }
+
+              wheel.publish(wheel.next());
+            }
+          }
+        });
+
+    this.executor = Executors.newFixedThreadPool(5);
+    this.start();
+  }
+
+  /**
+   * Schedule a recurring task. The given {@link reactor.function.Consumer} will be invoked once every N time units
+   * after the given delay.
+   *
+   * @param consumer
+   * 		the {@code Consumer} to invoke each period
+   * @param period
+   * 		the amount of time that should elapse between invocations of the given {@code Consumer}
+   * @param timeUnit
+   * 		the unit of time the {@code period} is to be measured in
+   * @param delayInMilliseconds
+   * 		a number of milliseconds in which to delay any execution of the given {@code Consumer}
+   *
+   * @return a {@link reactor.event.registry.Registration} that can be used to {@link
+   * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
+   * {@link reactor.event.registry.Registration#resume() resume} the given task.
+   */
+  public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+                                                              long period,
+                                                              TimeUnit timeUnit,
+                                                              long delayInMilliseconds) {
+    Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
+    return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
+  }
+
+  /**
+   * Submit a task for arbitrary execution after the given time delay.
+   *
+   * @param consumer
+   *    the {@code Consumer} to invoke
+   * @param period
+   *    the amount of time that should elapse before invocations of the given {@code Consumer}
+   * @param timeUnit
+   *    the unit of time the {@code period} is to be measured in
+   *
+   * @return a {@link reactor.event.registry.Registration} that can be used to {@link
+   * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
+   * {@link reactor.event.registry.Registration#resume() resume} the given task.
+   */
+  public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
+                                                            long period,
+                                                            TimeUnit timeUnit) {
+    Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
+    long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
+    return schedule(ms, ms, consumer).cancelAfterUse();
+  }
+
+
+  /**
+   * Schedule a recurring task. The given {@link reactor.function.Consumer} will be invoked immediately, as well as
+   * once
+   * every N time units.
+   *
+   * @param consumer
+   * 		the {@code Consumer} to invoke each period
+   * @param period
+   * 		the amount of time that should elapse between invocations of the given {@code Consumer}
+   * @param timeUnit
+   * 		the unit of time the {@code period} is to be measured in
+   *
+   * @return a {@link reactor.event.registry.Registration} that can be used to {@link
+   * reactor.event.registry.Registration#cancel() cancel}, {@link reactor.event.registry.Registration#pause() pause} or
+   * {@link reactor.event.registry.Registration#resume() resume} the given task.
+   *
+   * @see #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit, long)
+   */
+  public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+                                                              long period,
+                                                              TimeUnit timeUnit) {
+    return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
+  }
+
+  private TimerRegistration<? extends Consumer<Long>> schedule(long recurringTimeout, long firstDelay, Consumer<Long> consumer) {
+    Assert.isTrue(recurringTimeout >= resolution, "Cannot schedule tasks for amount of time less than timer precision.");
+
+    long offset = recurringTimeout % resolution;
+    long firstFire = firstDelay / resolution;
+    long rounds = recurringTimeout > resolution ? 0 : resolution / recurringTimeout - 1;
+
+    TimerRegistration r = new TimerRegistration(rounds, offset, consumer);
+    wheel.get(wheel.getCursor() + firstFire + 1).add(r);
+    return r;
+  }
+
+  /**
+   * Rechedule a {@link TimerRegistration}  for the next fire
+   * @param registration
+   */
+  public void reschedule(TimerRegistration registration) {
+    wheel.get(wheel.getCursor() + registration.getOffset() + 1).add(registration);
+  }
+
+  /**
+   * Start the Timer
+   */
+  public void start() {
+    this.loop.start();
+    wheel.publish(0);
+  }
+
+  /**
+   * Cancel current Timer
+   */
+  public void cancel() {
+    this.loop.interrupt();
+  }
+
+
+  /**
+   * Timer Registration
+   * @param <T> type of the Timer Registration Consumer
+   */
+  public static class TimerRegistration<T extends Consumer<Long>> implements Runnable, Comparable, Pausable, Registration {
+
+    public static int STATUS_PAUSED = 1;
+    public static int STATUS_CANCELLED = -1;
+    public static int STATUS_READY = 0;
+
+    private final  T            delegate;
+    private final long          initialRounds;
+    private final long          scheduleOffset;
+    private final AtomicLong    rounds;
+    private final AtomicInteger status;
+    private final AtomicBoolean cancelAfterUse;
+
+    /**
+     * Creates a new Timer Registration with given {@data rounds}, {@data offset} and {@data delegate}.
+     *
+     * @param rounds amount of rounds the Registration should go through until it's elapsed
+     * @param offset offset of in the Ring Buffer for rescheduling
+     * @param delegate delegate that will be ran whenever the timer is elapsed
+     */
+    public TimerRegistration(long rounds, long offset, T delegate) {
+      this.initialRounds = rounds;
+      this.scheduleOffset = offset;
+      this.delegate = delegate;
+      this.rounds = new AtomicLong(rounds);
+      this.status = new AtomicInteger(STATUS_READY);
+      this.cancelAfterUse = new AtomicBoolean(false);
+    }
+
+    /**
+     * Decrement an amount of runs Registration has to run until it's elapsed
+     */
+    public void decrement() {
+      rounds.decrementAndGet();
+    }
+
+    /**
+     * Check whether the current Registration is ready for execution
+     * @return whether or not the current Registration is ready for execution
+     */
+    public boolean ready() {
+      return status.get() == STATUS_READY && rounds.get() == 0;
+    }
+
+    /**
+     * Run the delegate of the current Registration
+     */
+    @Override
+    public void run() {
+      if(cancelAfterUse.get()) {
+        this.status.set(STATUS_CANCELLED);
+      }
+      delegate.accept(TimeUtils.approxCurrentTimeMillis());
+    }
+
+    /**
+     * Reset the Registration
+     */
+    public void reset() {
+      this.status.set(STATUS_READY);
+      this.rounds.set(initialRounds);
+    }
+
+    /**
+     * Cancel the registration
+     * @return current Registration
+     */
+    public Registration cancel() {
+      this.status.set(STATUS_CANCELLED);
+      return this;
+    }
+
+    /**
+     * Check whether the current Registration is cancelled
+     * @return whether or not the current Registration is cancelled
+     */
+    @Override
+    public boolean isCancelled() {
+      return status.get() == STATUS_CANCELLED;
+    }
+
+    /**
+     * Pause the current Regisration
+     * @return current Registration
+     */
+    @Override
+    public Registration pause() {
+      this.status.set(STATUS_PAUSED);
+      return this;
+    }
+
+    /**
+     * Check whether the current Registration is paused
+     * @return whether or not the current Registration is paused
+     */
+    @Override
+    public boolean isPaused() {
+      return this.status.get() == STATUS_PAUSED;
+    }
+
+    /**
+     * Resume current Registration
+     * @return current Registration
+     */
+    @Override
+    public Registration resume() {
+      this.status.set(STATUS_READY);
+      return this;
+    }
+
+    /**
+     * Get the offset of the Registration relative to the current Ring Buffer position
+     * to make it fire timely.
+     *
+     * @return the offset of current Registration
+     */
+    private long getOffset() {
+      return this.scheduleOffset;
+    }
+
+    @Override
+    public Selector getSelector() {
+      return null;
+    }
+
+    @Override
+    public Object getObject() {
+      return null;
+    }
+
+    /**
+     * Cancel this {@link reactor.timer.HashWheelTimer.TimerRegistration} after it has been selected and used. {@link
+     * reactor.event.dispatch.Dispatcher} implementations should respect this value and perform
+     * the cancellation.
+     *
+     * @return {@literal this}
+     */
+    public TimerRegistration<T> cancelAfterUse() {
+      cancelAfterUse.set(false);
+      return this;
+    }
+
+    @Override
+    public boolean isCancelAfterUse() {
+      return this.cancelAfterUse.get();
+    }
+
+    @Override
+    public int compareTo(Object o) {
+      TimerRegistration other = (TimerRegistration) o;
+      return Long.compare(rounds.get(), other.rounds.get());
+    }
+
+    @Override
+    public String toString() {
+      return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
+    }
+  }
 
 }

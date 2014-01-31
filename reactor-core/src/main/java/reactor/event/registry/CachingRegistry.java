@@ -38,9 +38,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * - cache : classic cache, filled after a first select miss using the key hashcode,
  * totally cleared on new registration
  * - full collection : where the registrations always live, acting like a pool. Iterated completely when cache miss.
- * Registration array grows for 75% of its current size when there is not enough pre-allocated memory
+ * TimerRegistration array grows for 75% of its current size when there is not enough pre-allocated memory
  *
- * @param <T> the type of Registration held by this registry
+ * @param <T> the type of TimerRegistration held by this registry
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
