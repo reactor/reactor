@@ -93,7 +93,7 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 
 	@Override
 	protected void submit(RunnableTask task) {
-		tasks.add(task);
+		tasks.offer(task);
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
