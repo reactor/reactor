@@ -90,7 +90,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher 
 	                                    String threadName,
 	                                    BlockingQueue<Runnable> workQueue,
 	                                    RejectedExecutionHandler rejectedExecutionHandler) {
-		super(backlog);
+		super(poolSize, backlog);
 		this.executor = new ThreadPoolExecutor(
 				poolSize,
 				poolSize,
@@ -108,11 +108,13 @@ public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher 
 	 *
 	 * @param backlog
 	 * 		the task backlog
+	 * @param poolSize
+	 * 		the number of threads
 	 * @param executor
 	 * 		the executor to use to execute tasks
 	 */
-	public ThreadPoolExecutorDispatcher(int backlog, ExecutorService executor) {
-		super(backlog);
+	public ThreadPoolExecutorDispatcher(int backlog, int poolSize, ExecutorService executor) {
+		super(poolSize, backlog);
 		this.executor = executor;
 	}
 

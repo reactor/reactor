@@ -28,7 +28,7 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 	                           int poolSize,
 	                           int backlog,
 	                           final Consumer<Throwable> uncaughtExceptionHandler) {
-		super(backlog);
+		super(poolSize, backlog);
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
 				new NamedDaemonThreadFactory(name, getContext())

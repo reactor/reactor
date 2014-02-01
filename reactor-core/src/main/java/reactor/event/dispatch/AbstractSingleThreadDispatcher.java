@@ -4,7 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Base Implementation for Single Threaded Dispatchers
+ *
+ * @author Stephane Maldini
  * @author Jon Brisbin
+ *
+ * @since 1.1
  */
 public abstract class AbstractSingleThreadDispatcher extends AbstractLifecycleDispatcher {
 
