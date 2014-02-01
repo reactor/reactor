@@ -16,7 +16,7 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
@@ -150,7 +150,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 			}
 		}
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(10, TimeUnit.SECONDS);
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
 
 		long end = System.currentTimeMillis();
@@ -195,10 +195,10 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(new RingBufferDispatcher(
 				"test",
-				16384,
-				8,
+				1024,
+				null,
 				ProducerType.MULTI,
-				new BusySpinWaitStrategy()
+				new YieldingWaitStrategy()
 		), "single-producer ring buffer");
 	}
 

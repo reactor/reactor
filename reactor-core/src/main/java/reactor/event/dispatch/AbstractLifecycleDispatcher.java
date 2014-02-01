@@ -21,6 +21,7 @@ import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
+import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -83,7 +84,60 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
-	protected abstract class Task implements Runnable, Recyclable {
+	@Override
+	public <E extends Event<?>> void dispatch(Object key,
+	                                          E event,
+	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Consumer<Throwable> errorConsumer,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> completionConsumer) {
+		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
+
+		Task task;
+		boolean isInContext = isInContext();
+		if(isInContext) {
+			task = allocateRecursiveTask();
+		} else {
+			task = allocateTask();
+		}
+
+		task.setKey(key)
+		    .setEvent(event)
+		    .setConsumerRegistry(consumerRegistry)
+		    .setErrorConsumer(errorConsumer)
+		    .setEventRouter(eventRouter)
+		    .setCompletionConsumer(completionConsumer);
+
+		if(isInContext) {
+			addToTailRecursionPile(task);
+		} else {
+			submit(task);
+		}
+	}
+
+	protected void addToTailRecursionPile(Task task) {}
+
+	protected abstract void submit(Task task);
+
+	protected abstract Task allocateRecursiveTask();
+
+	protected abstract Task allocateTask();
+
+	protected static void route(Task task) {
+		try {
+			task.eventRouter.route(
+					task.key,
+					task.event,
+					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+					task.completionConsumer,
+					task.errorConsumer
+			);
+		} finally {
+			task.recycle();
+		}
+	}
+
+	public abstract class Task implements Runnable, Recyclable {
 
 		protected volatile Object                                 key;
 		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;

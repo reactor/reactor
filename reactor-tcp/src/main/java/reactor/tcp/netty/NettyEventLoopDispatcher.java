@@ -17,7 +17,7 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.event.dispatch.AbstractRunnableTaskDispatcher;
+import reactor.event.dispatch.AbstractMultiThreadDispatcher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends AbstractRunnableTaskDispatcher {
+public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 
 	private final EventLoop eventLoop;
 
@@ -41,7 +41,7 @@ public class NettyEventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 	 * 		The size of the backlog of unexecuted tasks
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
-		super(backlog, null);
+		super(backlog);
 		this.eventLoop = eventLoop;
 	}
 
@@ -69,7 +69,7 @@ public class NettyEventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 	}
 
 	@Override
-	protected void submit(RunnableTask task) {
+	protected void submit(Task task) {
 		eventLoop.execute(task);
 	}
 

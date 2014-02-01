@@ -28,7 +28,7 @@ import java.util.concurrent.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher {
+public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher {
 
 	private final ExecutorService executor;
 
@@ -43,7 +43,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher
 	 * 		the backlog size
 	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
-		this(poolSize, backlog, "thread-pool-executor-dispatcher");
+		this(poolSize, backlog, "threadPoolExecutorDispatcher");
 	}
 
 	/**
@@ -90,7 +90,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher
 	                                    String threadName,
 	                                    BlockingQueue<Runnable> workQueue,
 	                                    RejectedExecutionHandler rejectedExecutionHandler) {
-		super(backlog, null);
+		super(backlog);
 		this.executor = new ThreadPoolExecutor(
 				poolSize,
 				poolSize,
@@ -100,6 +100,20 @@ public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher
 				new NamedDaemonThreadFactory(threadName, getContext()),
 				rejectedExecutionHandler
 		);
+	}
+
+	/**
+	 * Create a new {@literal ThreadPoolTaskExecutor} with the given backlog and {@link
+	 * java.util.concurrent.ExecutorService}.
+	 *
+	 * @param backlog
+	 * 		the task backlog
+	 * @param executor
+	 * 		the executor to use to execute tasks
+	 */
+	public ThreadPoolExecutorDispatcher(int backlog, ExecutorService executor) {
+		super(backlog);
+		this.executor = executor;
 	}
 
 	@Override
@@ -129,8 +143,8 @@ public class ThreadPoolExecutorDispatcher extends AbstractRunnableTaskDispatcher
 	}
 
 	@Override
-	protected void submit(RunnableTask task) {
-		executor.submit(task);
+	protected void submit(Task task) {
+		executor.execute(task);
 	}
 
 }

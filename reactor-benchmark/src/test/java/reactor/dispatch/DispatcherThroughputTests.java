@@ -103,6 +103,12 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	}
 
 	@Test
+	public void workQueueDispatcherThroughput() throws InterruptedException {
+		log.info("Starting work queue test...");
+		doTest("workQueue");
+	}
+
+	@Test
 	public void preparedThreadPoolDispatcherThroughput() throws InterruptedException {
 		log.info("Starting prepared thread pool test...");
 		doPrepareTest("threadPoolExecutor");
