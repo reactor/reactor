@@ -18,6 +18,7 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.queue.BlockingQueueFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.BlockingQueue;
@@ -38,14 +39,13 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 
 	private final ExecutorService                 taskExecutor;
 	private final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+	private BlockingQueue<RunnableTask> tasks = BlockingQueueFactory.createQueue();
 
 	/**
 	 * Creates a new {@literal EventLoopDispatcher} with the given {@literal name} and {@literal backlog}.
 	 *
-	 * @param name
-	 * 		The name
-	 * @param backlog
-	 * 		The backlog size
+	 * @param name    The name
+	 * @param backlog The backlog size
 	 */
 	public EventLoopDispatcher(String name, int backlog) {
 		this(name, backlog, null);
@@ -54,12 +54,9 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 	/**
 	 * Creates a new {@literal EventLoopDispatcher} with the given {@literal name} and {@literal backlog}.
 	 *
-	 * @param name
-	 * 		The name
-	 * @param backlog
-	 * 		The backlog size
-	 * @param uncaughtExceptionHandler
-	 * 		The {@code UncaughtExceptionHandler}
+	 * @param name                     The name
+	 * @param backlog                  The backlog size
+	 * @param uncaughtExceptionHandler The {@code UncaughtExceptionHandler}
 	 */
 	public EventLoopDispatcher(final String name,
 	                           int backlog,
@@ -75,7 +72,7 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 		shutdown();
 		try {
 			taskExecutor.awaitTermination(timeout, timeUnit);
-		} catch(InterruptedException e) {
+		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			return false;
 		}
@@ -96,29 +93,28 @@ public final class EventLoopDispatcher extends AbstractRunnableTaskDispatcher {
 
 	@Override
 	protected void submit(RunnableTask task) {
-		getTailRecursionPile().add(task);
+		tasks.add(task);
 	}
 
 	private class TaskExecutingRunnable implements Runnable {
 		@Override
 		public void run() {
 			RunnableTask task;
-			for(; ; ) {
+			for (; ; ) {
 				try {
-					while(null != (task = getTailRecursionPile().poll(Integer.MAX_VALUE, TimeUnit.MILLISECONDS))) {
-						try {
-							task.run();
-							task.getReference().release();
-						} catch(Throwable t) {
-							if(null != uncaughtExceptionHandler) {
-								uncaughtExceptionHandler.uncaughtException(Thread.currentThread(), t);
-							}
-							if(log.isErrorEnabled()) {
-								log.error(t.getMessage(), t);
-							}
+					task = tasks.poll(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
+
+					try {
+						task.run();
+					} catch (Throwable t) {
+						if (null != uncaughtExceptionHandler) {
+							uncaughtExceptionHandler.uncaughtException(Thread.currentThread(), t);
+						}
+						if (log.isErrorEnabled()) {
+							log.error(t.getMessage(), t);
 						}
 					}
-				} catch(InterruptedException e) {
+				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 					break;
 				}
