@@ -48,8 +48,8 @@ import static org.hamcrest.core.Is.is;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int  length        = (int)Math.pow(2, 8);
-	static int  runs          = (int)Math.pow(2, 10);
+	static int  length        = 500;
+	static int  runs          = 1000;
 	static int  samples       = 3;
 	static long expectedTotal = sumSample();
 
