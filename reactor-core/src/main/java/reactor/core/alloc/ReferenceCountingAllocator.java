@@ -58,20 +58,19 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 			throw new RuntimeException("Allocator is exhausted.");
 		}
 
-		refLock.lock();
-		try {
-			ref = references.get(next);
-			if (null == ref) {
-				// this reference has been nulled somehow.
-				// that's not really critical, just replace it.
-
+		ref = references.get(next);
+		if (null == ref) {
+			// this reference has been nulled somehow.
+			// that's not really critical, just replace it.
+			refLock.lock();
+			try {
 				ref = new ReferenceCountingAllocatorReference<T>(factory.get(), next);
 				references.set(next, ref);
-				ref.retain();
+			} finally {
+				refLock.unlock();
 			}
-		} finally {
-			refLock.unlock();
 		}
+		ref.retain();
 
 		return ref;
 	}
@@ -132,10 +131,15 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 
 		@Override
 		public void release(int decr) {
-			super.release(decr);
-			if (getReferenceCount() < 1) {
-				// There won't be contention to clear this
-				leaseMask.clear(bit);
+			leaseLock.lock();
+			try {
+				super.release(decr);
+				if (getReferenceCount() < 1) {
+					// There won't be contention to clear this
+					leaseMask.clear(bit);
+				}
+			} finally {
+				leaseLock.unlock();
 			}
 		}
 	}

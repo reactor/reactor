@@ -34,13 +34,7 @@ public abstract class AbstractRunnableTaskDispatcher extends AbstractLifecycleDi
 					new Supplier<RunnableTask>() {
 						@Override
 						public RunnableTask get() {
-							return new RunnableTask() {
-								@Override
-								public void run() {
-									super.run();
-									getReference().release();
-								}
-							};
+							return new RunnableTask();
 						}
 					}
 			);
@@ -146,9 +140,14 @@ public abstract class AbstractRunnableTaskDispatcher extends AbstractLifecycleDi
 						recursiveTask.completionConsumer,
 						recursiveTask.errorConsumer
 				);
+
 				if(null != recursiveTask.getReference() && recursiveTask.getReference().getReferenceCount() > 0) {
 					recursiveTask.getReference().release();
 				}
+			}
+
+			if(null != getReference() && getReference().getReferenceCount() > 0) {
+				getReference().release();
 			}
 		}
 	}
