@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
  * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
 public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
@@ -41,7 +42,7 @@ public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 	 * 		The size of the backlog of unexecuted tasks
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
-		super(backlog);
+		super(1, backlog);
 		this.eventLoop = eventLoop;
 	}
 
