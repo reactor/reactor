@@ -26,10 +26,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
-import reactor.event.dispatch.ActorDispatcher;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.EventLoopDispatcher;
-import reactor.event.dispatch.RingBufferDispatcher;
+import reactor.event.dispatch.*;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.tuple.Tuple2;
@@ -172,8 +169,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new EventLoopDispatcher("eventLoop", 2048), "event loop");
+	public void testWorkQueueDispatcherComposableThroughput() throws InterruptedException {
+		doTest(new WorkQueueDispatcher("workQueue", 8, 2048, null), "work queue");
 	}
 
 	@Test
