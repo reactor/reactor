@@ -15,7 +15,7 @@
  */
 package reactor.core.action;
 
-import reactor.timer.HashWheelTimer;
+import reactor.event.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
 

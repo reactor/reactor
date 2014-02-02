@@ -1,7 +1,7 @@
 package reactor.core
 
 import reactor.function.Consumer
-import reactor.timer.HashWheelTimer
+import reactor.event.timer.HashWheelTimer
 import spock.lang.Ignore
 import spock.lang.Specification
 
