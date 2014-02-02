@@ -184,7 +184,7 @@ public final class CachingRegistryTests {
 		assertEquals( "number of consumers incorrect", 2, registrations.size());
 
 
-		/*for(TimerRegistration<?> registration : registrations){
+		/*for(Registration<?> registration : registrations){
 			System.out.println (registration.getObject());
 		}*/
 

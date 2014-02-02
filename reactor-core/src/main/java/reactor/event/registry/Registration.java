@@ -20,7 +20,7 @@ import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.Selector;
 
 /**
- * A {@code TimerRegistration} represents an object that has been {@link Registry#register(Selector,
+ * A {@code Registration} represents an object that has been {@link Registry#register(Selector,
  * Object) registered} with a {@link Registry}.
  *
  * @param <T> The type of object that is registered
@@ -63,7 +63,7 @@ public interface Registration<T> extends Pausable {
 	boolean isCancelAfterUse();
 
 	/**
-	 * Cancel this {@literal TimerRegistration} by removing it from its registry.
+	 * Cancel this {@literal Registration} by removing it from its registry.
 	 *
 	 * @return {@literal this}
 	 */
@@ -78,7 +78,7 @@ public interface Registration<T> extends Pausable {
 	boolean isCancelled();
 
 	/**
-	 * Pause this {@literal TimerRegistration}. This leaves it in its registry but, while it is paused, it
+	 * Pause this {@literal Registration}. This leaves it in its registry but, while it is paused, it
 	 * will not be eligible for {@link Registry#select(Object) selection}.
 	 *
 	 * @return {@literal this}
@@ -87,14 +87,14 @@ public interface Registration<T> extends Pausable {
 	Registration<T> pause();
 
 	/**
-	 * Whether this {@literal TimerRegistration} has been paused or not.
+	 * Whether this {@literal Registration} has been paused or not.
 	 *
 	 * @return {@literal true} if currently paused, {@literal false} otherwise.
 	 */
 	boolean isPaused();
 
 	/**
-	 * Unpause this {@literal TimerRegistration}, making it available for {@link Registry#select(Object) selection}.
+	 * Unpause this {@literal Registration}, making it available for {@link Registry#select(Object) selection}.
 	 *
 	 * @return {@literal this}
 	 */
