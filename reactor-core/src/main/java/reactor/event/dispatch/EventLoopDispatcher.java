@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
+@Deprecated
 public final class EventLoopDispatcher extends RingBufferDispatcher {
 
 	/**

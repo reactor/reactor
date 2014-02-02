@@ -18,15 +18,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDispatcher {
 
-	private final BlockingQueue<Task> tasks;
-	private final int                 backlog;
-	private final int                 numberThreads;
-	private final int[]               tailRecurseSeqArray;
-	private final int[]               tailRecursionPileSizeArray;
-	private final List<List<Task>>    tailRecursionPileList;
+	private final int              backlog;
+	private final int              numberThreads;
+	private final int[]            tailRecurseSeqArray;
+	private final int[]            tailRecursionPileSizeArray;
+	private final List<List<Task>> tailRecursionPileList;
 
 	private final Map<Integer, Integer> tailsThreadIndexLookup = new HashMap<Integer, Integer>();
-	private final AtomicInteger         indexAssignPile        = new AtomicInteger();
+	private final AtomicInteger        indexAssignPile        = new AtomicInteger();
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -35,17 +34,11 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		this.tailRecursionPileSizeArray = new int[numberThreads];
 		this.tailRecursionPileList = new ArrayList<List<Task>>(numberThreads);
 
-		this.tasks = BlockingQueueFactory.createQueue();
-
-		for (int i = 0; i < backlog; i++) {
-			tasks.add(new MultiThreadTask());
-		}
-
 		for (int i = 0; i < numberThreads; i++) {
 			tailRecursionPileSizeArray[i] = 0;
 			tailRecurseSeqArray[i] = -1;
 			tailRecursionPileList.add(new ArrayList<Task>(backlog));
-			tailsThreadIndexLookup.put(i, null);
+			tailsThreadIndexLookup.put(Thread.currentThread().hashCode(), null);
 			expandTailRecursionPile(i, backlog);
 		}
 	}
@@ -64,11 +57,10 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		int hash = Thread.currentThread().hashCode();
-		Integer index = tailsThreadIndexLookup.get(hash);
-		if (null == index){
+		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().hashCode());
+		if (null == index) {
 			index = indexAssignPile.getAndIncrement() % numberThreads;
-			tailsThreadIndexLookup.put(hash, index);
+			tailsThreadIndexLookup.put(Thread.currentThread().hashCode(), index);
 		}
 		int next = ++tailRecurseSeqArray[index];
 		if (next == tailRecursionPileSizeArray[index]) {
@@ -78,14 +70,8 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	}
 
 
-
 	protected Task allocateTask() {
-		Task task = tasks.poll();
-		if (null != task) {
-			return task;
-		} else {
-			return new MultiThreadTask();
-		}
+		return new MultiThreadTask();
 	}
 
 	protected class MultiThreadTask extends Task {
@@ -95,27 +81,27 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 			Integer index = tailsThreadIndexLookup.get(Thread.currentThread().hashCode());
 
-			if(null == index)
+			if (null == index)
 				return;
 
 			//Process any recursive tasks
-			if(tailRecurseSeqArray[index] < 0) {
+			if (tailRecurseSeqArray[index] < 0) {
 				return;
 			}
 
 			Task task;
+			List<Task> tailRecursePile = tailRecursionPileList.get(index);
 			int next = 0;
-			while(next <= tailRecurseSeqArray[index]) {
-				task = tailRecursionPileList.get(index).get(next++);
+			while (next <= tailRecurseSeqArray[index]) {
+				task = tailRecursePile.get(next++);
 				route(task);
 			}
 			// clean up extra tasks
 			next = tailRecurseSeqArray[index];
-			while(next > backlog) {
-				tailRecursionPileList.get(index).remove(next--);
+			while (next > backlog) {
+				tailRecursePile.remove(next--);
 			}
 			tailRecurseSeqArray[index] = -1;
-			tasks.offer(this);
 		}
 	}
 
