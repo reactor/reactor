@@ -17,8 +17,7 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.event.Event;
-import reactor.event.dispatch.AbstractReferenceCountingDispatcher;
+import reactor.event.dispatch.AbstractMultiThreadDispatcher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -26,9 +25,10 @@ import java.util.concurrent.TimeUnit;
  * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends AbstractReferenceCountingDispatcher {
+public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 
 	private final EventLoop eventLoop;
 
@@ -42,7 +42,7 @@ public class NettyEventLoopDispatcher extends AbstractReferenceCountingDispatche
 	 * 		The size of the backlog of unexecuted tasks
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
-		super(backlog);
+		super(1, backlog);
 		this.eventLoop = eventLoop;
 	}
 
@@ -70,24 +70,13 @@ public class NettyEventLoopDispatcher extends AbstractReferenceCountingDispatche
 	}
 
 	@Override
-	protected Task createTask() {
-		return new NettyEventLoopTask();
+	protected void execute(Task task) {
+		eventLoop.execute(task);
 	}
 
-	private final class NettyEventLoopTask extends SingleThreadTask<Event<Object>> implements Runnable {
-		@Override
-		public void submit() {
-			eventLoop.execute(this);
-		}
-
-		@Override
-		public void run() {
-			try {
-				execute();
-			} finally {
-				recycle();
-			}
-		}
+	@Override
+	public void execute(Runnable command) {
+		eventLoop.execute(command);
 	}
 
 }

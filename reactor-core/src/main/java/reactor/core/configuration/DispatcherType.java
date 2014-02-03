@@ -16,17 +16,15 @@
 
 package reactor.core.configuration;
 
-import java.util.concurrent.ThreadPoolExecutor;
-
 import com.lmax.disruptor.RingBuffer;
-
 import reactor.core.dynamic.annotation.Dispatcher;
+
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * An enumeration of supported types of {@link Dispatcher}.
  *
  * @author Andy Wilkinson
- *
  */
 public enum DispatcherType {
 
@@ -48,6 +46,11 @@ public enum DispatcherType {
 	/**
 	 * A {@link Dispatcher} which uses a {@link ThreadPoolExecutor} for dispatching
 	 */
-	THREAD_POOL_EXECUTOR
+	THREAD_POOL_EXECUTOR,
+
+	/**
+	 * A {@link Dispatcher} which uses a multi-threaded {@literal RingBuffer} for dispatching
+	 */
+	WORK_QUEUE
 
 }

@@ -23,7 +23,7 @@ public final class ActorDispatcher implements Dispatcher {
 
 	private final Function<Object, Dispatcher> delegateMapper;
 	private final Map<Integer, Dispatcher> dispatcherCache = new ConcurrentHashMap<Integer, Dispatcher>();
-	private final int emptyHashcode = this.hashCode();
+	private final int                      emptyHashcode   = this.hashCode();
 
 	public ActorDispatcher(Function<Object, Dispatcher> delegate) {
 		Assert.notNull(delegate, "Delegate Dispatcher Supplier cannot be null.");
@@ -33,9 +33,9 @@ public final class ActorDispatcher implements Dispatcher {
 	@Override
 	public boolean alive() {
 		boolean alive = true;
-		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+		for(Dispatcher dispatcher : new HashSet<Dispatcher>(dispatcherCache.values())) {
 			alive &= dispatcher.alive();
-			if (!alive) break;
+			if(!alive) break;
 		}
 		return alive;
 	}
@@ -48,25 +48,25 @@ public final class ActorDispatcher implements Dispatcher {
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		boolean alive = true;
-		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
-			if (dispatcher.alive()) {
+		for(Dispatcher dispatcher : new HashSet<Dispatcher>(dispatcherCache.values())) {
+			if(dispatcher.alive()) {
 				alive &= dispatcher.awaitAndShutdown(timeout, timeUnit);
 			}
-			if (!alive) break;
+			if(!alive) break;
 		}
 		return alive;
 	}
 
 	@Override
 	public void shutdown() {
-		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+		for(Dispatcher dispatcher : new HashSet<Dispatcher>(dispatcherCache.values())) {
 			dispatcher.shutdown();
 		}
 	}
 
 	@Override
 	public void halt() {
-		for (Dispatcher dispatcher :  new HashSet<Dispatcher>(dispatcherCache.values())) {
+		for(Dispatcher dispatcher : new HashSet<Dispatcher>(dispatcherCache.values())) {
 			dispatcher.halt();
 		}
 	}
@@ -81,7 +81,7 @@ public final class ActorDispatcher implements Dispatcher {
 
 		int hashCode = key == null ? emptyHashcode : key.hashCode();
 		Dispatcher delegate = dispatcherCache.get(hashCode);
-		if (delegate == null) {
+		if(delegate == null) {
 			delegate = delegateMapper.apply(key);
 			dispatcherCache.put(hashCode, delegate);
 		}
@@ -96,8 +96,23 @@ public final class ActorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(E event, EventRouter eventRouter, Consumer<E> consumer, Consumer<Throwable> errorConsumer) {
+	public <E extends Event<?>> void dispatch(E event,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> consumer,
+	                                          Consumer<Throwable> errorConsumer) {
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	}
+
+	@Override
+	public void execute(Runnable command) {
+		int hashCode = command.hashCode();
+		Dispatcher delegate = dispatcherCache.get(hashCode);
+		if(delegate == null) {
+			delegate = delegateMapper.apply(command);
+			dispatcherCache.put(hashCode, delegate);
+		}
+
+		delegate.execute(command);
 	}
 
 }

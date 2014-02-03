@@ -15,7 +15,7 @@
  */
 package reactor.core.action;
 
-import reactor.timer.HashWheelTimer;
+import reactor.timer.Timer;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.lifecycle.Pausable;
@@ -44,16 +44,18 @@ public class WindowAction<T> extends Action<T> implements Pausable {
 	public WindowAction(Observable d,
 	                    Object successKey,
 	                    Object failureKey,
-	                    HashWheelTimer timer,
+	                    Timer timer,
 	                    int period, TimeUnit timeUnit, int delay
   ) {
 		super(d, successKey, failureKey);
+
+    System.out.println(timer);
 		this.timerRegistration = timer.schedule(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {
-				doWindow(aLong);
+        doWindow(aLong);
 			}
-		}, period, timeUnit, delay);
+    }, period, timeUnit, delay);
 	}
 
 	protected void doWindow(Long aLong) {

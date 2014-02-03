@@ -29,22 +29,32 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 	private final Disruptor<Reference<T>>  disruptor;
 	private       RingBuffer<Reference<T>> ringBuffer;
 
+	public RingBufferAllocator(String name, int poolSize, Supplier<T> poolFactory) {
+		this(name, poolSize, poolFactory, 1);
+	}
+
+	public RingBufferAllocator(String name, int poolSize, Supplier<T> poolFactory, int eventThreads) {
+		this(name, poolSize, poolFactory, eventThreads, null, null, ProducerType.MULTI, new BlockingWaitStrategy(), null);
+	}
+
 	@SuppressWarnings("unchecked")
 	public RingBufferAllocator(String name,
 	                           int poolSize,
 	                           final Supplier<T> poolFactory,
+	                           int eventThreads,
 	                           final EventHandler<Reference<T>> eventHandler,
 	                           final ExceptionHandler errorHandler,
 	                           ProducerType producerType,
 	                           WaitStrategy waitStrategy,
 	                           ExecutorService executor) {
 		if(null == executor) {
-			this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name));
+			this.executor = Executors.newFixedThreadPool(eventThreads, new NamedDaemonThreadFactory(name));
 			this.shutdownExecutor = true;
 		} else {
 			this.executor = executor;
 			this.shutdownExecutor = false;
 		}
+
 		this.disruptor = new Disruptor<Reference<T>>(
 				new EventFactory<Reference<T>>() {
 					@SuppressWarnings("rawtypes")
@@ -58,8 +68,25 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 				producerType,
 				waitStrategy
 		);
-		disruptor.handleExceptionsWith(errorHandler);
-		disruptor.handleEventsWith(eventHandler);
+		if(null != errorHandler) {
+			disruptor.handleExceptionsWith(errorHandler);
+		}
+		if(null != eventHandler) {
+			if(eventThreads > 1) {
+				WorkHandler<Reference<T>>[] workHandlers = new WorkHandler[eventThreads];
+				for(int i = 0; i < eventThreads; i++) {
+					workHandlers[i] = new WorkHandler<Reference<T>>() {
+						@Override
+						public void onEvent(Reference<T> ref) throws Exception {
+							eventHandler.onEvent(ref, -1, false);
+						}
+					};
+				}
+				disruptor.handleEventsWithWorkerPool(workHandlers);
+			} else {
+				disruptor.handleEventsWith(eventHandler);
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -169,14 +196,16 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 
 		@Override
 		public void release(int decr) {
-			if(getReferenceCount() == 1 && !ringBuffer.isPublished(sequenceId)) {
+			if(!ringBuffer.isPublished(sequenceId)) {
 				// No one else is currently accessing this reference so we can
 				// publish to the RingBuffer, causing the EventHandler to run.
 				ringBuffer.publish(sequenceId);
 				// Don't actually release this until the EventHandler has run.
 				// This is a different situation than other Reference implementations
 				// that usually want immediately clearing of resources.
-				return;
+				if(1 == decr) {
+					return;
+				}
 			}
 			super.release(decr);
 		}

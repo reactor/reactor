@@ -16,5 +16,6 @@
 
 moduleName=reactor-groovy-module
 moduleVersion=1.0
-extensionClasses=reactor.groovy.ext.ObservableExtensions,reactor.groovy.ext.LinkableExtensions,reactor.groovy.ext.ComposableExtensions,reactor.groovy.ext.ProcessorExtensions
+extensionClasses=reactor.groovy.ext.ObservableExtensions,reactor.groovy.ext.ComposableExtensions,\
+  reactor.groovy.ext.ProcessorExtensions
 staticExtensionClasses=reactor.groovy.ext.ReactorStaticExtensions

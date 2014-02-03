@@ -7,6 +7,8 @@ import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
+import reactor.support.TimeUtils;
+import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.Set;
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
@@ -64,11 +67,11 @@ public class HashWheelTimer implements Timer {
 
 
   /**
-   * Create a new {@code HashWheelTimer} using the given with default resolution of 10 milliseconds and
+   * Create a new {@code HashWheelTimer} using the given with default resolution of 50 milliseconds and
    * default wheel size.
    */
   public HashWheelTimer() {
-    this(10, DEFAULT_WHEEL_SIZE);
+    this(50, DEFAULT_WHEEL_SIZE);
   }
 
   /**
@@ -125,11 +128,10 @@ public class HashWheelTimer implements Timer {
                 }
               }
 
-              long currentTime = System.currentTimeMillis();
               lastTick = lastTick + resolution;
 
-              long sleepTimeMs = lastTick - currentTime;
               try {
+                long sleepTimeMs = lastTick - System.currentTimeMillis();
                 Thread.sleep(sleepTimeMs);
               } catch (InterruptedException e) {
                 return;
@@ -219,12 +221,20 @@ public class HashWheelTimer implements Timer {
   private TimerRegistration<? extends Consumer<Long>> schedule(long recurringTimeout, long firstDelay, Consumer<Long> consumer) {
     Assert.isTrue(recurringTimeout >= resolution, "Cannot schedule tasks for amount of time less than timer precision.");
 
-    long offset = recurringTimeout % resolution;
-    long firstFire = firstDelay / resolution;
-    long rounds = recurringTimeout > resolution ? 0 : resolution / recurringTimeout - 1;
+    long offset = recurringTimeout / resolution;
+    long rounds = offset / wheel.getBufferSize();
 
-    TimerRegistration r = new TimerRegistration(rounds, offset, consumer);
-    wheel.get(wheel.getCursor() + firstFire + 1).add(r);
+    long firstFireOffset = firstDelay / resolution;
+    long firstFireRounds = firstFireOffset / wheel.getBufferSize();
+
+    System.out.printf("offset: %d, rounds %d, firstFireOffset %d, firstFireRdouns %d\n",
+                      offset,
+                      rounds,
+                      firstFireOffset,
+                      firstFireRounds);
+
+    TimerRegistration r = new TimerRegistration(firstFireRounds, offset, consumer, rounds);
+    wheel.get(wheel.getCursor() + firstFireOffset + 1).add(r);
     return r;
   }
 
@@ -234,7 +244,7 @@ public class HashWheelTimer implements Timer {
    */
   public void reschedule(TimerRegistration registration) {
     registration.reset();
-    wheel.get(wheel.getCursor() + registration.getOffset() + 1).add(registration);
+    wheel.get(wheel.getCursor() + registration.getOffset()).add(registration);
   }
 
   /**
@@ -264,7 +274,7 @@ public class HashWheelTimer implements Timer {
     public static int STATUS_READY = 0;
 
     private final  T            delegate;
-    private final long          initialRounds;
+    private final long          rescheduleRounds;
     private final long          scheduleOffset;
     private final AtomicLong    rounds;
     private final AtomicInteger status;
@@ -277,8 +287,8 @@ public class HashWheelTimer implements Timer {
      * @param offset offset of in the Ring Buffer for rescheduling
      * @param delegate delegate that will be ran whenever the timer is elapsed
      */
-    public TimerRegistration(long rounds, long offset, T delegate) {
-      this.initialRounds = rounds;
+    public TimerRegistration(long rounds, long offset, T delegate, long rescheduleRounds) {
+      this.rescheduleRounds = rescheduleRounds;
       this.scheduleOffset = offset;
       this.delegate = delegate;
       this.rounds = new AtomicLong(rounds);
@@ -314,7 +324,7 @@ public class HashWheelTimer implements Timer {
      */
     public void reset() {
       this.status.set(STATUS_READY);
-      this.rounds.set(initialRounds);
+      this.rounds.set(rescheduleRounds);
     }
 
     /**
@@ -411,6 +421,13 @@ public class HashWheelTimer implements Timer {
     public String toString() {
       return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
     }
+  }
+
+  @Override
+  public String toString() {
+    return String.format("HashWheelTimer { Buffer Size: %d, Resolution: %d }",
+                         wheel.getBufferSize(),
+                         resolution);
   }
 
 }

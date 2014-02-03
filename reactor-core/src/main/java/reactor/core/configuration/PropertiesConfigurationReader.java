@@ -16,6 +16,10 @@
 
 package reactor.core.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.util.IoUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -23,10 +27,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.util.IoUtils;
 
 /**
  * A {@link ConfigurationReader} that reads the configuration from properties files
@@ -115,7 +115,8 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private List<DispatcherConfiguration> createDispatcherConfiguration(Properties configuration) {
 		List<String> dispatcherNames = getDispatcherNames(configuration);
-		List<DispatcherConfiguration> dispatcherConfigurations = new ArrayList<DispatcherConfiguration>(dispatcherNames.size());
+		List<DispatcherConfiguration> dispatcherConfigurations = new ArrayList<DispatcherConfiguration>(dispatcherNames
+				                                                                                                .size());
 		for(String dispatcherName : dispatcherNames) {
 			DispatcherType type = getType(dispatcherName, configuration);
 			if(type != null) {
@@ -152,6 +153,8 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 			return DispatcherType.SYNCHRONOUS;
 		} else if("threadPoolExecutor".equals(type)) {
 			return DispatcherType.THREAD_POOL_EXECUTOR;
+		} else if("workQueue".equals(type)) {
+			return DispatcherType.WORK_QUEUE;
 		} else {
 			logger.warn("The type '{}' of Dispatcher '{}' is not recognized", type, dispatcherName);
 			return null;

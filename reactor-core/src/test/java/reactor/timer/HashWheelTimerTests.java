@@ -12,14 +12,16 @@ import static junit.framework.Assert.assertTrue;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class HashWheelTests {
+public class HashWheelTimerTests {
 
   private static int tolearance = 20;
+  private static int wheelPrecision = 10;
+  private static int wheelSize = 8;
 
   @Test
   public void submitForSingleExecution() throws InterruptedException {
     int delay = 500;
-    HashWheelTimer timer = new HashWheelTimer();
+    HashWheelTimer timer = new HashWheelTimer(wheelPrecision, wheelSize);
     final CountDownLatch latch = new CountDownLatch(1);
     final long start = System.currentTimeMillis();
     final long[] elapsed = {0};
@@ -36,12 +38,11 @@ public class HashWheelTests {
 
     assertTrue(elapsed[0] >= delay);
     assertTrue(elapsed[0] < delay * 2);
-
   }
 
   @Test
   public void scheduleWithDelay() throws InterruptedException {
-    HashWheelTimer timer = new HashWheelTimer(10, 512);
+    HashWheelTimer timer = new HashWheelTimer(wheelPrecision, wheelSize);
 
     final CountDownLatch latch10 = new CountDownLatch(49);
     final AtomicInteger count = new AtomicInteger(0);
@@ -54,7 +55,8 @@ public class HashWheelTests {
       }
     }, 10, TimeUnit.MILLISECONDS, 500);
 
-    latch10.await(1000 + tolearance, TimeUnit.MILLISECONDS);
+    Thread.sleep(1000);
+    latch10.await(tolearance, TimeUnit.MILLISECONDS);
     timer.cancel();
 
     assertThat(latch10.getCount(), is(0L));
@@ -64,7 +66,7 @@ public class HashWheelTests {
 
   @Test
   public void tick100TimesEvery10Ms() throws InterruptedException {
-    HashWheelTimer timer = new HashWheelTimer(10, 512);
+    HashWheelTimer timer = new HashWheelTimer(wheelPrecision, wheelSize);
 
     final CountDownLatch latch10 = new CountDownLatch(100);
     final AtomicInteger count = new AtomicInteger(0);
@@ -77,7 +79,8 @@ public class HashWheelTests {
       }
     }, 10, TimeUnit.MILLISECONDS);
 
-    latch10.await(1000 + tolearance, TimeUnit.MILLISECONDS);
+    Thread.sleep(1000);
+    latch10.await(tolearance, TimeUnit.MILLISECONDS);
     timer.cancel();
 
     assertThat(latch10.getCount(), is(0L));
@@ -85,8 +88,8 @@ public class HashWheelTests {
   }
 
   @Test
-  public void tick100TimesEvery10MsPlusCancel() throws InterruptedException {
-    HashWheelTimer timer = new HashWheelTimer(10, 512);
+  public void tickAfterDelayAndCancel() throws InterruptedException {
+    HashWheelTimer timer = new HashWheelTimer(wheelPrecision, wheelSize);
 
     final CountDownLatch latch10 = new CountDownLatch(50);
     final AtomicInteger count = new AtomicInteger(0);
@@ -99,7 +102,8 @@ public class HashWheelTests {
       }
     }, 10, TimeUnit.MILLISECONDS);
 
-    latch10.await(500 + tolearance, TimeUnit.MILLISECONDS);
+    Thread.sleep(500);
+    latch10.await(tolearance, TimeUnit.MILLISECONDS);
 
     r.cancel();
 
@@ -113,7 +117,7 @@ public class HashWheelTests {
 
   @Test
   public void tick10TimesEvery100Ms() throws InterruptedException {
-    HashWheelTimer timer = new HashWheelTimer(100, 512);
+    HashWheelTimer timer = new HashWheelTimer(100, wheelSize);
 
     final CountDownLatch latch100 = new CountDownLatch(10);
     final AtomicInteger count = new AtomicInteger(0);
@@ -157,7 +161,7 @@ public class HashWheelTests {
 
   @Test
   public void pauseAndResumeTest() throws InterruptedException {
-    HashWheelTimer timer = new HashWheelTimer(10, 512);
+    HashWheelTimer timer = new HashWheelTimer(wheelPrecision, wheelSize);
 
     final CountDownLatch latch10 = new CountDownLatch(100);
     final AtomicInteger count = new AtomicInteger(0);

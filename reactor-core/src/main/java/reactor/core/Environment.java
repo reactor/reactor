@@ -53,6 +53,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public static final String THREAD_POOL = "threadPoolExecutor";
 
 	/**
+	 * The name of the default work queue dispatcher
+	 */
+	public static final String WORK_QUEUE = "workQueue";
+
+	/**
 	 * The number of processors available to the runtime
 	 *
 	 * @see Runtime#availableProcessors()
@@ -120,6 +125,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				addDispatcher(dispatcherConfiguration.getName(), new SynchronousDispatcher());
 			} else if(DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
+			} else if(DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
 			}
 		}
 
@@ -136,10 +143,21 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		                                        dispatcherConfiguration.getName());
 	}
 
+	private WorkQueueDispatcher createWorkQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int size = getSize(dispatcherConfiguration, 0);
+		int backlog = getBacklog(dispatcherConfiguration, 16384);
+
+		return new WorkQueueDispatcher("workQueueDispatcher",
+		                               size,
+		                               backlog,
+		                               null);
+	}
+
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
 		return new RingBufferDispatcher(dispatcherConfiguration.getName(),
 		                                backlog,
+		                                null,
 		                                ProducerType.MULTI,
 		                                new BlockingWaitStrategy());
 	}
@@ -293,7 +311,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Get the {@code Environment}-wide {@link reactor.timer.HashWheelTimer}.
+	 * Get the {@code Environment}-wide {@link reactor.event.timer.HashWheelTimer}.
 	 *
 	 * @return the timer.
 	 */

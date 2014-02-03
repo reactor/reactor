@@ -16,7 +16,6 @@
 
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.*;
@@ -28,7 +27,7 @@ import java.util.concurrent.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispatcher {
+public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher {
 
 	private final ExecutorService executor;
 
@@ -43,7 +42,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 	 * 		the backlog size
 	 */
 	public ThreadPoolExecutorDispatcher(int poolSize, int backlog) {
-		this(poolSize, backlog, "thread-pool-executor-dispatcher");
+		this(poolSize, backlog, "threadPoolExecutorDispatcher");
 	}
 
 	/**
@@ -90,7 +89,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 	                                    String threadName,
 	                                    BlockingQueue<Runnable> workQueue,
 	                                    RejectedExecutionHandler rejectedExecutionHandler) {
-		super(backlog);
+		super(poolSize, backlog);
 		this.executor = new ThreadPoolExecutor(
 				poolSize,
 				poolSize,
@@ -102,17 +101,25 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 		);
 	}
 
-	public ThreadPoolExecutorDispatcher(ExecutorService executor, int backlog) {
-		super(backlog);
+	/**
+	 * Create a new {@literal ThreadPoolTaskExecutor} with the given backlog and {@link
+	 * java.util.concurrent.ExecutorService}.
+	 *
+	 * @param backlog
+	 * 		the task backlog
+	 * @param poolSize
+	 * 		the number of threads
+	 * @param executor
+	 * 		the executor to use to execute tasks
+	 */
+	public ThreadPoolExecutorDispatcher(int backlog, int poolSize, ExecutorService executor) {
+		super(poolSize, backlog);
 		this.executor = executor;
 	}
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		shutdown();
-		if(!super.awaitAndShutdown(timeout, timeUnit)) {
-			return false;
-		}
 		try {
 			if(!executor.awaitTermination(timeout, timeUnit)) {
 				return false;
@@ -137,24 +144,13 @@ public class ThreadPoolExecutorDispatcher extends AbstractReferenceCountingDispa
 	}
 
 	@Override
-	protected Task createTask() {
-		return new ThreadPoolTask();
+	protected void execute(Task task) {
+		executor.execute(task);
 	}
 
-	private class ThreadPoolTask<E extends Event<?>> extends SingleThreadTask<E> implements Runnable {
-		@Override
-		public void submit() {
-			if(isInContext()) {
-				execute();
-			} else {
-				executor.execute(this);
-			}
-		}
-
-		@Override
-		public void run() {
-			execute();
-		}
+	@Override
+	public void execute(Runnable command) {
+		executor.execute(command);
 	}
 
 }

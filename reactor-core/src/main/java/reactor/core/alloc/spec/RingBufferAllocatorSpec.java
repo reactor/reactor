@@ -24,8 +24,9 @@ import java.util.concurrent.ExecutorService;
  */
 public class RingBufferAllocatorSpec<T extends Recyclable> implements Supplier<RingBufferAllocator<T>> {
 
-	private String name     = "ring-buffer-allocator";
-	private int    ringSize = 1024;
+	private String name         = "ring-buffer-allocator";
+	private int    ringSize     = 1024;
+	private int    eventThreads = 1;
 
 	private Supplier<T>            allocator;
 	private Consumer<Reference<T>> eventHandler;
@@ -56,6 +57,20 @@ public class RingBufferAllocatorSpec<T extends Recyclable> implements Supplier<R
 	public RingBufferAllocatorSpec<T> ringSize(int ringSize) {
 		Assert.isTrue(ringSize > 0, "Ring size must be greater than 0 (zero).");
 		this.ringSize = ringSize;
+		return this;
+	}
+
+	/**
+	 * Specify the number of threads the underlying {@link com.lmax.disruptor.RingBuffer} will use.
+	 *
+	 * @param eventThreads
+	 * 		number of threads for event handlers
+	 *
+	 * @return {@code this}
+	 */
+	public RingBufferAllocatorSpec<T> eventThreads(int eventThreads) {
+		Assert.isTrue(eventThreads > 0, "Threads size must be 1 or greater.");
+		this.eventThreads = eventThreads;
 		return this;
 	}
 
@@ -148,36 +163,32 @@ public class RingBufferAllocatorSpec<T extends Recyclable> implements Supplier<R
 				name,
 				ringSize,
 				allocator,
-				new EventHandler<Reference<T>>() {
+				eventThreads,
+				(null != eventHandler ? new EventHandler<Reference<T>>() {
 					@Override
-					public void onEvent(Reference<T> event, long sequence, boolean endOfBatch) throws Exception {
-						if(null != eventHandler) {
-							eventHandler.accept(event);
+					public void onEvent(Reference<T> ref, long sequence, boolean endOfBatch) throws Exception {
+						eventHandler.accept(ref);
+						if(ref.getReferenceCount() > 0) {
+							ref.release();
 						}
 					}
-				},
-				new ExceptionHandler() {
+				} : null),
+				(null != errorHandler ? new ExceptionHandler() {
 					@Override
 					public void handleEventException(Throwable ex, long sequence, Object event) {
-						if(null != errorHandler) {
-							errorHandler.accept(ex);
-						}
+						errorHandler.accept(ex);
 					}
 
 					@Override
 					public void handleOnStartException(Throwable ex) {
-						if(null != errorHandler) {
-							errorHandler.accept(ex);
-						}
+						errorHandler.accept(ex);
 					}
 
 					@Override
 					public void handleOnShutdownException(Throwable ex) {
-						if(null != errorHandler) {
-							errorHandler.accept(ex);
-						}
+						errorHandler.accept(ex);
 					}
-				},
+				} : null),
 				producerType,
 				waitStrategy,
 				executor

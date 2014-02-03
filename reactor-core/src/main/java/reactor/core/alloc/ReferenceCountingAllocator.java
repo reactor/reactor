@@ -5,6 +5,7 @@ import reactor.function.Supplier;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * An implementation of {@link reactor.core.alloc.Allocator} that uses reference counting to determine when an object
@@ -18,10 +19,12 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 
 	private static final int DEFAULT_INITIAL_SIZE = 2048;
 
-	private final Object                  refMonitor = new Object();
+	private final ReentrantLock           refLock    = new ReentrantLock();
+	private final ReentrantLock           leaseLock  = new ReentrantLock();
 	private final ArrayList<Reference<T>> references = new ArrayList<Reference<T>>();
 	private final Supplier<T> factory;
-	private final BitSet      leaseMask;
+
+	private volatile BitSet leaseMask;
 
 	public ReferenceCountingAllocator(Supplier<T> factory) {
 		this(DEFAULT_INITIAL_SIZE, factory);
@@ -40,25 +43,31 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 		int len = refCnt();
 		int next;
 
-		synchronized(leaseMask) {
+		leaseLock.lock();
+		try {
 			next = leaseMask.nextClearBit(0);
-			if(next >= len) {
+			if (next >= len) {
 				expand(len);
 			}
 			leaseMask.set(next);
+		} finally {
+			leaseLock.unlock();
 		}
 
-		if(next < 0) {
+		if (next < 0) {
 			throw new RuntimeException("Allocator is exhausted.");
 		}
 
 		ref = references.get(next);
-		if(null == ref) {
+		if (null == ref) {
 			// this reference has been nulled somehow.
 			// that's not really critical, just replace it.
-			synchronized(refMonitor) {
+			refLock.lock();
+			try {
 				ref = new ReferenceCountingAllocatorReference<T>(factory.get(), next);
 				references.set(next, ref);
+			} finally {
+				refLock.unlock();
 			}
 		}
 		ref.retain();
@@ -69,7 +78,7 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 	@Override
 	public List<Reference<T>> allocateBatch(int size) {
 		List<Reference<T>> refs = new ArrayList<Reference<T>>(size);
-		for(int i = 0; i < size; i++) {
+		for (int i = 0; i < size; i++) {
 			refs.add(allocate());
 		}
 		return refs;
@@ -77,26 +86,38 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 
 	@Override
 	public void release(List<Reference<T>> batch) {
-		if(null != batch && !batch.isEmpty()) {
-			for(Reference<T> ref : batch) {
+		if (null != batch && !batch.isEmpty()) {
+			for (Reference<T> ref : batch) {
 				ref.release();
 			}
 		}
 	}
 
 	private int refCnt() {
-		synchronized(refMonitor) {
+		refLock.lock();
+		try {
 			return references.size();
+		} finally {
+			refLock.unlock();
 		}
 	}
 
 	private void expand(int num) {
-		synchronized(refMonitor) {
+		refLock.lock();
+		try {
 			int len = references.size();
 			int newLen = len + num;
-			for(int i = len; i <= newLen; i++) {
+			for (int i = len; i <= newLen; i++) {
 				references.add(new ReferenceCountingAllocatorReference<T>(factory.get(), i));
 			}
+			BitSet newLeaseMask = new BitSet(newLen);
+			int leases = leaseMask.length();
+			for (int i = 0; i < leases; i++) {
+				newLeaseMask.set(i, leaseMask.get(i));
+			}
+			leaseMask = newLeaseMask;
+		} finally {
+			refLock.unlock();
 		}
 	}
 
@@ -110,10 +131,15 @@ public class ReferenceCountingAllocator<T extends Recyclable> implements Allocat
 
 		@Override
 		public void release(int decr) {
-			super.release(decr);
-			if(getReferenceCount() < 1) {
-				// There won't be contention to clear this
-				leaseMask.clear(bit);
+			leaseLock.lock();
+			try {
+				super.release(decr);
+				if (getReferenceCount() < 1) {
+					// There won't be contention to clear this
+					leaseMask.clear(bit);
+				}
+			} finally {
+				leaseLock.unlock();
 			}
 		}
 	}

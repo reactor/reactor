@@ -1,6 +1,6 @@
 package reactor.core.alloc;
 
-import reactor.timer.TimeUtils;
+import reactor.support.TimeUtils;
 
 /**
  * An abstract {@link reactor.core.alloc.Reference} implementation that does reference counting.
@@ -56,6 +56,15 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 	@Override
 	public T get() {
 		return obj;
+	}
+
+	@Override
+	public String toString() {
+		return "Reference{" +
+				"refCnt=" + refCnt +
+				", inception=" + inception +
+				", obj=" + obj +
+				'}';
 	}
 
 }

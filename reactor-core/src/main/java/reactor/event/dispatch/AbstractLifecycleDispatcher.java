@@ -17,11 +17,11 @@
 package reactor.event.dispatch;
 
 import reactor.core.alloc.Recyclable;
-import reactor.core.alloc.Reference;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
+import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -84,43 +84,97 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
-	protected abstract <E extends Event<?>> Reference<Task<E>> allocateTaskRef();
+	@Override
+	public <E extends Event<?>> void dispatch(Object key,
+	                                          E event,
+	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Consumer<Throwable> errorConsumer,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> completionConsumer) {
+		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
-	protected abstract class Task<E extends Event<?>> implements Recyclable {
+		Task task;
+		boolean isInContext = isInContext();
+		if(isInContext) {
+			task = allocateRecursiveTask();
+		} else {
+			task = allocateTask();
+		}
+
+		task.setKey(key)
+		    .setEvent(event)
+		    .setConsumerRegistry(consumerRegistry)
+		    .setErrorConsumer(errorConsumer)
+		    .setEventRouter(eventRouter)
+		    .setCompletionConsumer(completionConsumer);
+
+		if(isInContext) {
+			addToTailRecursionPile(task);
+		} else {
+			execute(task);
+		}
+	}
+
+	protected void addToTailRecursionPile(Task task) {}
+
+	protected abstract Task allocateRecursiveTask();
+
+	protected abstract Task allocateTask();
+
+	protected abstract void execute(Task task);
+
+	protected static void route(Task task) {
+		if(null == task.eventRouter) {
+			return;
+		}
+		try {
+			task.eventRouter.route(
+					task.key,
+					task.event,
+					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+					task.completionConsumer,
+					task.errorConsumer
+			);
+		} finally {
+			task.recycle();
+		}
+	}
+
+	public abstract class Task implements Runnable, Recyclable {
 
 		protected volatile Object                                 key;
 		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
-		protected volatile E                                      event;
-		protected volatile Consumer<E>                            completionConsumer;
+		protected volatile Event<?>                               event;
+		protected volatile Consumer<?>                            completionConsumer;
 		protected volatile Consumer<Throwable>                    errorConsumer;
 		protected volatile EventRouter                            eventRouter;
 
-		final Task<E> setKey(Object key) {
+		public Task setKey(Object key) {
 			this.key = key;
 			return this;
 		}
 
-		final Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		public Task setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 			this.consumerRegistry = consumerRegistry;
 			return this;
 		}
 
-		final Task<E> setEvent(E event) {
+		public Task setEvent(Event<?> event) {
 			this.event = event;
 			return this;
 		}
 
-		final Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
+		public Task setCompletionConsumer(Consumer<?> completionConsumer) {
 			this.completionConsumer = completionConsumer;
 			return this;
 		}
 
-		final Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
+		public Task setErrorConsumer(Consumer<Throwable> errorConsumer) {
 			this.errorConsumer = errorConsumer;
 			return this;
 		}
 
-		final Task<E> setEventRouter(EventRouter eventRouter) {
+		public Task setEventRouter(EventRouter eventRouter) {
 			this.eventRouter = eventRouter;
 			return this;
 		}
@@ -132,12 +186,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			event = null;
 			completionConsumer = null;
 			errorConsumer = null;
+			eventRouter = null;
 		}
-
-		protected void submit() {
-		}
-
-		protected abstract void execute();
 
 	}
 

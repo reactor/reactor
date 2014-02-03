@@ -20,7 +20,6 @@ import org.junit.Test;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
-import reactor.event.dispatch.EventLoopDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 
@@ -35,7 +34,21 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 
 	public void registerConsumersAndWarmCache(Reactor reactor) {
 		for(int i = 0; i < selectors; i++) {
-			Object object = "test" + i;
+			final int idx = i;
+			Object object = new Object() {
+				final int hashCode = System.identityHashCode(this);
+
+				@Override
+				public int hashCode() {
+					return hashCode;
+				}
+
+				@Override
+				public String toString() {
+					return "test" + idx;
+				}
+			};
+			//Object object = "test" + i;
 			sels[i] = Selectors.$(object);
 			objects[i] = object;
 			reactor.on(sels[i], countDownConsumer);
@@ -90,16 +103,19 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void eventLoopDispatcherThroughput() throws InterruptedException {
 		log.info("Starting event loop test...");
-		doTest(Reactors.reactor()
-		               .env(env)
-		               .dispatcher(new EventLoopDispatcher("eventLoop", 1024))
-		               .get());
+		doTest("eventLoop");
 	}
 
 	@Test
 	public void threadPoolDispatcherThroughput() throws InterruptedException {
 		log.info("Starting thread pool test...");
 		doTest("threadPoolExecutor");
+	}
+
+	@Test
+	public void workQueueDispatcherThroughput() throws InterruptedException {
+		log.info("Starting work queue test...");
+		doTest("workQueue");
 	}
 
 	@Test
@@ -117,7 +133,10 @@ public class DispatcherThroughputTests extends AbstractThroughputTests {
 	@Test
 	public void singleProducerRingBufferDispatcherThroughput() throws InterruptedException {
 		log.info("Starting single-producer, yielding RingBuffer test...");
-		doTest(Reactors.reactor().env(env).dispatcher(createRingBufferDispatcher()).get());
+		doTest(Reactors.reactor()
+		               .env(env)
+		               .dispatcher(createRingBufferDispatcher())
+		               .get());
 	}
 
 	@Test

@@ -151,7 +151,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 			def b = new Boundary()
-			def dispatcher = new RingBufferDispatcher("rb", 8, ProducerType.MULTI, new BlockingWaitStrategy())
+			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
 			def r = new Reactor(dispatcher)
 
 		when:
