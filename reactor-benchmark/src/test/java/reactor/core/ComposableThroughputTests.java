@@ -192,9 +192,9 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
 		doTest(new RingBufferDispatcher(
 				"test",
-				1024,
+				2048,
 				null,
-				ProducerType.MULTI,
+				ProducerType.SINGLE,
 				new YieldingWaitStrategy()
 		), "single-producer ring buffer");
 	}
