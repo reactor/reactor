@@ -34,10 +34,10 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "it contains the expected dispatchers"
 			configuration.defaultDispatcherName == 'ringBuffer'
 			dispatchers
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 	}
 
 	def "Custom default configuration can be read"() {
@@ -69,9 +69,9 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "it contains the expected dispatchers"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.SYNCHRONOUS, null, null)
 	}
@@ -89,9 +89,9 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the later profile overrides the earlier profile"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.RING_BUFFER, null, null)
 	}
@@ -109,10 +109,10 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the active profile overrides the default profile"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 	}
 
 	def "A system property can override existing configuration"() {
@@ -130,10 +130,10 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the system property takes precedence"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.EVENT_LOOP, null, null)
 	}
 
@@ -150,10 +150,10 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "its absence is tolerated"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 	}
 
 	def "Missing default profile is tolerated"() {
@@ -186,10 +186,10 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the unrecognized dispatcher type is tolerated"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 256)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 16384)
-			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 1024)
+			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 16384)
 	}
 
 	def cleanup() {
