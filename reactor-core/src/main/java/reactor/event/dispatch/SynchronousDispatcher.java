@@ -79,4 +79,9 @@ public final class SynchronousDispatcher implements Dispatcher {
 		                  errorConsumer);
 	}
 
+	@Override
+	public void execute(Runnable command) {
+		command.run();
+	}
+
 }

@@ -13,7 +13,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Implementation of a {@link Dispatcher} that uses a multi-threaded, multi-producer {@link RingBuffer} to queue tasks
+ * to execute.
+ *
  * @author Jon Brisbin
+ * @since 1.1
  */
 public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 
@@ -72,7 +76,7 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 			workHandlers[i] = new WorkHandler<WorkQueueTask>() {
 				@Override
 				public void onEvent(WorkQueueTask task) throws Exception {
-					task.run();
+					route(task);
 				}
 			};
 		}
@@ -80,7 +84,6 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 
 		this.ringBuffer = disruptor.start();
 	}
-
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
@@ -114,9 +117,18 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 		return ringBuffer.get(seqId).setSequenceId(seqId);
 	}
 
-	@Override
-	protected void submit(Task task) {
+	protected void execute(Task task) {
 		ringBuffer.publish(((WorkQueueTask)task).getSequenceId());
+	}
+
+	@Override
+	public void execute(final Runnable command) {
+		ringBuffer.publishEvent(new EventTranslator<WorkQueueTask>() {
+			@Override
+			public void translateTo(WorkQueueTask event, long sequence) {
+				command.run();
+			}
+		});
 	}
 
 	private class WorkQueueTask extends MultiThreadTask {

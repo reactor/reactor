@@ -4,11 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base Implementation for Single Threaded Dispatchers
+ * Base Implementation for single-threaded Dispatchers.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
- *
  * @since 1.1
  */
 public abstract class AbstractSingleThreadDispatcher extends AbstractLifecycleDispatcher {
@@ -44,8 +43,6 @@ public abstract class AbstractSingleThreadDispatcher extends AbstractLifecycleDi
 	}
 
 	protected abstract Task allocateTask();
-
-	protected abstract void submit(Task task);
 
 	protected class SingleThreadTask extends Task {
 		@Override

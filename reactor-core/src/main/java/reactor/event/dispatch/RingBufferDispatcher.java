@@ -113,7 +113,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 		this.disruptor.handleEventsWith(new EventHandler<RingBufferTask>() {
 			@Override
 			public void onEvent(RingBufferTask task, long sequence, boolean endOfBatch) throws Exception {
-				task.run();
+				route(task);
 			}
 		});
 
@@ -152,9 +152,18 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 		return ringBuffer.get(seqId).setSequenceId(seqId);
 	}
 
-	@Override
-	protected void submit(Task task) {
+	protected void execute(Task task) {
 		ringBuffer.publish(((RingBufferTask)task).getSequenceId());
+	}
+
+	@Override
+	public void execute(final Runnable command) {
+		ringBuffer.publishEvent(new EventTranslator<RingBufferTask>() {
+			@Override
+			public void translateTo(RingBufferTask event, long sequence) {
+				command.run();
+			}
+		});
 	}
 
 	private class RingBufferTask extends SingleThreadTask {

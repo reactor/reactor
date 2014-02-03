@@ -111,19 +111,22 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		if(isInContext) {
 			addToTailRecursionPile(task);
 		} else {
-			submit(task);
+			execute(task);
 		}
 	}
 
 	protected void addToTailRecursionPile(Task task) {}
 
-	protected abstract void submit(Task task);
-
 	protected abstract Task allocateRecursiveTask();
 
 	protected abstract Task allocateTask();
 
+	protected abstract void execute(Task task);
+
 	protected static void route(Task task) {
+		if(null == task.eventRouter) {
+			return;
+		}
 		try {
 			task.eventRouter.route(
 					task.key,
