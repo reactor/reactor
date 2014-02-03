@@ -49,8 +49,7 @@ public class WindowAction<T> extends Action<T> implements Pausable {
   ) {
 		super(d, successKey, failureKey);
 
-    System.out.println(timer);
-		this.timerRegistration = timer.schedule(new Consumer<Long>() {
+    this.timerRegistration = timer.schedule(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {
         doWindow(aLong);

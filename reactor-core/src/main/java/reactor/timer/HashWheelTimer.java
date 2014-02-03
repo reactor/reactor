@@ -67,11 +67,11 @@ public class HashWheelTimer implements Timer {
 
 
   /**
-   * Create a new {@code HashWheelTimer} using the given with default resolution of 50 milliseconds and
+   * Create a new {@code HashWheelTimer} using the given with default resolution of 100 milliseconds and
    * default wheel size.
    */
   public HashWheelTimer() {
-    this(50, DEFAULT_WHEEL_SIZE);
+    this(100, DEFAULT_WHEEL_SIZE);
   }
 
   /**
@@ -226,12 +226,6 @@ public class HashWheelTimer implements Timer {
 
     long firstFireOffset = firstDelay / resolution;
     long firstFireRounds = firstFireOffset / wheel.getBufferSize();
-
-    System.out.printf("offset: %d, rounds %d, firstFireOffset %d, firstFireRdouns %d\n",
-                      offset,
-                      rounds,
-                      firstFireOffset,
-                      firstFireRounds);
 
     TimerRegistration r = new TimerRegistration(firstFireRounds, offset, consumer, rounds);
     wheel.get(wheel.getCursor() + firstFireOffset + 1).add(r);
