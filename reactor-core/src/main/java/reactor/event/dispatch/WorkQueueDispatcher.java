@@ -76,7 +76,7 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 			workHandlers[i] = new WorkHandler<WorkQueueTask>() {
 				@Override
 				public void onEvent(WorkQueueTask task) throws Exception {
-					route(task);
+					task.run();
 				}
 			};
 		}

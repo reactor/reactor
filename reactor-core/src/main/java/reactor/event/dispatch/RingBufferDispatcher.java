@@ -113,7 +113,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 		this.disruptor.handleEventsWith(new EventHandler<RingBufferTask>() {
 			@Override
 			public void onEvent(RingBufferTask task, long sequence, boolean endOfBatch) throws Exception {
-				route(task);
+				task.run();
 			}
 		});
 
