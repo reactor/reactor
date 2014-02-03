@@ -38,6 +38,7 @@ public class HashWheelTimerTests {
 
     assertTrue(elapsed[0] >= delay);
     assertTrue(elapsed[0] < delay * 2);
+    timer.cancel();
   }
 
   @Test
