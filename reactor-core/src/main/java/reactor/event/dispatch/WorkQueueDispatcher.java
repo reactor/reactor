@@ -32,6 +32,16 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 	                           int poolSize,
 	                           int backlog,
 	                           final Consumer<Throwable> uncaughtExceptionHandler) {
+		this(name, poolSize, backlog, uncaughtExceptionHandler, ProducerType.MULTI, new BlockingWaitStrategy());
+	}
+
+	@SuppressWarnings("unchecked")
+	public WorkQueueDispatcher(String name,
+	                           int poolSize,
+	                           int backlog,
+	                           final Consumer<Throwable> uncaughtExceptionHandler,
+	                           ProducerType producerType,
+	                           WaitStrategy waitStrategy) {
 		super(poolSize, backlog);
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
@@ -46,8 +56,8 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 				},
 				backlog,
 				executor,
-				ProducerType.MULTI,
-				new BlockingWaitStrategy()
+				producerType,
+				waitStrategy
 		);
 
 		this.disruptor.handleExceptionsWith(new ExceptionHandler() {
