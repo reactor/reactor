@@ -70,8 +70,13 @@ public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 	}
 
 	@Override
-	protected void submit(Task task) {
+	protected void execute(Task task) {
 		eventLoop.execute(task);
+	}
+
+	@Override
+	public void execute(Runnable command) {
+		eventLoop.execute(command);
 	}
 
 }
