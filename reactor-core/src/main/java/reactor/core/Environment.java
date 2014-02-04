@@ -24,10 +24,16 @@ import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.timer.HashWheelTimer;
+import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -69,7 +75,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final HashWheelTimer           timer            = new HashWheelTimer();
+	private final Timer                    timer            = HashWheelTimer.instance;
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -113,8 +119,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		                    DEFAULT_DISPATCHER_NAME;
 		env = configuration.getAdditionalProperties();
 
-		for(DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
-			if(DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
+    for(DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
+      if(DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
 				int size = getSize(dispatcherConfiguration, 0);
 				for(int i = 0; i < size; i++) {
 					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
@@ -311,11 +317,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Get the {@code Environment}-wide {@link reactor.event.timer.HashWheelTimer}.
+	 * Get the {@code Environment}-wide {@link reactor.timer.HashWheelTimer}.
 	 *
 	 * @return the timer.
 	 */
-	public HashWheelTimer getRootTimer() {
+	public Timer getRootTimer() {
 		return timer;
 	}
 
@@ -334,7 +340,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		for(Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
-		timer.cancel();
+		timer.cancelAll();
 	}
 
 	@Override
