@@ -157,7 +157,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 		return configure(getDispatcher(), this.env);
 	}
 
-	private final Dispatcher getDispatcher() {
+	private Dispatcher getDispatcher() {
 		if (this.dispatcher != null) {
 			return this.dispatcher;
 		} else if (env != null) {

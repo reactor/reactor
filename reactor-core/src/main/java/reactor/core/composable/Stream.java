@@ -17,7 +17,6 @@
 package reactor.core.composable;
 
 import reactor.core.Environment;
-import reactor.event.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.core.action.*;
 import reactor.core.composable.spec.DeferredStreamSpec;
@@ -25,6 +24,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.*;
 import reactor.function.support.Tap;
+import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -393,7 +393,7 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, HashWheelTimer timer) {
+	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 
@@ -421,7 +421,7 @@ public class Stream<T> extends Composable<T> {
    *
    * @return a new {@code Stream} whose values are a {@link List} of all values in this window
    */
-  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, HashWheelTimer timer) {
+  public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
     Assert.state(timer != null, "Timer must be supplied");
     final Deferred<List<T>, Stream<List<T>>> d = createDeferred(batchSize);
 

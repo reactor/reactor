@@ -15,9 +15,9 @@
  */
 package reactor.core.action;
 
-import reactor.event.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   public MovingWindowAction(Observable d,
                             Object successKey,
                             Object failureKey,
-                            HashWheelTimer timer,
+                            Timer timer,
                             int period, TimeUnit timeUnit, int delay, int backlog
   ) {
     super(d, successKey, failureKey, timer, period, timeUnit, delay);

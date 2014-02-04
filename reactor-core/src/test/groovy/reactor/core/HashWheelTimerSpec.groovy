@@ -1,7 +1,7 @@
 package reactor.core
 
 import reactor.function.Consumer
-import reactor.event.timer.HashWheelTimer
+import reactor.timer.SimpleHashWheelTimer
 import spock.lang.Ignore
 import spock.lang.Specification
 
@@ -19,7 +19,7 @@ class HashWheelTimerSpec extends Specification {
 
 	  given:
       "a new timer"
-      def timer = new HashWheelTimer()
+      def timer = new SimpleHashWheelTimer()
       def latch = new CountDownLatch(10)
 
     when:
@@ -43,7 +43,7 @@ class HashWheelTimerSpec extends Specification {
     given:
       "a new timer"
       def delay = 500
-      def timer = new HashWheelTimer()
+      def timer = new SimpleHashWheelTimer()
       def latch = new CountDownLatch(1)
       def start = System.currentTimeMillis()
       def elapsed = 0

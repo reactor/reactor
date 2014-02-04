@@ -23,7 +23,8 @@ import reactor.core.configuration.*;
 import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
-import reactor.event.timer.HashWheelTimer;
+import reactor.timer.SimpleHashWheelTimer;
+import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
 
@@ -69,7 +70,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final HashWheelTimer           timer            = new HashWheelTimer();
+	private final Timer                    timer            = new SimpleHashWheelTimer();
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -311,11 +312,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Get the {@code Environment}-wide {@link reactor.event.timer.HashWheelTimer}.
+	 * Get the {@code Environment}-wide {@link reactor.timer.SimpleHashWheelTimer}.
 	 *
 	 * @return the timer.
 	 */
-	public HashWheelTimer getRootTimer() {
+	public Timer getRootTimer() {
 		return timer;
 	}
 

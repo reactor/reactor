@@ -15,12 +15,12 @@
  */
 package reactor.core.action;
 
-import reactor.event.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +44,7 @@ public class WindowAction<T> extends Action<T> implements Pausable {
 	public WindowAction(Observable d,
 	                    Object successKey,
 	                    Object failureKey,
-	                    HashWheelTimer timer,
+	                    Timer timer,
 	                    int period, TimeUnit timeUnit, int delay
   ) {
 		super(d, successKey, failureKey);
