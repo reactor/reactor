@@ -1,5 +1,6 @@
 package reactor.timer;
 
+import reactor.event.lifecycle.Lifecycle;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
@@ -70,5 +71,15 @@ public interface Timer {
   public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
                                                        long period,
                                                        TimeUnit timeUnit);
+
+  /**
+   * Cancel this timer
+   */
+  public void cancel();
+
+  /**
+   * Cancel this timer
+   */
+  public void cancelAll();
 }
 

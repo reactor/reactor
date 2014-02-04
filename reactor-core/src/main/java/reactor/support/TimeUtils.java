@@ -36,7 +36,7 @@ public abstract class TimeUtils {
 
 	public static HashWheelTimer getTimer() {
 		if(null == timer) {
-			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
+			setTimer(HashWheelTimer.instance);
 		}
 		return timer;
 	}

@@ -688,7 +688,7 @@ class StreamsSpec extends Specification {
       3 * observable.notify('key', _)
   }
 
-  static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
+    static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
     @Override
     public Integer apply(Tuple2<Integer, Integer> reduce) {
       def result = reduce.t2 == null ? 1 : reduce.t1 * reduce.t2

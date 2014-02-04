@@ -24,6 +24,9 @@ import java.util.concurrent.locks.LockSupport;
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
  * reactor.event.selector.Selector Selectors} to determine when tasks should be executed.
+ *
+ * WARNING: This timer will occupy an entire core. It will busy-spin waiting for the next timeout.
+ *
  * <p>
  * A {@code HashWheelTimer} has two variations for scheduling tasks: {@link #schedule(reactor.function.Consumer, long,
  * java.util.concurrent.TimeUnit)} and {@link #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit,
@@ -58,6 +61,25 @@ import java.util.concurrent.locks.LockSupport;
  */
 public class HashWheelTimer implements Timer {
 
+  public static HashWheelTimer instance;
+
+  static {
+    instance = new HashWheelTimer();
+    instance.start();
+  }
+
+  public void resetTimerTo(int resolution) {
+    instance.cancel();
+    instance = new HashWheelTimer(resolution);
+    instance.start();
+  }
+
+  public void resetTimerTo(int resolution, int wheelSize) {
+    instance.cancel();
+    instance = new HashWheelTimer(resolution, wheelSize);
+    instance.start();
+  }
+
   public static final int DEFAULT_WHEEL_SIZE = 512;
 
   private final RingBuffer<Set<TimerRegistration>> wheel;
@@ -70,8 +92,8 @@ public class HashWheelTimer implements Timer {
    * Create a new {@code HashWheelTimer} using the given with default resolution of 100 milliseconds and
    * default wheel size.
    */
-  public HashWheelTimer() {
-    this(100, DEFAULT_WHEEL_SIZE);
+  private HashWheelTimer() {
+    this(10, DEFAULT_WHEEL_SIZE);
   }
 
   /**
@@ -81,7 +103,7 @@ public class HashWheelTimer implements Timer {
    * @param resolution
    * 		the resolution of this timer, in milliseconds
    */
-  public HashWheelTimer(int resolution) {
+  private HashWheelTimer(int resolution) {
     this(resolution, DEFAULT_WHEEL_SIZE);
   }
 
@@ -93,7 +115,7 @@ public class HashWheelTimer implements Timer {
    * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
    *                  for sparse timeouts. Sane default is 512.
    */
-  public HashWheelTimer(int res, int wheelSize) {
+  private HashWheelTimer(int res, int wheelSize) {
     this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerRegistration>>() {
       @Override
       public Set<TimerRegistration> newInstance() {
@@ -106,9 +128,18 @@ public class HashWheelTimer implements Timer {
         new Runnable() {
           @Override
           public void run() {
-            long lastTick = System.currentTimeMillis();
-
+            long deadline = System.currentTimeMillis();
             while(true) {
+              long now = System.currentTimeMillis();
+              if(now >= deadline) {
+                deadline += resolution;
+                if(Thread.currentThread().isInterrupted()) {
+                  return;
+                }
+              } else {
+                continue;
+              }
+
               Set<TimerRegistration> registrations = wheel.get(wheel.getCursor());
 
               for(TimerRegistration r: registrations) {
@@ -128,22 +159,12 @@ public class HashWheelTimer implements Timer {
                 }
               }
 
-              lastTick = lastTick + resolution;
-
-              try {
-                long sleepTimeMs = lastTick - System.currentTimeMillis();
-                Thread.sleep(sleepTimeMs);
-              } catch (InterruptedException e) {
-                return;
-              }
-
               wheel.publish(wheel.next());
             }
           }
         });
 
-    this.executor = Executors.newFixedThreadPool(5);
-    this.start();
+    this.executor = Executors.newSingleThreadExecutor();
   }
 
   /**
@@ -252,10 +273,20 @@ public class HashWheelTimer implements Timer {
   /**
    * Cancel current Timer
    */
+  @Override
   public void cancel() {
     this.loop.interrupt();
   }
 
+  /**
+   * Cancel current Timer
+   */
+  @Override
+  public void cancelAll() {
+    for(int i = 0; i < wheel.getBufferSize(); i++) {
+      wheel.get(i).clear();
+    }
+  }
 
   /**
    * Timer Registration
