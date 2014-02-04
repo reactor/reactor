@@ -9,6 +9,9 @@ import org.springframework.context.ApplicationEvent;
  * @since 1.1
  */
 public class AsyncTaskExceptionEvent extends ApplicationEvent {
+
+	private static final long serialVersionUID = 5172014386416785095L;
+
 	public AsyncTaskExceptionEvent(Object source) {
 		super(source);
 	}
