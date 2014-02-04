@@ -23,7 +23,7 @@ import reactor.core.configuration.*;
 import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
-import reactor.event.timer.HashWheelTimer;
+import reactor.timer.HashWheelTimer;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
 

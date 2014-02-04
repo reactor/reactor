@@ -17,7 +17,7 @@
 package reactor.core.composable;
 
 import reactor.core.Environment;
-import reactor.event.timer.HashWheelTimer;
+import reactor.timer.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.core.action.*;
 import reactor.core.composable.spec.DeferredStreamSpec;

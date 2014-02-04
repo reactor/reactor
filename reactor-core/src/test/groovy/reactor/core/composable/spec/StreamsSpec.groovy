@@ -537,7 +537,7 @@ class StreamsSpec extends Specification {
       'the first values are accepted on the source'
       source.accept(1)
       source.accept(2)
-	    sleep(1000)
+	    Thread.sleep(1000)
 
     then:
       'the collected list is not yet available'
@@ -547,7 +547,7 @@ class StreamsSpec extends Specification {
       'the second value is accepted'
       source.accept(3)
       source.accept(4)
-	    sleep(1000)
+	    Thread.sleep(1010)
 
     then:
       'the collected list contains the first and second elements'
@@ -570,7 +570,7 @@ class StreamsSpec extends Specification {
       'the window accepts first items'
       source.accept(1)
       source.accept(2)
-      sleep(1000)
+      Thread.sleep(1010)
 
     then:
       'it outputs received values'
@@ -580,7 +580,7 @@ class StreamsSpec extends Specification {
       'the window accepts following items'
       source.accept(3)
       source.accept(4)
-      sleep(1000)
+      Thread.sleep(1010)
 
     then:
       'it outputs received values'
@@ -590,7 +590,7 @@ class StreamsSpec extends Specification {
       'the starts dropping items on overflow'
       source.accept(5)
       source.accept(6)
-      sleep(1000)
+      Thread.sleep(1010)
 
     then:
       'it outputs received values'
@@ -616,7 +616,7 @@ class StreamsSpec extends Specification {
       source.accept(4)
       source.accept(5)
       source.accept(6)
-        sleep(1000)
+      Thread.sleep(1010)
 
     then:
      'it outputs values dismissing outdated ones'
