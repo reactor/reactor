@@ -190,18 +190,19 @@ public class HashWheelTimerTests {
   public void stressTest() throws InterruptedException {
     HashWheelTimer timer = new HashWheelTimer(10, 512);
 
-    int stressCount = 50;
+    int parallelItemsCount = 50;
     int perSecond = 100;
-    final CountDownLatch[] latch100 = new CountDownLatch[stressCount];
-    final AtomicInteger[] counts = new AtomicInteger[stressCount];
 
-    for(int i = 0; i < stressCount; i++) {
-      latch100[i] = new CountDownLatch(perSecond);
+    final CountDownLatch[] latches = new CountDownLatch[parallelItemsCount];
+    final AtomicInteger[] counts = new AtomicInteger[parallelItemsCount];
+
+    for(int i = 0; i < parallelItemsCount; i++) {
+      latches[i] = new CountDownLatch(perSecond);
       counts[i] = new AtomicInteger(0);
     }
 
-    for(int i = 0; i < stressCount; i++) {
-      final CountDownLatch latch = latch100[i];
+    for(int i = 0; i < parallelItemsCount; i++) {
+      final CountDownLatch latch = latches[i];
       final AtomicInteger count = counts[i];
       timer.schedule(new Consumer<Long>() {
         @Override
@@ -213,12 +214,13 @@ public class HashWheelTimerTests {
     }
 
     Thread.sleep(1010);
+    latches[parallelItemsCount - 1].await(100, TimeUnit.MILLISECONDS);
     timer.cancel();
 
-    for(int i = 0; i < stressCount; i++) {
-      assertThat(latch100[i].getCount(), is(0L));
+    for(int i = 0; i < parallelItemsCount; i++) {
+      assertThat(latches[i].getCount(), is(0L));
     }
-    assertThat(counts[stressCount - 1].get(), is(perSecond));
+    assertThat(counts[parallelItemsCount - 1].get(), is(perSecond));
   }
 
 }
