@@ -8,18 +8,16 @@ import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.support.TimeUtils;
-import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
@@ -119,7 +117,7 @@ public class HashWheelTimer implements Timer {
     this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerRegistration>>() {
       @Override
       public Set<TimerRegistration> newInstance() {
-        return new TreeSet<TimerRegistration>();
+        return new ConcurrentSkipListSet<TimerRegistration>();
       }
     }, wheelSize);
 
@@ -128,7 +126,9 @@ public class HashWheelTimer implements Timer {
         new Runnable() {
           @Override
           public void run() {
+
             long deadline = System.currentTimeMillis();
+
             while(true) {
               long now = System.currentTimeMillis();
               if(now >= deadline) {
@@ -259,6 +259,7 @@ public class HashWheelTimer implements Timer {
    */
   public void reschedule(TimerRegistration registration) {
     registration.reset();
+    //System.out.println(registration.getOffset());
     wheel.get(wheel.getCursor() + registration.getOffset()).add(registration);
   }
 
@@ -437,14 +438,18 @@ public class HashWheelTimer implements Timer {
     }
 
     @Override
-    public int compareTo(Object o) {
-      TimerRegistration other = (TimerRegistration) o;
-      return Long.compare(rounds.get(), other.rounds.get());
+    public String toString() {
+      return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
     }
 
     @Override
-    public String toString() {
-      return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
+    public int compareTo(Object o) {
+      TimerRegistration other = (TimerRegistration) o;
+      if(rounds.get() == other.rounds.get()) {
+        return other == this ? 0 : -1;
+      } else {
+        return Long.compare(rounds.get(), other.rounds.get());
+      }
     }
   }
 

@@ -16,8 +16,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class HashWheelTimerTests {
 
   private static int tolearance = 20;
-  private static int wheelPrecision = 10;
-  private static int wheelSize = 8;
 
   @Test
   public void submitForSingleExecution() throws InterruptedException {
@@ -117,6 +115,41 @@ public class HashWheelTimerTests {
 
     assertThat(latch10.getCount(), is(0L));
     assertThat(count.get(), is(50));
+  }
+
+  @Test
+  public void stressTest() throws InterruptedException {
+    HashWheelTimer timer = HashWheelTimer.instance;
+
+    int stressCount = 200;
+    int perSecond = 100;
+    final CountDownLatch[] latch100 = new CountDownLatch[stressCount];
+    final AtomicInteger[] counts = new AtomicInteger[stressCount];
+
+    for(int i = 0; i < stressCount; i++) {
+      latch100[i] = new CountDownLatch(perSecond);
+      counts[i] = new AtomicInteger(0);
+    }
+
+    for(int i = 0; i < stressCount; i++) {
+      final CountDownLatch latch = latch100[i];
+      final AtomicInteger count = counts[i];
+      timer.schedule(new Consumer<Long>() {
+        @Override
+        public void accept(Long _) {
+          latch.countDown();
+          count.incrementAndGet();
+        }
+      }, 1000 / perSecond, TimeUnit.MILLISECONDS);
+    }
+
+    Thread.sleep(1010);
+    timer.cancelAll();
+
+    for(int i = 0; i < stressCount; i++) {
+      assertThat(latch100[i].getCount(), is(0L));
+    }
+    assertThat(counts[stressCount - 1].get(), is(perSecond));
   }
 
   @Test
