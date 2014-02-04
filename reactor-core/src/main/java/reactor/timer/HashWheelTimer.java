@@ -132,8 +132,6 @@ public class HashWheelTimer implements Timer {
                 long sleepTimeMs = lastTick - System.currentTimeMillis();
                 if(sleepTimeMs > 0) {
                   Thread.sleep(sleepTimeMs);
-                } else {
-                  System.out.println(sleepTimeMs);
                 }
               } catch (InterruptedException e) {
                 return;
