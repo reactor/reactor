@@ -185,4 +185,40 @@ public class HashWheelTimerTests {
     assertThat(latch10.getCount(), is(0L));
     assertThat(count.get(), is(100));
   }
+
+  @Test
+  public void stressTest() throws InterruptedException {
+    HashWheelTimer timer = new HashWheelTimer(10, 512);
+
+    int stressCount = 50;
+    int perSecond = 100;
+    final CountDownLatch[] latch100 = new CountDownLatch[stressCount];
+    final AtomicInteger[] counts = new AtomicInteger[stressCount];
+
+    for(int i = 0; i < stressCount; i++) {
+      latch100[i] = new CountDownLatch(perSecond);
+      counts[i] = new AtomicInteger(0);
+    }
+
+    for(int i = 0; i < stressCount; i++) {
+      final CountDownLatch latch = latch100[i];
+      final AtomicInteger count = counts[i];
+      timer.schedule(new Consumer<Long>() {
+        @Override
+        public void accept(Long _) {
+          latch.countDown();
+          count.incrementAndGet();
+        }
+      }, 1000 / perSecond, TimeUnit.MILLISECONDS);
+    }
+
+    Thread.sleep(1010);
+    timer.cancel();
+
+    for(int i = 0; i < stressCount; i++) {
+      assertThat(latch100[i].getCount(), is(0L));
+    }
+    assertThat(counts[stressCount - 1].get(), is(perSecond));
+  }
+
 }
