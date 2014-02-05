@@ -148,7 +148,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
         if(!success) {
           Throwable t = future.cause();
-          eventsReactor.notify(t, Event.wrap(t));
+          eventsReactor.notify(t.getClass(), Event.wrap(t));
           if(null != onComplete) {
             onComplete.accept(t);
           }

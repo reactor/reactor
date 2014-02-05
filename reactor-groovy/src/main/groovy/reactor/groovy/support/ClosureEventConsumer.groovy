@@ -71,7 +71,7 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 
 
 		void reply() {
-			observable.notify(replyTo, new Event<Void>(null))
+			observable.notify(replyTo, new Event<Void>(Void))
 		}
 
 		void reply(data) {

@@ -17,11 +17,7 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.pool.Pool;
-import reactor.pool.LoadingPool;
-import reactor.event.Event;
-import reactor.event.dispatch.SingleThreadDispatcher;
-import reactor.function.Supplier;
+import reactor.event.dispatch.AbstractMultiThreadDispatcher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,32 +25,25 @@ import java.util.concurrent.TimeUnit;
  * A {@code Dispatcher} that runs tasks on a Netty {@link EventLoop}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends SingleThreadDispatcher {
+public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 
-	private final EventLoop  eventLoop;
-	private final Pool<Task> readyTasks;
+	private final EventLoop eventLoop;
 
 	/**
 	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given {@code eventLoop} with the given
 	 * {@code backlog} size.
 	 *
-	 * @param eventLoop The event loop to run tasks on
-	 * @param backlog   The size of the backlog of unexecuted tasks
+	 * @param eventLoop
+	 * 		The event loop to run tasks on
+	 * @param backlog
+	 * 		The size of the backlog of unexecuted tasks
 	 */
 	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
+		super(1, backlog);
 		this.eventLoop = eventLoop;
-		this.readyTasks = new LoadingPool<Task>(
-				new Supplier<Task>() {
-					@Override
-					public Task get() {
-						return new NettyEventLoopTask();
-					}
-				},
-				backlog,
-				150L
-		);
 	}
 
 	@Override
@@ -80,28 +69,14 @@ public class NettyEventLoopDispatcher extends SingleThreadDispatcher {
 		super.halt();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	protected <E extends Event<?>> Task<E> createTask() {
-		Task t = readyTasks.allocate();
-		return (null != t ? t : new NettyEventLoopTask());
+	protected void execute(Task task) {
+		eventLoop.execute(task);
 	}
 
-	private final class NettyEventLoopTask extends SingleThreadTask<Event<Object>> implements Runnable {
-		@Override
-		public void submit() {
-			eventLoop.execute(this);
-		}
-
-		@Override
-		public void run() {
-			try {
-				execute();
-			} finally {
-				reset();
-				readyTasks.deallocate(this);
-			}
-		}
+	@Override
+	public void execute(Runnable command) {
+		eventLoop.execute(command);
 	}
 
 }

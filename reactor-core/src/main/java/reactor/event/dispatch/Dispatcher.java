@@ -21,6 +21,7 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public interface Dispatcher {
+public interface Dispatcher extends Executor {
 
 	/**
 	 * Determine whether this {@code Dispatcher} can be used for {@link Dispatcher#dispatch(Object, Event, Registry,

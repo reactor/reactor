@@ -16,10 +16,12 @@
 
 package reactor.event.dispatch;
 
+import reactor.core.alloc.Recyclable;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
+import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,13 +32,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class BaseLifecycleDispatcher implements Dispatcher{
+public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
-	private final AtomicBoolean alive = new AtomicBoolean(true);
-	private final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	private final AtomicBoolean alive   = new AtomicBoolean(true);
+	private final ClassLoader   context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
 	};
 
-	protected BaseLifecycleDispatcher() {
+	protected AbstractLifecycleDispatcher() {
 		super();
 	}
 
@@ -82,59 +84,111 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
 	}
 
+	@Override
+	public <E extends Event<?>> void dispatch(Object key,
+	                                          E event,
+	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Consumer<Throwable> errorConsumer,
+	                                          EventRouter eventRouter,
+	                                          Consumer<E> completionConsumer) {
+		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
-	protected abstract <E extends Event<?>> Task<E> createTask();
+		Task task;
+		boolean isInContext = isInContext();
+		if(isInContext) {
+			task = allocateRecursiveTask();
+		} else {
+			task = allocateTask();
+		}
 
-	protected abstract class Task<E extends Event<?>> {
+		task.setKey(key)
+		    .setEvent(event)
+		    .setConsumerRegistry(consumerRegistry)
+		    .setErrorConsumer(errorConsumer)
+		    .setEventRouter(eventRouter)
+		    .setCompletionConsumer(completionConsumer);
+
+		if(isInContext) {
+			addToTailRecursionPile(task);
+		} else {
+			execute(task);
+		}
+	}
+
+	protected void addToTailRecursionPile(Task task) {}
+
+	protected abstract Task allocateRecursiveTask();
+
+	protected abstract Task allocateTask();
+
+	protected abstract void execute(Task task);
+
+	protected static void route(Task task) {
+		if(null == task.eventRouter) {
+			return;
+		}
+		try {
+			task.eventRouter.route(
+					task.key,
+					task.event,
+					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+					task.completionConsumer,
+					task.errorConsumer
+			);
+		} finally {
+			task.recycle();
+		}
+	}
+
+	public abstract class Task implements Runnable, Recyclable {
 
 		protected volatile Object                                 key;
 		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
-		protected volatile E                                      event;
-		protected volatile Consumer<E>                            completionConsumer;
+		protected volatile Event<?>                               event;
+		protected volatile Consumer<?>                            completionConsumer;
 		protected volatile Consumer<Throwable>                    errorConsumer;
 		protected volatile EventRouter                            eventRouter;
 
-		final Task<E> setKey(Object key) {
+		public Task setKey(Object key) {
 			this.key = key;
 			return this;
 		}
 
-		final Task<E> setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		public Task setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 			this.consumerRegistry = consumerRegistry;
 			return this;
 		}
 
-		final Task<E> setEvent(E event) {
+		public Task setEvent(Event<?> event) {
 			this.event = event;
 			return this;
 		}
 
-		final Task<E> setCompletionConsumer(Consumer<E> completionConsumer) {
+		public Task setCompletionConsumer(Consumer<?> completionConsumer) {
 			this.completionConsumer = completionConsumer;
 			return this;
 		}
 
-		final Task<E> setErrorConsumer(Consumer<Throwable> errorConsumer) {
+		public Task setErrorConsumer(Consumer<Throwable> errorConsumer) {
 			this.errorConsumer = errorConsumer;
 			return this;
 		}
 
-		final Task<E> setEventRouter(EventRouter eventRouter) {
+		public Task setEventRouter(EventRouter eventRouter) {
 			this.eventRouter = eventRouter;
 			return this;
 		}
 
-		final protected void reset() {
+		@Override
+		public void recycle() {
 			key = null;
 			consumerRegistry = null;
 			event = null;
 			completionConsumer = null;
 			errorConsumer = null;
+			eventRouter = null;
 		}
 
-		protected void submit() {
-		}
-
-		protected abstract void execute();
 	}
+
 }

@@ -33,10 +33,12 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
+@Deprecated
 public class LoadingPool<T> implements Pool<T> {
 
 	private final BlockingQueue<T> cache = BlockingQueueFactory.createQueue();
 	private final Supplier<T> supplier;
+	private final Supplier<Long> currentTimeMillis;
 	private final long        cacheMissTimeout;
 
 	/**
@@ -47,8 +49,9 @@ public class LoadingPool<T> implements Pool<T> {
 	 * @param cacheMissTimeout The period of time to wait for an object to be available before
 	 *                         using the supplier to create a new one
 	 */
-	public LoadingPool(Supplier<T> supplier, int initial, long cacheMissTimeout) {
+	public LoadingPool(Supplier<T> supplier, Supplier<Long> currentTimeMillis, int initial, long cacheMissTimeout) {
 		this.supplier = supplier;
+		this.currentTimeMillis=currentTimeMillis;
 		this.cacheMissTimeout = cacheMissTimeout;
 
 		for (int i = 0; i < initial; i++) {
@@ -61,10 +64,10 @@ public class LoadingPool<T> implements Pool<T> {
 	public T allocate() {
 		T obj;
 		try {
-			long start = System.currentTimeMillis();
+			long start = currentTimeMillis.get();
 			do {
 				obj = cache.poll(cacheMissTimeout, TimeUnit.MILLISECONDS);
-			} while (null == obj && (System.currentTimeMillis() - start) < cacheMissTimeout);
+			} while (null == obj && (currentTimeMillis.get() - start) < cacheMissTimeout);
 			return (null != obj ? obj : supplier.get());
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();

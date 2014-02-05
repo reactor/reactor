@@ -18,7 +18,7 @@ package reactor.event.registry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.lifecycle.Lifecycle;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -29,6 +29,16 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * An optimized selectors registry working with a L1 Cache and spare use of reentrant locks.
+ * A Caching registry contains 3 different cache level always hit in this order:
+ * - prime cache : if the selected key or registered selector object is exactly of type Object or {@link
+ * Selectors.AnonymousKey},
+ * this is eagerly updated on registration/unregistration without needing to reset its complete state,
+ * thanks to the direct mapping between an Object.hashcode and the map key. This greatly optimizes composables which
+ * make use of anonymous selector.
+ * - cache : classic cache, filled after a first select miss using the key hashcode,
+ * totally cleared on new registration
+ * - full collection : where the registrations always live, acting like a pool. Iterated completely when cache miss.
+ * Registration array grows for 75% of its current size when there is not enough pre-allocated memory
  *
  * @param <T> the type of Registration held by this registry
  * @author Jon Brisbin
@@ -81,7 +91,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		Registration<? extends T> reg = registrations[nextIdx] = new SimpleRegistration<V>(sel, obj);
 
 		// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
-		if (ObjectSelector.class.equals(sel.getClass())) {
+		if (Object.class.equals(sel.getObject().getClass()) || Selectors.AnonymousKey.class.equals(sel.getObject().getClass())) {
 			int hashCode = sel.getObject().hashCode();
 			primeCacheLock.lock();
 			try {
@@ -97,7 +107,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		} else {
 			cacheLock.lock();
-			try{
+			try {
 				cache.clear();
 			} finally {
 				cacheLock.unlock();
@@ -119,26 +129,35 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public boolean unregister(Object key) {
-		boolean updated = false;
-		if (key.getClass().equals(Object.class)) {
-			primeCacheLock.lock();
-			try {
-				return primeCache.remove(key.hashCode()) != null;
-			} finally {
-				primeCacheLock.unlock();
-			}
-		} else {
-			cacheLock.lock();
-			try {
-				for (Registration<? extends T> reg : select(key)) {
-					reg.cancel();
-					updated = true;
+		regLock.lock();
+		try {
+			if (key.getClass().equals(Object.class)) {
+				primeCacheLock.lock();
+				try {
+					Registration<? extends T>[] registrations = primeCache.remove(key.hashCode());
+					for (Registration<? extends T> reg : registrations) {
+						reg.cancel();
+					}
+					return registrations != null;
+				} finally {
+					primeCacheLock.unlock();
 				}
-				cache.remove(key.hashCode());
-				return updated;
-			} finally {
-				cacheLock.unlock();
+			} else {
+				boolean updated = false;
+				cacheLock.lock();
+				try {
+					for (Registration<? extends T> reg : select(key)) {
+						reg.cancel();
+						updated = true;
+					}
+					cache.remove(key.hashCode());
+					return updated;
+				} finally {
+					cacheLock.unlock();
+				}
 			}
+		} finally {
+			regLock.unlock();
 		}
 	}
 
@@ -150,7 +169,8 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 		int hashCode = key.hashCode();
 		Registration<? extends T>[] regs;
-		if (key.getClass().equals(Object.class) || key.getClass().equals(Selectors.AnonymousKey.class)) {
+		//Todo do we need to match generic Objects too ?
+		if (key.getClass().equals(Selectors.AnonymousKey.class) || key.getClass().equals(Object.class)) {
 			primeCacheLock.lock();
 			try {
 				regs = primeCache.get(hashCode);
@@ -295,7 +315,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		private SimpleRegistration(Selector selector, T object) {
 			this.selector = selector;
 			this.object = object;
-			this.lifecycle = Lifecycle.class.isAssignableFrom(object.getClass());
+			this.lifecycle = Pausable.class.isAssignableFrom(object.getClass());
 		}
 
 		@Override
@@ -323,7 +343,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> cancel() {
 			if (!cancelled) {
 				if (lifecycle) {
-					((Lifecycle) object).cancel();
+					((Pausable) object).cancel();
 				}
 				this.cancelled = true;
 			}
@@ -339,7 +359,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> pause() {
 			this.paused = true;
 			if (lifecycle) {
-				((Lifecycle) object).pause();
+				((Pausable) object).pause();
 			}
 			return this;
 		}
@@ -353,7 +373,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		public Registration<T> resume() {
 			paused = false;
 			if (lifecycle) {
-				((Lifecycle) object).resume();
+				((Pausable) object).resume();
 			}
 			return this;
 		}

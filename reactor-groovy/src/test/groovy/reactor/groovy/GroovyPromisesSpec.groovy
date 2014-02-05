@@ -25,7 +25,7 @@ import reactor.core.Environment
 import reactor.core.composable.Deferred
 import reactor.core.composable.Promise
 import reactor.core.composable.spec.Promises
-import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.event.dispatch.EventLoopDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
 /**
@@ -37,7 +37,7 @@ class GroovyPromisesSpec extends Specification {
 
 	void setupSpec(){
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop',new BlockingQueueDispatcher('eventLoop', 256))
+		testEnv.addDispatcher('eventLoop',new EventLoopDispatcher('eventLoop', 256))
 	}
 
 	def "Promise returns value"() {

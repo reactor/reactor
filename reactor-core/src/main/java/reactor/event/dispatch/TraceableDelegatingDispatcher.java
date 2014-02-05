@@ -93,4 +93,9 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 		delegate.dispatch(event, eventRouter, consumer, errorConsumer);
 	}
 
+	@Override
+	public void execute(Runnable command) {
+		delegate.execute(command);
+	}
+
 }

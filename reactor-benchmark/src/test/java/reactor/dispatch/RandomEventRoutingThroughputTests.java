@@ -17,7 +17,6 @@
 package reactor.dispatch;
 
 import org.junit.Test;
-
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.selector.Selectors;
@@ -29,13 +28,13 @@ import reactor.event.selector.Selectors;
 public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 
 	public void registerConsumersAndWarmCache(Reactor reactor) {
-		for (int i = 0; i < selectors; i++) {
+		for(int i = 0; i < selectors; i++) {
 			int j = i % 10;
 			objects[i] = "test" + j;
 			sels[i] = Selectors.$(objects[i]);
 			reactor.on(sels[i], countDownConsumer);
 		}
-		for (int i = 0; i < selectors; i++) {
+		for(int i = 0; i < selectors; i++) {
 			// pre-select everything to ensure it's in the cache
 			reactor.getConsumerRegistry().select(objects[i]);
 		}
@@ -44,12 +43,14 @@ public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 	protected void doTest(Reactor reactor) throws InterruptedException {
 		registerConsumersAndWarmCache(reactor);
 
-		for (int j = 0; j < testRuns; j++) {
+		for(int j = 0; j < testRuns; j++) {
 			preRun();
-			for (int i = 0; i < selectors * iterations; i++) {
+			long start = System.currentTimeMillis();
+			int i = 0;
+			do {
 				int x = (i % selectors) % 10;
 				reactor.notify(objects[x], hello);
-			}
+			} while(System.currentTimeMillis() - start < testDuration);
 			postRun(reactor);
 		}
 
@@ -75,4 +76,5 @@ public class RandomEventRoutingThroughputTests extends AbstractThroughputTests {
 	public void ringBufferDispatcherWithRandomLoadBalancing() throws InterruptedException {
 		doTest(Reactors.reactor().env(env).randomEventRouting().dispatcher(createRingBufferDispatcher()).get());
 	}
+
 }

@@ -41,7 +41,7 @@ public abstract class Functions {
 	 * @return a new {@link Consumer}
 	 */
 	@SafeVarargs
-	public final static <T> Consumer<T> chain(Consumer<T>... consumers) {
+	public static <T> Consumer<T> chain(Consumer<T>... consumers) {
 		final AtomicReference<Consumer<T>> composition = new AtomicReference<Consumer<T>>();
 		for(final Consumer<T> next : consumers) {
 			if(null == composition.get()) {

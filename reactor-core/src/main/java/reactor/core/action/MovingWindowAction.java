@@ -15,16 +15,14 @@
  */
 package reactor.core.action;
 
-import reactor.core.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.timer.Timer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -42,7 +40,7 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   public MovingWindowAction(Observable d,
                             Object successKey,
                             Object failureKey,
-                            HashWheelTimer timer,
+                            Timer timer,
                             int period, TimeUnit timeUnit, int delay, int backlog
   ) {
     super(d, successKey, failureKey, timer, period, timeUnit, delay);

@@ -17,6 +17,7 @@
 package reactor.io;
 
 import reactor.function.Supplier;
+import reactor.core.alloc.Recyclable;
 import reactor.util.Assert;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -45,7 +46,8 @@ import java.util.List;
  * @author Jon Brisbin
  */
 @NotThreadSafe
-public class Buffer implements Comparable<Buffer>,
+public class Buffer implements Recyclable,
+                               Comparable<Buffer>,
                                Iterable<Byte>,
                                ReadableByteChannel,
                                WritableByteChannel {
@@ -284,6 +286,16 @@ public class Buffer implements Comparable<Buffer>,
 		bb.position(origPos);
 
 		return num;
+	}
+
+	@Override
+	public void recycle() {
+		if(null != buffer) {
+			buffer.position(0);
+			position = 0;
+			limit = buffer.capacity();
+			buffer.limit(limit);
+		}
 	}
 
 	/**
@@ -753,6 +765,26 @@ public class Buffer implements Comparable<Buffer>,
 	public Buffer append(byte[] b) {
 		ensureCapacity(b.length);
 		buffer.put(b);
+		return this;
+	}
+
+	/**
+	 * Append the given {@code byte[]} to this {@literal Buffer}, starting at the given index and continuing for the
+	 * given
+	 * length.
+	 *
+	 * @param b
+	 * 		the bytes to append
+	 * @param start
+	 * 		the index of where to start copying bytes
+	 * @param len
+	 * 		the len of the bytes to copy
+	 *
+	 * @return {@literal this}
+	 */
+	public Buffer append(byte[] b, int start, int len) {
+		ensureCapacity(b.length);
+		buffer.put(b, start, len);
 		return this;
 	}
 
@@ -1324,7 +1356,9 @@ public class Buffer implements Comparable<Buffer>,
 
 	private void expand() {
 		snapshot();
-		ByteBuffer newBuff = ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE);
+		ByteBuffer newBuff = (buffer.isDirect()
+		                      ? ByteBuffer.allocateDirect(buffer.limit() + SMALL_BUFFER_SIZE)
+		                      : ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE));
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;
@@ -1451,7 +1485,8 @@ public class Buffer implements Comparable<Buffer>,
 		}
 
 		private void syncPos() {
-			Buffer.this.buffer.position(buffer.position());
+			int oldPos = Buffer.this.buffer.position();
+			Buffer.this.buffer.position(buffer.position() + oldPos);
 		}
 	}
 

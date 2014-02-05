@@ -16,7 +16,7 @@
 
 package reactor.event.registry;
 
-import reactor.event.lifecycle.Lifecycle;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.Selector;
 
 /**
@@ -29,7 +29,7 @@ import reactor.event.selector.Selector;
  * @author Stephane Maldini
  *
  */
-public interface Registration<T> extends Lifecycle {
+public interface Registration<T> extends Pausable {
 
 	/**
 	 * The {@link reactor.event.selector.Selector} that was used when the registration was made.

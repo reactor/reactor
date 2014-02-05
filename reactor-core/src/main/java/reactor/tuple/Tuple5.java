@@ -29,6 +29,8 @@ package reactor.tuple;
  */
 public class Tuple5<T1, T2, T3, T4, T5> extends Tuple4<T1, T2, T3, T4> {
 
+	private static final long serialVersionUID = -5866370282498275773L;
+
 	Tuple5(Object... values) {
 		super(values);
 	}

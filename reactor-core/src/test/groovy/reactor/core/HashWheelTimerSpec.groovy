@@ -1,6 +1,8 @@
 package reactor.core
 
 import reactor.function.Consumer
+import reactor.timer.SimpleHashWheelTimer
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -11,12 +13,13 @@ import java.util.concurrent.TimeUnit
  */
 class HashWheelTimerSpec extends Specification {
 
+	def period = 50
+
   def "HashWheelTimer can schedule recurring tasks"() {
 
-    given:
+	  given:
       "a new timer"
-      def period = 50
-      def timer = new HashWheelTimer()
+      def timer = new SimpleHashWheelTimer()
       def latch = new CountDownLatch(10)
 
     when:
@@ -34,25 +37,24 @@ class HashWheelTimerSpec extends Specification {
 
   }
 
+	@Ignore
   def "HashWheelTimer can delay submitted tasks"() {
 
     given:
       "a new timer"
       def delay = 500
-      def timer = new HashWheelTimer()
+      def timer = new SimpleHashWheelTimer()
       def latch = new CountDownLatch(1)
       def start = System.currentTimeMillis()
       def elapsed = 0
-      def actualTimeWithinBounds = true
+      //def actualTimeWithinBounds = true
 
     when:
       "a task is submitted"
       timer.submit(
           { Long now ->
-            latch.countDown()
             elapsed = System.currentTimeMillis() - start
-            start = System.currentTimeMillis()
-            actualTimeWithinBounds = actualTimeWithinBounds && elapsed >= period && elapsed < period * 2
+	          latch.countDown()
           } as Consumer<Long>,
           delay,
           TimeUnit.MILLISECONDS
@@ -61,7 +63,8 @@ class HashWheelTimerSpec extends Specification {
     then:
       "the latch was counted down"
       latch.await(1, TimeUnit.SECONDS)
-      actualTimeWithinBounds
+	    elapsed >= delay
+	    elapsed < delay * 2
 
   }
 

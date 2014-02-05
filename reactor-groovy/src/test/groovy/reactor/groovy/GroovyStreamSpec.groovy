@@ -21,11 +21,10 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.core.Environment
-import reactor.core.composable.Deferred
 import reactor.core.composable.Stream
 import reactor.core.composable.spec.Streams
 import reactor.core.spec.Reactors
-import reactor.event.dispatch.BlockingQueueDispatcher
+import reactor.event.dispatch.EventLoopDispatcher
 import reactor.function.support.Tap
 import spock.lang.Shared
 import spock.lang.Specification
@@ -40,19 +39,19 @@ class GroovyStreamSpec extends Specification {
 
 	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop', new BlockingQueueDispatcher('eventLoop', 256))
+		testEnv.addDispatcher('eventLoop', new EventLoopDispatcher('eventLoop', 256))
 	}
 
 
 	def "Compose from multiple values"() {
 		when:
 			'Defer a composition'
-			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			Stream s = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation'
 			int sum = 0
-			Stream d = c | { Integer.parseInt it } | { sum += it; sum }
+			Stream d = s | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
 			d.flush()
@@ -207,7 +206,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'Defer a composition'
-			Deferred c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			Stream c = Streams.defer(['1', '2', '3', '4', '5']).get()
 
 		and:
 			'apply a transformation and call an explicit reactor'

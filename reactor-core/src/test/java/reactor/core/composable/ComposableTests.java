@@ -57,9 +57,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer("Hello World!").get();
+		Stream<String> stream = Streams.defer("Hello World!").get();
 		Stream<String> s =
-				d.compose()
+				stream
 				 .map(new Function<String, String>() {
 					 @Override
 					 public String apply(String s) {
@@ -72,9 +72,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .map(new Function<Integer, Integer>() {
 					 int sum = 0;
@@ -90,9 +90,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .filter(new Predicate<Integer>() {
 					 @Override
@@ -107,7 +107,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Deferred<String, Stream<String>> d =
+		Stream<String> stream =
 				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"))
 				       .env(env)
 				       .dispatcher("eventLoop")
@@ -115,7 +115,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .when(IllegalArgumentException.class, new Consumer<IllegalArgumentException>() {
 					 @Override
@@ -142,9 +142,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
 					 @Override
@@ -157,9 +157,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER);
 
 		Tap<Integer> first = s.first().tap();
@@ -184,9 +184,9 @@ public class ComposableTests extends AbstractReactorTest {
 			}
 		});
 
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .consume(key.getObject(), r);
 		Tap<Integer> tap = s.tap();
@@ -200,9 +200,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testStreamBatchesResults() {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
-		Stream<Iterable<Integer>> s =
-				d.compose()
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
+		Stream<List<Integer>> s =
+				stream
 				 .map(STRING_2_INTEGER)
 				 .collect();
 
@@ -224,10 +224,10 @@ public class ComposableTests extends AbstractReactorTest {
 
 	@Test
 	public void testHandlersErrorsDownstream() throws InterruptedException {
-		Deferred<String, Stream<String>> d = Streams.defer(Arrays.asList("1", "2", "a", "4", "5")).get();
+		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "a", "4", "5")).get();
 		final CountDownLatch latch = new CountDownLatch(1);
 		Stream<Integer> s =
-				d.compose()
+				stream
 				 .map(STRING_2_INTEGER)
 				 .map(new Function<Integer, Integer>() {
 					 int sum = 0;

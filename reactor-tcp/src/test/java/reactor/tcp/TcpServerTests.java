@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
@@ -157,12 +158,12 @@ public class TcpServerTests {
 				.start(new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {
-							client.open().consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
-								@Override
-								public void accept(TcpConnection<Pojo, Pojo> pojoPojoTcpConnection) {
+						client.open().consume(new Consumer<TcpConnection<Pojo, Pojo>>() {
+							@Override
+							public void accept(TcpConnection<Pojo, Pojo> pojoPojoTcpConnection) {
 								pojoPojoTcpConnection.send(new Pojo("John Doe"));
-								}
-							});
+							}
+						});
 					}
 				});
 
@@ -180,9 +181,9 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-										 .backlog(1000)
-										 .reuseAddr(true)
-										 .tcpNoDelay(true))
+						         .backlog(1000)
+						         .reuseAddr(true)
+						         .tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<TcpConnection<byte[], byte[]>>() {
@@ -217,7 +218,7 @@ public class TcpServerTests {
 					}
 				});
 
-		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -235,9 +236,9 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-										 .backlog(1000)
-										 .reuseAddr(true)
-										 .tcpNoDelay(true))
+						         .backlog(1000)
+						         .reuseAddr(true)
+						         .tcpNoDelay(true))
 				.listen(port)
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.consume(new Consumer<TcpConnection<Frame, Frame>>() {
@@ -303,12 +304,12 @@ public class TcpServerTests {
 		TcpServer<String, String> server = new TcpServerSpec<String, String>(NettyTcpServer.class)
 				.env(env)
 				.options(new NettyServerSocketOptions()
-										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-											 @Override
-											 public void accept(ChannelPipeline pipeline) {
-												 pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
-											 }
-										 }))
+						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+							         @Override
+							         public void accept(ChannelPipeline pipeline) {
+								         pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
+							         }
+						         }))
 				.listen("localhost", port)
 				.codec(StandardCodecs.STRING_CODEC)
 				.consume(serverHandler)
@@ -339,10 +340,11 @@ public class TcpServerTests {
 		TcpServer<ByteBuf, ByteBuf> server = new TcpServerSpec<ByteBuf, ByteBuf>(NettyTcpServer.class)
 				.env(env)
 				.listen(port)
+				.dispatcher(new SynchronousDispatcher())
 				.consume(new Consumer<TcpConnection<ByteBuf, ByteBuf>>() {
 					@Override
 					public void accept(TcpConnection<ByteBuf, ByteBuf> conn) {
-						conn.in().consume(new Consumer<ByteBuf>() {
+						conn.consume(new Consumer<ByteBuf>() {
 							@Override
 							public void accept(ByteBuf byteBuf) {
 								byteBuf.forEachByte(new ByteBufProcessor() {
@@ -354,6 +356,7 @@ public class TcpServerTests {
 										return true;
 									}
 								});
+								byteBuf.release();
 							}
 						});
 					}
@@ -370,10 +373,9 @@ public class TcpServerTests {
 			}
 		});
 
-		try{
+		try {
 			assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
-		}
-		finally{
+		} finally {
 			server.shutdown().await();
 		}
 
@@ -388,14 +390,14 @@ public class TcpServerTests {
 				.env(env)
 				.listen(port)
 				.options(new NettyServerSocketOptions()
-										 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-											 @Override
-											 public void accept(ChannelPipeline pipeline) {
-												 pipeline.addLast(new HttpRequestDecoder());
-												 pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-												 pipeline.addLast(new HttpResponseEncoder());
-											 }
-										 }))
+						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+							         @Override
+							         public void accept(ChannelPipeline pipeline) {
+								         pipeline.addLast(new HttpRequestDecoder());
+								         pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+								         pipeline.addLast(new HttpResponseEncoder());
+							         }
+						         }))
 				.consume(new Consumer<TcpConnection<HttpRequest, HttpResponse>>() {
 					@Override
 					public void accept(final TcpConnection<HttpRequest, HttpResponse> conn) {

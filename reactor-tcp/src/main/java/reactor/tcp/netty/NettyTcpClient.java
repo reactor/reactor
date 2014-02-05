@@ -36,13 +36,13 @@ import reactor.core.composable.spec.Streams;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.Reconnect;
 import reactor.tcp.TcpClient;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.config.ClientSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.io.encoding.Codec;
 import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.tuple.Tuple2;
 

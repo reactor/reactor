@@ -26,18 +26,18 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
-import reactor.event.dispatch.ActorDispatcher;
-import reactor.event.dispatch.BlockingQueueDispatcher;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.RingBufferDispatcher;
+import reactor.event.dispatch.*;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.tuple.Tuple2;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static junit.framework.Assert.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 
 /**
  * @author Jon Brisbin
@@ -45,69 +45,83 @@ import static junit.framework.Assert.assertEquals;
  */
 public class ComposableThroughputTests extends AbstractReactorTest {
 
-	static int length  = 500;
-	static int runs    = 1000;
-	static int samples = 3;
+	static int  length        = 500;
+	static int  runs          = 1000;
+	static int  samples       = 3;
+	static long expectedTotal = sumSample();
+
+	public static long sumSample() {
+		long sum = 1;
+		for(int x = 0; x < samples; x++) {
+			for(int i = 0; i < runs; i++) {
+				for(int j = 0; j < length; j++) {
+					sum += j;
+				}
+			}
+		}
+		return sum;
+	}
 
 	CountDownLatch latch;
+	AtomicLong     total;
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		latch = new CountDownLatch(samples*runs*length);
+		latch = new CountDownLatch(1);
+		total = new AtomicLong();
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
 				.get();
 
 		dInt.compose()
-				.map(new Function<Integer, Integer>() {
-					@Override
-					public Integer apply(Integer integer) {
-						return integer;
-					}
-				})
-				.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
-					@Override
-					public Integer apply(Tuple2<Integer, Integer> r) {
-						int last = (null != r.getT2() ? r.getT2() : 1);
-						return last + r.getT1();
-					}
-				})
-				.consume(new Consumer<Integer>() {
-					@Override
-					public void accept(Integer integer) {
-						latch.countDown();
-					}
-				});
-
-		//System.out.println(dInt.compose().debug());
+		    .map(new Function<Integer, Integer>() {
+			    @Override
+			    public Integer apply(Integer number) {
+				    return number;
+			    }
+		    })
+		    .reduce(new Function<Tuple2<Integer, Long>, Long>() {
+			    @Override
+			    public Long apply(Tuple2<Integer, Long> r) {
+				    long last = (null != r.getT2() ? r.getT2() : 1);
+				    return last + r.getT1();
+			    }
+		    })
+		    .consume(new Consumer<Long>() {
+			    @Override
+			    public void accept(Long number) {
+				    System.out.println("final " + number + "/" + expectedTotal);
+				    total.set(number);
+				    latch.countDown();
+			    }
+		    });
 		return dInt;
-	}
-
-	private void compose(Stream<Integer> stream, final Dispatcher dispatcher) {
-		stream.mapMany(new Function<Integer, Composable<Integer>>() {
-			@Override
-			public Composable<Integer> apply(Integer integer) {
-				Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
-				try {
-					return deferred.compose();
-				} finally {
-					deferred.accept(integer + 1);
-				}
-			}
-		})
-				.consume(new Consumer<Integer>() {
-					@Override
-					public void accept(Integer integer) {
-						latch.countDown();
-					}
-				});
 	}
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
 		latch = new CountDownLatch(length * runs * samples);
+		total = new AtomicLong();
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
-		compose(dInt.compose(), dispatcher);
+		dInt.compose()
+		    .mapMany(new Function<Integer, Composable<Integer>>() {
+			    @Override
+			    public Composable<Integer> apply(Integer number) {
+				    Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
+				    try {
+					    return deferred.compose();
+				    } finally {
+					    deferred.accept(number);
+				    }
+			    }
+		    })
+		    .consume(new Consumer<Integer>() {
+			    @Override
+			    public void accept(Integer number) {
+				    total.getAndIncrement();
+				    latch.countDown();
+			    }
+		    });
 		return dInt;
 	}
 
@@ -126,6 +140,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(env.getDefaultDispatcher(), name, createMapManyDeferred());
+		assertThat("Totals matched expected", total.get(), is((long)length * runs * samples));
 	}
 
 
@@ -135,6 +150,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
 		doTest(dispatcher, name, createDeferred(dispatcher));
+		assertThat("Totals matched expected", total.get(), is(expectedTotal));
 	}
 
 	private void doTest(Dispatcher dispatcher,
@@ -171,8 +187,8 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void testEventLoopDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new BlockingQueueDispatcher("eventLoop", 4096), "event loop");
+	public void testWorkQueueDispatcherComposableThroughput() throws InterruptedException {
+		doTest(new WorkQueueDispatcher("workQueue", 8, 2048, null), "work queue");
 	}
 
 	@Test
@@ -192,8 +208,13 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	@Test
 	public void testSingleProducerRingBufferDispatcherComposableThroughput() throws InterruptedException {
-		doTest(new RingBufferDispatcher("test", 1024, ProducerType.SINGLE, new YieldingWaitStrategy()),
-				"single-producer ring buffer");
+		doTest(new RingBufferDispatcher(
+				"test",
+				2048,
+				null,
+				ProducerType.SINGLE,
+				new YieldingWaitStrategy()
+		), "single-producer ring buffer");
 	}
 
 	@Test

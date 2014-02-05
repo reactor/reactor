@@ -25,25 +25,26 @@ import java.util.concurrent.atomic.AtomicInteger;
  * being included in the name of each thread. This count is held statically to ensure
  * different thread names across different instances of this class.
  *
- * @see Thread#setDaemon(boolean)
- * @see Thread#setName(String)
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
+ * @see Thread#setDaemon(boolean)
+ * @see Thread#setName(String)
  */
 public class NamedDaemonThreadFactory implements ThreadFactory {
 
 	private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
-	private final String prefix;
-	private final ClassLoader contextClassLoader;
+	private final String                          prefix;
+	private final ClassLoader                     contextClassLoader;
+	private final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
 	/**
 	 * Creates a new thread factory that will name its threads &lt;prefix&gt;-&lt;n&gt;, where
 	 * &lt;prefix&gt; is the given {@code prefix} and &lt;n&gt; is the count of threads
 	 * created thus far by this class.
 	 *
-	 * @param prefix The thread name prefix
+	 * @param prefix
+	 * 		The thread name prefix
 	 */
 	public NamedDaemonThreadFactory(String prefix) {
 		this(prefix, null);
@@ -55,12 +56,21 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	 * created thus far by this class. If the contextClassLoader parameter is not null it will assign it to the forged
 	 * Thread
 	 *
-	 * @param prefix The thread name prefix
-	 * @param contextClassLoader An optional classLoader to assign to thread
+	 * @param prefix
+	 * 		The thread name prefix
+	 * @param contextClassLoader
+	 * 		An optional classLoader to assign to thread
 	 */
 	public NamedDaemonThreadFactory(String prefix, ClassLoader contextClassLoader) {
+		this(prefix, contextClassLoader, null);
+	}
+
+	public NamedDaemonThreadFactory(String prefix,
+	                                ClassLoader contextClassLoader,
+	                                Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
 		this.prefix = prefix;
 		this.contextClassLoader = contextClassLoader;
+		this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 	}
 
 	@Override
@@ -68,8 +78,11 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 		Thread t = new Thread(runnable);
 		t.setName(prefix + "-" + COUNTER.incrementAndGet());
 		t.setDaemon(true);
-		if(contextClassLoader != null){
+		if(contextClassLoader != null) {
 			t.setContextClassLoader(contextClassLoader);
+		}
+		if(null != uncaughtExceptionHandler) {
+			t.setUncaughtExceptionHandler(uncaughtExceptionHandler);
 		}
 		return t;
 	}
