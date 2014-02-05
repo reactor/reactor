@@ -291,7 +291,7 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public Stream<Iterable<T>> collect() {
+	public Stream<List<T>> collect() {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		return collect(batchSize);
 	}
@@ -303,9 +303,9 @@ public class Stream<T> extends Composable<T> {
 	 * @param batchSize the collected size
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public Stream<Iterable<T>> collect(int batchSize) {
+	public Stream<List<T>> collect(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot collect() an unbounded limit.");
-		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
 		add(new CollectAction<T>(
 				batchSize,
@@ -324,7 +324,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param period the time period when each window close and flush the attached consumer
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> window(int period) {
+	public Stream<List<T>> window(int period) {
 		return window(period, TimeUnit.MILLISECONDS);
 	}
 
@@ -338,7 +338,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param backlog maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> movingWindow(int period, int backlog) {
+	public Stream<List<T>> movingWindow(int period, int backlog) {
 		return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
 	}
 
@@ -351,7 +351,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param timeUnit the time unit used for the period
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> window(int period, TimeUnit timeUnit) {
+	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
 		return window(period, timeUnit, 0);
 	}
 
@@ -364,7 +364,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param backlog  maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
+	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
 		return movingWindow(period, timeUnit, 0, backlog);
 	}
 
@@ -378,7 +378,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param delay    the initial delay in milliseconds
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> window(int period, TimeUnit timeUnit, int delay) {
+	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
 		return window(period, timeUnit, delay, environment.getRootTimer());
 	}
@@ -394,7 +394,7 @@ public class Stream<T> extends Composable<T> {
 	 * @param backlog  maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
-	public Stream<Iterable<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
+	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
 		return movingWindow(period, timeUnit, delay, backlog, environment.getRootTimer());
 	}
@@ -412,7 +412,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
 		add(new WindowAction<T>(
 				d.compose().getObservable(),
@@ -439,7 +439,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Deferred<Iterable<T>, Stream<Iterable<T>>> d = createDeferredIterableChildStream(1);
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
 		add(new MovingWindowAction<T>(
 				d.compose().getObservable(),
@@ -543,13 +543,6 @@ public class Stream<T> extends Composable<T> {
 		return new Deferred<T, Stream<T>>(stream);
 	}
 
-	private Deferred<Iterable<T>, Stream<Iterable<T>>> createDeferredIterableChildStream(int batchSize) {
-		Stream<Iterable<T>> stream = new Stream<Iterable<T>>(null,
-				batchSize,
-				this,
-				environment);
-		return new Deferred<Iterable<T>, Stream<Iterable<T>>>(stream);
-	}
 
 	public static class BufferStream<T> extends Stream<T> {
 

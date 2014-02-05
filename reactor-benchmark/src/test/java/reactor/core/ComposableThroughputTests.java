@@ -90,7 +90,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 		    .consume(new Consumer<Long>() {
 			    @Override
 			    public void accept(Long number) {
-				    System.out.println("final " + number + "/" + expectedTotal);
 				    total.set(number);
 				    latch.countDown();
 			    }
@@ -134,7 +133,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 				.dispatcher(dispatcher)
 				.batchSize(150)
 				.get();
-		compose(dInt.compose(), dispatcher);
 		return dInt;
 	}
 

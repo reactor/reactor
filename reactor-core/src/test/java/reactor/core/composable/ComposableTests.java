@@ -208,9 +208,9 @@ public class ComposableTests extends AbstractReactorTest {
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
-		s.consume(new Consumer<Iterable<Integer>>() {
+		s.consume(new Consumer<List<Integer>>() {
 			@Override
-			public void accept(Iterable<Integer> is) {
+			public void accept(List<Integer> is) {
 				batchCount.incrementAndGet();
 				for(int i : is) {
 					count.addAndGet(i);

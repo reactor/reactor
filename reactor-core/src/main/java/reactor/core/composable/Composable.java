@@ -47,6 +47,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	private final Selector acceptSelector;
 	private final Object acceptKey;
 	private final Selector error = Selectors.anonymous();
+	private final Selector flush = Selectors.anonymous();
 
 	private final Observable    events;
 	private final Composable<?> parent;

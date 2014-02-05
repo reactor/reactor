@@ -355,7 +355,7 @@ public class Reactor implements Observable {
 					List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
 					for (Event<T> batchedEvent : event.getData()) {
 						for (Registration<? extends Consumer<? extends Event<?>>> registration : regs) {
-							eventRouter.route(null, batchedEvent, null, registration.getObject(), errorHandler);
+							eventRouter.route(null, batchedEvent, null, registration.getObject(), dispatchErrorHandler);
 						}
 					}
 				}
@@ -364,7 +364,7 @@ public class Reactor implements Observable {
 			@Override
 			public void accept(Iterable<Event<T>> evs) {
 				//int i = counter.incrementAndGet() % batchSize;
-				dispatcher.dispatch(null, Event.wrap(evs), null, errorHandler, eventRouter, batchConsumer);
+				dispatcher.dispatch(null, Event.wrap(evs), null, dispatchErrorHandler, eventRouter, batchConsumer);
 			}
 		};
 	}
