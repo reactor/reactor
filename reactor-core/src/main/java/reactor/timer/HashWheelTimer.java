@@ -149,6 +149,7 @@ public class HashWheelTimer implements Timer {
     return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
                                                             long period,
@@ -158,11 +159,13 @@ public class HashWheelTimer implements Timer {
     return schedule(ms, ms, consumer).cancelAfterUse();
   }
 
+	@SuppressWarnings("unchecked")
   @Override
   public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
     return submit(consumer, resolution, TimeUnit.MILLISECONDS);
   }
 
+	@SuppressWarnings("unchecked")
   @Override
   public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
                                                               long period,
@@ -170,6 +173,7 @@ public class HashWheelTimer implements Timer {
     return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
   }
 
+  @SuppressWarnings("unchecked")
   private TimerRegistration<? extends Consumer<Long>> schedule(long recurringTimeout, long firstDelay, Consumer<Long> consumer) {
     Assert.isTrue(recurringTimeout >= resolution, "Cannot schedule tasks for amount of time less than timer precision.");
 
@@ -185,7 +189,7 @@ public class HashWheelTimer implements Timer {
   }
 
   /**
-   * Rechedule a {@link TimerRegistration}  for the next fire
+   * Reschedule a {@link TimerRegistration}  for the next fire
    * @param registration
    */
   private void reschedule(TimerRegistration registration) {

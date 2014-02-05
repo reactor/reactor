@@ -90,6 +90,7 @@ public class TaskExecutorTests {
 		doStop(test);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void doAsyncCallableTest(String test, AsyncTaskExecutor executor) {
 		Callable c = new Callable() {
 			@Override
