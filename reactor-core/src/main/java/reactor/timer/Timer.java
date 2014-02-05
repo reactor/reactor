@@ -74,12 +74,13 @@ public interface Timer {
 	/**
 	 * Submit a task for arbitrary execution after the delay of this timer's resolution.
 	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke
 	 *
-	 * @return {@literal this}
+   * @param consumer
+   * 		the {@code Consumer} to invoke
+   *
+   * @return {@literal this}
 	 */
-	Timer submit(Consumer<Long> consumer);
+	Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer);
 
 	/**
 	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after

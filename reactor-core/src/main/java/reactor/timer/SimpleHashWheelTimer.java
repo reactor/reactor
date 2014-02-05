@@ -140,9 +140,8 @@ public class SimpleHashWheelTimer implements Timer {
 	}
 
 	@Override
-	public Timer submit(Consumer<Long> consumer) {
-		submit(consumer, resolution, TimeUnit.MILLISECONDS);
-		return this;
+	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
+    return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 

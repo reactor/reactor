@@ -1,7 +1,6 @@
-package reactor.core
+package reactor.timer
 
 import reactor.function.Consumer
-import reactor.timer.SimpleHashWheelTimer
 import spock.lang.Ignore
 import spock.lang.Specification
 
@@ -11,7 +10,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Jon Brisbin
  */
-class HashWheelTimerSpec extends Specification {
+class SimpleHashWheelTimerSpec extends Specification {
 
 	def period = 50
 
