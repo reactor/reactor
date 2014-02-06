@@ -16,6 +16,8 @@
 
 package reactor.tuple;
 
+import reactor.util.ObjectUtils;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -268,11 +270,11 @@ public class Tuple implements Iterable, Serializable {
     if (this.size == 0) {
       return 0;
     } else if (this.size == 1) {
-      return this.entries[0].hashCode();
+      return ObjectUtils.nullSafeHashCode(this.entries[0]);
     } else {
       int hashCode = 1;
       for (Object entry: this.entries) {
-        hashCode = hashCode ^ entry.hashCode();
+        hashCode = hashCode ^ ObjectUtils.nullSafeHashCode(entry);
       }
       return hashCode;
     }
@@ -291,7 +293,7 @@ public class Tuple implements Iterable, Serializable {
     boolean eq = true;
 
     for (int i = 0; i < this.size; i++) {
-      if (!this.entries[i].equals(cast.entries[i])) {
+      if (null != this.entries[i] && !this.entries[i].equals(cast.entries[i])) {
         return false;
       }
     }
