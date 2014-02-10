@@ -864,13 +864,13 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.accept(1)
-			source.accept(1)
-			sleep(1000)
+			source.accept(2)
+			source.accept(2)
+			sleep(1500)
 
 		then:
 			'the collected list contains the first and second elements'
-			value.get() == [1, 1]
+			value.get() == [2, 2]
 
 		cleanup:
 			environment.shutdown()
