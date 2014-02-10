@@ -7,7 +7,6 @@ import reactor.event.lifecycle.Lifecycle;
 import reactor.function.Supplier;
 import reactor.support.Identifiable;
 import reactor.support.NamedDaemonThreadFactory;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,16 +98,17 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 		return ref;
 	}
 
+	public List<Reference<T>> allocateBatch(int size, List<Reference<T>> refs) {
+		for(int i = 0; i < size; i++) {
+			Reference<T> ref = allocate();
+			refs.add(ref);
+		}
+		return refs;
+	}
+
 	@Override
 	public List<Reference<T>> allocateBatch(int size) {
-		long max = ringBuffer.remainingCapacity();
-		Assert.isTrue(size < ringBuffer.remainingCapacity(),
-		              "Cannot allocate more than " + max + " at a time with this RingBuffer configuration.");
-		List<Reference<T>> batch = new ArrayList<Reference<T>>(size);
-		for(int i = 0; i < size; i++) {
-			batch.add(allocate());
-		}
-		return batch;
+		return allocateBatch(size, new ArrayList<Reference<T>>(size));
 	}
 
 	@Override
@@ -126,9 +126,7 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 				ringBuffer.publish(start);
 			}
 		}
-		for(Reference<T> ref : batch) {
-			ref.release();
-		}
+		batch.clear();
 	}
 
 	@Override
