@@ -17,41 +17,43 @@ package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.registry.Registration;
+import reactor.function.Consumer;
+import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class CollectAction<T> extends BatchAction<T> implements Flushable<T> {
+public class CollectWithTimeoutAction<T> extends CollectAction<T> {
 
-	private final List<T> values;
+	private final Timer timer;
+	private final long  timeout;
+	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
+		@Override
+		public void accept(Long aLong) {
+			doFlush(null);
+		}
+	};
 
-	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
+	private Registration<? extends Consumer<Long>> timeoutRegistration;
+
+	public CollectWithTimeoutAction(int batchsize, Observable d, Object successKey, Object failureKey,
+	                                Timer timer, long timeout) {
 		super(batchsize, d, successKey, failureKey);
-		values = new ArrayList<T>(batchsize > 0 ? batchsize : 256);
-	}
-
-	@Override
-	public void doNext(Event<T> value) {
-		values.add(value.getData());
+		this.timer = timer;
+		this.timeout = timeout;
+		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
 	public void doFlush(Event<T> ev) {
-		if (values.isEmpty()) {
-			return;
-		}
-		notifyValue(Event.wrap(new ArrayList<T>(values)));
-		values.clear();
+		timeoutRegistration.cancel();
+		super.doFlush(ev);
+		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
-
-	@Override
-	public Flushable<T> flush() {
-		doFlush(null);
-		return this;
-	}
-
 }

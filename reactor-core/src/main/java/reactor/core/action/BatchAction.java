@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author Stephane Maldini
  */
-public class BatchAction<T> extends Action<T> {
+public class BatchAction<T> extends Action<T>{
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
@@ -62,21 +62,11 @@ public class BatchAction<T> extends Action<T> {
 	}
 
 	public long getErrorCount() {
-		lock.lock();
-		try {
 			return errorCount;
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	public long getAcceptCount() {
-		lock.lock();
-		try {
 			return acceptCount;
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	public int getBatchSize() {
@@ -103,6 +93,11 @@ public class BatchAction<T> extends Action<T> {
 
 	@Override
 	public void doAccept(Event<T> value) {
+		if(batchSize == -1){
+			doNext(value);
+			return;
+		}
+
 		lock.lock();
 		long accepted;
 		try {
@@ -134,4 +129,8 @@ public class BatchAction<T> extends Action<T> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return super.toString()+"  % size:"+batchSize+" %  accepted:"+acceptCount+" % errors:"+errorCount;
+	}
 }

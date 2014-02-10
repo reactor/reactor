@@ -73,6 +73,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 		if (parent != null) {
 			events.on(parent.error,
 					new ConnectAction<Throwable>(events, error.getObject(), null));
+			events.on(parent.flush,
+					new ConnectAction<Throwable>(events, flush.getObject(), null));
 		}
 	}
 
@@ -94,6 +96,9 @@ public abstract class Composable<T> implements Pipeline<T> {
 					onError.accept(e.getData());
 				}
 			}
+
+			public String toString(){ return "When["+exceptionType.getSimpleName()+"]"; }
+
 		});
 		return this;
 	}
@@ -267,7 +272,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 			that = that.parent;
 		}
 		return ActionUtils.browseReactor((Reactor) that.events,
-				that.acceptKey, that.error.getObject()
+				that.acceptKey, that.error.getObject(), that.flush.getObject()
 		);
 	}
 
@@ -277,8 +282,23 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @param action the action listening for values
 	 * @return {@literal this}
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> add(Action<T> action) {
 		this.events.on(acceptSelector, action);
+		if(null != action && Flushable.class.isAssignableFrom(action.getClass())){
+			consumeFlush((Flushable<T>)action);
+		}
+		return this;
+	}
+
+	/**
+	 * Consume flush with the passed {@code Action}
+	 *
+	 * @param action the action listening for flush
+	 * @return {@literal this}
+	 */
+	public Composable<T> consumeFlush(Flushable<T> action) {
+		this.events.on(flush, new FlushableAction<T>(action, events, null));
 		return this;
 	}
 
@@ -287,15 +307,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	void notifyFlush() {
 		events.notify(flush.getObject(), new Event<Void>(Void.class));
-	}
-
-	/**
-	 * Notify this {@code Composable} that a value is being accepted by this {@code Composable}.
-	 *
-	 * @param value the value to accept
-	 */
-	void notifyValue(T value) {
-		notifyValue(Event.wrap(value));
 	}
 
 	void notifyValue(Event<T> value) {
@@ -331,7 +342,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
-	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing accepts.
+	 * Get the anonymous {@link Selector} and notification key for doing accepts.
 	 *
 	 * @return
 	 */
@@ -339,7 +350,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return this.acceptKey;
 	}
 	/**
-	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing accepts.
+	 * Get the anonymous {@link Selector} and notification key for doing accepts.
 	 *
 	 * @return
 	 */
@@ -348,7 +359,16 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
-	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing errors.
+	 * Get the anonymous flush {@link Selector} for batch consuming.
+	 *
+	 * @return
+	 */
+	protected Selector getFlush() {
+		return this.flush;
+	}
+
+	/**
+	 * Get the anonymous {@link Selector} and notification key for doing errors.
 	 *
 	 * @return
 	 */
@@ -364,5 +384,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 	protected Composable<?> getParent() {
 		return this.parent;
 	}
+
 
 }

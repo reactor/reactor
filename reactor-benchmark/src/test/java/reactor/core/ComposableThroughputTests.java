@@ -18,6 +18,7 @@ package reactor.core;
 
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.junit.Before;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.composable.Composable;
@@ -26,14 +27,16 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
-import reactor.event.dispatch.*;
+import reactor.event.dispatch.ActorDispatcher;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.RingBufferDispatcher;
+import reactor.event.dispatch.WorkQueueDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.tuple.Tuple2;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import static junit.framework.Assert.assertEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,107 +51,108 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	static int  length        = 500;
 	static int  runs          = 1000;
 	static int  samples       = 3;
-	static long expectedTotal = sumSample();
+	static long expectedTotal = length*runs*samples;
 
-	public static long sumSample() {
-		long sum = 1;
-		for(int x = 0; x < samples; x++) {
-			for(int i = 0; i < runs; i++) {
-				for(int j = 0; j < length; j++) {
-					sum += j;
-				}
-			}
-		}
-		return sum;
+	private          CountDownLatch latch;
+	private volatile long           total;
+
+
+	private static final AtomicLongFieldUpdater<ComposableThroughputTests> totalUpdated = AtomicLongFieldUpdater
+			.newUpdater(ComposableThroughputTests.class, "total");
+
+	@Before
+	public void init() {
+		total = 0l;
 	}
 
-	CountDownLatch latch;
-	AtomicLong     total;
-
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		latch = new CountDownLatch(1);
-		total = new AtomicLong();
+		latch = new CountDownLatch(length * runs * samples);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
 				.get();
 
 		dInt.compose()
-		    .map(new Function<Integer, Integer>() {
-			    @Override
-			    public Integer apply(Integer number) {
-				    return number;
-			    }
-		    })
-		    .reduce(new Function<Tuple2<Integer, Long>, Long>() {
-			    @Override
-			    public Long apply(Tuple2<Integer, Long> r) {
-				    long last = (null != r.getT2() ? r.getT2() : 1);
-				    return last + r.getT1();
-			    }
-		    })
-		    .consume(new Consumer<Long>() {
-			    @Override
-			    public void accept(Long number) {
-				    total.set(number);
-				    latch.countDown();
-			    }
-		    });
+				.map(new Function<Integer, Integer>() {
+					@Override
+					public Integer apply(Integer number) {
+						return number;
+					}
+				})
+				.scan(new Function<Tuple2<Integer, Long>, Long>() {
+					@Override
+					public Long apply(Tuple2<Integer, Long> r) {
+						long last = (null != r.getT2() ? r.getT2() : 1);
+						return last + r.getT1();
+					}
+				})
+				.consume(new Consumer<Long>() {
+					@Override
+					public void accept(Long number) {
+						totalUpdated.getAndIncrement(ComposableThroughputTests.this);
+						latch.countDown();
+					}
+				});
 		return dInt;
+	}
+
+	private Stream<Integer> compose(Stream<Integer> stream, final Dispatcher dispatcher) {
+		return stream.mapMany(new Function<Integer, Composable<Integer>>() {
+			@Override
+			public Composable<Integer> apply(Integer integer) {
+				Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
+				try {
+					return deferred.compose();
+				} finally {
+					deferred.accept(integer + 1);
+				}
+			}
+		})
+				.consume(new Consumer<Integer>() {
+					@Override
+					public void accept(Integer integer) {
+						totalUpdated.getAndIncrement(ComposableThroughputTests.this);
+						latch.countDown();
+					}
+				});
 	}
 
 	private Deferred<Integer, Stream<Integer>> createMapManyDeferred() {
 		latch = new CountDownLatch(length * runs * samples);
-		total = new AtomicLong();
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.defer(env, dispatcher);
-		dInt.compose()
-		    .mapMany(new Function<Integer, Composable<Integer>>() {
-			    @Override
-			    public Composable<Integer> apply(Integer number) {
-				    Deferred<Integer, Promise<Integer>> deferred = Promises.defer(env, dispatcher);
-				    try {
-					    return deferred.compose();
-				    } finally {
-					    deferred.accept(number);
-				    }
-			    }
-		    })
-		    .consume(new Consumer<Integer>() {
-			    @Override
-			    public void accept(Integer number) {
-				    total.getAndIncrement();
-				    latch.countDown();
-			    }
-		    });
+		compose(dInt.compose(), dispatcher);
 		return dInt;
 	}
 
 
-	private Deferred<Integer, Stream<Integer>> createMapManyBatchedDeferred() {
-		latch = new CountDownLatch((length * runs * samples)/150);
+	private Deferred<Integer, Stream<Integer>> createMapManyBatchedDeferred(int batchSize) {
+		latch = new CountDownLatch((length * runs * samples) / batchSize);
 		final Dispatcher dispatcher = env.getDefaultDispatcher();
 		final Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
-				.batchSize(150)
+				.batchSize(batchSize)
 				.get();
+		compose(dInt.compose(), dispatcher);
 		return dInt;
 	}
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(env.getDefaultDispatcher(), name, createMapManyDeferred());
-		assertThat("Totals matched expected", total.get(), is((long)length * runs * samples));
+		assertThat("Totals matched expected", total, is(expectedTotal));
 	}
 
 
 	private void doTestMapManyBatched(String name) throws InterruptedException {
-		doTest(env.getDefaultDispatcher(), name, createMapManyBatchedDeferred());
+		int batchSize = 150;
+		doTest(env.getDefaultDispatcher(), name, createMapManyBatchedDeferred(batchSize));
+		assertThat("Totals matched expected", total, is(expectedTotal));
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
 		doTest(dispatcher, name, createDeferred(dispatcher));
-		assertThat("Totals matched expected", total.get(), is(expectedTotal));
+		assertThat("Totals matched expected", total, is(expectedTotal));
 	}
 
 	private void doTest(Dispatcher dispatcher,
@@ -162,6 +166,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 				}
 			}
 		}
+		//d.flush();
 
 		latch.await();
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());

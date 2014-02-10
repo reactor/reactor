@@ -17,7 +17,6 @@ package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
 import java.util.ArrayList;
@@ -25,17 +24,22 @@ import java.util.List;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class BufferAction<T> extends BatchAction<T> {
+public class BufferAction<T> extends BatchAction<T> implements Flushable<T>{
 
 	private final List<Event<T>> values;
 
 	final private Consumer<Iterable<Event<T>>> batchConsumer;
-
 	public BufferAction(int batchSize, Observable d, Object successKey, Object failureKey) {
 		super(batchSize, d, successKey, failureKey);
-		this.batchConsumer = d.batchNotify(successKey);
-		this.values = new ArrayList<Event<T>>(batchSize > 0 ? batchSize : 256);
+		this.batchConsumer = d.batchNotify(successKey)/*, new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				BufferAction.super.doFlush(null);
+			}
+		})*/;
+		this.values = new ArrayList<Event<T>>(batchSize > 1 ? batchSize : 256);
 	}
 
 	@Override
@@ -51,5 +55,11 @@ public class BufferAction<T> extends BatchAction<T> {
 		}
 		batchConsumer.accept(new ArrayList<Event<T>>(values));
 		values.clear();
+	}
+
+	@Override
+	public Flushable<T> flush() {
+		doFlush(null);
+		return this;
 	}
 }

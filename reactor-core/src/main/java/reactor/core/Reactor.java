@@ -39,13 +39,10 @@ import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
 
-import java.util.ArrayList;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -345,10 +342,23 @@ public class Reactor implements Observable {
 		};
 	}
 
+	public <T> Consumer<T> consumer() {
+		return new Consumer<T>() {
+			@Override
+			public void accept(T obj) {
+				Reactor.this.notify(Event.wrap(obj));
+			}
+		};
+	}
+
 	@Override
 	public <T> Consumer<Iterable<Event<T>>> batchNotify(final Object key) {
+		return batchNotify(key, null);
+	}
+
+	@Override
+	public <T> Consumer<Iterable<Event<T>>> batchNotify(final Object key, final Consumer<Void> completeConsumer) {
 		return new Consumer<Iterable<Event<T>>>() {
-			//AtomicInteger counter = new AtomicInteger(0);
 			final Consumer<Event<Iterable<Event<T>>>> batchConsumer = new Consumer<Event<Iterable<Event<T>>>>() {
 				@Override
 				public void accept(Event<Iterable<Event<T>>> event) {
@@ -358,12 +368,14 @@ public class Reactor implements Observable {
 							eventRouter.route(null, batchedEvent, null, registration.getObject(), dispatchErrorHandler);
 						}
 					}
+					if(completeConsumer != null){
+						completeConsumer.accept(null);
+					}
 				}
 			};
 
 			@Override
 			public void accept(Iterable<Event<T>> evs) {
-				//int i = counter.incrementAndGet() % batchSize;
 				dispatcher.dispatch(null, Event.wrap(evs), null, dispatchErrorHandler, eventRouter, batchConsumer);
 			}
 		};

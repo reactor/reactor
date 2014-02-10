@@ -48,7 +48,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 			tailRecursionPileSizeArray[i] = 0;
 			tailRecurseSeqArray[i] = -1;
 			tailRecursionPileList.add(new ArrayList<Task>(backlog));
-			tailsThreadIndexLookup.put(Thread.currentThread().hashCode(), null);
+			tailsThreadIndexLookup.put(System.identityHashCode(Thread.currentThread()), null);
 			expandTailRecursionPile(i, backlog);
 		}
 	}
@@ -67,7 +67,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().hashCode());
+		Integer index = tailsThreadIndexLookup.get(System.identityHashCode(Thread.currentThread()));
 		if(null == index) {
 			index = indexAssignPile.getAndIncrement() % numberThreads;
 			tailsThreadIndexLookup.put(Thread.currentThread().hashCode(), index);
@@ -88,7 +88,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		public void run() {
 			route(this);
 
-			Integer index = tailsThreadIndexLookup.get(Thread.currentThread().hashCode());
+			Integer index = tailsThreadIndexLookup.get(System.identityHashCode(Thread.currentThread()));
 			if(null == index || tailRecurseSeqArray[index] < 0) {
 				return;
 			}

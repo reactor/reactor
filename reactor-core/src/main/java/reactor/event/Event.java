@@ -276,6 +276,13 @@ public class Event<T> implements Serializable, Recyclable {
 		this.data = null;
 	}
 
+	public void override(Event<T> ev) {
+		this.id = ev.id;
+		this.headers = ev.headers;
+		this.replyTo = ev.replyTo;
+		this.data = ev.data;
+	}
+
 	@Override
 	public String toString() {
 		return "Event{" +

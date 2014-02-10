@@ -68,6 +68,11 @@ public abstract class Action<T> implements Consumer<Event<T>> {
 		return failureKey;
 	}
 
+	@Override
+	public String toString() {
+		return ""+System.identityHashCode(this);
+	}
+
 	protected void notifyValue(Event<?> value) {
 		observable.notify(successKey, value);
 	}

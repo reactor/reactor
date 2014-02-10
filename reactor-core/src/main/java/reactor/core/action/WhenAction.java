@@ -15,21 +15,29 @@
  */
 package reactor.core.action;
 
+import reactor.core.Observable;
+import reactor.event.Event;
+import reactor.function.Consumer;
+import reactor.function.Predicate;
+
 /**
- * Component that can be injected with {@link Action}s
- *
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<T> extends Flushable<T>{
+public class WhenAction<T> extends Action<T> {
 
-	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
-	 */
-	Pipeline<T> add(Action<T> action);
+	private final Predicate<T> consumer;
+
+	public WhenAction(Predicate<T> consumer, Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
+		this.consumer = consumer;
+	}
+
+	@Override
+	public void doAccept(Event<T> value) {
+		if(consumer.test(value.getData())){
+			getObservable().notify(getSuccessKey(), Flushable.FLUSH_EVENT);
+		}
+	}
 
 }

@@ -20,7 +20,6 @@ import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.action.*;
 import reactor.core.composable.spec.DeferredStreamSpec;
-import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.*;
@@ -142,6 +141,10 @@ public class Stream<T> extends Composable<T> {
 		return (Stream<V>) super.mapMany(fn);
 	}
 
+	@Override
+	public Stream<T> filter(@Nonnull Function<T, Boolean> p) {
+		return (Stream<T>) super.filter(p);
+	}
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p) {
@@ -151,6 +154,54 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> composable) {
 		return (Stream<T>) super.filter(p, composable);
+	}
+
+	@Override
+	public Stream<T> consumeFlush(@Nonnull Flushable<T> consumer) {
+		return (Stream<T>) super.consumeFlush(consumer);
+	}
+
+
+	/**
+	 * Create a new {@code Stream} whose values will be each iterated item from {@param iterable}
+	 * Every time flush is triggered,  {@param iterable} is drained.
+	 *
+	 * @param iterable the iterable to drain
+	 * @return a new {@code Stream} whose values are the iterated one on flush
+	 */
+	public Stream<T> propagate(Iterable<T> iterable) {
+		consumeFlush(
+				new ForEachAction<T>(
+						iterable,
+						batchSize,
+						getObservable(),
+						getAcceptKey(),
+						getError().getObject()));
+		return this;
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be generated from {@param supplier}.
+	 * Every time flush is triggered, {@param supplier} is called.
+	 *
+	 * @param supplier the supplier to drain
+	 * @return a new {@code Stream} whose values are generated on each flush
+	 */
+	public Stream<T> propagate(Supplier<T> supplier) {
+		consumeFlush(
+				new SupplyAction<T>(supplier, getObservable(), getAcceptKey(), getError().getObject()));
+		return this;
+	}
+
+	/**
+	 * Consume values and trigger flush when {@param predicate} matches.
+	 *
+	 * @param predicate the test returning true to trigger flush
+	 * @return the current Stream
+	 */
+	public Stream<T> flushWhen(Predicate<T> predicate) {
+		add(new WhenAction<T>(predicate, getObservable(), getFlush().getObject(), getError().getObject()));
+		return this;
 	}
 
 	/**
@@ -235,15 +286,6 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	/**
-	 * Indicates whether or not this {@code Stream} is unbounded.
-	 *
-	 * @return {@literal true} if a {@code batchSize} has been set, {@literal false} otherwise
-	 */
-	public boolean isBatch() {
-		return batchSize > 0;
-	}
-
-	/**
 	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code Stream}. The {@link Tap} is
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
@@ -276,7 +318,6 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
 	public Stream<T> buffer(int batchSize) {
-		Assert.state(batchSize > 0, "Cannot batch() an unbounded Stream. Try setting a batchSize greater than 0.");
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
 		add(new BufferAction<T>(batchSize,
 				d.compose().getObservable(),
@@ -286,13 +327,50 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	/**
+	 * Collect incoming values into a {@link List} that will be pushed separately into the returned {@code Stream}
+	 * every time {@code
+	 * batchSize} has been reached. All errors are also captured until current batchSize or flush is called.
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> bufferWithErrors() {
+		return bufferWithErrors(batchSize);
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed separately into the returned {@code Stream} every
+	 * time {@code
+	 * batchSize} has been reached. All errors are also captured until batchSize or flush is called.
+	 *
+	 * @param batchSize the collected size
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> bufferWithErrors(int batchSize) {
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
+
+		add(new BufferAction<T>(
+				batchSize,
+				d.compose().getObservable(),
+				d.compose().getAcceptKey(),
+				getError().getObject()));
+
+		getObservable().on(getError(), new BufferAction<Throwable>(
+				batchSize,
+				d.compose().getObservable(),
+				d.compose().getError(),
+				null
+		));
+
+		return d.compose();
+	}
+
+	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
-	 * batchSize} has been reached.
+	 * batchSize} or flush is triggered has been reached.
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collect() {
-		Assert.state(batchSize > 0, "Cannot collect() an unbounded Stream. Try extracting a batch first.");
 		return collect(batchSize);
 	}
 
@@ -304,7 +382,6 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collect(int batchSize) {
-		Assert.state(batchSize > 0, "Cannot collect() an unbounded limit.");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
 		add(new CollectAction<T>(
@@ -312,6 +389,43 @@ public class Stream<T> extends Composable<T> {
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
 				getError().getObject()));
+
+		return d.compose();
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
+	 * batchSize} or {@param timeout} has been reached. Flush also releases the current collected items.
+	 *
+	 * @param batchSize the collected size
+	 * @param timeout   the collect timeout in milliseconds
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout) {
+		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
+		return collectWithTimeout(batchSize, timeout, environment.getRootTimer());
+	}
+
+	/**
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
+	 * batchSize} or {@param timeout} has been reached. Flush also releases the current collected items.
+	 *
+	 * @param batchSize the collected size
+	 * @param timeout   the collect timeout in milliseconds
+	 * @param timer     Timer to use for observing timeout
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 */
+	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout, Timer timer) {
+		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
+
+		add(new CollectWithTimeoutAction<T>(
+				batchSize,
+				d.compose().getObservable(),
+				d.compose().getAcceptKey(),
+				getError().getObject(),
+				timer,
+				timeout
+		));
 
 		return d.compose();
 	}
@@ -470,9 +584,8 @@ public class Stream<T> extends Composable<T> {
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
 	 * <p/>
-	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} every time
-	 * a
-	 * value is accepted. But when a {@code batchSize} has been set and {@link #isBatch()} returns true, the accumulated
+	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
+	 * only. But when a {@code batchSize} has been, the accumulated
 	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of
 	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
 	 * a new accumulator.
@@ -485,23 +598,14 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred(1);
 		final Stream<A> stream = d.compose();
+		add(new ReduceAction<T, A>(
+				batchSize,
+				accumulators,
+				fn,
+				stream.getObservable(), stream.getAcceptKey(), getError().getObject()
+		));
 
-		if (isBatch()) {
-			add(new ReduceAction<T, A>(
-					batchSize,
-					accumulators,
-					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-			));
-		} else {
-			add(new ScanAction<T, A>(
-					accumulators,
-					fn,
-					stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-			));
-		}
-
-		return d.compose();
+		return stream;
 	}
 
 	/**
@@ -515,76 +619,79 @@ public class Stream<T> extends Composable<T> {
 		return reduce(fn, (Supplier<A>) null);
 	}
 
+	/**
+	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
+	 * passed to the function's {@link Tuple2} argument. Behave like Reduce but triggers downstream Stream for every
+	 * transformation.
+	 *
+	 * @param fn      the scan function
+	 * @param initial the initial argument to pass to the reduce function
+	 * @param <A>     the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> scan(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
+		return scan(fn, Functions.supplier(initial));
+	}
+
+	/**
+	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
+	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
+	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
+	 * <p/>
+	 * The accumulated value will be published on the returned {@code Stream} every time
+	 * a
+	 * value is accepted.
+	 *
+	 * @param fn           the scan function
+	 * @param accumulators the {@link Supplier} that will provide accumulators
+	 * @param <A>          the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
+		final Deferred<A, Stream<A>> d = createDeferred(1);
+		final Stream<A> stream = d.compose();
+		add(new ScanAction<T, A>(
+				accumulators,
+				fn,
+				stream.getObservable(), stream.getAcceptKey(), getError().getObject()
+		));
+
+		return stream;
+	}
+
+	/**
+	 * Scan the values passing through this {@code Stream} into an object {@code A}.
+	 *
+	 * @param fn  the reduce function
+	 * @param <A> the type of the reduced object
+	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 */
+	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn) {
+		return scan(fn, (Supplier<A>) null);
+	}
+
+
+
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
 		return createDeferred(batchSize);
 	}
 
-	@SuppressWarnings("unchecked")
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred(int batchSize) {
-		return (Deferred<V, C>) createDeferredChildStream(batchSize);
+		return createDeferredChildStream(batchSize);
 	}
 
-	private Deferred<T, Stream<T>> createDeferredChildStream(int batchSize) {
-		Stream<T> stream;
-		if (batchSize > 1) {
-			stream = new BufferStream<T>(null,
-					batchSize,
-					null,
-					this,
-					null,
-					environment);
-		} else {
-			stream = new Stream<T>(null,
-					batchSize,
-					this,
-					environment);
-		}
-		return new Deferred<T, Stream<T>>(stream);
+	BufferAction<T> bufferConsumer(int batchSize) {
+		return new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError());
 	}
 
+	@SuppressWarnings("unchecked")
+	private <V, C extends Composable<V>> Deferred<V, C> createDeferredChildStream(int batchSize) {
+		C stream = (C) new Stream<V>(null,
+				batchSize,
+				this,
+				environment);
 
-	public static class BufferStream<T> extends Stream<T> {
-
-		final BufferAction<T> bufferAction;
-		final Iterable<T>     values;
-
-		public BufferStream(@Nullable Observable observable, int batchSize,
-		                    @Nullable Iterable<T> values,
-		                    @Nullable final Composable<?> parent,
-		                    @Nullable Tuple2<Selector, Object> acceptSelector,
-		                    @Nullable Environment environment) {
-			super(observable, batchSize, parent, acceptSelector, environment);
-			this.bufferAction = new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError().getObject());
-			this.values = values;
-		}
-
-		@Override
-		public String debug() {
-			Composable<?> that = this;
-			while (that.getParent() != null) {
-				that = that.getParent();
-			}
-			if(that == this){
-				return ActionUtils.browseAction(bufferAction);
-			}else{
-				return that.debug();
-			}
-		}
-
-		@Override
-		void notifyValue(Event<T> value) {
-			bufferAction.accept(value);
-		}
-
-		@Override
-		void notifyFlush() {
-			if (values != null) {
-				for (T val : values) {
-					bufferAction.accept(Event.wrap(val));
-				}
-			}
-		}
+		return new Deferred<V, C>(stream);
 	}
-
 }

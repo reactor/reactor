@@ -40,9 +40,9 @@ public abstract class ActionUtils {
 	}
 
 
-	public static String browseReactor(Reactor reactor, Object successKey, Object failureKey) {
+	public static String browseReactor(Reactor reactor, Object successKey, Object failureKey, Object flushKey) {
 		ActionVisitor actionVisitor = new ActionVisitor(reactor, true);
-		actionVisitor.drawReactorConsumers(reactor, successKey, failureKey, 1);
+		actionVisitor.drawReactorConsumers(reactor, successKey, failureKey, flushKey, 1);
 		return actionVisitor.toString();
 	}
 
@@ -60,11 +60,14 @@ public abstract class ActionUtils {
 			this(reactor, false);
 		}
 
-		private ActionVisitor drawReactorConsumers(Reactor reactor, Object successKey, Object failureKey,
+		private ActionVisitor drawReactorConsumers(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
 		                                           int d) {
 
 			if (successKey != null) {
 				loopRegistredActions(reactor.getConsumerRegistry().select(successKey), d, "accept");
+			}
+			if (flushKey != null) {
+				loopRegistredActions(reactor.getConsumerRegistry().select(flushKey), d, "flush");
 			}
 			if (visitFailures && failureKey != null)
 				loopRegistredActions(reactor.getConsumerRegistry().select(failureKey), d, "fail");
@@ -81,7 +84,7 @@ public abstract class ActionUtils {
 			appender.append(action.getClass().getSimpleName().isEmpty() ? action :
 					action
 							.getClass()
-							.getSimpleName());
+							.getSimpleName().replaceAll("Action","")+"["+action+"]");
 
 			if (Action.class.isAssignableFrom(action.getClass())) {
 				Action<?> operation = ((Action) action);
@@ -93,6 +96,7 @@ public abstract class ActionUtils {
 						(Reactor) operation.getObservable(),
 						operation.getSuccessKey(),
 						operation.getFailureKey(),
+						null,
 						d + 1
 				);
 			}

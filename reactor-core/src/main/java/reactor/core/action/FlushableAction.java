@@ -15,21 +15,29 @@
  */
 package reactor.core.action;
 
+import reactor.core.Observable;
+import reactor.event.Event;
+
 /**
- * Component that can be injected with {@link Action}s
- *
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<T> extends Flushable<T>{
+public class FlushableAction<T> extends Action<Void> {
 
-	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
-	 */
-	Pipeline<T> add(Action<T> action);
+	private final Flushable<T> flushable;
 
+	public FlushableAction(Flushable<T> flushable, Observable d, Object failureKey) {
+		super(d, null, failureKey);
+		this.flushable = flushable;
+	}
+
+	@Override
+	public void doAccept(Event<Void> value) {
+		flushable.flush();
+	}
+
+	@Override
+	public String toString() {
+		return " "+flushable.getClass().getSimpleName().replaceAll("Action","")+"["+flushable.toString()+"]";
+	}
 }
