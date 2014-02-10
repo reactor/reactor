@@ -18,6 +18,7 @@ package reactor.core.alloc;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class AllocationTests {
 	}
 
 	@Test
+	@Ignore
 	public void testCustomIteratorThroughput() throws InterruptedException {
 		final int items = 1000;
 		final long timeout = 15000;

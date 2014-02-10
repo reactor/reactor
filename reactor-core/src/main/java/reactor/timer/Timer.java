@@ -9,6 +9,14 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  */
 public interface Timer {
+
+	/**
+	 * Get the resolution of this t{@literal Timer}.
+	 *
+	 * @return the resolution in milliseconds
+	 */
+	long getResolution();
+
 	/**
 	 * Schedule a recurring task. The given {@link reactor.function.Consumer} will be invoked once every N time units
 	 * after the given delay.
@@ -79,11 +87,12 @@ public interface Timer {
 	 *
 	 * @return {@literal this}
 	 */
-	Timer submit(Consumer<Long> consumer);
+	Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer);
 
 	/**
 	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after
 	 * cancellation.
 	 */
 	void cancel();
+
 }
