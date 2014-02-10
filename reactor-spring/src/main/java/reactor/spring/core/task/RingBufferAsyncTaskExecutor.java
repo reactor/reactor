@@ -11,6 +11,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.AbstractLifecycleDispatcher;
 import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.function.Consumer;
+import reactor.timer.Timer;
 import reactor.util.Assert;
 
 /**
@@ -31,7 +32,11 @@ public class RingBufferAsyncTaskExecutor extends AbstractAsyncTaskExecutor imple
 	private RingBufferDispatcher      dispatcher;
 
 	public RingBufferAsyncTaskExecutor(Environment env) {
-		super(env);
+		this(env.getRootTimer());
+	}
+
+	public RingBufferAsyncTaskExecutor(Timer timer) {
+		super(timer);
 	}
 
 	@Override

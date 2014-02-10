@@ -11,6 +11,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.AbstractLifecycleDispatcher;
 import reactor.event.dispatch.WorkQueueDispatcher;
 import reactor.function.Consumer;
+import reactor.timer.Timer;
 
 /**
  * Implementation of an {@link org.springframework.core.task.AsyncTaskExecutor} that is backed by a Reactor {@link
@@ -29,7 +30,11 @@ public class WorkQueueAsyncTaskExecutor extends AbstractAsyncTaskExecutor implem
 	private WorkQueueDispatcher       workQueue;
 
 	public WorkQueueAsyncTaskExecutor(Environment env) {
-		super(env);
+		this(env.getRootTimer());
+	}
+
+	public WorkQueueAsyncTaskExecutor(Timer timer) {
+		super(timer);
 	}
 
 	@Override
