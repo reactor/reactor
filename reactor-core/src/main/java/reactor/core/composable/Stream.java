@@ -682,7 +682,9 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	BufferAction<T> bufferConsumer(int batchSize) {
-		return new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError());
+		BufferAction<T> bufferAction = new BufferAction<T>(batchSize, getObservable(), getAcceptKey(), getError());
+		consumeFlush(bufferAction);
+		return bufferAction;
 	}
 
 	@SuppressWarnings("unchecked")
