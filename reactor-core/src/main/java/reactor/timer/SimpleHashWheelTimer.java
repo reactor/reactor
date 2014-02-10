@@ -19,7 +19,8 @@ import java.util.concurrent.TimeUnit;
  * A hashed wheel timer implementation that uses a {@link reactor.event.registry.Registry} and custom {@link
  * reactor.event.selector.Selector Selectors} to determine when tasks should be executed.
  * <p>
- * A {@code SimpleHashWheelTimer} has two variations for scheduling tasks: {@link #schedule(reactor.function.Consumer, long,
+ * A {@code SimpleHashWheelTimer} has two variations for scheduling tasks: {@link #schedule(reactor.function.Consumer,
+ * long,
  * java.util.concurrent.TimeUnit)} and {@link #schedule(reactor.function.Consumer, long, java.util.concurrent.TimeUnit,
  * long)} which are for scheduling repeating tasks, and {@link #submit(reactor.function.Consumer, long,
  * java.util.concurrent.TimeUnit)} which is for scheduling single-run delayed tasks.
@@ -65,7 +66,8 @@ public class SimpleHashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Create a new {@code SimpleHashWheelTimer} using the given timer resolution. All times will rounded up to the closest
+	 * Create a new {@code SimpleHashWheelTimer} using the given timer resolution. All times will rounded up to the
+	 * closest
 	 * multiple of this resolution.
 	 *
 	 * @param resolution
@@ -109,6 +111,11 @@ public class SimpleHashWheelTimer implements Timer {
 	}
 
 	@Override
+	public long getResolution() {
+		return resolution;
+	}
+
+	@Override
 	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                       long period,
 	                                                       TimeUnit timeUnit,
@@ -141,7 +148,7 @@ public class SimpleHashWheelTimer implements Timer {
 
 	@Override
 	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
-    return submit(consumer, resolution, TimeUnit.MILLISECONDS);
+		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 
