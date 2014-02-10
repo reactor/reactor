@@ -18,45 +18,47 @@ package reactor.core.action;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.selector.Selector;
+import reactor.function.Consumer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class ForEachAction<T> extends Action<Iterable<T>> {
+public class ForEachAction<T> extends Action<Iterable<T>> implements Flushable<T> {
 
-	final private Iterable<T> values;
+	final private Consumer<Iterable<Event<T>>> batchConsumer;
+	final private int                          batchSize;
+	final private Iterable<T>                  defaultValues;
 
-	public ForEachAction(Observable d, Object successKey, Object failureKey) {
-		this(null, d, successKey, failureKey);
+	public ForEachAction(int batchSize, Observable d, Object successKey, Object failureKey) {
+		this(null, batchSize, d, successKey, failureKey);
 	}
 
-	public ForEachAction(Iterable<T> values, Observable d, Object successKey, Object failureKey) {
+
+	public ForEachAction(Iterable<T> defaultValues, int batchSize, Observable d, Object successKey, Object failureKey) {
 		super(d, successKey, failureKey);
-		this.values = values;
-	}
-
-	public ForEachAction<T> attach(Selector flushKey) {
-		getObservable().on(flushKey, new ForEachFlushAction());
-		return this;
+		this.defaultValues = defaultValues;
+		this.batchConsumer = d.batchNotify(successKey);
+		this.batchSize = batchSize > 0 ? batchSize : 256;
 	}
 
 	@Override
 	public void doAccept(Event<Iterable<T>> value) {
-		if(value.getData() != null) {
-			for(T val : value.getData()) {
-				notifyValue(value.copy(val));
+		if (value.getData() != null) {
+			List<Event<T>> evs = new ArrayList<Event<T>>(batchSize);
+			for (T data : value.getData()) {
+				evs.add(value.copy(data));
 			}
+			batchConsumer.accept(evs);
 		}
 	}
 
-	private class ForEachFlushAction extends Action<Void> {
-		public ForEachFlushAction() {
-			super(ForEachAction.this.getObservable(), ForEachAction.this.getSuccessKey());
-		}
-
-		@Override
-		public void doAccept(Event<Void> ev) {
-			if(values != null) { ForEachAction.this.doAccept(ev.copy(values)); }
-		}
+	@Override
+	public Flushable<T> flush() {
+		doAccept(Event.wrap(defaultValues));
+		return this;
 	}
 }

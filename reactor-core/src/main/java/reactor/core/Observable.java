@@ -293,4 +293,30 @@ public interface Observable {
 	 */
 	<T> Consumer<Event<T>> prepare(Object key);
 
+	/**
+	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The
+	 * implementation will take care of reducing the consumer selection to one per batch. The candidate consumers are
+	 * selected with the key {@param key}, possibly on each batch to refresh the result list.
+	 *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 *
+	 * @return a {@link Consumer} to invoke with the {@link Event Events} to publish
+	 */
+	<T> Consumer<Iterable<Event<T>>> batchNotify(Object key);
+
+	/**
+	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The
+	 * implementation will take care of reducing the consumer selection to one per batch. The candidate consumers are
+	 * selected with the key {@param key}, possibly on each batch to refresh the result list.
+	 *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param consumer
+	 * 		The consumer to trigger after batch completion
+	 *
+	 * @return a {@link Consumer} to invoke with the {@link Event Events} to publish
+	 */
+	<T> Consumer<Iterable<Event<T>>> batchNotify(Object key, Consumer<Void> consumer);
+
 }

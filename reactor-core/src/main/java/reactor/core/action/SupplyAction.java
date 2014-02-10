@@ -15,21 +15,32 @@
  */
 package reactor.core.action;
 
+import reactor.core.Observable;
+import reactor.event.Event;
+import reactor.function.Consumer;
+import reactor.function.Supplier;
+
 /**
- * Component that can be injected with {@link Action}s
- *
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<T> extends Flushable<T>{
+public class SupplyAction<T> extends Action<Void> implements Flushable<T> {
 
-	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
-	 */
-	Pipeline<T> add(Action<T> action);
+	private final Supplier<T> supplier;
 
+	public SupplyAction(Supplier<T> supplier, Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
+		this.supplier = supplier;
+	}
+
+	@Override
+	public void doAccept(Event<Void> value) {
+		notifyValue(Event.wrap(supplier.get()));
+	}
+
+	@Override
+	public Flushable<T> flush() {
+		doAccept(null);
+		return this;
+	}
 }

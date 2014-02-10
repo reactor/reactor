@@ -20,28 +20,27 @@ import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
+import java.util.Arrays;
+
 /**
  * @author Stephane Maldini
  */
 public abstract class ActionUtils {
 
-
-	public static String browseReactor(Reactor reactor, Object successKey, Object errorKey) {
-		return browseReactor(reactor, successKey, errorKey, null);
-	}
-
-	public static String browseReactor(Reactor reactor, Object successKey) {
-		return browseReactor(reactor, successKey, null, null);
-	}
-
 	public static String browseReactor(Reactor reactor) {
 		ActionVisitor actionVisitor = new ActionVisitor(reactor, true);
-		actionVisitor.loopActions(reactor.getConsumerRegistry(), 1, "accept");
+		actionVisitor.loopRegistredActions(reactor.getConsumerRegistry(), 1, "accept");
 		return actionVisitor.toString();
 	}
 
-	public static String browseReactor(Reactor reactor, Object successKey, Object failureKey,
-	                                   Object flushKey) {
+	public static String browseAction(Action action) {
+		ActionVisitor actionVisitor = new ActionVisitor((Reactor) action.getObservable(), true);
+		actionVisitor.parseAction(action, 0, "accept");
+		return actionVisitor.toString();
+	}
+
+
+	public static String browseReactor(Reactor reactor, Object successKey, Object failureKey, Object flushKey) {
 		ActionVisitor actionVisitor = new ActionVisitor(reactor, true);
 		actionVisitor.drawReactorConsumers(reactor, successKey, failureKey, flushKey, 1);
 		return actionVisitor.toString();
@@ -62,50 +61,51 @@ public abstract class ActionUtils {
 		}
 
 		private ActionVisitor drawReactorConsumers(Reactor reactor, Object successKey, Object failureKey, Object flushKey,
-		                                              int d) {
+		                                           int d) {
 
 			if (successKey != null) {
-				loopActions(reactor.getConsumerRegistry().select(successKey), d, "accept");
+				loopRegistredActions(reactor.getConsumerRegistry().select(successKey), d, "accept");
 			}
-
 			if (flushKey != null) {
-				loopActions(reactor.getConsumerRegistry().select(flushKey), d, "flush");
+				loopRegistredActions(reactor.getConsumerRegistry().select(flushKey), d, "flush");
 			}
-
 			if (visitFailures && failureKey != null)
-				loopActions(reactor.getConsumerRegistry().select(failureKey), d, "fail");
+				loopRegistredActions(reactor.getConsumerRegistry().select(failureKey), d, "fail");
 
 			return this;
 		}
 
-		private void loopActions(Iterable<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
+		private void parseAction(Object action, int d, String marker) {
+			appender.append("\n");
+			for (int i = 0; i < d; i++)
+				appender.append("|   ");
+			appender.append("|____" + marker + ":");
+
+			appender.append(action.getClass().getSimpleName().isEmpty() ? action :
+					action
+							.getClass()
+							.getSimpleName().replaceAll("Action","")+"["+action+"]");
+
+			if (Action.class.isAssignableFrom(action.getClass())) {
+				Action<?> operation = ((Action) action);
+
+				renderBatch(operation, d);
+				renderFilter(operation, d);
+
+				drawReactorConsumers(
+						(Reactor) operation.getObservable(),
+						operation.getSuccessKey(),
+						operation.getFailureKey(),
+						null,
+						d + 1
+				);
+			}
+		}
+
+		private void loopRegistredActions(Iterable<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
 		                         String marker) {
 			for (Registration<?> registration : operations) {
-
-				appender.append("\n");
-				for (int i = 0; i < d; i++)
-					appender.append("|   ");
-				appender.append("|____" + marker + ":");
-
-				appender.append(registration.getObject().getClass().getSimpleName().isEmpty() ? registration.getObject() :
-						registration.getObject()
-								.getClass()
-								.getSimpleName());
-
-				if (Action.class.isAssignableFrom(registration.getObject().getClass())) {
-					Action<?> operation = ((Action) registration.getObject());
-
-					renderBatch(operation, d);
-					renderFilter(operation, d);
-
-					drawReactorConsumers(
-							(Reactor) operation.getObservable(),
-							operation.getSuccessKey(),
-							operation.getFailureKey(),
-							null,
-							d + 1
-					);
-				}
+				parseAction(registration.getObject(), d, marker);
 			}
 		}
 
@@ -114,9 +114,9 @@ public abstract class ActionUtils {
 				FilterAction operation = (FilterAction) consumer;
 
 				if (operation.getElseObservable() != null) {
-					loopActions(((Reactor)operation.getElseObservable()).getConsumerRegistry()
-					                                                    .select(operation.getElseSuccess()),
-					            d + 1, "else");
+					loopRegistredActions(((Reactor) operation.getElseObservable()).getConsumerRegistry()
+							.select(operation.getElseSuccess()),
+							d + 1, "else");
 				}
 			}
 		}
@@ -129,10 +129,10 @@ public abstract class ActionUtils {
 				appender.append("|errors:" + operation.getErrorCount());
 				appender.append("|batchSize:" + operation.getBatchSize());
 
-				loopActions(((Reactor)operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
-				            d + 1, "first");
-				loopActions(((Reactor)operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
-				            d + 1, "flush");
+				loopRegistredActions(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
+						d + 1, "first");
+				loopRegistredActions(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),
+						d + 1, "flush");
 			}
 		}
 

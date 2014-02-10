@@ -16,9 +16,11 @@
 
 package reactor.core.composable;
 
+import reactor.core.action.BufferAction;
 import reactor.event.Event;
 import reactor.event.support.CallbackEvent;
 import reactor.function.Consumer;
+import reactor.util.Assert;
 
 /**
  * A Deferred is used to provide a separate between supplying values and consuming values.
@@ -47,8 +49,7 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 * @param composable The composable that will provide access to values
 	 */
 	public Deferred(C composable) {
-		this.head = composable;
-		this.tail = composable;
+		this(composable, composable);
 	}
 	/**
 	 * Creates a new Deferred using decoupled given head and tail {@link Composable}
@@ -79,8 +80,34 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 */
 	@Override
 	public void accept(T value) {
-		head.notifyValue(Event.wrap(value));
+		acceptEvent(Event.wrap(value));
 	}
+
+
+	/**
+	 * Return a {@link reactor.function.Consumer} that accepts a sequence of events  before
+	 * notifying the Composable whom must be a {@link Stream}
+	 *
+	 * @return a batch consumer ready to accept sequences
+	 */
+	public BufferAction<T> batcher() {
+		return batcher(-1);
+	}
+
+	/**
+	 * Return a {@link reactor.function.Consumer} that accepts a sequence of events  before
+	 * notifying the Composable whom must be a {@link Stream}
+	 *
+	 * @param batchSize the explicit batch size to use
+	 *
+	 * @return a batch consumer ready to accept sequences
+	 */
+	@SuppressWarnings("unchecked")
+	public BufferAction<T> batcher(int batchSize) {
+		Assert.isTrue(Stream.class.isAssignableFrom(head.getClass()), "The deferred Composable must be of type Stream");
+		return ((Stream<T>)head).bufferConsumer(batchSize);
+	}
+
 	/**
 	 * Accepts the given {@code value} such that it can be consumed by the underlying
 	 * {@code Composable}.
@@ -89,17 +116,6 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 */
 	public void acceptEvent(Event<T> value) {
 		head.notifyValue(value);
-	}
-
-	/**
-	 * Accepts the given {@code value} such that it can be consumed by the underlying
-	 * {@code Composable}.
-	 *
-	 * @param value The value to accept
-	 * @param callback the callback
-	 */
-	public void accept(T value, Consumer<Object> callback) {
-		head.notifyValue(new CallbackEvent<T>(value, callback));
 	}
 
 	/**

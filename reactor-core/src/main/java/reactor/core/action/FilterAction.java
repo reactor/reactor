@@ -27,10 +27,6 @@ public class FilterAction<T> extends Action<T> {
 	private final Observable   elseObservable;
 	private final Object       elseSuccess;
 
-	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey) {
-		this(p, d, successKey, failureKey, null, null);
-	}
-
 	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey,
 	                    Observable elseObservable, Object elseSuccess
 	) {

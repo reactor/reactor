@@ -25,7 +25,7 @@ import reactor.tuple.Tuple2;
 /**
  * @author Stephane Maldini
  */
-public class ReduceAction<T, A> extends BatchAction<T> {
+public class ReduceAction<T, A> extends BatchAction<T> implements Flushable<T> {
 	private final    Supplier<A>               accumulators;
 	private final    Function<Tuple2<T, A>, A> fn;
 	private volatile A                         acc;
@@ -47,12 +47,18 @@ public class ReduceAction<T, A> extends BatchAction<T> {
 
 	@Override
 	protected void doFlush(Event<T> ev) {
-		notifyValue(ev.copy(acc));
+		if (acc != null) {
+			notifyValue(ev.copy(acc));
+			acc = null;
+		}
 	}
 
 	@Override
-	protected void doFirst(Event<T> event) {
-		acc = null;
+	public Flushable<T> flush() {
+		if (acc != null) {
+			notifyValue(Event.wrap(acc));
+		}
+		return this;
 	}
 
 }

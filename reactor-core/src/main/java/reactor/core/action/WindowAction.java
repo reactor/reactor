@@ -34,7 +34,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author Stephane Maldini
  */
-public class WindowAction<T> extends Action<T> implements Pausable {
+public class WindowAction<T> extends Action<T> implements Pausable, Flushable<T> {
 
 	private final ReentrantLock lock            = new ReentrantLock();
 	private final List<T>       collectedWindow = new ArrayList<T>();
@@ -93,6 +93,12 @@ public class WindowAction<T> extends Action<T> implements Pausable {
 	@Override
 	public Pausable resume() {
 		timerRegistration.resume();
+		return this;
+	}
+
+	@Override
+	public Flushable<T> flush() {
+		doWindow(-1l);
 		return this;
 	}
 }

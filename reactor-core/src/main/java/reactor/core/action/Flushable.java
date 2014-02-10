@@ -15,21 +15,21 @@
  */
 package reactor.core.action;
 
+import reactor.event.Event;
+
 /**
- * Component that can be injected with {@link Action}s
+ * Component that can be flushed
  *
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<T> extends Flushable<T>{
+public interface Flushable<T> {
+
+	static final Event<Void> FLUSH_EVENT = new Event<Void>((Void)null);
 
 	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
+	 * Trigger flush on this component, generally draining any collected values.
 	 */
-	Pipeline<T> add(Action<T> action);
+	Flushable<T> flush();
 
 }

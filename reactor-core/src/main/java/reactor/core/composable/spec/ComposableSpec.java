@@ -24,8 +24,7 @@ import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
 /**
- * A helper class for specifying a bounded {@link reactor.core.composable.Stream}. {@link #each} must be called to
- * provide the stream with its values.
+ * A helper class for specifying a bounded {@link reactor.core.composable.Composable}.
  *
  * @param <SPEC>   The ComposableSpec subclass
  * @param <TARGET> The type that this spec will create
@@ -36,6 +35,7 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 
 	private Observable               observable;
 	private Tuple2<Selector, Object> acceptSelector;
+
 
 	/**
 	 * Configures the Composable to reuse an explicit selector/key rather than the internal anonymous generated one.

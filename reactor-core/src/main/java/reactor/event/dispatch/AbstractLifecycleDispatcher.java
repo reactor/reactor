@@ -93,29 +93,35 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                                          Consumer<E> completionConsumer) {
 		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
-		Task task;
-		boolean isInContext = isInContext();
-		if(isInContext) {
-			task = allocateRecursiveTask();
-		} else {
-			task = allocateTask();
-		}
+		try {
+			Task task;
+			boolean isInContext = isInContext();
+			if (isInContext) {
+				task = allocateRecursiveTask();
+			} else {
+				task = allocateTask();
+			}
 
-		task.setKey(key)
-		    .setEvent(event)
-		    .setConsumerRegistry(consumerRegistry)
-		    .setErrorConsumer(errorConsumer)
-		    .setEventRouter(eventRouter)
-		    .setCompletionConsumer(completionConsumer);
+			task.setKey(key)
+					.setEvent(event)
+					.setConsumerRegistry(consumerRegistry)
+					.setErrorConsumer(errorConsumer)
+					.setEventRouter(eventRouter)
+					.setCompletionConsumer(completionConsumer);
 
-		if(isInContext) {
-			addToTailRecursionPile(task);
-		} else {
-			execute(task);
+			if (isInContext) {
+				addToTailRecursionPile(task);
+			} else {
+				execute(task);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 
-	protected void addToTailRecursionPile(Task task) {}
+	protected void addToTailRecursionPile(Task task) {
+	}
 
 	protected abstract Task allocateRecursiveTask();
 
@@ -124,7 +130,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	protected abstract void execute(Task task);
 
 	protected static void route(Task task) {
-		if(null == task.eventRouter) {
+		if (null == task.eventRouter) {
 			return;
 		}
 		try {

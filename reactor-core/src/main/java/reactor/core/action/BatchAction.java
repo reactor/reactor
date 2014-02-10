@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author Stephane Maldini
  */
-public class BatchAction<T> extends Action<T> {
+public class BatchAction<T> extends Action<T>{
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
@@ -39,14 +39,6 @@ public class BatchAction<T> extends Action<T> {
 	                   Object successKey,
 	                   Object failureKey) {
 		this(batchSize, d, successKey, failureKey, null, null);
-	}
-
-	public BatchAction(int batchSize,
-	                   Observable d,
-	                   Object successKey,
-	                   Object failureKey,
-	                   Object flushKey) {
-		this(batchSize, d, successKey, failureKey, flushKey, null);
 	}
 
 	public BatchAction(int batchSize,
@@ -70,21 +62,11 @@ public class BatchAction<T> extends Action<T> {
 	}
 
 	public long getErrorCount() {
-		lock.lock();
-		try {
 			return errorCount;
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	public long getAcceptCount() {
-		lock.lock();
-		try {
 			return acceptCount;
-		} finally {
-			lock.unlock();
-		}
 	}
 
 	public int getBatchSize() {
@@ -111,9 +93,15 @@ public class BatchAction<T> extends Action<T> {
 
 	@Override
 	public void doAccept(Event<T> value) {
+		if(batchSize == -1){
+			doNext(value);
+			return;
+		}
+
 		lock.lock();
+		long accepted;
 		try {
-			long accepted = (++acceptCount) % batchSize;
+			accepted = (++acceptCount) % batchSize;
 
 			if (accepted == 1) {
 				doFirst(value);
@@ -124,10 +112,10 @@ public class BatchAction<T> extends Action<T> {
 			if (accepted == 0) {
 				doFlush(value);
 			}
-
 		} finally {
 			lock.unlock();
 		}
+
 	}
 
 	@Override
@@ -141,4 +129,8 @@ public class BatchAction<T> extends Action<T> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return super.toString()+"  % size:"+batchSize+" %  accepted:"+acceptCount+" % errors:"+errorCount;
+	}
 }

@@ -17,9 +17,11 @@ package reactor.core.composable.spec;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
+import reactor.core.action.BufferAction;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
+import reactor.event.Event;
 import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
@@ -27,35 +29,18 @@ import reactor.tuple.Tuple2;
  * A helper class for specifying a {@link Deferred} {@link Stream}.
  *
  * @param <T> The type of values that the stream will contain
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
 
-	private Composable<?> parent;
 	private int batchSize = -1;
-	private Iterable<T> values;
-
-	/**
-	 * Configures the stream to have the given {@code parent}. The default configuration is
-	 * for the stream to have no parent. The stream will consume errors from its parent.
-	 *
-	 * @param parent The parent of the stream.
-	 *
-	 * @return {@code this}
-	 */
-	public DeferredStreamSpec<T> link(Composable<?> parent) {
-		this.parent = parent;
-		return this;
-	}
 
 	/**
 	 * Configures the stream to have the given {@code batchSize}. A value of {@code -1}, which
 	 * is the default configuration, configures the stream to not be batched.
 	 *
 	 * @param batchSize The batch size of the stream
-	 *
 	 * @return {@code this}
 	 */
 	public DeferredStreamSpec<T> batchSize(int batchSize) {
@@ -63,23 +48,30 @@ public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSp
 		return this;
 	}
 
-	/**
-	 * Configures the stream to contain the given initial {@code values}.
-	 *
-	 * @param values The stream's initial values
-	 *
-	 * @return {@code this}
-	 */
-	public DeferredStreamSpec<T> each(Iterable<T> values) {
-		this.values = values;
-		return this;
-	}
-
 	@Override
 	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
 	                                                  Tuple2<Selector, Object> accept) {
-		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept, env);
-		return new Deferred<T, Stream<T>>(stream);
+		Stream<T> stream =
+				new Stream<T>(observable, batchSize, null, accept, env);
+		if (batchSize > 1) {
+			return new BatchStreamDeferred<T>(stream, batchSize);
+		} else {
+			return new Deferred<T, Stream<T>>(stream);
+		}
+
 	}
 
+	private static class BatchStreamDeferred<T> extends Deferred<T, Stream<T>> {
+		private final BufferAction<T> consumer;
+
+		public BatchStreamDeferred(Stream<T> stream, int batchSize) {
+			super(stream);
+			consumer = batcher(batchSize);
+		}
+
+		@Override
+		public void acceptEvent(Event<T> value) {
+			consumer.accept(value);
+		}
+	}
 }

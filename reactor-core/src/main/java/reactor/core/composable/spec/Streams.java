@@ -23,6 +23,7 @@ import reactor.core.composable.Stream;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
+import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
@@ -94,6 +95,25 @@ public abstract class Streams {
 		return new DeferredStreamSpec<T>();
 	}
 
+
+	/**
+	 * Attach a Stream to the {@link Observable} with the specified {@link Selector} and key.
+	 *
+	 * @param observable
+	 * 		the {@link Observable} to observe
+	 * @param acceptSelector
+	 * 		the {@link Selector}/{@literal Object} tuple to listen to
+	 * @param key
+	 * 		the key to publish to
+	 * @param <T>
+	 * 		the type of values passing through the {@literal Stream}
+	 *
+	 * @return a new {@link DeferredStreamSpec}
+	 */
+	public static <T> Stream<T> on(Observable observable, Selector acceptSelector, Object key) {
+		return new StreamSpec<T>().observable(observable).acceptSelector(Tuple2.of(acceptSelector,key)).get();
+	}
+
 	/**
 	 * Attach a Stream to the {@link Observable} with the specified {@link Selector}.
 	 *
@@ -107,7 +127,7 @@ public abstract class Streams {
 	 * @return a new {@link DeferredStreamSpec}
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector acceptSelector) {
-		return new StreamSpec<T>().observable(observable).acceptSelector(Tuple2.of(acceptSelector,null)).get();
+		return on(observable, acceptSelector, acceptSelector.getObject());
 	}
 
 	/**
@@ -125,6 +145,23 @@ public abstract class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T> StreamSpec<T> defer(T value) {
 		return  new StreamSpec<T>().each(Arrays.asList(value)).batchSize(1);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will implicitly {@link Deferred#accept(Object)}
+	 * the supplied value whenever the {@link reactor.core.composable.Stream#flush()} function
+	 * is invoked.
+	 *
+	 * @param value
+	 * 		The value to {@code accept()}
+	 * @param <T>
+	 * 		type of the value
+	 *
+	 * @return a {@link DeferredStreamSpec} based on the given value
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> StreamSpec<T> defer(Supplier<T> value) {
+		return  new StreamSpec<T>().generate(value).batchSize(1);
 	}
 
 	/**

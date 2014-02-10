@@ -86,4 +86,5 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   private int adjustPointer(int pointer) {
     return pointer % collectedWindow.length;
   }
+
 }
