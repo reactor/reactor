@@ -40,13 +40,16 @@ import java.util.concurrent.TimeUnit;
  * {@link #first()}, {@link #last()}, and {@link #reduce(reactor.function.Function, Object)}
  * return new {@code Stream Streams} whose values are the result of transformation functions,
  * filtering, and the like.
- * <p/>
+ * <p>
  * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
  * create a {@link DeferredStreamSpec} and configure it with the appropriate {@link Environment},
  * {@link Dispatcher}, and other settings, then call {@link Deferred#compose()}, which will
  * return a {@code Stream} that handles the values passed into the {@link Deferred}.
+ * </p>
  *
- * @param <T> the type of the values in the stream
+ * @param <T>
+ * 		the type of the values in the stream
+ *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -65,18 +68,19 @@ public class Stream<T> extends Composable<T> {
 	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
 	 * </p>
 	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
-	 * to those handlers.
-	 * The stream will accept errors from the given {@code parent}.
+	 * to those handlers. The stream will accept errors from the given {@code parent}.
 	 *
-	 * @param observable The observable used to drive event handlers
-	 * @param batchSize  The size of the batches, or {@code -1} for no batching
-	 * @param parent     The stream's parent. May be {@code null}
+	 * @param observable
+	 * 		The observable used to drive event handlers
+	 * @param batchSize
+	 * 		The size of the batches, or {@code -1} for no batching
+	 * @param parent
+	 * 		The stream's parent. May be {@code null}
 	 */
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
 	              @Nullable final Composable<?> parent,
-	              @Nullable final Environment environment
-	) {
+	              @Nullable final Environment environment) {
 		this(observable, batchSize, parent, null, environment);
 	}
 
@@ -84,18 +88,21 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new Stream that will use the {@link Observable} to pass its values to registered
 	 * handlers.
 	 * <p>
-	 * The stream will batch values into batches of the given
-	 * {@code batchSize}, affecting the values that are passed to the {@link #first()} and {@link
-	 * #last()} substreams. A size of {@code -1} indicates that the stream should not be batched.
+	 * The stream will batch values into batches of the given {@code batchSize}, affecting the values that are passed to
+	 * the {@link #first()} and {@link #last()} substreams. A size of {@code -1} indicates that the stream should not be
+	 * batched.
 	 * </p>
 	 * Once all event handler have been registered, {@link #flush} must be called to pass the initial values
-	 * to those handlers.
-	 * The stream will accept errors from the given {@code parent}.
+	 * to those handlers. The stream will accept errors from the given {@code parent}.
 	 *
-	 * @param observable     The observable used to drive event handlers
-	 * @param batchSize      The size of the batches, or {@code -1} for no batching
-	 * @param parent         The stream's parent. May be {@code null}
-	 * @param acceptSelector The tuple Selector/Key to accept values on this observable. May be {@code null}
+	 * @param observable
+	 * 		The observable used to drive event handlers
+	 * @param batchSize
+	 * 		The size of the batches, or {@code -1} for no batching
+	 * @param parent
+	 * 		The stream's parent. May be {@code null}
+	 * @param acceptSelector
+	 * 		The tuple Selector/Key to accept values on this observable. May be {@code null}
 	 */
 	public Stream(@Nullable final Observable observable,
 	              int batchSize,
@@ -108,57 +115,57 @@ public class Stream<T> extends Composable<T> {
 
 	@Override
 	public Stream<T> consume(@Nonnull Consumer<T> consumer) {
-		return (Stream<T>) super.consume(consumer);
+		return (Stream<T>)super.consume(consumer);
 	}
 
 	@Override
 	public Stream<T> connect(@Nonnull Composable<T> consumer) {
-		return (Stream<T>) super.connect(consumer);
+		return (Stream<T>)super.connect(consumer);
 	}
 
 	@Override
 	public Stream<T> consume(@Nonnull Object key, @Nonnull Observable observable) {
-		return (Stream<T>) super.consume(key, observable);
+		return (Stream<T>)super.consume(key, observable);
 	}
 
 	@Override
 	public Stream<T> flush() {
-		return (Stream<T>) super.flush();
+		return (Stream<T>)super.flush();
 	}
 
 	@Override
 	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
-		return (Stream<T>) super.when(exceptionType, onError);
+		return (Stream<T>)super.when(exceptionType, onError);
 	}
 
 	@Override
 	public <V> Stream<V> map(@Nonnull Function<T, V> fn) {
-		return (Stream<V>) super.map(fn);
+		return (Stream<V>)super.map(fn);
 	}
 
 	@Override
 	public <V, C extends Composable<V>> Stream<V> mapMany(@Nonnull Function<T, C> fn) {
-		return (Stream<V>) super.mapMany(fn);
+		return (Stream<V>)super.mapMany(fn);
 	}
 
 	@Override
 	public Stream<T> filter(@Nonnull Function<T, Boolean> p) {
-		return (Stream<T>) super.filter(p);
+		return (Stream<T>)super.filter(p);
 	}
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p) {
-		return (Stream<T>) super.filter(p);
+		return (Stream<T>)super.filter(p);
 	}
 
 	@Override
 	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> composable) {
-		return (Stream<T>) super.filter(p, composable);
+		return (Stream<T>)super.filter(p, composable);
 	}
 
 	@Override
 	public Stream<T> consumeFlush(@Nonnull Flushable<T> consumer) {
-		return (Stream<T>) super.consumeFlush(consumer);
+		return (Stream<T>)super.consumeFlush(consumer);
 	}
 
 
@@ -166,17 +173,17 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new {@code Stream} whose values will be each iterated item from {@param iterable}
 	 * Every time flush is triggered,  {@param iterable} is drained.
 	 *
-	 * @param iterable the iterable to drain
+	 * @param iterable
+	 * 		the iterable to drain
+	 *
 	 * @return a new {@code Stream} whose values are the iterated one on flush
 	 */
 	public Stream<T> propagate(Iterable<T> iterable) {
-		consumeFlush(
-				new ForEachAction<T>(
-						iterable,
-						batchSize,
-						getObservable(),
-						getAcceptKey(),
-						getError().getObject()));
+		consumeFlush(new ForEachAction<T>(iterable,
+		                                  batchSize,
+		                                  getObservable(),
+		                                  getAcceptKey(),
+		                                  getError().getObject()));
 		return this;
 	}
 
@@ -184,23 +191,32 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new {@code Stream} whose values will be generated from {@param supplier}.
 	 * Every time flush is triggered, {@param supplier} is called.
 	 *
-	 * @param supplier the supplier to drain
+	 * @param supplier
+	 * 		the supplier to drain
+	 *
 	 * @return a new {@code Stream} whose values are generated on each flush
 	 */
 	public Stream<T> propagate(Supplier<T> supplier) {
-		consumeFlush(
-				new SupplyAction<T>(supplier, getObservable(), getAcceptKey(), getError().getObject()));
+		consumeFlush(new SupplyAction<T>(supplier,
+		                                 getObservable(),
+		                                 getAcceptKey(),
+		                                 getError().getObject()));
 		return this;
 	}
 
 	/**
 	 * Consume values and trigger flush when {@param predicate} matches.
 	 *
-	 * @param predicate the test returning true to trigger flush
+	 * @param predicate
+	 * 		the test returning true to trigger flush
+	 *
 	 * @return the current Stream
 	 */
 	public Stream<T> flushWhen(Predicate<T> predicate) {
-		add(new WhenAction<T>(predicate, getObservable(), getFlush().getObject(), getError().getObject()));
+		add(new WhenAction<T>(predicate,
+		                      getObservable(),
+		                      getFlush().getObject(),
+		                      getError().getObject()));
 		return this;
 	}
 
@@ -224,14 +240,20 @@ public class Stream<T> extends Composable<T> {
 	 * <p/>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
 	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), null,
-				d.compose().getAcceptKey()));
+		add(new BatchAction<T>(batchSize,
+		                       getObservable(),
+		                       null,
+		                       getError().getObject(),
+		                       null,
+		                       d.compose().getAcceptKey()));
 		return d.compose();
 	}
 
@@ -247,14 +269,20 @@ public class Stream<T> extends Composable<T> {
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public Stream<T> last(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Deferred<T, Stream<T>> d = createDeferredChildStream(batchSize);
-		add(new BatchAction<T>(batchSize, getObservable(), null, getError().getObject(), d.compose().getAcceptKey(),
-				null));
+		add(new BatchAction<T>(batchSize,
+		                       getObservable(),
+		                       null,
+		                       getError().getObject(),
+		                       d.compose().getAcceptKey(),
+		                       null));
 		return d.compose();
 	}
 
@@ -275,13 +303,17 @@ public class Stream<T> extends Composable<T> {
 	 * <p/>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
 	public Stream<T> split(int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
-		getObservable().on(getAcceptSelector(),
-				new ForEachAction<T>(batchSize, getObservable(), d.compose().getAcceptKey(), getError().getObject()));
+		getObservable().on(getAcceptSelector(), new ForEachAction<T>(batchSize,
+		                                                             getObservable(),
+		                                                             d.compose().getAcceptKey(),
+		                                                             getError().getObject()));
 		return d.compose();
 	}
 
@@ -290,6 +322,7 @@ public class Stream<T> extends Composable<T> {
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
 	 * @return the new {@link Tap}
+	 *
 	 * @see Supplier
 	 */
 	public Tap<T> tap() {
@@ -314,15 +347,17 @@ public class Stream<T> extends Composable<T> {
 	 * batchSize}.
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 */
 	public Stream<T> buffer(int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
 		add(new BufferAction<T>(batchSize,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject()));
+		                        d.compose().getObservable(),
+		                        d.compose().getAcceptKey(),
+		                        getError().getObject()));
 		return d.compose();
 	}
 
@@ -342,24 +377,23 @@ public class Stream<T> extends Composable<T> {
 	 * time {@code
 	 * batchSize} has been reached. All errors are also captured until batchSize or flush is called.
 	 *
-	 * @param batchSize the collected size
+	 * @param batchSize
+	 * 		the collected size
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> bufferWithErrors(int batchSize) {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
-		add(new BufferAction<T>(
-				batchSize,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject()));
+		add(new BufferAction<T>(batchSize,
+		                        d.compose().getObservable(),
+		                        d.compose().getAcceptKey(),
+		                        getError().getObject()));
 
-		getObservable().on(getError(), new BufferAction<Throwable>(
-				batchSize,
-				d.compose().getObservable(),
-				d.compose().getError(),
-				null
-		));
+		getObservable().on(getError(), new BufferAction<Throwable>(batchSize,
+		                                                           d.compose().getObservable(),
+		                                                           d.compose().getError(),
+		                                                           null));
 
 		return d.compose();
 	}
@@ -378,17 +412,18 @@ public class Stream<T> extends Composable<T> {
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * batchSize} has been reached.
 	 *
-	 * @param batchSize the collected size
+	 * @param batchSize
+	 * 		the collected size
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collect(int batchSize) {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
-		add(new CollectAction<T>(
-				batchSize,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject()));
+		add(new CollectAction<T>(batchSize,
+		                         d.compose().getObservable(),
+		                         d.compose().getAcceptKey(),
+		                         getError().getObject()));
 
 		return d.compose();
 	}
@@ -397,8 +432,11 @@ public class Stream<T> extends Composable<T> {
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * batchSize} or {@param timeout} has been reached. Flush also releases the current collected items.
 	 *
-	 * @param batchSize the collected size
-	 * @param timeout   the collect timeout in milliseconds
+	 * @param batchSize
+	 * 		the collected size
+	 * @param timeout
+	 * 		the collect timeout in milliseconds
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout) {
@@ -410,22 +448,24 @@ public class Stream<T> extends Composable<T> {
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * batchSize} or {@param timeout} has been reached. Flush also releases the current collected items.
 	 *
-	 * @param batchSize the collected size
-	 * @param timeout   the collect timeout in milliseconds
-	 * @param timer     Timer to use for observing timeout
+	 * @param batchSize
+	 * 		the collected size
+	 * @param timeout
+	 * 		the collect timeout in milliseconds
+	 * @param timer
+	 * 		Timer to use for observing timeout
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout, Timer timer) {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
-		add(new CollectWithTimeoutAction<T>(
-				batchSize,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject(),
-				timer,
-				timeout
-		));
+		add(new CollectWithTimeoutAction<T>(batchSize,
+		                                    d.compose().getObservable(),
+		                                    d.compose().getAcceptKey(),
+		                                    getError().getObject(),
+		                                    timer,
+		                                    timeout));
 
 		return d.compose();
 	}
@@ -435,7 +475,9 @@ public class Stream<T> extends Composable<T> {
 	 * time from the {@param period} in milliseconds. The window runs on a timer from the stream {@link
 	 * this#environment}.
 	 *
-	 * @param period the time period when each window close and flush the attached consumer
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> window(int period) {
@@ -448,8 +490,11 @@ public class Stream<T> extends Composable<T> {
 	 * this#environment}. After accepting {@param backlog} of items, every old item will be dropped. Resulting {@link
 	 * List} will be at most {@param backlog} items long.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 * @param backlog maximum amount of items to keep
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param backlog
+	 * 		maximum amount of items to keep
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> movingWindow(int period, int backlog) {
@@ -461,8 +506,11 @@ public class Stream<T> extends Composable<T> {
 	 * time from the {@param period} and a {@param timeUnit}. The window
 	 * runs on a timer from the stream {@link this#environment}.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
@@ -473,9 +521,13 @@ public class Stream<T> extends Composable<T> {
 	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
 	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit}.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param backlog  maximum amount of items to keep
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 * @param backlog
+	 * 		maximum amount of items to keep
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
@@ -487,9 +539,13 @@ public class Stream<T> extends Composable<T> {
 	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
 	 * runs on a timer from the stream {@link this#environment}.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 * @param delay
+	 * 		the initial delay in milliseconds
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
@@ -499,13 +555,19 @@ public class Stream<T> extends Composable<T> {
 
 	/**
 	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param
+	 * delay}
 	 * in milliseconds.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param backlog  maximum amount of items to keep
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 * @param delay
+	 * 		the initial delay in milliseconds
+	 * @param backlog
+	 * 		maximum amount of items to keep
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
@@ -518,50 +580,58 @@ public class Stream<T> extends Composable<T> {
 	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
 	 * runs on a supplied {@param timer}.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param timer    the reactor timer to run the window on
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 * @param delay
+	 * 		the initial delay in milliseconds
+	 * @param timer
+	 * 		the reactor timer to run the window on
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
-		add(new WindowAction<T>(
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject(),
-				timer,
-				period, timeUnit, delay
-		));
+		add(new WindowAction<T>(d.compose().getObservable(),
+		                        d.compose().getAcceptKey(),
+		                        getError().getObject(),
+		                        timer,
+		                        period, timeUnit, delay));
 
 		return d.compose();
 	}
 
 	/**
 	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param delay}
+	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param
+	 * delay}
 	 * in milliseconds.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param backlog  maximum amount of items to keep
-	 * @param timer    the reactor timer to run the window on
+	 * @param period
+	 * 		the time period when each window close and flush the attached consumer
+	 * @param timeUnit
+	 * 		the time unit used for the period
+	 * @param delay
+	 * 		the initial delay in milliseconds
+	 * @param backlog
+	 * 		maximum amount of items to keep
+	 * @param timer
+	 * 		the reactor timer to run the window on
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
 
-		add(new MovingWindowAction<T>(
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				getError().getObject(),
-				timer,
-				period, timeUnit, delay, backlog
-		));
+		add(new MovingWindowAction<T>(d.compose().getObservable(),
+		                              d.compose().getAcceptKey(),
+		                              getError().getObject(),
+		                              timer,
+		                              period, timeUnit, delay, backlog));
 
 		return d.compose();
 	}
@@ -570,9 +640,13 @@ public class Stream<T> extends Composable<T> {
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
 	 * passed to the function's {@link Tuple2} argument.
 	 *
-	 * @param fn      the reduce function
-	 * @param initial the initial argument to pass to the reduce function
-	 * @param <A>     the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param initial
+	 * 		the initial argument to pass to the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
@@ -590,23 +664,28 @@ public class Stream<T> extends Composable<T> {
 	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
 	 * a new accumulator.
 	 *
-	 * @param fn           the reduce function
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param batchSize the batch size to use
-	 * @param <A>          the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param accumulators
+	 * 		the {@link Supplier} that will provide accumulators
+	 * @param batchSize
+	 * 		the batch size to use
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators,
 	                            final int batchSize
-	                            ) {
+	) {
 		final Deferred<A, Stream<A>> d = createDeferred(1);
 		final Stream<A> stream = d.compose();
-		add(new ReduceAction<T, A>(
-				batchSize,
-				accumulators,
-				fn,
-				stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-		));
+		add(new ReduceAction<T, A>(batchSize,
+		                           accumulators,
+		                           fn,
+		                           stream.getObservable(),
+		                           stream.getAcceptKey(),
+		                           getError().getObject()));
 
 		return stream;
 	}
@@ -614,12 +693,15 @@ public class Stream<T> extends Composable<T> {
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
 	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
-		return reduce(fn, (Supplier<A>) null, batchSize);
+		return reduce(fn, (Supplier<A>)null, batchSize);
 	}
 
 	/**
@@ -627,9 +709,13 @@ public class Stream<T> extends Composable<T> {
 	 * passed to the function's {@link Tuple2} argument. Behave like Reduce but triggers downstream Stream for every
 	 * transformation.
 	 *
-	 * @param fn      the scan function
-	 * @param initial the initial argument to pass to the reduce function
-	 * @param <A>     the type of the reduced object
+	 * @param fn
+	 * 		the scan function
+	 * @param initial
+	 * 		the initial argument to pass to the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> scan(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
@@ -645,19 +731,23 @@ public class Stream<T> extends Composable<T> {
 	 * a
 	 * value is accepted.
 	 *
-	 * @param fn           the scan function
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param <A>          the type of the reduced object
+	 * @param fn
+	 * 		the scan function
+	 * @param accumulators
+	 * 		the {@link Supplier} that will provide accumulators
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred(1);
 		final Stream<A> stream = d.compose();
-		add(new ScanAction<T, A>(
-				accumulators,
-				fn,
-				stream.getObservable(), stream.getAcceptKey(), getError().getObject()
-		));
+		add(new ScanAction<T, A>(accumulators,
+		                         fn,
+		                         stream.getObservable(),
+		                         stream.getAcceptKey(),
+		                         getError().getObject()));
 
 		return stream;
 	}
@@ -665,15 +755,16 @@ public class Stream<T> extends Composable<T> {
 	/**
 	 * Scan the values passing through this {@code Stream} into an object {@code A}.
 	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn) {
-		return scan(fn, (Supplier<A>) null);
+		return scan(fn, (Supplier<A>)null);
 	}
-
-
 
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
@@ -692,11 +783,12 @@ public class Stream<T> extends Composable<T> {
 
 	@SuppressWarnings("unchecked")
 	private <V, C extends Composable<V>> Deferred<V, C> createDeferredChildStream(int batchSize) {
-		C stream = (C) new Stream<V>(null,
-				batchSize,
-				this,
-				environment);
+		C stream = (C)new Stream<V>(null,
+		                            batchSize,
+		                            this,
+		                            environment);
 
 		return new Deferred<V, C>(stream);
 	}
+
 }
