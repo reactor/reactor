@@ -1,0 +1,1176 @@
+Reactor 1.1.0.M1 - CHANGELOG
+===========================================================================
+
+build:
+
+	- Update to Gradle 1.10.
+
+reactor-core:
+
+	- Re-write Dispatcher implementations to leverage RingBuffer more fully.
+		- Extract common functionality into abstract base classes.
+		- Provide efficient tail-recursive dispatching.
+		- Replace EventLoopDispatcher with RingBufferDispatcher.
+		- Add multi-threaded RingBuffer in the form of WorkQueueDispatcher.
+		- Extend Dispatcher to also implement Executor.
+			- All dispatchers can now be used as efficient Executors for running arbitrary tasks.
+	- Add Allocator API for efficient object pooling.
+		- Implement BlockingQueue and RingBuffer-backed pooling strategies.
+		- Provide non-reusable object factory Supplier for objects that can't be returned to a pool.
+	- Re-write HashWheelTimer to eliminate drift and be more flexible and scalable.
+	- Add efficient buffering and batching to Stream.
+	- Add collectWithTimeout to Stream.
+	- Add Flushable interface and rewrite many actions to take advantage of the new flush event.
+
+reactor-spring:
+
+	- Re-write TaskExecutor to implement AsyncTaskExecutor and ScheduledExecutorService.
+		- Provide RingBuffer-backed AsyncTaskExecutors that can be plugged into Spring components.
+
+
+Commit log since 1.0.0.RELEASE
+===========================================================================
+
+commit 1a7f414411961910477aa8cc8839b88150982361
+Date:   Tue Feb 11 08:14:49 2014 -0600
+
+    Formatting changes while code reviewing.
+
+commit 7be7d0a168f20f63000c819b0fa70a6ec694d1b4
+Date:   Tue Feb 11 02:27:20 2014 +0000
+
+    remove EventBatcher since Stream.defer().batchSize(123).get().flushWhen{ predicate }.consumeFlush{ do stuff once }.consume{ do for each data }
+
+commit beeb805b01bdf3ec3a4f6dc9aa8949bf49ad1b0c
+Date:   Tue Feb 11 02:05:33 2014 +0000
+
+    Re align test with previous scenario to compare (1 reduce vs N reduce)
+    Add Stream#reduce(function, supplier, batchSize) to arbitrarely select the batch size for a reduce
+
+commit ef7862202804757b8ca87489c56c94f1da13e0c3
+Date:   Tue Feb 11 01:02:29 2014 +0000
+
+    update gadle wrapper, update developers list
+
+commit 269e3b6652b11a828ef0a32be8197b808ab737b9
+Date:   Tue Feb 11 00:57:44 2014 +0000
+
+    is this the end ?
+
+commit 8825f1528feda47c2ad63d3b2fe7f86a28fdd4ed
+Date:   Tue Feb 11 00:40:24 2014 +0000
+
+    move things around to fix package tangles
+
+commit 01ab73ec7ec387d2ec761134dad32c85348cd127
+Date:   Tue Feb 11 00:05:49 2014 +0000
+
+    move things around to fix package tangles
+
+commit 9cdf78a711ecab61bbb01dded0c9623132195761
+Date:   Mon Feb 10 23:45:20 2014 +0000
+
+    Makes sure Stream#bufferConsumer listens for flush
+
+commit 87f34aedfb50094fbe0f8e9e9b33d9c0dc17c3e4
+Merge: 936feae ea8c2dd
+Date:   Mon Feb 10 23:31:38 2014 +0000
+
+    Merge pull request #286 from reactor/enhancement-27-batchNotify
+    
+    Enhancement 27 batch notify
+
+commit ea8c2dde3034596dbe4a0b55947cf44dbf395898
+Date:   Mon Feb 10 23:30:07 2014 +0000
+
+    fix test
+
+commit 4ad12adbec1dabc089296db9ecb25428cb96cfff
+Merge: bfa2ec0 936feae
+Date:   Mon Feb 10 23:19:17 2014 +0000
+
+    Merge branch 'refs/heads/master' into enhancement-27-batchNotify
+
+commit bfa2ec0a5342af401e77f7d66807e3081c731f2a
+Date:   Mon Feb 10 23:16:03 2014 +0000
+
+    100% test coverage for Stream
+    Add Flushable interface for propagating flushes callbacks
+    All stateful actions (reduce, collect, buffer, ..) are now Flushable
+    Add collectWithTimeout, a size and time bound collection
+    Add FlushableAction to consume flushes
+    Add SupplyAction to notify an observable with a supplied value
+    Add StreamSpec#generate(Supplier) to generate values on flush
+    Add Stream#whenFlush(Predicate) to flush the Stream if predicate matches
+    Add Composable#consumeFlush(Flushable) callback
+    Cascade Composable Flush (listens for parent flush)
+    Add Deferred#batcher(batchSize) to arbitrary produce batching windows from any Stream
+     Remove Stream#BufferStream (replaced by deferred#batcher)
+     Remove Stream#batchSize constraints on collect, reduce, buffer since flush can drain unbounded batches
+     Split Stream#reduce and Stream#scan
+     Add Stream#bufferWithErrors to collect errors in addition to values, aimed to be used by services dynamically creating Stream -
+     Add Stream#collectWithTimeout to collect up to a timeout limit in millisecond
+     Add Stream#propagate to pass the argument values (supplier or iterable) into downstream sink on flush
+
+commit 936feae66401064ee41b698a2a5ff188a7378b08
+Date:   Mon Feb 10 16:19:44 2014 -0600
+
+    Tweaks to RingBufferAllocator batch allocation.
+
+commit ff1abf87f985d512db2f7324ec7e010d88cb1678
+Date:   Mon Feb 10 12:00:17 2014 -0600
+
+    Add resolution getter to Timers.
+
+commit cd6d4d522fe51d4d7800cb54b868ae22e50f584d
+Date:   Mon Feb 10 11:59:20 2014 -0600
+
+    Upgrade TaskExecutor implementations to also implement ScheduledExecutorService for us as a Spring Integration TaskScheduler, which requires greater scheduling flexibility than just an Executor.
+
+commit b96e788ca6feecfe927bbeccef9429c01d9481a1
+Date:   Thu Feb 6 15:52:59 2014 -0600
+
+    #279 Drop the default backlog values to 2048.
+
+commit 9aa1ddf5771c44a8f9a9cf256337060114d68b01
+Date:   Thu Feb 6 09:22:34 2014 -0600
+
+    Fixes #281 Uses a nullSafeHashCode() function to accommodate null values in a Tuple.
+
+commit 96b4485cc2f741227b09f5f68d2f51fbe464b36f
+Date:   Wed Feb 5 15:56:48 2014 -0600
+
+    Tweaks to suppress compiler warnings.
+
+commit 53c0dcfab40b91838694843729c85c2effe7272b
+Date:   Wed Feb 5 22:25:27 2014 +0100
+
+    This commit adds a Timer interface implemented by HashWheelTimer
+    
+    HashWheelTimer itself is implemented as per the "Hashed and Hierarchical
+    Timing Wheels" paper: http://www.cs.columbia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf
+    
+    This implementation doesn't involve hierarchical Timing Wheels.
+    
+    This implementation provides three types of wait strategies:
+    
+       * Sleep: least precise, but most scheduler-friendly, uses
+         `Thread.sleep` under the hood.
+       * Yielding: more precise, and scheduler firendly, uses `Thread.yield`
+         under the hood.
+       * BusySpin: most precise, least scheduler friendly, doesn't release
+         flow control, therefore occupies an entire core on multi-core
+         systems.
+    
+    Executors are configurable through the constructor. By default, single
+    threaded executor is used.
+    
+    Loop thread name is configurable through the constructor.
+
+commit 8fe53eaa823d5de376fcb270672e96a65c304ccd
+Date:   Wed Feb 5 18:36:49 2014 +0000
+
+    Put back List type and merge master
+
+commit 3eb3834f84bccc5ec8980098f38fe4217fc9c617
+Merge: 4b44881 4aa65a8
+Date:   Wed Feb 5 18:34:58 2014 +0000
+
+    Merge branch 'master' into enhancement-27-batchNotify
+    
+    Conflicts:
+    	reactor-benchmark/src/test/java/reactor/core/ComposableThroughputTests.java
+    	reactor-core/src/main/java/reactor/core/Reactor.java
+    	reactor-core/src/main/java/reactor/core/composable/Composable.java
+    	reactor-core/src/main/java/reactor/core/composable/Stream.java
+    	reactor-core/src/main/java/reactor/event/dispatch/SingleThreadDispatcher.java
+    	reactor-core/src/main/java/reactor/event/dispatch/ThreadPoolExecutorDispatcher.java
+    	reactor-core/src/test/groovy/reactor/core/composable/spec/StreamsSpec.groovy
+    	reactor-core/src/test/java/reactor/core/composable/ComposableTests.java
+
+commit 4aa65a8bde4db0d47a2acba408040930d2472b59
+Date:   Tue Feb 4 10:44:43 2014 -0600
+
+    Move HashWheelTimer to its own package and extract a common interface.
+
+commit c67f3c30512a371f5c12a67fd6e3f6d960459d55
+Date:   Tue Feb 4 10:44:13 2014 -0600
+
+    Add serialVersionUID
+
+commit 1c487f7d7ac52f4504584148ea8e8288ab368272
+Date:   Mon Feb 3 15:49:14 2014 -0600
+
+    #273 Adds support for Spring AsyncTaskExecutors based on the RingBuffer and WorkQueue dispatcher implementations.
+    
+    The AsyncTaskExecutors work fastest when configured for ProducerType.SINGLE.
+
+commit e20a13a1708a2740c2f4b78d1e25faf21fefd5c9
+Date:   Mon Feb 3 15:48:53 2014 -0600
+
+    #273 Added ProducerType and WaitStrategy to the WorkQueueDispatcher config.
+
+commit 7fe41dd3611cb5d2e40f3c9b4dc0ecae00e88af8
+Date:   Mon Feb 3 13:05:57 2014 -0600
+
+    Fix NettyEventLoopDispatcher to match new Dispatcher signature.
+
+commit 866ed119fa0c88f7b28849804282ccad2424e38d
+Date:   Mon Feb 3 13:05:28 2014 -0600
+
+    Fix bone-headed mistake. This is not the commit you are looking for. Move along.
+
+commit 202fb14b541134f73409a77262f423b142e84bee
+Date:   Mon Feb 3 11:34:24 2014 -0600
+
+    Fix bone-headed mistake. This is not the commit you are looking for. Move along.
+
+commit 6156722cfbee1a692fe4ab33989f6601417e77af
+Date:   Mon Feb 3 11:33:35 2014 -0600
+
+    Tweak to RingBufferDispatcher creation
+
+commit 3d57475a097f9da3f1b5ed1852444bff02ff50f7
+Date:   Mon Feb 3 11:07:06 2014 -0600
+
+    Add throughput tests for Executor.execute methods on Dispatchers, drop values to reasonable settings so that low-powered CI servers don't choke on the build.
+
+commit a0a7987eeec73c89dcf4da9bb9ce2de26e10f10c
+Date:   Mon Feb 3 11:05:55 2014 -0600
+
+    Make Dispatcher extend Executor to turn each Dispatcher implementation into an Executor that can run arbitrary Runnable tasks.
+
+commit 016a8f073a6fa8290b113f66a252bb5f6d4fdf20
+Date:   Mon Feb 3 11:05:16 2014 -0600
+
+    Bump up the default backlog values.
+
+commit 619c092c3ab097f2ee70e646b7fc4882c7bfed4f
+Date:   Sun Feb 2 02:51:18 2014 +0000
+
+    try another package tangle luck
+
+commit 4a249d651ebb4c0edd72ee260110e4a8e43e1dda
+Date:   Sun Feb 2 02:48:03 2014 +0000
+
+    Fix mapMany groovy
+    Fix extension list Groovy
+    Try to fix package Tangle
+
+commit 929e513f7aeba4debc0305294586628572feb1fc
+Date:   Sun Feb 2 00:45:12 2014 +0000
+
+    all tests pass!
+
+commit b098f5558993652af46af4cc421466b81a4d8cdb
+Date:   Sun Feb 2 00:21:38 2014 +0000
+
+    Deprecate EventLoopDispatcher
+    Fix test
+    Do not pool tasks for MultiThreadDispatcher (WorkQueue naturally pools from RingBuffer)
+
+commit 1e8394129efb89ede1eecf6d6c26bd16105bbd8a
+Date:   Sun Feb 2 00:01:49 2014 +0000
+
+    change test to scope WorkQueueDispatcher
+
+commit 0d857097b152f0e44225c8e024b8d793d3f05d60
+Date:   Sat Feb 1 23:53:13 2014 +0000
+
+    Lock free multi thread dispatcher based on consistent hash routing
+
+commit 68f0e219c4b816ef0997f7b04a35694d95da960c
+Date:   Sat Feb 1 22:46:16 2014 +0000
+
+    Fix PropertiesConfig tests
+
+commit e3f3922043c5fbfbce466d01c297330911f3f0b2
+Date:   Sat Feb 1 14:01:09 2014 -0600
+
+    #271 Had to re-write the Dispatchers to not use the built-in Allocator implementations for the time being. The section of code covered by the Dispatchers is so critical to performance that there's virtually no leeway for errors or locking. We should take a look at how much garbage is created by the LinkedTransferQueue and replace that component in the multi-threaded Dispatchers.
+    
+     Also added a multi-thread version of the RingBufferDispatcher which is called the WorkQueueDispatcher. At the moment, it provides liitle improvement over the ThreadPoolExecutorDispatcher because it's using the same basic queueing mechanism for recursive tasks. We should re-write that portion to use an array or an ArrayList with thread-safe incrementing/decrementing much like what we're doing for the single-threaded versions.
+    
+     The test that were failing pass, though, so there's that. (Didn't check all the other tests yet because I figured we'd have more changes coming in this branch before merging).
+
+commit 455530166c805983e728d7941099b16b6a08cd0e
+Date:   Sat Feb 1 14:51:26 2014 +0000
+
+    fix DispatcherSpec
+
+commit c522328c670ab0bc4e13d81b63e6b48167940a55
+Date:   Sat Feb 1 02:15:36 2014 +0000
+
+    Fixed tests!!!!
+
+commit fc7f023987b8317c76f6d666bd4706cdb3e1afa9
+Date:   Sat Feb 1 00:40:13 2014 +0000
+
+    try to fix event loop logic
+
+commit 5389ae084774f345db7280f91110fe28c36aac01
+Date:   Sat Feb 1 00:13:26 2014 +0000
+
+    fixed EventLoopDispatcher test
+
+commit 52a2278b47101d967839f53b0f980d62bac8a3ac
+Date:   Fri Jan 31 23:44:21 2014 +0000
+
+    fix test
+
+commit 010535fc94f4d23fb0659a6eee122e07c398c293
+Date:   Fri Jan 31 17:27:26 2014 -0600
+
+    #271 Pushing the latest changes to attempt to fix the test inconsistency problem.
+
+commit a50e19c7c6f80670c1bd0dfbc759a315955ddd32
+Merge: fe936dc 98a8a63
+Date:   Fri Jan 31 17:19:14 2014 +0000
+
+    Merge branch 'refs/heads/master' into fix-271-recursive-dispatching
+
+commit fe936dcecb1925915f51040396991108e77f8966
+Date:   Fri Jan 31 10:52:21 2014 -0600
+
+    #271 Trying to troubleshoot odd dispatching problems that cause inconsistent test results.
+
+commit 98a8a6341f1ba9282b9a98d4b98985bc4ddc3fb7
+Date:   Thu Jan 30 22:17:38 2014 +0000
+
+    Improve test output to check against expected total result and verify that all events have been correctly dispatched
+
+commit a18ad2556e8bc2bf260b78a3f02334a0487f6191
+Date:   Thu Jan 30 18:58:54 2014 +0000
+
+    Move TimeUtils in a dedicated package reactor.timer for package tangles.
+
+commit c79854c96bc644db015044f7026950ff3803c455
+Date:   Thu Jan 30 18:47:04 2014 +0000
+
+    Move HashWheelTimer in a dedicated package reactor.timer for package tangles.
+
+commit e085bee7cdb8b5b510def687a749fd43de3fe514
+Date:   Thu Jan 30 11:47:40 2014 -0600
+
+    Fix a generics problem
+
+commit 37c8864aadbd872a2bf5a0e8f87228db3264d0b2
+Merge: e53879c e4d2541
+Date:   Thu Jan 30 09:42:34 2014 -0800
+
+    Merge pull request #269 from ifesdjeen/enchancement-232-event-factory
+    
+    Add Event Allocator
+
+commit e53879cc5d2847c21391cb9726e30751a01efcdb
+Date:   Thu Jan 30 11:24:51 2014 -0600
+
+    Since a new version of HashWheelTimer is coming, comment this test out for the time being.
+
+commit e4d25410b8b592793a5f5a93641b174571d9db42
+Date:   Thu Jan 30 18:24:30 2014 +0100
+
+    Add Event Allocator
+    
+    Currently only Task objects are pooled. After profiling our application, we've found
+    GC contention related to Event objects, which were generated at high rates, and
+    causing long GC pauses every 5-6 seconds.
+    
+    Polling Event objects helped us to avoid it. In combination with Task object pooling
+    (especially well seen on RingBufferDispatcher), Event object pooling will significantly
+    improve a memory snapshot and provide many possibilities for flexible object
+    creation / reuse.
+    
+    As per conversation with Jon, we agreed that we'll provide an unobtrusive way to
+    allocate events based on generic interface and recycle them as needed, but will
+    not provide it as a default, since it may make quite difficult for people just wanting
+    to start working with project as soon as possible to figure out potential resource
+    leaks.
+    
+    This is a simple, "reference" implementation of Event Allocator.
+
+commit 37d9a38826752373eeef445bf33223975d29fd66
+Date:   Thu Jan 30 11:11:34 2014 -0600
+
+    Fix a failing test.
+
+commit 085ba6ac82299f9144ef6d030b4bf8f53f6b40fb
+Date:   Thu Jan 30 11:05:12 2014 -0600
+
+    Trying to fix package tangle.
+
+commit ac12f6af43287c7ee0b4541e6a13c5b5e3f13425
+Date:   Thu Jan 30 10:57:38 2014 -0600
+
+    Troubleshooting odd test failure that only occurs on drone.io CI server.
+
+commit 4e8ea697e16ac359a6ffce8d447d3430fc437670
+Date:   Thu Jan 30 10:47:48 2014 -0600
+
+    Playing an utterly pointless game of musical chairs to make Sonar happy.
+
+commit d120da27eef1bade50efbb67f4a23f9b0e74415a
+Date:   Thu Jan 30 10:47:21 2014 -0600
+
+    Added serialVersionUID to TupleNs.
+
+commit 31a49e85c339c41966299137c3806dce81866a7d
+Date:   Thu Jan 30 10:34:39 2014 -0600
+
+    Added serialVersionUID to Tuple.
+
+commit c88a273d2006b0afe2e7bd264b71decc7b8936fa
+Date:   Thu Jan 30 10:28:45 2014 -0600
+
+    Trying to fix a package tangle with the timer utils.
+
+commit 13fb9f9d666810ae4367dd588de01598184142e9
+Date:   Thu Jan 30 10:13:29 2014 -0600
+
+    Reduce the number of tests for throughput testing so it doesn't fail on slower servers like CI servers.
+
+commit 8d60b94d40448028831c034049c563531a47d5ac
+Merge: adcf6e3 e68ee25
+Date:   Thu Jan 30 08:08:36 2014 -0800
+
+    Merge pull request #267 from reactor/enhancement-232-allocator-recycler
+    
+    Fixes #232 by providing a flexible Allocator API for doing object pooling.
+
+commit e68ee25be3d1e2979c722482aec0b54c0b09ceb0
+Date:   Wed Jan 29 15:16:13 2014 -0600
+
+    Update javadoc.
+
+commit d4fa5e0a81edfa8bdd954725856f2f919bad4966
+Date:   Wed Jan 29 15:16:01 2014 -0600
+
+    Tweak throughput tests.
+
+commit bcd7b9b1220636ba967670b9add496a8ccfe29a5
+Date:   Wed Jan 29 15:15:42 2014 -0600
+
+    Be more specific on the maximum throughput verbiage.
+
+commit 09707ed7a48c6b05511515379243c7b248ddad35
+Date:   Wed Jan 29 14:58:24 2014 -0600
+
+    Remove the ReentrantLock and use a simplified synchronized block for updating the BitSet.
+
+commit c2845a8765c98347cafe619e33190083a26db747
+Date:   Wed Jan 29 14:57:57 2014 -0600
+
+    Raise the backlog value for the EventLoopDispatcher throughput test. Turns out it doesn't really make that much difference.
+
+commit 7ecb396a788f987416b36633dc71223948a1d535
+Date:   Wed Jan 29 14:25:54 2014 -0600
+
+    #232 Tweaking object allocation. Renamed FactoryAllocator to BatchFactorySupplier since it doesn't implement the Allocator interface. Left it in the alloc package since it has to do functionally with allocation.
+
+commit 998d32a9676859e449255bd49268fc64947c09d3
+Date:   Wed Jan 29 11:22:50 2014 -0600
+
+    #232 Added FactoryAllocator for amortizing the cost of object creation by doing batch creations of objects and then doling those out one at a time until exhausted, at which point the pool is refilled, blocking the calling thread.
+
+commit 10507a80cfae2ce0d26950d73fad4e32bfc02bfb
+Date:   Wed Jan 29 10:46:11 2014 -0600
+
+    Tweak to fix failing test.
+
+commit 1c5e55ea8353003f00c61d3ca5297b8be2fb658a
+Date:   Wed Jan 29 10:45:22 2014 -0600
+
+    Formatting tweaks.
+
+commit d272c7e6d26424a2547feacd5ce34b4838be3397
+Date:   Tue Jan 28 21:15:51 2014 -0600
+
+    #232 Fixes for allocator and dispatcher implementations built on top.
+    
+    It appears reference counting was doing some funky things and getting counts off. Also moved some execution code around a little to make it more efficient for doing tail recursive calls from the task queue. Also tried to consolidate as much of the Dispatcher code as possible into single, reusable chunks and only subclass and override the bare minimum required to get the functionality desired.
+
+commit adcf6e3d2fd152d7f1943a95df7d89d932c9135e
+Date:   Tue Jan 28 20:58:34 2014 +0000
+
+    Add Serializable to Tuple
+
+commit 5dc0a4c1ca989d0fc69b346e3191c550280bc5c6
+Date:   Tue Jan 28 10:29:19 2014 -0600
+
+    #232 Integrated Allocator into the Dispatchers.
+    
+    This is a very pervasive changeset as it touches nearly every part of the internal workings of all the Dispatchers. Since the inclusion of a more powerful Allocator abstraction in recent commits, it seemed to make sense to re-write the Dispatchers to make use of this to provide some consistent efficiencies. There's still some work to do and bugs to fix so this shouldn't be considered a complete commit. But it's necessary for others working on this branch to have the latest changes.
+
+commit 73d6eb1e5b57dfc423102763882b81bcadd38d2e
+Date:   Thu Jan 23 09:20:58 2014 -0600
+
+    #232 Adds generic object pooling based on reference counting.
+    
+    This implementation of object pooling is based on PR #257. It is thread-safe, uses a BitSet for performance and an internal List. In the Netty implementation of Recycler, the object pools are ThreadLocal and an array and counting is managed via ++ and --. This implementation differs from the Netty version in that the object pool can be shared across threads and reference counting is done. When the reference count for an allocated object reaches 0 it is recycled.
+
+commit e04a3515d6bb94c089ac8a854c80d8d78b28dec7
+Merge: 5e15e94 340e8ae
+Date:   Fri Jan 17 07:53:26 2014 -0800
+
+    Merge pull request #263 from reactor/enhancement-261-common-serializers
+    
+    Fixes #261 Provides OOTB support for common serializers
+
+commit 340e8aeb835b8b89bee537cfef3a60fee2bf3161
+Date:   Thu Jan 16 17:15:08 2014 -0600
+
+    Added support for compression of data using either GZIP or Snappy.
+    
+    We might also want to use a "deflate" compression scheme as well in case the client on the other end doesn't use GZIP.
+    
+    The compression is implemented by subclassing a common CompressionCodec and configuring it's own particular variation on InputStream and OutputStream. These codecs require a delegate Codec to function. This makes them a little bit harder to configure since you have to nest your serialization codec with this compression codec, then wrap that with a framing codec like LengthFieldCodec. It wouldn't hurt to have a DSL or something to set this up.
+
+commit cd7bf251b3d6ee5156b4e2fd4331ef1563902c39
+Date:   Thu Jan 16 13:07:36 2014 -0600
+
+    Added support for Kryo, Protocol Buffers, and Jackson JSON support based around a shared SerializationCodec.
+    
+    The new abstract SerializationCodec handles writing type names into the Buffer so that any object can be read and written without registering any special handlers. It does this by encoding into the Buffer the length of the class name as an int, then the class name as bytes, then the actual bytes of the message. When decoding, the process is reversed and the class name is read from the Buffer so that that exact class type can be instantiated. Most serialization engines require a type to be efficient anyway, so the only thing needed in the Codec is to maintain the class name of the original object.
+
+commit 5e15e9496495e6cbe181688806de863133088f0a
+Merge: 816f66f f7aa846
+Date:   Fri Jan 10 09:07:08 2014 -0800
+
+    Merge pull request #255 from reactor/enhancement-254-fixed-streams
+    
+    fix #254 Refactor Streams.defer(value) and Streams.defer(values)
+
+commit f7aa8465b1ef2bcaf33806f48bbff26f16d64555
+Date:   Fri Jan 10 17:05:00 2014 +0000
+
+    fix #254 Refactor Streams.defer(value) and Streams.defer(values) to returned a Stream rather than a Deferred, thus preventing fixed streams to be confused with Streams.defer()
+
+commit 816f66f35c4c1a38c6f57c05cf0be2c70f00436e
+Merge: 6575358 92bf619
+Date:   Fri Jan 10 02:39:28 2014 -0800
+
+    Merge pull request #252 from head-thrash/master
+    
+    This presumably fixes Issue #248
+
+commit 92bf619c590f7b9e8987618d4fa050ab06747fa6
+Date:   Fri Jan 10 12:59:51 2014 +0400
+
+    This presumably fixes Issue #248
+
+commit 65753581537d39513c11ad5427ea3391a30132f9
+Merge: 04af84c 65e2b5c
+Date:   Thu Jan 9 08:15:28 2014 -0800
+
+    Merge pull request #251 from head-thrash/master
+    
+    Tests for TcpClient <--> TcpServer interactions
+
+commit 65e2b5cd282d579b54e64d5319e7fb593662e1a0
+Date:   Thu Jan 9 15:39:50 2014 +0400
+
+    Adds tests for Tcp Client and Tcp Server interactions:
+    
+    * Server to client should be able to send muliple (1 to N) pojos
+    * Same goes to client-server interactions
+
+commit 04af84cc10c2b0c1911b02590f3079fc85b3c403
+Date:   Wed Jan 8 14:20:16 2014 -0600
+
+    The exposesNettyByteBuf() test must use a SynchronousDispatcher since we're reading from the Netty ByteBuf directly. That must take place in Netty's IO event loop thread and not in some other thread, which causes random failures due to doing out-of-band IO in reading from Netty's buffer.
+
+commit f2475d407cf81fbe0a0475d36156924f08d7984a
+Date:   Wed Jan 8 14:18:48 2014 -0600
+
+    Minor typo fix.
+
+commit 76e193dc173cf40af59b7f5ba9c0e7ba52967663
+Date:   Wed Jan 8 14:18:25 2014 -0600
+
+    #239 #248 Hopefully fixes the BufferOverflowException by growing the internal ByteBuffer by lengthFieldLength.
+    
+    Also adds support for short (2) as a lengthFieldLength.
+
+commit 2eeefea2cb9dbfa93155d040ded71f5cd1aa8cb8
+Merge: f6e30f9 0fd25f1
+Date:   Wed Jan 8 06:04:28 2014 -0800
+
+    Merge pull request #246 from reactor/enhancement-241-error-handlers
+    
+    #241 #245 Adds a couple of constructor parameters to Reactor and a coupl...
+
+commit f6e30f98ac0d880b34dc806fe188e60b8c384af9
+Merge: 4f488d8 d80ffda
+Date:   Tue Jan 7 10:10:49 2014 -0800
+
+    Merge pull request #221 from kctang/master
+    
+    Add optional OSGi dependencies for reactor-core & slf4j-api 1.5.4 support.
+
+commit 4f488d83840ca1a1fbd23008d1d818c2546e9616
+Date:   Tue Jan 7 18:02:59 2014 +0000
+
+    Minor test fix and Groovy version upgrade to 2.2.1
+
+commit 0fd25f18dcabf8ed2a3d36f7f737683dd95572f4
+Date:   Tue Jan 7 11:10:09 2014 -0600
+
+    #241 #245 Adds a couple of constructor parameters to Reactor and a couple of methods to EventRoutingComponentSpec for specifying two types of error handlers and the Selector to be used as a default.
+    
+    Error handlers are split into two different kinds: the dispatchErrorHandler is what is passed to the Dispatcher when dispatching events and will be called in case of an Exception being raised from calling a Consumer's accept method. The uncaughtErrorHandler, however, will be invoked whenever an error is reported on a Reactor using the notify(Exception.class, Event) method. This is useful for dealing with errors that occur outside this Reactor's Consumers (like in a TCP server or somesuch).
+    
+    Also adds the ability to specify the Selector to use as a default in case that object needs to be reused in several places.
+    
+    Sensible defaults are used if these additional parameters are null.
+
+commit aaf350ddd1cc0c9f7022b87c8c7838715c38cdbd
+Date:   Mon Jan 6 10:51:54 2014 -0600
+
+    #241 The default exception handler should always be registered no matter the logging level.
+
+commit f602f440e8965f1bb7bd528543eb6f43249c9ce9
+Date:   Mon Jan 6 10:41:14 2014 -0600
+
+    Fixes #242 by notifying the Reactor on the class of the Exception rather than on the exception instance itself.
+
+commit e835e28447218220bd5720fdfc1f04bf6ecc03b6
+Merge: 0a3001e 63107b3
+Date:   Wed Jan 1 09:08:33 2014 -0800
+
+    Merge pull request #240 from mingfai/master
+    
+    Added a ThreadPoolExecutorDispatcher constructor with Executor argument
+
+commit 63107b3314f1ee4a8235de6b5f46acc6600abe64
+Date:   Thu Jan 2 00:42:32 2014 +0800
+
+    Added a constructor with UncaughtExceptionHandler argument
+
+commit b67217d78f4eea6e6df64d28037cfdef4f892cb1
+Date:   Thu Jan 2 00:19:35 2014 +0800
+
+    Added a ThreadPoolExecutorDispatcher constructor with Executor argument
+
+commit 0a3001e1206fe71ca28fb21b5a2c9af4ff99a40c
+Date:   Wed Jan 1 04:37:02 2014 +0000
+
+    Increase test timeout.
+
+commit b5ee68bc176e22599d2b7e95178b77121a2bf3ee
+Date:   Tue Dec 31 15:54:24 2013 +0000
+
+    Some doc on CachingRegistry
+
+commit d39bc0dafc7ffa9352fae7cb16c2f7ff847840f4
+Date:   Tue Dec 31 06:36:33 2013 +0000
+
+    Fix Prime Cache to target key Object and AnonymousKey instead of ObjectSelector selector
+
+commit 4b44881b6613b108815d7319f9976403967d4579
+Date:   Tue Dec 31 05:49:11 2013 +0000
+
+    Fix Supplier exception handling
+
+commit 285c908297e294435891f354e66a80954385682e
+Merge: 290d3c7 4a1f845
+Date:   Tue Dec 31 05:47:35 2013 +0000
+
+    Merge master and fix supplier dispatching on Promise
+
+commit 4a1f84508bdd4a838cbbf0e6c75710508cb8c777
+Date:   Tue Dec 31 05:16:51 2013 +0000
+
+    fix test
+
+commit 7d8d1ce953b6477c1a809b14601c654f328005c5
+Date:   Tue Dec 31 05:08:54 2013 +0000
+
+    fix tests and Dispatcher tail recursion issue
+
+commit afc28543dfab2cd0bf08651d0694361fa858f180
+Date:   Tue Dec 31 04:54:54 2013 +0000
+
+    Remove @Before in ComposableThroughputTests as unused
+
+commit bd48fac7ef14fe91600031ac9320bf64ecaa54a9
+Date:   Tue Dec 31 04:43:02 2013 +0000
+
+    Pick fixes for minor dispatcher issues from batchNotify branch
+
+commit 290d3c7a7c41ce2a79f17a7081515962cdb1658f
+Date:   Tue Dec 31 04:43:02 2013 +0000
+
+    Merge master and fix minor dispatcher issues
+
+commit 53b9b4820f894c3f11b97e5445bd442d9c24f068
+Merge: 6a20bf1 2d98464
+Date:   Tue Dec 31 04:38:07 2013 +0000
+
+    Merge master and fix minor dispatcher issues
+
+commit 2d98464c489fa22fe53d2ec187aa349836de3774
+Date:   Tue Dec 31 02:45:34 2013 +0000
+
+    Fix #237 by adding a dedicated primeCache and update tests
+    Minor compilation warning fix
+
+commit 6a20bf18672fa3d8a87449e30b2a67d14ecdbae1
+Date:   Mon Dec 30 17:46:23 2013 +0000
+
+    Add batchNotify on Observable - ensure that 1 selection happens for a given iterable group of event. Events will be dispatched once and preselected consumers will be invoked.
+    Add Composable.buffer to expose batchNotify (grouping events for a single dispatching)
+    Rename Composable split() to batch() and update ForEachAction to use batchNotify
+    Minor improvements over ArgumentConsumer that only takes 1 argument
+    Minor improvements over ActionUtils to browse a buffered stream
+    Use a Stream subclass when pre-filled values or batchSize set and use an internal BufferAction to  batchNotify() operations
+    Added a buffered test in ComposableThroughputTests
+    Only invoke CompleteConsumer once.
+    Remove flush selector and update flush methods to work as expected (BufferStream will batchNotify and Promise will run asynchronously the supplier)
+
+commit 7b61078ac4ab864f638cb5ad1deb60510523eb41
+Merge: fe901b4 f8604d8
+Date:   Thu Dec 26 11:08:07 2013 -0800
+
+    Merge pull request #230 from reactor/optimized-registry
+    
+    Optimized registry - Selector improvements
+
+commit f8604d83e0016a06247aa854699d897e5c501d35
+Date:   Mon Dec 23 16:59:10 2013 +0000
+
+    Anonymous Selector doesn't need tuple2
+    Remove Selector anonymous constructor (prefer $())
+    Micro fixes
+
+commit 5a24b071a07a56d72f68908921ab6bd70fd50072
+Date:   Mon Dec 23 16:38:38 2013 +0000
+
+    minor fix
+
+commit fe901b464592fba6f14258c51598f47086abf295
+Date:   Mon Dec 23 15:47:57 2013 +0000
+
+    Fix #228
+
+commit 4091f0c3b8444ed0eb0f26ea2fc89b643ca5f02c
+Merge: 061ef65 c376c97
+Date:   Mon Dec 23 07:41:55 2013 -0800
+
+    Merge pull request #229 from reactor/optimized-registry
+    
+    Optimized registry rebased on master
+
+commit c376c9743f6b9b10e0f184d18a74accebf87a42a
+Date:   Mon Dec 23 14:44:03 2013 +0000
+
+    Fix TCP tests and reorder unregister connection
+
+commit c40e7b150df85229c2397b74ea5e30b8ac4a769d
+Date:   Fri Dec 20 00:33:51 2013 +0000
+
+    Fix implementation for Spring module
+
+commit d25aae180dee50affdd464ce24eec8ea939df305
+Date:   Fri Dec 20 00:30:32 2013 +0000
+
+    Add registry#clear and fix TcpConnection#Close
+
+commit bc53d3e68ca16223a30dedbf82d622f82d76a886
+Date:   Fri Dec 20 00:08:58 2013 +0000
+
+    add test for ObjectSelector cacheMiss (test if prime caching is functional)
+
+commit fc986645b91cca30d4e0fcb31c4e7a4a227447c5
+Date:   Fri Dec 20 00:07:20 2013 +0000
+
+    add test for cacheMiss on non 'direct' selector which are prime cached
+
+commit 5ba9ed771225dc1d72cb4dda64195eef2ef45074
+Date:   Fri Dec 20 00:01:51 2013 +0000
+
+    comment irrelevant test
+
+commit 66fa5d4fee2f43cb6d7157d29c75443f8b39749f
+Date:   Thu Dec 19 23:51:11 2013 +0000
+
+    revert excessive field delete
+
+commit f977443dd51f291495d1a66c94f3addb3c266f84
+Date:   Thu Dec 19 23:48:30 2013 +0000
+
+    put back Lifecycle interface checking
+
+commit 0e284c4a20e5d99c8efd9f10ff337e8b7f938095
+Date:   Thu Dec 19 16:58:58 2013 -0600
+
+    FIx a bug in cache priming for ObjectSelector objects.
+
+commit e897e441548bfa7f2ceec8b91e6cb5a9bee90b30
+Date:   Thu Dec 19 16:47:57 2013 -0600
+
+    Update to use AtomicIntegerFieldUpdater and volatile fields for less overhead
+
+commit 105557d74c8c045d91384d90952aa79315f4fa0c
+Date:   Thu Dec 19 21:57:53 2013 +0000
+
+    fix import
+
+commit 54678fc25aa82c9006f2dc30d95581ced8ffe46e
+Date:   Thu Dec 19 15:31:43 2013 -0600
+
+    Fix failing tests.
+
+commit 64049a76cd19a3e60eddb8832de82bdb7fbf1a64
+Date:   Thu Dec 19 13:39:37 2013 -0600
+
+    #222 Fixes problems with excessive GC by re-implementing the CachingRegistry. Now uses arrays as much as possible and is an overall simpler design internally. Cancel no longer removes a Registration from the list. Instead a Registration is aware of it's cancelled status so refuses to match against any keys and returns null for an object when cancelled, rendering the Registration invisible. The cancelled Registration object is reclaimed when the array grows to accommodate new Registration objects and copies over any Registrations that aren't cancelled.
+    
+    Combined with these changes is the use of a naive hashCode for anonymous objects, which is what Composables rely on. This means objects created with $() do not have a "real" hashCode implement but instead use a much, much faster AtomicInteger counter to provide an arbitrary hashCode value that does nothing more than ensure uniqueness. The throughput gain for mapMany tests was increased by about 30% over using the system hashCode() implementation.
+
+commit 061ef655dcbeac851581a5c6645e92eba1b7a457
+Merge: cdcafc8 dfc6dfe
+Date:   Fri Dec 20 06:00:47 2013 -0800
+
+    Merge pull request #227 from ifesdjeen/feature/op/sliding-window
+    
+    Add an implementation of Sliding Window
+
+commit dfc6dfe00783215068c54b987790b99a32e8f847
+Date:   Fri Dec 20 14:38:30 2013 +0100
+
+    Add for the Moving Window
+
+commit 829ccaf267213e80495ba2d99edbf9ed73839e46
+Date:   Fri Dec 20 14:38:18 2013 +0100
+
+    Add docstrings
+
+commit 12b61823ce9f6b20692da0a0045e3df5c8578767
+Date:   Fri Dec 20 14:32:47 2013 +0100
+
+    Rename Sliding Window to Moving Window
+
+commit 7a2332030215d8b7d25275f343c62b631dff1df4
+Date:   Tue Dec 17 18:04:52 2013 +0100
+
+    Add an implementation of Sliding Window
+    
+    Sliding window holds `backlog` number of items, and sends itself to the
+    downstream every `period`.
+    
+    It's backed by an array, items are written to the `pointer modulo array
+    size` position. When it's streamed down, tail is positioned before
+    tail, since it's historically correct.
+
+commit cdcafc871a3538b70c9914ca4b6085682c770c7e
+Date:   Mon Dec 16 23:01:07 2013 +0000
+
+    Cover map many throughput
+
+commit 4aa92e22368d5eb1f35f5be836d53807e9ff0240
+Date:   Mon Dec 16 22:43:35 2013 +0000
+
+    No need to do getObject on simple ObjectSelector
+
+commit 41449cda9e8533f0456e7e9e97d26b77979ecb63
+Date:   Mon Dec 16 22:35:08 2013 +0000
+
+    remove selector uuid
+
+commit fbc23eb34ae2bfea94dadac4c94278b5adebf925
+Date:   Mon Dec 16 22:32:58 2013 +0000
+
+    avoid double allocation for anonymous selector, remove useless tags field
+
+commit c99251095f434cf5e05d3890ac2d0adf07010e3d
+Date:   Fri Dec 13 11:25:12 2013 +0000
+
+    avoid double allocation for anonymous selector, remove useless tags field
+
+commit 7bba6718b445bf4471e8e43ebc2f6215a09e4e22
+Date:   Mon Dec 16 16:10:08 2013 +0000
+
+    Fixed window Test
+
+commit cb327af5d39c3cc073702db7c8affab5b2403c2e
+Merge: 423a58d ca9b8e3
+Date:   Mon Dec 16 08:01:04 2013 -0800
+
+    Merge pull request #226 from reactor/staging-improvements-composable
+    
+    Improvements to composable
+
+commit ca9b8e3911eea808052f1fc993aec75d414974c6
+Date:   Mon Dec 16 09:59:59 2013 -0600
+
+    Remove reference to deleted control() method.
+
+commit 5cd226eb37f844097c4109ffdc1e65c466351e79
+Date:   Mon Dec 16 15:46:09 2013 +0000
+
+    revert Composable pause/cancel/resume on this branch and related control methods
+
+commit 3aba1f5db1fd7f86f69f06dd82f159fffe9625da
+Date:   Tue Dec 10 22:26:00 2013 +0000
+
+    new WindowAction on Stream,
+    new Lifecycle defines pause, resume, cancel
+    Registration, Composable and WindowAction now implement Lifecycle
+    Stream now accept an environment to be used by some action (e.g. window for its timer)
+
+commit 2ff2f2fd89dc2aba25c8cde85bb80e7dac0da861
+Date:   Mon Dec 9 23:45:59 2013 +0000
+
+    Remove Linkable as non used anymore and confusing
+
+commit 780bdac500ce417952d6f7ba5961517fa04f1e00
+Date:   Mon Dec 9 23:44:25 2013 +0000
+
+    Add control(Observable) to Reactor
+    Add pause/resume to Stream
+    Add cancel to Composable
+    Fix UriSelector matching
+    Delete Linkable from Reactor
+
+commit c194b6c3cd176e5e04a61110a2f1f78309efa8e6
+Date:   Tue Dec 10 11:32:49 2013 -0600
+
+    Change Tuple to internally use an Object array rather than a List to get around CPU time spent when Tuples are created in large quantities like in throughput tests.
+
+commit 9e65671a7de77fc465734219e0f6162fc6cf19f0
+Date:   Tue Dec 10 10:36:19 2013 -0600
+
+    Tweaked Selectors.uri() to try and be smart about what kind of Selector instance to return. Previously, only a UriPathSelector was returned. Now the String is checked to see if it starts with a URI path slash '/'. If it does, then that means you want a UriPathSelector and the URI templating works as previously described. If the URI doesn't start with a '/' then that means you want a full UriSelector which doesn't do placeholder replacement like the UriPathSelector but explodes a URI and matches on the elements of the URI (or a wildcard for host or path).
+
+commit 2661138f1a32a30da33ac80b8aae252b4f862bde
+Date:   Mon Dec 9 13:53:27 2013 -0600
+
+    Renamed UriTemplateSelector to UriPathSelector to more accurately reflect its use. Also added UriSelector which is intended to match URIs. It will do exact match on scheme, userInfo, host, port, path, and fragment or it will accept a wildcard '*' for host and '/*' for path. The wildcard splat is invalid in the scheme, so it must be an exact match.
+
+commit 2a9000810596b4a8641487bf39ea3a842f62b2ef
+Date:   Mon Dec 9 11:45:38 2013 -0600
+
+    Remove unused tap.
+
+commit 2acd984a03c43afbb52ff7e89c3d4f9d8ac7b4e8
+Date:   Mon Dec 9 11:44:30 2013 -0600
+
+    Refactor Actions to reactor.core.action package. Rename flatMap method to mapMany to more accurately reflect what it's purpose is.
+
+commit e9d5970ac1a2b6d109388f7a99012309afbcea6c
+Date:   Mon Dec 9 15:44:57 2013 +0000
+
+    remove unused batch(), fix issue with negative backlog in SingleThreadDispatcher
+
+commit 25f350be7cb0258963c39f9214a4e243b96edb3c
+Date:   Mon Dec 9 14:29:41 2013 +0000
+
+    Remove unused consumer
+    Add spec builder for ActorDispatcher
+
+commit 2b2bfb3c158b36a0ff012f08e3f4990bbe04f6cc
+Date:   Mon Dec 9 10:48:35 2013 +0000
+
+    Remove batch() as not really needed
+
+commit 842870420f8027938bdc0c8355be45edc537d819
+Date:   Fri Dec 6 17:58:38 2013 +0000
+
+    fix netty tcp dispatcher to adapt to the new ordering
+
+commit 7185c90d18e5ade6600eb4573051a1452cb6d31b
+Date:   Fri Dec 6 17:14:33 2013 +0000
+
+    Increase the sample length back
+
+commit 6bc7919d6a544784b411b87cb6becf1f64216cb5
+Date:   Fri Dec 6 17:12:58 2013 +0000
+
+    fix ThreadPool dispatching
+    Rename BaseDispatcher to SingleThreadDispatcher and promote BaseLifecycleDispatcher as the root Dispatcher
+
+commit 9a46bf1844f10e237bbf0bb23554f8fccd2c41aa
+Date:   Thu Dec 5 23:53:16 2013 +0000
+
+    Comment ThreadPool test and minor import fix
+
+commit e2f3a4b2593cfd5204fa0ee60c22a356e7853c6d
+Date:   Thu Dec 5 23:37:42 2013 +0000
+
+    Fix Recursive Dispatching by lazy executing any notify in context. Context is defined per BaseDispatcher with its unique ClassLoader assigned to the consumer thread. In others terms, ring buffer and event loop now implement tail recursion. Synchronous Dispatcher is still blocking on notify. ThreadPoolExecutorDispatcher needs rework. Performances are nearly on par with the previous version and the new design solves dead lock issues. The stack now remains constant (Lazy execution at the dispatcher root). ActorDispatcher is a new Dispatcher type that allows concurrent recursive notification by assigning a unique Dispatcher per Event Key. Combined with EventLoop pool from environment, we act like multi-actor systems.
+
+commit 95542ff75bfa4af6058b603a80fe18967d5ad69c
+Date:   Wed Dec 4 22:31:11 2013 +0000
+
+    Fix Recursive dispatching, tail recurse any notify within context
+    Add a new dispatcher type "ActorDispatcher"
+
+commit f932d297c7b07fac17d30bbe75753f07999e917a
+Date:   Wed Dec 4 16:13:17 2013 +0000
+
+    first and last can accept explicit batchSize
+
+commit 691c6fd9a1c1b91801e7902acd9abb9d2962a04f
+Date:   Tue Dec 3 17:25:08 2013 +0000
+
+    Change Composable Spec to accept observable,
+    add Streams.on
+
+commit d80ffda8ef2fd028b2c8f0b0a8e3003fc968bd43
+Date:   Tue Dec 3 22:42:27 2013 +0800
+
+    Add optional OSGi dependencies for reactor-core (fix reactor/reactor#219) & add slf4j-api 1.5.4 compatibility (fix reactor/reactor#220).
+
+commit 6d70713a95b735679be3ab6218c37c161bd93942
+Date:   Fri Nov 29 22:14:15 2013 +0000
+
+    Remove interface, rename operation to Action
+
+commit 7e7ce7c3e9966b799155add556e207446a331200
+Merge: c30471a 423a58d
+Date:   Fri Nov 29 21:52:19 2013 +0000
+
+    Merge remote-tracking branch 'remotes/origin/master' into improve-stream-promise
+
+commit 423a58d9f2be93d45ed46915fdf15936a9e80a19
+Merge: c974a87 c1f28a1
+Date:   Wed Nov 27 11:21:02 2013 -0600
+
+    Merge branch 'move-codec'
+
+commit c1f28a16fcc21ef01fb9a963cb14715c40e502cc
+Date:   Wed Nov 27 11:20:28 2013 -0600
+
+    Refactor the Codec classes from reactor-tcp to reactor-core.
+    
+    Previously, since the Codec class and standard implementations were only in the TCP submodule, other code like the PersistentQueue abstractions had to have their own versions of Codec and family. This change refactors the Codecs from reactor.tcp.encoding into reactor.io.encoding in reactor-core and standardizes other uses of Codec onto this single, shared Codec abstraction.
+
+commit e2150abbaea6b616a9564537f8dc3d681c505e2f
+Date:   Wed Nov 27 11:17:40 2013 -0600
+
+    Remove the unnecessary Afterburner Jackson module.
+
+commit c974a8760c66198a249efaccffbcb4b3a8638da8
+Merge: bc7cc36 0fdaaf4
+Date:   Wed Nov 27 09:43:48 2013 -0600
+
+    Merge remote-tracking branch 'origin/direct-bytebuf'
+
+commit bc7cc36d0dfcd8741a3c30b98fc3c3d6708dcae1
+Date:   Wed Nov 27 09:37:21 2013 -0600
+
+    Bump gradle version to 1.9 and build version to 1.1.0.BUILD-SNAPSHOT
+
+commit e39f51f7acde64e0ea84812967440c633f86a459
+Date:   Wed Nov 27 09:11:06 2013 -0600
+
+    Fixes #217. The NettyTcpConnection was being created by always passing `null` as the `listenAddress` by omitting that CTOR argument. This fix adds a reference to that object to the creation of a connection.
+
+commit 04ac97fdbbf6d1e56d92bd7c91efbd84307ad1c1
+Merge: a5481ed 1785beb
+Date:   Mon Nov 25 06:56:50 2013 -0800
+
+    Merge pull request #218 from ifesdjeen/feature/op/tuple-hash
+    
+    Add `equals` and `hashCode` to Tuples
+
+commit 1785beb76e368ad6c5046b119319c7b5665196b2
+Date:   Mon Nov 25 15:47:32 2013 +0100
+
+    Add  and  to Tuples
+
+commit c30471a6bb537d428b2365b945ca46f2270a0a45
+Date:   Sun Nov 24 21:39:40 2013 +0000
+
+    Fix TCP test, rename ForwardOperation to ConnectOperation, Add debugging output for FilterOperation, fix issue in ReactorBuilder
+
+commit 6e0e92219ba63a25545998d726a5f35a49779e03
+Date:   Sun Nov 24 19:55:04 2013 +0000
+
+    Fix Perf Tests
+
+commit 99c72a8aae2b698512da2dc0c7613ae6ed67da7b
+Date:   Sat Nov 23 21:29:14 2013 +0000
+
+    Fix Promise Tests and improve OpUtils
+
+commit 50348abaf135c4b3bd16f3f3d5d39bc94863e93c
+Date:   Fri Nov 22 00:39:28 2013 +0000
+
+    Fix promises ctr
+
+commit 54b791d0689ec18b6998754fa6085489608e42b1
+Date:   Fri Nov 22 00:35:43 2013 +0000
+
+    Add FlatMap operation, Optimize recursive flush, add abstraction for operation pipes such as Composables to implement flush and addOperation
+
+commit 0f9762cc347d605efb5e43ad54441eda4ca5052e
+Date:   Thu Nov 21 23:06:44 2013 +0000
+
+    fix dispatcher creation and fix some doc
+
+commit 228653a8044b24108d49ae7cf1dfa7e350a427a5
+Date:   Thu Nov 21 22:00:41 2013 +0000
+
+    fix new Reactor creation
+
+commit 0fdaaf4d23dddfce98727f030a96d7a0ef4aa80d
+Date:   Thu Nov 21 15:33:45 2013 -0600
+
+    Addresses PR #215 by changing the default behavior of the Netty InboundHandler to attempt to pass the Netty ByteBuf directly to the connection without first turning it into a reactor.io.Buffer.
+    
+    This makes it possible to use the low-level Netty buffer manipulation methods and pooling in Stream Consumers.
+
+commit a5481ed8821d8681d00ba43a84ed9f627a6d297d
+Date:   Thu Nov 21 20:23:26 2013 +0000
+
+    fix selector test
+
+commit 251900abdf9c970470edfcf3a463732da0f16fb3
+Date:   Thu Nov 21 20:15:24 2013 +0000
+
+    fix a few tests, improve debug utils for Composable, Complete Stream functional migration
+
+commit 64a67fd63dab6d20996ffef20b1ee493373e1587
+Date:   Wed Nov 20 23:53:52 2013 +0000
+
+    fix a few tests, improve debug utils for Composable
+
+commit 0f339ce2345b8df7f6afa477644c7c7e2eecb09e
+Date:   Wed Nov 20 16:50:06 2013 +0000
+
+    Decouple Batching Operations from Composable/Stream/Promise attempting to fix #208 and rework PR #177.
+    Add a few utilities to render a Composable tree
+    Work In Progress, not all tests green yet
+
+commit 532c7122a67aeab34040ce8e2d269c68dc774374
+Date:   Tue Nov 19 14:35:32 2013 +0000
+
+    Decouple Operations from Composable/Stream/Promise
+
+commit ed9f4d05e74c6f07095f1a7fbb6429f37cfa8aa8
+Date:   Mon Nov 18 14:17:52 2013 -0800
+
+    [artifactory-release] Next development version
+
+commit 6adce84500a91d7b9355d97be98801bd5a45fdc4
+Date:   Mon Nov 18 14:17:44 2013 -0800
+
+    [artifactory-release] Release version 1.0.0.BUILD
+
+commit 84c1eb7b5a4aa0c10b6d0b3e532e915528194ca5
+Date:   Fri Nov 15 09:45:12 2013 -0600
+
+    Fixes #211 Guards against double dispatch when handling errors.
+    
+    Previously, a Reactor's internal errorHandler would try to dispatch the error handling into the configured Dispatcher. If every Consumer throws a RuntimeException of some kind, then the Dispatcher would be swamped with twice the number of requests--one for the event itself, and another for the exception handler.
+    
+    This change selects the error handlers directly from the Consumer Registry and invokes them in the calling thread which will always be the Dispatcher's thread of execution since the errorHandler is only ever invoked by the Dispatcher code in a catch block. This eliminates the double dispatch and causes the error handler to function normally.
+
+commit 45975eaa3040eed44919fbe3acaeaa944dbd630c
+Merge: 10c3a88 b8eadb1
+Date:   Fri Nov 15 04:18:28 2013 -0800
+
+    Merge pull request #210 from ifesdjeen/patch-3
+    
+    Allow configuration of Consumer Registry
