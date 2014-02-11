@@ -1,4 +1,4 @@
-package reactor.event.selector;
+package reactor.io.selector;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +14,8 @@ import com.jayway.jsonpath.internal.Utils;
 import com.jayway.jsonpath.spi.JsonProvider;
 import com.jayway.jsonpath.spi.MappingProvider;
 import com.jayway.jsonpath.spi.Mode;
+import reactor.event.selector.ObjectSelector;
+import reactor.event.selector.Selector;
 import reactor.io.Buffer;
 
 import java.io.IOException;

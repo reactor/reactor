@@ -32,7 +32,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static reactor.event.selector.JsonPathSelector.jsonPathSelector;
+import static reactor.io.selector.JsonPathSelector.jsonPathSelector;
 import static reactor.event.selector.Selectors.*;
 
 /**

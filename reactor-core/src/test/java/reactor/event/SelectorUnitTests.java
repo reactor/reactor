@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static reactor.event.selector.JsonPathSelector.J;
+import static reactor.io.selector.JsonPathSelector.J;
 import static reactor.event.selector.Selectors.$;
 import static reactor.event.selector.Selectors.U;
 
