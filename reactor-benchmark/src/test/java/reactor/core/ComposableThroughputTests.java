@@ -104,7 +104,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 				try {
 					return deferred.compose();
 				} finally {
-					deferred.accept(integer + 1);
+					deferred.accept(integer);
 				}
 			}
 		})

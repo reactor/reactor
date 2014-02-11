@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, Lifecycle {
+public class RingBufferAllocator<T extends Recyclable> implements Allocator<T> {
 
 	private final ExecutorService executor;
 	private final boolean         shutdownExecutor;
@@ -129,22 +129,18 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 		batch.clear();
 	}
 
-	@Override
 	public boolean alive() {
 		return !executor.isShutdown();
 	}
 
-	@Override
 	public void start() {
 		ringBuffer = disruptor.start();
 	}
 
-	@Override
 	public boolean awaitAndShutdown() {
 		return awaitAndShutdown(Integer.MAX_VALUE, TimeUnit.SECONDS);
 	}
 
-	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		try {
 			if(shutdownExecutor) {
@@ -159,7 +155,6 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 		return true;
 	}
 
-	@Override
 	public void shutdown() {
 		disruptor.shutdown();
 		if(shutdownExecutor) {
@@ -167,7 +162,6 @@ public class RingBufferAllocator<T extends Recyclable> implements Allocator<T>, 
 		}
 	}
 
-	@Override
 	public void halt() {
 		if(shutdownExecutor) {
 			executor.shutdownNow();

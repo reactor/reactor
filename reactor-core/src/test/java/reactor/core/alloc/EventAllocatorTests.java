@@ -1,6 +1,7 @@
 package reactor.core.alloc;
 
 import org.junit.Test;
+import reactor.core.alloc.event.EventAllocator;
 import reactor.event.Event;
 
 import static junit.framework.Assert.assertTrue;

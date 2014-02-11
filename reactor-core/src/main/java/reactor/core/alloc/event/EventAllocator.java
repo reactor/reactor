@@ -1,5 +1,8 @@
-package reactor.core.alloc;
+package reactor.core.alloc.event;
 
+import reactor.core.alloc.Allocator;
+import reactor.core.alloc.Reference;
+import reactor.core.alloc.ReferenceCountingAllocator;
 import reactor.core.alloc.factory.EventFactorySupplier;
 import reactor.event.Event;
 
@@ -12,24 +15,24 @@ import java.util.HashMap;
  */
 public abstract class EventAllocator {
 
-  private final Object                     monitor;
-  private final HashMap<Class, Allocator>  eventPools;
+	private final Object                    monitor;
+	private final HashMap<Class, Allocator> eventPools;
 
-  public EventAllocator() {
-    this(new Class[0]);
-  }
+	public EventAllocator() {
+		this(new Class[0]);
+	}
 
-  /**
-   * Create a new {@link reactor.core.alloc.EventAllocator}, containing pre-created
-   * {@link reactor.core.alloc.Allocator}s for given {@data class}es.
-   *
-   * @param classes
-   */
-  public EventAllocator(Class[] classes) {
-    this.eventPools = new HashMap<Class, Allocator>();
-    this.monitor = new Object();
-    for(Class c: classes) {
-      eventPools.put(c, makeAllocator(c));
+	/**
+	 * Create a new {@link EventAllocator}, containing pre-created
+	 * {@link reactor.core.alloc.Allocator}s for given {@data class}es.
+	 *
+	 * @param classes
+	 */
+	public EventAllocator(Class[] classes) {
+		this.eventPools = new HashMap<Class, Allocator>();
+		this.monitor = new Object();
+		for (Class c : classes) {
+			eventPools.put(c, makeAllocator(c));
     }
   }
 
