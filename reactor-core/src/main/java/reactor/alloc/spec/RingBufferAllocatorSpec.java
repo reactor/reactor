@@ -1,13 +1,13 @@
-package reactor.core.alloc.spec;
+package reactor.alloc.spec;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
-import reactor.core.alloc.Recyclable;
-import reactor.core.alloc.Reference;
-import reactor.core.alloc.RingBufferAllocator;
+import reactor.alloc.Recyclable;
+import reactor.alloc.Reference;
+import reactor.alloc.RingBufferAllocator;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.util.Assert;
@@ -15,7 +15,7 @@ import reactor.util.Assert;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Helper class for creating a {@link reactor.core.alloc.RingBufferAllocator}. Provides an easy way to specify the
+ * Helper class for creating a {@link reactor.alloc.RingBufferAllocator}. Provides an easy way to specify the
  * {@code EventFactory}, {@code EventHandler}, and {@code ExceptionHandler} via Reactor abstractions of {@link
  * reactor.function.Supplier} and {@link Consumer}.
  *

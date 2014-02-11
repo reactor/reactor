@@ -1,8 +1,6 @@
-package reactor.support;
+package reactor.timer;
 
 import reactor.function.Consumer;
-import reactor.timer.SimpleHashWheelTimer;
-import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;

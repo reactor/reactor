@@ -1,4 +1,4 @@
-package reactor.core.alloc;
+package reactor.alloc;
 
 import reactor.function.Supplier;
 
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * An implementation of {@link reactor.core.alloc.Allocator} that uses reference counting to determine when an object
+ * An implementation of {@link reactor.alloc.Allocator} that uses reference counting to determine when an object
  * should
  * be recycled and placed back into the pool to be reused.
  *

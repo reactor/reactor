@@ -1,15 +1,15 @@
 package reactor.io;
 
-import reactor.core.alloc.Allocator;
-import reactor.core.alloc.Reference;
-import reactor.core.alloc.ReferenceCountingAllocator;
+import reactor.alloc.Allocator;
+import reactor.alloc.Reference;
+import reactor.alloc.ReferenceCountingAllocator;
 import reactor.function.Supplier;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
- * An {@link reactor.core.alloc.Allocator} implementation that allocates {@link reactor.io.Buffer Buffers}.
+ * An {@link reactor.alloc.Allocator} implementation that allocates {@link reactor.io.Buffer Buffers}.
  *
  * @author Jon Brisbin
  */

@@ -17,7 +17,7 @@
 package reactor.io;
 
 import reactor.function.Supplier;
-import reactor.core.alloc.Recyclable;
+import reactor.alloc.Recyclable;
 import reactor.util.Assert;
 
 import javax.annotation.concurrent.NotThreadSafe;

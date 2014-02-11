@@ -1,9 +1,9 @@
-package reactor.core.alloc;
+package reactor.alloc;
 
-import reactor.support.TimeUtils;
+import reactor.timer.TimeUtils;
 
 /**
- * An abstract {@link reactor.core.alloc.Reference} implementation that does reference counting.
+ * An abstract {@link reactor.alloc.Reference} implementation that does reference counting.
  *
  * @author Jon Brisbin
  * @since 1.1

@@ -1,6 +1,6 @@
-package reactor.core.alloc
+package reactor.alloc
 
-import reactor.core.alloc.factory.Factories
+import reactor.alloc.factory.Factories
 import spock.lang.Specification
 
 /**

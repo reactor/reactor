@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.alloc;
+package reactor.alloc;
 
 import org.junit.After;
 import org.junit.Before;

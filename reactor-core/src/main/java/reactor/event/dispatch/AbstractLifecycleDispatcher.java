@@ -16,7 +16,7 @@
 
 package reactor.event.dispatch;
 
-import reactor.core.alloc.Recyclable;
+import reactor.alloc.Recyclable;
 import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;

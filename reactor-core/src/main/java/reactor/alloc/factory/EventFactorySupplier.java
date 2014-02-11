@@ -1,4 +1,4 @@
-package reactor.core.alloc.factory;
+package reactor.alloc.factory;
 
 import reactor.event.Event;
 import reactor.function.Supplier;

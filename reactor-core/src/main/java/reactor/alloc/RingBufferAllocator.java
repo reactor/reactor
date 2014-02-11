@@ -1,9 +1,8 @@
-package reactor.core.alloc;
+package reactor.alloc;
 
 import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import reactor.event.lifecycle.Lifecycle;
 import reactor.function.Supplier;
 import reactor.support.Identifiable;
 import reactor.support.NamedDaemonThreadFactory;

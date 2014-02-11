@@ -17,7 +17,7 @@
 package reactor.event;
 
 import reactor.function.Consumer;
-import reactor.core.alloc.Recyclable;
+import reactor.alloc.Recyclable;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;

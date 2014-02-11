@@ -1,9 +1,9 @@
-package reactor.core.alloc.event;
+package reactor.event.alloc;
 
-import reactor.core.alloc.Allocator;
-import reactor.core.alloc.Reference;
-import reactor.core.alloc.ReferenceCountingAllocator;
-import reactor.core.alloc.factory.EventFactorySupplier;
+import reactor.alloc.Allocator;
+import reactor.alloc.Reference;
+import reactor.alloc.ReferenceCountingAllocator;
+import reactor.alloc.factory.EventFactorySupplier;
 import reactor.event.Event;
 
 import java.util.HashMap;
@@ -24,7 +24,7 @@ public abstract class EventAllocator {
 
 	/**
 	 * Create a new {@link EventAllocator}, containing pre-created
-	 * {@link reactor.core.alloc.Allocator}s for given {@data class}es.
+	 * {@link reactor.alloc.Allocator}s for given {@data class}es.
 	 *
 	 * @param classes
 	 */
@@ -42,7 +42,7 @@ public abstract class EventAllocator {
    * @param klass generic type of {@link reactor.event.Event}
    * @param <T> generic type of {@link reactor.event.Event}
    *
-   * @return a {@link reactor.core.alloc.Reference} that can be retained and released.
+   * @return a {@link reactor.alloc.Reference} that can be retained and released.
    */
   public <T> Reference<Event<T>> get(Class<T> klass) {
     if(!eventPools.containsKey(klass)) {
@@ -65,7 +65,7 @@ public abstract class EventAllocator {
   protected abstract <T> Allocator<Event<T>> makeAllocator(Class<T> klass);
 
   /**
-   * Default Event Allocator, uses {@link reactor.core.alloc.ReferenceCountingAllocator} for
+   * Default Event Allocator, uses {@link reactor.alloc.ReferenceCountingAllocator} for
    * allocating and recycling events.
    *
    * @return newly constructed event alloator.

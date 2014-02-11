@@ -7,7 +7,6 @@ import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
-import reactor.support.TimeUtils;
 import reactor.util.Assert;
 
 import java.util.Set;

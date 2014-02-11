@@ -1,8 +1,8 @@
-package reactor.core.alloc;
+package reactor.alloc;
 
 import org.junit.Test;
-import reactor.core.alloc.event.EventAllocator;
 import reactor.event.Event;
+import reactor.event.alloc.EventAllocator;
 
 import static junit.framework.Assert.assertTrue;
 

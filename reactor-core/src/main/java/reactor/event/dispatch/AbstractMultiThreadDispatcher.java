@@ -1,6 +1,6 @@
 package reactor.event.dispatch;
 
-import reactor.core.alloc.factory.BatchFactorySupplier;
+import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;
