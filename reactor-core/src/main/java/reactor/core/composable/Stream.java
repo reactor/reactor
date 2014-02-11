@@ -576,7 +576,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
-		return reduce(fn, Functions.supplier(initial));
+		return reduce(fn, Functions.supplier(initial), batchSize);
 	}
 
 	/**
@@ -592,10 +592,13 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @param fn           the reduce function
 	 * @param accumulators the {@link Supplier} that will provide accumulators
+	 * @param batchSize the batch size to use
 	 * @param <A>          the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
+	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators,
+	                            final int batchSize
+	                            ) {
 		final Deferred<A, Stream<A>> d = createDeferred(1);
 		final Stream<A> stream = d.compose();
 		add(new ReduceAction<T, A>(
@@ -616,7 +619,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
-		return reduce(fn, (Supplier<A>) null);
+		return reduce(fn, (Supplier<A>) null, batchSize);
 	}
 
 	/**

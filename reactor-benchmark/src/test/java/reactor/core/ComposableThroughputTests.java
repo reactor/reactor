@@ -51,7 +51,19 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	static int  length        = 500;
 	static int  runs          = 1000;
 	static int  samples       = 3;
-	static long expectedTotal = length*runs*samples;
+	static long expectedTotal = sumSample();
+
+	public static long sumSample() {
+		long sum = 1;
+		for(int x = 0; x < samples; x++) {
+			for(int i = 0; i < runs; i++) {
+				for(int j = 0; j < length; j++) {
+					sum += j;
+				}
+			}
+		}
+		return sum;
+	}
 
 	private          CountDownLatch latch;
 	private volatile long           total;
@@ -66,7 +78,7 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 	}
 
 	private Deferred<Integer, Stream<Integer>> createDeferred(Dispatcher dispatcher) {
-		latch = new CountDownLatch(length * runs * samples);
+		latch = new CountDownLatch(1);
 		Deferred<Integer, Stream<Integer>> dInt = Streams.<Integer>defer()
 				.env(env)
 				.dispatcher(dispatcher)
@@ -79,17 +91,17 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 						return number;
 					}
 				})
-				.scan(new Function<Tuple2<Integer, Long>, Long>() {
+				.reduce(new Function<Tuple2<Integer, Long>, Long>() {
 					@Override
 					public Long apply(Tuple2<Integer, Long> r) {
 						long last = (null != r.getT2() ? r.getT2() : 1);
 						return last + r.getT1();
 					}
-				})
+				}, null, length*runs*samples)
 				.consume(new Consumer<Long>() {
 					@Override
 					public void accept(Long number) {
-						totalUpdated.getAndIncrement(ComposableThroughputTests.this);
+						totalUpdated.set(ComposableThroughputTests.this, number);
 						latch.countDown();
 					}
 				});
@@ -140,14 +152,14 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 
 	private void doTestMapMany(String name) throws InterruptedException {
 		doTest(env.getDefaultDispatcher(), name, createMapManyDeferred());
-		assertThat("Totals matched expected", total, is(expectedTotal));
+		assertThat("Totals matched expected", total, is((long)length*runs*samples));
 	}
 
 
 	private void doTestMapManyBatched(String name) throws InterruptedException {
 		int batchSize = 150;
 		doTest(env.getDefaultDispatcher(), name, createMapManyBatchedDeferred(batchSize));
-		assertThat("Totals matched expected", total, is(expectedTotal));
+		assertThat("Totals matched expected", total, is((long)length*runs*samples));
 	}
 
 	private void doTest(Dispatcher dispatcher, String name) throws InterruptedException {
@@ -166,7 +178,6 @@ public class ComposableThroughputTests extends AbstractReactorTest {
 				}
 			}
 		}
-		//d.flush();
 
 		latch.await();
 		assertEquals("Missing accepted events, possibly due to a backlog/batch issue", 0, latch.getCount());
