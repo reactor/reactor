@@ -433,6 +433,26 @@ class StreamsSpec extends Specification {
 		then:
 			'it is accepted by the filter'
 			tap.get() == 2
+
+		when:
+			'simple filter'
+			anotherSource = Streams.<Boolean> defer().get()
+			tap = anotherSource.compose().filter().tap()
+			anotherSource.accept(true)
+
+		then:
+			'it is accepted by the filter'
+			tap.get()
+
+		when:
+			'simple filter nominal case'
+			anotherSource = Streams.<Boolean> defer().get()
+			tap = anotherSource.compose().filter().tap()
+			anotherSource.accept(false)
+
+		then:
+			'it is not accepted by the filter'
+			!tap.get()
 	}
 
 	def "When a mapping function throws an exception, the mapped composable accepts the error"() {

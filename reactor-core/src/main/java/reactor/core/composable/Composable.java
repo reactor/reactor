@@ -259,8 +259,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public Composable<T> filter(@Nonnull final Predicate<T> p) {
-		return filter((Predicate<T>)FilterAction.simplePredicate);
+	public Composable<Boolean> filter() {
+		return ((Composable<Boolean>)this).filter(FilterAction.simplePredicate, null);
 	}
 
 	/**
@@ -275,8 +275,21 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public Composable<T> filter(@Nonnull final Composable<T> elseComposable) {
-		return filter((Predicate<T>)FilterAction.simplePredicate, elseComposable);
+	public Composable<Boolean> filter(@Nonnull final Composable<Boolean> elseComposable) {
+		return ((Composable<Boolean>)this).filter(FilterAction.simplePredicate, elseComposable);
+	}
+
+	/**
+	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
+	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
+	 *
+	 * @param p
+	 * 		the {@link Predicate} to test values against
+	 *
+	 * @return a new {@code Composable} containing only values that pass the predicate test
+	 */
+	public Composable<T> filter(@Nonnull final Predicate<T> p) {
+		return filter(p, null);
 	}
 
 	/**

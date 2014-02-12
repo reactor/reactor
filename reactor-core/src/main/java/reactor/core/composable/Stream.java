@@ -149,6 +149,16 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
+	public Stream<Boolean> filter() {
+		return (Stream<Boolean>)super.filter();
+	}
+
+	@Override
+	public Stream<Boolean> filter(@Nonnull Composable<Boolean> elseComposable) {
+		return (Stream<Boolean>)super.filter(elseComposable);
+	}
+
+	@Override
 	public Stream<T> filter(@Nonnull Function<T, Boolean> p) {
 		return (Stream<T>)super.filter(p);
 	}
@@ -159,8 +169,8 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> composable) {
-		return (Stream<T>)super.filter(p, composable);
+	public Stream<T> filter(@Nonnull Predicate<T> p, Composable<T> elseComposable) {
+		return (Stream<T>)super.filter(p, elseComposable);
 	}
 
 	@Override
