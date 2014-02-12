@@ -444,6 +444,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
+	public Promise<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
+		return (Promise<T>) super.filter(p, elseComposable);
+	}
+
+	@Override
+	public Promise<Boolean> filter() {
+		return (Promise<Boolean>) super.filter();
+	}
+
+	@Override
+	public Promise<Boolean> filter(@Nonnull Composable<Boolean> elseComposable) {
+		return (Promise<Boolean>) super.filter(elseComposable);
+	}
+
+	@Override
 	public Promise<T> flush() {
 		return (Promise<T>) super.flush();
 	}
