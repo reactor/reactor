@@ -109,6 +109,7 @@ public abstract class Streams {
 	 * 		the type of values passing through the {@literal Stream}
 	 *
 	 * @return a new {@link DeferredStreamSpec}
+	 * @since 1.1
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector acceptSelector, Object key) {
 		return new StreamSpec<T>().observable(observable).acceptSelector(Tuple2.of(acceptSelector,key)).get();
@@ -125,6 +126,7 @@ public abstract class Streams {
 	 * 		the type of values passing through the {@literal Stream}
 	 *
 	 * @return a new {@link DeferredStreamSpec}
+	 * @since 1.1
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector acceptSelector) {
 		return on(observable, acceptSelector, acceptSelector.getObject());
@@ -158,6 +160,7 @@ public abstract class Streams {
 	 * 		type of the value
 	 *
 	 * @return a {@link DeferredStreamSpec} based on the given value
+	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> StreamSpec<T> defer(Supplier<T> value) {

@@ -117,6 +117,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * 		the next {@code Composable} to cascade events to
 	 *
 	 * @return {@literal this}
+	 * @since 1.1
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
 		this.consume(composable);
@@ -217,6 +218,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * 		the type of the return value of the transformation function
 	 *
 	 * @return a new {@code Composable} containing the transformed values
+	 * @since 1.1
 	 */
 	public <V, C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
@@ -249,16 +251,32 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
-	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
+	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
 	 *
-	 * @param p
-	 * 		the {@link Predicate} to test values against
 	 *
 	 * @return a new {@code Composable} containing only values that pass the predicate test
+	 * @since 1.1
 	 */
+	@SuppressWarnings("unchecked")
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
-		return filter(p, null);
+		return filter((Predicate<T>)FilterAction.simplePredicate);
+	}
+
+	/**
+	 * Evaluate each accepted boolean value. If the predicate test succeeds,
+	 * the value is passed into the new {@code Composable}. the value is propagated into the {@param
+	 * elseComposable}.
+	 *
+	 * @param elseComposable
+	 * 		the {@link Composable} to test values against
+	 *
+	 * @return a new {@code Composable} containing only values that pass the predicate test
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public Composable<T> filter(@Nonnull final Composable<T> elseComposable) {
+		return filter((Predicate<T>)FilterAction.simplePredicate, elseComposable);
 	}
 
 	/**
@@ -313,6 +331,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * 		the action listening for values
 	 *
 	 * @return {@literal this}
+	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public Composable<T> add(Action<T> action) {
@@ -330,6 +349,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * 		the action listening for flush
 	 *
 	 * @return {@literal this}
+	 * @since 1.1
 	 */
 	public Composable<T> consumeFlush(Flushable<T> action) {
 		this.events.on(flush, new FlushableAction<T>(action, events, null));

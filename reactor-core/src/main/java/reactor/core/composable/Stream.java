@@ -177,6 +177,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the iterable to drain
 	 *
 	 * @return a new {@code Stream} whose values are the iterated one on flush
+	 * @since 1.1
 	 */
 	public Stream<T> propagate(Iterable<T> iterable) {
 		consumeFlush(new ForEachAction<T>(iterable,
@@ -195,6 +196,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the supplier to drain
 	 *
 	 * @return a new {@code Stream} whose values are generated on each flush
+	 * @since 1.1
 	 */
 	public Stream<T> propagate(Supplier<T> supplier) {
 		consumeFlush(new SupplyAction<T>(supplier,
@@ -211,6 +213,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the test returning true to trigger flush
 	 *
 	 * @return the current Stream
+	 * @since 1.1
 	 */
 	public Stream<T> flushWhen(Predicate<T> predicate) {
 		add(new WhenAction<T>(predicate,
@@ -293,6 +296,7 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 * @since 1.1
 	 */
 	public Stream<T> split() {
 		return split(batchSize);
@@ -307,6 +311,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the batch size to use
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 * @since 1.1
 	 */
 	public Stream<T> split(int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
@@ -323,7 +328,7 @@ public class Stream<T> extends Composable<T> {
 	 *
 	 * @return the new {@link Tap}
 	 *
-	 * @see Supplier
+	 * @see Consumer
 	 */
 	public Tap<T> tap() {
 		final Tap<T> tap = new Tap<T>();
@@ -337,6 +342,7 @@ public class Stream<T> extends Composable<T> {
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 * @since 1.1
 	 */
 	public Stream<T> buffer() {
 		return buffer(batchSize);
@@ -351,6 +357,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the batch size to use
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 * @since 1.1
 	 */
 	public Stream<T> buffer(int batchSize) {
 		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
@@ -367,6 +374,7 @@ public class Stream<T> extends Composable<T> {
 	 * batchSize} has been reached. All errors are also captured until current batchSize or flush is called.
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @since 1.1
 	 */
 	public Stream<List<T>> bufferWithErrors() {
 		return bufferWithErrors(batchSize);
@@ -381,6 +389,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the collected size
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @since 1.1
 	 */
 	public Stream<List<T>> bufferWithErrors(int batchSize) {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
@@ -438,6 +447,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the collect timeout in milliseconds
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @since 1.1
 	 */
 	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
@@ -456,6 +466,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		Timer to use for observing timeout
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @since 1.1
 	 */
 	public Stream<List<T>> collectWithTimeout(int batchSize, long timeout, Timer timer) {
 		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
@@ -479,6 +490,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the time period when each window close and flush the attached consumer
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> window(int period) {
 		return window(period, TimeUnit.MILLISECONDS);
@@ -496,6 +508,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		maximum amount of items to keep
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> movingWindow(int period, int backlog) {
 		return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
@@ -512,6 +525,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the time unit used for the period
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit) {
 		return window(period, timeUnit, 0);
@@ -529,6 +543,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		maximum amount of items to keep
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
 		return movingWindow(period, timeUnit, 0, backlog);
@@ -547,6 +562,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the initial delay in milliseconds
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
@@ -569,6 +585,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		maximum amount of items to keep
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
 		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
@@ -590,6 +607,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the reactor timer to run the window on
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
@@ -622,6 +640,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the reactor timer to run the window on
 	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
+	 * @since 1.1
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
@@ -701,7 +720,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn) {
-		return reduce(fn, (Supplier<A>)null, batchSize);
+		return reduce(fn, null, batchSize);
 	}
 
 	/**
@@ -717,6 +736,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the type of the reduced object
 	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 * @since 1.1
 	 */
 	public <A> Stream<A> scan(@Nonnull Function<Tuple2<T, A>, A> fn, A initial) {
 		return scan(fn, Functions.supplier(initial));
@@ -739,6 +759,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the type of the reduced object
 	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 * @since 1.1
 	 */
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Deferred<A, Stream<A>> d = createDeferred(1);
@@ -761,6 +782,7 @@ public class Stream<T> extends Composable<T> {
 	 * 		the type of the reduced object
 	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 * @since 1.1
 	 */
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn) {
 		return scan(fn, (Supplier<A>)null);
