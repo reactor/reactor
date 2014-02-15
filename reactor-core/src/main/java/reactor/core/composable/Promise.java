@@ -30,6 +30,7 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
+import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -61,7 +62,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private final ReentrantLock lock     = new ReentrantLock();
 
 	private final long        defaultTimeout;
-	private final Environment environment;
 	private final Condition   pendingCondition;
 
 	private State state = State.PENDING;
@@ -85,9 +85,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	public Promise(@Nullable Observable observable,
 	               @Nullable Environment env,
 	               @Nullable Composable<?> parent) {
-		super(observable, parent);
+		super(observable, parent, null, env);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
-		this.environment = env;
 		this.pendingCondition = lock.newCondition();
 
 		consumeEvent(new Consumer<Event<T>>() {
@@ -459,6 +458,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
+	public Promise<T> filter(@Nonnull Function<T, Boolean> fn) {
+		return (Promise<T>)super.filter(fn);
+	}
+
+	@Override
+	public Promise<T> timeout(long timeout) {
+		return (Promise<T>)super.timeout(timeout);
+	}
+
+	@Override
+	public Promise<T> timeout(long timeout, Timer timer) {
+		return (Promise<T>)super.timeout(timeout, timer);
+	}
+
+	@Override
 	public Promise<T> flush() {
 		return (Promise<T>) super.flush();
 	}
@@ -485,7 +499,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(null, environment, this));
+		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(null, getEnvironment(), this));
 	}
 
 	protected void errorAccepted(Throwable error) {

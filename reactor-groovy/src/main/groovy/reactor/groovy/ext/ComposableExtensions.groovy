@@ -64,7 +64,12 @@ class ComposableExtensions {
 		selfType.consume new ClosureConsumer<T>(closure)
 	}
 
-	static <T, V, C extends Composable<V>> C mapMany(final Composable<T> selfType,
+	static <T, V, C extends Composable<V>> Stream<V> mapMany(final Stream<T> selfType,
+	                                                             final Closure<C> closure) {
+		selfType.mapMany new ClosureFunction<T, C>(closure)
+	}
+
+	static <T, V, C extends Promise<V>> Promise<V> bind(final Promise<T> selfType,
 	                                                             final Closure<C> closure) {
 		selfType.mapMany new ClosureFunction<T, C>(closure)
 	}

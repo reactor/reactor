@@ -93,8 +93,22 @@ class StreamsSpec extends Specification {
 		then:
 			'first and last'
 			first.get() == 1
-			println s.debug()
 			last.get() == 5
+	}
+
+	def 'A Stream can be enforced to dispatch distinct values'() {
+		given:
+			'a composable with values 1 to 3 with duplicates'
+			Stream s = Streams.defer([1, 1, 2, 2, 3]).synchronousDispatcher().get()
+
+		when:
+			'the values are filtered and result is collected'
+			def tap = s.distinct().collect().tap()
+			s.flush()
+
+		then:
+			'collected must remove duplicates'
+			tap.get() == [1,2,3]
 	}
 
 	def 'A Stream with an unknown set of values makes those values available when flush predicate agrees'() {
@@ -174,7 +188,7 @@ class StreamsSpec extends Specification {
 	def 'Accepted values are passed to a registered Consumer'() {
 		given:
 			'a composable with a registered consumer'
-			Deferred d = Streams.defer().synchronousDispatcher().get()
+			Deferred d = Streams.<Integer>defer().synchronousDispatcher().get()
 			Stream composable = d.compose()
 			def value = composable.tap()
 
@@ -198,7 +212,7 @@ class StreamsSpec extends Specification {
 	def 'Accepted errors are passed to a registered Consumer'() {
 		given:
 			'a composable with a registered consumer of RuntimeExceptions'
-			Deferred d = Streams.defer().synchronousDispatcher().get()
+			Deferred d = Streams.<Integer>defer().synchronousDispatcher().get()
 			Composable composable = d.compose()
 			def errors = 0
 			composable.when(RuntimeException, consumer { errors++ })
@@ -236,7 +250,7 @@ class StreamsSpec extends Specification {
 			Deferred<Integer, Stream<Integer>> child = Streams.<Integer> defer().synchronousDispatcher().get()
 			Stream s = child.compose()
 
-			def error
+			Exception error = null
 			def value = s.tap()
 			s.when(Exception, consumer { error = it })
 			parent.compose().connect(s)
@@ -265,7 +279,7 @@ class StreamsSpec extends Specification {
 			Deferred<Integer, Stream<Integer>> child = Streams.<Integer> defer().synchronousDispatcher().get()
 			Stream s = child.compose()
 
-			def error
+			Exception error = null
 			def value = s.tap()
 			s.when(Exception, consumer { error = it })
 			parent.compose().consume(s)
@@ -315,7 +329,7 @@ class StreamsSpec extends Specification {
 	def 'When the number of values is unknown, last is never updated'() {
 		given:
 			'a composable that will accept an unknown number of values'
-			Deferred d = Streams.defer().get()
+			Deferred d = Streams.<Integer>defer().get()
 			Stream composable = d.compose()
 
 		when:
@@ -331,7 +345,7 @@ class StreamsSpec extends Specification {
 	def 'Last value of a batch is accessible'() {
 		given:
 			'a composable that will accept an unknown number of values'
-			Deferred d = Streams.defer().batchSize(3).get()
+			Deferred d = Streams.<Integer>defer().batchSize(3).get()
 			Stream composable = d.compose()
 
 		when:
@@ -360,7 +374,7 @@ class StreamsSpec extends Specification {
 	def "A Stream's values can be mapped"() {
 		given:
 			'a source composable with a mapping function'
-			Deferred source = Streams.defer().get()
+			Deferred source = Streams.<Integer>defer().get()
 			Stream mapped = source.compose().map(function { it * 2 })
 
 		when:
@@ -373,11 +387,11 @@ class StreamsSpec extends Specification {
 			value.get() == 2
 	}
 
-	def "A Stream's values can be exploded"() {
+	def "Stream's values can be exploded"() {
 		given:
 			'a source composable with a mapMany function'
 			Deferred source = Streams.<Integer> defer().get()
-			Stream<Integer> mapped = source.compose().mapMany(function { Streams.<Integer> defer(it * 2).get() })
+			Stream<Integer> mapped = source.compose().mapMany(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
 
 		when:
 			'the source accepts a value'
@@ -459,7 +473,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a mapping function that throws an exception'
 			Deferred source = Streams.<Integer>defer().get()
-			Stream mapped = source.compose().map(function { throw new RuntimeException() })
+			Stream mapped = source.compose().map(function { if(it==1) throw new RuntimeException() else 'na' })
 			def errors = 0
 			mapped.when(Exception, consumer { errors++ })
 
@@ -475,8 +489,8 @@ class StreamsSpec extends Specification {
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {
 		given:
 			'a source composable with a filter function that throws an exception'
-			Deferred source = Streams.defer().synchronousDispatcher().get()
-			Stream filtered = source.compose().filter(predicate { throw new RuntimeException() })
+			Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
+			Stream filtered = source.compose().filter(predicate { if(it == 1) throw new RuntimeException() else true })
 			def errors = 0
 			filtered.when(Exception, consumer { errors++ })
 
@@ -535,7 +549,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known number of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known number of values and a reduce function'
-			Deferred source = Streams.defer().batchSize(5).synchronousDispatcher().get()
+			Deferred source = Streams.<Integer>defer().batchSize(5).synchronousDispatcher().get()
 			Stream reduced = source.compose().reduce(new Reduction())
 			def values = []
 			reduced.consume(consumer { values << it })
@@ -670,7 +684,7 @@ class StreamsSpec extends Specification {
 	def 'Reduce will accumulate a list of accepted values'() {
 		given:
 			'a composable'
-			Deferred source = Streams.defer().batchSize(1).synchronousDispatcher().get()
+			Deferred source = Streams.<Integer>defer().batchSize(1).synchronousDispatcher().get()
 			Stream reduced = source.compose().collect()
 			def value = reduced.tap()
 
@@ -739,7 +753,7 @@ class StreamsSpec extends Specification {
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			Deferred source = Streams.defer().batchSize(2).synchronousDispatcher().get()
+			Deferred source = Streams.<Integer>defer().batchSize(2).synchronousDispatcher().get()
 			Stream reduced = source.compose().collect()
 			def value = reduced.tap()
 
@@ -816,7 +830,7 @@ class StreamsSpec extends Specification {
 			'a source stream with a given observable'
 			def r = Reactors.reactor().synchronousDispatcher().get()
 			def selector = Selectors.anonymous()
-			def event = null
+			Event<Integer> event = null
 			Streams.<Integer> on(r, selector).consumeEvent(consumer { event = it })
 
 		when:
@@ -867,7 +881,7 @@ class StreamsSpec extends Specification {
 			'a source and a collected stream'
 			Environment environment = new Environment()
 			Deferred source = Streams.<Integer> defer().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.compose().collectWithTimeout(5, 1000)
+			Stream reduced = source.compose().collect(5).timeout(1000)
 			def value = reduced.tap()
 
 		when:
@@ -971,7 +985,7 @@ class StreamsSpec extends Specification {
 			def sum = new AtomicInteger()
 			def latch = new CountDownLatch(3)
 			Environment env = new Environment()
-			Deferred head = Streams.defer().
+			Deferred head = Streams.<Integer>defer().
 					env(env).
 					batchSize(333).
 					dispatcher(Environment.THREAD_POOL).
@@ -996,7 +1010,7 @@ class StreamsSpec extends Specification {
 	def 'An Observable can consume values from a Stream'() {
 		given:
 			'a Stream and a Observable consumer'
-			Deferred d = Streams.defer().synchronousDispatcher().get()
+			Deferred d = Streams.<Integer>defer().synchronousDispatcher().get()
 			Stream composable = d.compose()
 			Observable observable = Mock(Observable)
 			composable.consume('key', observable)
