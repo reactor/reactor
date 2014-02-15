@@ -9,7 +9,6 @@ import reactor.event.selector.HeaderResolver;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.function.support.CancelConsumerException;
-import reactor.function.support.SingleUseConsumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 
@@ -49,6 +48,7 @@ import java.util.concurrent.TimeUnit;
  * </p>
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class SimpleHashWheelTimer implements Timer {
 
@@ -142,7 +142,7 @@ public class SimpleHashWheelTimer implements Timer {
 		long ms = TimeUnit.MILLISECONDS.convert(delay, timeUnit);
 		return tasks.register(
 				new PeriodSelector(ms, ms, resolution),
-				new SingleUseConsumer<Long>(consumer)
+				consumer
 		).cancelAfterUse();
 	}
 

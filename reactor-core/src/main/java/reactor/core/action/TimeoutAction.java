@@ -21,39 +21,38 @@ import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.timer.Timer;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class CollectWithTimeoutAction<T> extends CollectAction<T> {
+public class TimeoutAction<T> extends Action<T> {
 
+	public static final Event<Void> TIMEOUT_EVENT = Event.wrap(null);
 	private final Timer timer;
 	private final long  timeout;
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
-			doFlush(null);
+			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
+				notifyValue(TIMEOUT_EVENT);
+			}
 		}
 	};
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
-	public CollectWithTimeoutAction(int batchsize, Observable d, Object successKey, Object failureKey,
-	                                Timer timer, long timeout) {
-		super(batchsize, d, successKey, failureKey);
+	public TimeoutAction(Observable d, Object successKey, Object failureKey,
+	                     Timer timer, long timeout) {
+		super(d, successKey, failureKey);
 		this.timer = timer;
 		this.timeout = timeout;
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
-	public void doFlush(Event<T> ev) {
-		timeoutRegistration.cancel();
-		super.doFlush(ev);
+	protected void doAccept(Event<T> ev) {
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 }

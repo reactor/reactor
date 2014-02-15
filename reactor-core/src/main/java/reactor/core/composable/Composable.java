@@ -16,6 +16,7 @@
 
 package reactor.core.composable;
 
+import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.core.action.*;
@@ -26,6 +27,7 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
+import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -50,21 +52,24 @@ public abstract class Composable<T> implements Pipeline<T> {
 	private final Object   acceptKey;
 	private final Selector error = Selectors.anonymous();
 	private final Selector flush = Selectors.anonymous();
+	private final Environment environment;
 
 	private final Observable    events;
 	private final Composable<?> parent;
 
 	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent) {
-		this(observable, parent, null);
+		this(observable, parent, null, null);
 	}
 
 
 	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent,
-	                         @Nullable Tuple2<Selector, Object> acceptSelectorTuple) {
+	                         @Nullable Tuple2<Selector, Object> acceptSelectorTuple,
+	                         @Nullable Environment environment) {
 		Assert.state(observable != null || parent != null, "One of 'observable' or 'parent'  cannot be null.");
 		this.parent = parent;
+		this.environment = environment;
 		this.events = parent == null ? observable : parent.events;
-		if(null == acceptSelectorTuple) {
+		if (null == acceptSelectorTuple) {
 			this.acceptSelector = Selectors.anonymous();
 			this.acceptKey = acceptSelector.getObject();
 		} else {
@@ -72,11 +77,11 @@ public abstract class Composable<T> implements Pipeline<T> {
 			this.acceptSelector = new ObjectSelector<Object>(acceptSelectorTuple.getT2());
 		}
 
-		if(parent != null) {
+		if (parent != null) {
 			events.on(parent.error,
-			          new ConnectAction<Throwable>(events, error.getObject(), null));
+					new ConnectAction<Throwable>(events, error.getObject(), null));
 			events.on(parent.flush,
-			          new ConnectAction<Throwable>(events, flush.getObject(), null));
+					new ConnectAction<Throwable>(events, flush.getObject(), null));
 		}
 	}
 
@@ -98,12 +103,14 @@ public abstract class Composable<T> implements Pipeline<T> {
 		this.events.on(error, new Action<E>(events, null) {
 			@Override
 			protected void doAccept(Event<E> e) {
-				if(Selectors.T(exceptionType).matches(e.getData().getClass())) {
+				if (Selectors.T(exceptionType).matches(e.getData().getClass())) {
 					onError.accept(e.getData());
 				}
 			}
 
-			public String toString() { return "When[" + exceptionType.getSimpleName() + "]"; }
+			public String toString() {
+				return "When[" + exceptionType.getSimpleName() + "]";
+			}
 
 		});
 		return this;
@@ -312,6 +319,50 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return d.compose();
 	}
 
+
+
+	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout
+	 * 		the timeout in milliseconds between two notifications on this composable
+	 *
+	 * @return this {@link Composable}
+	 * @since 1.1
+	 */
+	public Composable<T> timeout(long timeout) {
+		Assert.state(environment != null, "Cannot use default timer as no environment has been provided to this Stream");
+		return timeout(timeout, environment.getRootTimer());
+	}
+
+	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
+	 *
+	 * @param timeout
+	 * 		the timeout in milliseconds between two notifications on this composable
+	 * @param timer
+	 * 		the reactor timer to run the timeout on
+	 *
+	 * @return this {@link Composable}
+	 * @since 1.1
+	 */
+	public Composable<T> timeout(long timeout, Timer timer) {
+		Assert.state(timer != null, "Timer must be supplied");
+		Composable<?> composable = parent != null ? parent : this;
+
+		add(new TimeoutAction<T>(
+				composable.events,
+				composable.flush.getObject(),
+				error.getObject(),
+				timer,
+				timeout
+		));
+
+		return this;
+	}
+
 	/**
 	 * Flush any cached or unprocessed values through this {@literal Stream}.
 	 *
@@ -455,5 +506,14 @@ public abstract class Composable<T> implements Pipeline<T> {
 	protected Composable<?> getParent() {
 		return this.parent;
 	}
+
+	/**
+	 * Get the assigned {@link reactor.core.Environment}.
+	 *
+	 * @return
+	 */
+	protected Environment getEnvironment() { return environment; }
+
+
 
 }

@@ -17,30 +17,30 @@ package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.function.Function;
+import reactor.event.registry.Registration;
+import reactor.function.Consumer;
+import reactor.timer.Timer;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
+public class DistinctAction<T> extends Action<T> {
 
-	private final Function<T, E> fn;
+	private T lastData;
 
-	public MapManyAction(Function<T, E> fn,
-	                     Observable ob,
-	                     Object successKey,
-	                     Object failureKey) {
-		super(ob, successKey, failureKey);
-		this.fn = fn;
+	public DistinctAction(Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		E val = fn.apply(value.getData());
-		val.add(new ConnectAction<V>(getObservable(), getSuccessKey(), getFailureKey()));
-		val.flush();
+	protected void doAccept(Event<T> ev) {
+		final T currentData = ev.getData();
+		if(currentData == null || !currentData.equals(lastData)){
+			lastData = currentData;
+			notifyValue(ev);
+		}
 	}
-
 }
