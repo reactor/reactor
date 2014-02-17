@@ -18,7 +18,7 @@
 description = 'Reactor-based application framework for the JVM.'
 
 ext {
-	gradleVersion = '1.9'
+	gradleVersion = '1.10'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
@@ -343,7 +343,7 @@ project('reactor-benchmark') {
 	}
 }
 
-project('reactor-tcp') {
+project('reactor-net') {
 	apply plugin: 'osgi'
 	description = 'Reactor TCP components'
 

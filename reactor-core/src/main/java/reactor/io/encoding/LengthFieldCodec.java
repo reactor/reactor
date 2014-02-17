@@ -89,7 +89,7 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		public IN apply(Buffer buffer) {
 			while(buffer.remaining() > lengthFieldLength) {
 				int expectedLen = readLen(buffer);
-				if(expectedLen > buffer.remaining()) {
+				if(expectedLen < 0 || expectedLen > buffer.remaining()) {
 					// This Buffer doesn't contain a full frame of data
 					// reset to the start and bail out
 					buffer.rewind(lengthFieldLength);

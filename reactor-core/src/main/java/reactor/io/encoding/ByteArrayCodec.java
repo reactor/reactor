@@ -19,10 +19,10 @@ package reactor.io.encoding;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.io.Buffer;
-import reactor.io.encoding.Codec;
 
 /**
- * A simple {@link reactor.io.encoding.Codec} implementation that turns a {@link Buffer} into a {@code byte[]} and visa-versa.
+ * A simple {@link reactor.io.encoding.Codec} implementation that turns a {@link Buffer} into a {@code byte[]} and
+ * visa-versa.
  *
  * @author Jon Brisbin
  */
@@ -33,11 +33,13 @@ public class ByteArrayCodec implements Codec<Buffer, byte[], byte[]> {
 		return new Function<Buffer, byte[]>() {
 			@Override
 			public byte[] apply(Buffer buffer) {
-				if (null != next) {
-					next.accept(buffer.asBytes());
+				byte[] bytes = buffer.asBytes();
+				buffer.skip(bytes.length);
+				if(null != next) {
+					next.accept(bytes);
 					return null;
 				} else {
-					return buffer.asBytes();
+					return bytes;
 				}
 			}
 		};

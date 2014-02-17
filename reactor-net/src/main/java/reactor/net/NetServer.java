@@ -1,0 +1,40 @@
+package reactor.net;
+
+import reactor.core.composable.Promise;
+
+import javax.annotation.Nullable;
+
+/**
+ * A network-aware server.
+ *
+ * @author Jon Brisbin
+ */
+public interface NetServer<IN, OUT> {
+
+	/**
+	 * Start and bind this {@literal NetServer} to the configured listen port.
+	 *
+	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is started
+	 */
+	Promise<Void> start();
+
+	/**
+	 * Start and bind this {@literal NetServer} to the configured listen port and notify the given {@link
+	 * reactor.function.Consumer} when the bind operation is complete.
+	 *
+	 * @param started
+	 * 		{@link java.lang.Runnable} to invoke when bind operation is complete
+	 *
+	 * @return {@link this}
+	 */
+	NetServer<IN, OUT> start(@Nullable Runnable started);
+
+	/**
+	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.core.composable.Promise} when shut
+	 * down.
+	 *
+	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is shut down
+	 */
+	Promise<Void> shutdown();
+
+}
