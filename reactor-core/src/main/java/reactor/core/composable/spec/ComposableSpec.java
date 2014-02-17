@@ -42,6 +42,7 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 	 *
 	 * @param acceptSelector The selector tuple to listen/publish to
 	 * @return {@code this}
+	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	SPEC acceptSelector(final Tuple2<Selector, Object> acceptSelector) {
@@ -54,6 +55,7 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 	 *
 	 * @param observable The observable to listen/publish to
 	 * @return {@code this}
+	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	SPEC observable(final Observable observable) {

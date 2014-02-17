@@ -27,6 +27,7 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
+import reactor.function.Supplier;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -127,7 +128,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @since 1.1
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
-		this.consume(composable);
+		this.connectValues(composable);
 		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error.getObject(), null));
 		return this;
 	}
@@ -141,7 +142,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 *
 	 * @return {@literal this}
 	 */
-	public Composable<T> consume(@Nonnull final Composable<T> composable) {
+	public Composable<T> connectValues(@Nonnull final Composable<T> composable) {
 		if(composable == this) {
 			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
 		}
@@ -234,8 +235,26 @@ public abstract class Composable<T> implements Pipeline<T> {
 				fn,
 				d.compose().getObservable(),
 				d.compose().getAcceptKey(),
-				error.getObject()));
+				error.getObject()
+				));
 		return d.compose();
+	}
+
+	/**
+	 * {@link this#connect(Composable)} all the passed {@param composables} to this {@link Composable},
+	 * merging values streams into the current pipeline.
+	 *
+	 * @param composables
+	 * 		the the composables to connect
+	 *
+	 * @return this composable
+	 * @since 1.1
+	 */
+	public Composable<T> merge(Composable<T>... composables) {
+		for(Composable<T> composable : composables){
+			composable.connect(this);
+		}
+		return this;
 	}
 
 	/**
@@ -314,8 +333,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Deferred<T, ? extends Composable<T>> d = createDeferred();
 		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAcceptKey(), error.getObject(),
-		                        elseComposable != null ? elseComposable.events : null,
-		                        elseComposable != null ? elseComposable.acceptKey : null));
+				elseComposable != null ? elseComposable.events : null,
+				elseComposable != null ? elseComposable.acceptKey : null));
 		return d.compose();
 	}
 
@@ -364,6 +383,22 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
+	 * Create a new {@code Composable} whose values will be generated from {@param supplier}.
+	 * Every time flush is triggered, {@param supplier} is called.
+	 *
+	 * @param supplier the supplier to drain
+	 * @return a new {@code Composable} whose values are generated on each flush
+	 * @since 1.1
+	 */
+	public Composable<T> propagate(Supplier<T> supplier) {
+		consumeFlush(new SupplyAction<T>(supplier,
+				events,
+				acceptKey,
+				error.getObject()));
+		return this;
+	}
+
+	/**
 	 * Flush any cached or unprocessed values through this {@literal Stream}.
 	 *
 	 * @return {@literal this}
@@ -406,17 +441,9 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return this;
 	}
 
-	/**
-	 * Consume flush with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for flush
-	 *
-	 * @return {@literal this}
-	 * @since 1.1
-	 */
-	public Composable<T> consumeFlush(Flushable<T> action) {
-		this.events.on(flush, new FlushableAction<T>(action, events, null));
+	@Override
+	public Composable<T> consumeFlush(Flushable<?> action) {
+		this.events.on(flush, new FlushableAction(action, events, error.getObject()));
 		return this;
 	}
 

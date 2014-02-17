@@ -311,6 +311,22 @@ class PromisesSpec extends Specification {
       mappedPromise.get() == 2
   }
 
+  def "A map many can be used to bind to another Promise and compose asynchronous results "() {
+    given:
+      "a promise with a map many function"
+      def deferred = Promises.<Integer> defer().get()
+      def promise = deferred.compose()
+      def mappedPromise = promise.mapMany(function { Promises.success(it+1).get() })
+
+    when:
+      "the original promise is fulfilled"
+      deferred.accept 1
+
+    then:
+      "the mapped promise is fulfilled with the mapped value"
+      mappedPromise.get() == 2
+  }
+
   def "A function can be used to map an already-fulfilled Promise's value"() {
     given:
       "a fulfilled promise with a mapping function"
@@ -657,7 +673,7 @@ class PromisesSpec extends Specification {
 
 	  then:
       "it is rejected"
-	    thrown RuntimeException
+		  thrown RuntimeException
       promise.error
   }
 

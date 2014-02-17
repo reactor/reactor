@@ -16,7 +16,8 @@
 package reactor.core.action;
 
 /**
- * Component that can be injected with {@link Action}s
+ * Component that can be injected with {@link Action}s and consume flush events for releasing buffer owned by the
+ * pipeline
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -32,4 +33,14 @@ public interface Pipeline<T> extends Flushable<T>{
 	 */
 	Pipeline<T> add(Action<T> action);
 
+
+	/**
+	 * Consume flush with the passed {@link Flushable}
+	 *
+	 * @param action
+	 * 		the action listening for flush
+	 *
+	 * @return {@literal this}
+	 */
+	Pipeline<T> consumeFlush(Flushable<?> action);
 }

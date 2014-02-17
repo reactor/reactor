@@ -125,10 +125,6 @@ public abstract class ActionUtils {
 		private void renderBatch(Object consumer, int d) {
 			if (BatchAction.class.isAssignableFrom(consumer.getClass())) {
 				BatchAction operation = (BatchAction) consumer;
-				appender.append(" accepted:" + operation.getAcceptCount());
-				appender.append("|errors:" + operation.getErrorCount());
-				appender.append("|batchSize:" + operation.getBatchSize());
-
 				loopRegistredActions(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFirstKey()),
 						d + 1, "first");
 				loopRegistredActions(((Reactor) operation.getObservable()).getConsumerRegistry().select(operation.getFlushKey()),

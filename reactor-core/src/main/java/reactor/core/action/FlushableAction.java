@@ -22,11 +22,11 @@ import reactor.event.Event;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class FlushableAction<T> extends Action<Void> {
+public class FlushableAction extends Action<Void> {
 
-	private final Flushable<T> flushable;
+	private final Flushable<?> flushable;
 
-	public FlushableAction(Flushable<T> flushable, Observable d, Object failureKey) {
+	public FlushableAction(Flushable<?> flushable, Observable d, Object failureKey) {
 		super(d, null, failureKey);
 		this.flushable = flushable;
 	}
