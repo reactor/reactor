@@ -18,9 +18,7 @@ package reactor.core.composable;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
-import reactor.core.action.Action;
-import reactor.core.action.CallbackAction;
-import reactor.core.action.ConnectAction;
+import reactor.core.action.*;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
@@ -67,7 +65,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	private State state = State.PENDING;
 	private T           value;
 	private Throwable   error;
-	private Supplier<T> supplier;
 	private boolean hasBlockers = false;
 
 	/**
@@ -119,24 +116,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this(observable, env, null);
 		this.value = value;
 		this.state = State.SUCCESS;
-	}
-
-	/**
-	 * Creates a new promise that will be fulfilled with the value obtained from the given {@code valueSupplier}.
-	 * <p/>
-	 * The {@code observable} is used when notifying the Promise's consumers, determining the thread on which they are
-	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
-	 * default await timeout will be 30 seconds.
-	 *
-	 * @param valueSupplier The Supplier of the value that fulfills the promise
-	 * @param observable    The Observable to use to call Consumers
-	 * @param env           The Environment, if any, from which the default await timeout is obtained
-	 */
-	public Promise(Supplier<T> valueSupplier,
-	               @Nonnull Observable observable,
-	               @Nullable Environment env) {
-		this(observable, env, null);
-		this.supplier = valueSupplier;
 	}
 
 	/**
@@ -463,6 +442,11 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
+	public Promise<T> merge(Composable<T>... composables) {
+		return (Promise<T>)super.merge(composables);
+	}
+
+	@Override
 	public Promise<T> timeout(long timeout) {
 		return (Promise<T>)super.timeout(timeout);
 	}
@@ -471,6 +455,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	public Promise<T> timeout(long timeout, Timer timer) {
 		return (Promise<T>)super.timeout(timeout, timer);
 	}
+
+	@Override
+	public Promise<T> propagate(Supplier<T> supplier) {
+		return (Promise<T>)super.propagate(supplier);
+	}
+
 
 	@Override
 	public Promise<T> flush() {
@@ -489,6 +479,23 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 						Event.wrap(error), getObservable());
 			} else {
 				super.add(operation);
+			}
+			return this;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	@Override
+	public Promise<T> consumeFlush(Flushable<?> action) {
+		lock.lock();
+		try {
+			if (state != State.PENDING) {
+				Reactors.schedule(
+						new FlushableAction(action, getObservable(), null),
+						Event.<Void>wrap(null), getObservable());
+			} else {
+				super.consumeFlush(action);
 			}
 			return this;
 		} finally {
@@ -559,29 +566,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	void notifyFlush() {
-		if (null != supplier) {
-			lock.lock();
-			try {
-				assertPending();
-			} finally {
-				lock.unlock();
-			}
-
-
-			final Consumer<Event<T>> consumer = getObservable().prepare(getAcceptKey());
-			Reactors.schedule(new Consumer<Void>() {
-				@Override
-				public void accept(Void v) {
-					try {
-						consumer.accept(Event.wrap(supplier.get()));
-					} catch (Throwable t) {
-						notifyError(t);
-					}
-				}
-
-			}, null, getObservable());
-
-
+		boolean flush = false;
+		lock.lock();
+		try {
+			flush = state == State.PENDING;
+		} finally {
+			lock.unlock();
+		}
+		if(flush){
+			super.notifyFlush();
 		}
 	}
 

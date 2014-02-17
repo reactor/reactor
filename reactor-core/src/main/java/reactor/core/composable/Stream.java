@@ -163,8 +163,8 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public Stream<T> consume(@Nonnull Composable<T> composable) {
-		return (Stream<T>) super.consume(composable);
+	public Stream<T> connectValues(@Nonnull Composable<T> composable) {
+		return (Stream<T>) super.connectValues(composable);
 	}
 
 	@Override
@@ -178,7 +178,12 @@ public class Stream<T> extends Composable<T> {
 	}
 
 	@Override
-	public Stream<T> consumeFlush(@Nonnull Flushable<T> consumer) {
+	public Stream<T> merge(Composable<T>... composables) {
+		return (Stream<T>) super.merge(composables);
+	}
+
+	@Override
+	public Stream<T> consumeFlush(@Nonnull Flushable<?> consumer) {
 		return (Stream<T>) super.consumeFlush(consumer);
 	}
 
@@ -200,20 +205,9 @@ public class Stream<T> extends Composable<T> {
 		return this;
 	}
 
-	/**
-	 * Create a new {@code Stream} whose values will be generated from {@param supplier}.
-	 * Every time flush is triggered, {@param supplier} is called.
-	 *
-	 * @param supplier the supplier to drain
-	 * @return a new {@code Stream} whose values are generated on each flush
-	 * @since 1.1
-	 */
+	@Override
 	public Stream<T> propagate(Supplier<T> supplier) {
-		consumeFlush(new SupplyAction<T>(supplier,
-				getObservable(),
-				getAcceptKey(),
-				getError().getObject()));
-		return this;
+		return (Stream<T>)super.propagate(supplier);
 	}
 
 	/**
@@ -389,10 +383,10 @@ public class Stream<T> extends Composable<T> {
 	 * every time {@code
 	 * batchSize} has been reached. All errors are also captured until current batchSize or flush is called.
 	 *
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @return a new {@code Stream} whose values of all values in this batch
 	 * @since 1.1
 	 */
-	public Stream<List<T>> bufferWithErrors() {
+	public Stream<T> bufferWithErrors() {
 		return bufferWithErrors(batchSize);
 	}
 
@@ -402,11 +396,11 @@ public class Stream<T> extends Composable<T> {
 	 * batchSize} has been reached. All errors are also captured until batchSize or flush is called.
 	 *
 	 * @param batchSize the collected size
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
+	 * @return a new {@code Stream} whose values are all values in this batch
 	 * @since 1.1
 	 */
-	public Stream<List<T>> bufferWithErrors(int batchSize) {
-		final Deferred<List<T>, Stream<List<T>>> d = createDeferred(1);
+	public Stream<T> bufferWithErrors(int batchSize) {
+		final Deferred<T, Stream<T>> d = createDeferred(batchSize);
 
 		add(new BufferAction<T>(batchSize,
 				d.compose().getObservable(),

@@ -282,7 +282,7 @@ class StreamsSpec extends Specification {
 			Exception error = null
 			def value = s.tap()
 			s.when(Exception, consumer { error = it })
-			parent.compose().consume(s)
+			parent.compose().connectValues(s)
 
 		when:
 			'the parent accepts a value'
@@ -302,7 +302,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			"try to consume itself"
-			parent.compose().consume(parent.compose())
+			parent.compose().connectValues(parent.compose())
 
 		then:
 			'the child contains the error from the parent'
@@ -391,7 +391,8 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a mapMany function'
 			Deferred source = Streams.<Integer> defer().get()
-			Stream<Integer> mapped = source.compose().mapMany(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
+			Stream<Integer> mapped = source.compose().
+					mapMany(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
 
 		when:
 			'the source accepts a value'
@@ -401,6 +402,25 @@ class StreamsSpec extends Specification {
 		then:
 			'the value is mapped'
 			value.get() == 2
+	}
+
+	def "Multiple Stream's values can be merged"() {
+		given:
+			'source composables to merge, collect and tap'
+			Deferred source1 = Streams.<Integer> defer().get()
+			Deferred source2 = Streams.<Integer> defer().get()
+			Deferred source3 = Streams.<Integer> defer().get()
+			def tap = source1.compose().merge(source2.compose(), source3.compose()).collect(3).tap()
+
+		when:
+			'the sources accept a value'
+			source1.accept(1)
+			source2.accept(2)
+			source3.accept(3)
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == [1,2,3]
 	}
 
 	def "A Stream's values can be filtered"() {

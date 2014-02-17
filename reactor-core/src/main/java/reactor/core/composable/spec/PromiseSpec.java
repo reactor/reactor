@@ -86,7 +86,7 @@ public final class PromiseSpec<T> extends ComposableSpec<PromiseSpec<T>, Promise
 		if (value != null) {
 			return new Promise<T>(value, observable, env);
 		} else if (valueSupplier != null) {
-			return new Promise<T>(valueSupplier, observable, env);
+			return new Promise<T>(observable, env, null).propagate(valueSupplier);
 		} else if (error != null) {
 			return new Promise<T>(error, observable, env);
 		} else {

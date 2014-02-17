@@ -196,7 +196,7 @@ public abstract class Promises {
 				.get()
 				.compose();
 
-		aggregatedStream.consume(resultPromise);
+		aggregatedStream.connectValues(resultPromise);
 
 		for(Promise<T> promise : promises) {
 			promise.connect(deferredStream);

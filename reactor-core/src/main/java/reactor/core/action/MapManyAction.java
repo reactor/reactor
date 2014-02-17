@@ -24,14 +24,15 @@ import reactor.function.Function;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
+public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T>{
 
 	private final Function<T, E> fn;
 
 	public MapManyAction(Function<T, E> fn,
 	                     Observable ob,
 	                     Object successKey,
-	                     Object failureKey) {
+	                     Object failureKey
+	                     ) {
 		super(ob, successKey, failureKey);
 		this.fn = fn;
 	}
