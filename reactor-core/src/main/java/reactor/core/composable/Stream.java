@@ -696,6 +696,19 @@ public class Stream<T> extends Composable<T> {
 		return scan(fn, (Supplier<A>) null);
 	}
 
+	/**
+	 * Count accepted events for each batch (every flush) and pass each accumulated long to the {@param stream}.
+	 *
+	 * @param stream the stream to consume accumulated number of accepted event between 2 flushes
+	 *
+	 * @since 1.1
+	 */
+	public Stream<T> count(Stream<Long> stream) {
+		add(new CountAction<T>(stream.getObservable(), stream.getAcceptKey(), getError().getObject()));
+		return this;
+	}
+
+
 	@Override
 	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
 		return createDeferred(batchSize);

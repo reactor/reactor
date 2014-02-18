@@ -21,6 +21,7 @@ import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.core.action.*;
 import reactor.event.Event;
+import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -48,6 +49,8 @@ import javax.annotation.Nullable;
  * @author Andy Wilkinson
  */
 public abstract class Composable<T> implements Pipeline<T> {
+
+	public static final Event<Void> END_EVENT = Event.wrap(null);
 
 	private final Selector acceptSelector;
 	private final Object   acceptKey;
@@ -413,6 +416,11 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return this;
 	}
 
+	/**
+	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
+	 * composed actions.
+	 * @since 1.1
+	 */
 	public String debug() {
 		Composable<?> that = this;
 		while(that.parent != null) {
@@ -446,6 +454,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		this.events.on(flush, new FlushableAction(action, events, error.getObject()));
 		return this;
 	}
+
 
 	/**
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.

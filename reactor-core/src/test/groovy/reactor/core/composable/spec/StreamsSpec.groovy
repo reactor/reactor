@@ -423,6 +423,27 @@ class StreamsSpec extends Specification {
 			tap.get() == [1,2,3]
 	}
 
+
+	def "Stream can be counted"() {
+		given:
+			'source composables to count and tap'
+			def source = Streams.<Integer> defer().get()
+			def countStream = Streams.<Long> defer().get().compose()
+			source.compose().count(countStream)
+			def tap = countStream.tap()
+
+		when:
+			'the sources accept a value'
+			source.accept(1)
+			source.accept(2)
+			source.accept(3)
+			source.flush()
+
+		then:
+			'the count value matches the number of accept'
+			tap.get() == 3
+	}
+
 	def "A Stream's values can be filtered"() {
 		given:
 			'a source composable with a filter that rejects odd values'
