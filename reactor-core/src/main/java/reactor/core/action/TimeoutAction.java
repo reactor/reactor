@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class TimeoutAction<T> extends Action<T> {
 
-	public static final Event<Void> TIMEOUT_EVENT = Event.wrap(null);
+	public static final Event<Object> TIMEOUT_EVENT = Event.wrap(null);
 	private final Timer timer;
 	private final long  timeout;
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {

@@ -547,8 +547,8 @@ class PromisesSpec extends Specification {
   def "A combined promise is rejected once any of its component promises are rejected"() {
     given:
       "two unfulfilled promises"
-      def promise1 = Promises.defer().synchronousDispatcher().get()
-      def promise2 = Promises.defer().synchronousDispatcher().get()
+      def promise1 = Promises.<Integer>defer().synchronousDispatcher().get()
+      def promise2 = Promises.<Integer>defer().synchronousDispatcher().get()
 
     when:
       "a combined promise is first created"
@@ -561,6 +561,7 @@ class PromisesSpec extends Specification {
     when:
       "a component promise is rejected"
       promise1.accept new Exception()
+	  println promise1.compose().debug()
 
     then:
       "the combined promise is rejected"

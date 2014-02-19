@@ -119,11 +119,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a flushable propagate action is attached'
-			s.propagate([2, 3, 4, 5])
+			def tap = s.propagate([2, 3, 4, 5]).filter(predicate { it == 5 }).tap()
 
 		and:
 			'a flush trigger and a filtered tap are attached'
-			def tap = s.flushWhen(predicate { it == 1 }).filter(predicate { it == 5 }).tap()
+			s.flushWhen(predicate { it == 1 })
 
 		and:
 			'values are accepted'
@@ -784,11 +784,12 @@ class StreamsSpec extends Specification {
 			'the second value is accepted'
 			source.accept(new Exception())
 		  reduced.flush()
+		println reduced.debug()
 
 		then:
 			'the error consumer has been invoked and the tapped value is 1'
-			error == 1
 			value.get() == 1
+			error == 1
 	}
 
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {

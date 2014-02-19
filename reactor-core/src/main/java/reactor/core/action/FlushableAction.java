@@ -22,22 +22,26 @@ import reactor.event.Event;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class FlushableAction extends Action<Void> {
+public class FlushableAction extends Action<Object> {
 
 	private final Flushable<?> flushable;
 
-	public FlushableAction(Flushable<?> flushable, Observable d, Object failureKey) {
-		super(d, null, failureKey);
+	public FlushableAction(Flushable<?> flushable, Observable observable, Object failureKey) {
+		super(observable, null, failureKey);
 		this.flushable = flushable;
 	}
 
 	@Override
-	public void doAccept(Event<Void> value) {
+	public void doAccept(Event<Object> value) {
 		flushable.flush();
 	}
 
 	@Override
 	public String toString() {
-		return " "+flushable.getClass().getSimpleName().replaceAll("Action","")+"["+flushable.toString()+"]";
+		return flushable.getClass().getSimpleName().replaceAll("Action"," ")+"["+flushable.toString()+"]";
+	}
+
+	public Flushable<?> getFlushable() {
+		return flushable;
 	}
 }

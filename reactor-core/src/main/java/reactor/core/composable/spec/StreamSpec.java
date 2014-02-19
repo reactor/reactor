@@ -83,7 +83,10 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 		}
 
 		Stream<T> stream = new Stream<T>(observable, batchSize, null, accept, env);
-		if(values == null){
+		if(accept != null){
+			return stream;
+		}
+		else if(values == null){
 			return stream.propagate(valuesSupplier);
 		}else{
 			return stream.propagate(values);

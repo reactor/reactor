@@ -56,7 +56,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
 
-	private final Selector      complete = Selectors.anonymous();
 	private final ReentrantLock lock     = new ReentrantLock();
 
 	private final long        defaultTimeout;
@@ -149,7 +148,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		if (isComplete()) {
 			Reactors.schedule(onComplete, this, getObservable());
 		} else {
-			getObservable().on(complete, new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
+			getObservable().on(getFlush(), new CallbackAction<Promise<T>>(onComplete, getObservable(), null));
 		}
 		return this;
 	}
@@ -413,7 +412,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public <V> Promise<V> map(@Nonnull final Function<T, V> fn) {
-		return (Promise<V>) super.map(fn);
+		Assert.notNull(fn, "Map function cannot be null.");
+		final Promise<V> d = newComposable();
+		add(new MapAction<T, V>(
+				fn,
+				d.getObservable(),
+				d.getAcceptKey(),
+				d.getError().getObject())).connectErrors(d);
+		return d;
 	}
 
 	@Override
@@ -423,7 +429,15 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 
 	@Override
 	public Promise<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
-		return (Promise<T>) super.filter(p, elseComposable);
+		final Promise<T> d = newComposable();
+		add(new FilterAction<T>(p, d.getObservable(), d.getAcceptKey(), d.getError().getObject(),
+				elseComposable != null ? elseComposable.getObservable() : null,
+				elseComposable != null ? elseComposable.getAcceptKey() : null)).connectErrors(d);
+
+		if(elseComposable != null){
+			consumeErrorAndFlush(elseComposable);
+		}
+		return d;
 	}
 
 	@Override
@@ -492,8 +506,8 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		try {
 			if (state != State.PENDING) {
 				Reactors.schedule(
-						new FlushableAction(action, getObservable(), null),
-						Event.<Void>wrap(null), getObservable());
+						new FlushableAction(action, null, null),
+						Flushable.FLUSH_EVENT, getObservable());
 			} else {
 				super.consumeFlush(action);
 			}
@@ -503,10 +517,14 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	protected <V, C extends Composable<V>> Deferred<V, C> createDeferred() {
-		return (Deferred<V, C>) new Deferred<V, Promise<V>>(new Promise<V>(null, getEnvironment(), this));
+	public Promise<T> connectErrors(Composable<?> composable) {
+		return (Promise<T>)super.connectErrors(composable);
+	}
+
+	@Override
+	protected <V> Promise<V> newComposable() {
+		return new Promise<V>(null, getEnvironment(), this);
 	}
 
 	protected void errorAccepted(Throwable error) {
@@ -522,7 +540,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getObject(), Event.wrap(this));
+		getObservable().notify(getFlush().getObject(), Event.wrap(this));
 
 	}
 
@@ -539,7 +557,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		getObservable().notify(complete.getObject(), Event.wrap(this));
+		getObservable().notify(getFlush().getObject(), Event.wrap(this));
 	}
 
 	@Override

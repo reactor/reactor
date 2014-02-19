@@ -60,12 +60,12 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer("Hello World!").get();
 		Stream<String> s =
 				stream
-				 .map(new Function<String, String>() {
-					 @Override
-					 public String apply(String s) {
-						 return "Goodbye then!";
-					 }
-				 });
+						.map(new Function<String, String>() {
+							@Override
+							public String apply(String s) {
+								return "Goodbye then!";
+							}
+						});
 
 		await(s, is("Goodbye then!"));
 	}
@@ -75,16 +75,16 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .map(new Function<Integer, Integer>() {
-					 int sum = 0;
+						.map(STRING_2_INTEGER)
+						.map(new Function<Integer, Integer>() {
+							int sum = 0;
 
-					 @Override
-					 public Integer apply(Integer i) {
-						 sum += i;
-						 return sum;
-					 }
-				 });
+							@Override
+							public Integer apply(Integer i) {
+								sum += i;
+								return sum;
+							}
+						});
 		await(5, s, is(15));
 	}
 
@@ -93,14 +93,14 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .filter(new Predicate<Integer>() {
-					 @Override
-					 public boolean test(Integer i) {
-						 return i % 2 == 0;
-					 }
+						.map(STRING_2_INTEGER)
+						.filter(new Predicate<Integer>() {
+							@Override
+							public boolean test(Integer i) {
+								return i % 2 == 0;
+							}
 
-				 });
+						});
 
 		await(2, s, is(4));
 	}
@@ -109,32 +109,32 @@ public class ComposableTests extends AbstractReactorTest {
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Stream<String> stream =
 				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"))
-				       .env(env)
-				       .dispatcher("eventLoop")
-				       .get();
+						.env(env)
+						.dispatcher("eventLoop")
+						.get();
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .when(IllegalArgumentException.class, new Consumer<IllegalArgumentException>() {
-					 @Override
-					 public void accept(IllegalArgumentException e) {
-						  exception.set(true);
-					 }
-				 })
-				 .map(new Function<Integer, Integer>() {
-					 int sum = 0;
+						.map(STRING_2_INTEGER)
+						.map(new Function<Integer, Integer>() {
+							int sum = 0;
 
-					 @Override
-					 public Integer apply(Integer i) {
-						 if (i >= 5) {
-							 throw new IllegalArgumentException();
-						 }
-						 sum += i;
-						 return sum;
-					 }
-				 });
+							@Override
+							public Integer apply(Integer i) {
+								if (i >= 5) {
+									throw new IllegalArgumentException();
+								}
+								sum += i;
+								return sum;
+							}
+						})
+						.when(IllegalArgumentException.class, new Consumer<IllegalArgumentException>() {
+							@Override
+							public void accept(IllegalArgumentException e) {
+								exception.set(true);
+							}
+						});
 
 		await(5, s, is(10));
 		assertThat("exception triggered", exception.get(), is(true));
@@ -145,13 +145,13 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
-					 @Override
-					 public Integer apply(Tuple2<Integer, Integer> r) {
-						 return r.getT1() * r.getT2();
-					 }
-				 }, 1);
+						.map(STRING_2_INTEGER)
+						.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
+							@Override
+							public Integer apply(Tuple2<Integer, Integer> r) {
+								return r.getT1() * r.getT2();
+							}
+						}, 1);
 		await(5, s, is(120));
 	}
 
@@ -160,7 +160,7 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER);
+						.map(STRING_2_INTEGER);
 
 		Tap<Integer> first = s.first().tap();
 		Tap<Integer> last = s.last().tap();
@@ -187,8 +187,8 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .consume(key.getObject(), r);
+						.map(STRING_2_INTEGER)
+						.consume(key.getObject(), r);
 		Tap<Integer> tap = s.tap();
 
 		s.flush(); // Trigger the deferred value to be set
@@ -203,8 +203,8 @@ public class ComposableTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5")).get();
 		Stream<List<Integer>> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .collect();
+						.map(STRING_2_INTEGER)
+						.collect();
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
@@ -212,7 +212,7 @@ public class ComposableTests extends AbstractReactorTest {
 			@Override
 			public void accept(List<Integer> is) {
 				batchCount.incrementAndGet();
-				for(int i : is) {
+				for (int i : is) {
 					count.addAndGet(i);
 				}
 			}
@@ -228,25 +228,25 @@ public class ComposableTests extends AbstractReactorTest {
 		final CountDownLatch latch = new CountDownLatch(1);
 		Stream<Integer> s =
 				stream
-				 .map(STRING_2_INTEGER)
-				 .map(new Function<Integer, Integer>() {
-					 int sum = 0;
+						.map(STRING_2_INTEGER)
+						.map(new Function<Integer, Integer>() {
+							int sum = 0;
 
-					 @Override
-					 public Integer apply(Integer i) {
-						 if(i >= 5) {
-							 throw new IllegalArgumentException();
-						 }
-						 sum += i;
-						 return sum;
-					 }
-				 })
-				 .when(NumberFormatException.class, new Consumer<NumberFormatException>() {
-					 @Override
-					 public void accept(NumberFormatException e) {
-						 latch.countDown();
-					 }
-				 });
+							@Override
+							public Integer apply(Integer i) {
+								if (i >= 5) {
+									throw new IllegalArgumentException();
+								}
+								sum += i;
+								return sum;
+							}
+						})
+						.when(NumberFormatException.class, new Consumer<NumberFormatException>() {
+							@Override
+							public void accept(NumberFormatException e) {
+								latch.countDown();
+							}
+						});
 
 		await(2, s, is(7));
 		assertThat("error handler was invoked", latch.getCount(), is(0L));
@@ -258,7 +258,7 @@ public class ComposableTests extends AbstractReactorTest {
 		deferred.accept("alpha");
 		try {
 			deferred.accept("bravo");
-		} catch(IllegalStateException ise) {
+		} catch (IllegalStateException ise) {
 			// Swallow
 		}
 		assertEquals(deferred.compose().get(), "alpha");
@@ -271,7 +271,7 @@ public class ComposableTests extends AbstractReactorTest {
 		deferred.accept(error);
 		try {
 			deferred.accept(error);
-		} catch(IllegalStateException ise) {
+		} catch (IllegalStateException ise) {
 			// Swallow
 		}
 		assertTrue(deferred.compose().reason() instanceof Exception);
@@ -284,14 +284,14 @@ public class ComposableTests extends AbstractReactorTest {
 		deferred.accept(error);
 		try {
 			deferred.accept("alpha");
-		} catch(IllegalStateException ise) {
+		} catch (IllegalStateException ise) {
 			// Swallow
 		}
 		assertTrue(deferred.compose().reason() instanceof Exception);
-		try{
+		try {
 			deferred.compose().get();
 			fail();
-		}catch(RuntimeException ise){
+		} catch (RuntimeException ise) {
 			assertEquals(deferred.compose().reason(), ise.getCause());
 		}
 	}
@@ -322,7 +322,7 @@ public class ComposableTests extends AbstractReactorTest {
 		try {
 			latch.await(1, TimeUnit.SECONDS);
 			result = ref.get();
-		} catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		long duration = System.currentTimeMillis() - startTime;
