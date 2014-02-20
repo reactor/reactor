@@ -49,6 +49,8 @@ import javax.annotation.Nullable;
  */
 public abstract class Composable<T> implements Pipeline<T> {
 
+	public static final Event<Object> END_EVENT = Event.wrap(null);
+
 	private final Selector acceptSelector;
 	private final Object   acceptKey;
 	private final Selector error = Selectors.anonymous();
@@ -76,13 +78,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 		} else {
 			this.acceptKey = acceptSelectorTuple.getT1();
 			this.acceptSelector = new ObjectSelector<Object>(acceptSelectorTuple.getT2());
-		}
-
-		if (parent != null) {
-			events.on(parent.error,
-					new ConnectAction<Throwable>(events, error.getObject(), null));
-			events.on(parent.flush,
-					new ConnectAction<Throwable>(events, flush.getObject(), null));
 		}
 	}
 
@@ -129,7 +124,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
 		this.connectValues(composable);
-		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error.getObject(), null));
+		this.consumeErrorAndFlush(composable);
 		return this;
 	}
 
@@ -207,13 +202,14 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
-		final Deferred<V, ? extends Composable<V>> d = createDeferred();
+		final Composable<V> d = newComposable();
 		add(new MapAction<T, V>(
 				fn,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				error.getObject()));
-		return d.compose();
+				d.getObservable(),
+				d.getAcceptKey(),
+				d.getError().getObject())).consumeErrorAndFlush(d);
+
+		return d;
 	}
 
 	/**
@@ -230,14 +226,16 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public <V, C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
-		final Deferred<V, C> d = createDeferred();
+		final Composable<V> d = newComposable();
 		add(new MapManyAction<T, V, C>(
 				fn,
-				d.compose().getObservable(),
-				d.compose().getAcceptKey(),
-				error.getObject()
-				));
-		return d.compose();
+				d.getObservable(),
+				d.getAcceptKey(),
+				d.getError().getObject(),
+				d.getFlush().getObject()
+				))
+				.connectErrors(d);
+		return d;
 	}
 
 	/**
@@ -331,11 +329,16 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
-		final Deferred<T, ? extends Composable<T>> d = createDeferred();
-		add(new FilterAction<T>(p, d.compose().getObservable(), d.compose().getAcceptKey(), error.getObject(),
+		final Composable<T> d = newComposable();
+		add(new FilterAction<T>(p, d.getObservable(), d.getAcceptKey(), d.getError().getObject(),
 				elseComposable != null ? elseComposable.events : null,
-				elseComposable != null ? elseComposable.acceptKey : null));
-		return d.compose();
+				elseComposable != null ? elseComposable.acceptKey : null)).consumeErrorAndFlush(d);
+
+		if(elseComposable != null){
+			consumeErrorAndFlush(elseComposable);
+		}
+
+		return d;
 	}
 
 
@@ -391,11 +394,13 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @since 1.1
 	 */
 	public Composable<T> propagate(Supplier<T> supplier) {
+
+		Composable<T> d = newComposable();
 		consumeFlush(new SupplyAction<T>(supplier,
-				events,
-				acceptKey,
-				error.getObject()));
-		return this;
+				d.getObservable(),
+				d.getAcceptKey(),
+				d.getError().getObject())).connectErrors(d);
+		return d;
 	}
 
 	/**
@@ -413,6 +418,11 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return this;
 	}
 
+	/**
+	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
+	 * composed actions.
+	 * @since 1.1
+	 */
 	public String debug() {
 		Composable<?> that = this;
 		while(that.parent != null) {
@@ -448,6 +458,32 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
+	 * Forward any error to the {@param composable} argument.
+	 *
+	 * @param composable the target sink for errores and flushes
+	 *
+	 * @return this
+	 * @since 1.1
+	 */
+	public Composable<T> connectErrors(Composable<?> composable){
+		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error.getObject(), null));
+		return this;
+	}
+
+	/**
+	 * Forward any error or flush to the {@param composable} argument.
+	 *
+	 * @param composable the target sink for errores and flushes
+	 *
+	 * @return this
+	 * @since 1.1
+	 */
+	protected Composable<T> consumeErrorAndFlush(Composable<?> composable){
+		events.on(flush, new ConnectAction<Void>(composable.events, composable.flush.getObject(), null));
+		return connectErrors(composable);
+	}
+
+	/**
 	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
 	 */
 	void notifyFlush() {
@@ -469,16 +505,14 @@ public abstract class Composable<T> implements Pipeline<T> {
 	}
 
 	/**
-	 * Create a {@link Deferred} that is compatible with the subclass of {@code Composable} in use.
+	 * Create a {@link Composable} that is compatible with the subclass of {@code Composable} in use.
 	 *
 	 * @param <V>
 	 * 		type the {@code Composable} handles
-	 * @param <C>
-	 * 		type of the {@code Composable} returned by the {@link Deferred#compose()} method.
 	 *
-	 * @return a new {@link Deferred} backed by a {@code Composable} compatible with the current subclass.
+	 * @return a new {@code Composable} compatible with the current subclass.
 	 */
-	protected abstract <V, C extends Composable<V>> Deferred<V, C> createDeferred();
+	protected abstract <V> Composable<V> newComposable();
 
 	/**
 	 * Get the current {@link Observable}.

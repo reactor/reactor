@@ -18,30 +18,30 @@ package reactor.core.action;
 import reactor.core.Observable;
 import reactor.event.Event;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class FlushableAction extends Action<Object> {
+public class CountAction<T> extends Action<T> implements Flushable<T>{
 
-	private final Flushable<?> flushable;
+	private final AtomicLong counter = new AtomicLong(0l);
 
-	public FlushableAction(Flushable<?> flushable, Observable observable, Object failureKey) {
-		super(observable, null, failureKey);
-		this.flushable = flushable;
+	public CountAction(Observable d, Object successKey, Object failureKey) {
+		super(d, successKey, failureKey);
 	}
 
 	@Override
-	public void doAccept(Event<Object> value) {
-		flushable.flush();
+	public void doAccept(Event<T> value) {
+		counter.getAndIncrement();
 	}
+
 
 	@Override
-	public String toString() {
-		return flushable.getClass().getSimpleName().replaceAll("Action"," ")+"["+flushable.toString()+"]";
-	}
-
-	public Flushable<?> getFlushable() {
-		return flushable;
+	public CountAction<T> flush() {
+		notifyValue(Event.wrap(counter.get()));
+		counter.set(0l);
+		return this;
 	}
 }

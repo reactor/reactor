@@ -84,10 +84,17 @@ public abstract class ActionUtils {
 			appender.append(action.getClass().getSimpleName().isEmpty() ? action :
 					action
 							.getClass()
-							.getSimpleName().replaceAll("Action","")+"["+action+"]");
+							.getSimpleName().replaceAll("Action", "") + "[" + action + "]");
 
 			if (Action.class.isAssignableFrom(action.getClass())) {
-				Action<?> operation = ((Action) action);
+				Action<?> operation;
+
+				if((FlushableAction.class.isAssignableFrom(action.getClass()) &&
+						Action.class.isAssignableFrom(((FlushableAction) action).getFlushable().getClass()))){
+					operation = (Action)((FlushableAction) action).getFlushable();
+				}else{
+					operation = ((Action) action);
+				}
 
 				renderBatch(operation, d);
 				renderFilter(operation, d);
@@ -103,7 +110,7 @@ public abstract class ActionUtils {
 		}
 
 		private void loopRegistredActions(Iterable<Registration<? extends Consumer<? extends Event<?>>>> operations, int d,
-		                         String marker) {
+		                                  String marker) {
 			for (Registration<?> registration : operations) {
 				parseAction(registration.getObject(), d, marker);
 			}

@@ -26,19 +26,26 @@ import java.util.List;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class BufferAction<T> extends BatchAction<T> implements Flushable<T>{
+public class BufferAction<T> extends BatchAction<T> implements Flushable<T> {
 
 	private final List<Event<T>> values;
 
+	public static final Event<Object> BUFFER_FLUSH = Event.wrap(null);
+
 	final private Consumer<Iterable<Event<T>>> batchConsumer;
-	public BufferAction(int batchSize, Observable d, Object successKey, Object failureKey) {
+
+	public BufferAction(int batchSize, final Observable d, Object successKey, Object failureKey, final Object flushKey) {
 		super(batchSize, d, successKey, failureKey);
-		this.batchConsumer = d.batchNotify(successKey)/*, new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				BufferAction.super.doFlush(null);
-			}
-		})*/;
+		if (flushKey == null) {
+			this.batchConsumer = d.batchNotify(successKey);
+		} else {
+			this.batchConsumer = d.batchNotify(successKey, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					d.notify(flushKey, BUFFER_FLUSH);
+				}
+			});
+		}
 		this.values = new ArrayList<Event<T>>(batchSize > 1 ? batchSize : 256);
 	}
 

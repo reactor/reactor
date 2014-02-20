@@ -25,7 +25,7 @@ import reactor.event.Event;
  */
 public interface Flushable<T> {
 
-	static final Event<Void> FLUSH_EVENT = new Event<Void>((Void)null);
+	static final Event<Object> FLUSH_EVENT = Event.wrap(null);
 
 	/**
 	 * Trigger flush on this component, generally draining any collected values.

@@ -17,14 +17,13 @@ package reactor.core.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.function.Consumer;
 import reactor.function.Supplier;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class SupplyAction<T> extends Action<Void> implements Flushable<T> {
+public class SupplyAction<T> extends Action<Object> implements Flushable<T> {
 
 	private final Supplier<T> supplier;
 
@@ -34,7 +33,7 @@ public class SupplyAction<T> extends Action<Void> implements Flushable<T> {
 	}
 
 	@Override
-	public void doAccept(Event<Void> value) {
+	public void doAccept(Event<Object> value) {
 		notifyValue(Event.wrap(supplier.get()));
 	}
 

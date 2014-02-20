@@ -196,10 +196,10 @@ public abstract class Promises {
 				.get()
 				.compose();
 
-		aggregatedStream.connectValues(resultPromise);
+		aggregatedStream.connectValues(resultPromise).connectErrors(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.connect(deferredStream);
+			promise.connectErrors(deferredStream).connectValues(deferredStream);
 		}
 
 		return resultPromise;
@@ -259,10 +259,10 @@ public abstract class Promises {
 				.get()
 				.compose();
 
-		firstStream.connect(resultPromise);
+		firstStream.connectValues(resultPromise).connectErrors(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.connect(deferredStream);
+			promise.connectErrors(deferredStream).connectValues(deferredStream);
 		}
 
 		return resultPromise;

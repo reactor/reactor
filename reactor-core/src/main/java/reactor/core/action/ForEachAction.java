@@ -29,19 +29,27 @@ import java.util.List;
  */
 public class ForEachAction<T> extends Action<Iterable<T>> implements Flushable<T> {
 
+	public static final Event<Object> FOREACH_FLUSH = Event.wrap(null);
+
 	final private Consumer<Iterable<Event<T>>> batchConsumer;
 	final private int                          batchSize;
 	final private Iterable<T>                  defaultValues;
 
-	public ForEachAction(int batchSize, Observable d, Object successKey, Object failureKey) {
-		this(null, batchSize, d, successKey, failureKey);
+	public ForEachAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
+		this(null, batchSize, d, successKey, failureKey, flushKey);
 	}
 
 
-	public ForEachAction(Iterable<T> defaultValues, int batchSize, Observable d, Object successKey, Object failureKey) {
+	public ForEachAction(Iterable<T> defaultValues, int batchSize, final Observable d, Object successKey,
+	                     Object failureKey, final Object flushKey) {
 		super(d, successKey, failureKey);
 		this.defaultValues = defaultValues;
-		this.batchConsumer = d.batchNotify(successKey);
+		this.batchConsumer = d.batchNotify(successKey, new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				d.notify(flushKey, FOREACH_FLUSH);
+			}
+		});
 		this.batchSize = batchSize > 0 ? batchSize : 256;
 	}
 
