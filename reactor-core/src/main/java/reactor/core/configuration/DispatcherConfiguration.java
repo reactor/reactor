@@ -60,7 +60,7 @@ public final class DispatcherConfiguration {
 	}
 
 	/**
-	 * Returns the name if the Dispatcher. Never {@code null}.
+	 * Returns the name of the Dispatcher. Never {@code null}.
 	 *
 	 * @return The name
 	 */
