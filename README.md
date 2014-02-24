@@ -41,13 +41,16 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
       //compile 'org.projectreactor:reactor-spring:$reactorVersion'
     }
 
+### Documentation
+
+* [Guides](https://github.com/reactor/reactor/wiki)
+* [API Reference](http://reactor.github.io/docs/api/)
+
 ### Community / Support
 
 * [reactor-framework Google Group](https://groups.google.com/forum/?#!forum/reactor-framework)
 * [GitHub Issues](https://github.com/reactor/reactor/issues)
-* [Reference Documentation](https://github.com/reactor/reactor/wiki)
-* [API Documentation](http://reactor.github.io/docs/api/)
 
----
+### License
 
 Reactor is [Apache 2.0 licensed](http://www.apache.org/licenses/LICENSE-2.0.html).
