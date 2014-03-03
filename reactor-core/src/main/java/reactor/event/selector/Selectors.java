@@ -1,8 +1,6 @@
 package reactor.event.selector;
 
 import reactor.function.Predicate;
-import reactor.tuple.Tuple;
-import reactor.tuple.Tuple2;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -10,6 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Helper methods for creating {@link Selector}s.
  *
  * @author Andy Wilkinson
+ * @author Jon Brisbin
+ * @author Stephane Maldini
+ *
  */
 public abstract class Selectors {
 
