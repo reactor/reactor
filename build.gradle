@@ -18,29 +18,27 @@
 description = 'Reactor-based application framework for the JVM.'
 
 ext {
-	gradleVersion = '1.10'
+	gradleVersion = '1.11'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
 	groovyVersion = '2.2.1'
 
 	// Logging
-	slf4jVersion = '1.7.5'
-	logbackVersion = '1.0.13'
+	slf4jVersion = '1.7.6'
+	logbackVersion = '1.1.1'
 
 	// Libraries
 	disruptorVersion = '3.2.0'
-	springVersion = '3.2.3.RELEASE'
-	siVersion = '3.0.0.M2'
-	nettyVersion = '4.0.11.Final'
-	jacksonDatabindVersion = '2.2.3'
-	jsonPathVersion = '0.9.0'
+	nettyVersion = '4.0.17.Final'
+	jacksonDatabindVersion = '2.3.0'
+	jsonPathVersion = '0.9.1'
 	kryoVersion = '2.22'
 	protobufVersion = '2.5.0'
 	snappyVersion = '1.1.0.1'
 	hadoopVersion = '1.1.2'
-	openHftChronicleVersion = '2.0.2'
-	openHftLangVersion = '6.1.1'
+	openHftChronicleVersion = '2.0.3'
+	openHftLangVersion = '6.1.4'
 
 	// Testing
 	mockitoVersion = '1.9.5'
@@ -52,8 +50,7 @@ ext {
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/",
-			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/",
-			"http://docs.spring.io/spring/docs/3.2.x/javadoc-api/"
+			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/"
 	] as String[]
 }
 
@@ -89,11 +86,11 @@ configure(allprojects) { project ->
 			"-Xlint:processing",
 			"-Xlint:static",
 			"-Xlint:try",
+			"-Xlint:deprecation",
+			"-Xlint:unchecked",
 			"-Xlint:-options",     // intentionally disabled
 			"-Xlint:-fallthrough", // intentionally disabled
-			"-Xlint:-rawtypes",    // TODO enable and fix warnings
-			"-Xlint:-deprecation", // TODO enable and fix warnings
-			"-Xlint:-unchecked"    // TODO enable and fix warnings
+			"-Xlint:-rawtypes"    // TODO enable and fix warnings
 	]
 
 	compileGroovy {
@@ -159,7 +156,7 @@ configure(allprojects) { project ->
 	}
 }
 
-configure(subprojects - project(":reactor-benchmark")) { subproject ->
+configure(subprojects) { subproject ->
 	jar {
 		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
 		manifest.attributes["Implementation-Title"] = subproject.name
@@ -292,35 +289,6 @@ project('reactor-groovy') {
 	}
 }
 
-project('reactor-spring') {
-	apply plugin: 'osgi'
-	description = 'Reactor Spring components'
-
-	eclipse {
-		project {
-			natures += 'org.springframework.ide.eclipse.core.springnature'
-		}
-	}
-
-	dependencies {
-		compile project(':reactor-core')
-
-		// Spring
-		compile "org.springframework:spring-beans:$springVersion",
-				"org.springframework:spring-context:$springVersion",
-				"org.springframework:spring-context-support:$springVersion",
-				"org.springframework:spring-core:$springVersion",
-				"org.springframework:spring-expression:$springVersion",
-				"org.springframework:spring-tx:$springVersion",
-				"com.jayway.jsonpath:json-path:$jsonPathVersion"
-
-		// Testing
-		testCompile "org.spockframework:spock-spring:$spockVersion",
-				"org.springframework:spring-test:$springVersion"
-		testRuntime "org.slf4j:jcl-over-slf4j:$slf4jVersion"
-	}
-}
-
 project('reactor-logback') {
 	description = 'Processor-based Logback async appender implementation'
 	dependencies {
@@ -328,18 +296,6 @@ project('reactor-logback') {
 
 		// Logback
 		compile "ch.qos.logback:logback-classic:$logbackVersion"
-	}
-}
-
-project('reactor-benchmark') {
-	description = 'Performance tests'
-
-	sonarRunner {
-		skipProject = true
-	}
-
-	dependencies {
-		compile project(':reactor-core')
 	}
 }
 
