@@ -28,6 +28,7 @@ public abstract class EventAllocator {
 	 *
 	 * @param classes
 	 */
+	@SuppressWarnings("unchecked")
 	public EventAllocator(Class[] classes) {
 		this.eventPools = new HashMap<Class, Allocator>();
 		this.monitor = new Object();
@@ -44,6 +45,7 @@ public abstract class EventAllocator {
    *
    * @return a {@link reactor.alloc.Reference} that can be retained and released.
    */
+  @SuppressWarnings("unchecked")
   public <T> Reference<Event<T>> get(Class<T> klass) {
     if(!eventPools.containsKey(klass)) {
       synchronized (monitor) {
@@ -72,6 +74,7 @@ public abstract class EventAllocator {
    */
   public static EventAllocator defaultEventAllocator() {
     return new EventAllocator() {
+      @SuppressWarnings("unchecked")
       @Override
       protected <T> Allocator<Event<T>> makeAllocator(Class<T> klass) {
         return new ReferenceCountingAllocator<Event<T>>(new EventFactorySupplier(klass));
