@@ -22,6 +22,7 @@ import reactor.net.AbstractNetChannel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
@@ -47,6 +48,11 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	public boolean isClosing() {
 		return closing;
+	}
+
+	@Override
+	public InetSocketAddress remoteAddress() {
+		return (InetSocketAddress)ioChannel.remoteAddress();
 	}
 
 	@Override
