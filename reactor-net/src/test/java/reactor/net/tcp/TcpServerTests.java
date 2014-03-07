@@ -32,10 +32,7 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
-import reactor.io.encoding.Frame;
-import reactor.io.encoding.FrameCodec;
-import reactor.io.encoding.LengthFieldCodec;
-import reactor.io.encoding.StandardCodecs;
+import reactor.io.encoding.*;
 import reactor.io.encoding.json.JsonCodec;
 import reactor.net.NetChannel;
 import reactor.net.config.ServerSocketOptions;
@@ -62,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -144,8 +142,8 @@ public class TcpServerTests {
 				.codec(codec)
 				.consume(new Consumer<NetChannel<Pojo, Pojo>>() {
 					@Override
-					public void accept(NetChannel<Pojo, Pojo> conn) {
-						conn.consume(new Consumer<Pojo>() {
+					public void accept(NetChannel<Pojo, Pojo> ch) {
+						ch.consume(new Consumer<Pojo>() {
 							@Override
 							public void accept(Pojo data) {
 								if("John Doe".equals(data.getName())) {
@@ -181,8 +179,8 @@ public class TcpServerTests {
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
 				.consume(new Consumer<NetChannel<byte[], byte[]>>() {
 					@Override
-					public void accept(NetChannel<byte[], byte[]> conn) {
-						conn.consume(new Consumer<byte[]>() {
+					public void accept(NetChannel<byte[], byte[]> ch) {
+						ch.consume(new Consumer<byte[]>() {
 							long num = 1;
 
 							@Override
@@ -234,8 +232,8 @@ public class TcpServerTests {
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.consume(new Consumer<NetChannel<Frame, Frame>>() {
 					@Override
-					public void accept(NetChannel<Frame, Frame> conn) {
-						conn.consume(new Consumer<Frame>() {
+					public void accept(NetChannel<Frame, Frame> ch) {
+						ch.consume(new Consumer<Frame>() {
 							@Override
 							public void accept(Frame frame) {
 								short prefix = frame.getPrefix().readShort();
@@ -268,6 +266,42 @@ public class TcpServerTests {
 	}
 
 	@Test
+	public void exposesRemoteAddress() throws InterruptedException {
+		final int port = SocketUtils.findAvailableTcpPort();
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		TcpClient<Buffer, Buffer> client = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.synchronousDispatcher()
+				.connect("127.0.0.1", port)
+				.get();
+
+		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)
+				.env(env)
+				.synchronousDispatcher()
+				.listen(port)
+				.codec(new PassThroughCodec<Buffer>())
+				.consume(new Consumer<NetChannel<Buffer, Buffer>>() {
+					@Override
+					public void accept(NetChannel<Buffer, Buffer> ch) {
+						InetSocketAddress remoteAddr = ch.remoteAddress();
+						assertNotNull("remote address is not null", remoteAddr.getAddress());
+						latch.countDown();
+					}
+				})
+				.get();
+
+		server.start().await();
+
+		NetChannel<Buffer, Buffer> out = client.open().await();
+		out.send(Buffer.wrap("Hello World!"));
+
+		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+
+		server.shutdown().await();
+	}
+
+	@Test
 	public void exposesNettyPipelineConfiguration() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
@@ -280,8 +314,8 @@ public class TcpServerTests {
 
 		Consumer<NetChannel<String, String>> serverHandler = new Consumer<NetChannel<String, String>>() {
 			@Override
-			public void accept(NetChannel<String, String> conn) {
-				conn.consume(new Consumer<String>() {
+			public void accept(NetChannel<String, String> ch) {
+				ch.consume(new Consumer<String>() {
 					@Override
 					public void accept(String data) {
 						latch.countDown();
@@ -325,8 +359,8 @@ public class TcpServerTests {
 				.dispatcher(new SynchronousDispatcher())
 				.consume(new Consumer<NetChannel<ByteBuf, ByteBuf>>() {
 					@Override
-					public void accept(NetChannel<ByteBuf, ByteBuf> conn) {
-						conn.consume(new Consumer<ByteBuf>() {
+					public void accept(NetChannel<ByteBuf, ByteBuf> ch) {
+						ch.consume(new Consumer<ByteBuf>() {
 							@Override
 							public void accept(ByteBuf byteBuf) {
 								byteBuf.forEachByte(new ByteBufProcessor() {
@@ -379,8 +413,8 @@ public class TcpServerTests {
 						         }))
 				.consume(new Consumer<NetChannel<HttpRequest, HttpResponse>>() {
 					@Override
-					public void accept(final NetChannel<HttpRequest, HttpResponse> conn) {
-						conn.in().consume(new Consumer<HttpRequest>() {
+					public void accept(final NetChannel<HttpRequest, HttpResponse> ch) {
+						ch.in().consume(new Consumer<HttpRequest>() {
 							@Override
 							public void accept(HttpRequest req) {
 								ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
@@ -394,7 +428,7 @@ public class TcpServerTests {
 								resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
 								resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
 
-								conn.send(resp);
+								ch.send(resp);
 
 								if(req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
 									latch.countDown();

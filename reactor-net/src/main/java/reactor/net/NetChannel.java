@@ -6,12 +6,21 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.batch.BatchConsumer;
 
+import java.net.InetSocketAddress;
+
 /**
  * {@code NetChannel} implementations handle interacting with the client.
  *
  * @author Jon Brisbin
  */
 public interface NetChannel<IN, OUT> {
+
+	/**
+	 * Get the address of the remote peer.
+	 *
+	 * @return the peer's address
+	 */
+	InetSocketAddress remoteAddress();
 
 	/**
 	 * {@link reactor.core.composable.Stream} of incoming decoded data.
