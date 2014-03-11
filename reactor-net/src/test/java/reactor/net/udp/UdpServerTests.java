@@ -57,7 +57,7 @@ public class UdpServerTests {
 				.env(env)
 				.listen(port)
 				.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-				.consume(new Consumer<byte[]>() {
+				.consumeInput(new Consumer<byte[]>() {
 					@Override
 					public void accept(byte[] bytes) {
 						if(bytes.length == 1024) {
@@ -113,7 +113,7 @@ public class UdpServerTests {
 					.options(new ServerSocketOptions()
 							         .reuseAddr(true))
 					.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-					.consume(new Consumer<byte[]>() {
+					.consumeInput(new Consumer<byte[]>() {
 						int count = 0;
 
 						@SuppressWarnings("unchecked")
