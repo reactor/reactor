@@ -59,6 +59,8 @@ public class AsyncAppender
 	private Processor<LogEvent> processor;
 	private Thread              publisher;
 
+	private boolean		    includeCallerData;
+
 	@Override public String getName() {
 		return name;
 	}
@@ -154,6 +156,11 @@ public class AsyncAppender
 		}
 
 		ev.prepareForDeferredProcessing();
+
+                if(includeCallerData) {
+                    ev.getCallerData();
+                }
+
 		publishQueue.add(ev);
 	}
 
@@ -208,6 +215,14 @@ public class AsyncAppender
 	@Override public boolean detachAppender(String name) {
 		return aai.detachAppender(name);
 	}
+
+        public boolean isIncludeCallerData() {
+                return includeCallerData;
+        }
+
+        public void setIncludeCallerData(final boolean includeCallerData) {
+                this.includeCallerData = includeCallerData;
+        }
 
 	private static class LogEvent {
 		ILoggingEvent event;
