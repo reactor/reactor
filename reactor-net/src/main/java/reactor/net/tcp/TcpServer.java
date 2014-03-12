@@ -72,12 +72,12 @@ public abstract class TcpServer<IN, OUT>
 	 *
 	 * @return {@literal this}
 	 */
-	public Promise<Void> start() {
-		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+	public Promise<Boolean> start() {
+		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {
-				d.accept((Void)null);
+				d.accept(true);
 			}
 		});
 		return d.compose();

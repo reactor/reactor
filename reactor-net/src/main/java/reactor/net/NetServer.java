@@ -16,7 +16,7 @@ public interface NetServer<IN, OUT> {
 	 *
 	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is started
 	 */
-	Promise<Void> start();
+	Promise<Boolean> start();
 
 	/**
 	 * Start and bind this {@literal NetServer} to the configured listen port and notify the given {@link
@@ -35,6 +35,6 @@ public interface NetServer<IN, OUT> {
 	 *
 	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is shut down
 	 */
-	Promise<Void> shutdown();
+	Promise<Boolean> shutdown();
 
 }

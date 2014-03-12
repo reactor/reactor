@@ -152,8 +152,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+	public Promise<Boolean> shutdown() {
+		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		Reactors.schedule(
 				new Consumer<Void>() {
@@ -164,7 +164,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 							@Override
 							public void operationComplete(Future future) throws Exception {
 								if(future.isSuccess()) {
-									d.accept((Void)null);
+									d.accept(true);
 								} else {
 									d.accept(future.cause());
 								}
