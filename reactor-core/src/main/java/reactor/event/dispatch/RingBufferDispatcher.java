@@ -44,10 +44,12 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
-	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+	 * wait
 	 * strategy}.
 	 *
-	 * @param name The name of the dispatcher.
+	 * @param name
+	 * 		The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
 		this(name, DEFAULT_BUFFER_SIZE, ProducerType.MULTI, new BlockingWaitStrategy());
@@ -57,16 +59,20 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with the given {@code producerType} and {@code waitStrategy}.
 	 *
-	 * @param name         The name of the dispatcher
-	 * @param bufferSize   The size to configure the ring buffer with
-	 * @param producerType The producer type to configure the ring buffer with
-	 * @param waitStrategy The wait strategy to configure the ring buffer with
+	 * @param name
+	 * 		The name of the dispatcher
+	 * @param bufferSize
+	 * 		The size to configure the ring buffer with
+	 * @param producerType
+	 * 		The producer type to configure the ring buffer with
+	 * @param waitStrategy
+	 * 		The wait strategy to configure the ring buffer with
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
-															int bufferSize,
-															ProducerType producerType,
-															WaitStrategy waitStrategy) {
+	                            int bufferSize,
+	                            ProducerType producerType,
+	                            WaitStrategy waitStrategy) {
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name + "-ringbuffer"));
 
 		this.disruptor = new Disruptor<RingBufferTask<?>>(
@@ -93,7 +99,7 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 					@Override
 					public void handleOnStartException(Throwable ex) {
 						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
+						if(log.isErrorEnabled()) {
 							log.error(ex.getMessage(), ex);
 						}
 					}
@@ -101,7 +107,7 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 					@Override
 					public void handleOnShutdownException(Throwable ex) {
 						Logger log = LoggerFactory.getLogger(RingBufferDispatcher.class);
-						if (log.isErrorEnabled()) {
+						if(log.isErrorEnabled()) {
 							log.error(ex.getMessage(), ex);
 						}
 					}
@@ -117,7 +123,7 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 		shutdown();
 		try {
 			return executor.awaitTermination(timeout, timeUnit);
-		} catch (InterruptedException e) {
+		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
 		return false;
@@ -143,7 +149,7 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 		long l = ringBuffer.next();
 		RingBufferTask<?> t = ringBuffer.get(l);
 		t.setSequenceId(l);
-		return (Task<E>) t;
+		return (Task<E>)t;
 	}
 
 	private class RingBufferTask<E extends Event<?>> extends Task<E> {
@@ -163,7 +169,11 @@ public class RingBufferDispatcher extends BaseLifecycleDispatcher {
 	private class RingBufferTaskHandler implements EventHandler<RingBufferTask<?>> {
 		@Override
 		public void onEvent(RingBufferTask<?> t, long sequence, boolean endOfBatch) throws Exception {
-			t.execute();
+			try {
+				t.execute();
+			} finally {
+				t.reset();
+			}
 		}
 	}
 
