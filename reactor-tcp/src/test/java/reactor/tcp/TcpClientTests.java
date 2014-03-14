@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.core.composable.Promise;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
@@ -399,6 +400,30 @@ public class TcpClientTests {
 		          });
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void tcpClientCleansUpClosedConnections() throws InterruptedException {
+		TcpClient<Buffer, Buffer> client = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+				.env(env)
+				.dispatcher(new SynchronousDispatcher())
+				.connect("localhost", echoServerPort)
+				.get();
+
+		for(int i = 0; i < 20; i++) {
+			final TcpConnection<Buffer, Buffer> conn = client.open().await();
+			conn.consume(new Consumer<Buffer>() {
+				@Override
+				public void accept(Buffer buffer) {
+					System.out.println("got input: " + buffer.asString());
+				}
+			});
+			conn.close();
+		}
+
+		//		while(true) {
+		//			Thread.sleep(5000);
+		//		}
 	}
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();

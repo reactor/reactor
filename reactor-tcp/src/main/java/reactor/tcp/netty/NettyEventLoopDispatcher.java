@@ -17,6 +17,7 @@
 package reactor.tcp.netty;
 
 import io.netty.channel.EventLoop;
+import reactor.event.dispatch.BaseDispatcher;
 import reactor.pool.Pool;
 import reactor.pool.LoadingPool;
 import reactor.event.Event;
@@ -34,27 +35,15 @@ import java.util.concurrent.TimeUnit;
 public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 
 	private final EventLoop  eventLoop;
-	private final Pool<Task> readyTasks;
 
 	/**
 	 * Creates a new Netty event loop-based dispatcher that will run tasks on the given {@code eventLoop} with the given
 	 * {@code backlog} size.
 	 *
 	 * @param eventLoop The event loop to run tasks on
-	 * @param backlog   The size of the backlog of unexecuted tasks
 	 */
-	public NettyEventLoopDispatcher(EventLoop eventLoop, int backlog) {
+	public NettyEventLoopDispatcher(EventLoop eventLoop) {
 		this.eventLoop = eventLoop;
-		this.readyTasks = new LoadingPool<Task>(
-				new Supplier<Task>() {
-					@Override
-					public Task get() {
-						return new NettyEventLoopTask();
-					}
-				},
-				backlog,
-				150L
-		);
 	}
 
 	@Override
@@ -83,8 +72,7 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
-		Task t = readyTasks.allocate();
-		return (null != t ? t : new NettyEventLoopTask());
+		return (Task<E>)new NettyEventLoopTask();
 	}
 
 	private final class NettyEventLoopTask extends Task<Event<Object>> implements Runnable {
@@ -99,7 +87,6 @@ public class NettyEventLoopDispatcher extends BaseLifecycleDispatcher {
 				execute();
 			} finally {
 				reset();
-				readyTasks.deallocate(this);
 			}
 		}
 	}

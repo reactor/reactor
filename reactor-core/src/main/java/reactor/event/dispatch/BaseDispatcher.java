@@ -21,7 +21,7 @@ import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 
-abstract class BaseDispatcher implements Dispatcher {
+public abstract class BaseDispatcher implements Dispatcher {
 
 	@Override
 	public <E extends Event<?>> void dispatch(E event,

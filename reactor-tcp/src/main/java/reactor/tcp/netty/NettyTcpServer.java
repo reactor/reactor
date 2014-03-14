@@ -185,12 +185,10 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	protected <C> NettyTcpConnection<IN, OUT> createConnection(C channel) {
 		SocketChannel ch = (SocketChannel)channel;
-		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
-
 		return new NettyTcpConnection<IN, OUT>(
 				env,
 				getCodec(),
-				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
+				new NettyEventLoopDispatcher(ch.eventLoop()),
 				eventsReactor,
 				ch
 		);

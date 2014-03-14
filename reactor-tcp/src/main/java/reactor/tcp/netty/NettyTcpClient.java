@@ -33,6 +33,8 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
+import reactor.core.spec.Reactors;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
@@ -70,7 +72,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 
 	private final    Bootstrap               bootstrap;
-	private final    Reactor                 eventsReactor;
+	private final    Dispatcher              eventsDispatcher;
 	private final    ClientSocketOptions     options;
 	private final    EventLoopGroup          ioGroup;
 	private final    Supplier<ChannelFuture> connectionSupplier;
@@ -104,7 +106,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	                      @Nullable final SslOptions sslOpts,
 	                      @Nullable Codec<Buffer, IN, OUT> codec) {
 		super(env, reactor, connectAddress, opts, sslOpts, codec);
-		this.eventsReactor = reactor;
+		this.eventsDispatcher = reactor.getDispatcher();
 		this.connectAddress = connectAddress;
 		this.options = opts;
 
@@ -154,7 +156,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
 		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection
-				= Promises.defer(env, eventsReactor.getDispatcher());
+				= Promises.defer(env, eventsDispatcher);
 
 		createConnection(createConnectListener(connection));
 
@@ -164,7 +166,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Stream<TcpConnection<IN, OUT>> open(final Reconnect reconnect) {
 		final Deferred<TcpConnection<IN, OUT>, Stream<TcpConnection<IN, OUT>>> connections
-				= Streams.defer(env, eventsReactor.getDispatcher());
+				= Streams.defer(env, eventsDispatcher);
 		createConnection(createReconnectListener(connections, reconnect));
 
 		return connections.compose();
@@ -173,13 +175,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	protected <C> TcpConnection<IN, OUT> createConnection(C channel) {
 		SocketChannel ch = (SocketChannel)channel;
-		int backlog = env.getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
-
 		return new NettyTcpConnection<IN, OUT>(
 				env,
 				getCodec(),
-				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
-				eventsReactor,
+				new NettyEventLoopDispatcher(ch.eventLoop()),
+				Reactors.reactor(env, eventsDispatcher),
 				ch,
 				connectAddress
 		);

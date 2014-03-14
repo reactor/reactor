@@ -46,6 +46,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
+	private final NettyTcpConnectionConsumerSpec eventSpec = new NettyTcpConnectionConsumerSpec();
+
 	private volatile SocketChannel     channel;
 	private volatile InetSocketAddress remoteAddress;
 	private volatile boolean closing = false;
@@ -80,18 +82,15 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
 	@Override
 	public ConsumerSpec on() {
-		return new NettyTcpConnectionConsumerSpec();
+		return eventSpec;
 	}
 
 	@Override
 	public void close() {
 		super.close();
 		closing = true;
-		try {
-			channel.close().await();
-		} catch(InterruptedException e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
+		channel.disconnect().awaitUninterruptibly();
+		channel.close().awaitUninterruptibly();
 	}
 
 	@Override
