@@ -4,5 +4,5 @@ include 'reactor-core',
 		'reactor-groovy',
 		'reactor-spring',
 		'reactor-logback',
-		'reactor-benchmark',
+//		'reactor-benchmark',
 		'reactor-tcp'

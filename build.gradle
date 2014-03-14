@@ -156,7 +156,8 @@ configure(allprojects) { project ->
 	}
 }
 
-configure(subprojects - project(":reactor-benchmark")) { subproject ->
+//configure(subprojects - project(":reactor-benchmark")) { subproject ->
+configure(subprojects) { subproject ->
 	jar {
 		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
 		manifest.attributes["Implementation-Title"] = subproject.name
@@ -317,17 +318,17 @@ project('reactor-logback') {
 	}
 }
 
-project('reactor-benchmark') {
-	description = 'Performance tests'
-
-	sonarRunner {
-		skipProject = true
-	}
-
-	dependencies {
-		compile project(':reactor-core')
-	}
-}
+//project('reactor-benchmark') {
+//	description = 'Performance tests'
+//
+//	sonarRunner {
+//		skipProject = true
+//	}
+//
+//	dependencies {
+//		compile project(':reactor-core')
+//	}
+//}
 
 project('reactor-tcp') {
 	apply plugin: 'osgi'
