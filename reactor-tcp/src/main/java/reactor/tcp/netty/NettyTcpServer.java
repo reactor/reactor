@@ -33,6 +33,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -64,7 +65,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ServerBootstrap     bootstrap;
-	private final Reactor             eventsReactor;
+	private final Dispatcher          eventsDispatcher;
 	private final ServerSocketOptions options;
 	private final EventLoopGroup      selectorGroup;
 	private final EventLoopGroup      ioGroup;
@@ -77,7 +78,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	                         Codec<Buffer, IN, OUT> codec,
 	                         Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		super(env, reactor, listenAddress, opts, sslOpts, codec, connectionConsumers);
-		this.eventsReactor = reactor;
+		this.eventsDispatcher = reactor.getDispatcher();
 		Assert.notNull(opts, "ServerSocketOptions cannot be null");
 		this.options = opts;
 
@@ -189,7 +190,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				env,
 				getCodec(),
 				new NettyEventLoopDispatcher(ch.eventLoop()),
-				eventsReactor,
+				eventsDispatcher,
 				ch
 		);
 	}

@@ -27,6 +27,7 @@ import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
@@ -69,11 +70,11 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 	protected AbstractTcpConnection(Environment env,
 	                                Codec<Buffer, IN, OUT> codec,
 	                                Dispatcher ioDispatcher,
-	                                Reactor eventsReactor) {
+	                                Dispatcher eventsDispatcher) {
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.ioReactor = Reactors.reactor(env, ioDispatcher);
-		this.eventsReactor = eventsReactor;
+		this.eventsReactor = Reactors.reactor(env, eventsDispatcher);
 		if(null != codec) {
 			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getT2(), eventsReactor));
 			this.encoder = codec.encoder();
@@ -105,7 +106,12 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public void close() {
-		eventsReactor.getConsumerRegistry().unregister(read.getT2());
+		for(Registration reg : ioReactor.getConsumerRegistry()) {
+			reg.cancel();
+		}
+		for(Registration reg : eventsReactor.getConsumerRegistry()) {
+			reg.cancel();
+		}
 	}
 
 	@Override

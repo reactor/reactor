@@ -138,6 +138,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							((NettyClientSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
+						ch.closeFuture().addListener(new ChannelFutureListener() {
+							@Override
+							public void operationComplete(ChannelFuture future) throws Exception {
+								connections.remove(ch);
+							}
+						});
 					}
 				});
 
@@ -179,7 +185,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				env,
 				getCodec(),
 				new NettyEventLoopDispatcher(ch.eventLoop()),
-				Reactors.reactor(env, eventsDispatcher),
+				eventsDispatcher,
 				ch,
 				connectAddress
 		);
@@ -236,7 +242,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						if(log.isInfoEnabled()) {
 							log.info("CLOSED: " + future.channel());
 						}
-						NettyTcpClient.this.connections.unregister(future.channel());
+						NettyTcpClient.this.connections.remove(future.channel());
 						notifyClose(conn);
 					}
 				});
@@ -304,7 +310,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							if(log.isInfoEnabled()) {
 								log.info("CLOSED: " + future.channel());
 							}
-							NettyTcpClient.this.connections.unregister(future.channel());
+							NettyTcpClient.this.connections.remove(future.channel());
 							notifyClose(conn);
 							if(!conn.isClosing()) {
 								int attempt = attempts.incrementAndGet();

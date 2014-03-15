@@ -24,7 +24,6 @@ import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
-import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selector;
@@ -39,14 +38,19 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
-import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The base class for a Reactor-based TCP client.
  *
- * @param <IN>  The type that will be received by this client
- * @param <OUT> The type that will be sent by this client
+ * @param <IN>
+ * 		The type that will be received by this client
+ * @param <OUT>
+ * 		The type that will be sent by this client
+ *
  * @author Jon Brisbin
  */
 public abstract class TcpClient<IN, OUT> {
@@ -57,18 +61,20 @@ public abstract class TcpClient<IN, OUT> {
 	private final Reactor                reactor;
 	private final Codec<Buffer, IN, OUT> codec;
 
-	protected final Registry<TcpConnection<IN, OUT>> connections = new CachingRegistry<TcpConnection<IN, OUT>>();
+	protected final Map<Object, WeakReference<TcpConnection<IN, OUT>>> connections = new ConcurrentHashMap<Object,
+			WeakReference<TcpConnection<IN, OUT>>>();
 	protected final Environment env;
 
 	protected TcpClient(@Nonnull Environment env,
-											@Nonnull Reactor reactor,
-											@Nonnull InetSocketAddress connectAddress,
-											@Nullable ClientSocketOptions options,
-											@Nullable SslOptions sslOptions,
-											@Nullable Codec<Buffer, IN, OUT> codec) {
+	                    @Nonnull Reactor reactor,
+	                    @Nonnull InetSocketAddress connectAddress,
+	                    @Nullable ClientSocketOptions options,
+	                    @Nullable SslOptions sslOptions,
+	                    @Nullable Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(env, "A TcpClient cannot be created without a properly-configured Environment.");
 		Assert.notNull(reactor, "A TcpClient cannot be created without a properly-configured Reactor.");
-		Assert.notNull(connectAddress, "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
+		Assert.notNull(connectAddress,
+		               "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
 		this.env = env;
 		this.reactor = reactor;
 		this.codec = codec;
@@ -79,7 +85,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * will be fulfilled when the client is connected.
 	 *
 	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link TcpConnection} when
-	 *         connected.
+	 * connected.
 	 */
 	public abstract Promise<TcpConnection<IN, OUT>> open();
 
@@ -93,6 +99,7 @@ public abstract class TcpClient<IN, OUT> {
 	 * connection.
 	 *
 	 * @param reconnect
+	 *
 	 * @return
 	 */
 	public abstract Stream<TcpConnection<IN, OUT>> open(Reconnect reconnect);
@@ -103,14 +110,16 @@ public abstract class TcpClient<IN, OUT> {
 	 * @return A {@link Promise} that will be fulfilled with {@literal null} when the connections have been closed.
 	 */
 	public Promise<Void> close() {
-		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer().env(env).dispatcher(reactor.getDispatcher()).get();
+		final Deferred<Void, Promise<Void>> d = Promises.defer(env, reactor.getDispatcher());
 		Reactors.schedule(
 				new Consumer<Void>() {
+					@SuppressWarnings("ConstantConditions")
 					@Override
 					public void accept(Void v) {
-						for (Registration<? extends TcpConnection<IN, OUT>> reg : connections) {
-							reg.getObject().close();
-							reg.cancel();
+						for(Map.Entry<Object, WeakReference<TcpConnection<IN, OUT>>> entry : connections.entrySet()) {
+							if(null != entry.getValue().get()) {
+								entry.getValue().get().close();
+							}
 						}
 						doClose(d);
 					}
@@ -124,59 +133,118 @@ public abstract class TcpClient<IN, OUT> {
 	/**
 	 * Subclasses should register the given channel and connection for later use.
 	 *
-	 * @param channel    The channel object.
-	 * @param connection The {@link TcpConnection}.
-	 * @param <C>        The type of the channel object.
+	 * @param channel
+	 * 		The channel object.
+	 * @param connection
+	 * 		The {@link TcpConnection}.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return {@link reactor.event.registry.Registration} of this connection in the {@link Registry}.
 	 */
-	protected <C> Registration<? extends TcpConnection<IN, OUT>> register(@Nonnull C channel,
-																																				@Nonnull TcpConnection<IN, OUT> connection) {
+	protected <C> Registration<? extends TcpConnection<IN, OUT>> register(@Nonnull final C channel,
+	                                                                      @Nonnull final TcpConnection<IN,
+			                                                                      OUT> connection) {
 		Assert.notNull(channel, "Channel cannot be null.");
 		Assert.notNull(connection, "TcpConnection cannot be null.");
-		return connections.register(Selectors.$(channel), connection);
+		connections.put(channel, new WeakReference<TcpConnection<IN, OUT>>(connection));
+		return new Registration<TcpConnection<IN, OUT>>() {
+			@Override
+			public Selector getSelector() {
+				return null;
+			}
+
+			@Override
+			public TcpConnection<IN, OUT> getObject() {
+				return connection;
+			}
+
+			@Override
+			public Registration<TcpConnection<IN, OUT>> cancelAfterUse() {
+				return this;
+			}
+
+			@Override
+			public boolean isCancelAfterUse() {
+				return false;
+			}
+
+			@Override
+			public Registration<TcpConnection<IN, OUT>> cancel() {
+				connections.remove(channel);
+				return this;
+			}
+
+			@Override
+			public boolean isCancelled() {
+				return !connections.containsKey(channel);
+			}
+
+			@Override
+			public Registration<TcpConnection<IN, OUT>> pause() {
+				return this;
+			}
+
+			@Override
+			public boolean isPaused() {
+				return false;
+			}
+
+			@Override
+			public Registration<TcpConnection<IN, OUT>> resume() {
+				return this;
+			}
+		};
 	}
 
 	/**
 	 * Find the {@link TcpConnection} for the given channel object.
 	 *
-	 * @param channel The channel object.
-	 * @param <C>     The type of the channel object.
+	 * @param channel
+	 * 		The channel object.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return The {@link TcpConnection} associated with the given channel.
 	 */
 	protected <C> TcpConnection<IN, OUT> select(@Nonnull C channel) {
 		Assert.notNull(channel, "Channel cannot be null.");
-		Iterator<Registration<? extends TcpConnection<IN, OUT>>> conns = connections.select(channel).iterator();
-		if (conns.hasNext()) {
-			return conns.next().getObject();
-		} else {
-			TcpConnection<IN, OUT> conn = createConnection(channel);
+		TcpConnection<IN, OUT> conn;
+		if(!connections.containsKey(channel)) {
+			conn = createConnection(channel);
 			register(channel, conn);
 			notifyOpen(conn);
 			return conn;
+		} else {
+			conn = connections.get(channel).get();
 		}
+		return conn;
 	}
 
 	/**
 	 * Close the given channel.
 	 *
-	 * @param channel The channel object.
-	 * @param <C>     The type of the channel object.
+	 * @param channel
+	 * 		The channel object.
+	 * @param <C>
+	 * 		The type of the channel object.
 	 */
 	protected <C> void close(@Nonnull C channel) {
 		Assert.notNull(channel, "Channel cannot be null");
-		for (Registration<? extends TcpConnection<IN, OUT>> reg : connections.select(channel)) {
-			TcpConnection<IN, OUT> conn = reg.getObject();
-			reg.getObject().close();
-			notifyClose(conn);
-			reg.cancel();
+		WeakReference<TcpConnection<IN, OUT>> ref = connections.remove(channel);
+		if(null != ref && null != ref.get()) {
+			ref.get().close();
 		}
 	}
 
 	/**
 	 * Subclasses should implement this method and provide a {@link TcpConnection} object.
 	 *
-	 * @param channel The channel object to associate with this connection.
-	 * @param <C>     The type of the channel object.
+	 * @param channel
+	 * 		The channel object to associate with this connection.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return The new {@link TcpConnection} object.
 	 */
 	protected abstract <C> TcpConnection<IN, OUT> createConnection(C channel);
@@ -184,7 +252,8 @@ public abstract class TcpClient<IN, OUT> {
 	/**
 	 * Notify this client's consumers than a global error has occurred.
 	 *
-	 * @param error The error to notify.
+	 * @param error
+	 * 		The error to notify.
 	 */
 	protected void notifyError(@Nonnull Throwable error) {
 		Assert.notNull(error, "Error cannot be null.");
@@ -194,7 +263,8 @@ public abstract class TcpClient<IN, OUT> {
 	/**
 	 * Notify this client's consumers that the connection has been opened.
 	 *
-	 * @param conn The {@link TcpConnection} that was opened.
+	 * @param conn
+	 * 		The {@link TcpConnection} that was opened.
 	 */
 	protected void notifyOpen(@Nonnull TcpConnection<IN, OUT> conn) {
 		reactor.notify(open.getT2(), Event.wrap(conn));
@@ -203,7 +273,8 @@ public abstract class TcpClient<IN, OUT> {
 	/**
 	 * Notify this clients's consumers that the connection has been closed.
 	 *
-	 * @param conn The {@link TcpConnection} that was closed.
+	 * @param conn
+	 * 		The {@link TcpConnection} that was closed.
 	 */
 	protected void notifyClose(@Nonnull TcpConnection<IN, OUT> conn) {
 		reactor.notify(close.getT2(), Event.wrap(conn));

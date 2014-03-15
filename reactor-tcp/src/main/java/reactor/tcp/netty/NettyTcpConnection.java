@@ -25,7 +25,6 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.event.Event;
@@ -46,28 +45,28 @@ import java.util.concurrent.TimeUnit;
  */
 public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> {
 
-	private final NettyTcpConnectionConsumerSpec eventSpec = new NettyTcpConnectionConsumerSpec();
-
-	private volatile SocketChannel     channel;
-	private volatile InetSocketAddress remoteAddress;
+	private final SocketChannel                  channel;
+	private final NettyTcpConnectionConsumerSpec consumerSpec;
+	private final InetSocketAddress              remoteAddress;
 	private volatile boolean closing = false;
 
 	NettyTcpConnection(final Environment env,
 	                   Codec<Buffer, IN, OUT> codec,
 	                   Dispatcher ioDispatcher,
-	                   Reactor eventsReactor,
+	                   Dispatcher eventsDispatcher,
 	                   SocketChannel channel) {
-		this(env, codec, ioDispatcher, eventsReactor, channel, null);
+		this(env, codec, ioDispatcher, eventsDispatcher, channel, null);
 	}
 
 	NettyTcpConnection(final Environment env,
 	                   Codec<Buffer, IN, OUT> codec,
 	                   Dispatcher ioDispatcher,
-	                   Reactor eventsReactor,
+	                   Dispatcher eventsDispatcher,
 	                   SocketChannel channel,
 	                   InetSocketAddress remoteAddress) {
-		super(env, codec, ioDispatcher, eventsReactor);
+		super(env, codec, ioDispatcher, eventsDispatcher);
 		this.channel = channel;
+		this.consumerSpec = new NettyTcpConnectionConsumerSpec(channel);
 		this.remoteAddress = remoteAddress;
 	}
 
@@ -82,7 +81,7 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
 	@Override
 	public ConsumerSpec on() {
-		return eventSpec;
+		return consumerSpec;
 	}
 
 	@Override
@@ -165,44 +164,95 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 				'}';
 	}
 
-	private class NettyTcpConnectionConsumerSpec<IN, OUT> implements ConsumerSpec<IN, OUT> {
+	private static class ChannelCloseListener implements ChannelFutureListener {
+		private final Runnable onClose;
+
+		private ChannelCloseListener(Runnable onClose) {
+			this.onClose = onClose;
+		}
+
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if(null != onClose) {
+				onClose.run();
+			}
+		}
+	}
+
+	private static class IdleReadListener extends IdleStateHandler {
+		private final Runnable onReadIdle;
+
+		private IdleReadListener(long readerIdleTimeSeconds, Runnable onReadIdle) {
+			super(readerIdleTimeSeconds, 0, 0, TimeUnit.MILLISECONDS);
+			this.onReadIdle = onReadIdle;
+		}
+
+		@Override
+		protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
+			if(evt.state() == IdleState.READER_IDLE) {
+				onReadIdle.run();
+			}
+			super.channelIdle(ctx, evt);
+		}
+	}
+
+	private static class IdleWriteListener extends IdleStateHandler {
+		private final Runnable onWriteIdle;
+
+		private IdleWriteListener(long writerIdleTimeSeconds, Runnable onWriteIdle) {
+			super(0, writerIdleTimeSeconds, 0, TimeUnit.MILLISECONDS);
+			this.onWriteIdle = onWriteIdle;
+		}
+
+		@Override
+		protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
+			if(evt.state() == IdleState.WRITER_IDLE) {
+				onWriteIdle.run();
+			}
+			super.channelIdle(ctx, evt);
+		}
+	}
+
+	private static class NettyTcpConnectionConsumerSpec<IN, OUT> implements ConsumerSpec<IN, OUT> {
+		private final SocketChannel channel;
+
+		private NettyTcpConnectionConsumerSpec(SocketChannel channel) {
+			this.channel = channel;
+		}
+
 		@Override
 		public ConsumerSpec close(final Runnable onClose) {
-			channel.closeFuture().addListener(new ChannelFutureListener() {
-				@SuppressWarnings("unchecked")
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					onClose.run();
-				}
-			});
+			channel.closeFuture().addListener(new ChannelCloseListener(onClose));
 			return this;
 		}
 
 		@Override
 		public ConsumerSpec readIdle(long idleTimeout, final Runnable onReadIdle) {
-			channel.pipeline().addFirst(new IdleStateHandler(idleTimeout, 0, 0, TimeUnit.MILLISECONDS) {
+			final IdleReadListener irl = new IdleReadListener(idleTimeout, onReadIdle);
+			channel.closeFuture().addListener(new ChannelFutureListener() {
 				@Override
-				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if(evt.state() == IdleState.READER_IDLE) {
-						onReadIdle.run();
-					}
-					super.channelIdle(ctx, evt);
+				public void operationComplete(ChannelFuture future) throws Exception {
+					try {
+						irl.channelInactive(null);
+					} catch(NullPointerException ignored) {}
 				}
 			});
+			channel.pipeline().addFirst(irl);
 			return this;
 		}
 
 		@Override
 		public ConsumerSpec writeIdle(long idleTimeout, final Runnable onWriteIdle) {
-			channel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, 0, TimeUnit.MILLISECONDS) {
+			final IdleWriteListener iwl = new IdleWriteListener(idleTimeout, onWriteIdle);
+			channel.closeFuture().addListener(new ChannelFutureListener() {
 				@Override
-				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if(evt.state() == IdleState.WRITER_IDLE) {
-						onWriteIdle.run();
-					}
-					super.channelIdle(ctx, evt);
+				public void operationComplete(ChannelFuture future) throws Exception {
+					try {
+						iwl.channelInactive(null);
+					} catch(NullPointerException ignored) {}
 				}
 			});
+			channel.pipeline().addLast(iwl);
 			return this;
 		}
 	}
