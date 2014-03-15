@@ -203,6 +203,17 @@ public abstract class Selectors {
 		return new PredicateSelector(predicate);
 	}
 
+    /**
+     * Creates a {@link reactor.event.selector.Selector} that matches
+     * all objects.
+     * @return The new {@link reactor.event.selector.MatchAllSelector}
+     *
+     * @see reactor.event.selector.MatchAllSelector
+     */
+    public static Selector matchAll() {
+        return new MatchAllSelector();
+    }
+
 	public static class AnonymousKey {
 		private final int hashCode = HASH_CODES.getAndIncrement() << 2;
 
