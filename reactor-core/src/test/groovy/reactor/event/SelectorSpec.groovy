@@ -17,6 +17,7 @@
 package reactor.event
 
 import reactor.core.spec.Reactors
+import reactor.event.selector.MatchAllSelector
 import reactor.event.selector.UriSelector
 import reactor.function.Functions
 import spock.lang.Specification
@@ -148,6 +149,24 @@ class SelectorSpec extends Specification {
 			vals["wildcard"]
 
 	}
+
+    def "Match-All selector is available"() {
+
+        given:
+            "A MatchAllSelector"
+            def sel = new MatchAllSelector()
+
+        when:
+            "The selector is matched"
+
+        then:
+            sel.matches "a string"
+            sel.matches 1L
+            sel.matches true
+            sel.matches false
+            sel.matches(new Date())
+            sel.matches(new Object())
+    }
 
 	def "Consumers can be called using round-robin routing"() {
 
