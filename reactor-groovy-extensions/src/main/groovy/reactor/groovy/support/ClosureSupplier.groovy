@@ -28,7 +28,7 @@ class ClosureSupplier<V> implements Supplier<V> {
 
 	final Closure<V> callback
 
-	ClosureSupplier(Closure<V> cl) {
+	ClosureSupplier(Closure cl) {
 		callback = cl
 	}
 

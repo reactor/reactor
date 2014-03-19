@@ -22,7 +22,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.2.1'
+	groovyVersion = '2.2.2'
 
 	// Logging
 	slf4jVersion = '1.7.6'
@@ -45,7 +45,7 @@ ext {
 	spockVersion = '0.7-groovy-2.0'
 
 	// Code coverage
-	jacocoVersion = '0.6.2.201302030002'
+	jacocoVersion = '0.7.0.201403182114'
 
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
