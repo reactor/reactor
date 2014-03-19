@@ -101,3 +101,9 @@ eclipse.project.file.withXml {
 	matcherNode.appendNode("id", "org.eclipse.ui.ide.multiFilter")
 	matcherNode.appendNode("arguments", "1.0-projectRelativePath-matches-false-false-build")
 }
+
+idea {
+    module {
+        scopes.PROVIDED.plus += configurations.optional
+    }
+}
