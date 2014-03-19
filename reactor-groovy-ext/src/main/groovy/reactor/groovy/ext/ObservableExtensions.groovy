@@ -18,9 +18,7 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import reactor.core.Reactor
 import reactor.event.Event
-import reactor.event.selector.ObjectSelector
 import reactor.event.selector.Selectors
-import reactor.event.support.EventConsumer
 import reactor.function.*
 import reactor.event.registry.Registration
 import reactor.event.selector.Selector

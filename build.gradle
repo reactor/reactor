@@ -272,6 +272,23 @@ project('reactor-core') {
 	}
 }
 
+project('reactor-groovy-ext') {
+	description = 'Reactor Groovy Ext components'
+
+	apply plugin: 'osgi'
+
+	sonarRunner {
+		sonarProperties {
+			property "sonar.language", "grvy"
+		}
+	}
+
+	dependencies {
+		compile project(':reactor-core'),
+				"org.codehaus.groovy:groovy-all:$groovyVersion"
+	}
+}
+
 project('reactor-groovy') {
 	description = 'Reactor Groovy components'
 
@@ -284,7 +301,7 @@ project('reactor-groovy') {
 	}
 
 	dependencies {
-		compile project(':reactor-core'),
+		compile project(':reactor-core'), project(':reactor-groovy-ext'),
 				"org.codehaus.groovy:groovy-all:$groovyVersion"
 	}
 }
