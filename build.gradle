@@ -15,7 +15,7 @@
  */
 
 
-description = 'Reactor-based application framework for the JVM.'
+description = 'Reactive fast data framework for the JVM'
 
 ext {
 	gradleVersion = '1.11'
@@ -29,7 +29,7 @@ ext {
 	logbackVersion = '1.1.1'
 
 	// Libraries
-	disruptorVersion = '3.2.0'
+	disruptorVersion = '3.2.1'
 	nettyVersion = '4.0.17.Final'
 	jacksonDatabindVersion = '2.3.0'
 	jsonPathVersion = '0.9.1'
@@ -50,7 +50,7 @@ ext {
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/",
-			"http://fasterxml.github.com/jackson-core/javadoc/2.2.0/"
+			"http://fasterxml.github.com/jackson-core/javadoc/2.3.0/"
 	] as String[]
 }
 
@@ -104,9 +104,8 @@ configure(allprojects) { project ->
 	}
 
 	compileTestJava {
-		sourceCompatibility = 1.7
-		targetCompatibility = 1.7
-		//compileTestJava.options.compilerArgs += "-parameters"
+		sourceCompatibility = 1.8
+		targetCompatibility = 1.8
 	}
 
 	sourceSets.test.resources.srcDirs = ["src/test/resources", "src/test/java"]
@@ -153,6 +152,15 @@ configure(allprojects) { project ->
 
 		// Code coverage
 		jacoco "org.jacoco:org.jacoco.agent:$jacocoVersion:runtime"
+	}
+}
+
+if (JavaVersion.current().isJava8Compatible()) {
+	allprojects {
+		compileTestJava.options.compilerArgs += "-parameters"
+		tasks.withType(Javadoc) {
+			options.addStringOption('Xdoclint:none', '-quiet')
+		}
 	}
 }
 
@@ -272,10 +280,11 @@ project('reactor-core') {
 	}
 }
 
-project('reactor-groovy-ext') {
+project('reactor-groovy-extensions') {
 	description = 'Reactor Groovy Ext components'
 
 	apply plugin: 'osgi'
+	apply plugin: 'groovy'
 
 	sonarRunner {
 		sonarProperties {
@@ -293,6 +302,7 @@ project('reactor-groovy') {
 	description = 'Reactor Groovy components'
 
 	apply plugin: 'osgi'
+	apply plugin: 'groovy'
 
 	sonarRunner {
 		sonarProperties {
@@ -301,7 +311,8 @@ project('reactor-groovy') {
 	}
 
 	dependencies {
-		compile project(':reactor-core'), project(':reactor-groovy-ext'),
+		compile project(':reactor-core'),
+				project(':reactor-groovy-extensions'),
 				"org.codehaus.groovy:groovy-all:$groovyVersion"
 	}
 }

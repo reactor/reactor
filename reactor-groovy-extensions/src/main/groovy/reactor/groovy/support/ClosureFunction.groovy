@@ -29,7 +29,7 @@ class ClosureFunction<K,V> implements Function<K,V> {
 
 	final Closure<V> callback
 
-	ClosureFunction(Closure<V> cl) {
+	public ClosureFunction(Closure<V> cl) {
 		callback = cl
 	}
 
