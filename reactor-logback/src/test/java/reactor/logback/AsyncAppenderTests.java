@@ -23,6 +23,10 @@ import org.junit.Test;
 import org.slf4j.LoggerFactory;
 import reactor.support.NamedDaemonThreadFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -56,7 +60,17 @@ public class AsyncAppenderTests {
 	Logger          chronicleLog;
 
 	@Before
-	public void setup() {
+	public void setup() throws IOException {
+		Path logDir = Paths.get("log");
+		Files.find(logDir, 1, (pth, attrs) -> pth.toString().endsWith(".log"))
+		     .forEach(pth -> {
+			     try {
+				     Files.delete(pth);
+			     } catch (IOException e) {
+				     throw new IllegalArgumentException(e.getMessage(), e);
+			     }
+		     });
+
 		threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("benchmark-writers"));
 		syncLog = (Logger) LoggerFactory.getLogger("sync");
 		asyncLog = (Logger) LoggerFactory.getLogger("async");
