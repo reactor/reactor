@@ -16,36 +16,57 @@
 
 <configuration debug="true">
 
-  <appender name="file" class="ch.qos.logback.core.FileAppender">
-    <file>test.log</file>
-    <encoder>
-      <pattern>
-        %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
-      </pattern>
-    </encoder>
-  </appender>
+	<appender name="syncFile" class="ch.qos.logback.core.FileAppender">
+		<file>log/sync.log</file>
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
 
-  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>
-        %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
-      </pattern>
-    </encoder>
-  </appender>
+	<appender name="asyncFile" class="ch.qos.logback.core.FileAppender">
+		<file>log/async.log</file>
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
 
-  <appender name="async" class="reactor.logback.AsyncAppender">
-    <appender-ref ref="file"/>
-  </appender>
+	<appender name="chronicleFile" class="ch.qos.logback.core.FileAppender">
+		<file>log/chronicle.log</file>
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
 
-  <logger name="reactor" level="warn">
-    <appender-ref ref="async"/>
-  </logger>
-  <logger name="sync" level="warn">
-    <appender-ref ref="file"/>
-  </logger>
+	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+		</encoder>
+	</appender>
 
-  <root level="warn">
-    <appender-ref ref="async"/>
-  </root>
+	<appender name="async" class="reactor.logback.AsyncAppender">
+		<appender-ref ref="asyncFile"/>
+	</appender>
+
+	<!--<appender name="async" class="ch.qos.logback.classic.AsyncAppender">-->
+		<!--<appender-ref ref="asyncFile"/>-->
+	<!--</appender>-->
+
+	<appender name="chronicle" class="reactor.logback.DurableAsyncAppender">
+		<appender-ref ref="chronicleFile"/>
+		<basePath>log/</basePath>
+		<backlog>2097152</backlog>
+	</appender>
+
+	<logger name="sync" level="warn">
+		<appender-ref ref="syncFile"/>
+	</logger>
+
+	<logger name="async" level="warn">
+		<appender-ref ref="async"/>
+	</logger>
+
+	<logger name="chronicle" level="warn">
+		<appender-ref ref="chronicle"/>
+	</logger>
 
 </configuration>
