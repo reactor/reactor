@@ -67,6 +67,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	public Processor(@Nonnull final Supplier<T> dataSupplier,
 	                 @Nonnull final Consumer<T> consumer,
 	                 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
+                     final WaitStrategy waitStrategy,
 	                 boolean multiThreadedProducer,
 	                 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
@@ -97,8 +98,9 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				this.opsBufferSize,
 				executor,
 				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
-				new BlockingWaitStrategy()
+                (waitStrategy != null ? waitStrategy : new BlockingWaitStrategy())
 		);
+
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));
 		disruptor.handleEventsWith(new ConsumerEventHandler<T>(consumer));
 
