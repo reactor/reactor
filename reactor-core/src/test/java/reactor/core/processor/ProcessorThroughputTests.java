@@ -4,6 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import reactor.core.processor.spec.ProcessorSpec;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 
@@ -14,39 +15,39 @@ import reactor.function.Supplier;
 public class ProcessorThroughputTests {
 
 	static final int RUNS = 250000000;
+    static final int BATCH_SIZE = 512;
 
-	Processor<Data> proc;
-	Supplier<Data> dataSupplier = new Supplier<Data>() {
+    static final class Data {
+        String type;
+        Long   run;
+    }
+
+	private static final Supplier<Data> dataSupplier = new Supplier<Data>() {
 		@Override
 		public Data get() {
 			return new Data();
 		}
 	};
-	Consumer<Data> dataConsumer;
-	long           start;
 
-	@SuppressWarnings("unchecked")
+    private static final Consumer<Data> dataConsumer = new Consumer<Data>() {
+        @Override
+        public void accept(Data data) {
+            data.type = "test";
+        }
+
+    };
+
+    private static final Consumer<Data> nullConsumer= new Consumer<Data>() {
+        @Override
+        public void accept(Data data) {
+        }
+    };
+
+	long           start;
+    String         waitStrategy;
+
 	@Before
 	public void setup() {
-		dataConsumer = new Consumer<Data>() {
-			@Override
-			public void accept(Data data) {
-				data.type = "test";
-			}
-		};
-
-		Consumer<Data> countDownConsumer = new Consumer<Data>() {
-			@Override
-			public void accept(Data data) {
-			}
-		};
-
-		proc = new reactor.core.processor.spec.ProcessorSpec<Data>()
-				.dataSupplier(dataSupplier)
-				.consume(countDownConsumer)
-				.get();
-
-		start = System.currentTimeMillis();
 	}
 
 	@After
@@ -54,22 +55,93 @@ public class ProcessorThroughputTests {
 		long end = System.currentTimeMillis();
 		long elapsed = (end - start);
 		long throughput = Math.round(RUNS / ((double) elapsed / 1000));
-		System.out.println("elapsed: " + elapsed + "ms, throughput: " + throughput + "/sec");
+		System.out.println(waitStrategy + " > elapsed: " + elapsed + "ms, throughput: " + throughput + "/sec");
 	}
 
 	@Test
 	public void testProcessorThroughput() throws InterruptedException {
-		int batchSize = 512;
-		int runs = RUNS / batchSize;
+        Processor<Data> proc = new ProcessorSpec<Data>()
+            .dataSupplier(dataSupplier)
+            .consume(nullConsumer)
+            .blockingWaitStrategy()
+            .get();
+
+        waitStrategy = "default";
+        start = System.currentTimeMillis();
+
+		int runs = RUNS / BATCH_SIZE;
 
 		for (int i = 0; i < runs; i++) {
-			proc.batch(batchSize, dataConsumer);
+			proc.batch(BATCH_SIZE, dataConsumer);
 		}
 	}
 
-	static final class Data {
-		String type;
-		Long   run;
-	}
+    @Test
+    public void testBlockingWaitStrategyThroughput() throws InterruptedException {
+        Processor<Data> proc = new ProcessorSpec<Data>()
+            .dataSupplier(dataSupplier)
+            .consume(nullConsumer)
+            .blockingWaitStrategy()
+            .get();
+
+        waitStrategy = "blockingWaitStrategy";
+        start = System.currentTimeMillis();
+
+        int runs = RUNS / BATCH_SIZE;
+        for (int i = 0; i < runs; i++) {
+            proc.batch(BATCH_SIZE, dataConsumer);
+        }
+    }
+
+    @Test
+    public void testBusySpinWaitStrategyThroughput() throws InterruptedException {
+        Processor<Data> proc = new ProcessorSpec<Data>()
+            .dataSupplier(dataSupplier)
+            .consume(nullConsumer)
+            .busySpinWaitStrategy()
+            .get();
+
+        waitStrategy = "busySpinWaitStrategy";
+        start = System.currentTimeMillis();
+
+        int runs = RUNS / BATCH_SIZE;
+        for (int i = 0; i < runs; i++) {
+            proc.batch(BATCH_SIZE, dataConsumer);
+        }
+    }
+
+    @Test
+    public void testSleepingWaitStrategyThroughput() throws InterruptedException {
+        Processor<Data> proc = new ProcessorSpec<Data>()
+            .dataSupplier(dataSupplier)
+            .consume(nullConsumer)
+            .sleepingWaitStrategy()
+            .get();
+
+        waitStrategy = "sleepingWaitStrategy";
+        start = System.currentTimeMillis();
+
+        int runs = RUNS / BATCH_SIZE;
+        for (int i = 0; i < runs; i++) {
+            proc.batch(BATCH_SIZE, dataConsumer);
+        }
+    }
+
+    @Test
+    public void testYieldingWaitStrategyThroughput() throws InterruptedException {
+        Processor<Data> proc = new ProcessorSpec<Data>()
+            .dataSupplier(dataSupplier)
+            .consume(nullConsumer)
+            .yieldingWaitStrategy()
+            .get();
+
+        waitStrategy = "yieldingWaitStrategy";
+        start = System.currentTimeMillis();
+
+        int runs = RUNS / BATCH_SIZE;
+        for (int i = 0; i < runs; i++) {
+            proc.batch(BATCH_SIZE, dataConsumer);
+        }
+    }
 
 }
