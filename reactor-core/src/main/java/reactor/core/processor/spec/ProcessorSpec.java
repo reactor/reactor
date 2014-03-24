@@ -16,11 +16,7 @@
 
 package reactor.core.processor.spec;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.BusySpinWaitStrategy;
-import com.lmax.disruptor.SleepingWaitStrategy;
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.YieldingWaitStrategy;
+import com.lmax.disruptor.*;
 import reactor.core.processor.Processor;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registry;
@@ -39,7 +35,7 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	private Registry<Consumer<Throwable>> errorConsumers        = new CachingRegistry<Consumer<Throwable>>();
 	private boolean                       multiThreadedProducer = false;
 	private int                           dataBufferSize        = -1;
-    private WaitStrategy                  waitStrategy          = null;
+	private WaitStrategy                  waitStrategy          = null;
 	private Supplier<T> dataSupplier;
 	private Consumer<T> consumer;
 
@@ -87,57 +83,57 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 		return this;
 	}
 
-    /**
-     * Set Disruptor's {@link com.lmax.disruptor.WaitStrategy}.
-     *
-     * @param waitStrategy the {@link com.lmax.disruptor.WaitStrategy} to use
-     * @return {@literal this}
-     */
-    public ProcessorSpec<T> waitStrategy(WaitStrategy waitStrategy) {
-        this.waitStrategy = waitStrategy;
-        return this;
-    }
+	/**
+	 * Set Disruptor's {@link com.lmax.disruptor.WaitStrategy}.
+	 *
+	 * @param waitStrategy the {@link com.lmax.disruptor.WaitStrategy} to use
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> waitStrategy(WaitStrategy waitStrategy) {
+		this.waitStrategy = waitStrategy;
+		return this;
+	}
 
-    /**
-     * Set {@link com.lmax.disruptor.BlockingWaitStrategy} as wait strategy.
-     *
-     * @return {@literal this}
-     */
-    public ProcessorSpec<T> blockingWaitStrategy() {
-        this.waitStrategy = new BlockingWaitStrategy();
-        return this;
-    }
+	/**
+	 * Set {@link com.lmax.disruptor.BlockingWaitStrategy} as wait strategy.
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> blockingWaitStrategy() {
+		this.waitStrategy = new BlockingWaitStrategy();
+		return this;
+	}
 
-    /**
-     * Set {@link com.lmax.disruptor.SleepingWaitStrategy} as wait strategy.
-     *
-     * @return {@literal this}
-     */
-    public ProcessorSpec<T> sleepingWaitStrategy() {
-        this.waitStrategy = new SleepingWaitStrategy();
-        return this;
-    }
+	/**
+	 * Set {@link com.lmax.disruptor.SleepingWaitStrategy} as wait strategy.
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> sleepingWaitStrategy() {
+		this.waitStrategy = new SleepingWaitStrategy();
+		return this;
+	}
 
 
-    /**
-     * Set {@link com.lmax.disruptor.YieldingWaitStrategy} as wait strategy.
-     *
-     * @return {@literal this}
-     */
-    public ProcessorSpec<T> yieldingWaitStrategy() {
-        this.waitStrategy = new YieldingWaitStrategy();
-        return this;
-    }
+	/**
+	 * Set {@link com.lmax.disruptor.YieldingWaitStrategy} as wait strategy.
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> yieldingWaitStrategy() {
+		this.waitStrategy = new YieldingWaitStrategy();
+		return this;
+	}
 
-    /**
-     * Set {@link com.lmax.disruptor.BusySpinWaitStrategy} as wait strategy.
-     *
-     * @return {@literal this}
-     */
-    public ProcessorSpec<T> busySpinWaitStrategy() {
-        this.waitStrategy = new BusySpinWaitStrategy();
-        return this;
-    }
+	/**
+	 * Set {@link com.lmax.disruptor.BusySpinWaitStrategy} as wait strategy.
+	 *
+	 * @return {@literal this}
+	 */
+	public ProcessorSpec<T> busySpinWaitStrategy() {
+		this.waitStrategy = new BusySpinWaitStrategy();
+		return this;
+	}
 
 	/**
 	 * When data is mutated and published into the {@code Processor}, invoke the given {@link Consumer} and pass the
@@ -167,11 +163,11 @@ public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 	@Override
 	public Processor<T> get() {
 		return new Processor<T>(dataSupplier,
-                                consumer,
-                                errorConsumers,
-                                waitStrategy,
-                                multiThreadedProducer,
-                                dataBufferSize);
+		                        consumer,
+		                        errorConsumers,
+		                        waitStrategy,
+		                        multiThreadedProducer,
+		                        dataBufferSize);
 	}
 
 }

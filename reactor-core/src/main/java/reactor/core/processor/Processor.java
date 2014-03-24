@@ -35,17 +35,17 @@ import java.util.concurrent.Executors;
 /**
  * A {@code Processor} is a highly-efficient data processor that is backed by an <a
  * href="https://github.com/LMAX-Exchange/disruptor">LMAX Disruptor RingBuffer</a>.
- * <p/>
+ * <p>
  * Rather than dealing with dynamic {@link Consumer} registration and event routing, the {@code Processor} gains its
  * extreme efficiency from pre-allocating the data objects (for which you pass a {@link Supplier} whose job is to
  * provide new instances of the data class on startup) and by baking-in a {@code Consumer} for published events.
- * <p/>
+ * <p>
  * The {@code Processor} can be used in two different modes: single-operation or batch. For single operations, use the
  * {@link #prepare()} method to allocate an object from the {@link RingBuffer}. An {@link Operation} is also a {@link
  * Supplier}, so call {@link reactor.function.Supplier#get()} to get access to the data object. One can then update the
  * members on the data object and, by calling {@link reactor.core.processor.Operation#commit()}, publish the event into
  * the {@link RingBuffer} to be handled by the {@link Consumer}.
- * <p/>
+ * <p>
  * To operate on the {@code Processor} in batch mode, first set a {@link BatchConsumer} as the {@link Consumer} of
  * events. This interface provides two additional methods, {@link reactor.function.batch.BatchConsumer#start()}, which
  * is invoked before the batch starts, and {@link reactor.function.batch.BatchConsumer#end()}, which is invoked when
@@ -67,7 +67,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	public Processor(@Nonnull final Supplier<T> dataSupplier,
 	                 @Nonnull final Consumer<T> consumer,
 	                 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
-                     final WaitStrategy waitStrategy,
+	                 WaitStrategy waitStrategy,
 	                 boolean multiThreadedProducer,
 	                 int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
@@ -76,7 +76,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 
 		executor = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("processor"));
 
-		if(opsBufferSize < 1) {
+		if (opsBufferSize < 1) {
 			this.opsBufferSize = 256 * Runtime.getRuntime().availableProcessors();
 		} else {
 			this.opsBufferSize = opsBufferSize;
@@ -98,7 +98,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 				this.opsBufferSize,
 				executor,
 				(multiThreadedProducer ? ProducerType.MULTI : ProducerType.SINGLE),
-                (waitStrategy != null ? waitStrategy : new BlockingWaitStrategy())
+				(waitStrategy != null ? waitStrategy : new BlockingWaitStrategy())
 		);
 
 		disruptor.handleExceptionsWith(new ConsumerExceptionHandler(errorConsumers));
@@ -132,13 +132,11 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	/**
 	 * Commit a list of {@link reactor.core.processor.Operation Operations} by doing a batch publish.
 	 *
-	 * @param ops
-	 * 		the {@code Operations} to commit
-	 *
+	 * @param ops the {@code Operations} to commit
 	 * @return {@literal this}
 	 */
 	public Processor<T> commit(List<Operation<T>> ops) {
-		if(null == ops || ops.isEmpty()) {
+		if (null == ops || ops.isEmpty()) {
 			return this;
 		}
 
@@ -148,7 +146,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 		long firstSeqId = first.id;
 		long lastSeqId = last.id;
 
-		if(lastSeqId > firstSeqId) {
+		if (lastSeqId > firstSeqId) {
 			ringBuffer.publish(firstSeqId, lastSeqId);
 		} else {
 			ringBuffer.publish(firstSeqId);
@@ -161,32 +159,29 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	 * If the {@link Consumer} set in the spec is a {@link BatchConsumer}, then the start method will be invoked before
 	 * the batch is published, then all the events of the batch are published to the consumer, then the batch end is
 	 * published.
-	 * <p/>
+	 * <p>
 	 * The {@link Consumer} passed here is a mutator. Rather than accessing the data object directly, as one would do
 	 * with a {@link #prepare()} call, pass a {@link Consumer} here that will accept the allocated data object which one
 	 * can update with the appropriate data. Note that this is not an event handler. The event handler {@link Consumer}
 	 * is
 	 * specified in the spec (which is passed into the {@code Processor} constructor).
 	 *
-	 * @param size
-	 * 		size of the batch
-	 * @param mutator
-	 * 		a {@link Consumer} that mutates the data object before it is published as an event and handled by the
-	 * 		event {@link Consumer}
-	 *
+	 * @param size    size of the batch
+	 * @param mutator a {@link Consumer} that mutates the data object before it is published as an event and handled by the
+	 *                event {@link Consumer}
 	 * @return {@literal this}
 	 */
 	public Processor<T> batch(int size, Consumer<T> mutator) {
 		long start = -1;
 		long end = 0;
-		for(int i = 0; i < size; i++) {
-			if(i > 0 && i % opsBufferSize == 0) {
+		for (int i = 0; i < size; i++) {
+			if (i > 0 && i % opsBufferSize == 0) {
 				// Automatically flush when buffer is full
 				ringBuffer.publish(start, end);
 				start = -1;
 			}
 			long l = ringBuffer.next();
-			if(start < 0) {
+			if (start < 0) {
 				start = l;
 			}
 			end = l;
@@ -213,15 +208,15 @@ public class Processor<T> implements Supplier<Operation<T>> {
 
 		@Override
 		public void onStart() {
-			if(isBatchConsumer) {
-				((BatchConsumer)consumer).start();
+			if (isBatchConsumer) {
+				((BatchConsumer) consumer).start();
 			}
 		}
 
 		@Override
 		public void onShutdown() {
-			if(isBatchConsumer) {
-				((BatchConsumer)consumer).end();
+			if (isBatchConsumer) {
+				((BatchConsumer) consumer).end();
 			}
 		}
 
@@ -241,8 +236,8 @@ public class Processor<T> implements Supplier<Operation<T>> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void handleEventException(Throwable ex, long sequence, Object event) {
-			for(Registration<? extends Consumer<? extends Throwable>> reg : errorConsumers.select(ex.getClass())) {
-				((Consumer<Throwable>)reg.getObject()).accept(ex);
+			for (Registration<? extends Consumer<? extends Throwable>> reg : errorConsumers.select(ex.getClass())) {
+				((Consumer<Throwable>) reg.getObject()).accept(ex);
 			}
 		}
 
