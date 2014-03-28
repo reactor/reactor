@@ -20,6 +20,7 @@ import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
 import reactor.groovy.support.ClosureEventConsumer
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -92,6 +93,7 @@ class GroovyConfigurationSpec extends Specification {
 			groovySystem.reactorBuildersByExtension('a').size() == 2
 	}
 
+	@Ignore
 	def "GroovyEnvironment intercept with Stream properly"() {
 		when:
 			"Building a simple dispatcher"
