@@ -189,7 +189,7 @@ public class Stream<T> extends Composable<T> {
 
 	@Override
 	public Stream<T> connectErrors(Composable<?> composable) {
-		return (Stream<T>)super.connectErrors(composable);
+		return (Stream<T>) super.connectErrors(composable);
 	}
 
 	/**
@@ -204,11 +204,10 @@ public class Stream<T> extends Composable<T> {
 		final Stream<T> d = newComposable(batchSize);
 
 		consumeFlush(new ForEachAction<T>(iterable,
-				batchSize,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				d.getFlush().getObject())
+		                                  d.getObservable(),
+		                                  d.getAcceptKey(),
+		                                  d.getError().getObject(),
+		                                  d.getFlush().getObject())
 		).connectErrors(d);
 		return d;
 	}
@@ -227,9 +226,9 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<T> flushWhen(Predicate<T> predicate) {
 		add(new WhenAction<T>(predicate,
-				getObservable(),
-				getFlush().getObject(),
-				getError().getObject()));
+		                      getObservable(),
+		                      getFlush().getObject(),
+		                      getError().getObject()));
 		return this;
 	}
 
@@ -237,7 +236,7 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to
 	 * have been set.
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
@@ -250,7 +249,7 @@ public class Stream<T> extends Composable<T> {
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to
 	 * have been set.
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
@@ -260,11 +259,11 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Stream<T> d = newComposable(batchSize);
 		add(new BatchAction<T>(batchSize,
-				d.getObservable(),
-				null,
-				d.getError().getObject(),
-				null,
-				d.getAcceptKey())).connectErrors(d);
+		                       d.getObservable(),
+		                       null,
+		                       d.getError().getObject(),
+		                       null,
+		                       d.getAcceptKey())).connectErrors(d);
 		return d;
 	}
 
@@ -287,11 +286,11 @@ public class Stream<T> extends Composable<T> {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Stream<T> d = newComposable(batchSize);
 		add(new BatchAction<T>(batchSize,
-				d.getObservable(),
-				null,
-				d.getError().getObject(),
-				d.getAcceptKey(),
-				null)).connectErrors(d);
+		                       d.getObservable(),
+		                       null,
+		                       d.getError().getObject(),
+		                       d.getAcceptKey(),
+		                       null)).connectErrors(d);
 		return d;
 	}
 
@@ -315,7 +314,7 @@ public class Stream<T> extends Composable<T> {
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
@@ -327,7 +326,7 @@ public class Stream<T> extends Composable<T> {
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
@@ -336,11 +335,10 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public <V> Stream<V> split(int batchSize) {
 		final Stream<V> d = newComposable(batchSize);
-		getObservable().on(getAcceptSelector(), new ForEachAction<T>(batchSize,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(), d.getFlush().getObject())
-		);
+		getObservable().on(getAcceptSelector(), new ForEachAction<T>(d.getObservable(),
+		                                                             d.getAcceptKey(),
+		                                                             d.getError().getObject(),
+		                                                             d.getFlush().getObject()));
 		connectErrors(d);
 		return d;
 	}
@@ -382,10 +380,10 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> buffer(int batchSize) {
 		final Stream<T> d = newComposable(batchSize);
 		add(new BufferAction<T>(batchSize,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				d.getFlush().getObject())
+		                        d.getObservable(),
+		                        d.getAcceptKey(),
+		                        d.getError().getObject(),
+		                        d.getFlush().getObject())
 		);
 		return d;
 	}
@@ -414,19 +412,19 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> bufferWithErrors(int batchSize) {
 		final Stream<T> d = newComposable(batchSize);
 		final BufferAction<Throwable> errorBuffer = new BufferAction<Throwable>(batchSize,
-				d.getObservable(),
-				d.getError().getObject(),
-				null,
-				null);
+		                                                                        d.getObservable(),
+		                                                                        d.getError().getObject(),
+		                                                                        null,
+		                                                                        null);
 
 		getObservable().on(getError(), errorBuffer);
 		consumeFlush(errorBuffer);
 
 		add(new BufferAction<T>(batchSize,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				d.getFlush().getObject())
+		                        d.getObservable(),
+		                        d.getAcceptKey(),
+		                        d.getError().getObject(),
+		                        d.getFlush().getObject())
 		);
 
 
@@ -454,9 +452,9 @@ public class Stream<T> extends Composable<T> {
 		final Stream<List<T>> d = newComposable(1);
 
 		add(new CollectAction<T>(batchSize,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject())).connectErrors(d);
+		                         d.getObservable(),
+		                         d.getAcceptKey(),
+		                         d.getError().getObject())).connectErrors(d);
 
 		return d;
 	}
@@ -529,7 +527,8 @@ public class Stream<T> extends Composable<T> {
 	 * @since 1.1
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this Stream");
+		Assert.state(getEnvironment() != null,
+		             "Cannot use default timer as no environment has been provided to this Stream");
 		return window(period, timeUnit, delay, getEnvironment().getRootTimer());
 	}
 
@@ -548,7 +547,7 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
 		Assert.state(getEnvironment() != null,
-				"Cannot use default timer as no environment has been provided to this Stream");
+		             "Cannot use default timer as no environment has been provided to this Stream");
 		return movingWindow(period, timeUnit, delay, backlog, getEnvironment().getRootTimer());
 	}
 
@@ -569,10 +568,10 @@ public class Stream<T> extends Composable<T> {
 		final Stream<List<T>> d = newComposable(1);
 
 		add(new WindowAction<T>(d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				timer,
-				period, timeUnit, delay)).connectErrors(d);
+		                        d.getAcceptKey(),
+		                        d.getError().getObject(),
+		                        timer,
+		                        period, timeUnit, delay)).connectErrors(d);
 
 		return d;
 	}
@@ -596,10 +595,10 @@ public class Stream<T> extends Composable<T> {
 		final Stream<List<T>> d = newComposable(1);
 
 		add(new MovingWindowAction<T>(d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				timer,
-				period, timeUnit, delay, backlog)).connectErrors(d);
+		                              d.getAcceptKey(),
+		                              d.getError().getObject(),
+		                              timer,
+		                              period, timeUnit, delay, backlog)).connectErrors(d);
 
 		return d;
 	}
@@ -621,7 +620,7 @@ public class Stream<T> extends Composable<T> {
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p/>
+	 * <p>
 	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
 	 * only. But when a {@code batchSize} has been, the accumulated
 	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of
@@ -639,11 +638,11 @@ public class Stream<T> extends Composable<T> {
 	) {
 		final Stream<A> stream = newComposable(1);
 		add(new ReduceAction<T, A>(batchSize,
-				accumulators,
-				fn,
-				stream.getObservable(),
-				stream.getAcceptKey(),
-				stream.getError().getObject())).connectErrors(stream);
+		                           accumulators,
+		                           fn,
+		                           stream.getObservable(),
+		                           stream.getAcceptKey(),
+		                           stream.getError().getObject())).connectErrors(stream);
 
 		return stream;
 	}
@@ -678,7 +677,7 @@ public class Stream<T> extends Composable<T> {
 	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p/>
+	 * <p>
 	 * The accumulated value will be published on the returned {@code Stream} every time
 	 * a
 	 * value is accepted.
@@ -692,10 +691,10 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Stream<A> stream = newComposable(1);
 		add(new ScanAction<T, A>(accumulators,
-				fn,
-				stream.getObservable(),
-				stream.getAcceptKey(),
-				stream.getError().getObject())).consumeErrorAndFlush(stream);
+		                         fn,
+		                         stream.getObservable(),
+		                         stream.getAcceptKey(),
+		                         stream.getError().getObject())).consumeErrorAndFlush(stream);
 
 		return stream;
 	}
@@ -731,14 +730,14 @@ public class Stream<T> extends Composable<T> {
 
 	protected <V> Stream<V> newComposable(int batchSize) {
 		return new Stream<V>(null,
-				batchSize,
-				this,
-				getEnvironment());
+		                     batchSize,
+		                     this,
+		                     getEnvironment());
 	}
 
 	BufferAction<T> bufferConsumer(int batchSize) {
 		BufferAction<T> bufferAction = new BufferAction<T>(batchSize, getObservable(),
-				getAcceptKey(), getError(), getFlush());
+		                                                   getAcceptKey(), getError(), getFlush());
 		consumeFlush(bufferAction);
 		return bufferAction;
 	}
