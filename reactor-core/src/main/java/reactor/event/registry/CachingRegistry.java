@@ -4,6 +4,7 @@ import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.function.checked.CheckedFunction;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
 import reactor.event.selector.Selector;
@@ -147,7 +148,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {
-		return registrations.asUnmodifiable().iterator();
+		return FastList.<Registration<? extends T>>newList(registrations).iterator();
 	}
 
 	private boolean isDirectMatchable(Selector sel) {
