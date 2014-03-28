@@ -43,13 +43,9 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to filter consumers.
 	 *
-	 * @param filter
-	 * 		The filter to use. Must not be {@code null}.
-	 * @param consumerInvoker
-	 * 		Used to invoke consumers. Must not be {@code null}.
-	 *
-	 * @throws IllegalArgumentException
-	 * 		if {@code filter} or {@code consumerInvoker} is null.
+	 * @param filter          The filter to use. Must not be {@code null}.
+	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
+	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
 		Assert.notNull(filter, "filter must not be null");
@@ -64,64 +60,54 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
-		if(null != consumers) {
-			for(Registration<? extends Consumer<? extends Event<?>>> consumer : filter.filter(consumers, key)) {
+		if (null != consumers && !consumers.isEmpty()) {
+			List<Registration<? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
+			int size = regs.size();
+			// old-school for loop is much more efficient than using an iterator
+			for (int i = 0; i < size; i++) {
+				Registration<? extends Consumer<? extends Event<?>>> reg = regs.get(i);
+
+				if (reg.isCancelled() || reg.isPaused()) {
+					continue;
+				}
 				try {
-					invokeConsumer(key, event, consumer);
-				} catch(Throwable t) {
-					if(null != event.getErrorConsumer()) {
+					if (null != reg.getSelector().getHeaderResolver()) {
+						event.getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(key));
+					}
+					consumerInvoker.invoke(reg.getObject(), Void.TYPE, event);
+				} catch (CancelConsumerException cancel) {
+					reg.cancel();
+				} catch (Throwable t) {
+					if (null != event.getErrorConsumer()) {
 						event.consumeError(t);
-					} else if(null != errorConsumer) {
+					} else if (null != errorConsumer) {
 						errorConsumer.accept(t);
 					} else {
-						logger.error("Event routing failed for {}: {}", consumer.getObject(), t.getMessage(), t);
-						if(RuntimeException.class.isInstance(t)) {
-							throw (RuntimeException)t;
+						logger.error("Event routing failed for {}: {}", reg.getObject(), t.getMessage(), t);
+						if (RuntimeException.class.isInstance(t)) {
+							throw (RuntimeException) t;
 						} else {
 							throw new IllegalStateException(t);
 						}
 					}
+				} finally {
+					if (reg.isCancelAfterUse()) {
+						reg.cancel();
+					}
 				}
 			}
 		}
-		if(null != completionConsumer) {
+		if (null != completionConsumer) {
 			try {
 				consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
-			} catch(Exception e) {
-				if(null != errorConsumer) {
+			} catch (Exception e) {
+				if (null != errorConsumer) {
 					errorConsumer.accept(e);
 				} else {
 					logger.error("Completion Consumer {} failed: {}", completionConsumer, e.getMessage(), e);
 				}
 			}
 		}
-	}
-
-	protected void invokeConsumer(Object key,
-	                              Event<?> event,
-	                              Registration<? extends Consumer<? extends Event<?>>> registeredConsumer)
-			throws Exception {
-		if(null == registeredConsumer) {
-			return;
-		}
-		if(!isRegistrationActive(registeredConsumer)) {
-			return;
-		}
-		if(null != registeredConsumer.getSelector().getHeaderResolver()) {
-			event.getHeaders().setAll(registeredConsumer.getSelector().getHeaderResolver().resolve(key));
-		}
-		try {
-			consumerInvoker.invoke(registeredConsumer.getObject(), Void.TYPE, event);
-		} catch(CancelConsumerException cancel) {
-			registeredConsumer.cancel();
-		}
-		if(registeredConsumer.isCancelAfterUse()) {
-			registeredConsumer.cancel();
-		}
-	}
-
-	private boolean isRegistrationActive(Registration<?> registration) {
-		return (!registration.isCancelled() && !registration.isPaused());
 	}
 
 	/**

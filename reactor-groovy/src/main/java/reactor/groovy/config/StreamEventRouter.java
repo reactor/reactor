@@ -1,14 +1,15 @@
 package reactor.groovy.config;
 
-import reactor.event.support.CallbackEvent;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.routing.ConsumerFilteringEventRouter;
 import reactor.event.routing.ConsumerInvoker;
+import reactor.event.support.CallbackEvent;
 import reactor.filter.Filter;
 import reactor.function.Consumer;
+import reactor.function.support.CancelConsumerException;
 
 import java.util.List;
 
@@ -38,22 +39,36 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 			//ignore
 		}
 
-		stream.acceptEvent(new CallbackEvent<Event<?>>(event.getHeaders(), event,
+		stream.acceptEvent(new CallbackEvent<Event<?>>(
+				event.getHeaders(),
+				event,
 				new Consumer<Event<?>>() {
 					@Override
 					public void accept(Event<?> _event) {
 						Event<?> hydratedEvent = event.copy(_event != null ? _event.getData() : null);
 						if (null != consumers) {
-							for (Registration<? extends Consumer<? extends Event<?>>> consumer : getFilter().filter(consumers, key)) {
+							for (Registration<? extends Consumer<? extends Event<?>>> reg : getFilter().filter(consumers, key)) {
+								if (reg.isCancelled() || reg.isPaused()) {
+									continue;
+								}
 								try {
-									invokeConsumer(key, hydratedEvent, consumer);
+									if (null != reg.getSelector().getHeaderResolver()) {
+										event.getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(key));
+									}
+									getConsumerInvoker().invoke(reg.getObject(), Void.TYPE, event);
+								} catch (CancelConsumerException cancel) {
+									reg.cancel();
 								} catch (Throwable t) {
-									if(null != hydratedEvent.getErrorConsumer()){
+									if (null != hydratedEvent.getErrorConsumer()) {
 										hydratedEvent.consumeError(t);
 									} else if (null != errorConsumer) {
 										errorConsumer.accept(t);
 									}
 									stream.accept(t);
+								} finally {
+									if (reg.isCancelAfterUse()) {
+										reg.cancel();
+									}
 								}
 							}
 						}
@@ -68,6 +83,8 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 							}
 						}
 					}
-				}));
+				}
+		));
 	}
+
 }
