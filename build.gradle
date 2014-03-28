@@ -30,6 +30,7 @@ ext {
 
 	// Libraries
 	disruptorVersion = '3.2.1'
+	gsCollectionsVersion = '5.0.0'
 	nettyVersion = '4.0.17.Final'
 	jacksonDatabindVersion = '2.3.0'
 	jsonPathVersion = '0.9.1'
@@ -258,6 +259,9 @@ project('reactor-core') {
 	dependencies {
 		// High-speed Dispatching
 		compile "com.lmax:disruptor:$disruptorVersion"
+
+		// Rich Collections
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

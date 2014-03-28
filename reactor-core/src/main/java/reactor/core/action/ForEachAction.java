@@ -15,13 +15,11 @@
  */
 package reactor.core.action;
 
+import com.gs.collections.impl.block.function.checked.CheckedFunction;
+import com.gs.collections.impl.utility.Iterate;
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.selector.Selector;
 import reactor.function.Consumer;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Stephane Maldini
@@ -32,16 +30,21 @@ public class ForEachAction<T> extends Action<Iterable<T>> implements Flushable<T
 	public static final Event<Object> FOREACH_FLUSH = Event.wrap(null);
 
 	final private Consumer<Iterable<Event<T>>> batchConsumer;
-	final private int                          batchSize;
 	final private Iterable<T>                  defaultValues;
 
-	public ForEachAction(int batchSize, Observable d, Object successKey, Object failureKey, Object flushKey) {
-		this(null, batchSize, d, successKey, failureKey, flushKey);
+	public ForEachAction(Observable d,
+	                     Object successKey,
+	                     Object failureKey,
+	                     Object flushKey) {
+		this(null, d, successKey, failureKey, flushKey);
 	}
 
 
-	public ForEachAction(Iterable<T> defaultValues, int batchSize, final Observable d, Object successKey,
-	                     Object failureKey, final Object flushKey) {
+	public ForEachAction(Iterable<T> defaultValues,
+	                     final Observable d,
+	                     Object successKey,
+	                     Object failureKey,
+	                     final Object flushKey) {
 		super(d, successKey, failureKey);
 		this.defaultValues = defaultValues;
 		this.batchConsumer = d.batchNotify(successKey, new Consumer<Void>() {
@@ -50,18 +53,20 @@ public class ForEachAction<T> extends Action<Iterable<T>> implements Flushable<T
 				d.notify(flushKey, FOREACH_FLUSH);
 			}
 		});
-		this.batchSize = batchSize > 0 ? batchSize : 256;
 	}
 
 	@Override
-	public void doAccept(Event<Iterable<T>> value) {
-		if (value.getData() != null) {
-			List<Event<T>> evs = new ArrayList<Event<T>>(batchSize);
-			for (T data : value.getData()) {
-				evs.add(value.copy(data));
-			}
-			batchConsumer.accept(evs);
+	public void doAccept(final Event<Iterable<T>> value) {
+		Iterable<T> data;
+		if (null == (data = value.getData())) {
+			return;
 		}
+		batchConsumer.accept(Iterate.collect(data, new CheckedFunction<T, Event<T>>() {
+			@Override
+			public Event<T> safeValueOf(T data) throws Exception {
+				return value.copy(data);
+			}
+		}));
 	}
 
 	@Override

@@ -19,8 +19,11 @@ import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
 import reactor.core.Reactor;
+import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.TraceableDelegatingDispatcher;
+import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.Registry;
 import reactor.event.routing.*;
 import reactor.event.selector.Selector;
 import reactor.filter.*;
@@ -34,51 +37,45 @@ import java.util.List;
  * A generic environment-aware class for specifying components that need to be configured
  * with an {@link Environment}, {@link Dispatcher}, and {@link EventRouter}.
  *
- * @param <SPEC>
- * 		The DispatcherComponentSpec subclass
- * @param <TARGET>
- * 		The type that this spec will create
- *
+ * @param <SPEC>   The DispatcherComponentSpec subclass
+ * @param <TARGET> The type that this spec will create
  * @author Jon Brisbin
  */
 @SuppressWarnings("unchecked")
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends
                                                                                                               DispatcherComponentSpec<SPEC, TARGET> {
 
-	private Converter            converter;
-	private EventRoutingStrategy eventRoutingStrategy;
-	private EventRouter          eventRouter;
-	private ConsumerInvoker      consumerInvoker;
-	private Filter               eventFilter;
-	private Consumer<Throwable>  dispatchErrorHandler;
-	private Consumer<Throwable>  uncaughtErrorHandler;
-	private Selector             defaultSelector;
+	private Converter                              converter;
+	private EventRoutingStrategy                   eventRoutingStrategy;
+	private EventRouter                            eventRouter;
+	private ConsumerInvoker                        consumerInvoker;
+	private Filter                                 eventFilter;
+	private Consumer<Throwable>                    dispatchErrorHandler;
+	private Consumer<Throwable>                    uncaughtErrorHandler;
+	private Selector                               defaultSelector;
+	private Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private boolean traceEventPath = false;
 
 	/**
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
-	 * @param converters
-	 * 		The converters to be used by the event router
-	 *
+	 * @param converters The converters to be used by the event router
 	 * @return {@code this}
 	 */
 	public final SPEC converters(Converter... converters) {
 		this.converter = new DelegatingConverter(converters);
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
 	 * Configures the component's EventRouter to use the given {code converters}.
 	 *
-	 * @param converters
-	 * 		The converters to be used by the event router
-	 *
+	 * @param converters The converters to be used by the event router
 	 * @return {@code this}
 	 */
 	public final SPEC converters(List<Converter> converters) {
 		this.converter = new DelegatingConverter(converters);
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 
@@ -90,7 +87,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	public final SPEC eventFilter(Filter filter) {
 		Assert.isNull(eventRouter, "Cannot set both a filter and a router. Use one or the other.");
 		this.eventFilter = filter;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -101,7 +98,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	public final SPEC consumerInvoker(ConsumerInvoker consumerInvoker) {
 		Assert.isNull(eventRouter, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.consumerInvoker = consumerInvoker;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -113,7 +110,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		Assert.isNull(eventFilter, "Cannot set both a filter and a router. Use one or the other.");
 		Assert.isNull(consumerInvoker, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.eventRouter = router;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -124,7 +121,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC broadcastEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.BROADCAST;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -135,7 +132,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC randomEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.RANDOM;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -146,7 +143,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC firstEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.FIRST;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -158,21 +155,19 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 */
 	public final SPEC roundRobinEventRouting() {
 		this.eventRoutingStrategy = EventRoutingStrategy.ROUND_ROBIN;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
 	 * Configures the component's error handler for any errors occurring during dispatch (e.g. Exceptions resulting from
 	 * calling a {@code Consumer#accept} method.
 	 *
-	 * @param dispatchErrorHandler
-	 * 		the error handler for dispatching errors
-	 *
+	 * @param dispatchErrorHandler the error handler for dispatching errors
 	 * @return {@code this}
 	 */
 	public SPEC dispatchErrorHandler(Consumer<Throwable> dispatchErrorHandler) {
 		this.dispatchErrorHandler = dispatchErrorHandler;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -180,27 +175,23 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * aren't a
 	 * direct result of dispatching (e.g. errors that originate from another component).
 	 *
-	 * @param uncaughtErrorHandler
-	 * 		the error handler for uncaught errors
-	 *
+	 * @param uncaughtErrorHandler the error handler for uncaught errors
 	 * @return {@code this}
 	 */
 	public SPEC uncaughtErrorHandler(Consumer<Throwable> uncaughtErrorHandler) {
 		this.uncaughtErrorHandler = uncaughtErrorHandler;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
 	 * Configures the component's default {@code Selector}.
 	 *
-	 * @param defaultSelector
-	 * 		the {@code Selector} to use as a default
-	 *
+	 * @param defaultSelector the {@code Selector} to use as a default
 	 * @return {@code this}
 	 */
 	public SPEC defaultSelector(Selector defaultSelector) {
 		this.defaultSelector = defaultSelector;
-		return (SPEC)this;
+		return (SPEC) this;
 	}
 
 	/**
@@ -215,14 +206,34 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	/**
 	 * Configures this component to provide or not provide event tracing when dispatching and routing an event.
 	 *
-	 * @param b
-	 * 		whether to trace the event path or not
-	 *
+	 * @param b whether to trace the event path or not
 	 * @return {@code this}
 	 */
 	public final SPEC traceEventPath(boolean b) {
 		this.traceEventPath = b;
-		return (SPEC)this;
+		return (SPEC) this;
+	}
+
+	/**
+	 * Configures the {@link reactor.event.registry.Registry} to use when creating this component. Registries can be shared to reduce GC pressure and potentially be persisted across restarts.
+	 *
+	 * @param consumerRegistry the consumer registry to use
+	 * @return {@code this}
+	 */
+	public SPEC consumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		this.consumerRegistry = consumerRegistry;
+		return (SPEC) this;
+	}
+
+	/**
+	 * Configures the callback to invoke if a notification key is sent into this component and there are no consumers registered to respond to it.
+	 *
+	 * @param consumerNotFoundHandler the not found handler to use
+	 * @return {@code this}
+	 */
+	public SPEC consumerNotFoundHandler(Consumer<Object> consumerNotFoundHandler) {
+		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(true, consumerNotFoundHandler);
+		return (SPEC) this;
 	}
 
 	protected abstract TARGET configure(Reactor reactor, Environment environment);
@@ -233,10 +244,11 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Reactor createReactor(Dispatcher dispatcher) {
-		if(traceEventPath) {
+		if (traceEventPath) {
 			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
 		}
-		return new Reactor(dispatcher,
+		return new Reactor((consumerRegistry != null ? consumerRegistry : createRegistry()),
+		                   dispatcher,
 		                   (eventRouter != null ? eventRouter : createEventRouter()),
 		                   defaultSelector,
 		                   dispatchErrorHandler,
@@ -247,7 +259,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		EventRouter evr = new ConsumerFilteringEventRouter(
 				eventFilter != null ? eventFilter : createFilter(),
 				consumerInvoker != null ? consumerInvoker : new ArgumentConvertingConsumerInvoker(converter));
-		if(traceEventPath) {
+		if (traceEventPath) {
 			return new TraceableDelegatingEventRouter(evr);
 		} else {
 			return evr;
@@ -256,16 +268,20 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private Filter createFilter() {
 		Filter filter;
-		if(EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
+		if (EventRoutingStrategy.ROUND_ROBIN == eventRoutingStrategy) {
 			filter = new RoundRobinFilter();
-		} else if(EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
+		} else if (EventRoutingStrategy.RANDOM == eventRoutingStrategy) {
 			filter = new RandomFilter();
-		} else if(EventRoutingStrategy.FIRST == eventRoutingStrategy) {
+		} else if (EventRoutingStrategy.FIRST == eventRoutingStrategy) {
 			filter = new FirstFilter();
 		} else {
 			filter = new PassThroughFilter();
 		}
 		return (traceEventPath ? new TraceableDelegatingFilter(filter) : filter);
+	}
+
+	private Registry createRegistry() {
+		return new CachingRegistry<Consumer<? extends Event<?>>>();
 	}
 
 	protected enum EventRoutingStrategy {
