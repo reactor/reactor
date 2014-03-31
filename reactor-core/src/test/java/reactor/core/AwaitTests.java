@@ -57,14 +57,14 @@ public class AwaitTests extends AbstractReactorTest {
 					latch.countDown();
 				}
 			});
-			Reactors.schedule(new Consumer() {
+			innerReactor.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {
 					deferred.accept("foo");
 				}
 
-			}, null, innerReactor);
+			}, null);
 
 			assertThat("latch is counted down", latch.await(5, TimeUnit.SECONDS));
 		}

@@ -109,27 +109,6 @@ class ReactorsSpec extends Specification {
 			data == "Hello World!"
 
 		when:
-			"Reactor listens on default Selector"
-			data = ""
-			reactor.on(consumer { data = it.data })
-
-		and:
-			"Reactor is notified on default Selector"
-			reactor.notify(Event.wrap("Hello World!"))
-
-		then:
-			"Default selector has been called"
-			data == "Hello World!"
-
-		when:
-			"Reactor is notified on default Selector with a Supplier"
-			reactor.notify(supplier { Event.wrap("Hello World!") })
-
-		then:
-			"Default selector has been called"
-			data == "Hello World!"
-
-		when:
 			"Reactor is notified without event"
 			data = "something"
 			reactor.notify('test')
@@ -167,27 +146,6 @@ class ReactorsSpec extends Specification {
 			"it shouldn't be found any more"
 			data == ""
 			!reactor.respondsToKey("test")
-
-	}
-
-	def "A Reactor can dispatch events based on a default selector"() {
-
-		given:
-			"a simple consumer"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
-			def data = ""
-			def h = consumer { String s ->
-				data = s
-			}
-
-		when:
-			"a consumer is assigned based on a type selector"
-			reactor.on h
-			reactor.notify new Event<String>('Hello World!')
-
-		then:
-			"the data is updated"
-			data == 'Hello World!'
 
 	}
 
@@ -370,12 +328,12 @@ class ReactorsSpec extends Specification {
 			"a synchronous Reactor and a single-use Consumer"
 			def r = Reactors.reactor().get()
 			def count = 0
-			r.on(new SingleUseConsumer(consumer { count++ }))
+			r.on($('test'),new SingleUseConsumer(consumer { count++ }))
 
 		when:
 			"the consumer is invoked several times"
-			r.notify(Event.wrap(null))
-			r.notify(Event.wrap(null))
+			r.notify('test',Event.wrap(null))
+			r.notify('test',Event.wrap(null))
 
 		then:
 			"the count is only 1"
@@ -389,11 +347,11 @@ class ReactorsSpec extends Specification {
 			"a root Reactor from environment and a simple Consumer"
 			def r = testEnv.rootReactor
 			def latch = new CountDownLatch(1)
-			r.on(consumer { latch.countDown() })
+			r.on($('test'),consumer { latch.countDown() })
 
 		when:
 			"the consumer is invoked"
-			r.notify(Event.wrap(null))
+			r.notify('test',Event.wrap(null))
 
 		then:
 			"the consumer has been triggered"
@@ -418,11 +376,11 @@ class ReactorsSpec extends Specification {
 
 		and:
 			"a normal consumer that rise exceptions"
-			r.on(consumer { throw new Exception('bad') })
+			r.on($('test'),consumer { throw new Exception('bad') })
 
 		and:
 			"the consumer is invoked"
-			r.notify(Event.wrap(null))
+			r.notify('test',Event.wrap(null))
 
 		then:
 			"consumer has been invoked and e is an exception"
@@ -449,11 +407,11 @@ class ReactorsSpec extends Specification {
 
 		and:
 			"a normal consumer that rise exceptions"
-			r.on(consumer { throw new Exception('bad') })
+			r.on($('test'),consumer { throw new Exception('bad') })
 
 		and:
 			"the consumer is invoked with an error consumer bound event"
-			r.notify(new Event(null, null, consumer { Exception ex -> e = ex; latch.countDown() }))
+			r.notify('test',new Event(null, null, consumer { Exception ex -> e = ex; latch.countDown() }))
 
 		then:
 			"consumer has been invoked and e is an exception but x is not set"
@@ -473,7 +431,7 @@ class ReactorsSpec extends Specification {
 			"the Reactor default Selector is notified with a tuple of consumer and data"
 			def latch = new CountDownLatch(1)
 			def e = null
-			r.notify(Event.wrap(Tuple2.of(consumer { e = it; latch.countDown() }, 'test')))
+			r.schedule(consumer { e = it; latch.countDown() }, 'test')
 
 
 		then:
@@ -491,7 +449,7 @@ class ReactorsSpec extends Specification {
 		and:
 			"the arbitrary consumer fails"
 			latch = new CountDownLatch(1)
-			r.notify(Event.wrap(Tuple2.of(consumer { throw new Exception() }, 'test')))
+			r.schedule(consumer { throw new Exception() }, 'test')
 
 
 		then:
@@ -509,19 +467,19 @@ class ReactorsSpec extends Specification {
 					dispatchErrorHandler(consumer { t -> count++ }).
 					uncaughtErrorHandler(consumer { t -> count++ }).
 					get()
-			r.on consumer { ev -> throw new Exception("error") }
+			r.on $('test'), consumer { ev -> throw new Exception("error") }
 
 		when:
 			"an error is produced"
-			r.consumer().accept(null)
+			r.notify('test', Event.wrap(null))
 
 		then:
 			"the count has increased"
 			count == 1
 
 		when:
-			"a Consumer is attached that produces an error"
-			r.consumer().accept(new IllegalStateException("error"))
+			"notify an error"
+			r.notify('test', Event.wrap(new IllegalStateException("error")))
 
 		then:
 			"the count has increased"

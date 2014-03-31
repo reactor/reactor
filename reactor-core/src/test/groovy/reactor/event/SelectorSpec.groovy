@@ -221,16 +221,16 @@ class SelectorSpec extends Specification {
 			def a4 = {
 				called << 4
 			}
-			r.on(Functions.consumer(a1))
-			r.on(Functions.consumer(a2))
-			r.on(Functions.consumer(a3))
-			r.on(Functions.consumer(a4))
+			r.on($('test'),Functions.consumer(a1))
+			r.on($('test'),Functions.consumer(a2))
+			r.on($('test'),Functions.consumer(a3))
+			r.on($('test'),Functions.consumer(a4))
 
 		when:
 			"events are triggered"
 
 			(1..4).each {
-				r.notify(Event.wrap("Hello World!"))
+				r.notify('test', Event.wrap("Hello World!"))
 			}
 
 		then:
