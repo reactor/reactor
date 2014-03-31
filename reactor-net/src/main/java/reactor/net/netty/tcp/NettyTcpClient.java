@@ -59,11 +59,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpClient}.
  *
- * @param <IN>
- * 		The type that will be received by this client
- * @param <OUT>
- * 		The type that will be sent by this client
- *
+ * @param <IN>  The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -78,8 +75,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private volatile InetSocketAddress connectAddress;
 	private volatile boolean           closing;
 
-	private volatile SocketChannel channel;
-
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor}
 	 * to
@@ -89,20 +84,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env
-	 * 		The configuration environment
-	 * @param reactor
-	 * 		The reactor used to send events
-	 * @param connectAddress
-	 * 		The address the client will connect to
-	 * @param options
-	 * 		The configuration options for the client's socket
-	 * @param sslOptions
-	 * 		The SSL configuration options for the client's socket
-	 * @param codec
-	 * 		The codec used to encode and decode data
-	 * @param consumers
-	 * 		The consumers that will interact with the connection
+	 * @param env            The configuration environment
+	 * @param reactor        The reactor used to send events
+	 * @param connectAddress The address the client will connect to
+	 * @param options        The configuration options for the client's socket
+	 * @param sslOptions     The SSL configuration options for the client's socket
+	 * @param codec          The codec used to encode and decode data
+	 * @param consumers      The consumers that will interact with the connection
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
 	                      @Nonnull Reactor reactor,
@@ -130,26 +118,26 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
 
-						if(null != sslOptions) {
+						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
-							log.debug("SSL enabled using keystore {}",
-							          (null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
+							if (log.isDebugEnabled()) {
+								log.debug("SSL enabled using keystore {}",
+								          (null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
+							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if(options instanceof NettyClientSocketOptions && null != ((NettyClientSocketOptions)options)
-								.pipelineConfigurer()) {
-							((NettyClientSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
+						if (options instanceof NettyClientSocketOptions
+								&& null != ((NettyClientSocketOptions) options).pipelineConfigurer()) {
+							((NettyClientSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
-
-						NettyTcpClient.this.channel = ch;
 					}
 				});
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
 			public ChannelFuture get() {
-				if(!closing) {
+				if (!closing) {
 					return bootstrap.connect(getConnectAddress());
 				} else {
 					return null;
@@ -163,7 +151,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection
 				= Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
-		createConnection(createConnectListener(connection));
+		openChannel(new ConnectingChannelListener(connection));
 
 		return connection.compose();
 	}
@@ -173,14 +161,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections
 				= Streams.defer(getEnvironment(), getReactor().getDispatcher());
 
-		createConnection(createReconnectListener(connections, reconnect));
+		openChannel(new ReconnectingChannelListener(reconnect, connections));
 
 		return connections.compose();
 	}
 
 	@Override
 	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
-		SocketChannel ch = (SocketChannel)ioChannel;
+		SocketChannel ch = (SocketChannel) ioChannel;
 		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		return new NettyNetChannel<IN, OUT>(
@@ -193,133 +181,159 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ioChannel) {
-		NettyNetChannel<IN, OUT> conn = (NettyNetChannel<IN, OUT>)select(ioChannel);
-		return new ChannelHandler[]{new NettyNetChannelInboundHandler().setNetChannel(conn)};
+		NettyNetChannel<IN, OUT> conn = (NettyNetChannel<IN, OUT>) createChannel(ioChannel);
+		return new ChannelHandler[]{
+				new NettyNetChannelInboundHandler().setNetChannel(conn)
+		};
 	}
 
-	private ChannelFutureListener createConnectListener(final Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN,
-			OUT>>> connection) {
-		return new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if(!future.isSuccess()) {
-					if(log.isErrorEnabled()) {
-						log.error(future.cause().getMessage(), future.cause());
+	private void openChannel(ChannelFutureListener listener) {
+		ChannelFuture channel = connectionSupplier.get();
+		if (null != channel && null != listener) {
+			channel.addListener(listener);
+		}
+	}
+
+	private class ConnectingChannelListener implements ChannelFutureListener {
+		private final Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection;
+
+		private ConnectingChannelListener(Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection) {
+			this.connection = connection;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (!future.isSuccess()) {
+				if (log.isErrorEnabled()) {
+					log.error(future.cause().getMessage(), future.cause());
+				}
+				connection.accept(future.cause());
+				return;
+			}
+
+			if (log.isInfoEnabled()) {
+				log.info("CONNECTED: " + future.channel());
+			}
+
+			NettyNetChannelInboundHandler inboundHandler = future.channel()
+			                                                     .pipeline()
+			                                                     .get(NettyNetChannelInboundHandler.class);
+			final NetChannel<IN, OUT> ch = inboundHandler.getNetChannel();
+
+			future.channel().closeFuture().addListener(new ChannelCloseListener(ch, null));
+
+			connection.accept(ch);
+		}
+	}
+
+	private class ReconnectingChannelListener implements ChannelFutureListener {
+
+		private final AtomicInteger attempts = new AtomicInteger(0);
+
+		private final Reconnect                                                  reconnect;
+		private final Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections;
+
+		private volatile InetSocketAddress connectAddress;
+
+		private ReconnectingChannelListener(Reconnect reconnect,
+		                                    Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections) {
+			this.reconnect = reconnect;
+			this.connections = connections;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (!future.isSuccess()) {
+				int attempt = attempts.incrementAndGet();
+				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
+				if (null == tup) {
+					// do not attempt a reconnect
+					if (log.isErrorEnabled()) {
+						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt - 1);
 					}
-					connection.accept(future.cause());
+					connections.accept(future.cause());
 					return;
 				}
 
-				if(log.isInfoEnabled()) {
-					log.info("CONNECT: " + future.channel());
+				attemptReconnect(tup);
+			} else {
+				// connected
+				if (log.isInfoEnabled()) {
+					log.info("CONNECTED: " + future.channel());
 				}
-				final NettyNetChannel<IN, OUT> conn = (NettyNetChannel<IN, OUT>)select(future.channel());
+
+				NetChannel<IN, OUT> ch = future.channel()
+				                               .pipeline()
+				                               .get(NettyNetChannelInboundHandler.class)
+				                               .getNetChannel();
+
 				future.channel().closeFuture().addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) throws Exception {
-						if(log.isInfoEnabled()) {
+						if (log.isInfoEnabled()) {
 							log.info("CLOSED: " + future.channel());
 						}
-						notifyClose(conn);
-						getChannels().unregister(future.channel());
+						notifyClose(ch);
+
+						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts.incrementAndGet());
+						if (null == tup) {
+							// do not attempt a reconnect
+							return;
+						}
+						if (!((NettyNetChannel) ch).isClosing()) {
+							attemptReconnect(tup);
+						}
 					}
 				});
 
-				connection.accept(conn);
+				connections.accept(ch);
 			}
-		};
-	}
+		}
 
-	private ChannelFutureListener createReconnectListener(final Deferred<NetChannel<IN, OUT>,
-			Stream<NetChannel<IN, OUT>>> connections,
-	                                                      final Reconnect reconnect) {
-		return new ChannelFutureListener() {
-			final AtomicInteger attempts = new AtomicInteger(0);
-			final ChannelFutureListener self = this;
+		private void attemptReconnect(Tuple2<InetSocketAddress, Long> tup) {
+			connectAddress = tup.getT1();
+			bootstrap.remoteAddress(connectAddress);
+			long delay = tup.getT2();
 
-			@Override
-			public void operationComplete(final ChannelFuture future) throws Exception {
-				if(!future.isSuccess()) {
-					int attempt = attempts.incrementAndGet();
-					Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
-					if(null == tup) {
-						// do not attempt a reconnect
-						if(log.isErrorEnabled()) {
-							log.error("Reconnection to {} failed after {} attempts.", connectAddress, attempt - 1);
-						}
-						// hopefully avoid a race condition with user code currently assigning handlers
-						// by accepting on the 'next tick' of the event loop
-						future.channel().eventLoop().execute(
-								new Runnable() {
-									@Override
-									public void run() {
-										connections.accept(future.cause());
-									}
-								}
-						);
-						return;
-					}
+			if (log.isInfoEnabled()) {
+				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
+			}
 
-					connectAddress = tup.getT1();
-					bootstrap.remoteAddress(connectAddress);
-					long delay = tup.getT2();
-
-					if(log.isInfoEnabled()) {
-						log.info("Attempting to reconnect to {} after {}ms", connectAddress, delay);
-					}
-					getEnvironment().getRootTimer().submit(
-							new Consumer<Long>() {
-								@Override
-								public void accept(Long now) {
-									createConnection(self);
-								}
-							},
-							delay,
-							TimeUnit.MILLISECONDS
-					);
-				} else {
-					if(log.isInfoEnabled()) {
-						log.info("CONNECT: " + future.channel());
-					}
-					final NettyNetChannel<IN, OUT> conn = (NettyNetChannel<IN, OUT>)select(future.channel());
-					future.channel().closeFuture().addListener(new ChannelFutureListener() {
+			getEnvironment().getRootTimer().submit(
+					new Consumer<Long>() {
 						@Override
-						public void operationComplete(ChannelFuture future) throws Exception {
-							if(log.isInfoEnabled()) {
-								log.info("CLOSED: " + future.channel());
-							}
-							notifyClose(conn);
-							if(!conn.isClosing()) {
-								int attempt = attempts.incrementAndGet();
-								Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
-								if(null == tup) {
-									// do not attempt a reconnect
-								} else {
-									createConnection(self);
-								}
-							}
-							getChannels().unregister(future.channel());
+						public void accept(Long now) {
+							openChannel(ReconnectingChannelListener.this);
 						}
-					});
-					// hopefully avoid a race condition with user code currently assigning handlers
-					// by accepting on the 'next tick' of the event loop
-					future.channel().eventLoop().execute(
-							new Runnable() {
-								@Override
-								public void run() {
-									connections.accept(conn);
-								}
-							}
-					);
-				}
-			}
-		};
+					},
+					delay,
+					TimeUnit.MILLISECONDS
+			);
+		}
 	}
 
-	private void createConnection(ChannelFutureListener listener) {
-		ChannelFuture channel = connectionSupplier.get();
-		if(channel != null) {
-			channel.addListener(listener);
+	private class ChannelCloseListener implements ChannelFutureListener {
+		private final NetChannel<IN, OUT>   ch;
+		private final ChannelFutureListener channelListener;
+
+		private ChannelCloseListener(NetChannel<IN, OUT> ch,
+		                             ChannelFutureListener channelListener) {
+			this.ch = ch;
+			this.channelListener = channelListener;
+		}
+
+		@Override
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (log.isInfoEnabled()) {
+				log.info("CLOSED: " + future.channel());
+			}
+			notifyClose(ch);
+
+			if (!((NettyNetChannel) ch).isClosing()) {
+				openChannel(channelListener);
+			}
 		}
 	}
 

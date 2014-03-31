@@ -26,6 +26,10 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 	public NettyNetChannelInboundHandler() {
 	}
 
+	public AbstractNetChannel getNetChannel() {
+		return netChannel;
+	}
+
 	public NettyNetChannelInboundHandler setNetChannel(AbstractNetChannel netChannel) {
 		this.netChannel = netChannel;
 		return this;
@@ -33,17 +37,17 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		if(!ByteBuf.class.isInstance(msg) || null == netChannel.getDecoder()) {
+		if (!ByteBuf.class.isInstance(msg) || null == netChannel.getDecoder()) {
 			netChannel.notifyRead(msg);
 			return;
 		}
 
-		ByteBuf data = (ByteBuf)msg;
-		if(remainder == null) {
+		ByteBuf data = (ByteBuf) msg;
+		if (remainder == null) {
 			try {
 				passToConnection(data);
 			} finally {
-				if(data.isReadable()) {
+				if (data.isReadable()) {
 					remainder = data;
 				} else {
 					data.release();
@@ -52,7 +56,7 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 			return;
 		}
 
-		if(!bufferHasSufficientCapacity(remainder, data)) {
+		if (!bufferHasSufficientCapacity(remainder, data)) {
 			ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
 			remainder.release();
 			remainder = combined;
@@ -64,7 +68,7 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 		try {
 			passToConnection(remainder);
 		} finally {
-			if(remainder.isReadable()) {
+			if (remainder.isReadable()) {
 				remainder.discardSomeReadBytes();
 			} else {
 				remainder.release();
@@ -75,8 +79,8 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			if(log.isInfoEnabled()) {
+		if ("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
+			if (log.isInfoEnabled()) {
 				log.info(ctx.channel().toString() + " " + cause.getMessage());
 			}
 		}
