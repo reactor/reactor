@@ -18,7 +18,6 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
-import reactor.core.spec.Reactors;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
@@ -70,7 +69,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		final NettyNetChannelInboundHandler inboundHandler = new NettyNetChannelInboundHandler() {
 			@Override
 			public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-				super.channelRead(ctx, ((DatagramPacket)msg).content());
+				super.channelRead(ctx, ((DatagramPacket) msg).content());
 			}
 		};
 
@@ -88,26 +87,26 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						config.setSendBufferSize(options.sndbuf());
 						config.setReuseAddress(options.reuseAddr());
 
-						if(null != multicastInterface) {
+						if (null != multicastInterface) {
 							config.setNetworkInterface(multicastInterface);
 						}
 
-						if(options instanceof NettyServerSocketOptions
-								&& null != ((NettyServerSocketOptions)options).pipelineConfigurer()) {
-							((NettyServerSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
+						if (options instanceof NettyServerSocketOptions
+								&& null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
+							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
 						}
 
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
-								if(log.isInfoEnabled()) {
+								if (log.isInfoEnabled()) {
 									log.info("CLOSE {}", ch);
 								}
 								close(ch);
 							}
 						});
 
-						netChannel = (NettyNetChannel<IN, OUT>)select(ch);
+						netChannel = (NettyNetChannel<IN, OUT>) select(ch);
 						inboundHandler.setNetChannel(netChannel);
 
 						ch.pipeline().addLast(new ChannelOutboundHandlerAdapter() {
@@ -122,12 +121,12 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				})
 				.handler(inboundHandler);
 
-		if(null != listenAddress) {
+		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);
 		} else {
 			bootstrap.localAddress(NetUtil.LOCALHOST, 3000);
 		}
-		if(null != multicastInterface) {
+		if (null != multicastInterface) {
 			bootstrap.option(ChannelOption.IP_MULTICAST_IF, multicastInterface);
 		}
 	}
@@ -136,14 +135,14 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@Override
 	public DatagramServer<IN, OUT> start(@Nullable final Runnable started) {
 		ChannelFuture future = bootstrap.bind();
-		if(null != started) {
+		if (null != started) {
 			future.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
-					if(future.isSuccess()) {
+					if (future.isSuccess()) {
 						log.info("BIND {}", future.channel().localAddress());
 						notifyStart(started);
-						channel = (NioDatagramChannel)future.channel();
+						channel = (NioDatagramChannel) future.channel();
 					}
 				}
 			});
@@ -163,7 +162,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						GenericFutureListener listener = new GenericFutureListener() {
 							@Override
 							public void operationComplete(Future future) throws Exception {
-								if(future.isSuccess()) {
+								if (future.isSuccess()) {
 									d.accept(true);
 								} else {
 									d.accept(future.cause());
@@ -182,7 +181,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public DatagramServer<IN, OUT> send(OUT data) {
-		if(null == channel) {
+		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
@@ -203,18 +202,18 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface) {
-		if(null == channel) {
+		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
 		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
-		if(null == iface && null != getMulticastInterface()) {
+		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
 		}
 
 		final ChannelFuture future;
-		if(null != iface) {
+		if (null != iface) {
 			future = channel.joinGroup(new InetSocketAddress(multicastAddress, getListenAddress().getPort()), iface);
 		} else {
 			future = channel.joinGroup(multicastAddress);
@@ -226,18 +225,18 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface) {
-		if(null == channel) {
+		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		if(null == iface && null != getMulticastInterface()) {
+		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
 		}
 
 		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		final ChannelFuture future;
-		if(null != iface) {
+		if (null != iface) {
 			future = channel.leaveGroup(new InetSocketAddress(multicastAddress, getListenAddress().getPort()), iface);
 		} else {
 			future = channel.leaveGroup(multicastAddress);
@@ -254,20 +253,18 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				getCodec(),
 				new SynchronousDispatcher(),
 				getReactor(),
-				(NioDatagramChannel)ioChannel
+				(NioDatagramChannel) ioChannel
 		);
 	}
 
 	@Override
-	protected void doClose(@Nullable final Consumer<Void> onClose) {
+	protected void doClose(@Nullable final Consumer<Boolean> onClose) {
 		ChannelFuture future = channel.close();
-		if(null != onClose) {
+		if (null != onClose) {
 			future.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
-					if(future.isSuccess()) {
-						getReactor().schedule(onClose, null);
-					}
+					getReactor().schedule(onClose, future.isDone() && future.isSuccess());
 				}
 			});
 		}
@@ -282,8 +279,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
-			if(future.isSuccess()) {
-				d.accept((Void)null);
+			if (future.isSuccess()) {
+				d.accept((Void) null);
 			} else {
 				d.accept(future.cause());
 			}
