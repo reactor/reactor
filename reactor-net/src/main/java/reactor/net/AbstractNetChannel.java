@@ -8,7 +8,6 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
-import reactor.core.composable.spec.Streams;
 import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
@@ -62,7 +61,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		this.eventsReactor = Reactors.reactor(env, eventsReactor.getDispatcher());
 		this.codec = codec;
 		if (null != codec) {
-			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getObject(), eventsReactor));
+			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getObject(), this.eventsReactor));
 			this.encoder = codec.encoder();
 		} else {
 			this.decoder = null;
@@ -93,7 +92,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Stream<IN> in() {
-		final Deferred<IN, Stream<IN>> d = Streams.defer(env, eventsReactor.getDispatcher());
+		final Deferred<IN, Stream<IN>> d = new Deferred<IN, Stream<IN>>(new Stream<IN>(eventsReactor, -1, null, env));
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -172,7 +171,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<Void> close() {
-		Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getEventsReactor().getDispatcher());
+		Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
 		eventsReactor.getConsumerRegistry().unregister(read.getObject());
 		close(d);
 		return d.compose();

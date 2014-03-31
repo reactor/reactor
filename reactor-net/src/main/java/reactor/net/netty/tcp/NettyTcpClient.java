@@ -22,6 +22,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.FutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
@@ -100,6 +102,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	                      @Nullable Codec<Buffer, IN, OUT> codec,
 	                      @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
+		this.connectAddress = connectAddress;
 
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -161,9 +164,21 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections
 				= Streams.defer(getEnvironment(), getReactor().getDispatcher());
 
-		openChannel(new ReconnectingChannelListener(reconnect, connections));
+		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
 
 		return connections.compose();
+	}
+
+	@Override
+	public void close(@Nullable final Consumer<Boolean> onClose) {
+		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
+			@Override
+			public void operationComplete(Future<Object> future) throws Exception {
+				if (null != onClose) {
+					onClose.accept(future.isDone() && future.isSuccess());
+				}
+			}
+		});
 	}
 
 	@Override
@@ -221,9 +236,22 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			                                                     .get(NettyNetChannelInboundHandler.class);
 			final NetChannel<IN, OUT> ch = inboundHandler.getNetChannel();
 
-			future.channel().closeFuture().addListener(new ChannelCloseListener(ch, null));
+			future.channel().closeFuture().addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (log.isInfoEnabled()) {
+						log.info("CLOSED: " + future.channel());
+					}
+					notifyClose(ch);
+				}
+			});
 
-			connection.accept(ch);
+			future.channel().eventLoop().submit(new Runnable() {
+				@Override
+				public void run() {
+					connection.accept(ch);
+				}
+			});
 		}
 	}
 
@@ -236,15 +264,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		private volatile InetSocketAddress connectAddress;
 
-		private ReconnectingChannelListener(Reconnect reconnect,
+		private ReconnectingChannelListener(InetSocketAddress connectAddress,
+		                                    Reconnect reconnect,
 		                                    Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections) {
+			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 			this.connections = connections;
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
+		public void operationComplete(final ChannelFuture future) throws Exception {
 			if (!future.isSuccess()) {
 				int attempt = attempts.incrementAndGet();
 				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
@@ -253,7 +283,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					if (log.isErrorEnabled()) {
 						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt - 1);
 					}
-					connections.accept(future.cause());
+					future.channel().eventLoop().submit(new Runnable() {
+						@Override
+						public void run() {
+							connections.accept(future.cause());
+						}
+					});
 					return;
 				}
 
@@ -264,10 +299,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					log.info("CONNECTED: " + future.channel());
 				}
 
-				NetChannel<IN, OUT> ch = future.channel()
-				                               .pipeline()
-				                               .get(NettyNetChannelInboundHandler.class)
-				                               .getNetChannel();
+				final NetChannel<IN, OUT> ch = future.channel()
+				                                     .pipeline()
+				                                     .get(NettyNetChannelInboundHandler.class)
+				                                     .getNetChannel();
 
 				future.channel().closeFuture().addListener(new ChannelFutureListener() {
 					@Override
@@ -284,11 +319,18 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						}
 						if (!((NettyNetChannel) ch).isClosing()) {
 							attemptReconnect(tup);
+						} else {
+							closing = true;
 						}
 					}
 				});
 
-				connections.accept(ch);
+				future.channel().eventLoop().submit(new Runnable() {
+					@Override
+					public void run() {
+						connections.accept(ch);
+					}
+				});
 			}
 		}
 
@@ -311,29 +353,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					delay,
 					TimeUnit.MILLISECONDS
 			);
-		}
-	}
-
-	private class ChannelCloseListener implements ChannelFutureListener {
-		private final NetChannel<IN, OUT>   ch;
-		private final ChannelFutureListener channelListener;
-
-		private ChannelCloseListener(NetChannel<IN, OUT> ch,
-		                             ChannelFutureListener channelListener) {
-			this.ch = ch;
-			this.channelListener = channelListener;
-		}
-
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			if (log.isInfoEnabled()) {
-				log.info("CLOSED: " + future.channel());
-			}
-			notifyClose(ch);
-
-			if (!((NettyNetChannel) ch).isClosing()) {
-				openChannel(channelListener);
-			}
 		}
 	}
 
