@@ -66,7 +66,12 @@ public class BufferAction<T> extends BatchAction<T> implements Flushable<T> {
 
 	@Override
 	public Flushable<T> flush() {
-		doFlush(null);
+		lock.lock();
+		try {
+			doFlush(null);
+		} finally {
+			lock.unlock();
+		}
 		return this;
 	}
 }

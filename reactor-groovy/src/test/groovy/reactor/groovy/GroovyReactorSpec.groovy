@@ -15,6 +15,9 @@
  */
 package reactor.groovy
 
+import groovy.transform.CompileStatic
+import reactor.core.Reactor
+
 import static reactor.event.selector.Selectors.$
 
 import java.util.concurrent.CountDownLatch
@@ -94,24 +97,6 @@ class GroovyReactorSpec extends Specification {
 
 	}
 
-	def "Groovy Reactor enables Actor programming style"() {
-
-		given: "a simple reactor implementation"
-		def reactor = Reactors.reactor().get()
-
-		when: 'Using simple arguments'
-		def data2 = ""
-		reactor.on({ String s ->
-			data2 = s
-		} as Closure) // ugly hack until I can get Groovy Closure invocation support built-in
-
-		reactor << 'test2' << 'test3'
-
-		then:
-		data2 == 'test3'
-
-	}
-
 	def "Groovy Reactor allows inline reply"() {
 
 		given: "a simple reactor implementation"
@@ -130,6 +115,50 @@ class GroovyReactorSpec extends Specification {
 		then:
 		data2 == 'test3'
 
+	}
+
+	def "Compile Static Reactor"(){
+		given:
+			final reactor.core.Environment env = new reactor.core.Environment()
+
+			final Reactor reactor = Reactors.reactor()
+					.env(env) // our current Environment
+					.dispatcher(Environment.THREAD_POOL)
+					.get()
+
+		when:
+			"A simple scenario"
+
+			def consumer = new Consumer(r:reactor)
+			consumer.setupMessages()
+			def producer = new Producer(r:reactor)
+			producer.makeNoise('Yeah we is awesome')
+			consumer.result.await()
+
+		then:
+			consumer.result.count == 0
+	}
+
+	//FIXME Groovy issue -> invokes Reactor.notify(Object key) instead of Observable.extensions(Observable self,
+	// Map params)
+	//@CompileStatic
+	class Producer{
+		Reactor r
+		void makeNoise(String noise){
+			r.notify for: 'makeNoise', data: noise
+		}
+	}
+
+	class Consumer{
+		Reactor r
+		def result = new CountDownLatch(1)
+
+		void setupMessages(){
+			r.on($('makeNoise')) { String noise ->
+				println noise
+				result.countDown()
+			}
+		}
 	}
 
 }

@@ -67,7 +67,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	public void close(@Nullable final Consumer<Void> onClose) {
-		Reactors.schedule(
+		reactor.schedule(
 				new Consumer<Void>() {
 					@Override
 					public void accept(Void v) {
@@ -81,8 +81,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 						doClose(onClose);
 					}
 				},
-				null,
-				reactor
+				null
 		);
 	}
 
@@ -246,7 +245,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	 * @param onClose
 	 */
 	protected void doClose(@Nullable Consumer<Void> onClose) {
-		Reactors.schedule(onClose, null, getReactor());
+		getReactor().schedule(onClose, null);
 	}
 
 	/**

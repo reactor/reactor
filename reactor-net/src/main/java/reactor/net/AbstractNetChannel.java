@@ -188,7 +188,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * 		The callback to invoke when the write is complete.
 	 */
 	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
-		Reactors.schedule(new WriteConsumer(onComplete), data, ioReactor);
+		ioReactor.schedule(new WriteConsumer(onComplete), data);
 	}
 
 	/**

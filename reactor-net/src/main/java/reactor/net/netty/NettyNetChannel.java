@@ -65,7 +65,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if(future.isSuccess() && null != onClose) {
-					Reactors.schedule(onClose, null, getEventsReactor());
+					getEventsReactor().schedule(onClose, null);
 				} else {
 					log.error(future.cause().getMessage(), future.cause());
 				}

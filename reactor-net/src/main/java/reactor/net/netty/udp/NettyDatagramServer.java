@@ -155,7 +155,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	public Promise<Boolean> shutdown() {
 		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
-		Reactors.schedule(
+		getReactor().schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings("unchecked")
 					@Override
@@ -173,8 +173,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						ioGroup.shutdownGracefully().addListener(listener);
 					}
 				},
-				null,
-				getReactor()
+				null
 		);
 		notifyShutdown();
 
@@ -267,7 +266,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
 					if(future.isSuccess()) {
-						Reactors.schedule(onClose, null, getReactor());
+						getReactor().schedule(onClose, null);
 					}
 				}
 			});

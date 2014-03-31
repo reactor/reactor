@@ -19,6 +19,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.core.Reactor
 import reactor.core.composable.Promise
 import reactor.core.composable.spec.PromiseSpec;
 import reactor.core.composable.spec.Promises
@@ -39,8 +40,8 @@ class ReactorStaticExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T> void schedule(final Functions selfType, final T value, final Observable observable, final Closure closure) {
-		Reactors.schedule new ClosureConsumer(closure), value, observable
+	static <T> void schedule(final Functions selfType, final T value, final Reactor reactor, final Closure closure) {
+		reactor.schedule new ClosureConsumer(closure), value
 	}
 
 	static <T> PromiseSpec<T> task(final Promises selfType, Closure<T> callback) {

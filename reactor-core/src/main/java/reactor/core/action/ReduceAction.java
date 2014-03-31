@@ -55,8 +55,13 @@ public class ReduceAction<T, A> extends BatchAction<T> implements Flushable<T> {
 
 	@Override
 	public Flushable<T> flush() {
-		if (acc != null) {
-			notifyValue(Event.wrap(acc));
+		lock.lock();
+		try {
+			if (acc != null) {
+				notifyValue(Event.wrap(acc));
+			}
+		} finally {
+			lock.unlock();
 		}
 		return this;
 	}

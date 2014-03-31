@@ -60,11 +60,6 @@ class ObservableExtensions {
 		selfType.on object(selector), new ClosureEventConsumer(handler)
 	}
 
-	static Registration<Consumer> on(reactor.core.Observable selfType,
-	                                 @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		selfType.on new ClosureEventConsumer(handler)
-	}
-
 	/**
 	 * Alias and Misc. Helpers
 	 */
@@ -115,14 +110,14 @@ class ObservableExtensions {
 		selfType.notify key, Event.wrap((T) closure.call())
 	}
 
-	static reactor.core.Observable notify(final reactor.core.Observable selfType, final Map<String, ?> params) {
+	static reactor.core.Observable notify(final reactor.core.Observable selfType, final Map params) {
 		Object topic = params.remove ARG_TOPIC
 
 		def toSend
 		if (params) {
 			toSend = new Event(new Event.Headers(), params.remove(ARG_DATA))
 			for (entry in params.entrySet()) {
-				toSend.headers.set entry.key, entry.value?.toString()
+				toSend.headers.set entry.key?.toString(), entry.value?.toString()
 			}
 		} else {
 			toSend = new Event(params.remove(ARG_DATA))
@@ -132,25 +127,6 @@ class ObservableExtensions {
 		selfType
 	}
 
-	/**
-	 * Operator overloading
-	 */
-
-	static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final T obj) {
-		selfType.notify Event.wrap(obj)
-	}
-
-	static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Event<T> obj) {
-		selfType.notify obj
-	}
-
-	static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Closure<T> obj) {
-		selfType.notify Event.wrap((T) obj.call())
-	}
-
-	static <T> reactor.core.Observable leftShift(final reactor.core.Observable selfType, final Supplier<Event<T>> obj) {
-		selfType.notify obj.get()
-	}
 
 	/**
 	 * Alias
