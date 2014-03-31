@@ -41,7 +41,7 @@ class ReactorStaticExtensions {
 	 * Closure converters
 	 */
 	static <T> void schedule(final Functions selfType, final T value, final Reactor reactor, final Closure closure) {
-		Reactors.schedule new ClosureConsumer(closure), value, reactor
+		reactor.schedule new ClosureConsumer(closure), value
 	}
 
 	static <T> PromiseSpec<T> task(final Promises selfType, Closure<T> callback) {
