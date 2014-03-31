@@ -82,7 +82,7 @@ class ClientServerIntegrationSpec extends Specification {
 
         and: "pojo is written"
         data.each { Pojo item -> connection.sendAndForget(item) }
-        [dataLatch, startLatch].each {it.await(50, TimeUnit.SECONDS)}
+        [dataLatch, startLatch].each {it.await(60, TimeUnit.SECONDS)}
 
         then: "everything went fine"
         startLatch.count == 0
@@ -91,7 +91,7 @@ class ClientServerIntegrationSpec extends Specification {
         when: "server and client are stopped"
         client.close().onSuccess({stopLatch.countDown()} as Consumer<Void>)
         server.shutdown().onSuccess({stopLatch.countDown() } as Consumer<Void>)
-        stopLatch.await(5, TimeUnit.SECONDS)
+        stopLatch.await(30, TimeUnit.SECONDS)
 
         then: "everything is really stopped"
         stopLatch.count == 0
