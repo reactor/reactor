@@ -58,22 +58,6 @@ public interface Observable {
 	<E extends Event<?>> Registration<Consumer<E>> on(Selector sel, Consumer<E> consumer);
 
 	/**
-	 * Register an {@link Consumer} to be triggered using the internal key that is unique to each
-	 * {@literal Observable} instance.
-	 *
-	 * @param consumer
-	 * 		The {@literal Consumer} to be triggered
-	 * @param <E>
-	 * 		The type of the {@link Event}
-	 *
-	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
-	 *
-	 * @see #notify(Event)
-	 * @see #notify(reactor.function.Supplier)
-	 */
-	<E extends Event<?>> Registration<Consumer<E>> on(Consumer<E> consumer);
-
-	/**
 	 * Assign a {@link reactor.function.Function} to receive an {@link Event} and produce a reply of the given type.
 	 *
 	 * @param sel
@@ -135,34 +119,6 @@ public interface Observable {
 	 */
 	<S extends Supplier<? extends Event<?>>> Observable notify(Object key, S supplier);
 
-	/**
-	 * Notify this component that an {@link Event} is ready to be processed using the internal key that is unique
-	 * to each {@literal Observable} instance.
-	 *
-	 * @param ev
-	 * 		The {@literal Event}
-	 *
-	 * @return {@literal this}
-	 *
-	 * @see #on(Consumer)
-	 */
-	<E extends Event<?>> Observable notify(E ev);
-
-	/**
-	 * Notify this component that an {@link Event} is ready to be processed using the internal key that is unique
-	 * to each {@link Observable} instance and that the given {@link Supplier} will provide the actual {@link
-	 * Event} to publish.
-	 *
-	 * @param supplier
-	 * 		The {@link Supplier} to provide the actual {@link Event}
-	 * @param <S>
-	 * 		The type of the {@link Supplier}
-	 *
-	 * @return {@literal this}
-	 *
-	 * @see #on(Consumer)
-	 */
-	<S extends Supplier<? extends Event<?>>> Observable notify(S supplier);
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the

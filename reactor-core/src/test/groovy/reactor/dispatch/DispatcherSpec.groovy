@@ -101,16 +101,16 @@ class DispatcherSpec extends Specification {
 
 		when:
 			"listen for recursive event"
-			r.on(consumer { int i ->
+			r.on($('test'), consumer { int i ->
 				if (i < 2) {
 					latch.countDown()
-					r.notify(Event.wrap(++i))
+					r.notify('test',Event.wrap(++i))
 				}
 			})
 
 		and:
 			"call the reactor"
-			r.notify(Event.wrap(0))
+			r.notify('test',Event.wrap(0))
 
 		then:
 			"a task is submitted to the thread pool dispatcher"

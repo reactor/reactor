@@ -184,17 +184,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	/**
-	 * Configures the component's default {@code Selector}.
-	 *
-	 * @param defaultSelector the {@code Selector} to use as a default
-	 * @return {@code this}
-	 */
-	public SPEC defaultSelector(Selector defaultSelector) {
-		this.defaultSelector = defaultSelector;
-		return (SPEC) this;
-	}
-
-	/**
 	 * Configures this component to provide event tracing when dispatching and routing an event.
 	 *
 	 * @return {@code this}
@@ -250,7 +239,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		return new Reactor((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		                   dispatcher,
 		                   (eventRouter != null ? eventRouter : createEventRouter()),
-		                   defaultSelector,
 		                   dispatchErrorHandler,
 		                   uncaughtErrorHandler);
 	}

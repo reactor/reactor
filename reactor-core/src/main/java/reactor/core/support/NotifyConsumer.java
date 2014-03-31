@@ -25,7 +25,6 @@ import reactor.util.Assert;
  * A {@code Consumer} that notifies an observable of each value that it has accepted.
  *
  * @param <T> the type of the values that the consumer can accept
- *
  * @author Jon Brisbin
  */
 public class NotifyConsumer<T> implements Consumer<T> {
@@ -38,7 +37,7 @@ public class NotifyConsumer<T> implements Consumer<T> {
 	 * the given {@code notifyKey}. If {@code notifyKey} is {@code null}, {@code observable}
 	 * will be notified without a key.
 	 *
-	 * @param notifyKey The notification key, may be {@code null}
+	 * @param notifyKey  The notification key, may be {@code null}
 	 * @param observable The observable to notify. May not be {@code null}
 	 */
 	public NotifyConsumer(Object notifyKey, Observable observable) {
@@ -50,11 +49,7 @@ public class NotifyConsumer<T> implements Consumer<T> {
 	@Override
 	public void accept(T t) {
 		Event<T> ev = Event.wrap(t);
-		if (null == notifyKey) {
-			observable.notify(ev);
-		} else {
-			observable.notify(notifyKey, ev);
-		}
+		observable.notify(notifyKey, ev);
 	}
 
 }

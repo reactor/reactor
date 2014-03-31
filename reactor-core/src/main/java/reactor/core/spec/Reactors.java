@@ -96,9 +96,11 @@ public abstract class Reactors {
 	 * 		The {@literal Observable} that will be used to invoke the {@literal Consumer}
 	 * @param <T>
 	 * 		The type of the data.
+	 * 	@deprecated @since 1.1
 	 */
+	@Deprecated
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		observable.notify(Event.wrap(Tuple.of(consumer, data)));
+		((Reactor)observable).schedule(consumer, data);
 	}
 
 }
