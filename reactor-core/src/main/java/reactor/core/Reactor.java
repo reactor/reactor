@@ -35,7 +35,6 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.function.support.SingleUseConsumer;
-import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
 
@@ -102,10 +101,10 @@ public class Reactor implements Observable {
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
 	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		this(new CachingRegistry<Consumer<? extends Event<?>>>(),
-				dispatcher,
-				eventRouter,
-				dispatchErrorHandler,
-				uncaughtErrorHandler);
+		     dispatcher,
+		     eventRouter,
+		     dispatchErrorHandler,
+		     uncaughtErrorHandler);
 	}
 
 	/**
@@ -132,33 +131,33 @@ public class Reactor implements Observable {
 			this.dispatchErrorHandler = new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable t) {
-						Class<? extends Throwable> type = t.getClass();
-						Reactor.this.eventRouter.route(type,
-								Event.wrap(t).setKey(type),
-								Reactor.this.consumerRegistry.select(type),
-								null,
-								null);
-						}
+					Class<? extends Throwable> type = t.getClass();
+					Reactor.this.eventRouter.route(type,
+					                               Event.wrap(t).setKey(type),
+					                               Reactor.this.consumerRegistry.select(type),
+					                               null,
+					                               null);
+				}
 			};
 		} else {
 			this.dispatchErrorHandler = dispatchErrorHandler;
 		}
 
-			this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
+		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
 			Logger log;
 
-				@Override
-				public void accept(Event<Throwable> ev) {
-				if(null == uncaughtErrorHandler) {
-					if(null == log) {
+			@Override
+			public void accept(Event<Throwable> ev) {
+				if (null == uncaughtErrorHandler) {
+					if (null == log) {
 						log = LoggerFactory.getLogger(Reactor.class);
-				}
+					}
 					log.error(ev.getData().getMessage(), ev.getData());
 				} else {
 					uncaughtErrorHandler.accept(ev.getData());
 				}
 			}
-			});
+		});
 	}
 
 	/**
@@ -365,11 +364,6 @@ public class Reactor implements Observable {
 		private static final long serialVersionUID = 1937884784799135647L;
 		private final Observable replyToObservable;
 
-		@Override
-		public <X> Event<X> copy(X data) {
-			return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
-		}
-
 		private ReplyToEvent(Headers headers, T data, Object replyTo,
 		                     Observable replyToObservable,
 		                     Consumer<Throwable> errorConsumer) {
@@ -380,7 +374,12 @@ public class Reactor implements Observable {
 
 		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
 			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable,
-					delegate.getErrorConsumer());
+			     delegate.getErrorConsumer());
+		}
+
+		@Override
+		public <X> Event<X> copy(X data) {
+			return new ReplyToEvent<X>(getHeaders(), data, getReplyTo(), replyToObservable, getErrorConsumer());
 		}
 
 		public Observable getReplyToObservable() {

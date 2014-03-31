@@ -8,7 +8,6 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
-import reactor.core.composable.spec.Streams;
 import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
@@ -59,10 +58,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		Assert.notNull(env, "Events Reactor cannot be null");
 		this.env = env;
 		this.ioReactor = Reactors.reactor(env, ioDispatcher);
-		this.eventsReactor = eventsReactor;
+		this.eventsReactor = Reactors.reactor(env, eventsReactor.getDispatcher());
 		this.codec = codec;
-		if(null != codec) {
-			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getObject(), eventsReactor));
+		if (null != codec) {
+			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getObject(), this.eventsReactor));
 			this.encoder = codec.encoder();
 		} else {
 			this.decoder = null;
@@ -74,10 +73,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 			@Override
 			public void accept(IN in) {
 				try {
-					if(!replyToKeys.isEmpty()) {
+					if (!replyToKeys.isEmpty()) {
 						AbstractNetChannel.this.eventsReactor.notify(replyToKeys.remove(), Event.wrap(in));
 					}
-				} catch(NoSuchElementException ignored) {
+				} catch (NoSuchElementException ignored) {
 				}
 			}
 		});
@@ -93,7 +92,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Stream<IN> in() {
-		final Deferred<IN, Stream<IN>> d = Streams.defer(env, eventsReactor.getDispatcher());
+		final Deferred<IN, Stream<IN>> d = new Deferred<IN, Stream<IN>>(new Stream<IN>(eventsReactor, -1, null, env));
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -172,7 +171,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<Void> close() {
-		Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getEventsReactor().getDispatcher());
+		Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
 		eventsReactor.getConsumerRegistry().unregister(read.getObject());
 		close(d);
 		return d.compose();
@@ -182,10 +181,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
 	 * reactor.io.Buffer}. The given callback will be invoked when the write has completed.
 	 *
-	 * @param data
-	 * 		The outgoing data.
-	 * @param onComplete
-	 * 		The callback to invoke when the write is complete.
+	 * @param data       The outgoing data.
+	 * @param onComplete The callback to invoke when the write is complete.
 	 */
 	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
 		ioReactor.schedule(new WriteConsumer(onComplete), data);
@@ -194,14 +191,12 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Performing necessary decoding on the data and notify the internal {@link Reactor} of any results.
 	 *
-	 * @param data
-	 * 		The data to decode.
-	 *
+	 * @param data The data to decode.
 	 * @return {@literal true} if any more data is remaining to be consumed in the given {@link Buffer}, {@literal false}
 	 * otherwise.
 	 */
 	public boolean read(Buffer data) {
-		if(null != decoder && null != data.byteBuffer()) {
+		if (null != decoder && null != data.byteBuffer()) {
 			decoder.apply(data);
 		} else {
 			eventsReactor.notify(read.getObject(), Event.wrap(data));
@@ -211,7 +206,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	public void notifyRead(Object obj) {
-		eventsReactor.notify(read.getObject(), (Event.class.isInstance(obj) ? (Event)obj : Event.wrap(obj)));
+		eventsReactor.notify(read.getObject(), (Event.class.isInstance(obj) ? (Event) obj : Event.wrap(obj)));
 	}
 
 	public void notifyError(Throwable throwable) {
@@ -221,10 +216,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data
-	 * 		The data to write, as a {@link Buffer}.
-	 * @param onComplete
-	 * 		The callback to invoke when the write is complete.
+	 * @param data       The data to write, as a {@link Buffer}.
+	 * @param onComplete The callback to invoke when the write is complete.
 	 */
 	protected void write(Buffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
 		write(data.byteBuffer(), onComplete, flush);
@@ -233,24 +226,18 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data
-	 * 		The data to write.
-	 * @param onComplete
-	 * 		The callback to invoke when the write is complete.
-	 * @param flush
-	 * 		whether to flush the underlying IO channel
+	 * @param data       The data to write.
+	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param flush      whether to flush the underlying IO channel
 	 */
 	protected abstract void write(ByteBuffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data
-	 * 		The data to write.
-	 * @param onComplete
-	 * 		The callback to invoke when the write is complete.
-	 * @param flush
-	 * 		whether to flush the underlying IO channel
+	 * @param data       The data to write.
+	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param flush      whether to flush the underlying IO channel
 	 */
 	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
 
@@ -293,21 +280,21 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		@Override
 		public void accept(OUT data) {
 			try {
-				if(null != encoder) {
+				if (null != encoder) {
 					Buffer bytes = encoder.apply(data);
-					if(bytes.remaining() > 0) {
+					if (bytes.remaining() > 0) {
 						write(bytes, onComplete, autoflush);
 					}
 				} else {
-					if(Buffer.class.isInstance(data)) {
-						write((Buffer)data, onComplete, autoflush);
+					if (Buffer.class.isInstance(data)) {
+						write((Buffer) data, onComplete, autoflush);
 					} else {
 						write(data, onComplete, autoflush);
 					}
 				}
-			} catch(Throwable t) {
+			} catch (Throwable t) {
 				eventsReactor.notify(t.getClass(), Event.wrap(t));
-				if(null != onComplete) {
+				if (null != onComplete) {
 					onComplete.accept(t);
 				}
 			}

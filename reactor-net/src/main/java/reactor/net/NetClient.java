@@ -34,7 +34,7 @@ public interface NetClient<IN, OUT> {
 	/**
 	 * Close this client and the underlying channel.
 	 */
-	Promise<Void> close();
+	Promise<Boolean> close();
 
 	/**
 	 * Close this client and the underlying channel and invoke the given {@link reactor.function.Consumer} when the
@@ -43,6 +43,6 @@ public interface NetClient<IN, OUT> {
 	 * @param onClose
 	 * 		consumer to invoke when client is closed
 	 */
-	void close(Consumer<Void> onClose);
+	void close(Consumer<Boolean> onClose);
 
 }

@@ -22,7 +22,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
-import reactor.core.composable.Promise;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
@@ -62,6 +61,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpClientTests {
 
+	private final ExecutorService threadPool = Executors.newCachedThreadPool();
 	Environment             env;
 	int                     echoServerPort;
 	EchoServer              echoServer;
@@ -189,7 +189,7 @@ public class TcpClientTests {
 
 				BatchConsumer<String> out = conn.out();
 				out.start();
-				for(int i = 0; i < messages; i++) {
+				for (int i = 0; i < messages; i++) {
 					out.accept("Hello World!");
 				}
 				out.end();
@@ -197,7 +197,7 @@ public class TcpClientTests {
 		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
-							 latch.await(5, TimeUnit.SECONDS));
+		           latch.await(5, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
@@ -214,15 +214,7 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		final CountDownLatch closeLatch = new CountDownLatch(1);
-		Promise<Void> p = client.close();
-		p.onSuccess(new Consumer<Void>() {
-			@Override
-			public void accept(Void v) {
-				closeLatch.countDown();
-			}
-		});
-		assertTrue("Client was not closed within 30 seconds", closeLatch.await(5, TimeUnit.SECONDS));
+		assertTrue("Client was not closed within 30 seconds", client.close().await(30, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -237,7 +229,7 @@ public class TcpClientTests {
 				.open(new Reconnect() {
 					@Override
 					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
-						switch(attempt) {
+						switch (attempt) {
 							case 1:
 								totalDelay.addAndGet(100);
 								return Tuple.of(currentAddress, 100L);
@@ -356,14 +348,14 @@ public class TcpClientTests {
 				.get().open().await();
 
 		connection.on()
-							.writeIdle(500, new Runnable() {
-								@Override
-								public void run() {
-									latch.countDown();
-								}
-							});
+		          .writeIdle(500, new Runnable() {
+			          @Override
+			          public void run() {
+				          latch.countDown();
+			          }
+		          });
 
-		for(int i = 0; i < 5; i++) {
+		for (int i = 0; i < 5; i++) {
 			Thread.sleep(100);
 			connection.sendAndForget(Buffer.wrap("a"));
 		}
@@ -381,33 +373,31 @@ public class TcpClientTests {
 				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
 						.env(env)
 						.options(new NettyClientSocketOptions()
-												 .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-													 @Override
-													 public void accept(ChannelPipeline pipeline) {
-														 pipeline.addLast(new HttpClientCodec());
-													 }
-												 }))
+								         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
+									         @Override
+									         public void accept(ChannelPipeline pipeline) {
+										         pipeline.addLast(new HttpClientCodec());
+									         }
+								         }))
 						.connect("www.google.com", 80)
 						.get().open().await();
 
 		final CountDownLatch latch = new CountDownLatch(1);
 		connection.sendAndReceive(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))
-							.onSuccess(new Consumer<HttpObject>() {
-								@Override
-								public void accept(HttpObject resp) {
-									latch.countDown();
-									System.out.println("resp: " + resp);
-								}
-							});
+		          .onSuccess(new Consumer<HttpObject>() {
+			          @Override
+			          public void accept(HttpObject resp) {
+				          latch.countDown();
+				          System.out.println("resp: " + resp);
+			          }
+		          });
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}
 
-	private final ExecutorService threadPool = Executors.newCachedThreadPool();
-
 	private static final class EchoServer implements Runnable {
-		private volatile ServerSocketChannel server;
 		private final    int                 port;
+		private volatile ServerSocketChannel server;
 		private volatile Thread              thread;
 
 		private EchoServer(int port) {
@@ -421,35 +411,35 @@ public class TcpClientTests {
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				thread = Thread.currentThread();
-				while(true) {
+				while (true) {
 					SocketChannel ch = server.accept();
 
 					ByteBuffer buffer = ByteBuffer.allocate(Buffer.SMALL_BUFFER_SIZE);
-					while(true) {
+					while (true) {
 						int read = ch.read(buffer);
-						if(read > 0) {
+						if (read > 0) {
 							buffer.flip();
 						}
 
 						int written = ch.write(buffer);
-						if(written < 0) {
+						if (written < 0) {
 							throw new IOException("Cannot write to client");
 						}
 						buffer.rewind();
 					}
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			Thread thread = this.thread;
-			if(thread != null) {
+			if (thread != null) {
 				thread.interrupt();
 			}
 			ServerSocketChannel server = this.server;
-			if(server != null) {
+			if (server != null) {
 				server.close();
 			}
 		}
@@ -469,18 +459,18 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while(true) {
+				while (true) {
 					SocketChannel ch = server.accept();
 					ch.close();
 				}
-			} catch(Exception e) {
+			} catch (Exception e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if(server != null) {
+			if (server != null) {
 				server.close();
 			}
 		}
@@ -500,19 +490,19 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while(true) {
+				while (true) {
 					SocketChannel ch = server.accept();
 					ByteBuffer buff = ByteBuffer.allocate(1);
 					ch.read(buff);
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 				// Server closed
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if(server != null) {
+			if (server != null) {
 				server.close();
 			}
 		}
@@ -532,26 +522,26 @@ public class TcpClientTests {
 				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
-				while(true) {
+				while (true) {
 					SocketChannel ch = server.accept();
-					while(true && server.isOpen()) {
+					while (true && server.isOpen()) {
 						ByteBuffer out = ByteBuffer.allocate(1);
-						out.put((byte)'\n');
+						out.put((byte) '\n');
 						out.flip();
 						ch.write(out);
 						Thread.sleep(100);
 					}
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 				// Server closed
-			} catch(InterruptedException ie) {
+			} catch (InterruptedException ie) {
 
 			}
 		}
 
 		public void close() throws IOException {
 			ServerSocketChannel server = this.server;
-			if(server != null) {
+			if (server != null) {
 				server.close();
 			}
 		}
