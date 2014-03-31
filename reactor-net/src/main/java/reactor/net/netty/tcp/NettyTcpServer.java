@@ -32,7 +32,6 @@ import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
-import reactor.core.spec.Reactors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -58,11 +57,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN>
- * 		The type that will be received by this server
- * @param <OUT>
- * 		The type that will be sent by this server
- *
+ * @param <IN>  The type that will be received by this server
+ * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
@@ -107,27 +103,27 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
 
-						if(log.isDebugEnabled()) {
+						if (log.isDebugEnabled()) {
 							log.debug("CONNECT {}", ch);
 						}
 
-						if(null != sslOptions) {
+						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
-							if(log.isDebugEnabled()) {
+							if (log.isDebugEnabled()) {
 								log.debug("SSL enabled using keystore {}",
 								          (null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if(options instanceof NettyServerSocketOptions
-								&& null != ((NettyServerSocketOptions)options).pipelineConfigurer()) {
-							((NettyServerSocketOptions)options).pipelineConfigurer().accept(ch.pipeline());
+						if (options instanceof NettyServerSocketOptions
+								&& null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
+							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
-								if(log.isDebugEnabled()) {
+								if (log.isDebugEnabled()) {
 									log.debug("CLOSE {}", ch);
 								}
 								close(ch);
@@ -140,7 +136,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	public TcpServer<IN, OUT> start(@Nullable final Runnable started) {
 		ChannelFuture bindFuture = bootstrap.bind();
-		if(null != started) {
+		if (null != started) {
 			bindFuture.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
@@ -166,7 +162,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 							@Override
 							public void operationComplete(Future future) throws Exception {
-								if(groupsToShutdown.decrementAndGet() == 0) {
+								if (groupsToShutdown.decrementAndGet() == 0) {
 									notifyShutdown();
 									d.accept(true);
 								}
@@ -187,14 +183,14 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		return new NettyNetChannel<IN, OUT>(
 				getEnvironment(),
 				getCodec(),
-				new NettyEventLoopDispatcher(((Channel)ioChannel).eventLoop(), 256),
+				new NettyEventLoopDispatcher(((Channel) ioChannel).eventLoop(), 256),
 				getReactor(),
-				(Channel)ioChannel
+				(Channel) ioChannel
 		);
 	}
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		AbstractNetChannel<IN, OUT> netChannel = (AbstractNetChannel<IN, OUT>)select(ch);
+		AbstractNetChannel<IN, OUT> netChannel = (AbstractNetChannel<IN, OUT>) select(ch);
 		NettyNetChannelInboundHandler handler = new NettyNetChannelInboundHandler()
 				.setNetChannel(netChannel);
 
