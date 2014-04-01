@@ -62,14 +62,16 @@ public class AsyncAppenderTests {
 	@Before
 	public void setup() throws IOException {
 		Path logDir = Paths.get("log");
-		Files.find(logDir, 1, (pth, attrs) -> pth.toString().endsWith(".log"))
-		     .forEach(pth -> {
-			     try {
-				     Files.delete(pth);
-			     } catch (IOException e) {
-				     throw new IllegalArgumentException(e.getMessage(), e);
-			     }
-		     });
+		if (Files.exists(logDir)) {
+			Files.find(logDir, 1, (pth, attrs) -> pth.toString().endsWith(".log"))
+			     .forEach(pth -> {
+				     try {
+					     Files.delete(pth);
+				     } catch (IOException e) {
+					     throw new IllegalArgumentException(e.getMessage(), e);
+				     }
+			     });
+		}
 
 		threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("benchmark-writers"));
 		syncLog = (Logger) LoggerFactory.getLogger("sync");
