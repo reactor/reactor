@@ -11,6 +11,9 @@ import net.openhft.chronicle.tools.ChronicleTools;
 import java.io.IOException;
 
 /**
+ * An {@literal AsyncAppender} subclass that first writes a log event to a durable {@literal Chronicle} using Java
+ * Chronicle before allowing the event to be queued.
+ *
  * @author Jon Brisbin
  */
 public class DurableAsyncAppender extends AsyncAppender {

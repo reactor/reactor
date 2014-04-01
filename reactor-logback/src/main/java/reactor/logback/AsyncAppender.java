@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.processor.Processor} internally
+ * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
+ * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
+ *
  * @author Jon Brisbin
  */
 public class AsyncAppender
@@ -114,10 +118,9 @@ public class AsyncAppender
 			doStart();
 		} catch (Throwable t) {
 			addError(t.getMessage(), t);
-			return;
+		} finally {
+			started = true;
 		}
-
-		started = true;
 	}
 
 	@Override
@@ -133,10 +136,9 @@ public class AsyncAppender
 			doStop();
 		} catch (Throwable t) {
 			addError(t.getMessage(), t);
-			return;
+		} finally {
+			started = false;
 		}
-
-		started = false;
 	}
 
 	@Override
