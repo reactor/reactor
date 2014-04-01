@@ -1,0 +1,72 @@
+package reactor.logback;
+
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.LoggingEvent;
+import net.openhft.chronicle.Chronicle;
+import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ExcerptAppender;
+import net.openhft.chronicle.IndexedChronicle;
+import net.openhft.chronicle.tools.ChronicleTools;
+
+import java.io.IOException;
+
+/**
+ * An {@literal AsyncAppender} subclass that first writes a log event to a durable {@literal Chronicle} using Java
+ * Chronicle before allowing the event to be queued.
+ *
+ * @author Jon Brisbin
+ */
+public class DurableAsyncAppender extends AsyncAppender {
+
+	private final Object writeMonitor = new Object();
+
+	private String basePath = "log";
+
+	private Chronicle       chronicle;
+	private ExcerptAppender appender;
+
+	public DurableAsyncAppender() {
+	}
+
+	public String getBasePath() {
+		return basePath;
+	}
+
+	public void setBasePath(String chronicle) {
+		this.basePath = chronicle;
+	}
+
+	@Override
+	protected void doStart() {
+		ChronicleTools.warmup();
+		ChronicleConfig config = ChronicleConfig.DEFAULT.clone()
+		                                                .synchronousMode(false)
+		                                                .useUnsafe(true);
+		this.basePath = (this.basePath.endsWith("/") ? this.basePath + getName() : this.basePath + "/" + getName());
+		try {
+			chronicle = new IndexedChronicle(basePath, config);
+			appender = chronicle.createAppender();
+		} catch (Throwable t) {
+			addError(t.getMessage(), t);
+		}
+	}
+
+	@Override
+	protected void doStop() {
+		try {
+			appender.flush();
+			chronicle.close();
+		} catch (IOException e) {
+			addError(e.getMessage(), e);
+		}
+	}
+
+	@Override
+	protected void queueLoggingEvent(ILoggingEvent evt) {
+		synchronized (writeMonitor) {
+			LoggingEventRecord.write(appender, (LoggingEvent) evt, isIncludeCallerData(), 1);
+		}
+		super.queueLoggingEvent(evt);
+	}
+
+}
