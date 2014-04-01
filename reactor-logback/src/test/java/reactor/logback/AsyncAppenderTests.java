@@ -16,19 +16,23 @@
 
 package reactor.logback;
 
+import ch.qos.logback.classic.Logger;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.LoggerFactory;
+import reactor.support.NamedDaemonThreadFactory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import ch.qos.logback.classic.Logger;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Jon Brisbin
@@ -43,42 +47,65 @@ public class AsyncAppenderTests {
 
 		char[] chars = new char[20000];
 		int len = chars.length;
-		for(int i = 0; i < len; i++) {
+		for (int i = 0; i < len; i++) {
 			chars[i] = ABCS.charAt(r.nextInt(ABCS.length()));
 		}
 		MSG = new String(chars);
 	}
 
-	final int timeout = 5;
+	final int timeout = 1;
 	ExecutorService threadPool;
+	Logger          syncLog;
+	Logger          asyncLog;
+	Logger          chronicleLog;
 
 	@Before
-	public void setup() {
-		threadPool = Executors.newCachedThreadPool();
+	public void setup() throws IOException {
+		Path logDir = Paths.get("log");
+		Files.find(logDir, 1, (pth, attrs) -> pth.toString().endsWith(".log"))
+		     .forEach(pth -> {
+			     try {
+				     Files.delete(pth);
+			     } catch (IOException e) {
+				     throw new IllegalArgumentException(e.getMessage(), e);
+			     }
+		     });
+
+		threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("benchmark-writers"));
+		syncLog = (Logger) LoggerFactory.getLogger("sync");
+		asyncLog = (Logger) LoggerFactory.getLogger("async");
+		chronicleLog = (Logger) LoggerFactory.getLogger("chronicle");
 	}
 
 	@After
 	public void cleanup() {
 		threadPool.shutdownNow();
+		chronicleLog.getLoggerContext().stop();
 	}
 
-	@Test
-	public void clockAsyncAppender() throws InterruptedException {
-		long n = benchmarkThread((Logger)LoggerFactory.getLogger("reactor"), timeout);
-		System.out.println("async: " + (n / timeout) + "/sec");
-	}
-
-	@Test
+	//@Test
 	public void clockSyncAppender() throws InterruptedException {
-		long m = benchmarkThread((Logger)LoggerFactory.getLogger("sync"), timeout);
+		long m = benchmarkThread(syncLog, timeout);
 		System.out.println("sync: " + (m / timeout) + "/sec");
 	}
 
-	@Ignore
+	//@Test
+	public void clockAsyncAppender() throws InterruptedException {
+		long n = benchmarkThread(asyncLog, timeout);
+		System.out.println("async: " + (n / timeout) + "/sec");
+	}
+
+	//@Test
+	public void clockChronicleAppender() throws InterruptedException {
+		long n = benchmarkThread(chronicleLog, timeout);
+		System.out.println("chronicle: " + (n / timeout) + "/sec");
+	}
+
 	@Test
-	public void clockBothAppenders() throws InterruptedException {
+	public void clockAllAppenders() throws InterruptedException {
 		clockSyncAppender();
 		clockAsyncAppender();
+		clockChronicleAppender();
 	}
 
 	private long benchmarkThread(final Logger logger, int timeout) throws InterruptedException {
@@ -86,19 +113,19 @@ public class AsyncAppenderTests {
 		final AtomicLong throughput = new AtomicLong(0);
 
 		int threads = Runtime.getRuntime().availableProcessors() * 4;
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new Runnable() {
 				@Override
 				public void run() {
-					while(latch.getCount() > 0) {
-						logger.warn("" + throughput.incrementAndGet());
+					while (latch.getCount() > 0) {
+						logger.warn("count: {}", throughput.incrementAndGet());
 					}
 				}
 			});
 		}
-
 		latch.await(timeout, TimeUnit.SECONDS);
 		latch.countDown();
+
 		return throughput.get();
 	}
 

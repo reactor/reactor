@@ -322,12 +322,12 @@ project('reactor-groovy') {
 }
 
 project('reactor-logback') {
-	description = 'Processor-based Logback async appender implementation'
-	dependencies {
-		compile project(':reactor-core')
+	description = 'Async Logback appender implementation'
 
-		// Logback
-		compile "ch.qos.logback:logback-classic:$logbackVersion"
+	dependencies {
+		compile project(':reactor-core'),
+				"ch.qos.logback:logback-classic:$logbackVersion"
+		optional "net.openhft:chronicle:$openHftChronicleVersion"
 	}
 }
 
