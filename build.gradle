@@ -58,9 +58,11 @@ ext {
 buildscript {
 	repositories {
 		maven { url "http://repo.spring.io/plugins-release" }
+		jcenter()
 	}
 	dependencies {
-		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4'
+		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4',
+				'com.github.jengelman.gradle.plugins:shadow:0.8'
 	}
 }
 apply from: "$gradleScriptDir/setup.gradle"
@@ -324,10 +326,27 @@ project('reactor-groovy') {
 project('reactor-logback') {
 	description = 'Async Logback appender implementation'
 
+	apply plugin: 'application'
+	apply plugin: 'shadow'
+
+	mainClassName = "reactor.logback.DurableLogUtility"
+	ext.baseName = "${archivesBaseName}-${version}"
+
 	dependencies {
 		compile project(':reactor-core'),
-				"ch.qos.logback:logback-classic:$logbackVersion"
-		optional "net.openhft:chronicle:$openHftChronicleVersion"
+				"ch.qos.logback:logback-classic:$logbackVersion",
+				"net.openhft:chronicle:$openHftChronicleVersion",
+				"commons-cli:commons-cli:1.2"
+	}
+
+	shadow {
+		artifactSet {
+			exclude 'ch.qos.logback'
+			exclude 'org.slf4j'
+			exclude 'org.intellij'
+			exclude 'org.jetbrains'
+			exclude 'META-INF/maven/org.slf4j'
+		}
 	}
 }
 
