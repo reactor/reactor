@@ -56,7 +56,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	public void close(@Nullable final Consumer<Void> onClose) {
+	public void close(@Nullable final Consumer<Boolean> onClose) {
 		if(closing) {
 			return;
 		}
@@ -64,9 +64,9 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		ioChannel.close().addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
-				if(future.isSuccess() && null != onClose) {
-					getEventsReactor().schedule(onClose, null);
-				} else {
+				if(null != onClose) {
+					getEventsReactor().schedule(onClose, future.isSuccess());
+				} else if(!future.isSuccess()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
 				closing = false;

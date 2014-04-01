@@ -170,8 +170,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	@Override
-	public Promise<Void> close() {
-		Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
+	public Promise<Boolean> close() {
+		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
 		eventsReactor.getConsumerRegistry().unregister(read.getObject());
 		close(d);
 		return d.compose();
