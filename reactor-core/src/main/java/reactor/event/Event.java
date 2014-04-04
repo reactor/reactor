@@ -16,8 +16,8 @@
 
 package reactor.event;
 
-import reactor.function.Consumer;
 import reactor.alloc.Recyclable;
+import reactor.function.Consumer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -39,27 +39,25 @@ import java.util.*;
 public class Event<T> implements Serializable, Recyclable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
-
-	private volatile UUID    id;
-	private volatile Headers headers;
-	private volatile Object  replyTo;
-	private volatile Object  key;
-	private volatile T       data;
-
 	private final transient Consumer<Throwable> errorConsumer;
+	private volatile        UUID                id;
+	private volatile        Headers             headers;
+	private volatile        Object              replyTo;
+	private volatile        Object              key;
+	private volatile        T                   data;
 
-  /**
-   * Creates a new Event based on the type T of {@data data}
-   *
-   * @param klass
-   */
-  public Event(Class<T> klass) {
-    this.headers = null;
-    this.data = null;
-    this.errorConsumer = null;
-  }
+	/**
+	 * Creates a new Event based on the type T of {@data data}
+	 *
+	 * @param klass
+	 */
+	public Event(Class<T> klass) {
+		this.headers = null;
+		this.data = null;
+		this.errorConsumer = null;
+	}
 
-  /**
+	/**
 	 * Creates a new Event with the given {@code headers} and {@code data}.
 	 *
 	 * @param headers
@@ -74,8 +72,7 @@ public class Event<T> implements Serializable, Recyclable {
 	}
 
 	/**
-	 * Creates a new Event with the given {@code headers}, {@code data} and
-	 * {@link reactor.function.Consumer<java.lang.Throwable>}.
+	 * Creates a new Event with the given {@code headers}, {@code data} and {@link reactor.function.Consumer<java.lang.Throwable>}.
 	 *
 	 * @param headers
 	 * 		The headers
@@ -91,8 +88,7 @@ public class Event<T> implements Serializable, Recyclable {
 	}
 
 	/**
-	 * Creates a new Event with the given {@code data}. The event will have
-	 * empty headers.
+	 * Creates a new Event with the given {@code data}. The event will have empty headers.
 	 *
 	 * @param data
 	 * 		The data
@@ -137,7 +133,7 @@ public class Event<T> implements Serializable, Recyclable {
 	 * @return Unique {@link UUID} of this event.
 	 */
 	public synchronized UUID getId() {
-		if(null == id) {
+		if (null == id) {
 			id = UUIDUtils.create();
 		}
 		return id;
@@ -149,7 +145,7 @@ public class Event<T> implements Serializable, Recyclable {
 	 * @return The Event's Headers
 	 */
 	public synchronized Headers getHeaders() {
-		if(null == headers) {
+		if (null == headers) {
 			headers = new Headers();
 		}
 		return headers;
@@ -246,7 +242,7 @@ public class Event<T> implements Serializable, Recyclable {
 	 * @return {@literal event copy}
 	 */
 	public <E> Event<E> copy(E data) {
-		if(null != replyTo) {
+		if (null != replyTo) {
 			return new Event<E>(headers, data, errorConsumer).setReplyTo(replyTo);
 		} else {
 			return new Event<E>(headers, data, errorConsumer);
@@ -260,7 +256,7 @@ public class Event<T> implements Serializable, Recyclable {
 	 * 		The error to consume
 	 */
 	public void consumeError(Throwable throwable) {
-		if(null != errorConsumer) {
+		if (null != errorConsumer) {
 			errorConsumer.accept(throwable);
 		}
 	}
@@ -268,7 +264,7 @@ public class Event<T> implements Serializable, Recyclable {
 	@Override
 	public void recycle() {
 		this.id = null;
-		if(null != this.headers) {
+		if (null != this.headers) {
 			this.headers.headers.clear();
 		}
 		this.replyTo = null;
@@ -295,9 +291,8 @@ public class Event<T> implements Serializable, Recyclable {
 	}
 
 	/**
-	 * Headers are a Map-like structure of name-value pairs. Header names are case-insensitive,
-	 * as determined by {@link String#CASE_INSENSITIVE_ORDER}. A header can be removed by
-	 * setting its value to {@code null}.
+	 * Headers are a Map-like structure of name-value pairs. Header names are case-insensitive, as determined by {@link
+	 * String#CASE_INSENSITIVE_ORDER}. A header can be removed by setting its value to {@code null}.
 	 */
 	public static class Headers implements Serializable, Iterable<Tuple2<String, String>> {
 
@@ -318,7 +313,7 @@ public class Event<T> implements Serializable, Recyclable {
 		private Headers(boolean sealed, Map<String, String> headers) {
 			Map<String, String> copy = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
 			copyHeaders(headers, copy);
-			if(sealed) {
+			if (sealed) {
 				this.headers = Collections.unmodifiableMap(copy);
 			} else {
 				this.headers = copy;
@@ -326,9 +321,8 @@ public class Event<T> implements Serializable, Recyclable {
 		}
 
 		/**
-		 * Creates a new Headers instance by copying the contents of the given {@code headers} Map.
-		 * Note that, as the map is copied, subsequent changes to its contents will have no
-		 * effect upon the Headers.
+		 * Creates a new Headers instance by copying the contents of the given {@code headers} Map. Note that, as the map is
+		 * copied, subsequent changes to its contents will have no effect upon the Headers.
 		 *
 		 * @param headers
 		 * 		The map to copy.
@@ -345,9 +339,8 @@ public class Event<T> implements Serializable, Recyclable {
 		}
 
 		/**
-		 * Sets all of the headers represented by entries in the given {@code headers} Map.
-		 * Any entry with a null value will cause the header matching the entry's name to
-		 * be removed.
+		 * Sets all of the headers represented by entries in the given {@code headers} Map. Any entry with a null value will
+		 * cause the header matching the entry's name to be removed.
 		 *
 		 * @param headers
 		 * 		The map of headers to set.
@@ -355,10 +348,10 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return {@code this}
 		 */
 		public Headers setAll(Map<String, String> headers) {
-			if(null == headers || headers.isEmpty()) {
+			if (null == headers || headers.isEmpty()) {
 				return this;
 			} else {
-				synchronized(this.monitor) {
+				synchronized (this.monitor) {
 					copyHeaders(headers, this.headers);
 				}
 			}
@@ -366,8 +359,7 @@ public class Event<T> implements Serializable, Recyclable {
 		}
 
 		/**
-		 * Set the header value. If {@code value} is {@code null} the header with the given {@code
-		 * name} will be removed.
+		 * Set the header value. If {@code value} is {@code null} the header with the given {@code name} will be removed.
 		 *
 		 * @param name
 		 * 		The name of the header.
@@ -377,15 +369,15 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return {@code this}
 		 */
 		public Headers set(String name, String value) {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				setHeader(name, value, headers);
 			}
 			return this;
 		}
 
 		/**
-		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
-		 * it should send replies. If {@code id} is {@code null} the origin header will be removed.
+		 * Set the origin header. The origin is simply a unique id to indicate to consumers where it should send replies. If
+		 * {@code id} is {@code null} the origin header will be removed.
 		 *
 		 * @param id
 		 * 		The id of the origin component.
@@ -398,8 +390,19 @@ public class Event<T> implements Serializable, Recyclable {
 		}
 
 		/**
-		 * Set the origin header. The origin is simply a unique id to indicate to consumers where
-		 * it should send replies. If {@code id} is {@code null} this origin header will be removed.
+		 * Get the origin header
+		 *
+		 * @return The origin header, may be {@code null}.
+		 */
+		public String getOrigin() {
+			synchronized (this.monitor) {
+				return headers.get(ORIGIN);
+			}
+		}
+
+		/**
+		 * Set the origin header. The origin is simply a unique id to indicate to consumers where it should send replies. If
+		 * {@code id} is {@code null} this origin header will be removed.
 		 *
 		 * @param id
 		 * 		The id of the origin component.
@@ -407,21 +410,10 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return {@code this}
 		 */
 		public Headers setOrigin(String id) {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				setHeader(ORIGIN, id, headers);
 			}
 			return this;
-		}
-
-		/**
-		 * Get the origin header
-		 *
-		 * @return The origin header, may be {@code null}.
-		 */
-		public String getOrigin() {
-			synchronized(this.monitor) {
-				return headers.get(ORIGIN);
-			}
 		}
 
 		/**
@@ -433,7 +425,7 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return The value of the header, or {@code null} if none exists.
 		 */
 		public String get(String name) {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return headers.get(name);
 			}
 		}
@@ -447,7 +439,7 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return {@code true} if a value exists, {@code false} otherwise.
 		 */
 		public boolean contains(String name) {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return headers.containsKey(name);
 			}
 		}
@@ -458,7 +450,7 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return The unmodifiable header map
 		 */
 		public Map<String, String> asMap() {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return Collections.unmodifiableMap(headers);
 			}
 		}
@@ -469,7 +461,7 @@ public class Event<T> implements Serializable, Recyclable {
 		 * @return A read-only version of the headers.
 		 */
 		public Headers readOnly() {
-			synchronized(monitor) {
+			synchronized (monitor) {
 				return new Headers(true, headers);
 			}
 		}
@@ -479,25 +471,30 @@ public class Event<T> implements Serializable, Recyclable {
 		 */
 		@Override
 		public Iterator<Tuple2<String, String>> iterator() {
-			synchronized(this.monitor) {
+			synchronized (this.monitor) {
 				List<Tuple2<String, String>> headers = new ArrayList<Tuple2<String, String>>(this.headers.size());
-				for(Map.Entry<String, String> header : this.headers.entrySet()) {
+				for (Map.Entry<String, String> header : this.headers.entrySet()) {
 					headers.add(Tuple.of(header.getKey(), header.getValue()));
 				}
 				return Collections.unmodifiableList(headers).iterator();
 			}
 		}
 
+		@Override
+		public String toString() {
+			return headers.toString();
+		}
+
 		private void copyHeaders(Map<String, String> source, Map<String, String> target) {
-			if(source != null) {
-				for(Map.Entry<String, String> entry : source.entrySet()) {
+			if (source != null) {
+				for (Map.Entry<String, String> entry : source.entrySet()) {
 					setHeader(entry.getKey(), entry.getValue(), target);
 				}
 			}
 		}
 
 		private void setHeader(String name, String value, Map<String, String> target) {
-			if(value == null) {
+			if (value == null) {
 				target.remove(name);
 			} else {
 				target.put(name, value);
