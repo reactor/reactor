@@ -48,7 +48,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	public <V extends T> Registration<V> register(final Selector sel, V obj) {
 		final SelectorCacheKeyPredicate selectorPredicate = new SelectorCacheKeyPredicate(sel);
 
-		final AtomicReference<CachableRegistration<V>> ref = new AtomicReference<>();
+		final AtomicReference<CachableRegistration<V>> ref = new AtomicReference<CachableRegistration<V>>();
 		final CachableRegistration<V> reg = new CachableRegistration<V>(
 				sel,
 				obj,
