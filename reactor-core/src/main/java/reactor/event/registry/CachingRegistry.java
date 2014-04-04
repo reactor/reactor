@@ -55,7 +55,14 @@ public class CachingRegistry<T> implements Registry<T> {
 				new Runnable() {
 					@Override
 					public void run() {
-						registrations.remove(ref.get());
+						registrations.withWriteLockAndDelegate(
+								new CheckedProcedure<MutableList<Registration<? extends T>>>() {
+									@Override
+									public void safeValue(MutableList<Registration<? extends T>> regs) throws Exception {
+										regs.remove(ref.get());
+									}
+								}
+						);
 						cache.keysView()
 						     .select(selectorPredicate)
 						     .forEach(new CheckedProcedure<Object>() {
