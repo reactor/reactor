@@ -308,16 +308,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					log.info("CONNECTED: " + future.channel());
 				}
 
-				final NetChannel<IN, OUT> ch = future.channel()
-				                                     .pipeline()
-				                                     .get(NettyNetChannelInboundHandler.class)
-				                                     .getNetChannel();
+				final Channel ioCh = future.channel();
+				final ChannelPipeline ioChPipline = ioCh.pipeline();
+				final NetChannel<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).getNetChannel();
 
-				future.channel().closeFuture().addListener(new ChannelFutureListener() {
+				ioChPipline.addLast(new ChannelDuplexHandler(){
 					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
+					public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 						if (log.isInfoEnabled()) {
-							log.info("CLOSED: " + future.channel());
+							log.info("CLOSED: " + ioCh);
 						}
 						notifyClose(ch);
 
@@ -331,10 +330,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						} else {
 							closing = true;
 						}
+						super.channelInactive(ctx);
 					}
 				});
 
-				future.channel().eventLoop().submit(new Runnable() {
+				ioCh.eventLoop().submit(new Runnable() {
 					@Override
 					public void run() {
 						connections.accept(ch);
