@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Implementation of {@link reactor.event.registry.Registry} that uses a level 1 cache. New registrations are cached if
@@ -47,12 +48,14 @@ public class CachingRegistry<T> implements Registry<T> {
 	public <V extends T> Registration<V> register(final Selector sel, V obj) {
 		final SelectorCacheKeyPredicate selectorPredicate = new SelectorCacheKeyPredicate(sel);
 
+		final AtomicReference<CachableRegistration<V>> ref = new AtomicReference<>();
 		final CachableRegistration<V> reg = new CachableRegistration<V>(
 				sel,
 				obj,
 				new Runnable() {
 					@Override
 					public void run() {
+						registrations.remove(ref.get());
 						cache.keysView()
 						     .select(selectorPredicate)
 						     .forEach(new CheckedProcedure<Object>() {
@@ -65,6 +68,9 @@ public class CachingRegistry<T> implements Registry<T> {
 					}
 				}
 		);
+		// this little trick is to be able to reference this reg later for cancellation
+		ref.set(reg);
+		// add to main list
 		registrations.withWriteLockAndDelegate(
 				new CheckedProcedure<MutableList<Registration<? extends T>>>() {
 					@Override
