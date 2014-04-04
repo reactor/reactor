@@ -132,9 +132,9 @@ configure(allprojects) { project ->
 	}
 
 	repositories {
-		maven { url 'http://repo.spring.io/libs-milestone' }
 		//mavenLocal()
 		mavenCentral()
+		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
 
 	// dependencies that are common across all java projects
