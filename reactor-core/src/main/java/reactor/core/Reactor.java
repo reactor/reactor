@@ -73,8 +73,8 @@ public class Reactor implements Observable {
 	 * EventRouter} that broadcast events to all of the registered consumers that {@link Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
-	 *                   SynchronousDispatcher} is used
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link SynchronousDispatcher} is used
 	 */
 	public Reactor(@Nullable Dispatcher dispatcher) {
 		this(dispatcher, null);
@@ -84,12 +84,12 @@ public class Reactor implements Observable {
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
 	 * CachingRegistry}.
 	 *
-	 * @param dispatcher  The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
-	 *                    used.
-	 * @param eventRouter The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
-	 *                    in which case the default event router that broadcasts events to all of the registered consumers
-	 *                    that {@link Selector#matches(Object) match} the notification key and does not perform any type
-	 *                    conversion will be used.
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is used.
+	 * @param eventRouter
+	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
+	 * 		default event router that broadcasts events to all of the registered consumers that {@link
+	 * 		Selector#matches(Object) match} the notification key and does not perform any type conversion will be used.
 	 */
 	public Reactor(@Nullable Dispatcher dispatcher,
 	               @Nullable EventRouter eventRouter) {
@@ -110,13 +110,14 @@ public class Reactor implements Observable {
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
 	 *
-	 * @param dispatcher       The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is
-	 *                         used.
-	 * @param eventRouter      The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null}
-	 *                         in which case the default event router that broadcasts events to all of the registered consumers
-	 *                         that {@link Selector#matches(Object) match} the notification key and does not perform any type
-	 *                         conversion will be used.
-	 * @param consumerRegistry The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
+	 * @param dispatcher
+	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is used.
+	 * @param eventRouter
+	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
+	 * 		default event router that broadcasts events to all of the registered consumers that {@link
+	 * 		Selector#matches(Object) match} the notification key and does not perform any type conversion will be used.
+	 * @param consumerRegistry
+	 * 		The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
 	 */
 	public Reactor(@Nonnull Registry<Consumer<? extends Event<?>>> consumerRegistry,
 	               @Nullable Dispatcher dispatcher,
@@ -270,17 +271,19 @@ public class Reactor implements Observable {
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor sendAndReceive(Object key, E ev, Consumer<E> reply) {
+	public <REQ extends Event<?>, RESP extends Event<?>> Reactor sendAndReceive(Object key,
+	                                                                            REQ ev,
+	                                                                            Consumer<RESP> reply) {
 		Selector sel = Selectors.anonymous();
-		on(sel, new SingleUseConsumer<E>(reply)).cancelAfterUse();
+		on(sel, new SingleUseConsumer<RESP>(reply)).cancelAfterUse();
 		notify(key, ev.setReplyTo(sel.getObject()));
 		return this;
 	}
 
 	@Override
-	public <E extends Event<?>, S extends Supplier<E>> Reactor sendAndReceive(Object key,
-	                                                                          S supplier,
-	                                                                          Consumer<E> reply) {
+	public <REQ extends Event<?>, RESP extends Event<?>, S extends Supplier<REQ>> Reactor sendAndReceive(Object key,
+	                                                                                                     S supplier,
+	                                                                                                     Consumer<RESP> reply) {
 		return sendAndReceive(key, supplier.get(), reply);
 	}
 
@@ -347,9 +350,12 @@ public class Reactor implements Observable {
 	 * Schedule an arbitrary {@link reactor.function.Consumer} to be executed on the current Reactor  {@link
 	 * reactor.event.dispatch.Dispatcher}, passing the given {@param data}.
 	 *
-	 * @param consumer The {@link reactor.function.Consumer} to invoke.
-	 * @param data     The data to pass to the consumer.
-	 * @param <T>      The type of the data.
+	 * @param consumer
+	 * 		The {@link reactor.function.Consumer} to invoke.
+	 * @param data
+	 * 		The data to pass to the consumer.
+	 * @param <T>
+	 * 		The type of the data.
 	 */
 	public <T> void schedule(final Consumer<T> consumer, final T data) {
 		dispatcher.dispatch(null, null, null, dispatchErrorHandler, eventRouter, new Consumer<Event<?>>() {
