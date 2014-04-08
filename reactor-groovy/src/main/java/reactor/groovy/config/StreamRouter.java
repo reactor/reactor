@@ -4,7 +4,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
-import reactor.event.routing.ConsumerFilteringEventRouter;
+import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.ConsumerInvoker;
 import reactor.event.support.CallbackEvent;
 import reactor.filter.Filter;
@@ -16,13 +16,13 @@ import java.util.List;
 /**
  * @author Stephane Maldini
  */
-public class StreamEventRouter extends ConsumerFilteringEventRouter {
+public class StreamRouter extends ConsumerFilteringRouter {
 
 	public static final String KEY_HEADER = "___key";
 
 	private final Deferred<Event<?>, Stream<Event<?>>> stream;
 
-	public StreamEventRouter(Filter filter, ConsumerInvoker consumerInvoker, Deferred<Event<?>,
+	public StreamRouter(Filter filter, ConsumerInvoker consumerInvoker, Deferred<Event<?>,
 			Stream<Event<?>>> stream) {
 		super(filter, consumerInvoker);
 		this.stream = stream;

@@ -28,13 +28,13 @@ import reactor.util.Assert;
 import java.util.List;
 
 /**
- * An {@link reactor.event.routing.EventRouter} that {@link Filter#filter filters} consumers before routing events to
+ * An {@link Router} that {@link Filter#filter filters} consumers before routing events to
  * them.
  *
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ConsumerFilteringEventRouter implements EventRouter {
+public class ConsumerFilteringRouter implements Router {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private final Filter          filter;
@@ -47,7 +47,7 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
-	public ConsumerFilteringEventRouter(Filter filter, ConsumerInvoker consumerInvoker) {
+	public ConsumerFilteringRouter(Filter filter, ConsumerInvoker consumerInvoker) {
 		Assert.notNull(filter, "filter must not be null");
 		Assert.notNull(consumerInvoker, "consumerInvoker must not be null");
 
@@ -56,31 +56,26 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	}
 
 	@Override
-	public void route(Object key, Event<?> event,
-	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	public void route(Object key, Object event,
+	                  List<Registration<? extends Consumer<?>>> consumers,
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
-			List<Registration<? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
+			List<Registration<? extends Consumer<?>>> regs = filter.filter(consumers, key);
 			int size = regs.size();
 			// old-school for loop is much more efficient than using an iterator
 			for (int i = 0; i < size; i++) {
-				Registration<? extends Consumer<? extends Event<?>>> reg = regs.get(i);
+				Registration<? extends Consumer<?>> reg = regs.get(i);
 
 				if (reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
 				try {
-					if (null != reg.getSelector().getHeaderResolver()) {
-						event.getHeaders().setAll(reg.getSelector().getHeaderResolver().resolve(key));
-					}
 					consumerInvoker.invoke(reg.getObject(), Void.TYPE, event);
 				} catch (CancelConsumerException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {
-					if (null != event.getErrorConsumer()) {
-						event.consumeError(t);
-					} else if (null != errorConsumer) {
+					if (null != errorConsumer) {
 						errorConsumer.accept(t);
 					} else {
 						logger.error("Event routing failed for {}: {}", reg.getObject(), t.getMessage(), t);

@@ -35,7 +35,7 @@ import java.util.List;
 
 /**
  * A generic environment-aware class for specifying components that need to be configured
- * with an {@link Environment}, {@link Dispatcher}, and {@link EventRouter}.
+ * with an {@link Environment}, {@link Dispatcher}, and {@link reactor.event.routing.Router}.
  *
  * @param <SPEC>   The DispatcherComponentSpec subclass
  * @param <TARGET> The type that this spec will create
@@ -47,7 +47,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private Converter                              converter;
 	private EventRoutingStrategy                   eventRoutingStrategy;
-	private EventRouter                            eventRouter;
+	private Router                                 router;
 	private ConsumerInvoker                        consumerInvoker;
 	private Filter                                 eventFilter;
 	private Consumer<Throwable>                    dispatchErrorHandler;
@@ -85,7 +85,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public final SPEC eventFilter(Filter filter) {
-		Assert.isNull(eventRouter, "Cannot set both a filter and a router. Use one or the other.");
+		Assert.isNull(router, "Cannot set both a filter and a router. Use one or the other.");
 		this.eventFilter = filter;
 		return (SPEC) this;
 	}
@@ -96,7 +96,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public final SPEC consumerInvoker(ConsumerInvoker consumerInvoker) {
-		Assert.isNull(eventRouter, "Cannot set both a consumerInvoker and a router. Use one or the other.");
+		Assert.isNull(router, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.consumerInvoker = consumerInvoker;
 		return (SPEC) this;
 	}
@@ -106,10 +106,10 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 *
 	 * @return {@code this}
 	 */
-	public final SPEC eventRouter(EventRouter router) {
+	public final SPEC eventRouter(Router router) {
 		Assert.isNull(eventFilter, "Cannot set both a filter and a router. Use one or the other.");
 		Assert.isNull(consumerInvoker, "Cannot set both a consumerInvoker and a router. Use one or the other.");
-		this.eventRouter = router;
+		this.router = router;
 		return (SPEC) this;
 	}
 
@@ -238,17 +238,17 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		}
 		return new Reactor((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		                   dispatcher,
-		                   (eventRouter != null ? eventRouter : createEventRouter()),
+		                   (router != null ? router : createEventRouter()),
 		                   dispatchErrorHandler,
 		                   uncaughtErrorHandler);
 	}
 
-	private EventRouter createEventRouter() {
-		EventRouter evr = new ConsumerFilteringEventRouter(
+	private Router createEventRouter() {
+		Router evr = new ConsumerFilteringRouter(
 				eventFilter != null ? eventFilter : createFilter(),
 				consumerInvoker != null ? consumerInvoker : new ArgumentConvertingConsumerInvoker(converter));
 		if (traceEventPath) {
-			return new TraceableDelegatingEventRouter(evr);
+			return new TraceableDelegatingRouter(evr);
 		} else {
 			return evr;
 		}

@@ -24,7 +24,7 @@ import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
 import reactor.event.Event
 import reactor.event.registry.Registration;
-import reactor.event.routing.ConsumerFilteringEventRouter;
+import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.ConsumerInvoker;
 import reactor.event.selector.Selector;
 import spock.lang.Specification
@@ -40,7 +40,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringEventRouter(filter, consumerInvoker)
+		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "An event is routed to a single registered consumer"
 		Registration registration = Mock(Registration)
@@ -64,7 +64,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringEventRouter(filter, consumerInvoker)
+		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "an event is routed to a paused consumer"
 		Registration registration = Mock()
@@ -89,7 +89,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringEventRouter(filter, consumerInvoker)
+		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "an event is routed to a paused consumer"
 		Registration registration = Mock(Registration)
@@ -114,7 +114,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringEventRouter(filter, consumerInvoker)
+		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 		Registration registration = Mock(Registration)
 
 		when: "an event is routed to a cancel after use consumer"
@@ -140,7 +140,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringEventRouter(filter, consumerInvoker)
+		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 		Registration registration = Mock(Registration)
 
 		when: "event routing triggers an exception"

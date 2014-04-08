@@ -20,12 +20,11 @@ package reactor.core
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
-import reactor.event.routing.ConsumerFilteringEventRouter
+import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
 import reactor.function.Functions
 import reactor.function.support.SingleUseConsumer
-import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -64,8 +63,8 @@ class ReactorsSpec extends Specification {
 
 		then:
 			"EventRouter has been correctly set"
-			reactor.eventRouter instanceof ConsumerFilteringEventRouter
-			((ConsumerFilteringEventRouter) reactor.eventRouter).filter instanceof RoundRobinFilter
+			reactor.router instanceof ConsumerFilteringRouter
+			((ConsumerFilteringRouter) reactor.router).filter instanceof RoundRobinFilter
 	}
 
 	def "A Reactor can dispatch events properly"() {

@@ -35,7 +35,7 @@ import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
-import reactor.event.routing.ConsumerFilteringEventRouter
+import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
 import reactor.function.support.Boundary
@@ -62,7 +62,7 @@ class DispatcherSpec extends Specification {
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
 			def registry = new CachingRegistry<Consumer<Event>>()
-			def eventRouter = new ConsumerFilteringEventRouter(
+			def eventRouter = new ConsumerFilteringRouter(
 					new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
 			def sel = $('test')
 			registry.register(sel, consumer {

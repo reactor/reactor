@@ -12,8 +12,7 @@ import reactor.event.Event
 import reactor.event.dispatch.Dispatcher
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerInvoker
-import reactor.event.routing.EventRouter
-import reactor.event.selector.ObjectSelector
+import reactor.event.routing.Router
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
 import reactor.event.support.CallbackEvent
@@ -43,7 +42,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	Environment env
 	Converter converter
-	EventRouter router
+	Router router
 	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
 	Filter filter
@@ -247,7 +246,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 						((CallbackEvent) eventEvent).callback()
 				}
 			})
-			spec.eventRouter(new StreamEventRouter(filter ?: DEFAULT_FILTER,
+			spec.eventRouter(new StreamRouter(filter ?: DEFAULT_FILTER,
 					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), deferred))
 
 		} else {
@@ -324,7 +323,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 		@Override
 		boolean test(Event<?> event) {
-			sel.matches(event.headers.get(StreamEventRouter.KEY_HEADER))
+			sel.matches(event.headers.get(StreamRouter.KEY_HEADER))
 		}
 	}
 

@@ -17,9 +17,8 @@
 package reactor.event.dispatch;
 
 import reactor.alloc.Recyclable;
-import reactor.event.Event;
 import reactor.event.registry.Registry;
-import reactor.event.routing.EventRouter;
+import reactor.event.routing.Router;
 import reactor.function.Consumer;
 import reactor.util.Assert;
 
@@ -77,20 +76,20 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public final <E extends Event<?>> void dispatch(E event,
-	                                                EventRouter eventRouter,
-	                                                Consumer<E> consumer,
-	                                                Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	public final <E> void dispatch(E event,
+	                               Router router,
+	                               Consumer<E> consumer,
+	                               Consumer<Throwable> errorConsumer) {
+		dispatch(null, event, null, errorConsumer, router, consumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key,
-	                                          E event,
-	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
-	                                          Consumer<Throwable> errorConsumer,
-	                                          EventRouter eventRouter,
-	                                          Consumer<E> completionConsumer) {
+	public <E> void dispatch(Object key,
+	                         E event,
+	                         Registry<Consumer<?>> consumerRegistry,
+	                         Consumer<Throwable> errorConsumer,
+	                         Router router,
+	                         Consumer<E> completionConsumer) {
 		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
 		try {
@@ -103,10 +102,10 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			}
 
 			task.setKey(key)
-					.setEvent(event)
+					.setData(event)
 					.setConsumerRegistry(consumerRegistry)
 					.setErrorConsumer(errorConsumer)
-					.setEventRouter(eventRouter)
+					.setRouter(router)
 					.setCompletionConsumer(completionConsumer);
 
 			if (isInContext) {
@@ -114,7 +113,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			} else {
 				execute(task);
 			}
-		}catch(Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
@@ -130,13 +129,13 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	protected abstract void execute(Task task);
 
 	protected static void route(Task task) {
-		if (null == task.eventRouter) {
+		if (null == task.router) {
 			return;
 		}
 		try {
-			task.eventRouter.route(
+			task.router.route(
 					task.key,
-					task.event,
+					task.data,
 					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
 					task.completionConsumer,
 					task.errorConsumer
@@ -148,25 +147,25 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
 	public abstract class Task implements Runnable, Recyclable {
 
-		protected volatile Object                                 key;
-		protected volatile Registry<Consumer<? extends Event<?>>> consumerRegistry;
-		protected volatile Event<?>                               event;
-		protected volatile Consumer<?>                            completionConsumer;
-		protected volatile Consumer<Throwable>                    errorConsumer;
-		protected volatile EventRouter                            eventRouter;
+		protected volatile Object                key;
+		protected volatile Registry<Consumer<?>> consumerRegistry;
+		protected volatile Object                data;
+		protected volatile Consumer<?>           completionConsumer;
+		protected volatile Consumer<Throwable>   errorConsumer;
+		protected volatile Router                router;
 
 		public Task setKey(Object key) {
 			this.key = key;
 			return this;
 		}
 
-		public Task setConsumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+		public Task setConsumerRegistry(Registry<Consumer<?>> consumerRegistry) {
 			this.consumerRegistry = consumerRegistry;
 			return this;
 		}
 
-		public Task setEvent(Event<?> event) {
-			this.event = event;
+		public Task setData(Object data) {
+			this.data = data;
 			return this;
 		}
 
@@ -180,8 +179,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			return this;
 		}
 
-		public Task setEventRouter(EventRouter eventRouter) {
-			this.eventRouter = eventRouter;
+		public Task setRouter(Router router) {
+			this.router = router;
 			return this;
 		}
 
@@ -189,10 +188,10 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		public void recycle() {
 			key = null;
 			consumerRegistry = null;
-			event = null;
+			data = null;
 			completionConsumer = null;
 			errorConsumer = null;
-			eventRouter = null;
+			router = null;
 		}
 
 	}

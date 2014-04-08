@@ -23,12 +23,13 @@ import reactor.event.Event;
 import reactor.event.registry.Registration;
 
 /**
- * An {@code EventRouter} is used to route an {@code Event} to {@link Consumer Consumers}.
+ * An {@code Router} is used to route an {@code Object} to {@link Consumer Consumers}.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  *
  */
-public interface EventRouter {
+public interface Router {
 
 	/**
 	 * Routes the {@code event}, triggered by a notification with the given {@code key} to the
@@ -39,11 +40,12 @@ public interface EventRouter {
 	 * {@code errorConsumer} may be null, in which case the exception is swallowed.
 	 *
 	 * @param key The notification key
-	 * @param event The {@code Event} to route
+	 * @param data The {@code Object} to route
 	 * @param consumers The {@code Consumer}s to route the event to.
 	 * @param completionConsumer The {@code Consumer} to invoke upon successful completion of event routing
 	 * @param errorConsumer The {@code Consumer} to invoke when an error occurs during event routing
 	 */
-	void route(Object key, Event<?> event, List<Registration<? extends Consumer<? extends Event<?>>>> consumers, Consumer<?> completionConsumer, Consumer<Throwable> errorConsumer);
+	void route(Object key, Object data, List<Registration<? extends Consumer<?>>> consumers,
+	           Consumer<?> completionConsumer, Consumer<Throwable> errorConsumer);
 
 }

@@ -18,7 +18,7 @@ package reactor.event.dispatch;
 
 import reactor.event.Event;
 import reactor.event.registry.Registry;
-import reactor.event.routing.EventRouter;
+import reactor.event.routing.Router;
 import reactor.function.Consumer;
 
 import java.util.concurrent.TimeUnit;
@@ -58,21 +58,21 @@ public final class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(E event,
-	                                          EventRouter eventRouter,
+	public <E> void dispatch(E event,
+	                                          Router router,
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+		dispatch(null, event, null, errorConsumer, router, consumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key,
+	public <E> void dispatch(Object key,
 	                                          E event,
-	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Registry<Consumer<?>> consumerRegistry,
 	                                          Consumer<Throwable> errorConsumer,
-	                                          EventRouter eventRouter,
+	                                          Router router,
 	                                          Consumer<E> completionConsumer) {
-		eventRouter.route(key,
+		router.route(key,
 		                  event,
 		                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
 		                  completionConsumer,

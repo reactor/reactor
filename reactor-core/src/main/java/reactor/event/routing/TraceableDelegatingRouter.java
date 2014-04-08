@@ -12,12 +12,12 @@ import java.util.List;
 /**
  * @author Jon Brisbin
  */
-public class TraceableDelegatingEventRouter implements EventRouter {
+public class TraceableDelegatingRouter implements Router {
 
-	private final EventRouter delegate;
-	private final Logger      log;
+	private final Router delegate;
+	private final Logger log;
 
-	public TraceableDelegatingEventRouter(EventRouter delegate) {
+	public TraceableDelegatingRouter(Router delegate) {
 		Assert.notNull(delegate, "Delegate EventRouter cannot be null.");
 		this.delegate = delegate;
 		this.log = LoggerFactory.getLogger(delegate.getClass());
@@ -25,13 +25,14 @@ public class TraceableDelegatingEventRouter implements EventRouter {
 
 	@Override
 	public void route(Object key,
-	                  Event<?> event,
-	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                  Object event,
+	                  List<Registration<? extends Consumer<?>>> consumers,
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
 			log.trace("route({}, {}, {}, {}, {})", key, event, consumers, completionConsumer, errorConsumer);
 		}
+		delegate.route(key,event,consumers,completionConsumer,errorConsumer);
 	}
 
 }
