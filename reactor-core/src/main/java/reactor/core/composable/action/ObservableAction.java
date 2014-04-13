@@ -13,50 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
 import reactor.core.Observable;
 import reactor.event.Event;
-
-import java.util.ArrayList;
-import java.util.List;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class CollectAction<T> extends BatchAction<T> implements Flushable<T> {
+public class ObservableAction<T> extends Action<T, T> {
 
-	private final List<T> values;
+	private final Observable observable;
+	private final Object     key;
 
-	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
-		super(batchsize, d, successKey, failureKey);
-		values = new ArrayList<T>(batchsize > 0 ? batchsize : 256);
+	public ObservableAction(Dispatcher dispatcher, Observable observable, Object key) {
+		super(dispatcher, null);
+		this.observable = observable;
+		this.key = key;
 	}
 
 	@Override
-	public void doNext(Event<T> value) {
-		values.add(value.getData());
+	public void doNext(T ev) {
+		observable.notify(key, Event.wrap(ev));
+		available();
 	}
-
-	@Override
-	public void doFlush(Event<T> ev) {
-		if (values.isEmpty()) {
-			return;
-		}
-		notifyValue(Event.wrap(new ArrayList<T>(values)));
-		values.clear();
-	}
-
-	@Override
-	public Flushable<T> flush() {
-		lock.lock();
-		try {
-			doFlush(null);
-		} finally {
-			lock.unlock();
-		}
-		return this;
-	}
-
 }

@@ -16,20 +16,17 @@
 
 package reactor.core.composable;
 
+import org.reactivestreams.spi.Subscriber;
 import reactor.core.Environment;
 import reactor.core.Observable;
-import reactor.core.Reactor;
-import reactor.core.action.*;
-import reactor.event.Event;
-import reactor.event.selector.ObjectSelector;
-import reactor.event.selector.Selector;
+import reactor.core.composable.action.*;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.timer.Timer;
-import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -40,152 +37,87 @@ import javax.annotation.Nullable;
  * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)}
  * and {@link #filter(reactor.function.Predicate)} methods.
  *
- * @param <T>
- * 		The type of the values
- *
+ * @param <T> The type of the values
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
 public abstract class Composable<T> implements Pipeline<T> {
 
-	public static final Event<Object> END_EVENT = Event.wrap(null);
+	private final Environment        environment;
+	private final Composable<?>      parent;
+	private final ActionProcessor<T> actionProcessor;
+	private final Dispatcher         dispatcher;
+	private final int                batchSize;
 
-	private final Selector acceptSelector;
-	private final Object   acceptKey;
-	private final Selector error = Selectors.anonymous();
-	private final Selector flush = Selectors.anonymous();
-	private final Environment environment;
-
-	private final Observable    events;
-	private final Composable<?> parent;
-
-	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent) {
-		this(observable, parent, null, null);
+	protected <U> Composable(@Nullable Dispatcher dispatcher, @Nullable Composable<U> parent) {
+		this(dispatcher, parent, null, parent != null ? parent.batchSize : 1024);
 	}
 
 
-	protected <U> Composable(@Nullable Observable observable, @Nullable Composable<U> parent,
-	                         @Nullable Tuple2<Selector, Object> acceptSelectorTuple,
-	                         @Nullable Environment environment) {
-		Assert.state(observable != null || parent != null, "One of 'observable' or 'parent'  cannot be null.");
+	protected <U> Composable(@Nullable Dispatcher dispatcher,
+	                         @Nullable Composable<U> parent,
+	                         @Nullable Environment environment,
+	                         int batchSize) {
+		Assert.state(dispatcher != null || parent != null, "One of 'dispatcher' or 'parent'  cannot be null.");
 		this.parent = parent;
 		this.environment = environment;
-		this.events = parent == null ? observable : parent.events;
-		if (null == acceptSelectorTuple) {
-			this.acceptSelector = Selectors.anonymous();
-			this.acceptKey = acceptSelector.getObject();
-		} else {
-			this.acceptKey = acceptSelectorTuple.getT1();
-			this.acceptSelector = new ObjectSelector<Object>(acceptSelectorTuple.getT2());
-		}
+		this.batchSize = batchSize > 0 ? batchSize : 1;
+		this.dispatcher = parent == null ? dispatcher : parent.dispatcher;
+		this.actionProcessor = new ActionProcessor<T>(
+				-1l
+		);
+
 	}
 
 
 	/**
 	 * Assign an error handler to exceptions of the given type.
 	 *
-	 * @param exceptionType
-	 * 		the type of exceptions to handle
-	 * @param onError
-	 * 		the error handler for each exception
-	 * @param <E>
-	 * 		type of the exception to handle
-	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param onError       the error handler for each exception
+	 * @param <E>           type of the exception to handle
 	 * @return {@literal this}
 	 */
+	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Composable<T> when(@Nonnull final Class<E> exceptionType,
 	                                                @Nonnull final Consumer<E> onError) {
-		this.events.on(error, new Action<E>(events, null) {
-			@Override
-			protected void doAccept(Event<E> e) {
-				if (Selectors.T(exceptionType).matches(e.getData().getClass())) {
-					onError.accept(e.getData());
-				}
-			}
-
-			public String toString() {
-				return "When[" + exceptionType.getSimpleName() + "]";
-			}
-
-		});
+		this.actionProcessor.subscribe(new ErrorAction<T,E>(dispatcher, Selectors.T(exceptionType), onError));
 		return this;
 	}
 
 	/**
-	 * Attach another {@code Composable} to this one that will cascade the value or error received by this {@code
-	 * Composable} into the next.
-	 *
-	 * @param composable
-	 * 		the next {@code Composable} to cascade events to
-	 *
 	 * @return {@literal this}
+	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
 	 * @since 1.1
 	 */
 	public Composable<T> connect(@Nonnull final Composable<T> composable) {
-		this.connectValues(composable);
-		this.consumeErrorAndFlush(composable);
+		this.produceTo(composable);
 		return this;
 	}
 
-	/**
-	 * Attach another {@code Composable} to this one that will only cascade the value received by this {@code
-	 * Composable} into the next.
-	 *
-	 * @param composable
-	 * 		the next {@code Composable} to cascade events to
-	 *
-	 * @return {@literal this}
-	 */
-	public Composable<T> connectValues(@Nonnull final Composable<T> composable) {
-		if(composable == this) {
-			throw new IllegalArgumentException("Trying to consume itself, leading to erroneous recursive calls");
-		}
-		add(new ConnectAction<T>(composable.events, composable.acceptKey, composable.error.getObject()));
-
-		return this;
-	}
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Composable} that will consume any values accepted by this {@code
 	 * Composable}.
 	 *
-	 * @param consumer
-	 * 		the conumer to invoke on each value
-	 *
+	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
-		add(new CallbackAction<T>(consumer, events, error.getObject()));
-		return this;
-	}
-
-	/**
-	 * Attach a {@link Consumer<Event>} to this {@code Composable} that will consume any values accepted by this {@code
-	 * Composable}.
-	 *
-	 * @param consumer
-	 * 		the conumer to invoke on each value
-	 *
-	 * @return {@literal this}
-	 */
-	public Composable<T> consumeEvent(@Nonnull final Consumer<Event<T>> consumer) {
-		add(new CallbackEventAction<T>(consumer, events, error.getObject()));
+		produceTo(new CallbackAction<T>(dispatcher, consumer));
 		return this;
 	}
 
 	/**
 	 * Pass values accepted by this {@code Composable} into the given {@link Observable}, notifying with the given key.
 	 *
-	 * @param key
-	 * 		the key to notify on
-	 * @param observable
-	 * 		the {@link Observable} to notify
-	 *
+	 * @param key        the key to notify on
+	 * @param observable the {@link Observable} to notify
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		add(new ConnectAction<T>(observable, key, null));
+		produceTo(new ObservableAction<T>(dispatcher, observable, key));
 		return this;
 	}
 
@@ -193,21 +125,18 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code V} and pass it into
 	 * another {@code Composable}.
 	 *
-	 * @param fn
-	 * 		the transformation function
-	 * @param <V>
-	 * 		the type of the return value of the transformation function
-	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Composable<V> d = newComposable();
-		add(new MapAction<T, V>(
+		produceTo(new MapAction<T, V>(
 				fn,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject())).consumeErrorAndFlush(d);
+				dispatcher,
+				d.actionProcessor)
+		);
 
 		return d;
 	}
@@ -216,40 +145,43 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Composable<V>} and pass
 	 * it into another {@code Composable}.
 	 *
-	 * @param fn
-	 * 		the transformation function
-	 * @param <V>
-	 * 		the type of the return value of the transformation function
-	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 * @since 1.1
 	 */
 	public <V, C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
 		final Composable<V> d = newComposable();
-		add(new MapManyAction<T, V, C>(
+		produceTo(new MapManyAction<T, V, C>(
 				fn,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject(),
-				d.getFlush().getObject()
-				))
-				.connectErrors(d);
+				dispatcher,
+				d.actionProcessor
+		));
 		return d;
+	}
+
+	/**
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
+	 * @return a new {@code Composable} containing the transformed values
+	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
+	 * @since 1.1
+	 */
+	public <V, C extends Composable<V>> Composable<V> flatMap(@Nonnull final Function<T, C> fn) {
+		return mapMany(fn);
 	}
 
 	/**
 	 * {@link this#connect(Composable)} all the passed {@param composables} to this {@link Composable},
 	 * merging values streams into the current pipeline.
 	 *
-	 * @param composables
-	 * 		the the composables to connect
-	 *
+	 * @param composables the the composables to connect
 	 * @return this composable
 	 * @since 1.1
 	 */
 	public Composable<T> merge(Composable<T>... composables) {
-		for(Composable<T> composable : composables){
+		for (Composable<T> composable : composables) {
 			composable.connect(this);
 		}
 		return this;
@@ -260,9 +192,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * value is passed into the new {@code Composable}. If the predicate test fails, an exception is propagated into the
 	 * new {@code Composable}.
 	 *
-	 * @param fn
-	 * 		the predicate {@link Function} to test values against
-	 *
+	 * @param fn the predicate {@link Function} to test values against
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Function<T, Boolean> fn) {
@@ -278,13 +208,12 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
 	 *
-	 *
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public Composable<Boolean> filter() {
-		return ((Composable<Boolean>)this).filter(FilterAction.simplePredicate, null);
+		return ((Composable<Boolean>) this).filter(FilterAction.simplePredicate, null);
 	}
 
 	/**
@@ -292,24 +221,20 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * the value is passed into the new {@code Composable}. the value is propagated into the {@param
 	 * elseComposable}.
 	 *
-	 * @param elseComposable
-	 * 		the {@link Composable} to test values against
-	 *
+	 * @param elseComposable the {@link Composable} to test values against
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public Composable<Boolean> filter(@Nonnull final Composable<Boolean> elseComposable) {
-		return ((Composable<Boolean>)this).filter(FilterAction.simplePredicate, elseComposable);
+		return ((Composable<Boolean>) this).filter(FilterAction.simplePredicate, elseComposable);
 	}
 
 	/**
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is ignored.
 	 *
-	 * @param p
-	 * 		the {@link Predicate} to test values against
-	 *
+	 * @param p the {@link Predicate} to test values against
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p) {
@@ -321,35 +246,23 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * passed into the new {@code Composable}. If the predicate test fails, the value is propagated into the {@code
 	 * elseComposable}.
 	 *
-	 * @param p
-	 * 		the {@link Predicate} to test values against
-	 * @param elseComposable
-	 * 		the optional {@link reactor.core.composable.Composable} to pass rejected values
-	 *
+	 * @param p              the {@link Predicate} to test values against
+	 * @param elseComposable the optional {@link reactor.core.composable.Composable} to pass rejected values
 	 * @return a new {@code Composable} containing only values that pass the predicate test
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Composable<T> d = newComposable();
-		add(new FilterAction<T>(p, d.getObservable(), d.getAcceptKey(), d.getError().getObject(),
-				elseComposable != null ? elseComposable.events : null,
-				elseComposable != null ? elseComposable.acceptKey : null)).consumeErrorAndFlush(d);
-
-		if(elseComposable != null){
-			consumeErrorAndFlush(elseComposable);
-		}
-
+		produceTo(new FilterAction<T>(p, dispatcher, d.actionProcessor,
+				elseComposable != null ? elseComposable.actionProcessor : null));
 		return d;
 	}
-
 
 
 	/**
 	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
 	 * timeout} milliseconds. Timeout is run on the environment root timer.
 	 *
-	 * @param timeout
-	 * 		the timeout in milliseconds between two notifications on this composable
-	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
 	 * @return this {@link Composable}
 	 * @since 1.1
 	 */
@@ -362,11 +275,8 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
 	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
 	 *
-	 * @param timeout
-	 * 		the timeout in milliseconds between two notifications on this composable
-	 * @param timer
-	 * 		the reactor timer to run the timeout on
-	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timer   the reactor timer to run the timeout on
 	 * @return this {@link Composable}
 	 * @since 1.1
 	 */
@@ -374,10 +284,9 @@ public abstract class Composable<T> implements Pipeline<T> {
 		Assert.state(timer != null, "Timer must be supplied");
 		Composable<?> composable = parent != null ? parent : this;
 
-		add(new TimeoutAction<T>(
-				composable.events,
-				composable.flush.getObject(),
-				error.getObject(),
+		produceTo(new TimeoutAction<T>(
+				dispatcher,
+				composable.actionProcessor,
 				timer,
 				timeout
 		));
@@ -393,13 +302,16 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return a new {@code Composable} whose values are generated on each flush
 	 * @since 1.1
 	 */
-	public Composable<T> propagate(Supplier<T> supplier) {
+	public Composable<T> propagate(final Supplier<T> supplier) {
 
-		Composable<T> d = newComposable();
-		consumeFlush(new SupplyAction<T>(supplier,
-				d.getObservable(),
-				d.getAcceptKey(),
-				d.getError().getObject())).connectErrors(d);
+		final Composable<T> d = newComposable();
+		subscribe(new Flushable<Object>() {
+			@Override
+			public Flushable<Object> flush() {
+				d.actionProcessor.onNext(supplier.get());
+				return this;
+			}
+		});
 		return d;
 	}
 
@@ -410,154 +322,81 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public Composable<T> flush() {
 		Composable<?> that = this;
-		while(that.parent != null) {
+		while (that.parent != null) {
 			that = that.parent;
 		}
 
-		that.notifyFlush();
+		that.actionProcessor.flush();
+		return this;
+	}
+
+	/**
+	 * Complete this {@literal Stream}.
+	 *
+	 * @return {@literal this}
+	 */
+	public Composable<T> complete() {
+		Composable<?> that = this;
+		while (that.parent != null) {
+			that = that.parent;
+		}
+
+		that.actionProcessor.onComplete();
 		return this;
 	}
 
 	/**
 	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
 	 * composed actions.
+	 *
 	 * @since 1.1
 	 */
 	public String debug() {
 		Composable<?> that = this;
-		while(that.parent != null) {
+		while (that.parent != null) {
 			that = that.parent;
 		}
-		return ActionUtils.browseReactor((Reactor)that.events,
-		                                 that.acceptKey, that.error.getObject(), that.flush.getObject()
-		);
+		return ActionUtils.browseComposable(that);
 	}
 
-	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
-	 *
-	 * @return {@literal this}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public Composable<T> add(Action<T> action) {
-		this.events.on(acceptSelector, action);
-		if(null != action && Flushable.class.isAssignableFrom(action.getClass())) {
-			consumeFlush((Flushable<T>)action);
-		}
+
+	@Override
+	public Composable<T> subscribe(Flushable<?> action) {
+		this.actionProcessor.subscribe(action);
 		return this;
 	}
 
 	@Override
-	public Composable<T> consumeFlush(Flushable<?> action) {
-		this.events.on(flush, new FlushableAction(action, events, error.getObject()));
-		return this;
+	public Subscriber<T> getSubscriber() {
+		return actionProcessor;
+	}
+
+	@Override
+	public ActionProcessor<T> getPublisher() {
+		return actionProcessor;
+	}
+
+	@Override
+	public void produceTo(org.reactivestreams.api.Consumer<T> consumer) {
+		actionProcessor.subscribe(consumer.getSubscriber());
 	}
 
 	/**
-	 * Forward any error to the {@param composable} argument.
-	 *
-	 * @param composable the target sink for errores and flushes
-	 *
-	 * @return this
-	 * @since 1.1
+	 * Return defined {@link Composable} batchSize, used to drive new {@link org.reactivestreams.spi.Subscription}
+	 * request needs.
+	 * @return
 	 */
-	public Composable<T> connectErrors(Composable<?> composable){
-		events.on(error, new ConnectAction<Throwable>(composable.events, composable.error.getObject(), null));
-		return this;
-	}
-
-	/**
-	 * Forward any error or flush to the {@param composable} argument.
-	 *
-	 * @param composable the target sink for errores and flushes
-	 *
-	 * @return this
-	 * @since 1.1
-	 */
-	protected Composable<T> consumeErrorAndFlush(Composable<?> composable){
-		events.on(flush, new ConnectAction<Void>(composable.events, composable.flush.getObject(), null));
-		return connectErrors(composable);
-	}
-
-	/**
-	 * Notify this {@code Composable} hat a flush is being requested by this {@code Composable}.
-	 */
-	void notifyFlush() {
-		events.notify(flush.getObject(), new Event<Void>(Void.class));
-	}
-
-	void notifyValue(Event<T> value) {
-		events.notify(acceptKey, value);
-	}
-
-	/**
-	 * Notify this {@code Composable} that an error is being propagated through this {@code Composable}.
-	 *
-	 * @param error
-	 * 		the error to propagate
-	 */
-	void notifyError(Throwable error) {
-		events.notify(this.error.getObject(), Event.wrap(error));
+	public int getBatchSize() {
+		return batchSize;
 	}
 
 	/**
 	 * Create a {@link Composable} that is compatible with the subclass of {@code Composable} in use.
 	 *
-	 * @param <V>
-	 * 		type the {@code Composable} handles
-	 *
+	 * @param <V> type the {@code Composable} handles
 	 * @return a new {@code Composable} compatible with the current subclass.
 	 */
 	protected abstract <V> Composable<V> newComposable();
-
-	/**
-	 * Get the current {@link Observable}.
-	 *
-	 * @return
-	 */
-	protected Observable getObservable() {
-		return events;
-	}
-
-	/**
-	 * Get the anonymous {@link Selector} and notification key for doing accepts.
-	 *
-	 * @return
-	 */
-	protected Object getAcceptKey() {
-		return this.acceptKey;
-	}
-
-	/**
-	 * Get the anonymous {@link Selector} and notification key for doing accepts.
-	 *
-	 * @return
-	 */
-	protected Selector getAcceptSelector() {
-		return this.acceptSelector;
-	}
-
-	/**
-	 * Get the anonymous flush {@link Selector} for batch consuming.
-	 *
-	 * @return
-	 */
-	protected Selector getFlush() {
-		return this.flush;
-	}
-
-	/**
-	 * Get the anonymous {@link Selector} and notification key for doing errors.
-	 *
-	 * @return
-	 */
-	protected Selector getError() {
-		return this.error;
-	}
 
 	/**
 	 * Get the parent {@link Composable} for callback callback.
@@ -573,8 +412,16 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 *
 	 * @return
 	 */
-	protected Environment getEnvironment() { return environment; }
+	protected Environment getEnvironment() {
+		return environment;
+	}
 
-
-
+	/**
+	 * Get the assigned {@link reactor.event.dispatch.Dispatcher}.
+	 *
+	 * @return
+	 */
+	protected Dispatcher getDispatcher() {
+		return dispatcher;
+	}
 }

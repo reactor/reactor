@@ -16,11 +16,7 @@
 
 package reactor.core.composable;
 
-import reactor.core.action.BufferAction;
-import reactor.event.Event;
-import reactor.event.support.CallbackEvent;
 import reactor.function.Consumer;
-import reactor.util.Assert;
 
 /**
  * A Deferred is used to provide a separate between supplying values and consuming values.
@@ -69,7 +65,7 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 * @param error The error to accept
 	 */
 	public void accept(Throwable error) {
-		head.notifyError(error);
+		head.getPublisher().onError(error);
 	}
 
 	/**
@@ -80,50 +76,24 @@ public class Deferred<T, C extends Composable<T>> implements Consumer<T> {
 	 */
 	@Override
 	public void accept(T value) {
-		acceptEvent(Event.wrap(value));
+		head.getPublisher().onNext(value);
 	}
 
-
-	/**
-	 * Return a {@link reactor.function.Consumer} that accepts a sequence of events  before
-	 * notifying the Composable whom must be a {@link Stream}
-	 *
-	 * @return a batch consumer ready to accept sequences
-	 */
-	public BufferAction<T> batcher() {
-		return batcher(-1);
-	}
-
-	/**
-	 * Return a {@link reactor.function.Consumer} that accepts a sequence of events  before
-	 * notifying the Composable whom must be a {@link Stream}
-	 *
-	 * @param batchSize the explicit batch size to use
-	 *
-	 * @return a batch consumer ready to accept sequences
-	 */
-	@SuppressWarnings("unchecked")
-	public BufferAction<T> batcher(int batchSize) {
-		Assert.isTrue(Stream.class.isAssignableFrom(head.getClass()), "The deferred Composable must be of type Stream");
-		return ((Stream<T>)head).bufferConsumer(batchSize);
-	}
-
-	/**
-	 * Accepts the given {@code value} such that it can be consumed by the underlying
-	 * {@code Composable}.
-	 *
-	 * @param value The value to accept
-	 */
-	public void acceptEvent(Event<T> value) {
-		head.notifyValue(value);
-	}
 
 	/**
 	 * Flush the {@code Composable} such that it can trigger batch operations.
 	 *
 	 */
 	public void flush() {
-		head.notifyFlush();
+		head.getPublisher().flush();
+	}
+
+	/**
+	 * Flush the {@code Composable} such that it can trigger complete operations.
+	 *
+	 */
+	public void complete() {
+		head.getPublisher().onComplete();
 	}
 
 	/**

@@ -13,34 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
 /**
- * Component that can be injected with {@link Action}s and consume flush events for releasing buffer owned by the
- * pipeline
- *
  * @author Stephane Maldini
- * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<T> extends Flushable<T>{
+final class ActionException extends RuntimeException {
+	static final ActionException INSTANCE = new ActionException();
 
-	/**
-	 * Consume events with the passed {@code Action}
-	 *
-	 * @param action
-	 * 		the action listening for values
-	 */
-	Pipeline<T> add(Action<T> action);
+	Throwable rootCause;
 
+	ActionException() {
+		// Singleton
+	}
 
-	/**
-	 * Consume flush with the passed {@link Flushable}
-	 *
-	 * @param action
-	 * 		the action listening for flush
-	 *
-	 * @return {@literal this}
-	 */
-	Pipeline<T> consumeFlush(Flushable<?> action);
+	ActionException(Throwable rootCause) {
+		this.rootCause = rootCause;
+	}
+
+	@Override
+	public synchronized Throwable fillInStackTrace() {
+		return this;
+	}
 }

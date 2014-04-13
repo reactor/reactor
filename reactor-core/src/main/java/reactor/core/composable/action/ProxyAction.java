@@ -13,23 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 
 /**
- * Component that can be flushed
- *
  * @author Stephane Maldini
- * @since 1.1
  */
-public interface Flushable<T> {
+public class ProxyAction<T> extends Action<T, T> {
 
-	static final Event<Object> FLUSH_EVENT = Event.wrap(null);
+	public ProxyAction(Dispatcher dispatcher, ActionProcessor<T> actionProcessor) {
+		super(dispatcher, actionProcessor);
+	}
 
-	/**
-	 * Trigger flush on this component, generally draining any collected values.
-	 */
-	Flushable<T> flush();
+	@Override
+	public void doNext(T ev) {
+		output.onNext(ev);
+		available();
+	}
 
 }

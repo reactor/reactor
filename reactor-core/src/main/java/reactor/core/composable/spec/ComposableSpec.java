@@ -33,45 +33,11 @@ import reactor.tuple.Tuple2;
 public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC,
 		TARGET> {
 
-	private Observable               observable;
-	private Tuple2<Selector, Object> acceptSelector;
-
-
-	/**
-	 * Configures the Composable to reuse an explicit selector/key rather than the internal anonymous generated one.
-	 *
-	 * @param acceptSelector The selector tuple to listen/publish to
-	 * @return {@code this}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	SPEC acceptSelector(final Tuple2<Selector, Object> acceptSelector) {
-		this.acceptSelector = acceptSelector;
-		return (SPEC) this;
-	}
-
-	/**
-	 * Configures the Composable to reuse an explicit observable rather than the internal anonymous generated one.
-	 *
-	 * @param observable The observable to listen/publish to
-	 * @return {@code this}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	SPEC observable(final Observable observable) {
-		this.observable = observable;
-		return (SPEC) this;
-	}
-
-
 	@Override
 	protected TARGET configure(final Dispatcher dispatcher, Environment env) {
-		if (observable == null) {
-			observable = new Reactor(dispatcher);
-		}
-		return createComposable(env, observable, acceptSelector);
+		return createComposable(env, dispatcher);
 	}
 
-	protected abstract TARGET createComposable(Environment env, Observable observable, Tuple2<Selector, Object> accept);
+	protected abstract TARGET createComposable(Environment env, Dispatcher dispatcher);
 
 }

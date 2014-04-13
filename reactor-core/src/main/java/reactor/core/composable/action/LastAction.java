@@ -13,34 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.event.registry.Registration;
-import reactor.function.Consumer;
-import reactor.timer.Timer;
-
-import java.util.concurrent.TimeUnit;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class DistinctAction<T> extends Action<T> {
+public class LastAction<T> extends BatchAction<T, T> {
 
-	private T lastData;
-
-	public DistinctAction(Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	public LastAction(int batchSize, Dispatcher dispatcher, ActionProcessor<T> d) {
+		super(batchSize, dispatcher, d, false, false, true);
 	}
 
 	@Override
-	protected void doAccept(Event<T> ev) {
-		final T currentData = ev.getData();
-		if(currentData == null || !currentData.equals(lastData)){
-			lastData = currentData;
-			notifyValue(ev);
-		}
+	protected void flushCallback(T event) {
+		output.onNext(event);
 	}
 }

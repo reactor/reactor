@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.timer.Timer;
 
 import java.util.ArrayList;
@@ -37,13 +36,11 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   private final T[]           collectedWindow;
 
 	@SuppressWarnings("unchecked")
-  public MovingWindowAction(Observable d,
-                            Object successKey,
-                            Object failureKey,
+  public MovingWindowAction(Dispatcher dispatcher, ActionProcessor<List<T>> actionProcessor,
                             Timer timer,
                             int period, TimeUnit timeUnit, int delay, int backlog
   ) {
-    super(d, successKey, failureKey, timer, period, timeUnit, delay);
+    super(dispatcher, actionProcessor, timer, period, timeUnit, delay);
     this.collectedWindow = (T[]) new Object[backlog];
   }
 
@@ -66,18 +63,18 @@ public class MovingWindowAction<T> extends WindowAction<T> {
         window.add(collectedWindow[i]);
       }
 
-      notifyValue(Event.wrap(window));
+      output.onNext(window);
     } finally {
       lock.unlock();
     }
   }
 
   @Override
-  public void doAccept(Event<T> value) {
+  public void doNext(T value) {
     lock.lock();
     try {
       int index = adjustPointer(pointer.getAndIncrement());
-      collectedWindow[index] = value.getData();
+      collectedWindow[index] = value;
     } finally {
       lock.unlock();
     }

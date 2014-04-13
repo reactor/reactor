@@ -18,6 +18,7 @@ package reactor.core.composable.spec;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.Promise;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
@@ -81,14 +82,13 @@ public final class PromiseSpec<T> extends ComposableSpec<PromiseSpec<T>, Promise
 	}
 
 	@Override
-	protected Promise<T> createComposable(Environment env, Observable observable,
-	                                      Tuple2<Selector, Object> accept) {
+	protected Promise<T> createComposable(Environment env, Dispatcher dispatcher) {
 		if (value != null) {
-			return new Promise<T>(value, observable, env);
+			return new Promise<T>(value, dispatcher, env);
 		} else if (valueSupplier != null) {
-			return new Promise<T>(observable, env, null).propagate(valueSupplier);
+			return new Promise<T>(dispatcher, env, null).propagate(valueSupplier);
 		} else if (error != null) {
-			return new Promise<T>(error, observable, env);
+			return new Promise<T>(error, dispatcher, env);
 		} else {
 			throw new IllegalStateException("A success value/supplier or error reason must be provided. Use " +
 				DeferredPromiseSpec.class.getSimpleName() + " to create a deferred promise");

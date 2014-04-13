@@ -13,35 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-
-import java.util.concurrent.atomic.AtomicLong;
+import reactor.event.dispatch.Dispatcher;
+import reactor.event.selector.ClassSelector;
+import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class CountAction<T> extends Action<T> implements Flushable<T>{
+public class CompleteAction<T, E> extends Action<T, E> {
 
-	private final AtomicLong counter = new AtomicLong(0l);
+	private final Consumer<E> consumer;
+	private final E           input;
 
-	public CountAction(Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	public CompleteAction(Dispatcher dispatcher, E input, Consumer<E> consumer) {
+		super(dispatcher, null);
+		this.consumer = consumer;
+		this.input = input;
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		counter.getAndIncrement();
+	public void doNext(Object ev) {
+		//IGNORE
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public void doComplete() {
+		consumer.accept(input);
+	}
 
 	@Override
-	public CountAction<T> flush() {
-		notifyValue(Event.wrap(counter.get()));
-		counter.set(0l);
-		return this;
+	public String toString() {
+		return "Complete (" +
+				"Input=" + input +
+				')';
 	}
 }

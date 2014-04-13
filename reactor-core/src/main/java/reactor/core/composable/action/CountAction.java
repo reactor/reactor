@@ -13,27 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.function.Consumer;
+import reactor.event.dispatch.Dispatcher;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class CallbackEventAction<T> extends Action<T> {
+public class CountAction<T> extends Action<T,Long> implements Flushable<T>{
 
-	private final Consumer<Event<T>> consumer;
+	private final AtomicLong counter = new AtomicLong(0l);
 
-	public CallbackEventAction(Consumer<Event<T>> consumer, Observable d, Object failureKey) {
-		super(d, null, failureKey);
-		this.consumer = consumer;
+	public CountAction(Dispatcher dispatcher, ActionProcessor<Long> actionProcessor) {
+		super(dispatcher, actionProcessor);
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		consumer.accept(value);
+	public void doNext(T value) {
+		counter.getAndIncrement();
+		available();
 	}
 
+
+	@Override
+	public CountAction<T> flush() {
+		output.onNext(counter.get());
+		counter.set(0l);
+		return this;
+	}
 }

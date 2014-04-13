@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,40 +25,33 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
-
-	public static final Event<Object> MERGE_FLUSH = Event.wrap(null);
+public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T, V> {
 
 	private final AtomicInteger runningComposables = new AtomicInteger(0);
-	private final Object         flushKey;
 	private final Function<T, E> fn;
 
 	public MapManyAction(Function<T, E> fn,
-	                     Observable ob,
-	                     Object successKey,
-	                     Object failureKey,
-	                     Object flushKey
+	                     Dispatcher dispatcher,
+	                     ActionProcessor<V> publisher
 	) {
-		super(ob, successKey, failureKey);
+		super(dispatcher, publisher);
 		this.fn = fn;
-		this.flushKey = flushKey;
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		E val = fn.apply(value.getData());
+	public void doNext(T value) {
+		E val = fn.apply(value);
 		runningComposables.incrementAndGet();
-		val.add(new ConnectAction<V>(getObservable(), getSuccessKey(), getFailureKey()));
-		val.consumeFlush(new Flushable<Object>() {
+		val.produceTo(new ProxyAction<V>(dispatcher, output){
 			@Override
-			public Flushable<Object> flush() {
+			protected void doComplete() {
 				if (runningComposables.decrementAndGet() == 0) {
-					getObservable().notify(flushKey, MERGE_FLUSH);
+					super.doComplete();
 				}
-				return this;
 			}
 		});
 		val.flush();
+		available();
 	}
 
 }

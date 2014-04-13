@@ -13,35 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import org.reactivestreams.api.Processor;
+import reactor.core.composable.Composable;
 
 /**
+ * Component that can be injected with {@link Action}s and consume flush events for releasing buffer owned by the
+ * pipeline
+ *
  * @author Stephane Maldini
+ * @author Jon Brisbin
  * @since 1.1
  */
-public class FlushableAction extends Action<Object> {
+public interface Pipeline<T> extends Flushable<T>, Processor<T,T> {
 
-	private final Flushable<?> flushable;
-
-	public FlushableAction(Flushable<?> flushable, Observable observable, Object failureKey) {
-		super(observable, null, failureKey);
-		this.flushable = flushable;
-	}
-
-	@Override
-	public void doAccept(Event<Object> value) {
-		flushable.flush();
-	}
-
-	@Override
-	public String toString() {
-		return flushable.getClass().getSimpleName().replaceAll("Action"," ")+"["+flushable.toString()+"]";
-	}
-
-	public Flushable<?> getFlushable() {
-		return flushable;
-	}
+	/**
+	 * Consume flush with the passed {@link Flushable}
+	 *
+	 * @param action
+	 * 		the action listening for flush
+	 *
+	 * @return {@literal this}
+	 */
+	Pipeline<T> subscribe(Flushable<?> action);
 }

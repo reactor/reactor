@@ -125,7 +125,7 @@ public class Reactor implements Observable {
 	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
-		this.dispatcher = (null == dispatcher ? new SynchronousDispatcher() : dispatcher);
+		this.dispatcher = (null == dispatcher ? SynchronousDispatcher.INSTANCE : dispatcher);
 		this.router = (null == router ? DEFAULT_EVENT_ROUTER : router);
 		if (null == dispatchErrorHandler) {
 			this.dispatchErrorHandler = new Consumer<Throwable>() {

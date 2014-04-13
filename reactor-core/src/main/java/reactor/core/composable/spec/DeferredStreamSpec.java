@@ -16,14 +16,9 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
-import reactor.core.Observable;
-import reactor.core.action.BufferAction;
-import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
-import reactor.event.Event;
-import reactor.event.selector.Selector;
-import reactor.tuple.Tuple2;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * A helper class for specifying a {@link Deferred} {@link Stream}.
@@ -34,7 +29,7 @@ import reactor.tuple.Tuple2;
  */
 public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSpec<T>, Deferred<T, Stream<T>>> {
 
-	private int batchSize = -1;
+	private int batchSize = 1;
 
 	/**
 	 * Configures the stream to have the given {@code batchSize}. A value of {@code -1}, which
@@ -49,29 +44,10 @@ public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSp
 	}
 
 	@Override
-	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
-	                                                  Tuple2<Selector, Object> accept) {
+	protected Deferred<T, Stream<T>> createComposable(Environment env, Dispatcher dispatcher) {
 		Stream<T> stream =
-				new Stream<T>(observable, batchSize, null, accept, env);
-		if (batchSize > 1) {
-			return new BatchStreamDeferred<T>(stream, batchSize);
-		} else {
-			return new Deferred<T, Stream<T>>(stream);
-		}
+				new Stream<T>(dispatcher, batchSize, null, env);
 
-	}
-
-	private static class BatchStreamDeferred<T> extends Deferred<T, Stream<T>> {
-		private final BufferAction<T> consumer;
-
-		public BatchStreamDeferred(Stream<T> stream, int batchSize) {
-			super(stream);
-			consumer = batcher(batchSize);
-		}
-
-		@Override
-		public void acceptEvent(Event<T> value) {
-			consumer.accept(value);
-		}
+		return new Deferred<T, Stream<T>>(stream);
 	}
 }

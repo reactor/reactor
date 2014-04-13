@@ -131,7 +131,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			}
 		}
 
-		addDispatcher(SYNC_DISPATCHER_NAME, new SynchronousDispatcher());
+		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration

@@ -13,27 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
  */
-public class CallbackAction<T> extends Action<T> {
+public class CallbackAction<T> extends Action<T, Void> {
 
 	private final Consumer<T> consumer;
 
-	public CallbackAction(Consumer<T> consumer, Observable d, Object failureKey) {
-		super(d, null, failureKey);
+	public CallbackAction(Dispatcher dispatcher, Consumer<T> consumer) {
+		super(dispatcher, null);
 		this.consumer = consumer;
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		consumer.accept(value.getData());
+	public void doNext(T ev) {
+		consumer.accept(ev);
+		available();
+	}
+
+	@Override
+	public void onComplete() {
+		//IGNORE;
 	}
 
 }

@@ -31,6 +31,8 @@ import java.util.concurrent.TimeUnit;
  */
 public final class SynchronousDispatcher implements Dispatcher {
 
+	public static final SynchronousDispatcher INSTANCE = new SynchronousDispatcher();
+
 	public SynchronousDispatcher() {
 	}
 
@@ -59,19 +61,19 @@ public final class SynchronousDispatcher implements Dispatcher {
 
 	@Override
 	public <E> void dispatch(E event,
-	                                          Router router,
-	                                          Consumer<E> consumer,
-	                                          Consumer<Throwable> errorConsumer) {
+	                         Router router,
+	                         Consumer<E> consumer,
+	                         Consumer<Throwable> errorConsumer) {
 		dispatch(null, event, null, errorConsumer, router, consumer);
 	}
 
 	@Override
 	public <E> void dispatch(Object key,
-	                                          E event,
-	                                          Registry<Consumer<?>> consumerRegistry,
-	                                          Consumer<Throwable> errorConsumer,
-	                                          Router router,
-	                                          Consumer<E> completionConsumer) {
+	                         E event,
+	                         Registry<Consumer<?>> consumerRegistry,
+	                         Consumer<Throwable> errorConsumer,
+	                         Router router,
+	                         Consumer<E> completionConsumer) {
 		router.route(key,
 		                  event,
 		                  (null != consumerRegistry ? consumerRegistry.select(key) : null),

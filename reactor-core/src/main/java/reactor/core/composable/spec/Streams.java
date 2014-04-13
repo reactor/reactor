@@ -18,13 +18,13 @@ package reactor.core.composable.spec;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
+import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Supplier;
-import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,11 +40,8 @@ public abstract class Streams {
 	/**
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
-	 * @param env
-	 * 		the Reactor {@link reactor.core.Environment} to use
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
+	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Stream<T>> defer(Environment env) {
@@ -54,13 +51,9 @@ public abstract class Streams {
 	/**
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
-	 * @param env
-	 * 		the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher
-	 * 		the name of the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the name of the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Stream<T>> defer(Environment env, String dispatcher) {
@@ -70,13 +63,9 @@ public abstract class Streams {
 	/**
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
-	 * @param env
-	 * 		the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher
-	 * 		the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Stream<T>> defer(Environment env, Dispatcher dispatcher) {
@@ -86,9 +75,7 @@ public abstract class Streams {
 	/**
 	 * Build a deferred {@literal Stream}, ready to accept values.
 	 *
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
+	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link DeferredStreamSpec}
 	 */
 	public static <T> DeferredStreamSpec<T> defer() {
@@ -97,39 +84,22 @@ public abstract class Streams {
 
 
 	/**
-	 * Attach a Stream to the {@link Observable} with the specified {@link Selector} and key.
-	 *
-	 * @param observable
-	 * 		the {@link Observable} to observe
-	 * @param acceptSelector
-	 * 		the {@link Selector}/{@literal Object} tuple to listen to
-	 * @param key
-	 * 		the key to publish to
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
-	 * @return a new {@link DeferredStreamSpec}
-	 * @since 1.1
-	 */
-	public static <T> Stream<T> on(Observable observable, Selector acceptSelector, Object key) {
-		return new StreamSpec<T>().observable(observable).acceptSelector(Tuple2.of(acceptSelector,key)).get();
-	}
-
-	/**
 	 * Attach a Stream to the {@link Observable} with the specified {@link Selector}.
 	 *
-	 * @param observable
-	 * 		the {@link Observable} to observe
-	 * @param acceptSelector
-	 * 		the {@link Selector}/{@literal Object} tuple to listen/publish to
-	 * @param <T>
-	 * 		the type of values passing through the {@literal Stream}
-	 *
+	 * @param observable     the {@link Observable} to observe
+	 * @param acceptSelector the {@link Selector}/{@literal Object} tuple to listen to
+	 * @param <T>            the type of values passing through the {@literal Stream}
 	 * @return a new {@link DeferredStreamSpec}
 	 * @since 1.1
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector acceptSelector) {
-		return on(observable, acceptSelector, acceptSelector.getObject());
+		Dispatcher dispatcher = Reactor.class.isAssignableFrom(observable.getClass()) ?
+				((Reactor) observable).getDispatcher() :
+				SynchronousDispatcher.INSTANCE;
+
+		Stream<T> stream = new Stream<T>(dispatcher, -1, null, null);
+		stream.getPublisher().source(StreamSpec.<T>publisherFrom(observable, acceptSelector));
+		return stream;
 	}
 
 	/**
@@ -137,16 +107,13 @@ public abstract class Streams {
 	 * the given value whenever the {@link reactor.core.composable.Stream#flush()} function
 	 * is invoked.
 	 *
-	 * @param value
-	 * 		The value to {@code accept()}
-	 * @param <T>
-	 * 		type of the value
-	 *
+	 * @param value The value to {@code accept()}
+	 * @param <T>   type of the value
 	 * @return a {@link DeferredStreamSpec} based on the given value
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> StreamSpec<T> defer(T value) {
-		return  new StreamSpec<T>().each(Arrays.asList(value)).batchSize(1);
+		return new StreamSpec<T>().each(Arrays.asList(value)).batchSize(1);
 	}
 
 	/**
@@ -154,17 +121,14 @@ public abstract class Streams {
 	 * the supplied value whenever the {@link reactor.core.composable.Stream#flush()} function
 	 * is invoked.
 	 *
-	 * @param value
-	 * 		The value to {@code accept()}
-	 * @param <T>
-	 * 		type of the value
-	 *
+	 * @param value The value to {@code accept()}
+	 * @param <T>   type of the value
 	 * @return a {@link DeferredStreamSpec} based on the given value
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> StreamSpec<T> defer(Supplier<T> value) {
-		return  new StreamSpec<T>().generate(value).batchSize(1);
+		return new StreamSpec<T>().generate(value).batchSize(1);
 	}
 
 	/**
@@ -173,15 +137,12 @@ public abstract class Streams {
 	 * is invoked. If the {@code values} are a {@code Collection} the Stream's batch size will
 	 * be set to the Collection's {@link Collection#size()}.
 	 *
-	 * @param values
-	 * 		The values to {@code accept()}
-	 * @param <T>
-	 * 		type of the values
-	 *
+	 * @param values The values to {@code accept()}
+	 * @param <T>    type of the values
 	 * @return a {@link StreamSpec} based on the given values
 	 */
 	public static <T> StreamSpec<T> defer(Iterable<T> values) {
-		int batchSize = (values instanceof Collection ? ((Collection<?>)values).size() : -1);
+		int batchSize = (values instanceof Collection ? ((Collection<?>) values).size() : -1);
 		return new StreamSpec<T>().each(values).batchSize(batchSize);
 	}
 

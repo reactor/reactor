@@ -133,7 +133,7 @@ configure(allprojects) { project ->
 
 	repositories {
 		maven { url 'http://repo.spring.io/libs-milestone' }
-		//mavenLocal()
+		mavenLocal()
 		mavenCentral()
 	}
 
@@ -264,6 +264,9 @@ project('reactor-core') {
 
 		// Rich Collections
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+
+		// Reactive Streams
+		compile "org.reactivestreams:reactive-streams-spi:0.2-SNAPSHOT"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

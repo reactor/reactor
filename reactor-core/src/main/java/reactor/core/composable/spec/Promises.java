@@ -21,6 +21,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;
@@ -183,23 +184,16 @@ public abstract class Promises {
 	 * @return a {@link DeferredPromiseSpec}.
 	 */
 	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
-		Stream<T> deferredStream = new DeferredStreamSpec<T>()
-				.synchronousDispatcher()
-				.batchSize(promises.size())
-				.get()
-				.compose();
+		Stream<T> deferredStream = new Stream<T>(SynchronousDispatcher.INSTANCE, promises.size(), null, null);
 
 		Stream<List<T>> aggregatedStream = deferredStream.collect();
 
-		Promise<List<T>> resultPromise = new DeferredPromiseSpec<List<T>>()
-				.link(aggregatedStream)
-				.get()
-				.compose();
+		Promise<List<T>> resultPromise = new Promise<List<T>>(null, null, aggregatedStream);
 
-		aggregatedStream.connectValues(resultPromise).connectErrors(resultPromise);
+		aggregatedStream.produceTo(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.connectErrors(deferredStream).connectValues(deferredStream);
+			promise.produceTo(deferredStream);
 		}
 
 		return resultPromise;
@@ -246,23 +240,16 @@ public abstract class Promises {
 	 * @return a {@link DeferredStreamSpec}.
 	 */
 	public static <T> Promise<T> any(Collection<? extends Promise<T>> promises) {
-		Stream<T> deferredStream = new DeferredStreamSpec<T>()
-				.synchronousDispatcher()
-				.batchSize(promises.size())
-				.get()
-				.compose();
+		Stream<T> deferredStream = new Stream<T>(SynchronousDispatcher.INSTANCE, promises.size(), null, null);
 
 		Stream<T> firstStream = deferredStream.first();
 
-		Promise<T> resultPromise = new DeferredPromiseSpec<T>()
-				.link(firstStream)
-				.get()
-				.compose();
+		Promise<T> resultPromise = new Promise<T>(null, null, firstStream);
 
-		firstStream.connectValues(resultPromise).connectErrors(resultPromise);
+		firstStream.produceTo(resultPromise);
 
 		for(Promise<T> promise : promises) {
-			promise.connectErrors(deferredStream).connectValues(deferredStream);
+			promise.produceTo(deferredStream);
 		}
 
 		return resultPromise;

@@ -13,42 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
-import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class ReduceAction<T, A> extends BatchAction<T> implements Flushable<T> {
+public class ReduceAction<T, A> extends BatchAction<T,A> implements Flushable<T> {
 	private final    Supplier<A>               accumulators;
 	private final    Function<Tuple2<T, A>, A> fn;
 	private volatile A                         acc;
 
 	public ReduceAction(int batchSize, Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
-	                    Observable d, Object successKey, Object failureKey) {
-		super(batchSize, d, successKey, failureKey);
+	                    Dispatcher dispatcher, ActionProcessor<A> actionProcessor) {
+		super(batchSize, dispatcher, actionProcessor, true, false, true);
 		this.accumulators = accumulators;
 		this.fn = fn;
 	}
 
 	@Override
-	protected void doNext(Event<T> ev) {
+	public void nextCallback(T ev) {
 		if (null == acc) {
 			acc = (null != accumulators ? accumulators.get() : null);
 		}
-		acc = fn.apply(Tuple2.of(ev.getData(), acc));
+		acc = fn.apply(Tuple2.of(ev, acc));
 	}
 
 	@Override
-	protected void doFlush(Event<T> ev) {
+	protected void flushCallback(T ev) {
 		if (acc != null) {
-			notifyValue(ev.copy(acc));
+			output.onNext(acc);
 			acc = null;
 		}
 	}
@@ -57,9 +56,7 @@ public class ReduceAction<T, A> extends BatchAction<T> implements Flushable<T> {
 	public Flushable<T> flush() {
 		lock.lock();
 		try {
-			if (acc != null) {
-				notifyValue(Event.wrap(acc));
-			}
+			flushCallback(null);
 		} finally {
 			lock.unlock();
 		}

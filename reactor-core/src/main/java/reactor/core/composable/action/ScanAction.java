@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple;
@@ -24,8 +23,9 @@ import reactor.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class ScanAction<T, A> extends Action<T> {
+public class ScanAction<T, A> extends Action<T,A> {
 
 	private final    Supplier<A>               accumulators;
 	private final    Function<Tuple2<T, A>, A> fn;
@@ -33,19 +33,20 @@ public class ScanAction<T, A> extends Action<T> {
 
 
 	public ScanAction(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
-	                  Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	                  Dispatcher dispatcher, ActionProcessor<A> actionProcessor) {
+		super(dispatcher, actionProcessor);
 		this.accumulators = accumulators;
 		this.fn = fn;
 	}
 
 	@Override
-	protected void doAccept(Event<T> ev) {
+	protected void doNext(T ev) {
 		if (null == acc) {
 			acc = (null != accumulators ? accumulators.get() : null);
 		}
-		acc = fn.apply(Tuple.of(ev.getData(), acc));
-		notifyValue(ev.copy(acc));
+		acc = fn.apply(Tuple.of(ev, acc));
+		output.onNext(acc);
+		available();
 	}
 
 }

@@ -13,27 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class MapAction<T, V> extends Action<T> {
+public class MapAction<T, V> extends Action<T, V> {
 
 	private final Function<T, V> fn;
 
-	public MapAction(Function<T, V> fn, Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	public MapAction(Function<T, V> fn, Dispatcher dispatcher, ActionProcessor<V> d) {
+		super(dispatcher, d);
 		this.fn = fn;
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		V val = fn.apply(value.getData());
-		notifyValue(value.copy(val));
+	public void doNext(T value) {
+		output.onNext(fn.apply(value));
+		available();
 	}
 }

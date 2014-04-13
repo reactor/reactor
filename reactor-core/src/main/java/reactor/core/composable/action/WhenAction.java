@@ -13,31 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.function.Consumer;
+import reactor.event.dispatch.Dispatcher;
 import reactor.function.Predicate;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class WhenAction<T> extends Action<T> {
+public class WhenAction<T,V> extends Action<T,V> {
 
 	private final Predicate<T> consumer;
 
-	public WhenAction(Predicate<T> consumer, Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
+	public WhenAction(Predicate<T> consumer, Dispatcher d, ActionProcessor<V> actionProcessor) {
+		super(d, actionProcessor);
 		this.consumer = consumer;
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
-		if(consumer.test(value.getData())){
-			getObservable().notify(getSuccessKey(), Flushable.FLUSH_EVENT);
+	public void doNext(T value) {
+		if(consumer.test(value)){
+			output.flush();
 		}
+		available();
 	}
 
 }

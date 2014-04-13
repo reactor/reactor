@@ -13,33 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
-
-import reactor.core.Observable;
-import reactor.event.Event;
-import reactor.function.Supplier;
+package reactor.core.composable.action;
 
 /**
+ * Component that can be flushed
+ *
  * @author Stephane Maldini
  * @since 1.1
  */
-public class SupplyAction<T> extends Action<Object> implements Flushable<T> {
+public interface Flushable<T> {
 
-	private final Supplier<T> supplier;
+	/**
+	 * Trigger flush on this component, generally draining any collected values.
+	 */
+	Flushable<T> flush();
 
-	public SupplyAction(Supplier<T> supplier, Observable d, Object successKey, Object failureKey) {
-		super(d, successKey, failureKey);
-		this.supplier = supplier;
-	}
-
-	@Override
-	public void doAccept(Event<Object> value) {
-		notifyValue(Event.wrap(supplier.get()));
-	}
-
-	@Override
-	public Flushable<T> flush() {
-		doAccept(null);
-		return this;
-	}
 }

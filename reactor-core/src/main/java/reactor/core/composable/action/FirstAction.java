@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class ConnectAction<T> extends Action<T> {
+public class FirstAction<T> extends BatchAction<T, T> {
 
-	public ConnectAction(Observable observable, Object successKey, Object failureKey) {
-		super(observable, successKey, failureKey);
+	public FirstAction(int batchSize, Dispatcher dispatcher, ActionProcessor<T> d) {
+		super(batchSize, dispatcher, d, false, true, false);
 	}
 
 	@Override
-	public void doAccept(Event<T> event) {
-		notifyValue(event);
+	protected void firstCallback(T event) {
+		output.onNext(event);
 	}
-
 }

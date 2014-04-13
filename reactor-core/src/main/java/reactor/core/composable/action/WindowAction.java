@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
@@ -33,21 +32,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * starts collecting items from empty list.
  *
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class WindowAction<T> extends Action<T> implements Pausable, Flushable<T> {
+public class WindowAction<T> extends Action<T,List<T>> implements Flushable<T> {
 
 	private final ReentrantLock lock            = new ReentrantLock();
 	private final List<T>       collectedWindow = new ArrayList<T>();
 	private final Registration<? extends Consumer<Long>> timerRegistration;
 
 
-	public WindowAction(Observable d,
-	                    Object successKey,
-	                    Object failureKey,
+	public WindowAction(Dispatcher dispatcher,
+	                    ActionProcessor<List<T>> actionProcessor,
 	                    Timer timer,
 	                    int period, TimeUnit timeUnit, int delay
   ) {
-		super(d, successKey, failureKey);
+		super(dispatcher, actionProcessor);
 		this.timerRegistration = timer.schedule(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {
@@ -60,19 +59,20 @@ public class WindowAction<T> extends Action<T> implements Pausable, Flushable<T>
 		lock.lock();
 		try {
 			if(!collectedWindow.isEmpty()){
-				notifyValue(Event.wrap(new ArrayList<T>(collectedWindow)));
+				output.onNext(new ArrayList<T>(collectedWindow));
 				collectedWindow.clear();
 			}
 		} finally {
 			lock.unlock();
 		}
+		available();
 	}
 
 	@Override
-	public void doAccept(Event<T> value) {
+	public void doNext(T value) {
 		lock.lock();
 		try {
-			collectedWindow.add(value.getData());
+			collectedWindow.add(value);
 		} finally {
 			lock.unlock();
 		}
@@ -81,19 +81,19 @@ public class WindowAction<T> extends Action<T> implements Pausable, Flushable<T>
 	@Override
 	public Pausable cancel() {
 		timerRegistration.cancel();
-		return this;
+		return super.cancel();
 	}
 
 	@Override
 	public Pausable pause() {
 		timerRegistration.pause();
-		return this;
+		return super.pause();
 	}
 
 	@Override
 	public Pausable resume() {
 		timerRegistration.resume();
-		return this;
+		return super.resume();
 	}
 
 	@Override

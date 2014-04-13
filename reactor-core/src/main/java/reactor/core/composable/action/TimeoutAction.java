@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.action;
+package reactor.core.composable.action;
 
-import reactor.core.Observable;
-import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.timer.Timer;
@@ -27,32 +26,33 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class TimeoutAction<T> extends Action<T> {
+public class TimeoutAction<T> extends Action<T, Object> {
 
-	public static final Event<Object> TIMEOUT_EVENT = Event.wrap(null);
 	private final Timer timer;
 	private final long  timeout;
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
-				notifyValue(TIMEOUT_EVENT);
+				output.flush();
 			}
 		}
 	};
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
-	public TimeoutAction(Observable d, Object successKey, Object failureKey,
+	@SuppressWarnings("unchecked")
+	public TimeoutAction(Dispatcher dispatcher, ActionProcessor actionProcessor,
 	                     Timer timer, long timeout) {
-		super(d, successKey, failureKey);
+		super(dispatcher, actionProcessor);
 		this.timer = timer;
 		this.timeout = timeout;
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
-	protected void doAccept(Event<T> ev) {
+	protected void doNext(T ev) {
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		available();
 	}
 }
