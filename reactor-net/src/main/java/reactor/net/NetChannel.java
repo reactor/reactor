@@ -113,14 +113,14 @@ public interface NetChannel<IN, OUT> {
 	/**
 	 * Close this {@literal NetChannel}.
 	 */
-	Promise<Void> close();
+	Promise<Boolean> close();
 
 	/**
 	 * Close this {@link reactor.net.NetChannel} and invoke the given {@link reactor.function.Consumer} when closed.
 	 *
 	 * @param onClose
 	 */
-	void close(Consumer<Void> onClose);
+	void close(Consumer<Boolean> onClose);
 
 	/**
 	 * Assign event handlers to certain channel lifecycle events.

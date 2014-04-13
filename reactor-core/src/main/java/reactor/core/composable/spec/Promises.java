@@ -17,6 +17,7 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
+import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Helper methods for creating {@link Deferred} instances, backed by a {@link Promise}.
@@ -141,8 +143,7 @@ public abstract class Promises {
 	}
 
 	/**
-	 * Merge given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal
-	 * Promise
+	 * Merge given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal Promise
 	 * Promises} have been fulfilled.
 	 *
 	 * @param promises
@@ -158,8 +159,7 @@ public abstract class Promises {
 
 	/**
 	 * Merge given deferred promises into a new a {@literal Promise} that will be fulfilled when all of the given
-	 * {@literal
-	 * Deferred Deferreds} have been fulfilled.
+	 * {@literal Deferred Deferreds} have been fulfilled.
 	 *
 	 * @param promises
 	 * 		The promises to use.
@@ -255,9 +255,50 @@ public abstract class Promises {
 		return resultPromise;
 	}
 
+	/**
+	 * Consume the next value of the given {@link reactor.core.composable.Composable} and fulfill the returned {@link
+	 * reactor.core.composable.Promise} on the next value.
+	 *
+	 * @param composable
+	 * 		the {@literal Composable} to consume the next value from
+	 * @param <T>
+	 * 		type of the value
+	 *
+	 * @return a {@link reactor.core.composable.Promise} that will be fulfilled with the next value coming into the given
+	 * Composable
+	 */
+	public static <T> Promise<T> next(Composable<T> composable) {
+		final AtomicBoolean called = new AtomicBoolean(false);
+		final Deferred<T, Promise<T>> d = Promises.<T>defer().get();
+
+		composable
+				.when(Throwable.class, new Consumer<Throwable>() {
+					@Override
+					public void accept(Throwable throwable) {
+						if (!called.get()
+								&& called.compareAndSet(false, true)
+								&& !d.compose().isComplete()) {
+							d.accept(throwable);
+						}
+					}
+				})
+				.consume(new Consumer<T>() {
+					@Override
+					public void accept(T t) {
+						if (!called.get()
+								&& called.compareAndSet(false, true)
+								&& !d.compose().isComplete()) {
+							d.accept(t);
+						}
+					}
+				});
+
+		return d.compose();
+	}
+
 	private static <T> List<Promise<T>> deferredToPromises(Deferred<T, Promise<T>>... promises) {
 		List<Promise<T>> promiseList = new ArrayList<Promise<T>>();
-		for(Deferred<T, Promise<T>> deferred : promises) {
+		for (Deferred<T, Promise<T>> deferred : promises) {
 			promiseList.add(deferred.compose());
 		}
 		return promiseList;

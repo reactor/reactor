@@ -74,8 +74,8 @@ public interface Observable {
 	<E extends Event<?>, V> Registration<Consumer<E>> receive(Selector sel, Function<E, V> fn);
 
 	/**
-	 * Notify this component that an {@link Event} is ready to be processed and {@link Consumer#accept
-	 * accept} {@code onComplete} after dispatching.
+	 * Notify this component that an {@link Event} is ready to be processed and {@link Consumer#accept accept} {@code
+	 * onComplete} after dispatching.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -122,10 +122,8 @@ public interface Observable {
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the
-	 * output
-	 * of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal
-	 * replyTo}
-	 * property.
+	 * output of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal
+	 * replyTo} property.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -139,8 +137,7 @@ public interface Observable {
 	<E extends Event<?>> Observable send(Object key, E ev);
 
 	/**
-	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal
-	 * {@link
+	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
 	 * Consumer} that will take the output of a previously-registered {@link Function} and respond using the key set on
 	 * the {@link Event}'s {@literal replyTo} property.
 	 *
@@ -155,9 +152,8 @@ public interface Observable {
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the
-	 * output
-	 * of a previously-registered {@link Function} and respond to the key set on the {@link Event}'s {@literal replyTo}
-	 * property and will call the {@code notify} method on the given {@link Observable}.
+	 * output of a previously-registered {@link Function} and respond to the key set on the {@link Event}'s {@literal
+	 * replyTo} property and will call the {@code notify} method on the given {@link Observable}.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -173,8 +169,7 @@ public interface Observable {
 	<E extends Event<?>> Observable send(Object key, E ev, Observable replyTo);
 
 	/**
-	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal
-	 * {@link
+	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal {@link
 	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the key set on the
 	 * {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link
 	 * Observable}.
@@ -193,9 +188,9 @@ public interface Observable {
 	<S extends Supplier<? extends Event<?>>> Observable send(Object key, S supplier, Observable replyTo);
 
 	/**
-	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector}
-	 * and set the given event's {@code replyTo} property to the corresponding anonymous key, then register the
-	 * consumer to receive replies from the {@link reactor.function.Function} assigned to handle the given key.
+	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector} and
+	 * set the given event's {@code replyTo} property to the corresponding anonymous key, then register the consumer to
+	 * receive replies from the {@link reactor.function.Function} assigned to handle the given key.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -203,17 +198,19 @@ public interface Observable {
 	 * 		The event to notify.
 	 * @param reply
 	 * 		The consumer to register as a reply handler.
-	 * @param <E>
-	 * 		The type of the event.
+	 * @param <REQ>
+	 * 		The type of the request event.
+	 * @param <RESP>
+	 * 		The type of the response event.
 	 *
 	 * @return {@literal this}
 	 */
-	<E extends Event<?>> Observable sendAndReceive(Object key, E ev, Consumer<E> reply);
+	<REQ extends Event<?>, RESP extends Event<?>> Observable sendAndReceive(Object key, REQ ev, Consumer<RESP> reply);
 
 	/**
-	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector}
-	 * and set the event's {@code replyTo} property to the corresponding anonymous key, then register the
-	 * consumer to receive replies from the {@link reactor.function.Function} assigned to handle the given key.
+	 * Register the given {@link reactor.function.Consumer} on an anonymous {@link reactor.event.selector.Selector} and
+	 * set the event's {@code replyTo} property to the corresponding anonymous key, then register the consumer to receive
+	 * replies from the {@link reactor.function.Function} assigned to handle the given key.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -221,12 +218,18 @@ public interface Observable {
 	 * 		The supplier to supply the event.
 	 * @param reply
 	 * 		The consumer to register as a reply handler.
+	 * @param <REQ>
+	 * 		The type of the request event.
+	 * @param <RESP>
+	 * 		The type of the response event.
 	 * @param <S>
 	 * 		The type of the supplier.
 	 *
 	 * @return {@literal this}
 	 */
-	<E extends Event<?>, S extends Supplier<E>> Observable sendAndReceive(Object key, S supplier, Consumer<E> reply);
+	<REQ extends Event<?>, RESP extends Event<?>, S extends Supplier<REQ>> Observable sendAndReceive(Object key,
+	                                                                                                 S supplier,
+	                                                                                                 Consumer<RESP> reply);
 
 	/**
 	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
@@ -250,9 +253,9 @@ public interface Observable {
 	<T> Consumer<Event<T>> prepare(Object key);
 
 	/**
-	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The
-	 * implementation will take care of reducing the consumer selection to one per batch. The candidate consumers are
-	 * selected with the key {@param key}, possibly on each batch to refresh the result list.
+	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The implementation
+	 * will take care of reducing the consumer selection to one per batch. The candidate consumers are selected with the
+	 * key {@param key}, possibly on each batch to refresh the result list.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}
@@ -262,9 +265,9 @@ public interface Observable {
 	<T> Consumer<Iterable<Event<T>>> batchNotify(Object key);
 
 	/**
-	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The
-	 * implementation will take care of reducing the consumer selection to one per batch. The candidate consumers are
-	 * selected with the key {@param key}, possibly on each batch to refresh the result list.
+	 * Notify the key with all any accepted iterable group of events by the returned {@link Consumer}. The implementation
+	 * will take care of reducing the consumer selection to one per batch. The candidate consumers are selected with the
+	 * key {@param key}, possibly on each batch to refresh the result list.
 	 *
 	 * @param key
 	 * 		The key to be matched by {@link Selector Selectors}

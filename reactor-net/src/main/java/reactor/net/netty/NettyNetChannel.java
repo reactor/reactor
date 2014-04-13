@@ -1,10 +1,7 @@
 package reactor.net.netty;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.*;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -12,7 +9,6 @@ import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
-import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
@@ -52,21 +48,21 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@Override
 	public InetSocketAddress remoteAddress() {
-		return (InetSocketAddress)ioChannel.remoteAddress();
+		return (InetSocketAddress) ioChannel.remoteAddress();
 	}
 
 	@Override
-	public void close(@Nullable final Consumer<Void> onClose) {
-		if(closing) {
+	public void close(@Nullable final Consumer<Boolean> onClose) {
+		if (closing) {
 			return;
 		}
 		closing = true;
 		ioChannel.close().addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
-				if(future.isSuccess() && null != onClose) {
-					getEventsReactor().schedule(onClose, null);
-				} else {
+				if (null != onClose) {
+					getEventsReactor().schedule(onClose, future.isSuccess());
+				} else if (!future.isSuccess()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
 				closing = false;
@@ -94,14 +90,14 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
-				if(!success) {
+				if (!success) {
 					Throwable t = future.cause();
 					getEventsReactor().notify(t.getClass(), Event.wrap(t));
-					if(null != onComplete) {
+					if (null != onComplete) {
 						onComplete.accept(t);
 					}
-				} else if(null != onComplete) {
-					onComplete.accept((Void)null);
+				} else if (null != onComplete) {
+					onComplete.accept((Void) null);
 				}
 			}
 		});
@@ -122,10 +118,11 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	private class NettyConsumerSpec implements ConsumerSpec {
 		@Override
 		public ConsumerSpec close(final Runnable onClose) {
-			ioChannel.closeFuture().addListener(new ChannelFutureListener() {
+			ioChannel.pipeline().addLast(new ChannelDuplexHandler() {
 				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
+				public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 					onClose.run();
+					super.channelInactive(ctx);
 				}
 			});
 			return this;
@@ -136,7 +133,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			ioChannel.pipeline().addFirst(new IdleStateHandler(idleTimeout, 0, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if(evt.state() == IdleState.READER_IDLE) {
+					if (evt.state() == IdleState.READER_IDLE) {
 						onReadIdle.run();
 					}
 					super.channelIdle(ctx, evt);
@@ -150,7 +147,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			ioChannel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
-					if(evt.state() == IdleState.WRITER_IDLE) {
+					if (evt.state() == IdleState.WRITER_IDLE) {
 						onWriteIdle.run();
 					}
 					super.channelIdle(ctx, evt);

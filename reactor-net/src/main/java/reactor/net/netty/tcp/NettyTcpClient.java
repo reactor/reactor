@@ -61,8 +61,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpClient}.
  *
- * @param <IN>  The type that will be received by this client
- * @param <OUT> The type that will be sent by this client
+ * @param <IN>
+ * 		The type that will be received by this client
+ * @param <OUT>
+ * 		The type that will be sent by this client
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -78,21 +81,27 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private volatile boolean           closing;
 
 	/**
-	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor}
-	 * to
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor} to
 	 * send events. The number of IO threads used by the client is configured by the environment's {@code
 	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
 	 * Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env            The configuration environment
-	 * @param reactor        The reactor used to send events
-	 * @param connectAddress The address the client will connect to
-	 * @param options        The configuration options for the client's socket
-	 * @param sslOptions     The SSL configuration options for the client's socket
-	 * @param codec          The codec used to encode and decode data
-	 * @param consumers      The consumers that will interact with the connection
+	 * @param env
+	 * 		The configuration environment
+	 * @param reactor
+	 * 		The reactor used to send events
+	 * @param connectAddress
+	 * 		The address the client will connect to
+	 * @param options
+	 * 		The configuration options for the client's socket
+	 * @param sslOptions
+	 * 		The SSL configuration options for the client's socket
+	 * @param codec
+	 * 		The codec used to encode and decode data
+	 * @param consumers
+	 * 		The consumers that will interact with the connection
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
 	                      @Nonnull Reactor reactor,
@@ -299,16 +308,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					log.info("CONNECTED: " + future.channel());
 				}
 
-				final NetChannel<IN, OUT> ch = future.channel()
-				                                     .pipeline()
-				                                     .get(NettyNetChannelInboundHandler.class)
-				                                     .getNetChannel();
+				final Channel ioCh = future.channel();
+				final ChannelPipeline ioChPipline = ioCh.pipeline();
+				final NetChannel<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).getNetChannel();
 
-				future.channel().closeFuture().addListener(new ChannelFutureListener() {
+				ioChPipline.addLast(new ChannelDuplexHandler(){
 					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
+					public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 						if (log.isInfoEnabled()) {
-							log.info("CLOSED: " + future.channel());
+							log.info("CLOSED: " + ioCh);
 						}
 						notifyClose(ch);
 
@@ -322,10 +330,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						} else {
 							closing = true;
 						}
+						super.channelInactive(ctx);
 					}
 				});
 
-				future.channel().eventLoop().submit(new Runnable() {
+				ioCh.eventLoop().submit(new Runnable() {
 					@Override
 					public void run() {
 						connections.accept(ch);
@@ -343,16 +352,18 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
 			}
 
-			getEnvironment().getRootTimer().submit(
-					new Consumer<Long>() {
-						@Override
-						public void accept(Long now) {
-							openChannel(ReconnectingChannelListener.this);
-						}
-					},
-					delay,
-					TimeUnit.MILLISECONDS
-			);
+			getEnvironment().getRootTimer()
+			                .submit(
+					                new Consumer<Long>() {
+						                @Override
+						                public void accept(Long now) {
+							                openChannel(ReconnectingChannelListener.this);
+						                }
+					                },
+					                delay,
+					                TimeUnit.MILLISECONDS
+			                )
+			                .cancelAfterUse();
 		}
 	}
 

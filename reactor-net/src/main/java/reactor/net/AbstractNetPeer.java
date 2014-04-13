@@ -76,7 +76,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 							}
 							doCloseChannel(reg.getObject());
 						}
-						netChannels.clear();
+						getChannels().clear();
 						doClose(onClose);
 					}
 				},

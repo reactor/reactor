@@ -19,11 +19,12 @@ package reactor.function.support;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
- * A {@link Consumer} implementation that allows the delegate {@link Consumer} to only be
- * called once. Should be used in combination with {@link Registration#cancelAfterUse()} to
- * ensure that this {@link reactor.function.Consumer Consumer's} {@link
- * reactor.event.registry.Registration} is cancelled as soon after its use as possible.
+ * A {@link Consumer} implementation that allows the delegate {@link Consumer} to only be called once. Should be used in
+ * combination with {@link Registration#cancelAfterUse()} to ensure that this {@link reactor.function.Consumer
+ * Consumer's} {@link reactor.event.registry.Registration} is cancelled as soon after its use as possible.
  *
  * @param <T>
  * 		the type of the values that the consumer can accept
@@ -32,23 +33,9 @@ import reactor.function.Consumer;
  */
 public class SingleUseConsumer<T> implements Consumer<T> {
 
-	private final Consumer<T> delegate;
-	private final    Object  monitor = new Object();
-	private volatile boolean called  = false;
+	private final AtomicBoolean called = new AtomicBoolean();
 
-	/**
-	 * Static helper method for creating {@code SingleUseConsumer SingleUseConsumers} in code with a little less noise.
-	 *
-	 * @param delegate
-	 * 		The delegate {@code Consumer} to invoke.
-	 * @param <T>
-	 * 		Type of the Consumer's argument.
-	 *
-	 * @return A new {@code Consumer} that will only be invoked once, then cancelled.
-	 */
-	public static <T> Consumer<T> once(Consumer<T> delegate) {
-		return new SingleUseConsumer<T>(delegate);
-	}
+	private final Consumer<T> delegate;
 
 	/**
 	 * Used to create anonymous subclasses.
@@ -67,22 +54,37 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 		this.delegate = delegate;
 	}
 
-	@Override
-	public final void accept(T t) {
-		synchronized(monitor) {
-			if(called) {
-				return;
-			}
-			called = true;
-		}
-		if(null != delegate) {
-			delegate.accept(t);
-		} else {
-			doAccept(t);
-		}
-		throw new CancelConsumerException();
+	/**
+	 * Static helper method for creating {@code SingleUseConsumer SingleUseConsumers} in code with a little less noise.
+	 *
+	 * @param delegate
+	 * 		The delegate {@code Consumer} to invoke.
+	 * @param <T>
+	 * 		Type of the Consumer's argument.
+	 *
+	 * @return A new {@code Consumer} that will only be invoked once, then cancelled.
+	 */
+	public static <T> Consumer<T> once(Consumer<T> delegate) {
+		return new SingleUseConsumer<T>(delegate);
 	}
 
-	protected void doAccept(T t) {}
+	@Override
+	public final void accept(T t) {
+		if (called.get()) {
+			return;
+		}
+
+		if (called.compareAndSet(false, true)) {
+			if (null != delegate) {
+				delegate.accept(t);
+			} else {
+				doAccept(t);
+			}
+			throw new CancelConsumerException();
+		}
+	}
+
+	protected void doAccept(T t) {
+	}
 
 }
