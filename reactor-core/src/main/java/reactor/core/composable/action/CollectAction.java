@@ -29,7 +29,7 @@ public class CollectAction<T> extends BatchAction<T, List<T>> implements Flushab
 	private final List<T> values;
 
 	public CollectAction(int batchsize, Dispatcher dispatcher, ActionProcessor<List<T>> actionProcessor) {
-		super(batchsize, dispatcher, actionProcessor, true, false, true);
+		super(batchsize, dispatcher, actionProcessor, true, false, batchsize > 0);
 		values = new ArrayList<T>(batchsize > 0 ? batchsize : 256);
 	}
 

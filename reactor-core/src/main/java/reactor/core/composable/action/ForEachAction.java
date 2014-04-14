@@ -21,39 +21,36 @@ import reactor.event.dispatch.Dispatcher;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ForEachAction<T> extends Action<Iterable<T>, T> implements Flushable<T> {
+public class ForEachAction<T, V> extends Action<T, V> implements Flushable<T> {
 
-	final private Iterable<T> defaultValues;
+	final private Iterable<V> defaultValues;
 
-	public ForEachAction(Dispatcher dispatcher, ActionProcessor<T> actionProcessor) {
+	public ForEachAction(Dispatcher dispatcher, ActionProcessor<V> actionProcessor) {
 		this(null, dispatcher, actionProcessor);
 	}
 
 
-	public ForEachAction(Iterable<T> defaultValues,
+	public ForEachAction(Iterable<V> defaultValues,
 	                     Dispatcher dispatcher,
-	                     ActionProcessor<T> actionProcessor) {
+	                     ActionProcessor<V> actionProcessor) {
 		super(dispatcher, actionProcessor);
 		this.defaultValues = defaultValues;
 	}
 
 	@Override
-	public void doNext(Iterable<T> value) {
+	@SuppressWarnings("unchecked")
+	public void doNext(Object value) {
 		if (null == value) {
 			return;
 		}
 
-		for(T it : value){
-			output.onNext(it);
-		}
-
-		output.flush();
-
-		if(defaultValues != null){
-			output.onComplete();
+		if(null != defaultValues || !Iterable.class.isAssignableFrom(value.getClass())){
+			fromIterable(output, defaultValues);
 		}else{
-			available();
+			fromIterable(output, (Iterable<V>)value);
 		}
+		output.flush();
+		available();
 	}
 
 	@Override
@@ -61,4 +58,11 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> implements Flushabl
 		doNext(defaultValues);
 		return this;
 	}
+
+	public static <T> void fromIterable(ActionProcessor<T> actionProcessor, Iterable<T> values) {
+		for (T it : values) {
+			actionProcessor.onNext(it);
+		}
+	}
+
 }

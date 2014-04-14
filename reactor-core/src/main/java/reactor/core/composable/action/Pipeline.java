@@ -28,13 +28,4 @@ import reactor.core.composable.Composable;
  */
 public interface Pipeline<T> extends Flushable<T>, Processor<T,T> {
 
-	/**
-	 * Consume flush with the passed {@link Flushable}
-	 *
-	 * @param action
-	 * 		the action listening for flush
-	 *
-	 * @return {@literal this}
-	 */
-	Pipeline<T> subscribe(Flushable<?> action);
 }

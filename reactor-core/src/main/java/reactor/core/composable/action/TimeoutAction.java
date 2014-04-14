@@ -28,13 +28,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class TimeoutAction<T> extends Action<T, Object> {
 
-	private final Timer timer;
-	private final long  timeout;
+	private final Timer           timer;
+	private final long            timeout;
+	private final ActionProcessor actionProcessor;
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
-				output.flush();
+				actionProcessor.flush();
 			}
 		}
 	};
@@ -44,9 +45,10 @@ public class TimeoutAction<T> extends Action<T, Object> {
 	@SuppressWarnings("unchecked")
 	public TimeoutAction(Dispatcher dispatcher, ActionProcessor actionProcessor,
 	                     Timer timer, long timeout) {
-		super(dispatcher, actionProcessor);
+		super(dispatcher, null);
 		this.timer = timer;
 		this.timeout = timeout;
+		this.actionProcessor = actionProcessor;
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 

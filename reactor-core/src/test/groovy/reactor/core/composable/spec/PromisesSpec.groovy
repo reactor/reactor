@@ -304,7 +304,9 @@ class PromisesSpec extends Specification {
 
     when:
       "the original promise is fulfilled"
+    println mappedPromise.debug()
       deferred.accept 1
+	    println mappedPromise.debug()
 
     then:
       "the mapped promise is fulfilled with the mapped value"

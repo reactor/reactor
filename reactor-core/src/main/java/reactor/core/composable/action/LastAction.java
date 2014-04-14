@@ -29,6 +29,8 @@ public class LastAction<T> extends BatchAction<T, T> {
 
 	@Override
 	protected void flushCallback(T event) {
-		output.onNext(event);
+		if(event != null){
+			output.onNext(event);
+		}
 	}
 }

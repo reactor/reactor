@@ -44,4 +44,10 @@ public class CountAction<T> extends Action<T,Long> implements Flushable<T>{
 		counter.set(0l);
 		return this;
 	}
+
+	@Override
+	protected void doComplete() {
+		flush();
+		super.doComplete();
+	}
 }

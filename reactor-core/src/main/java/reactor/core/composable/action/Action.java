@@ -48,8 +48,9 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 	protected int prefetch = 0;
 
 	private Subscription subscription;
-	private Throwable error;
-	private boolean pause = false;
+
+	Throwable error;
+	boolean pause = false;
 
 	public Action(Dispatcher dispatcher) {
 		this(dispatcher, null);
@@ -80,7 +81,7 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 		if (output != null) {
 			output.onComplete();
 		}
-		subscription.cancel();
+		cancel();
 	}
 
 	protected void doError(Throwable ev) {
@@ -132,6 +133,7 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 	public void onError(Throwable cause) {
 		if(error != null) throw ActionException.INSTANCE;
 		try{
+			error = cause;
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
@@ -139,7 +141,6 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 				}
 			};
 			dispatcher.dispatch(this, cause, null, null, ROUTER, dispatchErrorHandler);
-			error = cause;
 		}catch (Throwable dispatchError){
 			error = dispatchError;
 		}
@@ -163,13 +164,13 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 	}
 
 	@Override
-	public Pausable cancel() {
+	public Action<T,V> cancel() {
 		subscription.cancel();
 		return this;
 	}
 
 	@Override
-	public Pausable pause() {
+	public Action<T,V> pause() {
 		pause = true;
 		return this;
 	}
@@ -192,5 +193,12 @@ public abstract class Action<T, V> implements Consumer<T>, Subscriber<T>, reacto
 
 	public final ActionProcessor<V> getOutput() {
 		return output;
+	}
+
+	@Override
+	public String toString() {
+		return "{" +
+				"prefetch=" + prefetch +
+				'}';
 	}
 }

@@ -40,7 +40,6 @@ import javax.annotation.Nullable;
  * @param <T> The type of the values
  * @author Stephane Maldini
  * @author Jon Brisbin
- * @author Andy Wilkinson
  */
 public abstract class Composable<T> implements Pipeline<T> {
 
@@ -62,7 +61,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		Assert.state(dispatcher != null || parent != null, "One of 'dispatcher' or 'parent'  cannot be null.");
 		this.parent = parent;
 		this.environment = environment;
-		this.batchSize = batchSize > 0 ? batchSize : 1;
+		this.batchSize = batchSize < 0 ? 1 : batchSize;
 		this.dispatcher = parent == null ? dispatcher : parent.dispatcher;
 		this.actionProcessor = new ActionProcessor<T>(
 				-1l
@@ -82,8 +81,23 @@ public abstract class Composable<T> implements Pipeline<T> {
 	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Composable<T> when(@Nonnull final Class<E> exceptionType,
 	                                                @Nonnull final Consumer<E> onError) {
-		this.actionProcessor.subscribe(new ErrorAction<T,E>(dispatcher, Selectors.T(exceptionType), onError));
+		action(new ErrorAction<T, E>(dispatcher, Selectors.T(exceptionType), onError));
 		return this;
+	}
+
+
+	/**
+	 * Materialize an error state into a downstream event.
+	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param <E>           type of the exception to handle
+	 * @return {@literal this}
+	 */
+	@SuppressWarnings("unchecked")
+	public <E extends Throwable> Composable<E> recover(@Nonnull final Class<E> exceptionType) {
+		Composable<E> output = newComposable();
+		action(new RecoverAction<T, E>(dispatcher, output.actionProcessor, Selectors.T(exceptionType)));
+		return output;
 	}
 
 	/**
@@ -105,7 +119,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Consumer<T> consumer) {
-		produceTo(new CallbackAction<T>(dispatcher, consumer));
+		action(new CallbackAction<T>(dispatcher, consumer));
 		return this;
 	}
 
@@ -117,7 +131,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @return {@literal this}
 	 */
 	public Composable<T> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		produceTo(new ObservableAction<T>(dispatcher, observable, key));
+		action(new ObservableAction<T>(dispatcher, observable, key));
 		return this;
 	}
 
@@ -132,7 +146,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	public <V> Composable<V> map(@Nonnull final Function<T, V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		final Composable<V> d = newComposable();
-		produceTo(new MapAction<T, V>(
+		action(new MapAction<T, V>(
 				fn,
 				dispatcher,
 				d.actionProcessor)
@@ -153,7 +167,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	public <V, C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
 		final Composable<V> d = newComposable();
-		produceTo(new MapManyAction<T, V, C>(
+		action(new MapManyAction<T, V, C>(
 				fn,
 				dispatcher,
 				d.actionProcessor
@@ -252,7 +266,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 */
 	public Composable<T> filter(@Nonnull final Predicate<T> p, final Composable<T> elseComposable) {
 		final Composable<T> d = newComposable();
-		produceTo(new FilterAction<T>(p, dispatcher, d.actionProcessor,
+		action(new FilterAction<T>(p, dispatcher, d.actionProcessor,
 				elseComposable != null ? elseComposable.actionProcessor : null));
 		return d;
 	}
@@ -284,7 +298,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 		Assert.state(timer != null, "Timer must be supplied");
 		Composable<?> composable = parent != null ? parent : this;
 
-		produceTo(new TimeoutAction<T>(
+		action(new TimeoutAction<T>(
 				dispatcher,
 				composable.actionProcessor,
 				timer,
@@ -305,13 +319,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	public Composable<T> propagate(final Supplier<T> supplier) {
 
 		final Composable<T> d = newComposable();
-		subscribe(new Flushable<Object>() {
-			@Override
-			public Flushable<Object> flush() {
-				d.actionProcessor.onNext(supplier.get());
-				return this;
-			}
-		});
+		produceTo(new SupplierAction<T,T>(dispatcher, d.actionProcessor, supplier));
 		return d;
 	}
 
@@ -359,13 +367,6 @@ public abstract class Composable<T> implements Pipeline<T> {
 		return ActionUtils.browseComposable(that);
 	}
 
-
-	@Override
-	public Composable<T> subscribe(Flushable<?> action) {
-		this.actionProcessor.subscribe(action);
-		return this;
-	}
-
 	@Override
 	public Subscriber<T> getSubscriber() {
 		return actionProcessor;
@@ -379,6 +380,15 @@ public abstract class Composable<T> implements Pipeline<T> {
 	@Override
 	public void produceTo(org.reactivestreams.api.Consumer<T> consumer) {
 		actionProcessor.subscribe(consumer.getSubscriber());
+	}
+
+	/**
+	 * Attach the given action to consume the stream of data from {@link this} composable
+	 *
+	 * @param consumer The action to consume that composable's values
+	 */
+	public void action(Action<T,?> consumer) {
+		actionProcessor.subscribe(consumer.prefetch(batchSize));
 	}
 
 	/**

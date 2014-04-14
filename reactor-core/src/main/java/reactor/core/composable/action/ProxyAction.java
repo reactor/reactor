@@ -20,8 +20,9 @@ import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class ProxyAction<T> extends Action<T, T> {
+public class ProxyAction<T> extends Action<T, T> implements Flushable<T>{
 
 	public ProxyAction(Dispatcher dispatcher, ActionProcessor<T> actionProcessor) {
 		super(dispatcher, actionProcessor);
@@ -33,4 +34,9 @@ public class ProxyAction<T> extends Action<T, T> {
 		available();
 	}
 
+	@Override
+	public Flushable<T> flush() {
+		output.flush();
+		return this;
+	}
 }

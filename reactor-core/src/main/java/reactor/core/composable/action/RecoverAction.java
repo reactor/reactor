@@ -23,14 +23,14 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
+public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 
-	private final Consumer<E>   consumer;
+	private final ActionProcessor<E>   actionProcessor;
 	private final ClassSelector selector;
 
-	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<E> consumer) {
-		super(dispatcher, null);
-		this.consumer = consumer;
+	public RecoverAction(Dispatcher dispatcher, ActionProcessor<E> actionProcessor, ClassSelector selector) {
+		super(dispatcher, actionProcessor);
+		this.actionProcessor = actionProcessor;
 		this.selector = selector;
 	}
 
@@ -43,7 +43,7 @@ public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 	@SuppressWarnings("unchecked")
 	public void doError(Throwable cause) {
 		if (selector.matches(cause.getClass())) {
-			consumer.accept((E) cause);
+			actionProcessor.onNext((E) cause);
 		}
 	}
 

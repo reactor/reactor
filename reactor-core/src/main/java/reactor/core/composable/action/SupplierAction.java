@@ -16,27 +16,28 @@
 package reactor.core.composable.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Predicate;
+import reactor.function.Supplier;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
  */
-public class WhenAction<T,V> extends Action<T,V> {
+public class SupplierAction<T,V> extends Action<T, V> implements Flushable<T> {
 
-	private final Predicate<T> consumer;
+	private final Supplier<V> supplier;
 
-	public WhenAction(Predicate<T> consumer, Dispatcher d, ActionProcessor<V> actionProcessor) {
-		super(d, actionProcessor);
-		this.consumer = consumer;
+	public SupplierAction(Dispatcher dispatcher, ActionProcessor<V> actionProcessor, Supplier<V> supplier) {
+		super(dispatcher, actionProcessor);
+		this.supplier = supplier;
 	}
 
 	@Override
-	public void doNext(T value) {
-		if(consumer.test(value)){
-			output.flush();
-		}
+	public void doNext(T ev) {
 		available();
 	}
 
+	@Override
+	public Flushable<T> flush() {
+		output.onNext(supplier.get());
+		return this;
+	}
 }

@@ -15,16 +15,21 @@
  */
 package reactor.core.composable.action;
 
+import com.gs.collections.api.block.function.Function2;
+import com.gs.collections.api.block.predicate.Predicate;
+import com.gs.collections.api.list.MutableList;
+import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.api.Producer;
 import org.reactivestreams.spi.Publisher;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 import reactor.alloc.Recyclable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Stephane Maldini
@@ -44,16 +49,15 @@ public class ActionProcessor<T> implements
 		SHUTDOWN;
 	}
 
-	private final Queue<T>                    buffer                = new ConcurrentLinkedQueue<T>();
-	private final List<ActionSubscription<T>> subscriptions         = new ArrayList<ActionSubscription<T>>(8);
-	private final List<Flushable<?>>          flushables            = new ArrayList<Flushable<?>>(8);
-	private final List<Subscription>          upstreamSubscriptions = new ArrayList<Subscription>(1);
+	private final Queue<T>                                   buffer                = new ConcurrentLinkedQueue<T>();
+	private final MultiReaderFastList<ActionSubscription<T>> subscriptions         = MultiReaderFastList.newList(8);
+	private final MultiReaderFastList<Subscription>          upstreamSubscriptions = MultiReaderFastList.newList(1);
+	private final AtomicInteger                              current               = new AtomicInteger(0);
 
 	private long    bufferSize;
 	private boolean keepAlive;
-	private int       remaining = 0;
-	private State     state     = State.READY;
-	private Throwable error     = null;
+	private State     state = State.READY;
+	private Throwable error = null;
 
 	public ActionProcessor(long bufferSize, boolean keepAlive) {
 		this.bufferSize = bufferSize < 0l ? Long.MAX_VALUE : bufferSize;
@@ -73,13 +77,14 @@ public class ActionProcessor<T> implements
 	public void subscribe(final Subscriber<T> subscriber) {
 		try {
 			if (checkState()) {
-				ActionSubscription<T> subscription = new ActionSubscription<T>(this, subscriber);
+				final ActionSubscription<T> subscription = new ActionSubscription<T>(this, subscriber);
 
 				if (subscriptions.indexOf(subscription) != -1) {
 					subscriber.onError(new IllegalArgumentException("Subscription already exists between this " +
 							"publisher/subscriber pair"));
 				} else {
 					subscriber.onSubscribe(subscription);
+					subscriptions.withWriteLockAndDelegate(new ActionMutableListCheckedProcedure<T>(subscription));
 				}
 			} else {
 				if (state == State.COMPLETE) {
@@ -97,36 +102,49 @@ public class ActionProcessor<T> implements
 	}
 
 	@Override
-	public void onSubscribe(Subscription subscription) {
+	public void onSubscribe(final Subscription subscription) {
 		if (upstreamSubscriptions.indexOf(subscription) != -1)
 			throw new IllegalArgumentException("This Processor is already subscribed");
 
-		upstreamSubscriptions.add(subscription);
+		upstreamSubscriptions.withWriteLockAndDelegate(new MutableListCheckedProcedure(subscription));
 	}
 
 	@Override
 	public Flushable<T> flush() {
 		if (!checkState()) return this;
 
-		if (flushables.isEmpty()) return this;
-		for (Flushable<?> subscriber : flushables) {
-			try {
-				subscriber.flush();
-			} catch (Throwable throwable) {
-				for (ActionSubscription<T> subscription : subscriptions) {
-					if (subscription.subscriber == subscriber) {
-						callError(subscription, throwable);
-						break;
-					}
-				}
-				onError(throwable);
+		subscriptions.select(new Predicate<ActionSubscription<T>>() {
+			@Override
+			public boolean accept(ActionSubscription<T> each) {
+				return Flushable.class.isAssignableFrom(each.subscriber.getClass());
 			}
-		}
+		}).forEach(new CheckedProcedure<ActionSubscription<?>>() {
+			@Override
+			public void safeValue(final ActionSubscription<?> object) throws Exception {
+				try {
+					((Flushable) object.subscriber).flush();
+				} catch (final Throwable throwable) {
+					subscriptions.select(new Predicate<ActionSubscription<T>>() {
+						@Override
+						public boolean accept(ActionSubscription<T> each) {
+							return each.subscriber == object;
+						}
+					}).forEach(new CheckedProcedure<ActionSubscription<T>>() {
+						@Override
+						public void safeValue(ActionSubscription<T> subscription) throws Exception {
+							callError(subscription, throwable);
+						}
+					});
+					onError(throwable);
+				}
+			}
+		});
+
 		return this;
 	}
 
 	@Override
-	public void onNext(T ev) {
+	public void onNext(final T ev) {
 		try {
 			if (!checkState() || bufferEvent(ev)) return;
 
@@ -135,35 +153,46 @@ public class ActionProcessor<T> implements
 				return;
 			}
 
-			for (ActionSubscription<T> subscription : subscriptions) {
-				try {
-					if (subscription.cancelled || subscription.completed || subscription.error)
-						continue;
-
-					subscription.subscriber.onNext(ev);
-				} catch (Throwable throwable) {
-					callError(subscription, throwable);
+			subscriptions.select(new Predicate<ActionSubscription<T>>() {
+				@Override
+				public boolean accept(ActionSubscription<T> subscription) {
+					return !subscription.cancelled && !subscription.completed && !subscription.error;
 				}
-			}
-		} catch (Throwable unrecoverable) {
+			}).forEach(new CheckedProcedure<ActionSubscription<T>>() {
+				@Override
+				public void safeValue(ActionSubscription<T> subscription) throws Exception {
+					try {
+						subscription.subscriber.onNext(ev);
+					} catch (Throwable throwable) {
+						callError(subscription, throwable);
+					}
+				}
+			});
+
+		} catch (final Throwable unrecoverable) {
 			state = State.ERROR;
 			error = unrecoverable;
-			for (ActionSubscription<T> subscription : subscriptions) {
-				callError(subscription, unrecoverable);
-			}
+			subscriptions.forEach(new CheckedProcedure<ActionSubscription<T>>() {
+				@Override
+				public void safeValue(ActionSubscription<T> subscription) throws Exception {
+					callError(subscription, unrecoverable);
+				}
+			});
 		}
 
-		remaining--;
 	}
 
 	@Override
-	public void onError(Throwable throwable) {
+	public void onError(final Throwable throwable) {
 		if (!checkState()) return;
 
 		if (subscriptions.isEmpty()) return;
-		for (ActionSubscription<T> subscription : subscriptions) {
-			callError(subscription, throwable);
-		}
+		subscriptions.forEach(new CheckedProcedure<ActionSubscription<T>>() {
+			@Override
+			public void safeValue(ActionSubscription<T> subscription) throws Exception {
+				callError(subscription, throwable);
+			}
+		});
 	}
 
 	@Override
@@ -173,33 +202,35 @@ public class ActionProcessor<T> implements
 		state = State.COMPLETE;
 		if (subscriptions.isEmpty()) return;
 
-		for (ActionSubscription<T> subscription : subscriptions) {
-			try {
-				if (!subscription.completed) {
+		subscriptions.select(new Predicate<ActionSubscription<T>>() {
+			@Override
+			public boolean accept(ActionSubscription<T> subscription) {
+				return !subscription.completed;
+			}
+		}).forEach(new CheckedProcedure<ActionSubscription<T>>() {
+			@Override
+			public void safeValue(ActionSubscription<T> subscription) throws Exception {
+				try {
 					subscription.subscriber.onComplete();
 					subscription.completed = true;
+				} catch (Throwable throwable) {
+					callError(subscription, throwable);
 				}
-			} catch (Throwable throwable) {
-				callError(subscription, throwable);
 			}
-		}
+		});
 	}
 
 	@Override
 	public void recycle() {
 		buffer.clear();
 		subscriptions.clear();
-		flushables.clear();
 		upstreamSubscriptions.clear();
+		current.set(0);
+
 		state = State.READY;
 		bufferSize = 0;
 		keepAlive = false;
-		remaining = 0;
 		error = null;
-	}
-
-	public void subscribe(final Flushable<?> flushable) {
-		flushables.add(flushable);
 	}
 
 	public void source(final Producer<T> source) {
@@ -210,12 +241,13 @@ public class ActionProcessor<T> implements
 		source.subscribe(this);
 	}
 
-	public List<ActionSubscription<T>> getSubscriptions() {
-		return subscriptions;
+	public void publisherError(Throwable error) {
+		this.error = error;
+		this.state = State.ERROR;
 	}
 
-	public List<Flushable<?>> getFlushables() {
-		return flushables;
+	public MutableList<ActionSubscription<T>> getSubscriptions() {
+		return subscriptions;
 	}
 
 	public void setBufferSize(long bufferSize) {
@@ -234,21 +266,27 @@ public class ActionProcessor<T> implements
 		return error;
 	}
 
-	private void unsubscribe(ActionSubscription<T> tSubscription) {
-		subscriptions.remove(tSubscription);
-		if (subscriptions.isEmpty() && !keepAlive) {
-			state = State.SHUTDOWN;
-			if (!upstreamSubscriptions.isEmpty()) {
-				for (Subscription subscription : upstreamSubscriptions) {
-					subscription.cancel();
-				}
+	private void unsubscribe(final ActionSubscription<T> subscription) {
+		subscriptions.withWriteLockAndDelegate(new ActionMutableListCheckedProcedure<T>(subscription) {
+			@Override
+			public void safeValue(MutableList<ActionSubscription<T>> list) throws Exception {
+				list.remove(subscription);
 
+				if (list.isEmpty() && !keepAlive) {
+					state = State.SHUTDOWN;
+					upstreamSubscriptions.forEach(new CheckedProcedure<Subscription>() {
+						@Override
+						public void safeValue(Subscription object) throws Exception {
+							object.cancel();
+						}
+					});
+				}
 			}
-		}
+		});
 	}
 
 	private boolean bufferEvent(T next) {
-		if (remaining > 0) {
+		if (current.get() > 0) {
 			return false;
 		}
 
@@ -258,7 +296,10 @@ public class ActionProcessor<T> implements
 
 	private void callError(ActionSubscription<T> subscription, Throwable cause) {
 		if (!subscription.error) {
-			subscription.subscriber.onError(cause);
+			try{
+				subscription.subscriber.onError(cause);
+			}catch (ActionException e){
+			}
 			subscription.error = true;
 		}
 	}
@@ -269,14 +310,17 @@ public class ActionProcessor<T> implements
 	}
 
 	private void drain(int elements) {
+
+		int min = subscriptions.injectInto(elements, new Function2<Integer, ActionSubscription<T>, Integer>() {
+			@Override
+			public Integer value(Integer argument1, ActionSubscription<T> argument2) {
+				return Math.min(argument2.lastRequested, argument1);
+			}
+		});
+
+		current.getAndSet(min);
+
 		if (buffer.isEmpty()) return;
-
-		int min = elements;
-		for (ActionSubscription<T> subscription : subscriptions) {
-			min = Math.min(subscription.lastRequested, min);
-		}
-
-		remaining = min;
 
 		T data;
 		int i = 0;
@@ -286,15 +330,14 @@ public class ActionProcessor<T> implements
 		}
 	}
 
-	private static class ActionSubscription<T> implements org.reactivestreams.spi.Subscription {
-		private final Subscriber<T> subscriber;
+	static class ActionSubscription<T> implements org.reactivestreams.spi.Subscription {
+		final Subscriber<T>      subscriber;
+		final ActionProcessor<T> publisher;
 
-		private final ActionProcessor<T> publisher;
-		private       int                lastRequested;
-
-		private boolean cancelled = false;
-		private boolean completed = false;
-		private boolean error     = false;
+		int lastRequested;
+		boolean cancelled = false;
+		boolean completed = false;
+		boolean error     = false;
 
 		public ActionSubscription(ActionProcessor<T> publisher, Subscriber<T> subscriber) {
 			this.subscriber = subscriber;
@@ -345,5 +388,54 @@ public class ActionProcessor<T> implements
 			return result;
 		}
 
+
+		@Override
+		public String toString() {
+			return "" +
+					(cancelled ? "cancelled" : (completed ? "completed" : (error ? "error" : lastRequested)))
+					;
+		}
+	}
+
+	//Various registration procedures
+
+	private static class MutableListCheckedProcedure extends CheckedProcedure<MutableList<Subscription>> {
+		private final Subscription subscription;
+
+		public MutableListCheckedProcedure(Subscription subscription) {
+			this.subscription = subscription;
+		}
+
+		@Override
+		public void safeValue(MutableList<Subscription> object) throws Exception {
+			object.add(subscription);
+		}
+	}
+
+	private static class ActionMutableListCheckedProcedure<T> extends CheckedProcedure<MutableList<ActionSubscription<T>>> {
+		private final ActionSubscription<T> subscription;
+
+		public ActionMutableListCheckedProcedure(ActionSubscription<T> subscription) {
+			this.subscription = subscription;
+		}
+
+		@Override
+		public void safeValue(MutableList<ActionSubscription<T>> object) throws Exception {
+			object.add(subscription);
+		}
+	}
+
+	private static class FlushableMutableListCheckedProcedure extends
+			CheckedProcedure<MutableList<Flushable<?>>> {
+		private final Flushable<?> subscription;
+
+		public FlushableMutableListCheckedProcedure(Flushable<?> subscription) {
+			this.subscription = subscription;
+		}
+
+		@Override
+		public void safeValue(MutableList<Flushable<?>> object) throws Exception {
+			object.add(subscription);
+		}
 	}
 }

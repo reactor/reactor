@@ -18,16 +18,14 @@ package reactor.core.composable;
 
 import reactor.core.Environment;
 import reactor.core.Observable;
-import reactor.core.composable.action.*;
-import reactor.core.spec.Reactors;
-import reactor.event.Event;
+import reactor.core.composable.action.Action;
+import reactor.core.composable.action.CompleteAction;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.Supplier;
 import reactor.timer.Timer;
-import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -49,7 +47,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * @param <T> the type of the value that will be made available
  * @author Jon Brisbin
  * @author Stephane Maldini
- * @author Andy Wilkinson
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
 public class Promise<T> extends Composable<T> implements Supplier<T> {
@@ -83,20 +80,20 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.pendingCondition = lock.newCondition();
 
-		produceTo(new Action<T,Void>(dispatcher) {
+		if (isPending()) {
+			action(new Action<T, Void>(dispatcher) {
 
-			@Override
-			public void doNext(T ev) {
-				valueAccepted(ev);
-				cancel();
-			}
+				@Override
+				public void doNext(T ev) {
+					valueAccepted(ev);
+				}
 
-			@Override
-			protected void doError(Throwable ev) {
-				errorAccepted(error);
-				cancel();
-			}
-		});
+				@Override
+				protected void doError(Throwable ev) {
+					errorAccepted(ev);
+				}
+			});
+		}
 	}
 
 	/**
@@ -115,6 +112,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this(dispatcher, env, null);
 		this.value = value;
 		this.state = State.SUCCESS;
+		complete();
 	}
 
 	/**
@@ -134,6 +132,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		this(dispatcher, env, null);
 		this.error = error;
 		this.state = State.FAILURE;
+		getPublisher().publisherError(error);
 	}
 
 	/**
@@ -145,7 +144,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	 * @return {@literal this}
 	 */
 	public Promise<T> onComplete(@Nonnull final Consumer<Promise<T>> onComplete) {
-		produceTo(new CompleteAction<T, Promise<T>>(getDispatcher(), this, onComplete));
+		action(new CompleteAction<T, Promise<T>>(getDispatcher(), this, onComplete));
 		return this;
 	}
 
@@ -369,6 +368,21 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
+	public void action(Action<T, ?> consumer) {
+		lock.lock();
+		try {
+			if (!isSuccess()) {
+				super.action(consumer);
+			}else{
+				consumer.onNext(value);
+				consumer.onComplete();
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	@Override
 	public Promise<T> consume(@Nonnull Consumer<T> consumer) {
 		return (Promise<T>) super.consume(consumer);
 	}
@@ -389,9 +403,13 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Promise<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		return (Promise<T>) super.when(exceptionType, onError);
+	}
+
+	@Override
+	public <E extends Throwable> Promise<E> recover(@Nonnull Class<E> exceptionType) {
+		return (Promise<E>) super.recover(exceptionType);
 	}
 
 	@Override
@@ -450,11 +468,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	}
 
 	@Override
-	public Promise<T> subscribe(Flushable<?> action) {
-		return (Promise<T>) super.subscribe(action);
-	}
-
-	@Override
 	protected <V> Promise<V> newComposable() {
 		return new Promise<V>(null, getEnvironment(), this);
 	}
@@ -462,7 +475,7 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 	protected void errorAccepted(Throwable error) {
 		lock.lock();
 		try {
-			assertPending();
+			if (!isPending()) return;
 			this.error = error;
 			this.state = State.FAILURE;
 			if (hasBlockers) {
@@ -472,13 +485,12 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		complete();
 	}
 
 	protected void valueAccepted(T value) {
 		lock.lock();
 		try {
-			assertPending();
+			if (!isPending()) return;
 			this.value = value;
 			this.state = State.SUCCESS;
 			if (hasBlockers) {
@@ -488,11 +500,6 @@ public class Promise<T> extends Composable<T> implements Supplier<T> {
 		} finally {
 			lock.unlock();
 		}
-		complete();
-	}
-
-	private void assertPending() {
-		Assert.state(isPending(), "Promise has already completed. ");
 	}
 
 	private enum State {

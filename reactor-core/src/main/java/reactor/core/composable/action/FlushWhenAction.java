@@ -16,42 +16,29 @@
 package reactor.core.composable.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.selector.ClassSelector;
-import reactor.function.Consumer;
+import reactor.function.Predicate;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
+public class FlushWhenAction<T,V> extends Action<T,V> {
 
-	private final Consumer<E>   consumer;
-	private final ClassSelector selector;
+	private final Predicate<T> consumer;
+	private final ActionProcessor<V> flushOutput;
 
-	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<E> consumer) {
-		super(dispatcher, null);
+	public FlushWhenAction(Predicate<T> consumer, Dispatcher d, ActionProcessor<V> actionProcessor) {
+		super(d, null);
+		this.flushOutput = actionProcessor;
 		this.consumer = consumer;
-		this.selector = selector;
 	}
 
 	@Override
-	public void doNext(Object ev) {
-		//IGNORE
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public void doError(Throwable cause) {
-		if (selector.matches(cause.getClass())) {
-			consumer.accept((E) cause);
+	public void doNext(T value) {
+		if(consumer.test(value)){
+			flushOutput.flush();
 		}
+		available();
 	}
 
-	@Override
-	public String toString() {
-		return "{" +
-				"catch-type=" + selector.getObject()+", "+
-				"prefetch=" + prefetch +
-				'}';
-	}
 }

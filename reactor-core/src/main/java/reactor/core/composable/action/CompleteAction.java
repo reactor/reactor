@@ -40,6 +40,11 @@ public class CompleteAction<T, E> extends Action<T, E> {
 	}
 
 	@Override
+	protected void doError(Throwable ev) {
+		consumer.accept(input);
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public void doComplete() {
 		consumer.accept(input);

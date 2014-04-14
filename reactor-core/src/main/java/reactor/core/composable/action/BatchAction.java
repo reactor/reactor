@@ -27,9 +27,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
-	private final boolean next;
-	private final boolean flush;
-	private final boolean first;
+	final boolean next;
+	final boolean flush;
+	boolean first;
 
 	private volatile long errorCount  = 0l;
 	private volatile long acceptCount = 0l;
@@ -98,7 +98,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
+	protected void doComplete() {
+		flushCallback(null);
+		super.doComplete();
+	}
+
+	@Override
 	public String toString() {
-		return super.toString() + "  % size:" + prefetch + " %  accepted:" + acceptCount + " % errors:" + errorCount;
+		return super.toString()  + " %  accepted:" + acceptCount + " % errors:" + errorCount;
 	}
 }

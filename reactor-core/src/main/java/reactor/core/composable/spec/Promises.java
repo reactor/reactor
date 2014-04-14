@@ -23,6 +23,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;
@@ -42,11 +43,8 @@ public abstract class Promises {
 	/**
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
-	 * @param env
-	 * 		the {@link reactor.core.Environment} to use
-	 * @param <T>
-	 * 		type of the expected value
-	 *
+	 * @param env the {@link reactor.core.Environment} to use
+	 * @param <T> type of the expected value
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Promise<T>> defer(Environment env) {
@@ -56,13 +54,9 @@ public abstract class Promises {
 	/**
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
-	 * @param env
-	 * 		the {@link reactor.core.Environment} to use
-	 * @param dispatcher
-	 * 		the name of the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param <T>
-	 * 		type of the expected value
-	 *
+	 * @param env        the {@link reactor.core.Environment} to use
+	 * @param dispatcher the name of the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Promise<T>> defer(Environment env, String dispatcher) {
@@ -72,13 +66,9 @@ public abstract class Promises {
 	/**
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
-	 * @param env
-	 * 		the {@link reactor.core.Environment} to use
-	 * @param dispatcher
-	 * 		the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param <T>
-	 * 		type of the expected value
-	 *
+	 * @param env        the {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.core.composable.Deferred}
 	 */
 	public static <T> Deferred<T, Promise<T>> defer(Environment env, Dispatcher dispatcher) {
@@ -88,9 +78,7 @@ public abstract class Promises {
 	/**
 	 * Create a {@link Deferred} backed by a {@link Promise}.
 	 *
-	 * @param <T>
-	 * 		type of the expected value
-	 *
+	 * @param <T> type of the expected value
 	 * @return A {@link DeferredPromiseSpec}.
 	 */
 	public static <T> DeferredPromiseSpec<T> defer() {
@@ -101,11 +89,8 @@ public abstract class Promises {
 	 * Create a {@link Deferred} backed by a {@link Promise} and producing the value for the {@link Promise} using the
 	 * given supplier.
 	 *
-	 * @param supplier
-	 * 		{@link Supplier} that will produce the value
-	 * @param <T>
-	 * 		type of the expected value
-	 *
+	 * @param supplier {@link Supplier} that will produce the value
+	 * @param <T>      type of the expected value
 	 * @return A {@link PromiseSpec}.
 	 */
 	public static <T> PromiseSpec<T> task(Supplier<T> supplier) {
@@ -116,11 +101,8 @@ public abstract class Promises {
 	 * Create a {@link Deferred} backed by a {@link Promise} and use the given value to complete the {@link Promise}
 	 * immediately.
 	 *
-	 * @param value
-	 * 		the value to complete the {@link Promise} with
-	 * @param <T>
-	 * 		the type of the value
-	 *
+	 * @param value the value to complete the {@link Promise} with
+	 * @param <T>   the type of the value
 	 * @return A {@link PromiseSpec} that will produce a {@link Promise} that is completed with the given value
 	 */
 	public static <T> PromiseSpec<T> success(T value) {
@@ -131,11 +113,8 @@ public abstract class Promises {
 	 * Create a {@link Deferred} backed by a {@link Promise} and use the given error to complete the {@link Promise}
 	 * immediately.
 	 *
-	 * @param error
-	 * 		the error to complete the {@link Promise} with
-	 * @param <T>
-	 * 		the type of the value
-	 *
+	 * @param error the error to complete the {@link Promise} with
+	 * @param <T>   the type of the value
 	 * @return A {@link PromiseSpec} that will produce a {@link Promise} that is completed with the given error
 	 */
 	public static <T> PromiseSpec<T> error(Throwable error) {
@@ -146,11 +125,8 @@ public abstract class Promises {
 	 * Merge given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal Promise
 	 * Promises} have been fulfilled.
 	 *
-	 * @param promises
-	 * 		The promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<List<T>> when(Promise<T>... promises) {
@@ -161,11 +137,8 @@ public abstract class Promises {
 	 * Merge given deferred promises into a new a {@literal Promise} that will be fulfilled when all of the given
 	 * {@literal Deferred Deferreds} have been fulfilled.
 	 *
-	 * @param promises
-	 * 		The promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<List<T>> when(Deferred<T, Promise<T>>... promises) {
@@ -176,11 +149,8 @@ public abstract class Promises {
 	 * Aggregate given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal
 	 * Promise Promises} have been fulfilled.
 	 *
-	 * @param promises
-	 * 		The promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link DeferredPromiseSpec}.
 	 */
 	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
@@ -192,7 +162,7 @@ public abstract class Promises {
 
 		aggregatedStream.produceTo(resultPromise);
 
-		for(Promise<T> promise : promises) {
+		for (Promise<T> promise : promises) {
 			promise.produceTo(deferredStream);
 		}
 
@@ -203,11 +173,8 @@ public abstract class Promises {
 	/**
 	 * Pick the first result coming from any of the given promises and populate a new {@literal Promise}.
 	 *
-	 * @param promises
-	 * 		The deferred promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The deferred promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<T> any(Deferred<T, Promise<T>>... promises) {
@@ -217,11 +184,8 @@ public abstract class Promises {
 	/**
 	 * Pick the first result coming from any of the given promises and populate a new {@literal Promise}.
 	 *
-	 * @param promises
-	 * 		The deferred promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The deferred promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<T> any(Promise<T>... promises) {
@@ -232,11 +196,8 @@ public abstract class Promises {
 	/**
 	 * Pick the first result coming from any of the given promises and populate a new {@literal Promise}.
 	 *
-	 * @param promises
-	 * 		The promises to use.
-	 * @param <T>
-	 * 		The type of the function result.
-	 *
+	 * @param promises The promises to use.
+	 * @param <T>      The type of the function result.
 	 * @return a {@link DeferredStreamSpec}.
 	 */
 	public static <T> Promise<T> any(Collection<? extends Promise<T>> promises) {
@@ -248,7 +209,7 @@ public abstract class Promises {
 
 		firstStream.produceTo(resultPromise);
 
-		for(Promise<T> promise : promises) {
+		for (Promise<T> promise : promises) {
 			promise.produceTo(deferredStream);
 		}
 
@@ -259,41 +220,17 @@ public abstract class Promises {
 	 * Consume the next value of the given {@link reactor.core.composable.Composable} and fulfill the returned {@link
 	 * reactor.core.composable.Promise} on the next value.
 	 *
-	 * @param composable
-	 * 		the {@literal Composable} to consume the next value from
-	 * @param <T>
-	 * 		type of the value
-	 *
+	 * @param composable the {@literal Composable} to consume the next value from
+	 * @param <T>        type of the value
 	 * @return a {@link reactor.core.composable.Promise} that will be fulfilled with the next value coming into the given
 	 * Composable
 	 */
 	public static <T> Promise<T> next(Composable<T> composable) {
-		final AtomicBoolean called = new AtomicBoolean(false);
-		final Deferred<T, Promise<T>> d = Promises.<T>defer().get();
+		final Promise<T> d = new Promise<T>(SynchronousDispatcher.INSTANCE, null, composable);
 
-		composable
-				.when(Throwable.class, new Consumer<Throwable>() {
-					@Override
-					public void accept(Throwable throwable) {
-						if (!called.get()
-								&& called.compareAndSet(false, true)
-								&& !d.compose().isComplete()) {
-							d.accept(throwable);
-						}
-					}
-				})
-				.consume(new Consumer<T>() {
-					@Override
-					public void accept(T t) {
-						if (!called.get()
-								&& called.compareAndSet(false, true)
-								&& !d.compose().isComplete()) {
-							d.accept(t);
-						}
-					}
-				});
+		composable.produceTo(d);
 
-		return d.compose();
+		return d;
 	}
 
 	private static <T> List<Promise<T>> deferredToPromises(Deferred<T, Promise<T>>... promises) {

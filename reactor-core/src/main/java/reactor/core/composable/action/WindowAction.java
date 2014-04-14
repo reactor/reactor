@@ -79,26 +79,32 @@ public class WindowAction<T> extends Action<T,List<T>> implements Flushable<T> {
 	}
 
 	@Override
-	public Pausable cancel() {
+	public WindowAction<T> cancel() {
 		timerRegistration.cancel();
-		return super.cancel();
+		return (WindowAction<T>)super.cancel();
 	}
 
 	@Override
-	public Pausable pause() {
+	public WindowAction<T> pause() {
 		timerRegistration.pause();
-		return super.pause();
+		return (WindowAction<T>)super.pause();
 	}
 
 	@Override
-	public Pausable resume() {
+	public WindowAction<T> resume() {
 		timerRegistration.resume();
-		return super.resume();
+		return (WindowAction<T>)super.resume();
 	}
 
 	@Override
 	public Flushable<T> flush() {
 		doWindow(-1l);
 		return this;
+	}
+
+	@Override
+	protected void doComplete() {
+		flush();
+		super.doComplete();
 	}
 }

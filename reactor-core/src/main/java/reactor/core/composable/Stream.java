@@ -48,7 +48,6 @@ import java.util.concurrent.TimeUnit;
  *
  * @param <T> the type of the values in the stream
  * @author Jon Brisbin
- * @author Andy Wilkinson
  * @author Stephane Maldini
  */
 public class Stream<T> extends Composable<T> {
@@ -98,6 +97,11 @@ public class Stream<T> extends Composable<T> {
 	@Override
 	public <E extends Throwable> Stream<T> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
 		return (Stream<T>) super.when(exceptionType, onError);
+	}
+
+	@Override
+	public <E extends Throwable> Stream<E> recover(@Nonnull Class<E> exceptionType) {
+		return (Stream<E>) super.recover(exceptionType);
 	}
 
 	@Override
@@ -158,10 +162,11 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the iterated one on flush
 	 * @since 1.1
 	 */
+	@SuppressWarnings("unchecked")
 	public Stream<T> propagate(Iterable<T> iterable) {
 		final Stream<T> d = newComposable(getBatchSize());
 
-		subscribe(new ForEachAction<T>(iterable,
+		action(new ForEachAction<T,T>(iterable,
 				getDispatcher(), d.getPublisher())
 		);
 		return d;
@@ -180,7 +185,7 @@ public class Stream<T> extends Composable<T> {
 	 * @since 1.1
 	 */
 	public Stream<T> flushWhen(Predicate<T> predicate) {
-		produceTo(new WhenAction<T, T>(predicate, getDispatcher(), getPublisher()));
+		action(new FlushWhenAction<T, T>(predicate, getDispatcher(), getPublisher()));
 		return this;
 	}
 
@@ -210,7 +215,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> first(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");
 		final Stream<T> d = newComposable(batchSize);
-		produceTo(new FirstAction<T>(batchSize, getDispatcher(), d.getPublisher()));
+		action(new FirstAction<T>(batchSize, getDispatcher(), d.getPublisher()));
 		return d;
 	}
 
@@ -232,7 +237,7 @@ public class Stream<T> extends Composable<T> {
 	public Stream<T> last(int batchSize) {
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 		final Stream<T> d = newComposable(batchSize);
-		produceTo(new LastAction<T>(batchSize, getDispatcher(), d.getPublisher()));
+		action(new LastAction<T>(batchSize, getDispatcher(), d.getPublisher()));
 		return d;
 	}
 
@@ -243,9 +248,9 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 * @since 1.1
 	 */
-	public Stream<T> distinct() {
+	public Stream<T> distinctUntilChanged() {
 		final Stream<T> d = newComposable(getBatchSize());
-		produceTo(new DistinctAction<T>(
+		action(new DistinctAction<T>(
 				getDispatcher(),
 				d.getPublisher()
 		));
@@ -276,13 +281,13 @@ public class Stream<T> extends Composable<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public <V> Stream<V> split(int batchSize) {
-		final Stream<Object> d = newComposable(batchSize);
-		final Stream<Iterable<Object>> iterableStream = (Stream<Iterable<Object>>) this;
+		final Stream<V> d = newComposable(batchSize);
+		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 
-		iterableStream.produceTo(
-				new ForEachAction<Object>(getDispatcher(), d.getPublisher())
+		iterableStream.action(
+				new ForEachAction<Iterable<V>,V>(getDispatcher(), d.getPublisher())
 		);
-		return (Stream<V>) d;
+		return d;
 	}
 
 	/**
@@ -316,7 +321,7 @@ public class Stream<T> extends Composable<T> {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public Stream<List<T>> collect(int batchSize) {
-		final Stream<List<T>> d = newComposable(1);
+		final Stream<List<T>> d = newComposable();
 
 		produceTo(new CollectAction<T>(batchSize,
 				getDispatcher(),
@@ -431,9 +436,9 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Stream<List<T>> d = newComposable(1);
+		final Stream<List<T>> d = newComposable();
 
-		produceTo(new WindowAction<T>(
+		action(new WindowAction<T>(
 				getDispatcher(),
 				d.getPublisher(),
 				timer,
@@ -458,9 +463,9 @@ public class Stream<T> extends Composable<T> {
 	 */
 	public Stream<List<T>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
 		Assert.state(timer != null, "Timer must be supplied");
-		final Stream<List<T>> d = newComposable(1);
+		final Stream<List<T>> d = newComposable();
 
-		produceTo(new MovingWindowAction<T>(
+		action(new MovingWindowAction<T>(
 				getDispatcher(),
 				d.getPublisher(),
 				timer,
@@ -502,7 +507,7 @@ public class Stream<T> extends Composable<T> {
 	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators,
 	                            final int batchSize
 	) {
-		final Stream<A> stream = newComposable(1);
+		final Stream<A> stream = newComposable();
 		produceTo(new ReduceAction<T, A>(batchSize,
 				accumulators,
 				fn,
@@ -555,8 +560,8 @@ public class Stream<T> extends Composable<T> {
 	 * @since 1.1
 	 */
 	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<T, A>, A> fn, @Nullable final Supplier<A> accumulators) {
-		final Stream<A> stream = newComposable(1);
-		produceTo(new ScanAction<T, A>(accumulators,
+		final Stream<A> stream = newComposable();
+		action(new ScanAction<T, A>(accumulators,
 				fn,
 				getDispatcher(),
 				stream.getPublisher()));
@@ -583,7 +588,7 @@ public class Stream<T> extends Composable<T> {
 	 * @since 1.1
 	 */
 	public Stream<T> count(Stream<Long> stream) {
-		produceTo(new CountAction<T>(getDispatcher(), stream.getPublisher()));
+		action(new CountAction<T>(getDispatcher(), stream.getPublisher()));
 		return this;
 	}
 

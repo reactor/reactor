@@ -16,12 +16,8 @@
 package reactor.core.composable.spec;
 
 import reactor.core.Environment;
-import reactor.core.Observable;
-import reactor.core.Reactor;
 import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.selector.Selector;
-import reactor.tuple.Tuple2;
 
 /**
  * A helper class for specifying a bounded {@link reactor.core.composable.Composable}.

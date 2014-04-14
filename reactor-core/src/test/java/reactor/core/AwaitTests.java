@@ -32,6 +32,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class AwaitTests extends AbstractReactorTest {
@@ -42,11 +43,11 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
-		for(int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 1000; i++) {
 			final Deferred<String, Promise<String>> deferred = Promises.<String>defer()
-			                                                           .env(env)
-			                                                           .dispatcher("threadPoolExecutor")
-			                                                           .get();
+					.env(env)
+					.dispatcher(dispatcher)
+					.get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
 			Promise<String> promise = deferred.compose();
@@ -57,6 +58,7 @@ public class AwaitTests extends AbstractReactorTest {
 					latch.countDown();
 				}
 			});
+
 			innerReactor.schedule(new Consumer() {
 
 				@Override

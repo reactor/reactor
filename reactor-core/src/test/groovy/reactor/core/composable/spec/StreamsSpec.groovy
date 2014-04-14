@@ -51,7 +51,7 @@ class StreamsSpec extends Specification {
 			value.get() == 'test'
 	}
 
-	def 'A deferred Stream with an generated value makes that value available immediately'() {
+	def 'A deferred Stream with a generated value makes that value available immediately'() {
 		given:
 			String test = ""
 			'a composable with an initial value'
@@ -103,7 +103,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the values are filtered and result is collected'
-			def tap = s.distinct().collect().tap()
+			def tap = s.distinctUntilChanged().collect().tap()
 			s.flush()
 
 		then:
@@ -119,7 +119,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a flushable propagate action is attached'
-			def tap = s.propagate([2, 3, 4, 5]).filter(predicate { it == 5 }).tap()
+			def tap = s.propagate([2, 3, 4, 5]).filter(predicate { println it; it == 5 }).tap()
 
 		and:
 			'a flush trigger and a filtered tap are attached'
@@ -127,38 +127,15 @@ class StreamsSpec extends Specification {
 
 		and:
 			'values are accepted'
+			println s.debug()
 			d.accept(1)
+			println s.debug()
 
 		then:
 			'the filtered tap should see 5 from the propagated values'
 			tap.get() == 5
-			println s.debug()
+
 	}
-
-	def 'A Stream can be arbitrarely batched'() {
-		given:
-			'a composable to defer'
-			Deferred d = Streams.<Integer> defer().synchronousDispatcher().get()
-			Stream s = d.compose()
-
-		when:
-			'a batcher is created'
-			def b = d.batcher()
-			def tap = s.tap()
-
-		and:
-			'events are passed and a flush triggered'
-			b.accept(Event.wrap(1))
-			b.accept(Event.wrap(2))
-			b.accept(Event.wrap(3))
-			b.flush()
-
-		then:
-			'the filtered tap should see 5 from the propagated values'
-			tap.get() == 3
-			println s.debug()
-	}
-
 
 	def "A Stream's initial values are not passed to consumers but subsequent values are"() {
 		given:
@@ -227,7 +204,8 @@ class StreamsSpec extends Specification {
 			errors == 1
 
 		when:
-			'A checked exception is accepted'
+			'A new error consumer is subscribed and checked exception is accepted'
+			composable.when(RuntimeException, consumer { errors++ })
 			d.accept(new Exception())
 
 		then:
@@ -235,7 +213,8 @@ class StreamsSpec extends Specification {
 			errors == 1
 
 		when:
-			'A subclass of RuntimeException is accepted'
+			'A new error consumer is subscribed and a subclass of RuntimeException is accepted'
+			composable.when(RuntimeException, consumer { errors++ })
 			d.accept(new IllegalArgumentException())
 
 		then:
@@ -282,7 +261,7 @@ class StreamsSpec extends Specification {
 			Exception error = null
 			def value = s.tap()
 			s.when(Exception, consumer { error = it })
-			parent.compose().connectValues(s)
+			parent.compose().produceTo(s)
 
 		when:
 			'the parent accepts a value'
@@ -299,14 +278,6 @@ class StreamsSpec extends Specification {
 		then:
 			'the child does not contains the error from the parent'
 			!error
-
-		when:
-			"try to consume itself"
-			parent.compose().connectValues(parent.compose())
-
-		then:
-			'the child contains the error from the parent'
-			thrown IllegalArgumentException
 	}
 
 	def 'When the accepted event is Iterable, split can iterate over values'() {
@@ -392,7 +363,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			Deferred source = Streams.<Integer> defer().get()
 			Stream<Integer> mapped = source.compose().
-					mapMany(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
+					flatMap(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
 
 		when:
 			'the source accepts a value'
@@ -731,65 +702,13 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted'
+		println reduced.debug()
 			source.accept(1)
+			println reduced.debug()
 
 		then:
 			'the list contains the first element'
 			value.get() == [1]
-	}
-
-	def 'Buffer will accumulate a list of accepted values and pass it to a consumer one by one'() {
-		given:
-			'a source and a collected stream'
-			Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
-			Stream reduced = source.compose().buffer()
-			def value = reduced.tap()
-
-		when:
-			'the first value is accepted on the source'
-			source.accept(1)
-
-		then:
-			'the collected list is not yet available'
-			value.get() == null
-
-		when:
-			'the second value is accepted'
-			source.accept(2)
-		  reduced.flush()
-
-		then:
-			'the tapped value contains the last element'
-			value.get() == 2
-	}
-
-	def 'BufferWithErrors will accumulate a list of accepted values or errors and pass it to a consumer one by one'() {
-		given:
-			'a source and a collected stream'
-			Deferred source = Streams.<Integer>defer().synchronousDispatcher().get()
-			Stream reduced = source.compose().bufferWithErrors()
-
-		  def error = 0
-			def value = reduced.when(Exception, consumer{error++}).tap()
-
-		when:
-			'the first value is accepted on the source'
-			source.accept(1)
-
-		then:
-			'the collected list is not yet available'
-			value.get() == null
-
-		when:
-			'the second value is accepted'
-			source.accept(new Exception())
-		  reduced.flush()
-		println reduced.debug()
-
-		then:
-			'the error consumer has been invoked and the tapped value is 1'
-			value.get() == 1
-			error == 1
 	}
 
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
@@ -872,8 +791,8 @@ class StreamsSpec extends Specification {
 			'a source stream with a given observable'
 			def r = Reactors.reactor().synchronousDispatcher().get()
 			def selector = Selectors.anonymous()
-			Event<Integer> event = null
-			Streams.<Integer> on(r, selector).consumeEvent(consumer { event = it })
+			int event = 0
+			Streams.<Integer> on(r, selector).consume(consumer { event = it })
 
 		when:
 			'accept a value'
@@ -881,8 +800,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'dispatching works'
-			event
-			event.data == 1
+			event == 1
 	}
 
 	def 'Window will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
@@ -925,7 +843,7 @@ class StreamsSpec extends Specification {
 			Deferred source = Streams.<Integer> defer().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.compose().collect(5).timeout(1000)
 			def value = reduced.tap()
-
+println reduced.debug()
 		when:
 			'the first values are accepted on the source'
 			source.accept(1)
@@ -933,6 +851,7 @@ class StreamsSpec extends Specification {
 			source.accept(1)
 			source.accept(1)
 			source.accept(1)
+			println reduced.debug()
 
 		then:
 			'the collected list is not yet available'

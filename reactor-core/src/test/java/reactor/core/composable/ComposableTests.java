@@ -152,7 +152,7 @@ public class ComposableTests extends AbstractReactorTest {
 								return r.getT1() * r.getT2();
 							}
 						}, 1);
-		await(5, s, is(120));
+		await(1, s, is(120));
 	}
 
 	@Test
@@ -164,7 +164,7 @@ public class ComposableTests extends AbstractReactorTest {
 
 		Tap<Integer> first = s.first().tap();
 		Tap<Integer> last = s.last().tap();
-
+		System.out.println(s.debug());
 		s.flush();
 
 		assertThat("First is 1", first.get(), is(1));
@@ -248,7 +248,7 @@ public class ComposableTests extends AbstractReactorTest {
 							}
 						});
 
-		await(2, s, is(7));
+		await(2, s, is(3));
 		assertThat("error handler was invoked", latch.getCount(), is(0L));
 	}
 
@@ -300,12 +300,13 @@ public class ComposableTests extends AbstractReactorTest {
 		await(1, s, expected);
 	}
 
-	<T> void await(int count, Stream<T> s, Matcher<T> expected) throws InterruptedException {
+	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
 		s.consume(new Consumer<T>() {
 			@Override
 			public void accept(T t) {
+				System.out.println(s.debug());
 				ref.set(t);
 				latch.countDown();
 			}
@@ -315,12 +316,15 @@ public class ComposableTests extends AbstractReactorTest {
 				e.printStackTrace();
 				latch.countDown();
 			}
-		}).flush();
+		});
+
+		System.out.println(s.debug());
+		s.flush();
 
 		long startTime = System.currentTimeMillis();
 		T result = null;
 		try {
-			latch.await(1, TimeUnit.SECONDS);
+			latch.await(10, TimeUnit.SECONDS);
 			result = ref.get();
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -134,7 +134,7 @@ public class Reactor implements Observable {
 				public void accept(Throwable t) {
 					Class<? extends Throwable> type = t.getClass();
 					Reactor.this.router.route(type,
-							t,
+							Event.wrap(t),
 							Reactor.this.consumerRegistry.select(type),
 							null,
 							null);
