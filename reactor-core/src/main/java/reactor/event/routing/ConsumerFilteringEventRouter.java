@@ -56,7 +56,8 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 	}
 
 	@Override
-	public void route(Object key, Event<?> event,
+	public void route(Object key,
+                    Event<?> event,
 	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {

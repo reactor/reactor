@@ -34,6 +34,6 @@ public interface HeaderResolver {
 	 * @return Any applicable headers. Might be {@literal null}.
 	 */
 	@Nullable
-	Map<String, String> resolve(Object key);
+	Map<String, Object> resolve(Object key);
 
 }
