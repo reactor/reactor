@@ -51,7 +51,8 @@ public abstract class TcpClient<IN, OUT>
 		extends AbstractNetPeer<IN, OUT>
 		implements NetClient<IN, OUT> {
 
-	private final InetSocketAddress connectAddress;
+	private final InetSocketAddress   connectAddress;
+	private final ClientSocketOptions options;
 
 	protected TcpClient(@Nonnull Environment env,
 	                    @Nonnull Reactor reactor,
@@ -64,21 +65,20 @@ public abstract class TcpClient<IN, OUT>
 		Assert.notNull(connectAddress,
 		               "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
 		this.connectAddress = connectAddress;
+		this.options = options;
 	}
 
 	/**
 	 * Open a {@link NetChannel} to the configured host:port and return a {@link reactor.core.composable.Promise} that
 	 * will be fulfilled when the client is connected.
 	 *
-	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link NetChannel} when
-	 * connected.
+	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link NetChannel} when connected.
 	 */
 	public abstract Promise<NetChannel<IN, OUT>> open();
 
 	/**
-	 * Open a {@link NetChannel} to the configured host:port and return a {@link Stream} that will be passed a new
-	 * {@link NetChannel} object every time the client is connected to the endpoint. The given {@link
-	 * reactor.net.Reconnect}
+	 * Open a {@link NetChannel} to the configured host:port and return a {@link Stream} that will be passed a new {@link
+	 * NetChannel} object every time the client is connected to the endpoint. The given {@link reactor.net.Reconnect}
 	 * describes how the client should attempt to reconnect to the host if the initial connection fails or if the client
 	 * successfully connects but at some point in the future gets cut off from the host. The {@code Reconnect} tells the
 	 * client where to try reconnecting and gives a delay describing how long to wait to attempt to reconnect. When the
@@ -98,6 +98,10 @@ public abstract class TcpClient<IN, OUT>
 	 */
 	public InetSocketAddress getConnectAddress() {
 		return connectAddress;
+	}
+
+	protected ClientSocketOptions getOptions() {
+		return this.options;
 	}
 
 }
