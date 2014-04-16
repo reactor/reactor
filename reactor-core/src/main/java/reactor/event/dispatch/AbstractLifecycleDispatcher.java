@@ -18,11 +18,13 @@ package reactor.event.dispatch;
 
 import reactor.alloc.Recyclable;
 import reactor.event.Event;
+import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.EventRouter;
 import reactor.function.Consumer;
 import reactor.util.Assert;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -34,12 +36,41 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
+	private static final EventRouter COMPLETION_CONSUMER_EVENT_ROUTER = new EventRouter() {
+		@Override
+		public void route(Object key,
+		                  Event<?> event,
+		                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+		                  Consumer<?> completionConsumer,
+		                  Consumer<Throwable> errorConsumer) {
+			completionConsumer.accept(null);
+		}
+	};
+
 	private final AtomicBoolean alive   = new AtomicBoolean(true);
-	private final ClassLoader   context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	private final ClassLoader   context = new ClassLoader(Thread.currentThread()
+	                                                            .getContextClassLoader()) {
 	};
 
 	protected AbstractLifecycleDispatcher() {
 		super();
+	}
+
+	protected static void route(Task task) {
+		if (null == task.eventRouter) {
+			return;
+		}
+		try {
+			task.eventRouter.route(
+					task.key,
+					task.event,
+					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
+					task.completionConsumer,
+					task.errorConsumer
+			);
+		} finally {
+			task.recycle();
+		}
 	}
 
 	@Override
@@ -63,8 +94,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	}
 
 	/**
-	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their
-	 * dispatching strategy
+	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their dispatching
+	 * strategy
 	 *
 	 * @return boolean true if the programs is already run by this dispatcher
 	 */
@@ -103,21 +134,31 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			}
 
 			task.setKey(key)
-					.setEvent(event)
-					.setConsumerRegistry(consumerRegistry)
-					.setErrorConsumer(errorConsumer)
-					.setEventRouter(eventRouter)
-					.setCompletionConsumer(completionConsumer);
+			    .setEvent(event)
+			    .setConsumerRegistry(consumerRegistry)
+			    .setErrorConsumer(errorConsumer)
+			    .setEventRouter(eventRouter)
+			    .setCompletionConsumer(completionConsumer);
 
 			if (isInContext) {
 				addToTailRecursionPile(task);
 			} else {
 				execute(task);
 			}
-		}catch(Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+
+	@Override
+	public void execute(final Runnable command) {
+		dispatch(null, COMPLETION_CONSUMER_EVENT_ROUTER, new Consumer<Event<?>>() {
+			@Override
+			public void accept(Event<?> ev) {
+				command.run();
+			}
+		}, null);
 	}
 
 	protected void addToTailRecursionPile(Task task) {
@@ -128,23 +169,6 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	protected abstract Task allocateTask();
 
 	protected abstract void execute(Task task);
-
-	protected static void route(Task task) {
-		if (null == task.eventRouter) {
-			return;
-		}
-		try {
-			task.eventRouter.route(
-					task.key,
-					task.event,
-					(null != task.consumerRegistry ? task.consumerRegistry.select(task.key) : null),
-					task.completionConsumer,
-					task.errorConsumer
-			);
-		} finally {
-			task.recycle();
-		}
-	}
 
 	public abstract class Task implements Runnable, Recyclable {
 

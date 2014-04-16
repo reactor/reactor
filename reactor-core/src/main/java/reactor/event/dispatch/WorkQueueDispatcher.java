@@ -131,16 +131,6 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 		ringBuffer.publish(((WorkQueueTask)task).getSequenceId());
 	}
 
-	@Override
-	public void execute(final Runnable command) {
-		ringBuffer.publishEvent(new EventTranslator<WorkQueueTask>() {
-			@Override
-			public void translateTo(WorkQueueTask event, long sequence) {
-				command.run();
-			}
-		});
-	}
-
 	private class WorkQueueTask extends MultiThreadTask {
 		private long sequenceId;
 

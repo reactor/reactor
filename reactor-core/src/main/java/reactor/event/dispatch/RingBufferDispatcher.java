@@ -45,8 +45,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
-	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
-	 * wait
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
 	 * strategy}.
 	 *
 	 * @param name
@@ -98,7 +97,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 
 			@Override
 			public void handleOnStartException(Throwable ex) {
-				if(null != uncaughtExceptionHandler) {
+				if (null != uncaughtExceptionHandler) {
 					uncaughtExceptionHandler.accept(ex);
 				} else {
 					log.error(ex.getMessage(), ex);
@@ -126,7 +125,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 		try {
 			executor.awaitTermination(timeout, timeUnit);
 			disruptor.shutdown();
-		} catch(InterruptedException e) {
+		} catch (InterruptedException e) {
 			return false;
 		}
 		return true;
@@ -153,17 +152,7 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 	}
 
 	protected void execute(Task task) {
-		ringBuffer.publish(((RingBufferTask)task).getSequenceId());
-	}
-
-	@Override
-	public void execute(final Runnable command) {
-		ringBuffer.publishEvent(new EventTranslator<RingBufferTask>() {
-			@Override
-			public void translateTo(RingBufferTask event, long sequence) {
-				command.run();
-			}
-		});
+		ringBuffer.publish(((RingBufferTask) task).getSequenceId());
 	}
 
 	private class RingBufferTask extends SingleThreadTask {
