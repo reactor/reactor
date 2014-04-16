@@ -229,7 +229,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	 * @param onClose
 	 */
 	protected void doClose(@Nullable Consumer<Boolean> onClose) {
-		getReactor().schedule(onClose, null);
+		getReactor().schedule(onClose, true);
 	}
 
 	/**
