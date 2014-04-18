@@ -371,7 +371,8 @@ project('reactor-net') {
 				"com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		// Testing
-		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
+		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
+				"com.esotericsoftware.kryo:kryo:$kryoVersion"
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}
