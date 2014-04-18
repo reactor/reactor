@@ -9,7 +9,7 @@ import reactor.function.Consumer;
  *
  * @author Jon Brisbin
  */
-public interface NetClient<IN, OUT> {
+public interface NetClient<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
 
 	/**
 	 * Open a channel to the configured address and return a {@link reactor.core.composable.Promise} that will be
@@ -20,8 +20,7 @@ public interface NetClient<IN, OUT> {
 	Promise<NetChannel<IN, OUT>> open();
 
 	/**
-	 * Open a channel to the configured address and return a {@link reactor.core.composable.Stream} that will be
-	 * populated
+	 * Open a channel to the configured address and return a {@link reactor.core.composable.Stream} that will be populated
 	 * by the {@link reactor.net.NetChannel NetChannels} every time a connection or reconnection is made.
 	 *
 	 * @param reconnect

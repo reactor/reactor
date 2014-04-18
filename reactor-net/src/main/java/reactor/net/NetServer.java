@@ -9,7 +9,7 @@ import javax.annotation.Nullable;
  *
  * @author Jon Brisbin
  */
-public interface NetServer<IN, OUT> {
+public interface NetServer<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
 
 	/**
 	 * Start and bind this {@literal NetServer} to the configured listen port.

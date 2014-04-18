@@ -1,5 +1,6 @@
 package reactor.net;
 
+import com.gs.collections.impl.list.mutable.FastList;
 import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.Deferred;
@@ -84,12 +85,24 @@ public abstract class AbstractNetPeer<IN, OUT> {
 		);
 	}
 
+	public Iterator<NetChannel<IN, OUT>> iterator() {
+		FastList<NetChannel<IN, OUT>> channels = FastList.newList();
+		for (Registration<? extends NetChannel<IN, OUT>> reg : getChannels()) {
+			channels.add(reg.getObject());
+		}
+		return channels.iterator();
+	}
+
 	/**
 	 * Subclasses should register the given {@link reactor.net.NetChannel} for later use.
 	 *
-	 * @param ioChannel  The channel object.
-	 * @param netChannel The {@link NetChannel}.
-	 * @param <C>        The type of the channel object.
+	 * @param ioChannel
+	 * 		The channel object.
+	 * @param netChannel
+	 * 		The {@link NetChannel}.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return {@link reactor.event.registry.Registration} of this channel in the {@link Registry}.
 	 */
 	protected <C> Registration<? extends NetChannel<IN, OUT>> register(@Nonnull C ioChannel,
@@ -102,8 +115,11 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Find the {@link NetChannel} for the given IO channel object.
 	 *
-	 * @param ioChannel The channel object.
-	 * @param <C>       The type of the channel object.
+	 * @param ioChannel
+	 * 		The channel object.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return The {@link NetChannel} associated with the given channel.
 	 */
 	protected <C> NetChannel<IN, OUT> select(@Nonnull C ioChannel) {
@@ -122,8 +138,10 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Close the given channel.
 	 *
-	 * @param channel The channel object.
-	 * @param <C>     The type of the channel object.
+	 * @param channel
+	 * 		The channel object.
+	 * @param <C>
+	 * 		The type of the channel object.
 	 */
 	protected <C> void close(@Nonnull C channel) {
 		Assert.notNull(channel, "Channel cannot be null");
@@ -137,8 +155,11 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Subclasses should implement this method and provide a {@link NetChannel} object.
 	 *
-	 * @param ioChannel The IO channel object to associate with this {@link reactor.net.NetChannel}.
-	 * @param <C>       The type of the channel object.
+	 * @param ioChannel
+	 * 		The IO channel object to associate with this {@link reactor.net.NetChannel}.
+	 * @param <C>
+	 * 		The type of the channel object.
+	 *
 	 * @return The new {@link NetChannel} object.
 	 */
 	protected abstract <C> NetChannel<IN, OUT> createChannel(C ioChannel);
@@ -161,7 +182,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Notify this client's consumers than a global error has occurred.
 	 *
-	 * @param error The error to notify.
+	 * @param error
+	 * 		The error to notify.
 	 */
 	protected void notifyError(@Nonnull Throwable error) {
 		Assert.notNull(error, "Error cannot be null.");
@@ -171,7 +193,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Notify this peer's consumers that the channel has been opened.
 	 *
-	 * @param channel The channel that was opened.
+	 * @param channel
+	 * 		The channel that was opened.
 	 */
 	protected void notifyOpen(@Nonnull NetChannel<IN, OUT> channel) {
 		reactor.notify(open.getObject(), Event.wrap(channel));
@@ -180,7 +203,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Notify this peer's consumers that the given channel has been closed.
 	 *
-	 * @param channel The channel that was closed.
+	 * @param channel
+	 * 		The channel that was closed.
 	 */
 	protected void notifyClose(@Nonnull NetChannel<IN, OUT> channel) {
 		reactor.notify(close.getObject(), Event.wrap(channel));
