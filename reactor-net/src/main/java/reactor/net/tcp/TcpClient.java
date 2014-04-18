@@ -53,6 +53,7 @@ public abstract class TcpClient<IN, OUT>
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
+	private final SslOptions          sslOptions;
 
 	protected TcpClient(@Nonnull Environment env,
 	                    @Nonnull Reactor reactor,
@@ -66,6 +67,7 @@ public abstract class TcpClient<IN, OUT>
 		               "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
 		this.connectAddress = connectAddress;
 		this.options = options;
+		this.sslOptions = sslOptions;
 	}
 
 	/**
@@ -100,8 +102,22 @@ public abstract class TcpClient<IN, OUT>
 		return connectAddress;
 	}
 
+	/**
+	 * Get the {@link reactor.net.config.ClientSocketOptions} currently in effect.
+	 *
+	 * @return the client options
+	 */
 	protected ClientSocketOptions getOptions() {
 		return this.options;
+	}
+
+	/**
+	 * Get the {@link reactor.net.config.SslOptions} current in effect.
+	 *
+	 * @return the SSL options
+	 */
+	protected SslOptions getSslOptions() {
+		return sslOptions;
 	}
 
 }
