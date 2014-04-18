@@ -20,7 +20,7 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 	private final int                 ioThreadCount;
 	private final ZLoop.IZLoopHandler inputHandler;
 
-	private volatile boolean      closeSocket;
+	private volatile boolean      shutdownCtx;
 	private volatile ZMQ.Context  zmq;
 	private volatile ZMQ.Socket   socket;
 	private volatile ZMQ.PollItem pollin;
@@ -62,7 +62,7 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 	public void run() {
 		if (null == zmq) {
 			zmq = ZMQ.context(ioThreadCount);
-			closeSocket = true;
+			shutdownCtx = true;
 		}
 		socket = zmq.socket(socketType);
 		socket.setIdentity(id.toString().getBytes());
@@ -79,8 +79,8 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 	public void shutdown() {
 		zloop.removePoller(pollin);
 		zloop.destroy();
-		if (closeSocket) {
-			socket.close();
+		socket.close();
+		if (shutdownCtx) {
 			zmq.term();
 		}
 	}

@@ -1,6 +1,7 @@
 package reactor.net.zmq;
 
 import org.zeromq.ZMQ;
+import reactor.function.Consumer;
 import reactor.net.config.ServerSocketOptions;
 import reactor.util.Assert;
 
@@ -13,6 +14,7 @@ public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 
 	private ZMQ.Context context;
 	private int socketType = ZMQ.ROUTER;
+	private Consumer<ZMQ.Socket> socketConfigurer;
 
 	/**
 	 * Get the {@link org.zeromq.ZMQ.Context} to use for IO.
@@ -56,6 +58,29 @@ public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 	 */
 	public ZeroMQServerSocketOptions socketType(int socketType) {
 		this.socketType = socketType;
+		return this;
+	}
+
+
+	/**
+	 * The {@link reactor.function.Consumer} responsible for configuring the underlying ZeroMQ socket.
+	 *
+	 * @return the ZMQ.Socket configurer
+	 */
+	public Consumer<ZMQ.Socket> socketConfigurer() {
+		return socketConfigurer;
+	}
+
+	/**
+	 * Set the {@link reactor.function.Consumer} responsible for configure the underlying ZeroMQ socket.
+	 *
+	 * @param socketConfigurer
+	 * 		the ZMQ.Socket configurer
+	 *
+	 * @return {@literal this}
+	 */
+	public ZeroMQServerSocketOptions socketConfigurer(Consumer<ZMQ.Socket> socketConfigurer) {
+		this.socketConfigurer = socketConfigurer;
 		return this;
 	}
 

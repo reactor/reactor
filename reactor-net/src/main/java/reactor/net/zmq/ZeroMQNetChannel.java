@@ -23,6 +23,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -97,9 +98,12 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	private void doFlush(final Deferred<Void, Promise<Void>> onComplete) {
-		ZMsg msg = MSG_UPD.getAndSet(ZeroMQNetChannel.this, null);
+		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
+		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
 		if (null != msg) {
-			msg.send(socket);
+			if (!msg.send(socket)) {
+				close(null);
+			}
 			if (null != onComplete) {
 				onComplete.accept((Void) null);
 			}
@@ -108,7 +112,14 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@Override
 	public void close(final Consumer<Boolean> onClose) {
-		socket.close();
+		try {
+			socket.close();
+		} catch (Exception e) {
+			// socket might already be closed
+			if (!ClosedChannelException.class.isInstance(e) && log.isTraceEnabled()) {
+				log.trace(e.getMessage(), e);
+			}
+		}
 		getEventsReactor().schedule(new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
@@ -119,7 +130,9 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 					}
 				});
 				closeHandlers.clear();
-				onClose.accept(true);
+				if (null != onClose) {
+					onClose.accept(true);
+				}
 			}
 		}, null);
 	}
@@ -127,6 +140,15 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	@Override
 	public ConsumerSpec on() {
 		return eventSpec;
+	}
+
+	@Override
+	public String toString() {
+		return "ZeroMQNetChannel{" +
+				"closeHandlers=" + closeHandlers +
+				", connectionId='" + connectionId + '\'' +
+				", socket=" + socket +
+				'}';
 	}
 
 	private class ZeroMQConsumerSpec implements ConsumerSpec {
