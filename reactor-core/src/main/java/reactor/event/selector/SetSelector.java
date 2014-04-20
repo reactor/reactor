@@ -2,9 +2,21 @@ package reactor.event.selector;
 
 import java.util.Set;
 
+/**
+ * Implementation of {@link reactor.event.selector.Selector} that matches
+ * objects on set membership.
+ *
+ * @author Michael Klishin
+ */
 public class SetSelector implements Selector {
 	private final Set set;
 
+	/**
+	 * Create a {@link Selector} when the given regex pattern.
+	 *
+	 * @param set
+	 * 		The {@link Set} that will be used for membership checks.
+	 */
 	public SetSelector(Set set) {
 		this.set = set;
 	}
