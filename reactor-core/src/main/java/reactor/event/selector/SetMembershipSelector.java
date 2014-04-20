@@ -8,7 +8,7 @@ import java.util.Set;
  *
  * @author Michael Klishin
  */
-public class SetSelector implements Selector {
+public class SetMembershipSelector implements Selector {
 	private final Set set;
 
 	/**
@@ -17,7 +17,7 @@ public class SetSelector implements Selector {
 	 * @param set
 	 * 		The {@link Set} that will be used for membership checks.
 	 */
-	public SetSelector(Set set) {
+	public SetMembershipSelector(Set set) {
 		this.set = set;
 	}
 

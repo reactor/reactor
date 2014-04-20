@@ -18,7 +18,7 @@ package reactor.event
 
 import reactor.core.spec.Reactors
 import reactor.event.selector.MatchAllSelector
-import reactor.event.selector.SetSelector
+import reactor.event.selector.SetMembershipSelector
 import reactor.event.selector.UriSelector
 import reactor.function.Functions
 import spock.lang.Specification
@@ -172,9 +172,9 @@ class SelectorSpec extends Specification {
 	def "Set membership selector is available"() {
 
 		given:
-		"A SetSelector"
+		"A SetMembershipSelector"
 		def coll = ["a", "b", "c"] as Set<String>
-		def sel = new SetSelector(coll)
+		def sel = new SetMembershipSelector(coll)
 
 		when:
 		"The selector is matched"

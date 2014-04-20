@@ -219,12 +219,12 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link reactor.event.selector.Selector} that matches
 	 * objects on set membership.
-	 * @return The new {@link reactor.event.selector.SetSelector}
+	 * @return The new {@link SetMembershipSelector}
 	 *
-	 * @see reactor.event.selector.SetSelector
+	 * @see SetMembershipSelector
 	 */
 	public static Selector setMembership(Set set) {
-		return new SetSelector(set);
+		return new SetMembershipSelector(set);
 	}
 
 	public static class AnonymousKey {
