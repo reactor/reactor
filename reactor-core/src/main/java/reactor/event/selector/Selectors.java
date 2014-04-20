@@ -2,6 +2,7 @@ package reactor.event.selector;
 
 import reactor.function.Predicate;
 
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -214,6 +215,17 @@ public abstract class Selectors {
     public static Selector matchAll() {
         return new MatchAllSelector();
     }
+
+	/**
+	 * Creates a {@link reactor.event.selector.Selector} that matches
+	 * objects on set membership.
+	 * @return The new {@link reactor.event.selector.SetSelector}
+	 *
+	 * @see reactor.event.selector.SetSelector
+	 */
+	public static Selector setMembership(Set set) {
+		return new SetSelector(set);
+	}
 
 	public static class AnonymousKey {
 		private final int hashCode = HASH_CODES.getAndIncrement() << 2;
