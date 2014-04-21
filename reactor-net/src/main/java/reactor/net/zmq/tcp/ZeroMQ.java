@@ -60,7 +60,7 @@ public class ZeroMQ<T> {
 		this.reactor = Reactors.reactor(env, dispatcher);
 	}
 
-	public static String findSocketTypeName(int socketType) {
+	public static String findSocketTypeName(final int socketType) {
 		return SOCKET_TYPES.getIfAbsentPut(socketType, new CheckedFunction0<String>() {
 			@Override
 			public String safeValue() throws Exception {
