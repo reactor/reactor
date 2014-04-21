@@ -53,6 +53,7 @@ public abstract class TcpServer<IN, OUT>
 
 	private final InetSocketAddress   listenAddress;
 	private final ServerSocketOptions options;
+	private final SslOptions          sslOptions;
 
 	protected TcpServer(@Nonnull Environment env,
 	                    @Nonnull Reactor reactor,
@@ -65,6 +66,7 @@ public abstract class TcpServer<IN, OUT>
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;
+		this.sslOptions = sslOptions;
 	}
 
 	/**
@@ -109,6 +111,15 @@ public abstract class TcpServer<IN, OUT>
 	 */
 	protected ServerSocketOptions getOptions() {
 		return options;
+	}
+
+	/**
+	 * Get the {@link reactor.net.config.SslOptions} current in effect.
+	 *
+	 * @return the SSL options
+	 */
+	protected SslOptions getSslOptions() {
+		return sslOptions;
 	}
 
 }

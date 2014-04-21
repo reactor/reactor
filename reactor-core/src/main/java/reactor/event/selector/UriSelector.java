@@ -123,7 +123,7 @@ public class UriSelector extends ObjectSelector<URI> {
 	private static class UriHeaderResolver implements HeaderResolver {
 		@Nullable
 		@Override
-		public Map<String, String> resolve(Object key) {
+		public Map<String, Object> resolve(Object key) {
 			if(null == key) {
 				return null;
 			}
@@ -134,7 +134,7 @@ public class UriSelector extends ObjectSelector<URI> {
 				return null;
 			}
 
-			Map<String, String> headers = new HashMap<String, String>();
+			Map<String, Object> headers = new HashMap<String, Object>();
 
 			headers.put("authority", uri.getAuthority());
 			headers.put("fragment", uri.getFragment());

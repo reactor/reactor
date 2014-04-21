@@ -29,7 +29,6 @@ import reactor.net.NetClient;
 import reactor.net.Reconnect;
 import reactor.net.config.ClientSocketOptions;
 import reactor.net.config.SslOptions;
-import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -51,19 +50,21 @@ public abstract class TcpClient<IN, OUT>
 		extends AbstractNetPeer<IN, OUT>
 		implements NetClient<IN, OUT> {
 
-	private final InetSocketAddress connectAddress;
+	private final InetSocketAddress   connectAddress;
+	private final ClientSocketOptions options;
+	private final SslOptions          sslOptions;
 
 	protected TcpClient(@Nonnull Environment env,
 	                    @Nonnull Reactor reactor,
-	                    @Nonnull InetSocketAddress connectAddress,
+	                    @Nullable InetSocketAddress connectAddress,
 	                    @Nullable ClientSocketOptions options,
 	                    @Nullable SslOptions sslOptions,
 	                    @Nullable Codec<Buffer, IN, OUT> codec,
 	                    @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, codec, consumers);
-		Assert.notNull(connectAddress,
-		               "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
-		this.connectAddress = connectAddress;
+		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
+		this.options = options;
+		this.sslOptions = sslOptions;
 	}
 
 	/**
@@ -76,9 +77,8 @@ public abstract class TcpClient<IN, OUT>
 	public abstract Promise<NetChannel<IN, OUT>> open();
 
 	/**
-	 * Open a {@link NetChannel} to the configured host:port and return a {@link Stream} that will be passed a new
-	 * {@link NetChannel} object every time the client is connected to the endpoint. The given {@link
-	 * reactor.net.Reconnect}
+	 * Open a {@link NetChannel} to the configured host:port and return a {@link Stream} that will be passed a new {@link
+	 * NetChannel} object every time the client is connected to the endpoint. The given {@link reactor.net.Reconnect}
 	 * describes how the client should attempt to reconnect to the host if the initial connection fails or if the client
 	 * successfully connects but at some point in the future gets cut off from the host. The {@code Reconnect} tells the
 	 * client where to try reconnecting and gives a delay describing how long to wait to attempt to reconnect. When the
@@ -98,6 +98,24 @@ public abstract class TcpClient<IN, OUT>
 	 */
 	public InetSocketAddress getConnectAddress() {
 		return connectAddress;
+	}
+
+	/**
+	 * Get the {@link reactor.net.config.ClientSocketOptions} currently in effect.
+	 *
+	 * @return the client options
+	 */
+	protected ClientSocketOptions getOptions() {
+		return this.options;
+	}
+
+	/**
+	 * Get the {@link reactor.net.config.SslOptions} current in effect.
+	 *
+	 * @return the SSL options
+	 */
+	protected SslOptions getSslOptions() {
+		return sslOptions;
 	}
 
 }

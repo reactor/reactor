@@ -32,8 +32,8 @@ public class UriPathSelector extends ObjectSelector<UriPathTemplate> {
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
 		@Override
-		public Map<String, String> resolve(Object key) {
-			Map<String, String> headers = getObject().match(key.toString());
+		public Map<String, Object> resolve(Object key) {
+			Map<String, Object> headers = getObject().match(key.toString());
 			if (null != headers && !headers.isEmpty()) {
 				return headers;
 			}

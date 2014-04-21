@@ -659,7 +659,7 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer append(short s) {
 		ensureCapacity(2);
-		buffer.putInt(s);
+		buffer.putShort(s);
 		return this;
 	}
 

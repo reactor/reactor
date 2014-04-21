@@ -27,11 +27,16 @@ import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.StandardCodecs;
 import reactor.net.NetChannel;
+import reactor.net.NetClient;
+import reactor.net.NetServer;
 import reactor.net.Reconnect;
 import reactor.net.netty.NettyClientSocketOptions;
 import reactor.net.netty.tcp.NettyTcpClient;
 import reactor.net.tcp.spec.TcpClientSpec;
+import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.tcp.support.SocketUtils;
+import reactor.net.zmq.tcp.ZeroMQTcpClient;
+import reactor.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
@@ -53,8 +58,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author Jon Brisbin
@@ -101,7 +105,7 @@ public class TcpClientTests {
 		heartbeatServer.close();
 		threadPool.shutdown();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
-		Thread.sleep(5000);
+		Thread.sleep(500);
 	}
 
 	@Test
@@ -393,6 +397,41 @@ public class TcpClientTests {
 		          });
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void zmqClientServerInteraction() throws InterruptedException {
+		final int port = SocketUtils.findAvailableTcpPort();
+		final CountDownLatch latch = new CountDownLatch(2);
+
+		NetServer<Buffer, Buffer> zmqs = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
+				.env(env)
+				.listen(port)
+				.consume(ch -> {
+					ch.consume(buff -> {
+						if (buff.remaining() == 12) {
+							latch.countDown();
+							ch.sendAndForget(Buffer.wrap("Goodbye World!"));
+						}
+					});
+				})
+				.get();
+
+		assertTrue("server was started", zmqs.start().await(5, TimeUnit.SECONDS));
+
+		NetClient<Buffer, Buffer> zmqc = new TcpClientSpec<Buffer, Buffer>(ZeroMQTcpClient.class)
+				.env(env)
+				.connect("127.0.0.1", port)
+				.get();
+
+		NetChannel<Buffer, Buffer> ch = zmqc.open().await(5, TimeUnit.SECONDS);
+		assertNotNull("channel was connected", ch);
+
+		String msg = ch.sendAndReceive(Buffer.wrap("Hello World!"))
+		               .await(5, TimeUnit.SECONDS)
+		               .asString();
+
+		assertThat("messages were exchanged", msg, is("Goodbye World!"));
 	}
 
 	private static final class EchoServer implements Runnable {

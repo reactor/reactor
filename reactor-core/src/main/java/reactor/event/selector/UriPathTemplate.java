@@ -49,7 +49,7 @@ public class UriPathTemplate {
 
 	private final List<String>                         pathVariables = new ArrayList<String>();
 	private final HashMap<String, Matcher>             matchers      = new HashMap<String, Matcher>();
-	private final HashMap<String, Map<String, String>> vars          = new HashMap<String, Map<String, String>>();
+	private final HashMap<String, Map<String, Object>> vars          = new HashMap<String, Map<String, Object>>();
 
 	private final Pattern uriPattern;
 
@@ -111,13 +111,13 @@ public class UriPathTemplate {
 	 *
 	 * @return the path parameters from the uri. Never {@code null}.
 	 */
-	public Map<String, String> match(String uri) {
-		Map<String, String> pathParameters = vars.get(uri);
+	public Map<String, Object> match(String uri) {
+		Map<String, Object> pathParameters = vars.get(uri);
 		if (null != pathParameters) {
 			return pathParameters;
 		}
 
-		pathParameters = new HashMap<String, String>();
+		pathParameters = new HashMap<String, Object>();
 		Matcher m = matcher(uri);
 		if (m.matches()) {
 			int i = 1;

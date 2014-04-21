@@ -31,8 +31,9 @@ ext {
 	// Libraries
 	disruptorVersion = '3.2.1'
 	gsCollectionsVersion = '5.0.0'
-	nettyVersion = '4.0.17.Final'
-	jacksonDatabindVersion = '2.3.0'
+	nettyVersion = '4.0.18.Final'
+	jeromqVersion = '0.3.3'
+	jacksonDatabindVersion = '2.3.2'
 	jsonPathVersion = '0.9.1'
 	kryoVersion = '2.22'
 	protobufVersion = '2.5.0'
@@ -51,7 +52,7 @@ ext {
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/",
-			"http://fasterxml.github.com/jackson-core/javadoc/2.3.0/"
+			"http://fasterxml.github.com/jackson-core/javadoc/2.3.2/"
 	] as String[]
 }
 
@@ -76,7 +77,6 @@ configure(allprojects) { project ->
 	apply from: "${gradleScriptDir}/ide.gradle"
 
 	[compileJava, compileTestJava]*.options*.compilerArgs = [
-			"-Xlint:serial",
 			"-Xlint:varargs",
 			"-Xlint:cast",
 			"-Xlint:classfile",
@@ -91,9 +91,10 @@ configure(allprojects) { project ->
 			"-Xlint:try",
 			"-Xlint:deprecation",
 			"-Xlint:unchecked",
+			"-Xlint:-serial",      // intentionally disabled
 			"-Xlint:-options",     // intentionally disabled
 			"-Xlint:-fallthrough", // intentionally disabled
-			"-Xlint:-rawtypes"    // TODO enable and fix warnings
+			"-Xlint:-rawtypes"     // TODO enable and fix warnings
 	]
 
 	compileGroovy {
@@ -371,10 +372,13 @@ project('reactor-net') {
 		compile project(':reactor-core')
 
 		compile "io.netty:netty-all:$nettyVersion"
-		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+
+		optional "org.zeromq:jeromq:$jeromqVersion",
+				"com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		// Testing
-		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
+		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
+				"com.esotericsoftware.kryo:kryo:$kryoVersion"
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}

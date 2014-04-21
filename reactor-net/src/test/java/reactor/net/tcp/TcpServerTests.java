@@ -27,6 +27,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
 import reactor.core.Environment;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
@@ -35,6 +37,7 @@ import reactor.io.Buffer;
 import reactor.io.encoding.*;
 import reactor.io.encoding.json.JsonCodec;
 import reactor.net.NetChannel;
+import reactor.net.NetServer;
 import reactor.net.config.ServerSocketOptions;
 import reactor.net.config.SslOptions;
 import reactor.net.netty.NettyServerSocketOptions;
@@ -43,6 +46,8 @@ import reactor.net.netty.tcp.NettyTcpServer;
 import reactor.net.tcp.spec.TcpClientSpec;
 import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.tcp.support.SocketUtils;
+import reactor.net.zmq.tcp.ZeroMQTcpServer;
+import reactor.util.UUIDUtils;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -146,7 +151,7 @@ public class TcpServerTests {
 						ch.consume(new Consumer<Pojo>() {
 							@Override
 							public void accept(Pojo data) {
-								if("John Doe".equals(data.getName())) {
+								if ("John Doe".equals(data.getName())) {
 									latch.countDown();
 								}
 							}
@@ -187,11 +192,11 @@ public class TcpServerTests {
 							public void accept(byte[] bytes) {
 								latch.countDown();
 								ByteBuffer bb = ByteBuffer.wrap(bytes);
-								if(bb.remaining() < 4) {
+								if (bb.remaining() < 4) {
 									System.err.println("insufficient len: " + bb.remaining());
 								}
 								int next = bb.getInt();
-								if(next != num++) {
+								if (next != num++) {
 									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
 								}
 							}
@@ -203,7 +208,7 @@ public class TcpServerTests {
 		server.start().await();
 
 		start.set(System.currentTimeMillis());
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new LengthFieldMessageWriter(port));
 		}
 
@@ -211,8 +216,8 @@ public class TcpServerTests {
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int)elapsed + "ms");
-		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown().await();
 	}
@@ -251,7 +256,7 @@ public class TcpServerTests {
 		server.start().await();
 
 		start.set(System.currentTimeMillis());
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new FramedLengthFieldMessageWriter(port));
 		}
 
@@ -259,8 +264,8 @@ public class TcpServerTests {
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int)elapsed + "ms");
-		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown().await();
 	}
@@ -366,7 +371,7 @@ public class TcpServerTests {
 								byteBuf.forEachByte(new ByteBufProcessor() {
 									@Override
 									public boolean process(byte value) throws Exception {
-										if(value == '\n') {
+										if (value == '\n') {
 											latch.countDown();
 										}
 										return true;
@@ -382,7 +387,7 @@ public class TcpServerTests {
 		log.info("Starting raw server on tcp://localhost:{}", port);
 		server.start().await();
 
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new DataWriter(port));
 		}
 
@@ -430,7 +435,7 @@ public class TcpServerTests {
 
 								ch.send(resp);
 
-								if(req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
+								if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
 									latch.countDown();
 								}
 							}
@@ -442,7 +447,7 @@ public class TcpServerTests {
 		log.info("Starting HTTP server on http://localhost:{}/", port);
 		server.start().await();
 
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new HttpRequestWriter(port));
 		}
 
@@ -450,10 +455,45 @@ public class TcpServerTests {
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get());
-		System.out.println("HTTP elapsed: " + (int)elapsed + "ms");
-		System.out.println("HTTP throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("HTTP elapsed: " + (int) elapsed + "ms");
+		System.out.println("HTTP throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown().await();
+	}
+
+	@Test
+	public void exposesZeroMQServer() throws InterruptedException {
+		final int port = SocketUtils.findAvailableTcpPort();
+		final CountDownLatch latch = new CountDownLatch(2);
+		ZMQ.Context zmq = ZMQ.context(1);
+
+		NetServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
+				.env(env)
+				.listen("127.0.0.1", port)
+				.consume(ch -> {
+					ch.consume(buff -> {
+						if (buff.remaining() == 128) {
+							latch.countDown();
+						} else {
+							log.info("data: {}", buff.asString());
+						}
+						ch.sendAndForget(Buffer.wrap("Goodbye World!"));
+					});
+				})
+				.get();
+
+		assertTrue("Server was started", server.start().await(5, TimeUnit.SECONDS));
+
+		ZeroMQWriter zmqw = new ZeroMQWriter(zmq, port, latch);
+		threadPool.submit(zmqw);
+
+		Thread.sleep(500);
+
+		assertTrue("reply was received", latch.await(5, TimeUnit.SECONDS));
+
+		assertTrue("Server was stopped", server.shutdown().await(5, TimeUnit.SECONDS));
+
+		zmq.term();
 	}
 
 	public static class Pojo {
@@ -501,7 +541,7 @@ public class TcpServerTests {
 
 				int num = 1;
 				start.set(System.currentTimeMillis());
-				for(int j = 0; j < msgs; j++) {
+				for (int j = 0; j < msgs; j++) {
 					ByteBuffer buff = ByteBuffer.allocate(length + 4);
 					buff.putInt(length);
 					buff.putInt(num++);
@@ -512,7 +552,7 @@ public class TcpServerTests {
 
 					count.incrementAndGet();
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 			}
 		}
 	}
@@ -533,12 +573,12 @@ public class TcpServerTests {
 				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
 
 				start.set(System.currentTimeMillis());
-				for(int j = 0; j < msgs; j++) {
+				for (int j = 0; j < msgs; j++) {
 					ByteBuffer buff = ByteBuffer.allocate(length + 4);
-					buff.putShort((short)0);
+					buff.putShort((short) 0);
 					buff.putShort(length);
-					for(int i = 4; i < length; i++) {
-						buff.put((byte)1);
+					for (int i = 4; i < length; i++) {
+						buff.put((byte) 1);
 					}
 					buff.flip();
 					buff.limit(length + 4);
@@ -548,7 +588,7 @@ public class TcpServerTests {
 					count.incrementAndGet();
 				}
 				ch.close();
-			} catch(IOException e) {
+			} catch (IOException e) {
 			}
 		}
 	}
@@ -565,13 +605,13 @@ public class TcpServerTests {
 			try {
 				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 				start.set(System.currentTimeMillis());
-				for(int i = 0; i < msgs; i++) {
+				for (int i = 0; i < msgs; i++) {
 					ch.write(Buffer.wrap("GET /test HTTP/1.1\r\nConnection: Close\r\n\r\n").byteBuffer());
 					ByteBuffer buff = ByteBuffer.allocate(4 * 1024);
 					ch.read(buff);
 				}
 				ch.close();
-			} catch(IOException e) {
+			} catch (IOException e) {
 			}
 		}
 	}
@@ -588,12 +628,45 @@ public class TcpServerTests {
 			try {
 				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 				start.set(System.currentTimeMillis());
-				for(int i = 0; i < msgs; i++) {
+				for (int i = 0; i < msgs; i++) {
 					ch.write(Buffer.wrap("Hello World!\n").byteBuffer());
 				}
 				ch.close();
-			} catch(IOException e) {
+			} catch (IOException e) {
 			}
 		}
 	}
+
+	private class ZeroMQWriter implements Runnable {
+		private final Random random = new Random();
+		private final ZMQ.Context    zmq;
+		private final int            port;
+		private final CountDownLatch latch;
+
+		private ZeroMQWriter(ZMQ.Context zmq, int port, CountDownLatch latch) {
+			this.zmq = zmq;
+			this.port = port;
+			this.latch = latch;
+		}
+
+		@Override
+		public void run() {
+			String id = UUIDUtils.random().toString();
+			ZMQ.Socket socket = zmq.socket(ZMQ.DEALER);
+			socket.setIdentity(id.getBytes());
+			socket.connect("tcp://127.0.0.1:" + port);
+
+			byte[] data = new byte[128];
+			random.nextBytes(data);
+
+			socket.send(data);
+
+			ZMsg reply = ZMsg.recvMsg(socket);
+			log.info("reply: {}", reply);
+			latch.countDown();
+
+			socket.close();
+		}
+	}
+
 }

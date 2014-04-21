@@ -17,11 +17,13 @@
 package reactor.event.dispatch;
 
 import reactor.alloc.Recyclable;
+import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
 import reactor.util.Assert;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -33,8 +35,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
+	private static final Router COMPLETION_CONSUMER_EVENT_ROUTER = new Router() {
+		@Override
+		public <E> void route(Object key,
+		                  E event,
+		                  List<Registration<? extends Consumer<?>>> consumers,
+		                  Consumer<E> completionConsumer,
+		                  Consumer<Throwable> errorConsumer) {
+			completionConsumer.accept(event);
+		}
+	};
+
 	private final AtomicBoolean alive   = new AtomicBoolean(true);
-	private final ClassLoader   context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	private final ClassLoader   context = new ClassLoader(Thread.currentThread()
+			.getContextClassLoader()) {
 	};
 
 	protected AbstractLifecycleDispatcher() {
@@ -62,8 +76,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	}
 
 	/**
-	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their
-	 * dispatching strategy
+	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their dispatching
+	 * strategy
 	 *
 	 * @return boolean true if the programs is already run by this dispatcher
 	 */
@@ -120,6 +134,16 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+
+	@Override
+	public void execute(final Runnable command) {
+		dispatch(null, COMPLETION_CONSUMER_EVENT_ROUTER, new Consumer<Object>() {
+			@Override
+			public void accept(Object ev) {
+				command.run();
+			}
+		}, null);
 	}
 
 	protected void addToTailRecursionPile(Task task) {

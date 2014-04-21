@@ -42,13 +42,13 @@ public class RegexSelector extends ObjectSelector<Pattern> {
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
 		@Override
-		public Map<String, String> resolve(Object key) {
+		public Map<String, Object> resolve(Object key) {
 			Matcher m = getObject().matcher(key.toString());
 			if(!m.matches()) {
 				return null;
 			}
 			int groups = m.groupCount();
-			Map<String, String> headers = new HashMap<String, String>();
+			Map<String, Object> headers = new HashMap<String, Object>();
 			for(int i = 1; i <= groups; i++) {
 				String name = "group" + i;
 				String value = m.group(i);

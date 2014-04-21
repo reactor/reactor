@@ -15,13 +15,6 @@
  */
 
 
-
-
-
-
-
-
-
 package reactor.dispatch
 
 import com.lmax.disruptor.BlockingWaitStrategy
@@ -33,6 +26,7 @@ import reactor.event.Event
 import reactor.event.dispatch.RingBufferDispatcher
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher
+import reactor.event.dispatch.WorkQueueDispatcher
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerFilteringRouter
@@ -104,13 +98,13 @@ class DispatcherSpec extends Specification {
 			r.on($('test'), consumer { int i ->
 				if (i < 2) {
 					latch.countDown()
-					r.notify('test',Event.wrap(++i))
+					r.notify('test', Event.wrap(++i))
 				}
 			})
 
 		and:
 			"call the reactor"
-			r.notify('test',Event.wrap(0))
+			r.notify('test', Event.wrap(0))
 
 		then:
 			"a task is submitted to the thread pool dispatcher"
@@ -167,6 +161,38 @@ class DispatcherSpec extends Specification {
 
 		then:
 			b.await(5, TimeUnit.SECONDS)
+
+	}
+
+	def "RingBufferDispatcher executes tasks in correct thread"() {
+
+		given:
+			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			dispatcher.execute({ t2 = Thread.currentThread() })
+			Thread.sleep(500)
+
+		then:
+			t1 != t2
+
+	}
+
+	def "WorkQueueDispatcher executes tasks in correct thread"() {
+
+		given:
+			def dispatcher = new WorkQueueDispatcher("rb", 8, 1024, null, ProducerType.MULTI, new BlockingWaitStrategy())
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			dispatcher.execute({ t2 = Thread.currentThread() })
+			Thread.sleep(500)
+
+		then:
+			t1 != t2
 
 	}
 
