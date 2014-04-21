@@ -29,7 +29,6 @@ import reactor.net.NetClient;
 import reactor.net.Reconnect;
 import reactor.net.config.ClientSocketOptions;
 import reactor.net.config.SslOptions;
-import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -57,15 +56,13 @@ public abstract class TcpClient<IN, OUT>
 
 	protected TcpClient(@Nonnull Environment env,
 	                    @Nonnull Reactor reactor,
-	                    @Nonnull InetSocketAddress connectAddress,
+	                    @Nullable InetSocketAddress connectAddress,
 	                    @Nullable ClientSocketOptions options,
 	                    @Nullable SslOptions sslOptions,
 	                    @Nullable Codec<Buffer, IN, OUT> codec,
 	                    @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, codec, consumers);
-		Assert.notNull(connectAddress,
-		               "A TcpClient cannot be created without a properly-configured connect InetSocketAddress.");
-		this.connectAddress = connectAddress;
+		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;
 	}
