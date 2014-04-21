@@ -41,12 +41,12 @@ public class AbstractNetClientServerTest {
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final int senderThreads = Environment.PROCESSORS;
-
-	private ExecutorService serverPool;
-	private ExecutorService clientPool;
-	private Environment     env1;
-	private Environment     env2;
-	private int             port;
+	protected Data            data;
+	private   ExecutorService serverPool;
+	private   ExecutorService clientPool;
+	private   Environment     env1;
+	private   Environment     env2;
+	private   int             port;
 
 	protected static Data generateData() {
 		char[] name = new char[16];
@@ -86,6 +86,8 @@ public class AbstractNetClientServerTest {
 		env2 = new Environment();
 
 		port = SocketUtils.findAvailableTcpPort();
+
+		data = generateData();
 	}
 
 	@After
@@ -112,7 +114,7 @@ public class AbstractNetClientServerTest {
 	protected <IN, OUT> TcpServerSpec<IN, OUT> createTcpServer(Class<? extends TcpServer> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
-		return new TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync");
+		return new TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
 	}
 
 	protected <T> TcpClientSpec<T, T> createTcpClient(Class<? extends TcpClient> type,
@@ -123,7 +125,7 @@ public class AbstractNetClientServerTest {
 	protected <IN, OUT> TcpClientSpec<IN, OUT> createTcpClient(Class<? extends TcpClient> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
-		return new TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync");
+		return new TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
 	}
 
 	protected <T> void assertTcpClientServerExchangedData(Class<? extends TcpServer> serverType,
@@ -176,6 +178,14 @@ public class AbstractNetClientServerTest {
 
 		assertClientStopped(client);
 		assertServerStopped(server);
+	}
+
+	protected Environment getServerEnvironment() {
+		return env1;
+	}
+
+	protected Environment getClientEnvironment() {
+		return env2;
 	}
 
 	protected Future<?> submitServer(Runnable r) {

@@ -32,6 +32,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
+
 /**
  * @author Jon Brisbin
  */
@@ -82,16 +84,24 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				if (getOptions().keepAlive()) {
 					socket.setTCPKeepAlive(1);
 				}
+				if (null != zmqOpts && null != zmqOpts.socketConfigurer()) {
+					zmqOpts.socketConfigurer().accept(socket);
+				}
 			}
 
 			@Override
 			protected void start(ZMQ.Socket socket) {
-				if (log.isInfoEnabled()) {
-					log.info("BIND: starting ZeroMQ server on {}", getListenAddress());
+				String addr;
+				if (null != zmqOpts && null != zmqOpts.listenAddresses()) {
+					addr = zmqOpts.listenAddresses();
+				} else {
+					addr = "tcp://" + getListenAddress().getHostString() + ":" + getListenAddress().getPort();
 				}
-				String addr = String.format("tcp://%s:%s",
-				                            getListenAddress().getHostString(),
-				                            getListenAddress().getPort());
+				if (log.isInfoEnabled()) {
+					String type = findSocketTypeName(socket.getType());
+					log.info("BIND: starting ZeroMQ {} socket on {}", type, addr);
+				}
+
 				socket.bind(addr);
 				notifyStart(started);
 			}

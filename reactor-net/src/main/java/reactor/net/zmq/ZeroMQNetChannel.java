@@ -72,10 +72,10 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		ZMsg msg = MSG_UPD.get(this);
 		if (isNewMsg) {
 			switch (socket.getType()) {
-				case ZMQ.DEALER:
+				case ZMQ.ROUTER:
+					msg.add(new ZFrame(connectionId));
 					break;
 				default:
-					msg.add(new ZFrame(connectionId));
 			}
 		}
 		msg.add(new ZFrame(bytes));

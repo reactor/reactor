@@ -15,6 +15,7 @@ public class ZeroMQClientSocketOptions extends ClientSocketOptions {
 	private ZMQ.Context context;
 	private int socketType = ZMQ.ROUTER;
 	private Consumer<ZMQ.Socket> socketConfigurer;
+	private String connectAddresses;
 
 	/**
 	 * Get the {@link org.zeromq.ZMQ.Context} to use for IO.
@@ -80,6 +81,15 @@ public class ZeroMQClientSocketOptions extends ClientSocketOptions {
 	 */
 	public ZeroMQClientSocketOptions socketConfigurer(Consumer<ZMQ.Socket> socketConfigurer) {
 		this.socketConfigurer = socketConfigurer;
+		return this;
+	}
+
+	public String connectAddresses() {
+		return connectAddresses;
+	}
+
+	public ZeroMQClientSocketOptions connectAddresses(String connectAddresses) {
+		this.connectAddresses = connectAddresses;
 		return this;
 	}
 

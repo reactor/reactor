@@ -37,6 +37,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
+
 /**
  * @author Jon Brisbin
  */
@@ -114,7 +116,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
-		ZeroMQNetChannel<IN, OUT> ch = new ZeroMQNetChannel<IN, OUT>(
+		final ZeroMQNetChannel<IN, OUT> ch = new ZeroMQNetChannel<IN, OUT>(
 				getEnvironment(),
 				getReactor(),
 				getReactor().getDispatcher(),
@@ -150,10 +152,16 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 			@Override
 			protected void start(final ZMQ.Socket socket) {
-				if (log.isInfoEnabled()) {
-					log.info("CONNECT: connecting ZeroMQ client to {}", getConnectAddress());
+				String addr;
+				if (null != zmqOpts && null != zmqOpts.connectAddresses()) {
+					addr = zmqOpts.connectAddresses();
+				} else {
+					addr = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
 				}
-				String addr = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
+				if (log.isInfoEnabled()) {
+					String type = findSocketTypeName(socket.getType());
+					log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
+				}
 
 				socket.connect(addr);
 				notifyStart(new Runnable() {
