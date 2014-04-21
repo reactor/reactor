@@ -18,10 +18,9 @@ package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
 import groovy.transform.TypeCheckingMode
-import reactor.core.composable.Composable
-import reactor.core.composable.Deferred
-import reactor.core.composable.Promise
-import reactor.core.composable.Stream
+import reactor.rx.Deferred
+import reactor.rx.Promise
+import reactor.rx.Stream
 import reactor.function.*
 import reactor.groovy.support.*
 import reactor.tuple.Tuple2
@@ -40,7 +39,7 @@ class ComposableExtensions {
 	/**
 	 * Alias
 	 */
-	static <T, X extends Composable<T>> X to(final X selfType, final Object key,
+	static <T, X extends Stream<T>> X to(final X selfType, final Object key,
 	                                         final reactor.core.Observable observable) {
 		selfType.consume key, observable
 	}
@@ -48,7 +47,7 @@ class ComposableExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T, V> Composable<V> map(final Deferred selfType, final Closure<V> closure) {
+	static <T, V> Stream<V> map(final Deferred selfType, final Closure<V> closure) {
 		selfType.compose().map new ClosureFunction<T, V>(closure)
 	}
 
@@ -64,7 +63,7 @@ class ComposableExtensions {
 		selfType.consume new ClosureConsumer<T>(closure)
 	}
 
-	static <T, V, C extends Composable<V>> Stream<V> mapMany(final Stream<T> selfType, final Closure<C> closure) {
+	static <T, V, C extends Stream<V>> Stream<V> mapMany(final Stream<T> selfType, final Closure<C> closure) {
 		selfType.mapMany new ClosureFunction<T, C>(closure)
 	}
 
@@ -72,7 +71,7 @@ class ComposableExtensions {
 		selfType.mapMany new ClosureFunction<T, C>(closure)
 	}
 
-	static <T> Composable<T> consume(final Deferred selfType, final Closure closure) {
+	static <T> Stream<T> consume(final Deferred selfType, final Closure closure) {
 		selfType.compose().consume new ClosureConsumer<T>(closure)
 	}
 
@@ -84,7 +83,7 @@ class ComposableExtensions {
 		selfType.filter new ClosurePredicate<T>(closure)
 	}
 
-	static <T> Composable<T> filter(final Deferred selfType, final Closure<Boolean> closure) {
+	static <T> Stream<T> filter(final Deferred selfType, final Closure<Boolean> closure) {
 		selfType.compose().filter new ClosurePredicate<T>(closure)
 	}
 
@@ -96,7 +95,7 @@ class ComposableExtensions {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
-	static <T, E> Composable<T> when(final Deferred selfType, final Class<E> exceptionType, final Closure closure) {
+	static <T, E> Stream<T> when(final Deferred selfType, final Class<E> exceptionType, final Closure closure) {
 		selfType.compose().when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
@@ -158,11 +157,11 @@ class ComposableExtensions {
 		map selfType, other
 	}
 
-	static <T, V> Composable<V> or(final Deferred selfType, final Function<T, V> other) {
+	static <T, V> Stream<V> or(final Deferred selfType, final Function<T, V> other) {
 		selfType.compose().map other
 	}
 
-	static <T, V> Composable<V> or(final Deferred selfType, final Closure<V> other) {
+	static <T, V> Stream<V> or(final Deferred selfType, final Closure<V> other) {
 		map selfType, other
 	}
 
@@ -184,7 +183,7 @@ class ComposableExtensions {
 		filter selfType, other
 	}
 
-	static <T> Composable<T> and(final Deferred selfType, final Closure<Boolean> other) {
+	static <T> Stream<T> and(final Deferred selfType, final Closure<Boolean> other) {
 		filter selfType, other
 	}
 
@@ -196,7 +195,7 @@ class ComposableExtensions {
 		selfType.filter other
 	}
 
-	static <T> Composable<T> and(final Deferred selfType, final Predicate<T> other) {
+	static <T> Stream<T> and(final Deferred selfType, final Predicate<T> other) {
 		selfType.compose().filter other
 	}
 
@@ -206,7 +205,7 @@ class ComposableExtensions {
 		selfType.consume other
 	}
 
-	static <T> Composable<T> leftShift(final Deferred selfType, final Consumer<T> other) {
+	static <T> Stream<T> leftShift(final Deferred selfType, final Consumer<T> other) {
 		selfType.compose().consume other
 	}
 
@@ -214,7 +213,7 @@ class ComposableExtensions {
 		consume selfType, other
 	}
 
-	static <T> Composable<T> leftShift(final Deferred selfType, final Closure other) {
+	static <T> Stream<T> leftShift(final Deferred selfType, final Closure other) {
 		consume selfType, other
 	}
 
@@ -232,7 +231,7 @@ class ComposableExtensions {
 		selfType
 	}
 
-	static <T, X extends Composable<T>> Deferred<T, X> leftShift(final Deferred<T, X> selfType, T value) {
+	static <T, X extends Stream<T>> Deferred<T, X> leftShift(final Deferred<T, X> selfType, T value) {
 		selfType.accept value
 		selfType
 	}

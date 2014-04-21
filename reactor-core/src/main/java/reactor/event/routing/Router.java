@@ -45,7 +45,7 @@ public interface Router {
 	 * @param completionConsumer The {@code Consumer} to invoke upon successful completion of event routing
 	 * @param errorConsumer The {@code Consumer} to invoke when an error occurs during event routing
 	 */
-	void route(Object key, Object data, List<Registration<? extends Consumer<?>>> consumers,
-	           Consumer<?> completionConsumer, Consumer<Throwable> errorConsumer);
+	<E> void route(Object key, E data, List<Registration<? extends Consumer<?>>> consumers,
+	           Consumer<E> completionConsumer, Consumer<Throwable> errorConsumer);
 
 }

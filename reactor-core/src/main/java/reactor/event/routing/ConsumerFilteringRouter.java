@@ -56,9 +56,9 @@ public class ConsumerFilteringRouter implements Router {
 	}
 
 	@Override
-	public void route(Object key, Object event,
+	public <E> void route(Object key, E event,
 	                  List<Registration<? extends Consumer<?>>> consumers,
-	                  Consumer<?> completionConsumer,
+	                  Consumer<E> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
 			List<Registration<? extends Consumer<?>>> regs = filter.filter(consumers, key);
@@ -94,7 +94,7 @@ public class ConsumerFilteringRouter implements Router {
 		}
 		if (null != completionConsumer) {
 			try {
-				consumerInvoker.invoke(completionConsumer, Void.TYPE, event);
+				completionConsumer.accept(event);
 			} catch (Exception e) {
 				if (null != errorConsumer) {
 					errorConsumer.accept(e);

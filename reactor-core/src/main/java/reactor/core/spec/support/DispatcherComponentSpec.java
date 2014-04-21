@@ -117,7 +117,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 * @return {@code this}
 	 */
 	public final SPEC synchronousDispatcher() {
-		this.dispatcher = new SynchronousDispatcher();
+		this.dispatcher = SynchronousDispatcher.INSTANCE;
 		return (SPEC) this;
 	}
 
@@ -163,7 +163,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 		} else if (env != null) {
 			return env.getDefaultDispatcher();
 		} else {
-			return new SynchronousDispatcher();
+			return SynchronousDispatcher.INSTANCE;
 		}
 	}
 

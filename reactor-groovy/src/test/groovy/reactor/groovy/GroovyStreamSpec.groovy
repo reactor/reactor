@@ -21,8 +21,8 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.core.Environment
-import reactor.core.composable.Stream
-import reactor.core.composable.spec.Streams
+import reactor.rx.Stream
+import reactor.rx.spec.Streams
 import reactor.core.spec.Reactors
 import reactor.event.dispatch.EventLoopDispatcher
 import reactor.function.support.Tap

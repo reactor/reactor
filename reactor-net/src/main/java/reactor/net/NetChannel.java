@@ -1,7 +1,7 @@
 package reactor.net;
 
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.batch.BatchConsumer;
@@ -23,9 +23,9 @@ public interface NetChannel<IN, OUT> {
 	InetSocketAddress remoteAddress();
 
 	/**
-	 * {@link reactor.core.composable.Stream} of incoming decoded data.
+	 * {@link reactor.rx.Stream} of incoming decoded data.
 	 *
-	 * @return input {@link reactor.core.composable.Stream}
+	 * @return input {@link reactor.rx.Stream}
 	 */
 	Stream<IN> in();
 
@@ -71,10 +71,10 @@ public interface NetChannel<IN, OUT> {
 	NetChannel<IN, OUT> receive(Function<IN, OUT> fn);
 
 	/**
-	 * Send data to the peer that passes through the given {@link reactor.core.composable.Stream}.
+	 * Send data to the peer that passes through the given {@link reactor.rx.Stream}.
 	 *
 	 * @param data
-	 * 		the {@link reactor.core.composable.Stream} of data to monitor
+	 * 		the {@link reactor.rx.Stream} of data to monitor
 	 *
 	 * @return {@literal this}
 	 */
@@ -86,7 +86,7 @@ public interface NetChannel<IN, OUT> {
 	 * @param data
 	 * 		the data to send
 	 *
-	 * @return a {@link reactor.core.composable.Promise} indicating when the send operation has completed
+	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
 	 */
 	Promise<Void> send(OUT data);
 
@@ -106,7 +106,7 @@ public interface NetChannel<IN, OUT> {
 	 * @param data
 	 * 		the data to send
 	 *
-	 * @return a {@link reactor.core.composable.Promise} representing the response from the peer
+	 * @return a {@link reactor.rx.Promise} representing the response from the peer
 	 */
 	Promise<IN> sendAndReceive(OUT data);
 

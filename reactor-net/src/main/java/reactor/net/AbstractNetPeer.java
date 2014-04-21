@@ -2,9 +2,9 @@ package reactor.net;
 
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
+import reactor.rx.Deferred;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.event.Event;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;

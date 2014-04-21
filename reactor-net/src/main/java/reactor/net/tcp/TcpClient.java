@@ -18,8 +18,8 @@ package reactor.net.tcp;
 
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -67,10 +67,10 @@ public abstract class TcpClient<IN, OUT>
 	}
 
 	/**
-	 * Open a {@link NetChannel} to the configured host:port and return a {@link reactor.core.composable.Promise} that
+	 * Open a {@link NetChannel} to the configured host:port and return a {@link reactor.rx.Promise} that
 	 * will be fulfilled when the client is connected.
 	 *
-	 * @return A {@link reactor.core.composable.Promise} that will be filled with the {@link NetChannel} when
+	 * @return A {@link reactor.rx.Promise} that will be filled with the {@link NetChannel} when
 	 * connected.
 	 */
 	public abstract Promise<NetChannel<IN, OUT>> open();

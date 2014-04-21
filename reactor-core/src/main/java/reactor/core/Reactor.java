@@ -327,7 +327,10 @@ public class Reactor implements Observable {
 					List<Registration<? extends Consumer<?>>> regs = consumerRegistry.select(key);
 					for (Event<T> batchedEvent : event) {
 						for (Registration<? extends Consumer<?>> registration : regs) {
-							router.route(null, batchedEvent, null, registration.getObject(), dispatchErrorHandler);
+							if(registration.getClass().isAssignableFrom(batchedEvent.getClass())){
+								router.route(null, batchedEvent, null, (Consumer<Event<T>>)registration.getObject(),
+										dispatchErrorHandler);
+							}
 						}
 					}
 					if (completeConsumer != null) {

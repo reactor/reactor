@@ -84,6 +84,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public <E> void dispatch(Object key,
 	                         E event,
 	                         Registry<Consumer<?>> consumerRegistry,
@@ -105,8 +106,10 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 					.setData(event)
 					.setConsumerRegistry(consumerRegistry)
 					.setErrorConsumer(errorConsumer)
-					.setRouter(router)
-					.setCompletionConsumer(completionConsumer);
+					.setRouter(router);
+
+			if (completionConsumer != null)
+				task.setCompletionConsumer((Consumer<Object>) completionConsumer);
 
 			if (isInContext) {
 				addToTailRecursionPile(task);
@@ -150,7 +153,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		protected volatile Object                key;
 		protected volatile Registry<Consumer<?>> consumerRegistry;
 		protected volatile Object                data;
-		protected volatile Consumer<?>           completionConsumer;
+		protected volatile Consumer<Object>      completionConsumer;
 		protected volatile Consumer<Throwable>   errorConsumer;
 		protected volatile Router                router;
 
@@ -169,7 +172,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			return this;
 		}
 
-		public Task setCompletionConsumer(Consumer<?> completionConsumer) {
+		public Task setCompletionConsumer(Consumer<Object> completionConsumer) {
 			this.completionConsumer = completionConsumer;
 			return this;
 		}

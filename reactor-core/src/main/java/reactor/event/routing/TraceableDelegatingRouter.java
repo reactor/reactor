@@ -24,10 +24,10 @@ public class TraceableDelegatingRouter implements Router {
 	}
 
 	@Override
-	public void route(Object key,
-	                  Object event,
+	public <E> void route(Object key,
+	                  E event,
 	                  List<Registration<? extends Consumer<?>>> consumers,
-	                  Consumer<?> completionConsumer,
+	                  Consumer<E> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
 			log.trace("route({}, {}, {}, {}, {})", key, event, consumers, completionConsumer, errorConsumer);

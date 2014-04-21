@@ -22,9 +22,9 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import reactor.core.Environment
-import reactor.core.composable.Deferred
-import reactor.core.composable.Promise
-import reactor.core.composable.spec.Promises
+import reactor.rx.Deferred
+import reactor.rx.Promise
+import reactor.rx.spec.Promises
 import reactor.event.dispatch.EventLoopDispatcher
 import spock.lang.Shared
 import spock.lang.Specification

@@ -4,10 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
+import reactor.rx.Deferred;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
@@ -33,7 +33,7 @@ import static reactor.event.selector.Selectors.$;
 
 /**
  * An abstract {@link reactor.net.NetChannel} implementation that handles the basic interaction and {@link
- * reactor.core.composable.Stream} and {@link reactor.function.Consumer} handling.
+ * reactor.rx.Stream} and {@link reactor.function.Consumer} handling.
  *
  * @author Jon Brisbin
  */

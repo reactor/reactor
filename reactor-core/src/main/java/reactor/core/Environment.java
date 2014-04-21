@@ -123,7 +123,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			} else if(DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
 			} else if(DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), new SynchronousDispatcher());
+				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
 			} else if(DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
 			} else if(DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {

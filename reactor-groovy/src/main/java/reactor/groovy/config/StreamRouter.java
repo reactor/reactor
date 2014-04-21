@@ -1,7 +1,7 @@
 package reactor.groovy.config;
 
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Stream;
+import reactor.rx.Deferred;
+import reactor.rx.Stream;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.routing.ConsumerFilteringRouter;

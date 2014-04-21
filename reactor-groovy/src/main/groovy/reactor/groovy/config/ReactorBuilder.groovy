@@ -4,9 +4,9 @@ import groovy.transform.CompileStatic
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
-import reactor.core.composable.Deferred
-import reactor.core.composable.Stream
-import reactor.core.composable.spec.Streams
+import reactor.rx.Deferred
+import reactor.rx.Stream
+import reactor.rx.spec.Streams
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.Dispatcher

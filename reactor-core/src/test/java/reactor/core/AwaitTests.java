@@ -18,9 +18,8 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
@@ -44,14 +43,13 @@ public class AwaitTests extends AbstractReactorTest {
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 1000; i++) {
-			final Deferred<String, Promise<String>> deferred = Promises.<String>defer()
+			final Promise<String> deferred = Promises.<String>config()
 					.env(env)
 					.dispatcher(dispatcher)
 					.get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
-			Promise<String> promise = deferred.compose();
-			promise.onSuccess(new Consumer<String>() {
+			deferred.onSuccess(new Consumer<String>() {
 
 				@Override
 				public void accept(String t) {
@@ -63,7 +61,7 @@ public class AwaitTests extends AbstractReactorTest {
 
 				@Override
 				public void accept(Object t) {
-					deferred.accept("foo");
+					deferred.broadcastNext("foo");
 				}
 
 			}, null);

@@ -14,10 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
+import reactor.rx.Deferred;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
@@ -251,7 +251,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		return new NettyNetChannel<IN, OUT>(
 				getEnvironment(),
 				getCodec(),
-				new SynchronousDispatcher(),
+				SynchronousDispatcher.INSTANCE,
 				getReactor(),
 				(NioDatagramChannel) ioChannel
 		);

@@ -1,6 +1,6 @@
 package reactor.net;
 
-import reactor.core.composable.Promise;
+import reactor.rx.Promise;
 
 import javax.annotation.Nullable;
 
@@ -14,7 +14,7 @@ public interface NetServer<IN, OUT> {
 	/**
 	 * Start and bind this {@literal NetServer} to the configured listen port.
 	 *
-	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is started
+	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is started
 	 */
 	Promise<Boolean> start();
 
@@ -30,10 +30,10 @@ public interface NetServer<IN, OUT> {
 	NetServer<IN, OUT> start(@Nullable Runnable started);
 
 	/**
-	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.core.composable.Promise} when shut
+	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
 	 * down.
 	 *
-	 * @return a {@link reactor.core.composable.Promise} that will be complete when the {@link NetServer} is shut down
+	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is shut down
 	 */
 	Promise<Boolean> shutdown();
 
