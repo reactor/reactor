@@ -18,6 +18,7 @@ package reactor.event
 
 import reactor.core.spec.Reactors
 import reactor.event.selector.MatchAllSelector
+import reactor.event.selector.SetMembershipSelector
 import reactor.event.selector.UriSelector
 import reactor.function.Functions
 import spock.lang.Specification
@@ -167,6 +168,26 @@ class SelectorSpec extends Specification {
             sel.matches(new Date())
             sel.matches(new Object())
     }
+
+	def "Set membership selector is available"() {
+
+		given:
+		"A SetMembershipSelector"
+		def coll = ["a", "b", "c"] as Set<String>
+		def sel = new SetMembershipSelector(coll)
+
+		when:
+		"The selector is matched"
+
+		then:
+		sel.matches "a"
+		sel.matches "b"
+		sel.matches "c"
+		!sel.matches("d")
+		!sel.matches([1])
+		!sel.matches(1)
+		!sel.matches(1.0)
+	}
 
 	def "Consumers can be called using round-robin routing"() {
 
