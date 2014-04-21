@@ -77,7 +77,6 @@ configure(allprojects) { project ->
 	apply from: "${gradleScriptDir}/ide.gradle"
 
 	[compileJava, compileTestJava]*.options*.compilerArgs = [
-			"-Xlint:serial",
 			"-Xlint:varargs",
 			"-Xlint:cast",
 			"-Xlint:classfile",
@@ -92,9 +91,10 @@ configure(allprojects) { project ->
 			"-Xlint:try",
 			"-Xlint:deprecation",
 			"-Xlint:unchecked",
+			"-Xlint:-serial",      // intentionally disabled
 			"-Xlint:-options",     // intentionally disabled
 			"-Xlint:-fallthrough", // intentionally disabled
-			"-Xlint:-rawtypes"    // TODO enable and fix warnings
+			"-Xlint:-rawtypes"     // TODO enable and fix warnings
 	]
 
 	compileGroovy {
