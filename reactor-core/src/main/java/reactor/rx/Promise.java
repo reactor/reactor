@@ -59,7 +59,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 
 	private final long         defaultTimeout;
 	private final Condition    pendingCondition;
-	private final Action<?, O> delegateAction;
+	final Action<?, O> delegateAction;
 
 	private State state = State.PENDING;
 	private O         value;

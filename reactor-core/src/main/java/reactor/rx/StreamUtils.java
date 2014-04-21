@@ -81,6 +81,7 @@ public abstract class StreamUtils {
 				appender.append(" (!) - Paused");
 			}
 			if (Action.class.isAssignableFrom(composable.getClass())
+					&& ((Action<?, O>) composable).getSubscription() != null
 					&& StreamSubscription.class.isAssignableFrom(((Action<?, O>) composable).getSubscription().getClass())) {
 
 				StreamSubscription<?> composableSubscription =
@@ -125,7 +126,10 @@ public abstract class StreamUtils {
 				FilterAction<O, ?> operation = (FilterAction<O, ?>) consumer;
 
 				if (operation.otherwise() != null) {
-					loopSubscriptions(operation.getSubscriptions(), d + 1);
+					if(Stream.class.isAssignableFrom(operation.otherwise().getClass()))
+						loopSubscriptions(((Stream<O>)operation.otherwise()).getSubscriptions(), d + 2);
+					else if(Promise.class.isAssignableFrom(operation.otherwise().getClass()))
+						loopSubscriptions(((Promise<O>)operation.otherwise()).delegateAction.getSubscriptions(), d + 2);
 				}
 			}
 		}

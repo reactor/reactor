@@ -67,9 +67,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
-	private final Queue<O>                                   buffer        = new ConcurrentLinkedQueue<O>();
-	private final AtomicInteger                              current       = new AtomicInteger(0);
-	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(8);
+	protected final Queue<O>                                   buffer        = new ConcurrentLinkedQueue<O>();
+	private final   AtomicInteger                              current       = new AtomicInteger(0);
+	private final   MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(8);
 
 	protected final Dispatcher dispatcher;
 

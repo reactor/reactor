@@ -180,7 +180,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public Stream<O> cancel() {
-		subscription.cancel();
+		if(subscription != null)
+			subscription.cancel();
 		return super.cancel();
 	}
 
@@ -203,7 +204,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void available() {
-		if (batchSize != 0 && !pause) {
+		if (batchSize != 0 && subscription != null && !pause) {
 			subscription.requestMore(batchSize > 0 ? batchSize : 1);
 		}
 	}
@@ -250,5 +251,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public Subscriber<I> getSubscriber() {
 		return this;
+	}
+
+	@Override
+	public String toString() {
+		return "{" +
+				"prefetch=" + getBatchSize() +
+				'}';
 	}
 }
