@@ -77,7 +77,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		ZMQ.reply("tcp://*:" + getPort())
 		   .consume(ch -> ch.consume(ch::send));
 
-		ZMQ.request("tcp://localhost:" + getPort())
+		ZMQ.request("tcp://127.0.0.1:" + getPort())
 		   .consume(ch -> {
 			   ch.sendAndReceive(data)
 			     .consume(data -> latch.countDown());
@@ -91,7 +91,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		ZMQ.pull("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
 
-		ZMQ.push("tcp://localhost:" + getPort())
+		ZMQ.push("tcp://127.0.0.1:" + getPort())
 		   .consume(ch -> ch.send(data));
 
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
@@ -102,7 +102,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		ZMQ.router("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
 
-		ZMQ.dealer("tcp://localhost:" + getPort())
+		ZMQ.dealer("tcp://127.0.0.1:" + getPort())
 		   .consume(ch -> ch.send(data));
 
 		assertTrue("ROUTER socket received data", latch.await(1, TimeUnit.SECONDS));
