@@ -80,7 +80,7 @@ class ClientServerIntegrationSpec extends Specification {
 		startLatch.countDown()
 
 		and: "connection is established"
-		def connection = client.open().await(1, TimeUnit.SECONDS)
+		def connection = client.open().await(30, TimeUnit.SECONDS)
 		assertThat("Connection made successfully", null != connection)
 		startLatch.countDown()
 
@@ -136,7 +136,7 @@ class ClientServerIntegrationSpec extends Specification {
 				.get()
 
 		when: 'the server is started'
-		assertThat("Server started", server.start().await(1, TimeUnit.SECONDS))
+		assertThat("Server started", server.start().await(30, TimeUnit.SECONDS))
 		startLatch.countDown()
 
 		and: "connection is established"
