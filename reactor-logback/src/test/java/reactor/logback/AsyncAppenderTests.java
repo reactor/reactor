@@ -103,7 +103,7 @@ public class AsyncAppenderTests {
 		System.out.println("chronicle: " + (n / timeout) + "/sec");
 	}
 
-	@Test
+	//@Test
 	public void clockAllAppenders() throws InterruptedException {
 		clockSyncAppender();
 		clockAsyncAppender();
