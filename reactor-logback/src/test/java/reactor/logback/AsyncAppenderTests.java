@@ -110,6 +110,10 @@ public class AsyncAppenderTests {
 		clockChronicleAppender();
 	}
 
+	@Test
+	public void dummy() {
+	}
+
 	private long benchmarkThread(final Logger logger, int timeout) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicLong throughput = new AtomicLong(0);
