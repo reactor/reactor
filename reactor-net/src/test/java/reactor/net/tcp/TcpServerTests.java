@@ -472,9 +472,7 @@ public class TcpServerTests {
 
 		NetServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
-				.listen("127.0.0.1", port)
-//				.options(new ZeroMQServerSocketOptions()
-//						         .context(zmq))
+				.listen(port)
 				.consume(ch -> {
 					ch.consume(buff -> {
 						if (buff.remaining() == 128) {
