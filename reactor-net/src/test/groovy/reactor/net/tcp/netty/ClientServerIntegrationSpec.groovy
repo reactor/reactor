@@ -72,7 +72,7 @@ class ClientServerIntegrationSpec extends Specification {
 		def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient)
 				.env(env2)
 				.codec(codec)
-				.connect("localhost", port)
+				.connect("127.0.0.1", port)
 				.get()
 
 		when: 'the server is started'
@@ -132,7 +132,7 @@ class ClientServerIntegrationSpec extends Specification {
 		def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient)
 				.env(env2)
 				.codec(codec)
-				.connect("localhost", port)
+				.connect("127.0.0.1", port)
 				.get()
 
 		when: 'the server is started'
