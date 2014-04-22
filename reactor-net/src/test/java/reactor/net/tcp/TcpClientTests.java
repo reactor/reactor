@@ -115,7 +115,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect("localhost", echoServerPort)
+				.connect("127.0.0.1", echoServerPort)
 				.get();
 
 		client.open().consume(new Consumer<NetChannel<String, String>>() {
@@ -145,7 +145,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.STRING_CODEC)
-				.connect(new InetSocketAddress("localhost", echoServerPort))
+				.connect(new InetSocketAddress("127.0.0.1", echoServerPort))
 				.get();
 
 		client.open().consume(new Consumer<NetChannel<String, String>>() {
@@ -177,7 +177,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.connect("localhost", echoServerPort)
+				.connect("127.0.0.1", echoServerPort)
 				.get();
 
 		client.open().consume(new Consumer<NetChannel<String, String>>() {
@@ -215,7 +215,7 @@ public class TcpClientTests {
 		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
 				.env(env)
 				.codec(null)
-				.connect("localhost", echoServerPort)
+				.connect("127.0.0.1", echoServerPort)
 				.get();
 
 		assertTrue("Client was not closed within 30 seconds", client.close().await(30, TimeUnit.SECONDS));
@@ -228,7 +228,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", abortServerPort + 3)
+				.connect("127.0.0.1", abortServerPort + 3)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -260,7 +260,7 @@ public class TcpClientTests {
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", abortServerPort)
+				.connect("127.0.0.1", abortServerPort)
 				.get()
 				.open(new Reconnect() {
 					@Override
@@ -288,7 +288,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", timeoutServerPort)
+				.connect("127.0.0.1", timeoutServerPort)
 				.get().open().await(5, TimeUnit.SECONDS).on()
 				.close(new Runnable() {
 					@Override
@@ -322,7 +322,7 @@ public class TcpClientTests {
 
 		new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", heartbeatServerPort)
+				.connect("127.0.0.1", heartbeatServerPort)
 				.get().open().await().on()
 				.readIdle(500, new Runnable() {
 					@Override
@@ -348,7 +348,7 @@ public class TcpClientTests {
 
 		NetChannel<Buffer, Buffer> connection = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
-				.connect("localhost", echoServerPort)
+				.connect("127.0.0.1", echoServerPort)
 				.get().open().await();
 
 		connection.on()
@@ -406,7 +406,7 @@ public class TcpClientTests {
 
 		NetServer<Buffer, Buffer> zmqs = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
-				.listen(port)
+				.listen("127.0.0.1", port)
 				.consume(ch -> {
 					ch.consume(buff -> {
 						if (buff.remaining() == 12) {
@@ -447,7 +447,7 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress("127.0.0.1", port));
 				server.configureBlocking(true);
 				thread = Thread.currentThread();
 				while (true) {
@@ -496,7 +496,7 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress("127.0.0.1", port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
@@ -527,7 +527,7 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress("127.0.0.1", port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
@@ -559,11 +559,11 @@ public class TcpClientTests {
 		public void run() {
 			try {
 				server = ServerSocketChannel.open();
-				server.socket().bind(new InetSocketAddress(port));
+				server.socket().bind(new InetSocketAddress("127.0.0.1", port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
-					while (true && server.isOpen()) {
+					while (server.isOpen()) {
 						ByteBuffer out = ByteBuffer.allocate(1);
 						out.put((byte) '\n');
 						out.flip();

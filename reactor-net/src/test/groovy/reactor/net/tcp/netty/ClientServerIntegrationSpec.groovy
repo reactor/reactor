@@ -59,7 +59,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
-					listen(port).
+					listen("127.0.0.1", port).
 					codec(codec).
 					consume({ conn ->
 						conn.consume({ pojo ->
@@ -76,7 +76,7 @@ class ClientServerIntegrationSpec extends Specification {
 					get()
 
 		when: 'the server is started'
-			assertThat("Server started", server.start()?.await(1, TimeUnit.SECONDS))
+			server.start().await(1, TimeUnit.SECONDS)
 			startLatch.countDown()
 
 		and: "connection is established"
@@ -124,7 +124,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
-					listen(port).
+					listen("127.0.0.1", port).
 					codec(codec).
 					consume({ conn -> data.each { pojo -> conn.out().accept(pojo) } } as Consumer).
 					get()
@@ -136,7 +136,7 @@ class ClientServerIntegrationSpec extends Specification {
 					get()
 
 		when: 'the server is started'
-			assertThat("Server started", server.start()?.await(1, TimeUnit.SECONDS))
+			server.start().await(1, TimeUnit.SECONDS)
 			startLatch.countDown()
 
 		and: "connection is established"
