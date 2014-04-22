@@ -32,13 +32,13 @@ import java.util.regex.Pattern;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class SpeedTests {
 
 	final static int runs       = 100000000;
 	final static int iterations = 3;
 
 	@Test
+	@Ignore
 	public void clockIntegerParseInt() {
 		Consumer<Integer> test = new Consumer<Integer>() {
 			byte[] bytes = "34".getBytes();
@@ -54,6 +54,7 @@ public class SpeedTests {
 	}
 
 	@Test
+	@Ignore
 	public void clockByteBufferGetInt() {
 		final Buffer b = Buffer.wrap("34");
 
@@ -68,6 +69,7 @@ public class SpeedTests {
 	}
 
 	@Test
+	@Ignore
 	public void clockSimpleDateFormatParse() {
 		final SimpleDateFormat rfc3414 = new SimpleDateFormat("MMM d HH:mm:ss");
 		final byte[] bytes = "Oct 11 22:14:15".getBytes();
@@ -87,6 +89,7 @@ public class SpeedTests {
 	}
 
 	@Test
+	@Ignore
 	public void clockManualDateExtraction() {
 		final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 		final Buffer date = Buffer.wrap("Oct 11 22:14:15");
@@ -115,6 +118,7 @@ public class SpeedTests {
 	}
 
 	@Test
+	@Ignore
 	public void clockRegexExtraction() {
 		final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 		final Pattern pattern = Pattern.compile("([A-Z][a-z]{2})[\\s]+(\\d{1,2})[\\s](\\d{2}):(\\d{2}):(\\d{2})");

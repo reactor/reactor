@@ -94,17 +94,17 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 		super.close(null);
-		threadPool.shutdownNow();
 
 		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker<IN, OUT>, Future<?>>() {
 			@Override
 			public void safeValue(ZeroMQWorker<IN, OUT> w, Future<?> f) throws Exception {
+				w.shutdown();
 				if (!f.isDone()) {
 					f.cancel(true);
 				}
-				w.shutdown();
 			}
 		});
+		threadPool.shutdownNow();
 
 		getReactor().schedule(onClose, true);
 		notifyShutdown();
@@ -148,12 +148,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 			@Override
 			protected void start(final ZMQ.Socket socket) {
-				String addr;
-				if (null != zmqOpts && null != zmqOpts.connectAddresses()) {
-					addr = zmqOpts.connectAddresses();
-				} else {
-					addr = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
-				}
+				String addr = createConnectAddress();
 				if (log.isInfoEnabled()) {
 					String type = findSocketTypeName(socket.getType());
 					log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
@@ -177,6 +172,16 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 		};
 		workers.put(worker, threadPool.submit(worker));
+	}
+
+	private String createConnectAddress() {
+		String addrs;
+		if (null != zmqOpts && null != zmqOpts.connectAddresses()) {
+			addrs = zmqOpts.connectAddresses();
+		} else {
+			addrs = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
+		}
+		return addrs;
 	}
 
 }

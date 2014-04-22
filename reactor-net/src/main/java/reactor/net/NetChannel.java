@@ -88,7 +88,7 @@ public interface NetChannel<IN, OUT> {
 	 *
 	 * @return a {@link reactor.core.composable.Promise} indicating when the send operation has completed
 	 */
-	Promise<Boolean> send(OUT data);
+	Promise<Void> send(OUT data);
 
 	/**
 	 * Send data to the peer.

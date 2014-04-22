@@ -1,8 +1,10 @@
 package reactor.net.tcp;
 
 import com.esotericsoftware.kryo.Kryo;
-import org.junit.Ignore;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import reactor.core.Environment;
 import reactor.io.Buffer;
 import reactor.io.encoding.json.JacksonJsonCodec;
 import reactor.io.encoding.kryo.KryoCodec;
@@ -21,38 +23,40 @@ import static org.junit.Assert.assertTrue;
  */
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
-	Kryo                  kryo;
-	KryoCodec<Data, Data> codec;
-	CountDownLatch        latch;
-	ZeroMQ<Data>          zmq;
+	static Kryo                  KRYO;
+	static KryoCodec<Data, Data> KRYO_CODEC;
+	static ZeroMQ<Data>          ZMQ;
+
+	CountDownLatch latch;
+
+	@BeforeClass
+	public static void classSetup() {
+		KRYO = new Kryo();
+		KRYO_CODEC = new KryoCodec<>(KRYO, false);
+		ZMQ = new ZeroMQ<Data>(new Environment()).codec(KRYO_CODEC);
+	}
+
+	@AfterClass
+	public static void classCleanup() {
+		ZMQ.shutdown();
+	}
 
 	@Override
 	public void setup() {
 		super.setup();
-		kryo = new Kryo();
-		codec = new KryoCodec<>(kryo, false);
 		latch = new CountDownLatch(1);
-		zmq = new ZeroMQ<Data>(getServerEnvironment()).codec(codec);
-	}
-
-	@Override
-	public void cleanup() throws InterruptedException {
-		super.cleanup();
-		//zmq.shutdown();
 	}
 
 	@Test
-	@Ignore
 	public void clientSendsDataToServerUsingKryo() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
-		                                   codec,
+		                                   KRYO_CODEC,
 		                                   data,
 		                                   d -> d.equals(data));
 	}
 
 	@Test
-	@Ignore
 	public void clientSendsDataToServerUsingJson() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
@@ -62,7 +66,6 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	}
 
 	@Test
-	@Ignore
 	public void clientSendsDataToServerUsingBuffers() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
@@ -71,10 +74,10 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@Test
 	public void zmqRequestReply() throws InterruptedException {
-		zmq.reply("tcp://*:" + getPort())
+		ZMQ.reply("tcp://*:" + getPort())
 		   .consume(ch -> ch.consume(ch::send));
 
-		zmq.request("tcp://localhost:" + getPort())
+		ZMQ.request("tcp://localhost:" + getPort())
 		   .consume(ch -> {
 			   ch.sendAndReceive(data)
 			     .consume(data -> latch.countDown());
@@ -85,10 +88,10 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@Test
 	public void zmqPushPull() throws InterruptedException {
-		zmq.pull("tcp://*:" + getPort())
+		ZMQ.pull("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
 
-		zmq.push("tcp://localhost:" + getPort())
+		ZMQ.push("tcp://localhost:" + getPort())
 		   .consume(ch -> ch.send(data));
 
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
@@ -96,10 +99,10 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@Test
 	public void zmqRouterDealer() throws InterruptedException {
-		zmq.router("tcp://*:" + getPort())
+		ZMQ.router("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
 
-		zmq.dealer("tcp://localhost:" + getPort())
+		ZMQ.dealer("tcp://localhost:" + getPort())
 		   .consume(ch -> ch.send(data));
 
 		assertTrue("ROUTER socket received data", latch.await(1, TimeUnit.SECONDS));
@@ -107,7 +110,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@Test
 	public void zmqInprocRouterDealer() throws InterruptedException {
-		zmq.router("inproc://queue" + getPort())
+		ZMQ.router("inproc://queue" + getPort())
 		   .consume(ch -> {
 			   ch.consume(data -> {
 				   latch.countDown();
@@ -115,9 +118,9 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   });
 
 		// we have to sleep a couple cycles to let ZeroMQ get set up on inproc
-		Thread.sleep(10);
+		Thread.sleep(500);
 
-		zmq.dealer("inproc://queue" + getPort())
+		ZMQ.dealer("inproc://queue" + getPort())
 		   .consume(ch -> {
 			   ch.sendAndForget(data);
 		   });

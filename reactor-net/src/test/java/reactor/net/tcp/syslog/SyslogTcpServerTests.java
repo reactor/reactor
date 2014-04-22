@@ -56,7 +56,6 @@ import static org.hamcrest.Matchers.is;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-@Ignore
 public class SyslogTcpServerTests {
 
 	static final byte[] SYSLOG_MESSAGE_DATA = ("<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on " +
@@ -79,6 +78,7 @@ public class SyslogTcpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void testSyslogServer() throws InterruptedException, IOException {
 		EventLoopGroup bossGroup = new NioEventLoopGroup(2);
 		EventLoopGroup workerGroup = new NioEventLoopGroup(4);
@@ -136,6 +136,7 @@ public class SyslogTcpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void testTcpSyslogServer() throws InterruptedException, IOException {
 		//final FileChannelConsumer<SyslogMessage> fcc = new FileChannelConsumer<SyslogMessage>(".", "syslog", -1, -1);
 		Configuration conf = new Configuration();
@@ -182,6 +183,7 @@ public class SyslogTcpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void testExternalServer() throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(1);
 

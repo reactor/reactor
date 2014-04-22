@@ -28,6 +28,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.core.Environment;
@@ -47,6 +48,7 @@ import reactor.net.netty.tcp.NettyTcpServer;
 import reactor.net.tcp.spec.TcpClientSpec;
 import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.tcp.support.SocketUtils;
+import reactor.net.zmq.ZeroMQServerSocketOptions;
 import reactor.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.util.UUIDUtils;
 
@@ -463,15 +465,16 @@ public class TcpServerTests {
 	}
 
 	@Test
-	@Ignore
 	public void exposesZeroMQServer() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
-		ZMQ.Context zmq = ZMQ.context(1);
+		ZContext zmq = new ZContext();
 
 		NetServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
 				.listen("127.0.0.1", port)
+//				.options(new ZeroMQServerSocketOptions()
+//						         .context(zmq))
 				.consume(ch -> {
 					ch.consume(buff -> {
 						if (buff.remaining() == 128) {
@@ -489,13 +492,10 @@ public class TcpServerTests {
 		ZeroMQWriter zmqw = new ZeroMQWriter(zmq, port, latch);
 		threadPool.submit(zmqw);
 
-		Thread.sleep(500);
-
 		assertTrue("reply was received", latch.await(5, TimeUnit.SECONDS));
-
 		assertTrue("Server was stopped", server.shutdown().await(5, TimeUnit.SECONDS));
 
-		zmq.term();
+		zmq.destroy();
 	}
 
 	public static class Pojo {
@@ -641,11 +641,11 @@ public class TcpServerTests {
 
 	private class ZeroMQWriter implements Runnable {
 		private final Random random = new Random();
-		private final ZMQ.Context    zmq;
+		private final ZContext    zmq;
 		private final int            port;
 		private final CountDownLatch latch;
 
-		private ZeroMQWriter(ZMQ.Context zmq, int port, CountDownLatch latch) {
+		private ZeroMQWriter(ZContext zmq, int port, CountDownLatch latch) {
 			this.zmq = zmq;
 			this.port = port;
 			this.latch = latch;
@@ -654,7 +654,7 @@ public class TcpServerTests {
 		@Override
 		public void run() {
 			String id = UUIDUtils.random().toString();
-			ZMQ.Socket socket = zmq.socket(ZMQ.DEALER);
+			ZMQ.Socket socket = zmq.createSocket(ZMQ.DEALER);
 			socket.setIdentity(id.getBytes());
 			socket.connect("tcp://127.0.0.1:" + port);
 
@@ -667,7 +667,7 @@ public class TcpServerTests {
 			log.info("reply: {}", reply);
 			latch.countDown();
 
-			socket.close();
+			//zmq.destroySocket(socket);
 		}
 	}
 

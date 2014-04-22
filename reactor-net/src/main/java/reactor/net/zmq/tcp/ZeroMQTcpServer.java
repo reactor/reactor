@@ -135,14 +135,16 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		super.close(null);
-		threadPool.shutdownNow();
 
 		worker.shutdown();
 		if (!workerFuture.isDone()) {
 			workerFuture.cancel(true);
 		}
+		threadPool.shutdownNow();
+
 		notifyShutdown();
 		d.accept(true);
+
 
 		return d.compose();
 	}

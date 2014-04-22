@@ -28,7 +28,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class UdpServerTests {
 
 	final Logger log = LoggerFactory.getLogger(getClass());
@@ -49,6 +48,7 @@ public class UdpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void supportsReceivingDatagrams() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -60,7 +60,7 @@ public class UdpServerTests {
 				.consumeInput(new Consumer<byte[]>() {
 					@Override
 					public void accept(byte[] bytes) {
-						if(bytes.length == 1024) {
+						if (bytes.length == 1024) {
 							latch.countDown();
 						}
 					}
@@ -77,12 +77,12 @@ public class UdpServerTests {
 
 					byte[] data = new byte[1024];
 					new Random().nextBytes(data);
-					for(int i = 0; i < 4; i++) {
+					for (int i = 0; i < 4; i++) {
 						udp.write(ByteBuffer.wrap(data));
 					}
 
 					udp.close();
-				} catch(IOException e) {
+				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
@@ -92,6 +92,7 @@ public class UdpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void supportsUdpMulticast() throws InterruptedException,
 	                                          UnknownHostException,
 	                                          SocketException,
@@ -104,7 +105,7 @@ public class UdpServerTests {
 		final NetworkInterface multicastIface = findMulticastInterface();
 		final DatagramServer[] servers = new DatagramServer[Environment.PROCESSORS];
 
-		for(int i = 0; i < Environment.PROCESSORS; i++) {
+		for (int i = 0; i < Environment.PROCESSORS; i++) {
 			servers[i] = new DatagramServerSpec<byte[], byte[]>(NettyDatagramServer.class)
 					.env(env)
 					.dispatcher(Environment.THREAD_POOL)
@@ -120,7 +121,7 @@ public class UdpServerTests {
 						@Override
 						public void accept(byte[] bytes) {
 							//log.info("{} got {} bytes", ++count, bytes.length);
-							if(bytes.length == 1024) {
+							if (bytes.length == 1024) {
 								latch.countDown();
 							}
 						}
@@ -131,7 +132,7 @@ public class UdpServerTests {
 			servers[i].join(multicastGroup).await();
 		}
 
-		for(int i = 0; i < Environment.PROCESSORS; i++) {
+		for (int i = 0; i < Environment.PROCESSORS; i++) {
 			threadPool.submit(new Runnable() {
 				@Override
 				public void run() {
@@ -145,7 +146,7 @@ public class UdpServerTests {
 						multicast.send(new DatagramPacket(data, data.length, multicastGroup, port));
 
 						multicast.close();
-					} catch(Exception e) {
+					} catch (Exception e) {
 						throw new IllegalStateException(e);
 					}
 				}
@@ -154,16 +155,16 @@ public class UdpServerTests {
 
 		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
-		for(DatagramServer s : servers) {
+		for (DatagramServer s : servers) {
 			s.shutdown().await();
 		}
 	}
 
 	private NetworkInterface findMulticastInterface() throws SocketException {
 		Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
-		while(ifaces.hasMoreElements()) {
+		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = ifaces.nextElement();
-			if(!iface.isLoopback() && iface.supportsMulticast()) {
+			if (!iface.isLoopback() && iface.supportsMulticast()) {
 				return iface;
 			}
 		}

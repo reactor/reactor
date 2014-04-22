@@ -23,7 +23,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -65,7 +64,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, final Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, final Deferred<Void, Promise<Void>> onComplete, boolean flush) {
 		byte[] bytes = new byte[data.remaining()];
 		data.get(bytes);
 		boolean isNewMsg = MSG_UPD.compareAndSet(this, null, new ZMsg());
@@ -87,7 +86,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void write(Object data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
+	protected void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
 		Buffer buff = getEncoder().apply((OUT) data);
 		write(buff.byteBuffer(), onComplete, flush);
 	}
@@ -97,27 +96,23 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		doFlush(null);
 	}
 
-	private void doFlush(final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	private void doFlush(final Deferred<Void, Promise<Void>> onComplete) {
 		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
 		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
 		if (null != msg) {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
-				onComplete.accept(success);
+				if (success) {
+					onComplete.accept((Void) null);
+				} else {
+					onComplete.accept(new RuntimeException("ZeroMQ Message could not be sent"));
+				}
 			}
 		}
 	}
 
 	@Override
 	public void close(final Consumer<Boolean> onClose) {
-		try {
-			socket.close();
-		} catch (Exception e) {
-			// socket might already be closed
-			if (!ClosedChannelException.class.isInstance(e) && log.isTraceEnabled()) {
-				log.trace(e.getMessage(), e);
-			}
-		}
 		getEventsReactor().schedule(new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {

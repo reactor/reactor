@@ -7,6 +7,8 @@ import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
 import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
@@ -41,6 +43,7 @@ public class ZeroMQ<T> {
 
 	private static final SynchronizedMutableMap<Integer, String> SOCKET_TYPES = SynchronizedMutableMap.of(UnifiedMap.<Integer, String>newMap());
 
+	private final Logger                       log     = LoggerFactory.getLogger(getClass());
 	private final MutableList<TcpClient<T, T>> clients = SynchronizedMutableList.of(FastList.<TcpClient<T, T>>newList());
 	private final MutableList<TcpServer<T, T>> servers = SynchronizedMutableList.of(FastList.<TcpServer<T, T>>newList());
 
@@ -67,7 +70,7 @@ public class ZeroMQ<T> {
 		this.env = env;
 		this.dispatcher = dispatcher;
 		this.reactor = Reactors.reactor(env, dispatcher);
-		this.zmqCtx = new ZContext(1);
+		this.zmqCtx = new ZContext();
 		this.zmqCtx.setLinger(100);
 	}
 
@@ -179,7 +182,10 @@ public class ZeroMQ<T> {
 			}
 		});
 
-		zmqCtx.destroy();
+//		if (log.isDebugEnabled()) {
+//			log.debug("Destroying {} on {}", zmqCtx, this);
+//		}
+//		zmqCtx.destroy();
 	}
 
 }

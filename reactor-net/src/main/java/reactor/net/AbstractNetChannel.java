@@ -147,8 +147,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	@Override
-	public Promise<Boolean> send(OUT data) {
-		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(env, eventsReactor.getDispatcher());
+	public Promise<Void> send(OUT data) {
+		Deferred<Void, Promise<Void>> d = Promises.defer(env, eventsReactor.getDispatcher());
 		send(data, d);
 		return d.compose();
 	}
@@ -184,7 +184,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param data       The outgoing data.
 	 * @param onComplete The callback to invoke when the write is complete.
 	 */
-	protected void send(OUT data, final Deferred<Boolean, Promise<Boolean>> onComplete) {
+	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
 		ioReactor.schedule(new WriteConsumer(onComplete), data);
 	}
 
@@ -219,7 +219,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param data       The data to write, as a {@link Buffer}.
 	 * @param onComplete The callback to invoke when the write is complete.
 	 */
-	protected void write(Buffer data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
+	protected void write(Buffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
 		write(data.byteBuffer(), onComplete, flush);
 	}
 
@@ -230,7 +230,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param onComplete The callback to invoke when the write is complete.
 	 * @param flush      whether to flush the underlying IO channel
 	 */
-	protected abstract void write(ByteBuffer data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush);
+	protected abstract void write(ByteBuffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
@@ -239,7 +239,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param onComplete The callback to invoke when the write is complete.
 	 * @param flush      whether to flush the underlying IO channel
 	 */
-	protected abstract void write(Object data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush);
+	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform IO flushes.
@@ -259,10 +259,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	private final class WriteConsumer implements BatchConsumer<OUT> {
-		private final Deferred<Boolean, Promise<Boolean>> onComplete;
+		private final Deferred<Void, Promise<Void>> onComplete;
 		private volatile boolean autoflush = true;
 
-		private WriteConsumer(Deferred<Boolean, Promise<Boolean>> onComplete) {
+		private WriteConsumer(Deferred<Void, Promise<Void>> onComplete) {
 			this.onComplete = onComplete;
 		}
 

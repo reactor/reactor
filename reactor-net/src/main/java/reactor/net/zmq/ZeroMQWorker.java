@@ -76,7 +76,6 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 		}
 		socket = zmq.createSocket(socketType);
 		socket.setIdentity(id.toString().getBytes());
-		socket.setReceiveTimeOut(50);
 		configure(socket);
 
 		pollin = new ZMQ.PollItem(socket, ZMQ.Poller.POLLIN);
@@ -88,6 +87,8 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 		start(socket);
 
 		zloop.start();
+
+		zmq.destroySocket(socket);
 	}
 
 	public void shutdown() {
@@ -97,7 +98,6 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 		zloop.removePoller(pollin);
 		zloop.destroy();
 
-		//zmq.destroySocket(socket);
 		closed = true;
 
 		if (shutdownCtx) {
