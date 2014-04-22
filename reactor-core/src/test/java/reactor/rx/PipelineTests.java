@@ -331,6 +331,7 @@ public class PipelineTests extends AbstractReactorTest {
 	static class String2Integer implements Function<String, Integer> {
 		@Override
 		public Integer apply(String s) {
+			System.out.println(s);
 			return Integer.parseInt(s);
 		}
 	}

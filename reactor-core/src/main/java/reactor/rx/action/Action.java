@@ -175,7 +175,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 */
 	@Override
 	public void flush() {
-		findOldestStream().broadcastFlush();
+					findOldestStream().broadcastFlush();
 	}
 
 	@Override

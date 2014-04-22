@@ -37,17 +37,23 @@ public abstract class StreamUtils {
 		return composableVisitor.toString();
 	}
 
+	public static <O> String browse(Promise<O> composable) {
+		ComposableVisitor composableVisitor = new ComposableVisitor(composable.delegateAction);
+		composableVisitor.drawComposablePublisher(composable.delegateAction);
+		return composableVisitor.toString();
+	}
+
 	protected static class ComposableVisitor {
 
 		final private StringBuilder appender;
 		final private List<Throwable> errors = new ArrayList<Throwable>();
 
 		private <O> ComposableVisitor(Stream<O> composable) {
-			this.appender = new StringBuilder("\nProcessor[" + composable.getState() + "]");
+			this.appender = new StringBuilder();
 		}
 
 		private <O> ComposableVisitor drawComposablePublisher(Stream<O> composableProcessor) {
-			parseComposable(composableProcessor, 1);
+			parseComposable(composableProcessor, 0);
 			if (!errors.isEmpty()) {
 				System.out.println("\n" + errors.size() + " exception traces (in order of appearance):");
 				for (Throwable error : errors) {
@@ -59,11 +65,12 @@ public abstract class StreamUtils {
 		}
 
 		private <O> void parseComposable(Stream<O> composable, int d) {
-			appender.append("\n");
-			for (int i = 0; i < d; i++)
-				appender.append("|   ");
-			appender.append("|____");
-
+			if (d > 0) {
+				appender.append("\n");
+				for (int i = 0; i < d; i++)
+					appender.append("|   ");
+				appender.append("|____");
+			}
 
 			appender.append(composable.getClass().getSimpleName().isEmpty() ? composable.getClass().getName() + "" +
 					composable :
@@ -85,7 +92,7 @@ public abstract class StreamUtils {
 					&& StreamSubscription.class.isAssignableFrom(((Action<?, O>) composable).getSubscription().getClass())) {
 
 				StreamSubscription<?> composableSubscription =
-						(StreamSubscription<O>) ((Action<?,O>)composable).getSubscription();
+						(StreamSubscription<O>) ((Action<?, O>) composable).getSubscription();
 
 				if (composableSubscription.completed) {
 					appender.append(" ∑ completed");
@@ -126,10 +133,10 @@ public abstract class StreamUtils {
 				FilterAction<O, ?> operation = (FilterAction<O, ?>) consumer;
 
 				if (operation.otherwise() != null) {
-					if(Stream.class.isAssignableFrom(operation.otherwise().getClass()))
-						loopSubscriptions(((Stream<O>)operation.otherwise()).getSubscriptions(), d + 2);
-					else if(Promise.class.isAssignableFrom(operation.otherwise().getClass()))
-						loopSubscriptions(((Promise<O>)operation.otherwise()).delegateAction.getSubscriptions(), d + 2);
+					if (Stream.class.isAssignableFrom(operation.otherwise().getClass()))
+						loopSubscriptions(((Stream<O>) operation.otherwise()).getSubscriptions(), d + 2);
+					else if (Promise.class.isAssignableFrom(operation.otherwise().getClass()))
+						loopSubscriptions(((Promise<O>) operation.otherwise()).delegateAction.getSubscriptions(), d + 2);
 				}
 			}
 		}

@@ -15,7 +15,6 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 
 import java.util.Collection;
@@ -38,19 +37,21 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	                     Dispatcher dispatcher) {
 		super(dispatcher);
 		this.defaultValues = defaultValues;
-		if(Collection.class.isAssignableFrom(defaultValues.getClass())){
-			prefetch(((Collection<T>) defaultValues).size());
+		if(defaultValues != null){
+			if(Collection.class.isAssignableFrom(defaultValues.getClass())){
+				prefetch(((Collection<T>) defaultValues).size());
+			}
+			setKeepAlive(true);
 		}
 		this.infinite = batchSize == -1;
-		onFlush();
 	}
 
 	@Override
-	protected void doComplete() {
-		if(defaultValues != null){
-			broadcastComplete();
+	protected void drain(int elements) {
+		if(defaultValues == null){
+			super.drain(elements);
 		}else{
-			super.doComplete();
+			onFlush();
 		}
 	}
 
@@ -68,7 +69,9 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		if(infinite){
 			broadcastFlush();
 		}
-		available();
+		if(defaultValues == null){
+			available();
+		}
 	}
 
 	@Override

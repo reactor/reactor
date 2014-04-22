@@ -61,6 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </p>
  *
  * @param <O> The type of the output values
+ *
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @since 1.1
@@ -121,6 +122,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@Override
 	public <E> Stream<E> connect(@Nonnull final Action<O, E> stream) {
 		stream.prefetch(batchSize).env(environment);
+		stream.setKeepAlive(keepAlive);
 		this.produceTo(stream);
 		return stream;
 	}
@@ -373,9 +375,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public <V> Stream<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
-		d.prefetch(batchSize).env(environment);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
-		return iterableStream.connect(d);
+		return iterableStream.connect(d).prefetch(batchSize);
 	}
 
 	/**
@@ -547,8 +548,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher,
 				timer,
 				period, timeUnit, delay, backlog);
-		d.prefetch(backlog).env(environment);
-		return connect(d);
+		return connect(d).prefetch(backlog);
 	}
 
 	/**
@@ -859,7 +859,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastComplete() {
 		if (!checkState()) return;
 
-		state = State.COMPLETE;
+			state = State.COMPLETE;
 		if (subscriptions.isEmpty()) return;
 
 		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
@@ -908,7 +908,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return this;
 	}
 
-	void drain(int elements) {
+	protected void drain(int elements) {
 
 		int min = subscriptions.injectInto(elements, new Function2<Integer, StreamSubscription<O>, Integer>() {
 			@Override
@@ -927,7 +927,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			broadcastNext(data);
 			i++;
 		}
-	}
+		}
 
 	void unsubscribe(final StreamSubscription<O> subscription) {
 		subscriptions.withWriteLockAndDelegate(new SubscriptionAddOperation<O>(subscription) {
@@ -936,7 +936,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				list.remove(subscription);
 
 				if (list.isEmpty() && !keepAlive) {
-					state = State.SHUTDOWN;
+						state = State.SHUTDOWN;
 					if (subscription != null) {
 						subscription.cancel();
 					}
@@ -976,5 +976,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		SHUTDOWN
 	}
 
-
+	@Override
+	public String toString() {
+		return "Stream{" +
+				"state=" + state +
+				'}';
+	}
 }
