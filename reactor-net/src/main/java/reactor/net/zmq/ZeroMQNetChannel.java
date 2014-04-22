@@ -1,7 +1,7 @@
 package reactor.net.zmq;
 
 import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
 import org.slf4j.Logger;
@@ -65,7 +65,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, final Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, final Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
 		byte[] bytes = new byte[data.remaining()];
 		data.get(bytes);
 		boolean isNewMsg = MSG_UPD.compareAndSet(this, null, new ZMsg());
@@ -87,7 +87,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(Object data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
 		Buffer buff = getEncoder().apply((OUT) data);
 		write(buff.byteBuffer(), onComplete, flush);
 	}
@@ -97,15 +97,13 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		doFlush(null);
 	}
 
-	private void doFlush(final Deferred<Void, Promise<Void>> onComplete) {
+	private void doFlush(final Deferred<Boolean, Promise<Boolean>> onComplete) {
 		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
 		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
 		if (null != msg) {
-			if (!msg.send(socket)) {
-				close(null);
-			}
+			boolean success = msg.send(socket);
 			if (null != onComplete) {
-				onComplete.accept((Void) null);
+				onComplete.accept(success);
 			}
 		}
 	}
@@ -123,13 +121,13 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		getEventsReactor().schedule(new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
-				closeHandlers.forEach(new CheckedProcedure<Runnable>() {
+				closeHandlers.removeIf(new CheckedPredicate<Runnable>() {
 					@Override
-					public void safeValue(Runnable r) throws Exception {
+					public boolean safeAccept(Runnable r) throws Exception {
 						r.run();
+						return true;
 					}
 				});
-				closeHandlers.clear();
 				if (null != onClose) {
 					onClose.accept(true);
 				}

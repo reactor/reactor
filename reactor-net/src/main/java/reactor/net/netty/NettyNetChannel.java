@@ -76,14 +76,14 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
 		ByteBuf buf = ioChannel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
 		write(buf, onComplete, flush);
 	}
 
 	@Override
-	protected void write(Object data, final Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(Object data, final Deferred<Boolean, Promise<Boolean>> onComplete, boolean flush) {
 		ChannelFuture writeFuture = (flush ? ioChannel.writeAndFlush(data) : ioChannel.write(data));
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
@@ -97,7 +97,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 						onComplete.accept(t);
 					}
 				} else if (null != onComplete) {
-					onComplete.accept((Void) null);
+					onComplete.accept(true);
 				}
 			}
 		});

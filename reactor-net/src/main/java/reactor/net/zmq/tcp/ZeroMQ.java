@@ -7,6 +7,7 @@ import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
 import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -17,6 +18,7 @@ import reactor.core.spec.Reactors;
 import reactor.event.dispatch.Dispatcher;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
+import reactor.io.encoding.StandardCodecs;
 import reactor.net.NetChannel;
 import reactor.net.tcp.TcpClient;
 import reactor.net.tcp.TcpServer;
@@ -24,9 +26,12 @@ import reactor.net.tcp.spec.TcpClientSpec;
 import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.zmq.ZeroMQClientSocketOptions;
 import reactor.net.zmq.ZeroMQServerSocketOptions;
+import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -39,12 +44,16 @@ public class ZeroMQ<T> {
 	private final MutableList<TcpClient<T, T>> clients = SynchronizedMutableList.of(FastList.<TcpClient<T, T>>newList());
 	private final MutableList<TcpServer<T, T>> servers = SynchronizedMutableList.of(FastList.<TcpServer<T, T>>newList());
 
+	private final ExecutorService threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq"));
+
 	private final Environment env;
 	private final Dispatcher  dispatcher;
 	private final Reactor     reactor;
+	private final ZContext    zmqCtx;
 
-	private volatile Codec<Buffer, T, T> codec;
-	private volatile boolean             shutdown;
+	@SuppressWarnings("unchecked")
+	private volatile Codec<Buffer, T, T> codec    = (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC;
+	private volatile boolean             shutdown = false;
 
 	public ZeroMQ(Environment env) {
 		this(env, env.getDefaultDispatcher());
@@ -58,6 +67,8 @@ public class ZeroMQ<T> {
 		this.env = env;
 		this.dispatcher = dispatcher;
 		this.reactor = Reactors.reactor(env, dispatcher);
+		this.zmqCtx = new ZContext(1);
+		this.zmqCtx.setLinger(100);
 	}
 
 	public static String findSocketTypeName(final int socketType) {
@@ -98,17 +109,25 @@ public class ZeroMQ<T> {
 		return createServer(addrs, ZMQ.PULL);
 	}
 
+	public Promise<NetChannel<T, T>> request(String addrs) {
+		return createClient(addrs, ZMQ.REQ);
+	}
+
+	public Promise<NetChannel<T, T>> reply(String addrs) {
+		return createServer(addrs, ZMQ.REP);
+	}
+
 	public Promise<NetChannel<T, T>> router(String addrs) {
 		return createServer(addrs, ZMQ.ROUTER);
 	}
 
 	private Promise<NetChannel<T, T>> createClient(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
-		Assert.isTrue(addrs.startsWith("tcp:"), "Only tcp:// addresses currently supported.");
 
 		TcpClient<T, T> client = new TcpClientSpec<T, T>(ZeroMQTcpClient.class)
 				.env(env).dispatcher(dispatcher).codec(codec)
 				.options(new ZeroMQClientSocketOptions()
+						         .context(zmqCtx)
 						         .connectAddresses(addrs)
 						         .socketType(socketType))
 				.get();
@@ -120,13 +139,13 @@ public class ZeroMQ<T> {
 
 	public Promise<NetChannel<T, T>> createServer(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
-		Assert.isTrue(addrs.startsWith("tcp:"), "Only tcp:// addresses currently supported.");
 
 		Deferred<NetChannel<T, T>, Promise<NetChannel<T, T>>> d = Promises.defer(env, dispatcher);
 
 		TcpServer<T, T> server = new TcpServerSpec<T, T>(ZeroMQTcpServer.class)
 				.env(env).dispatcher(dispatcher).codec(codec)
 				.options(new ZeroMQServerSocketOptions()
+						         .context(zmqCtx)
 						         .listenAddresses(addrs)
 						         .socketType(socketType))
 				.consume(d)
@@ -140,13 +159,11 @@ public class ZeroMQ<T> {
 	}
 
 	public void shutdown() {
-		clients.removeIf(new CheckedPredicate<TcpClient<T, T>>() {
-			@Override
-			public boolean safeAccept(TcpClient<T, T> client) throws Exception {
-				Assert.isTrue(client.close().await(60, TimeUnit.SECONDS), "Client " + client + " not properly shut down");
-				return true;
-			}
-		});
+		if (shutdown) {
+			return;
+		}
+		shutdown = true;
+
 		servers.removeIf(new CheckedPredicate<TcpServer<T, T>>() {
 			@Override
 			public boolean safeAccept(TcpServer<T, T> server) throws Exception {
@@ -154,7 +171,15 @@ public class ZeroMQ<T> {
 				return true;
 			}
 		});
-		shutdown = true;
+		clients.removeIf(new CheckedPredicate<TcpClient<T, T>>() {
+			@Override
+			public boolean safeAccept(TcpClient<T, T> client) throws Exception {
+				Assert.isTrue(client.close().await(60, TimeUnit.SECONDS), "Client " + client + " not properly shut down");
+				return true;
+			}
+		});
+
+		zmqCtx.destroy();
 	}
 
 }

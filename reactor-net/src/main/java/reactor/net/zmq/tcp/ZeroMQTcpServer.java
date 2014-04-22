@@ -2,6 +2,7 @@ package reactor.net.zmq.tcp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -30,7 +31,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
@@ -65,7 +65,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.zmqOpts = null;
 		}
 
-		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-tcp-server"));
+		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-server"));
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		UUID id = UUIDUtils.random();
 		int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.ROUTER);
-		ZMQ.Context zmq = (null != zmqOpts ? zmqOpts.context() : null);
+		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 		this.worker = new ZeroMQWorker<IN, OUT>(id, socketType, ioThreadCount, zmq) {
 			@Override
 			protected void configure(ZMQ.Socket socket) {
@@ -134,18 +134,15 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
+		super.close(null);
+		threadPool.shutdownNow();
+
 		worker.shutdown();
 		if (!workerFuture.isDone()) {
 			workerFuture.cancel(true);
 		}
-		threadPool.shutdownNow();
-		try {
-			threadPool.awaitTermination(30, TimeUnit.SECONDS);
-			d.accept(true);
-		} catch (InterruptedException e) {
-			d.accept(e);
-		}
 		notifyShutdown();
+		d.accept(true);
 
 		return d.compose();
 	}

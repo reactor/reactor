@@ -6,6 +6,7 @@ import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -35,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
@@ -69,7 +69,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.zmqOpts = null;
 		}
 
-		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-tcp-client"));
+		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-client"));
 	}
 
 	@Override
@@ -93,25 +93,21 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			throw new IllegalStateException("This ZeroMQ server has not been started");
 		}
 
+		super.close(null);
+		threadPool.shutdownNow();
+
 		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker<IN, OUT>, Future<?>>() {
 			@Override
 			public void safeValue(ZeroMQWorker<IN, OUT> w, Future<?> f) throws Exception {
-				w.shutdown();
 				if (!f.isDone()) {
 					f.cancel(true);
 				}
+				w.shutdown();
 			}
 		});
 
-		threadPool.shutdownNow();
-		try {
-			threadPool.awaitTermination(30, TimeUnit.SECONDS);
-			super.close(onClose);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		} finally {
-			notifyShutdown();
-		}
+		getReactor().schedule(onClose, true);
+		notifyShutdown();
 	}
 
 	@Override
@@ -135,7 +131,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final UUID id = UUIDUtils.random();
 
 		int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
-		ZMQ.Context zmq = (null != zmqOpts ? zmqOpts.context() : null);
+		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
 		ZeroMQWorker<IN, OUT> worker = new ZeroMQWorker<IN, OUT>(id, socketType, ioThreadCount, zmq) {
 			@Override

@@ -1,5 +1,6 @@
 package reactor.net.zmq;
 
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.function.Consumer;
 import reactor.net.config.ServerSocketOptions;
@@ -12,7 +13,7 @@ import reactor.util.Assert;
  */
 public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 
-	private ZMQ.Context context;
+	private ZContext context;
 	private int socketType = ZMQ.ROUTER;
 	private Consumer<ZMQ.Socket> socketConfigurer;
 	private String               listenAddresses;
@@ -22,7 +23,7 @@ public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 	 *
 	 * @return the {@link org.zeromq.ZMQ.Context} to use
 	 */
-	public ZMQ.Context context() {
+	public ZContext context() {
 		return context;
 	}
 
@@ -34,7 +35,7 @@ public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 	 *
 	 * @return {@literal this}
 	 */
-	public ZeroMQServerSocketOptions context(ZMQ.Context context) {
+	public ZeroMQServerSocketOptions context(ZContext context) {
 		Assert.notNull(context, "ZeroMQ Context cannot be null");
 		this.context = context;
 		return this;
