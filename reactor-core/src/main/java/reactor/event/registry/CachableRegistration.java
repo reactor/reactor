@@ -95,4 +95,17 @@ public class CachableRegistration<T> implements Registration<T> {
 		return this;
 	}
 
+	@Override
+	public String toString() {
+		return "CachableRegistration{" +
+				"\n\tselector=" + selector +
+				",\n\tobject=" + object +
+				",\n\tonCancel=" + onCancel +
+				",\n\tlifecycle=" + lifecycle +
+				",\n\tcancelled=" + cancelled +
+				",\n\tcancelAfterUse=" + cancelAfterUse +
+				",\n\tpaused=" + paused +
+				"\n}";
+	}
+
 }
