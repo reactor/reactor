@@ -70,7 +70,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final Timer                    timer            = new SimpleHashWheelTimer();
+	private final AtomicReference<Timer>   timer            = new AtomicReference<Timer>();
 	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
@@ -80,8 +80,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	/**
 	 * Creates a new Environment that will use a {@link PropertiesConfigurationReader} to obtain its initial
-	 * configuration.
-	 * The configuration will be read from the classpath at the location {@code META-INF/reactor/default.properties}.
+	 * configuration. The configuration will be read from the classpath at the location {@code
+	 * META-INF/reactor/default.properties}.
 	 */
 	public Environment() {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
@@ -111,22 +111,22 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 		ReactorConfiguration configuration = configurationReader.read();
 		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
-		                    DEFAULT_DISPATCHER_NAME;
+				DEFAULT_DISPATCHER_NAME;
 		env = configuration.getAdditionalProperties();
 
-		for(DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
-			if(DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
+		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
+			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
 				int size = getSize(dispatcherConfiguration, 0);
-				for(int i = 0; i < size; i++) {
+				for (int i = 0; i < size; i++) {
 					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
 				}
-			} else if(DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
-			} else if(DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
+			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), new SynchronousDispatcher());
-			} else if(DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
+			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
-			} else if(DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
+			} else if (DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
 			}
 		}
@@ -171,7 +171,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
 		Integer backlog = dispatcherConfiguration.getBacklog();
-		if(null == backlog) {
+		if (null == backlog) {
 			backlog = defaultBacklog;
 		}
 		return backlog;
@@ -179,10 +179,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private int getSize(DispatcherConfiguration dispatcherConfiguration, int defaultSize) {
 		Integer size = dispatcherConfiguration.getSize();
-		if(null == size) {
+		if (null == size) {
 			size = defaultSize;
 		}
-		if(size < 1) {
+		if (size < 1) {
 			size = PROCESSORS;
 		}
 		return size;
@@ -220,13 +220,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	@SuppressWarnings("unchecked")
 	public <T> T getProperty(String key, Class<T> type, T defaultValue) {
 		Object val = env.getProperty(key);
-		if(null == val) {
+		if (null == val) {
 			return defaultValue;
 		}
-		if(!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
+		if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
 			return StandardConverters.CONVERTERS.convert(val, type);
 		} else {
-			return (T)val;
+			return (T) val;
 		}
 	}
 
@@ -247,18 +247,17 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * 		The name of the dispatcher
 	 *
 	 * @return The matching dispatcher, never {@code null}.
-	 *
 	 * @throws IllegalArgumentException
 	 * 		if the dispatcher does not exist
 	 */
 	public Dispatcher getDispatcher(String name) {
-		synchronized(monitor) {
-            List<Dispatcher> filteredDispatchers = Collections.emptyList();
-            List<Dispatcher> dispatchers = this.dispatchers.get(name);
-            if (dispatchers != null) {
-                filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
-            }
-            if(filteredDispatchers.isEmpty()) {
+		synchronized (monitor) {
+			List<Dispatcher> filteredDispatchers = Collections.emptyList();
+			List<Dispatcher> dispatchers = this.dispatchers.get(name);
+			if (dispatchers != null) {
+				filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
+			}
+			if (filteredDispatchers.isEmpty()) {
 				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "'");
 			} else {
 				return filteredDispatchers.get(0);
@@ -277,9 +276,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return This Environment
 	 */
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			this.dispatchers.add(name, dispatcher);
-			if(name.equals(defaultDispatcher)) {
+			if (name.equals(defaultDispatcher)) {
 				this.dispatchers.add(DEFAULT_DISPATCHER_NAME, dispatcher);
 			}
 		}
@@ -295,7 +294,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return This Environment
 	 */
 	public Environment removeDispatcher(String name) {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			dispatchers.remove(name);
 		}
 		return this;
@@ -306,7 +305,6 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * dispatcher.
 	 *
 	 * @return The root reactor
-	 *
 	 * @see Environment#getDefaultDispatcher()
 	 */
 	public Reactor getRootReactor() {
@@ -320,7 +318,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return the timer.
 	 */
 	public Timer getRootTimer() {
-		return timer;
+		timer.compareAndSet(null, new SimpleHashWheelTimer());
+		return timer.get();
 	}
 
 	/**
@@ -330,19 +329,22 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public void shutdown() {
 		List<Dispatcher> dispatchers = new ArrayList<Dispatcher>();
-		synchronized(monitor) {
-			for(Map.Entry<String, List<Dispatcher>> entry : this.dispatchers.entrySet()) {
+		synchronized (monitor) {
+			for (Map.Entry<String, List<Dispatcher>> entry : this.dispatchers.entrySet()) {
 				dispatchers.addAll(entry.getValue());
 			}
 		}
-		for(Dispatcher dispatcher : dispatchers) {
+		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
-		timer.cancel();
+		if (null != timer.get()) {
+			timer.get().cancel();
+		}
 	}
 
 	@Override
 	public Iterator<Map.Entry<String, List<Dispatcher>>> iterator() {
 		return this.dispatchers.entrySet().iterator();
 	}
+
 }
