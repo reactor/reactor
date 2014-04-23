@@ -16,46 +16,44 @@
 package reactor.rx;
 
 import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.spi.Subscription;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
-* @author Stephane Maldini
-*/
-public class StreamSubscription<O> implements org.reactivestreams.spi.Subscription {
+ * Relationship between a Stream (Publisher) and a Subscriber.
+ * <p/>
+ * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
+ *
+ * @author Stephane Maldini
+ * @since 1.1
+ */
+public class StreamSubscription<O> implements Subscription {
 	final Subscriber<O> subscriber;
-	final Stream<O>  publisher;
-
-	int lastRequested;
-	boolean cancelled = false;
-	boolean completed = false;
-	boolean error     = false;
+	final Stream<O>     publisher;
+	final AtomicInteger capacity;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
+		this.capacity = new AtomicInteger();
 	}
 
 	@Override
 	public void requestMore(int elements) {
-		if (cancelled) {
-			return;
-		}
-
 		if (elements <= 0) {
 			throw new IllegalStateException("Cannot request negative number");
 		}
 
-		this.lastRequested = elements;
+		if(capacity.getAndAdd(elements) == 0){
+			publisher.drain(capacity.get());
+		}
 
-		publisher.drain(elements);
 	}
 
 	@Override
 	public void cancel() {
-		if (cancelled)
-			return;
-
-		cancelled = true;
-		publisher.unsubscribe(this);
+		publisher.removeSubscription(this);
 	}
 
 	@Override
@@ -78,12 +76,11 @@ public class StreamSubscription<O> implements org.reactivestreams.spi.Subscripti
 		return result;
 	}
 
-
 	@Override
 	public String toString() {
-		return "" +
-				(cancelled ? "cancelled" : (completed ? "completed" : (error ? "error" : lastRequested)))
-				;
+		return "{" +
+				"capacity=" + capacity +
+				'}';
 	}
 
 	public Stream<?> getPublisher() {

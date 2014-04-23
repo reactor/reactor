@@ -36,7 +36,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher, Pipeline<O>... composables) {
-		this(dispatcher, composables.length + 1, EMPTY_PIPELINE);
+		this(dispatcher, composables.length + 1, composables);
 	}
 
 	public MergeAction(Dispatcher dispatcher, int length, Pipeline<O>... composables) {
@@ -72,6 +72,12 @@ public class MergeAction<O> extends Action<O, O> {
 	}
 
 	@Override
+	protected void doNext(O ev) {
+		broadcastNext(ev);
+		super.doNext(ev);
+	}
+
+	@Override
 	protected void doComplete() {
 		if (runningComposables.decrementAndGet() == 0) {
 			super.doComplete();
@@ -85,4 +91,10 @@ public class MergeAction<O> extends Action<O, O> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return super.toString() +
+				"{runningComposables=" + runningComposables +
+				'}';
+	}
 }

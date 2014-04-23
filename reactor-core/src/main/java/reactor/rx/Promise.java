@@ -503,6 +503,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		lock.lock();
 		try {
 			if (!isPending()) return;
+			this.state = State.FAILURE;
 			this.error = error;
 			if (hasBlockers) {
 				pendingCondition.signalAll();
@@ -517,6 +518,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		lock.lock();
 		try {
 			if (!isPending()) return;
+			this.state = State.SUCCESS;
 			this.value = value;
 			if (hasBlockers) {
 				pendingCondition.signalAll();

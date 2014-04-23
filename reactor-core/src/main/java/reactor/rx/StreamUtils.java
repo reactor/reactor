@@ -64,6 +64,7 @@ public abstract class StreamUtils {
 			return this;
 		}
 
+		@SuppressWarnings("unchecked")
 		private <O> void parseComposable(Stream<O> composable, int d) {
 			if (d > 0) {
 				appender.append("\n");
@@ -78,6 +79,12 @@ public abstract class StreamUtils {
 							.getClass()
 							.getSimpleName().replaceAll("Action", "") + "[" + composable + "]");
 
+
+			if (Action.class.isAssignableFrom(composable.getClass())
+					&& ((Action<?, O>) composable).getSubscription() != null) {
+				appender.append(" ").append(((Action<?, O>) composable).getSubscription());
+			}
+
 			renderFilter(composable, d);
 
 			if (composable.error != null) {
@@ -86,21 +93,6 @@ public abstract class StreamUtils {
 			}
 			if (composable.pause) {
 				appender.append(" (!) - Paused");
-			}
-			if (Action.class.isAssignableFrom(composable.getClass())
-					&& ((Action<?, O>) composable).getSubscription() != null
-					&& StreamSubscription.class.isAssignableFrom(((Action<?, O>) composable).getSubscription().getClass())) {
-
-				StreamSubscription<?> composableSubscription =
-						(StreamSubscription<O>) ((Action<?, O>) composable).getSubscription();
-
-				if (composableSubscription.completed) {
-					appender.append(" ∑ completed");
-				} else if (composableSubscription.error) {
-					appender.append(" ∑ error");
-				} else if (composableSubscription.cancelled) {
-					appender.append(" ∑ cancelled");
-				}
 			}
 
 			loopSubscriptions(

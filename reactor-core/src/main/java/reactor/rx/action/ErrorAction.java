@@ -50,9 +50,8 @@ public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 
 	@Override
 	public String toString() {
-		return "{" +
-				"catch-type=" + selector.getObject()+", "+
-				"prefetch=" + getBatchSize() +
+		return super.toString()+"{" +
+				"catch-type=" + selector.getObject()+
 				'}';
 	}
 }

@@ -40,19 +40,19 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "An event is routed to a single registered consumer"
-		Registration registration = Mock(Registration)
-		registration.getObject() >> consumer
-		registration.getSelector() >> Mock(Selector)
+			Registration registration = Mock(Registration)
+			registration.getObject() >> consumer
+			registration.getSelector() >> Mock(Selector)
 
-		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
+			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "The consumerInvoker is called to invoke the consumer and the completionConsumer"
-		1 * consumerInvoker.invoke(consumer, _, event)
-		1 * consumerInvoker.invoke(completionConsumer, _, event)
-		0 * errorConsumer.accept(_)
+			1 * consumerInvoker.invoke(consumer, _, event)
+			1 * completionConsumer.accept(event)
+			0 * errorConsumer.accept(_)
 	}
 
 	def "Events are not routed to paused consumers"() {
@@ -64,20 +64,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "an event is routed to a paused consumer"
-		Registration registration = Mock()
-		registration.getObject() >> consumer
-		registration.getSelector() >> Mock(Selector)
-		registration.isPaused() >> true
+			Registration registration = Mock()
+			registration.getObject() >> consumer
+			registration.getSelector() >> Mock(Selector)
+			registration.isPaused() >> true
 
-		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
+			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is only called to invoke the completionConsumer"
-		0 * consumerInvoker.invoke(consumer, _, _, _)
-		1 * consumerInvoker.invoke(completionConsumer, _, event)
-		0 * errorConsumer.accept(_)
+			0 * consumerInvoker.invoke(consumer, _, _, _)
+			1 * completionConsumer.accept(event)
+			0 * errorConsumer.accept(_)
 	}
 
 	def "Events are not routed to cancelled consumers"() {
@@ -89,20 +89,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
 
 		when: "an event is routed to a paused consumer"
-		Registration registration = Mock(Registration)
-		registration.getObject() >> consumer
-		registration.getSelector() >> Mock(Selector)
-		registration.isCancelled() >> true
+			Registration registration = Mock(Registration)
+			registration.getObject() >> consumer
+			registration.getSelector() >> Mock(Selector)
+			registration.isCancelled() >> true
 
-		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
+			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is only called to invoke the completion consumer"
-		0 * consumerInvoker.invoke(consumer, _, _, _)
-		1 * consumerInvoker.invoke(completionConsumer, _, event)
-		0 * errorConsumer.accept(_)
+			0 * consumerInvoker.invoke(consumer, _, _, _)
+			1 * completionConsumer.accept(event)
+			0 * errorConsumer.accept(_)
 	}
 
 	def "Consumers configured to be cancelled after use are cancelled once they've been used"() {
@@ -114,21 +114,21 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
-		Registration registration = Mock(Registration)
+			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			Registration registration = Mock(Registration)
 
 		when: "an event is routed to a cancel after use consumer"
-		registration.getObject() >> consumer
-		registration.getSelector() >> Mock(Selector)
-		registration.isCancelAfterUse() >> true
+			registration.getObject() >> consumer
+			registration.getSelector() >> Mock(Selector)
+			registration.isCancelAfterUse() >> true
 
-		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
+			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is called to invoke the consumer and completion consumer and the consumer is cancelled"
-		1 * consumerInvoker.invoke(consumer, _, _)
-		1 * consumerInvoker.invoke(completionConsumer, _, event)
-		1 * registration.cancel()
-		0 * errorConsumer.accept(_)
+			1 * consumerInvoker.invoke(consumer, _, _)
+			1 * completionConsumer.accept(event)
+			1 * registration.cancel()
+			0 * errorConsumer.accept(_)
 	}
 
 	def "An exception during event routing causes the errorConsumer to be invoked"() {
@@ -140,20 +140,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-		def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
-		Registration registration = Mock(Registration)
+			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			Registration registration = Mock(Registration)
 
 		when: "event routing triggers an exception"
-		registration.getObject() >> consumer
-		registration.getSelector() >> Mock(Selector)
+			registration.getObject() >> consumer
+			registration.getSelector() >> Mock(Selector)
 
-		consumerInvoker.invoke(_, _, _) >> { throw new Exception("failure") }
+			consumerInvoker.invoke(_, _, _) >> { throw new Exception("failure") }
 
-		eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
+			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the error consumer is invoked"
-		2 * errorConsumer.accept(_)
-		0 * consumerInvoker.invoke(completionConsumer, _, event)
+			1 * errorConsumer.accept(_)
+			1 * completionConsumer.accept(event)
 	}
 
 }

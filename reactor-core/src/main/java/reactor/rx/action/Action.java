@@ -18,6 +18,8 @@ package reactor.rx.action;
 import org.reactivestreams.api.Processor;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
@@ -27,7 +29,6 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
-import reactor.rx.action.support.ActionException;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -40,6 +41,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	private static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
+
+	private static final Logger log = LoggerFactory.getLogger(Action.class);
 
 	private Subscription subscription;
 
@@ -99,6 +102,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
+			log.info(this.getClass().getSimpleName()+" - Next: " + i + " - " + this);
 			doNext(i);
 		} catch (Throwable cause) {
 			doError(cause);
@@ -107,23 +111,33 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onNext(I ev) {
-		if (error != null) throw ActionException.INSTANCE;
-		dispatcher.dispatch(this, null, null, null, ROUTER, this);
+		dispatcher.dispatch(this, ev, null, null, ROUTER, this);
 	}
 
 	@Override
 	public void onFlush() {
-		if (error != null) throw ActionException.INSTANCE;
-		doFlush();
-	}
-
-	@Override
-	public void onComplete() {
-		if (error != null) throw ActionException.INSTANCE;
 		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
 			@Override
 			public void accept(Void any) {
 				try {
+					log.info(Action.this.getClass().getSimpleName()+" - Flush: " + Action.this);
+					doFlush();
+				} catch (Throwable t) {
+					doError(t);
+				}
+			}
+		};
+		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+
+	}
+
+	@Override
+	public void onComplete() {
+		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
+			@Override
+			public void accept(Void any) {
+				try {
+					log.info(Action.this.getClass().getSimpleName()+" - Complete: " +  Action.this);
 					doComplete();
 				} catch (Throwable t) {
 					doError(t);
@@ -136,12 +150,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onError(Throwable cause) {
-		if (error != null) throw ActionException.INSTANCE;
 		try {
 			error = cause;
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
+					log.error(Action.this.getClass().getSimpleName()+" - Error : " +  Action.this, throwable);
 					doError(throwable);
 				}
 			};
@@ -153,34 +167,35 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
+		log.info(this.getClass().getSimpleName()+" - Subscribe: " + this);
 		if (this.subscription != null)
 			throw new IllegalArgumentException("Already has an active subscription");
 
 		this.subscription = subscription;
-		reactor.function.Consumer<Subscription> subscriptionHandler = new reactor.function.Consumer<Subscription>() {
-			@Override
-			public void accept(Subscription sub) {
-				try {
-					doSubscribe(sub);
-				} catch (Throwable t) {
-					doError(t);
-				}
-			}
-		};
-		dispatcher.dispatch(this, subscription, null, null, ROUTER, subscriptionHandler);
+		try {
+			doSubscribe(subscription);
+		} catch (Throwable t) {
+			doError(t);
+		}
 	}
 
 	/**
 	 * Flush any cached or unprocessed values through this oldest kwown {@link Stream} ancestor.
 	 */
 	@Override
-	public void flush() {
-					findOldestStream().broadcastFlush();
+	public void start() {
+		Stream<?> stream = findOldestStream();
+		if(Flushable.class.isAssignableFrom(stream.getClass())){
+			((Flushable) stream).onFlush();
+		}else{
+			stream.broadcastFlush();
+		}
+
 	}
 
 	@Override
 	public Stream<O> cancel() {
-		if(subscription != null)
+		if (subscription != null)
 			subscription.cancel();
 		return super.cancel();
 	}
@@ -222,10 +237,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	protected void doComplete() {
 		broadcastComplete();
-		cancel();
+		if (!keepAlive) {
+			cancel();
+		}
 	}
 
 	protected void doNext(I ev) {
+		available();
 	}
 
 	protected void doError(Throwable ev) {
@@ -239,7 +257,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
 				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
 				) {
-			that = (Action<?,?>)((StreamSubscription<?>) that.subscription).getPublisher();
+			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 		}
 		return that;
 	}
@@ -256,7 +274,11 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public String toString() {
 		return "{" +
-				"prefetch=" + getBatchSize() +
+				"state=" + getState() +
+				", prefetch=" + getBatchSize() +
+				", in-buffer=" + buffer.size() +
+				(subscription != null &&
+						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ? ", capacity=" + buffer.size() : "") +
 				'}';
 	}
 }

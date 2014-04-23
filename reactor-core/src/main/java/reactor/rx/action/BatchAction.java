@@ -117,6 +117,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString()  + " %  accepted:" + acceptCount + " % errors:" + errorCount;
+		return super.toString()  + "{accepted=" + acceptCount + ", errors=" + errorCount+"}";
 	}
 }

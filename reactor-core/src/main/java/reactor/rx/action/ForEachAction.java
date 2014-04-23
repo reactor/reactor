@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 
 import java.util.Collection;
@@ -47,15 +48,6 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 	@Override
-	protected void drain(int elements) {
-		if(defaultValues == null){
-			super.drain(elements);
-		}else{
-			onFlush();
-		}
-	}
-
-	@Override
 	protected void doNext(Iterable<T> values) {
 		if(values == null) return;
 		int i = 0;
@@ -69,8 +61,17 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		if(infinite){
 			broadcastFlush();
 		}
-		if(defaultValues == null){
+		if(defaultValues != null){
 			available();
+		}
+	}
+
+	@Override
+	public void subscribe(Subscriber<T> subscriber) {
+		super.subscribe(subscriber);
+		if(defaultValues != null){
+			onNext(defaultValues);
+			onComplete();
 		}
 	}
 

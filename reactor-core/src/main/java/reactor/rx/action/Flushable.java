@@ -26,7 +26,7 @@ public interface Flushable {
 	/**
 	 * Trigger flush on this component or the oldest ancestor, generally draining any collected values.
 	 */
-	void flush();
+	void start();
 
 	/**
 	 * Trigger flush on this component, generally draining any collected values.

@@ -52,8 +52,7 @@ public class CompleteAction<T, E> extends Action<T, E> {
 
 	@Override
 	public String toString() {
-		return "Complete (" +
-				"Input=" + input +
-				')';
+		return super.toString()+" % " +
+				"input: " + input;
 	}
 }

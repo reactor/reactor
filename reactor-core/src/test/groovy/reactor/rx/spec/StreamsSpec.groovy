@@ -58,6 +58,7 @@ class StreamsSpec extends Specification {
 			'the value is retrieved'
 			def value = stream.tap()
 			test = "test"
+			stream.start()
 
 		then:
 			'it is available'
@@ -69,7 +70,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			"exception is thrown"
-			thrown(IllegalStateException)
+			thrown(IllegalArgumentException)
 	}
 
 	def 'A Stream with a known set of values makes those values available immediately'() {
@@ -115,7 +116,7 @@ class StreamsSpec extends Specification {
 			def tap = s.propagate(supplier {5}).filter(predicate { println it; it == 5 }).tap()
 
 		and:
-			'a flush trigger and a filtered tap are attached'
+			'a start trigger and a filtered tap are attached'
 			s.flushWhen(predicate { it == 1 })
 
 		and:
@@ -130,7 +131,7 @@ class StreamsSpec extends Specification {
 
 	}
 
-	def "A Stream's initial values are not passed to consumers but subsequent values are"() {
+	def "A Stream's initial values are passed to consumers"() {
 		given:
 			'a composable with values 1 to 5 inclusive'
 			Stream stream = Streams.defer([1, 2, 3, 4, 5])
@@ -139,14 +140,6 @@ class StreamsSpec extends Specification {
 			'a Consumer is registered'
 			def values = []
 			stream.consume(consumer { values << it })
-
-		then:
-			'it is not called with the initial values'
-			values == []
-
-		when:
-			'flush is called'
-			stream.flush()
 
 		then:
 			'the initial values are passed'
@@ -195,21 +188,19 @@ class StreamsSpec extends Specification {
 			errors == 1
 
 		when:
-			'A new error consumer is subscribed and checked exception is accepted'
+			'A new error consumer is subscribed'
 			composable.when(RuntimeException, consumer { errors++ })
-			composable.broadcastError(new Exception())
 
 		then:
-			'it is not passed to the consumer'
-			errors == 1
+			'it is called since publisher is in error state'
+			errors == 2
 
 		when:
-			'A new error consumer is subscribed and a subclass of RuntimeException is accepted'
-			composable.when(RuntimeException, consumer { errors++ })
+			'A RuntimeException is accepted'
 			composable.broadcastError(new IllegalArgumentException())
 
 		then:
-			'it is passed to the consumer'
+			'it is not passed to the consumer'
 			errors == 2
 	}
 
@@ -296,7 +287,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Streams.<Integer> defer()
 			Stream<Integer> mapped = source.
-					flatMap(function { Integer v -> Streams.<Integer> defer(v * 2).get() })
+					flatMap(function { Integer v -> Streams.<Integer> defer(v * 2) })
 
 		when:
 			'the source accepts a value'
@@ -314,13 +305,13 @@ class StreamsSpec extends Specification {
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
-			def tap = source1.compose().merge(source2.compose(), source3.compose()).collect(3).tap()
+			def tap = source1.merge(source2, source3).collect(3).tap()
 
 		when:
 			'the sources accept a value'
-			source1.accept(1)
-			source2.accept(2)
-			source3.accept(3)
+			source1.broadcastNext(1)
+			source2.broadcastNext(2)
+			source3.broadcastNext(3)
 
 		then:
 			'the values are all collected from source1 stream'
@@ -332,16 +323,14 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to count and tap'
 			def source = Streams.<Integer> defer()
-			def countStream = Streams.<Long> defer().compose()
-			source.count(countStream)
-			def tap = countStream.tap()
+			def tap = source.count().valueStream().tap()
 
 		when:
 			'the sources accept a value'
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			source.broadcastNext(3)
-			source.flush()
+			source.broadcastFlush()
 
 		then:
 			'the count value matches the number of accept'
@@ -473,7 +462,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known set of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known set of values and a reduce function'
-			Stream reduced = Streams.config([1, 2, 3, 4, 5]).
+			Stream reduced = Streams.<Integer>config().each([1, 2, 3, 4, 5]).
 					synchronousDispatcher().
 					get().
 					reduce(new Reduction())
@@ -579,7 +568,7 @@ class StreamsSpec extends Specification {
 			'use an initial value'
 			value = source.reduce(new Reduction(), 2).tap()
 			source.broadcastNext(1)
-			source.flush()
+			source.start()
 
 		then:
 			'the updated reduction is available'
@@ -681,7 +670,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted'
 			source.broadcastNext(2)
-			source.flush()
+			source.broadcastFlush()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -692,7 +681,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source stream with a given environment'
 			Environment environment = new Environment()
-			def source = Streams.<Integer> defer(environment, 'ringBuffer')
+			def source = Streams.<Integer> defer(environment, environment.getDispatcher('ringBuffer'))
 			def source2 = Streams.<Integer> defer(environment)
 
 		when:
@@ -700,9 +689,9 @@ class StreamsSpec extends Specification {
 			CountDownLatch latch = new CountDownLatch(2)
 			def v = ""
 			source.consume(consumer { v = 'ok'; latch.countDown() })
-			source2.compose().consume(consumer { v = 'ok'; latch.countDown() })
+			source2.consume(consumer { v = 'ok'; latch.countDown() })
 			source.broadcastNext(1)
-			source2.accept(1)
+			source2.broadcastNext(1)
 
 		then:
 			'dispatching works'
@@ -717,7 +706,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from observable'() {
 		given:
 			'a source stream with a given observable'
-			def r = Reactors.reactor()
+			def r = Reactors.reactor().get()
 			def selector = Selectors.anonymous()
 			int event = 0
 			Streams.<Integer> on(r, selector).consume(consumer { event = it })
@@ -735,7 +724,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
-			def source = Streams.<Integer> defer().synchronousDispatcher().env(environment).get()
+			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.window(500)
 			def value = reduced.tap()
 
@@ -768,7 +757,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
-			def source = Streams.<Integer> defer().synchronousDispatcher().env(environment).get()
+			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.collect(5).timeout(1000)
 			def value = reduced.tap()
 println reduced.debug()
@@ -804,7 +793,7 @@ println reduced.debug()
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
-			def source = Streams.<Integer> defer().synchronousDispatcher().env(environment).get()
+			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.movingWindow(500, 5)
 			def value = reduced.tap()
 
@@ -922,8 +911,6 @@ println reduced.debug()
 		when:
 			'a stream consumer is registerd'
 			stream.consume('key', observable)
-
-			stream.flush()
 
 		then:
 			'the observable is notified of the values'

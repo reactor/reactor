@@ -255,7 +255,7 @@ public class PipelineTests extends AbstractReactorTest {
 		} catch (IllegalStateException ise) {
 			// Swallow
 		}
-		assertEquals(deferred, "alpha");
+		assertEquals(deferred.get(), "alpha");
 	}
 
 	@Test
@@ -276,13 +276,10 @@ public class PipelineTests extends AbstractReactorTest {
 		Promise<Object> deferred = Promises.defer();
 		Throwable error = new Exception();
 		deferred.broadcastError(error);
-		try {
-			deferred.broadcastNext("alpha");
-		} catch (IllegalStateException ise) {
-			// Swallow
-		}
+		deferred.broadcastNext("alpha");
 		assertTrue(deferred.reason() instanceof Exception);
 		try {
+			deferred.get();
 			fail();
 		} catch (RuntimeException ise) {
 			assertEquals(deferred.reason(), ise.getCause());

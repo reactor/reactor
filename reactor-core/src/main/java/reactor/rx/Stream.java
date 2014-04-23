@@ -17,10 +17,13 @@
 package reactor.rx;
 
 import com.gs.collections.api.block.function.Function2;
+import com.gs.collections.api.block.predicate.*;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.spi.Subscriber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.alloc.Recyclable;
 import reactor.core.Environment;
 import reactor.core.Observable;
@@ -28,10 +31,9 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.*;
+import reactor.function.Predicate;
 import reactor.function.support.Tap;
 import reactor.rx.action.*;
-import reactor.rx.action.support.ActionException;
-import reactor.rx.action.support.SubscriptionAddOperation;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -61,24 +63,26 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </p>
  *
  * @param <O> The type of the output values
- *
  * @author Stephane Maldini
  * @author Jon Brisbin
+ *
  * @since 1.1
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
-	protected final Queue<O>                                   buffer        = new ConcurrentLinkedQueue<O>();
-	private final   AtomicInteger                              current       = new AtomicInteger(0);
-	private final   MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(8);
+	static private Logger log = LoggerFactory.getLogger(Stream.class);
+
+	private final   AtomicInteger                              minimumCapacity = new AtomicInteger(0);
+	private final   MultiReaderFastList<StreamSubscription<O>> subscriptions   = MultiReaderFastList.newList(8);
 
 	protected final Dispatcher dispatcher;
+	protected final Queue<O>                                   buffer          = new ConcurrentLinkedQueue<O>();
 
 	protected Throwable error = null;
 	protected boolean   pause = false;
 	protected int batchSize;
 
-	private boolean     keepAlive;
+	protected boolean keepAlive = false;
 	private long        bufferSize;
 	private Environment environment;
 	private State state = State.READY;
@@ -274,6 +278,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public <E> Stream<E> propagate(final Supplier<E> supplier) {
 		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
+		d.env(environment).setKeepAlive(keepAlive);
 		produceTo(d);
 		return d;
 	}
@@ -315,7 +320,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public Stream<O> first(int batchSize) {
 		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
-		return connect(d);
+		d.env(environment).setKeepAlive(keepAlive);
+		produceTo(d);
+		return d;
 	}
 
 	/**
@@ -335,7 +342,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public Stream<O> last(int batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
-		return connect(d);
+		d.env(environment).setKeepAlive(keepAlive);
+		produceTo(d);
+		return d;
 	}
 
 
@@ -376,7 +385,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public <V> Stream<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
-		return iterableStream.connect(d).prefetch(batchSize);
+		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
+		iterableStream.produceTo(d);
+		return d;
 	}
 
 	/**
@@ -411,9 +422,11 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param batchSize the collected size
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public Stream<List<O>> collect(int batchSize) {
+	public CollectAction<O> collect(int batchSize) {
 		final CollectAction<O> d = new CollectAction<O>(batchSize, dispatcher);
-		return connect(d);
+		d.env(environment).setKeepAlive(keepAlive);;
+		produceTo(d);
+		return d;
 	}
 
 	/**
@@ -525,7 +538,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher,
 				timer,
 				period, timeUnit, delay);
-
 		return connect(d);
 	}
 
@@ -548,7 +560,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher,
 				timer,
 				period, timeUnit, delay, backlog);
-		return connect(d).prefetch(backlog);
+		d.prefetch(backlog).env(environment).setKeepAlive(keepAlive);;
+		produceTo(d);
+		return d;
 	}
 
 	/**
@@ -589,8 +603,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				fn,
 				dispatcher
 		);
-		connect(stream);
-
+		stream.env(environment).setKeepAlive(keepAlive);
+		produceTo(stream);
 		return stream;
 	}
 
@@ -669,6 +683,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastFlush() {
 		if (!checkState()) return;
 
+		log.info(this.getClass().getSimpleName() + " - Publisher Flush :" + this);
+
 		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
 			@Override
 			public boolean accept(StreamSubscription<O> each) {
@@ -678,7 +694,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			@Override
 			public void safeValue(final StreamSubscription<O> object) throws Exception {
 				try {
-					((Flushable) object.subscriber).flush();
+					((Flushable) object.subscriber).onFlush();
 				} catch (final Throwable throwable) {
 					subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
 						@Override
@@ -712,7 +728,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastError(final Throwable throwable) {
 		if (!checkState()) return;
 
+		log.error(this.getClass().getSimpleName() + " - Publisher Error :" + this, throwable);
+
+		state = State.ERROR;
+		error = throwable;
+
 		if (subscriptions.isEmpty()) return;
+
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override
 			public void safeValue(StreamSubscription<O> subscription) throws Exception {
@@ -744,7 +766,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void recycle() {
 		buffer.clear();
 		subscriptions.clear();
-		current.set(0);
+		minimumCapacity.set(0);
 
 		environment = null;
 		state = State.READY;
@@ -760,28 +782,16 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
-		try {
-			if (checkState()) {
-				final StreamSubscription<O> subscription = new StreamSubscription<O>(this, subscriber);
-
-				if (subscriptions.indexOf(subscription) != -1) {
-					subscriber.onError(new IllegalArgumentException("Subscription already exists between this " +
-							"publisher/subscriber pair"));
-				} else {
-					subscriptions.withWriteLockAndDelegate(new SubscriptionAddOperation<O>(subscription));
-					subscriber.onSubscribe(subscription);
-				}
-			} else {
-				if (state == State.COMPLETE) {
-					subscriber.onComplete();
-				} else if (state == State.SHUTDOWN) {
-					subscriber.onError(new IllegalArgumentException("Publisher has shutdown"));
-				} else {
-					subscriber.onError(error);
-				}
-			}
-		} catch (Throwable cause) {
-			subscriber.onError(cause);
+		final StreamSubscription<O> subscription = new StreamSubscription<O>(this, subscriber);
+		log.info(this.getClass().getSimpleName() + " - Publisher#subscribe : " + this);
+		addSubscription(subscription);
+		subscriber.onSubscribe(subscription);
+		if (state == State.COMPLETE && buffer.isEmpty()) {
+			subscriber.onComplete();
+		} else if (state == State.SHUTDOWN) {
+			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
+		} else if (state == State.ERROR) {
+			subscriber.onError(error);
 		}
 
 	}
@@ -819,23 +829,35 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@Override
 	public void broadcastNext(final O ev) {
 		try {
-			if (!checkState() || bufferEvent(ev)) return;
+			if (!checkState() && bufferEvent(ev)) return;
 
 			if (subscriptions.isEmpty()) {
 				buffer.add(ev);
 				return;
 			}
 
+			log.info(this.getClass().getSimpleName() + " - Publisher Next : " + ev + " - " + this);
+
 			subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
 				@Override
-				public boolean accept(StreamSubscription<O> subscription) {
-					return !subscription.cancelled && !subscription.completed && !subscription.error;
+				public boolean accept(StreamSubscription<O> oStreamSubscription) {
+					return oStreamSubscription.capacity.get() != 0;
 				}
-			}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
+			}).forEach(new CheckedProcedure
+					<StreamSubscription<O>>() {
 				@Override
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
 					try {
-						subscription.subscriber.onNext(ev);
+						if (subscription.capacity.getAndDecrement() > 0) {
+							subscription.subscriber.onNext(ev);
+						} else {
+							// we just decremented below 0 so increment back one
+							subscription.capacity.incrementAndGet();
+						}
+						if (state == State.COMPLETE && buffer.isEmpty()) {
+							subscription.subscriber.onComplete();
+						}
+
 					} catch (Throwable throwable) {
 						callError(subscription, throwable);
 					}
@@ -843,8 +865,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			});
 
 		} catch (final Throwable unrecoverable) {
-			state = State.ERROR;
 			error = unrecoverable;
+			state = State.ERROR;
+
 			subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 				@Override
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
@@ -859,20 +882,16 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastComplete() {
 		if (!checkState()) return;
 
-			state = State.COMPLETE;
-		if (subscriptions.isEmpty()) return;
+		state = State.COMPLETE;
 
-		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-			@Override
-			public boolean accept(StreamSubscription<O> subscription) {
-				return !subscription.completed;
-			}
-		}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
+		if (subscriptions.isEmpty() || buffer.size() > 0) return;
+		log.info(this.getClass().getSimpleName() + " - Publisher Complete :" + this);
+
+		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override
 			public void safeValue(StreamSubscription<O> subscription) throws Exception {
 				try {
 					subscription.subscriber.onComplete();
-					subscription.completed = true;
 				} catch (Throwable throwable) {
 					callError(subscription, throwable);
 				}
@@ -880,8 +899,105 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		});
 	}
 
+	protected void addSubscription(final StreamSubscription<O> subscription) {
+		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<StreamSubscription<O>>>() {
+			@Override
+			public void safeValue(MutableList<StreamSubscription<O>> streamSubscriptions) throws Exception {
+				if (subscriptions.indexOf(subscription) != -1) {
+					subscription.subscriber.onError(new IllegalStateException("Subscription already exists between this " +
+							"publisher/subscriber pair"));
+				} else {
+					streamSubscriptions.add(subscription);
+				}
+			}
+		});
+	}
+
+	protected void removeSubscription(final StreamSubscription<O> subscription) {
+		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<StreamSubscription<O>>>() {
+			@Override
+			public void safeValue(MutableList<StreamSubscription<O>> list) throws Exception {
+				list.remove(subscription);
+
+				if (list.isEmpty() && !keepAlive) {
+					state = State.SHUTDOWN;
+					if (subscription != null) {
+						subscription.cancel();
+					}
+				}
+			}
+		});
+	}
+
 	protected void setState(State state) {
 		this.state = state;
+	}
+
+	@Override
+	public Stream<O> getPublisher() {
+		return this;
+	}
+
+	protected int resetMinimumCapacity(int elements) {
+		int min = subscriptions.injectInto(elements,
+				new Function2<Integer, StreamSubscription<O>, Integer>() {
+					@Override
+					public Integer value(Integer argument1, StreamSubscription<O> argument2) {
+						return Math.min(argument2.capacity.get(), argument1);
+					}
+				});
+
+		minimumCapacity.set(min);
+		return min;
+	}
+
+	protected void drain(int elements) {
+		int min = resetMinimumCapacity(elements);
+
+		if (buffer.isEmpty()) return;
+
+		O data;
+		int i = 0;
+		while (i < min && (data = buffer.poll()) != null) {
+			broadcastNext(data);
+			i++;
+		}
+
+	}
+
+	private void callError(StreamSubscription<O> subscription, Throwable cause) {
+		subscription.subscriber.onError(cause);
+	}
+
+
+	private boolean checkState() {
+		return state != State.ERROR && state != State.COMPLETE && state != State.SHUTDOWN;
+
+	}
+
+
+	private boolean bufferEvent(O next) {
+		if (minimumCapacity.get() > 0) {
+			return false;
+		}
+
+		buffer.add(next);
+		return true;
+	}
+
+
+	protected static enum State {
+		READY,
+		ERROR,
+		COMPLETE,
+		SHUTDOWN;
+	}
+
+	@Override
+	public String toString() {
+		return "Stream{" +
+				"state=" + state +
+				'}';
 	}
 
 	/**
@@ -901,85 +1017,5 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public Environment getEnvironment() {
 		return environment;
-	}
-
-	@Override
-	public Stream<O> getPublisher() {
-		return this;
-	}
-
-	protected void drain(int elements) {
-
-		int min = subscriptions.injectInto(elements, new Function2<Integer, StreamSubscription<O>, Integer>() {
-			@Override
-			public Integer value(Integer argument1, StreamSubscription<O> argument2) {
-				return Math.min(argument2.lastRequested, argument1);
-			}
-		});
-
-		current.getAndSet(min);
-
-		if (buffer.isEmpty()) return;
-
-		O data;
-		int i = 0;
-		while ((data = buffer.poll()) != null && i < min) {
-			broadcastNext(data);
-			i++;
-		}
-		}
-
-	void unsubscribe(final StreamSubscription<O> subscription) {
-		subscriptions.withWriteLockAndDelegate(new SubscriptionAddOperation<O>(subscription) {
-			@Override
-			public void safeValue(MutableList<StreamSubscription<O>> list) throws Exception {
-				list.remove(subscription);
-
-				if (list.isEmpty() && !keepAlive) {
-						state = State.SHUTDOWN;
-					if (subscription != null) {
-						subscription.cancel();
-					}
-				}
-			}
-		});
-	}
-
-	private void callError(StreamSubscription<O> subscription, Throwable cause) {
-		if (!subscription.error) {
-			try {
-				subscription.subscriber.onError(cause);
-			} catch (ActionException e) {
-			}
-			subscription.error = true;
-		}
-	}
-
-	private boolean checkState() {
-		return state != State.ERROR && state != State.COMPLETE && state != State.SHUTDOWN;
-
-	}
-
-	private boolean bufferEvent(O next) {
-		if (current.get() > 0) {
-			return false;
-		}
-
-		buffer.add(next);
-		return true;
-	}
-
-	protected static enum State {
-		READY,
-		ERROR,
-		COMPLETE,
-		SHUTDOWN
-	}
-
-	@Override
-	public String toString() {
-		return "Stream{" +
-				"state=" + state +
-				'}';
 	}
 }

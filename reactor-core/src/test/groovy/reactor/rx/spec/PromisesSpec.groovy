@@ -311,7 +311,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.mapMany(function { Promises.success(it + 1).get() })
+			def mappedPromise = promise.fork(function { Promises.success(it + 1).get() })
 
 		when:
 			"the original promise is fulfilled"
@@ -530,7 +530,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the second promise if fulfilled"
-			promise2.accept 2
+			promise2.broadcastNext 2
 
 		then:
 			"the combined promise is fulfilled with both values"

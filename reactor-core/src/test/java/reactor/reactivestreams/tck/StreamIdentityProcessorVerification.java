@@ -22,8 +22,12 @@ import org.reactivestreams.tck.IdentityProcessorVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.core.Environment;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.spec.Streams;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Stephane Maldini
@@ -34,26 +38,32 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 	private final Environment env = new Environment();
 
 	public StreamIdentityProcessorVerification() {
-		super(new TestEnvironment(10000), 10000);
+		super(new TestEnvironment(5000), 5000);
 	}
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
-		Action<Integer,Integer> action = new Action<Integer,Integer>(env.getDefaultDispatcher());
+		Action<Integer, Integer> action = new Action<Integer, Integer>(SynchronousDispatcher.INSTANCE){
+			@Override
+			protected void doNext(Integer ev) {
+				broadcastNext(ev);
+			}
+		};
 		action.env(env).prefetch(bufferSize);
 		return action;
 	}
 
 	@Override
 	public Publisher<Integer> createHelperPublisher(final int elements) {
-		return new Publisher<Integer>() {
-			@Override
-			public void subscribe(Subscriber<Integer> subscriber) {
-				for(int i = 0; i < elements; i++)
-					subscriber.onNext(i);
-				subscriber.onComplete();
+		if (elements > 0) {
+			List<Integer> list = new ArrayList<Integer>(elements);
+			for (int i = 0; i < elements; i++) {
+				list.add(i);
 			}
-		};
+			return Streams.defer(list);
+		} else {
+			return Streams.defer();
+		}
 	}
 
 	@Override
