@@ -19,6 +19,7 @@ package reactor.core.composable;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
@@ -34,7 +35,9 @@ import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,9 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author Jon Brisbin
@@ -109,9 +110,9 @@ public class ComposableTests extends AbstractReactorTest {
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Stream<String> stream =
 				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"))
-						.env(env)
-						.dispatcher("eventLoop")
-						.get();
+				       .env(env)
+				       .dispatcher("eventLoop")
+				       .get();
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -293,6 +294,45 @@ public class ComposableTests extends AbstractReactorTest {
 			fail();
 		} catch (RuntimeException ise) {
 			assertEquals(deferred.compose().reason(), ise.getCause());
+		}
+	}
+
+	@Test
+	public void mapManyFlushesAllValuesThoroughly() throws InterruptedException {
+		int items = 30;
+		CountDownLatch latch = new CountDownLatch(items);
+		Random random = ThreadLocalRandom.current();
+
+		Deferred<String, Stream<String>> d = Streams.defer(env, Environment.RING_BUFFER);
+		Stream<Integer> tasks = d.compose()
+		                         .mapMany(s -> Promises.success(s)
+		                                               .env(env)
+		                                               .dispatcher(Environment.THREAD_POOL)
+		                                               .get()
+		                                               .<Integer>map(str -> {
+			                                               try {
+				                                               Thread.sleep(random.nextInt(500));
+			                                               } catch (InterruptedException e) {
+				                                               Thread.currentThread().interrupt();
+			                                               }
+			                                               return Integer.parseInt(str);
+		                                               }));
+
+		tasks.consume(i -> latch.countDown());
+
+		for (int i = 0; i < items; i++) {
+			d.accept(String.valueOf(i));
+		}
+
+		assertTrue(latch.getCount() + " of " + items + " items were counted down",
+		           latch.await(items, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
+		int iterations = 10;
+		for (int i = 0; i < iterations; i++) {
+			mapManyFlushesAllValuesThoroughly();
 		}
 	}
 

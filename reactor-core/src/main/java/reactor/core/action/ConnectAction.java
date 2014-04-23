@@ -21,7 +21,7 @@ import reactor.event.Event;
 /**
  * @author Stephane Maldini
  */
-public class ConnectAction<T> extends Action<T> {
+public class ConnectAction<T> extends Action<T> implements Flushable<T> {
 
 	public ConnectAction(Observable observable, Object successKey, Object failureKey) {
 		super(observable, successKey, failureKey);
@@ -30,6 +30,11 @@ public class ConnectAction<T> extends Action<T> {
 	@Override
 	public void doAccept(Event<T> event) {
 		notifyValue(event);
+	}
+
+	@Override
+	public Flushable<T> flush() {
+		return this;
 	}
 
 }
