@@ -101,6 +101,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		this(delegateAction, env);
 		this.value = value;
 		this.state = State.SUCCESS;
+		delegateAction.setState(Stream.State.COMPLETE);
 	}
 
 	/**
@@ -120,6 +121,8 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		this(delegateAction, env);
 		this.error = error;
 		this.state = State.FAILURE;
+		delegateAction.setState(Stream.State.ERROR);
+		delegateAction.error = error;
 	}
 
 	/**
@@ -131,7 +134,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	 * @return {@literal this}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		produceTo(new CompleteAction<O, Promise<O>>(delegateAction.getDispatcher(), this, onComplete));
+		connect(new CompleteAction<O, Promise<O>>(delegateAction.getDispatcher(), this, onComplete));
 		return this;
 	}
 
@@ -478,10 +481,14 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
 		lock.lock();
 		try {
-			if (!isSuccess()) {
+			if (!isComplete()) {
 				delegateAction.produceTo(consumer);
 			}else{
-				consumer.getSubscriber().onNext(value);
+				if(isError()){
+					consumer.getSubscriber().onError(error);
+				}else if(isSuccess()){
+					consumer.getSubscriber().onNext(value);
+				}
 				consumer.getSubscriber().onComplete();
 			}
 		} finally {

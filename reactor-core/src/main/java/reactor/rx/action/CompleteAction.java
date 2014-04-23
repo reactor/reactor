@@ -17,7 +17,6 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -36,7 +35,7 @@ public class CompleteAction<T, E> extends Action<T, E> {
 
 	@Override
 	protected void doNext(Object ev) {
-		//IGNORE
+		consumer.accept(input);
 	}
 
 	@Override

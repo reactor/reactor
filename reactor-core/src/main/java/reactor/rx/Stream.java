@@ -17,7 +17,6 @@
 package reactor.rx;
 
 import com.gs.collections.api.block.function.Function2;
-import com.gs.collections.api.block.predicate.*;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
@@ -31,7 +30,6 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.*;
-import reactor.function.Predicate;
 import reactor.function.support.Tap;
 import reactor.rx.action.*;
 import reactor.timer.Timer;
@@ -65,18 +63,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <O> The type of the output values
  * @author Stephane Maldini
  * @author Jon Brisbin
- *
  * @since 1.1
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	static private Logger log = LoggerFactory.getLogger(Stream.class);
 
-	private final   AtomicInteger                              minimumCapacity = new AtomicInteger(0);
-	private final   MultiReaderFastList<StreamSubscription<O>> subscriptions   = MultiReaderFastList.newList(8);
+	private final AtomicInteger                              minimumCapacity = new AtomicInteger(0);
+	private final MultiReaderFastList<StreamSubscription<O>> subscriptions   = MultiReaderFastList.newList(8);
 
 	protected final Dispatcher dispatcher;
-	protected final Queue<O>                                   buffer          = new ConcurrentLinkedQueue<O>();
+	protected final Queue<O> buffer = new ConcurrentLinkedQueue<O>();
 
 	protected Throwable error = null;
 	protected boolean   pause = false;
@@ -424,7 +421,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public CollectAction<O> collect(int batchSize) {
 		final CollectAction<O> d = new CollectAction<O>(batchSize, dispatcher);
-		d.env(environment).setKeepAlive(keepAlive);;
+		d.env(environment).setKeepAlive(keepAlive);
+		;
 		produceTo(d);
 		return d;
 	}
@@ -560,7 +558,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher,
 				timer,
 				period, timeUnit, delay, backlog);
-		d.prefetch(backlog).env(environment).setKeepAlive(keepAlive);;
+		d.prefetch(backlog).env(environment).setKeepAlive(keepAlive);
+		;
 		produceTo(d);
 		return d;
 	}
@@ -574,7 +573,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A>     the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Stream<A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
+	public <A> Action<O,A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
 		return reduce(fn, Functions.supplier(initial), batchSize);
 	}
 
@@ -595,7 +594,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A>          the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
+	public <A> Action<O,A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
 	                            final int batchSize
 	) {
 		final Action<O, A> stream = new ReduceAction<O, A>(batchSize,
@@ -615,7 +614,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A> the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Stream<A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public <A> Action<O,A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return reduce(fn, null, batchSize);
 	}
 
@@ -630,7 +629,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Stream<A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
+	public <A> Action<O,A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
 		return scan(fn, Functions.supplier(initial));
 	}
 
@@ -649,11 +648,12 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
+	public <A> Action<O,A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Action<O, A> stream = new ScanAction<O, A>(accumulators,
 				fn,
 				dispatcher);
-		return connect(stream);
+		connect(stream);
+		return stream;
 	}
 
 	/**
@@ -664,7 +664,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Stream<A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public <A> Action<O,A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return scan(fn, (Supplier<A>) null);
 	}
 
@@ -784,9 +784,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void subscribe(final Subscriber<O> subscriber) {
 		final StreamSubscription<O> subscription = new StreamSubscription<O>(this, subscriber);
 		log.info(this.getClass().getSimpleName() + " - Publisher#subscribe : " + this);
+
 		addSubscription(subscription);
 		subscriber.onSubscribe(subscription);
-		if (state == State.COMPLETE && buffer.isEmpty()) {
+		if ((state == State.SHUTDOWN || state == State.COMPLETE) && buffer.isEmpty()) {
 			subscriber.onComplete();
 		} else if (state == State.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
@@ -831,20 +832,23 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		try {
 			if (!checkState() && bufferEvent(ev)) return;
 
-			if (subscriptions.isEmpty()) {
+			log.info(this.getClass().getSimpleName() + " - Publisher Next : " + ev + " - " + this);
+
+			MutableList<StreamSubscription<O>> list = subscriptions.select(new com.gs.collections.api.block.predicate
+					.Predicate<StreamSubscription<O>>() {
+				@Override
+				public boolean accept(StreamSubscription<O> oStreamSubscription) {
+					return !oStreamSubscription.terminated && oStreamSubscription.capacity.get() > 0;
+				}
+			});
+
+			if (list.isEmpty()) {
 				buffer.add(ev);
 				return;
 			}
 
-			log.info(this.getClass().getSimpleName() + " - Publisher Next : " + ev + " - " + this);
 
-			subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-				@Override
-				public boolean accept(StreamSubscription<O> oStreamSubscription) {
-					return oStreamSubscription.capacity.get() != 0;
-				}
-			}).forEach(new CheckedProcedure
-					<StreamSubscription<O>>() {
+			list.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 				@Override
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
 					try {
@@ -921,9 +925,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 				if (list.isEmpty() && !keepAlive) {
 					state = State.SHUTDOWN;
-					if (subscription != null) {
-						subscription.cancel();
-					}
 				}
 			}
 		});
@@ -943,7 +944,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				new Function2<Integer, StreamSubscription<O>, Integer>() {
 					@Override
 					public Integer value(Integer argument1, StreamSubscription<O> argument2) {
-						return Math.min(argument2.capacity.get(), argument1);
+						int capacity = argument2.capacity.get();
+						return capacity == -1 ? argument1 : Math.min(capacity, argument1);
 					}
 				});
 
@@ -951,7 +953,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return min;
 	}
 
-	protected void drain(int elements) {
+	protected void drain(int elements, Subscriber<O> subscriber) {
 		int min = resetMinimumCapacity(elements);
 
 		if (buffer.isEmpty()) return;

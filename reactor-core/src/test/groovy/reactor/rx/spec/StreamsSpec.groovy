@@ -56,9 +56,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the value is retrieved'
-			def value = stream.tap()
 			test = "test"
-			stream.start()
+			def value = stream.tap()
 
 		then:
 			'it is available'
@@ -453,6 +452,7 @@ class StreamsSpec extends Specification {
 		when:
 			'use an initial value'
 			value = source.reduce(new Reduction(), 2).tap()
+		println source.debug()
 
 		then:
 			'the updated reduction is available'
@@ -559,6 +559,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted and flushed'
 			source.broadcastNext(2)
+			reduced.start()
 
 		then:
 			'the updated reduction is available'
@@ -568,7 +569,6 @@ class StreamsSpec extends Specification {
 			'use an initial value'
 			value = source.reduce(new Reduction(), 2).tap()
 			source.broadcastNext(1)
-			source.start()
 
 		then:
 			'the updated reduction is available'

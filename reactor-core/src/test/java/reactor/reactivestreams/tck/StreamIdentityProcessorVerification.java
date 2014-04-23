@@ -17,17 +17,18 @@ package reactor.reactivestreams.tck;
 
 import org.reactivestreams.api.Processor;
 import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.tck.IdentityProcessorVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.core.Environment;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.function.Supplier;
+import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.spec.Streams;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * @author Stephane Maldini
@@ -43,7 +44,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
-		Action<Integer, Integer> action = new Action<Integer, Integer>(SynchronousDispatcher.INSTANCE){
+		Action<Integer, Integer> action = new Action<Integer, Integer>(env.getDispatcher("sync")) {
 			@Override
 			protected void doNext(Integer ev) {
 				broadcastNext(ev);
@@ -62,19 +63,27 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			}
 			return Streams.defer(list);
 		} else {
-			return Streams.defer();
+			final Random random = new Random();
+			return Streams.defer(new Supplier<Integer>() {
+				@Override
+				public Integer get() {
+					return random.nextInt();
+				}
+			});
 		}
 	}
 
 	@Override
 	public Publisher<Integer> createCompletedStatePublisher() {
-		Streams.<Integer>defer(env).broadcastComplete();
-		return Streams.<Integer>defer(env).getPublisher();
+		Stream<Integer> stream = Streams.defer(env);
+		stream.broadcastComplete();
+		return stream;
 	}
 
 	@Override
 	public Publisher<Integer> createErrorStatePublisher() {
-		Streams.<Integer>defer(env).getPublisher().broadcastError(new Exception("oops"));
-		return Streams.<Integer>defer(env).getPublisher();
+		Stream<Integer> stream = Streams.defer(env);
+		stream.broadcastError(new Exception("oops"));
+		return stream;
 	}
 }

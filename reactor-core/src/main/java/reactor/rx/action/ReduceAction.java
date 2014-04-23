@@ -51,4 +51,9 @@ public class ReduceAction<T, A> extends BatchAction<T,A> {
 			acc = null;
 		}
 	}
+
+	@Override
+	protected void doComplete(){
+		broadcastComplete();
+	}
 }

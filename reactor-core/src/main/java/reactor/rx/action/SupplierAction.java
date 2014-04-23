@@ -15,9 +15,9 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -32,8 +32,12 @@ public class SupplierAction<T,V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void doNext(T ev) {
-		available();
+	protected void drain(int elements, Subscriber<V> subscriber) {
+		if(getSubscription() == null){
+			subscriber.onNext(supplier.get());
+		}else{
+			super.drain(elements,subscriber);
+		}
 	}
 
 	@Override

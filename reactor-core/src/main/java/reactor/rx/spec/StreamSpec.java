@@ -21,15 +21,16 @@ import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
-
-import reactor.rx.Stream;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
+import reactor.rx.Stream;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
+
+import java.util.Collection;
 
 /**
  * A helper class for specifying a bounded {@link Stream}. {@link #each} must be called to
@@ -99,6 +100,9 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	 */
 	public StreamSpec<T> each(Iterable<T> values) {
 		this.values = values;
+		if(Collection.class.isAssignableFrom(values.getClass())){
+			this.batchSize = ((Collection<T>)values).size();
+		}
 		return this;
 	}
 

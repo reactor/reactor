@@ -16,7 +16,6 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.Stream;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -69,7 +68,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 				firstCallback(value);
 			}
 
-			if(next){
+			if (next) {
 				nextCallback(value);
 			}
 
@@ -80,7 +79,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			lock.unlock();
 		}
 
-		if(accepted == 0){
+		if (accepted == 0) {
 			available();
 		}
 
@@ -99,7 +98,12 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doComplete() {
-		flushCallback(null);
+		lock.lock();
+		try {
+			flushCallback(null);
+		} finally {
+			lock.unlock();
+		}
 		super.doComplete();
 	}
 
@@ -117,6 +121,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString()  + "{accepted=" + acceptCount + ", errors=" + errorCount+"}";
+		return super.toString() + "{accepted=" + acceptCount + ", errors=" + errorCount + "}";
 	}
 }

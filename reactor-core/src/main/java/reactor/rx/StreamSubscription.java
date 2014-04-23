@@ -33,20 +33,27 @@ public class StreamSubscription<O> implements Subscription {
 	final Stream<O>     publisher;
 	final AtomicInteger capacity;
 
+	boolean terminated;
+
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
-		this.capacity = new AtomicInteger();
+		this.capacity = new AtomicInteger(-1);
+		this.terminated = false;
 	}
 
 	@Override
 	public void requestMore(int elements) {
+		if(terminated){
+			return;
+		}
+
 		if (elements <= 0) {
 			throw new IllegalStateException("Cannot request negative number");
 		}
 
-		if(capacity.getAndAdd(elements) == 0){
-			publisher.drain(capacity.get());
+		if(capacity.getAndSet(elements) <= 0){
+			publisher.drain(capacity.get(), subscriber);
 		}
 
 	}
@@ -54,6 +61,7 @@ public class StreamSubscription<O> implements Subscription {
 	@Override
 	public void cancel() {
 		publisher.removeSubscription(this);
+		terminated = true;
 	}
 
 	@Override
