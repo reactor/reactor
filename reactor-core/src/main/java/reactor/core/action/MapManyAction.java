@@ -53,6 +53,7 @@ public class MapManyAction<T, V, C extends Composable<V>> extends Action<T> {
 				return this;
 			}
 		});
+		c.flush();
 	}
 
 }
