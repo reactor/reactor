@@ -151,7 +151,7 @@ class ClientServerIntegrationSpec extends Specification {
 					await(1, TimeUnit.SECONDS)
 
 		and: "data is being sent"
-			[startLatch, dataLatch].each { it.await(1, TimeUnit.SECONDS) }
+			[startLatch, dataLatch].each { it.await(30, TimeUnit.SECONDS) }
 
 		then: "everything went fine"
 			startLatch.count == 0
