@@ -16,9 +16,9 @@
 package reactor.rx.spec;
 
 import reactor.core.Environment;
-import reactor.rx.Promise;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
+import reactor.rx.Promise;
 import reactor.rx.action.Action;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
@@ -85,7 +85,9 @@ public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T
 		if (value != null) {
 			return new Promise<T>(value, new Action<T,T>(dispatcher), env);
 		} else if (valueSupplier != null) {
-			return new Promise<T>(new SupplierAction<T,T>(dispatcher, valueSupplier),env);
+			SupplierAction<T, T> supplierAction = new SupplierAction<T,T>(dispatcher, valueSupplier);
+			supplierAction.env(env);
+			return Promise.wrap(supplierAction);
 		} else if (error != null) {
 			return new Promise<T>(error, new Action<T,T>(dispatcher), env);
 		} else {

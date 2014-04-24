@@ -18,7 +18,6 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -67,7 +66,6 @@ public class WindowAction<T> extends Action<T,List<T>> {
 		} finally {
 			lock.unlock();
 		}
-		available();
 	}
 
 	@Override

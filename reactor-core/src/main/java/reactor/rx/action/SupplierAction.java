@@ -32,7 +32,7 @@ public class SupplierAction<T,V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void drain(int elements, Subscriber<V> subscriber) {
+	protected void drain(long elements, Subscriber<V> subscriber) {
 		if(getSubscription() == null){
 			subscriber.onNext(supplier.get());
 		}else{

@@ -16,7 +16,9 @@
 
 package reactor.rx;
 
+import org.reactivestreams.api.Processor;
 import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.spi.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
@@ -53,18 +55,20 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Pipeline<O>, Supplier<O> {
+public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Flushable {
 
 	private final ReentrantLock lock = new ReentrantLock();
 
 	private final long         defaultTimeout;
 	private final Condition    pendingCondition;
-	final Action<?, O> delegateAction;
+	final         Action<?, O> delegateAction;
 
-	private State state = State.PENDING;
-	private O         value;
-	private Throwable error;
+	private O value;
 	private boolean hasBlockers = false;
+
+	public static <O> Promise<O> wrap(Action<?, O> delegateAction){
+		return new Promise<O>(delegateAction, delegateAction.getEnvironment());
+	}
 
 	/**
 	 * Creates a new unfulfilled promise.
@@ -75,9 +79,9 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	 * the parent completes in error then so too will this Promise.
 	 *
 	 * @param delegateAction The Action to use to call Consumers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param env            The Environment, if any, from which the default await timeout is obtained
 	 */
-	public Promise(Action<?,O> delegateAction,
+	public Promise(Action<?, O> delegateAction,
 	               @Nullable Environment env) {
 		this.delegateAction = delegateAction;
 		delegateAction.env(env).prefetch(1);
@@ -91,16 +95,15 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to determine
 	 * the default await timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds.
 	 *
-	 * @param value      The value that fulfills the promise
+	 * @param value          The value that fulfills the promise
 	 * @param delegateAction The Action to use to call Consumers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param env            The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(O value,
 	               Action<?, O> delegateAction,
 	               @Nullable Environment env) {
 		this(delegateAction, env);
 		this.value = value;
-		this.state = State.SUCCESS;
 		delegateAction.setState(Stream.State.COMPLETE);
 	}
 
@@ -111,16 +114,14 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	 * called. The given {@code env} is used to determine the default await timeout. If {@code env} is {@code null} the
 	 * default await timeout will be 30 seconds.
 	 *
-	 * @param error      The error the completed the promise
+	 * @param error          The error the completed the promise
 	 * @param delegateAction The Action to use to call Consumers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param env            The Environment, if any, from which the default await timeout is obtained
 	 */
 	public Promise(Throwable error,
 	               Action<?, O> delegateAction,
 	               @Nullable Environment env) {
 		this(delegateAction, env);
-		this.error = error;
-		this.state = State.FAILURE;
 		delegateAction.setState(Stream.State.ERROR);
 		delegateAction.error = error;
 	}
@@ -208,7 +209,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public boolean isComplete() {
 		lock.lock();
 		try {
-			return state != State.PENDING;
+			return delegateAction.getState() != Stream.State.READY;
 		} finally {
 			lock.unlock();
 		}
@@ -223,7 +224,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public boolean isPending() {
 		lock.lock();
 		try {
-			return state == State.PENDING;
+			return delegateAction.getState() == Stream.State.READY;
 		} finally {
 			lock.unlock();
 		}
@@ -237,7 +238,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public boolean isSuccess() {
 		lock.lock();
 		try {
-			return state == State.SUCCESS;
+			return delegateAction.getState() == Stream.State.COMPLETE;
 		} finally {
 			lock.unlock();
 		}
@@ -251,7 +252,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public boolean isError() {
 		lock.lock();
 		try {
-			return state == State.FAILURE;
+			return delegateAction.getState() == Stream.State.ERROR;
 		} finally {
 			lock.unlock();
 		}
@@ -287,7 +288,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	 */
 	public O await(long timeout, TimeUnit unit) throws InterruptedException {
 		if (isPending()) {
-			broadcastFlush();
+			onFlush();
 		}
 
 		if (!isPending()) {
@@ -300,11 +301,11 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 			if (timeout >= 0) {
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
-				while (state == State.PENDING && (System.currentTimeMillis()) < endTime) {
+				while (delegateAction.getState() == Stream.State.READY && (System.currentTimeMillis()) < endTime) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			} else {
-				while (state == State.PENDING) {
+				while (delegateAction.getState() == Stream.State.READY) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			}
@@ -327,13 +328,13 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public O get() {
 		lock.lock();
 		try {
-			if (state == State.SUCCESS) {
+			if (delegateAction.getState() == Stream.State.COMPLETE) {
 				return value;
-			} else if (state == State.FAILURE) {
-				if (RuntimeException.class.isInstance(error)) {
-					throw (RuntimeException) error;
+			} else if (delegateAction.getState() == Stream.State.ERROR) {
+				if (RuntimeException.class.isInstance(delegateAction.error)) {
+					throw (RuntimeException) delegateAction.error;
 				} else {
-					throw new RuntimeException(error);
+					throw new RuntimeException(delegateAction.error);
 				}
 			} else {
 				return null;
@@ -353,7 +354,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	public Throwable reason() {
 		lock.lock();
 		try {
-			return error;
+			return delegateAction.error;
 		} finally {
 			lock.unlock();
 		}
@@ -362,6 +363,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	@Override
 	public <E> Promise<E> connect(@Nonnull final Action<O, E> action) {
 		Promise<E> promise = new Promise<E>(action, delegateAction.getEnvironment());
+		action.produceTo(promise);
 		produceTo(action);
 		return promise;
 	}
@@ -397,21 +399,19 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		return connect(d);
 	}
 
-	public FilterAction<O, Promise<O>> filter(@Nonnull final Predicate<O> p) {
+	public Promise<O> filter(@Nonnull final Predicate<O> p) {
 		final FilterAction<O, Promise<O>> d = new FilterAction<O, Promise<O>>(p, delegateAction.getDispatcher());
-		connect(d);
-		return d;
+		return connect(d);
 	}
 
 	@SuppressWarnings("unchecked")
-	public FilterAction<Boolean, Promise<Boolean>> filter() {
+	public Promise<Boolean> filter() {
 		return ((Promise<Boolean>) this).filter(FilterAction.simplePredicate);
 	}
 
-	public FilterAction<O, Promise<O>> filter(@Nonnull Function<O, Boolean> fn) {
+	public Promise<O> filter(@Nonnull Function<O, Boolean> fn) {
 		final FilterAction<O, Promise<O>> d = new FilterAction<O, Promise<O>>(fn, delegateAction.getDispatcher());
-		connect(d);
-		return d;
+		return connect(d);
 	}
 
 	public Promise<O> merge(Promise<O>... composables) {
@@ -429,13 +429,12 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	}
 
 	public <E> Promise<E> propagate(Supplier<E> supplier) {
-		return connect(new SupplierAction<O,E>(delegateAction.getDispatcher(), supplier));
+		return connect(new SupplierAction<O, E>(delegateAction.getDispatcher(), supplier));
 	}
 
 	@Override
 	public void broadcastError(Throwable ev) {
 		errorAccepted(ev);
-		delegateAction.broadcastError(ev);
 	}
 
 	@Override
@@ -446,7 +445,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	@Override
 	public void broadcastNext(O ev) {
 		valueAccepted(ev);
-		delegateAction.broadcastNext(ev);
 	}
 
 	@Override
@@ -483,10 +481,10 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		try {
 			if (!isComplete()) {
 				delegateAction.produceTo(consumer);
-			}else{
-				if(isError()){
-					consumer.getSubscriber().onError(error);
-				}else if(isSuccess()){
+			} else {
+				if (isError()) {
+					consumer.getSubscriber().onError(delegateAction.error);
+				} else if (isSuccess()) {
 					consumer.getSubscriber().onNext(value);
 				}
 				consumer.getSubscriber().onComplete();
@@ -505,13 +503,47 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		return delegateAction.getEnvironment();
 	}
 
+	@Override
+	public Subscriber<O> getSubscriber() {
+		return this;
+	}
+
+	@Override
+	public void onSubscribe(Subscription subscription) {
+		subscription.requestMore(1);
+	}
+
+	@Override
+	public void onNext(O element) {
+		broadcastNext(element);
+	}
+
+	@Override
+	public void onComplete() {
+		delegateAction.onComplete();
+	}
+
+	@Override
+	public void onError(Throwable cause) {
+		delegateAction.onError(cause);
+	}
+
+	@Override
+	public void start() {
+		delegateAction.start();
+	}
+
+	@Override
+	public void onFlush() {
+		delegateAction.onFlush();
+	}
+
 
 	protected void errorAccepted(Throwable error) {
 		lock.lock();
 		try {
-			if (!isPending()) return;
-			this.state = State.FAILURE;
-			this.error = error;
+			if (!isPending()) throw new IllegalStateException();
+			delegateAction.broadcastError(error);
 			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
@@ -524,9 +556,10 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 	protected void valueAccepted(O value) {
 		lock.lock();
 		try {
-			if (!isPending()) return;
-			this.state = State.SUCCESS;
+			if (!isPending()) throw new IllegalStateException();
 			this.value = value;
+			delegateAction.broadcastNext(value);
+			delegateAction.broadcastComplete();
 			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
@@ -536,17 +569,14 @@ public class Promise<O> implements Pipeline<O>, Supplier<O> {
 		}
 	}
 
-	private enum State {
-		PENDING, SUCCESS, FAILURE;
-	}
-
 	@Override
 	public String toString() {
 		lock.lock();
 		try {
 			return "Promise{" +
 					"value=" + value +
-					", error=" + error +
+					", state=" +  delegateAction.getState() +
+					", error=" +  delegateAction.error +
 					'}';
 		} finally {
 			lock.unlock();

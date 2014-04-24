@@ -16,7 +16,6 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.Stream;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -81,13 +80,6 @@ public class MergeAction<O> extends Action<O, O> {
 	protected void doComplete() {
 		if (runningComposables.decrementAndGet() == 0) {
 			super.doComplete();
-		}
-	}
-
-	@Override
-	protected void doError(Throwable cause) {
-		if (runningComposables.decrementAndGet() == 0) {
-			super.doError(cause);
 		}
 	}
 

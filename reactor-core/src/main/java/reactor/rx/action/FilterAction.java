@@ -70,7 +70,6 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 			// Fix: ignore Predicate failures and drop values rather than notifying of errors.
 			//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
 		}
-		available();
 	}
 
 	@Override

@@ -17,7 +17,6 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -34,7 +33,6 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		available();
 	}
 
 	@Override

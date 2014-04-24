@@ -18,7 +18,6 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
-import reactor.rx.Stream;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
@@ -46,7 +45,6 @@ public class ScanAction<T, A> extends Action<T,A> {
 		}
 		acc = fn.apply(Tuple.of(ev, acc));
 		broadcastNext(acc);
-		available();
 	}
 
 }

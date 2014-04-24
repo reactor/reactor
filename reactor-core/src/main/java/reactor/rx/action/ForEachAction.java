@@ -61,17 +61,15 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		if(infinite){
 			broadcastFlush();
 		}
-		if(defaultValues != null){
-			available();
-		}
 	}
 
 	@Override
-	public void subscribe(Subscriber<T> subscriber) {
-		super.subscribe(subscriber);
+	protected void drain(long elements, Subscriber<T> subscriber) {
 		if(defaultValues != null){
 			onNext(defaultValues);
 			onComplete();
+		} else {
+			super.drain(elements,subscriber);
 		}
 	}
 

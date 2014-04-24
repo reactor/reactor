@@ -39,7 +39,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 	private final Environment env = new Environment();
 
 	public StreamIdentityProcessorVerification() {
-		super(new TestEnvironment(5000), 5000);
+		super(new TestEnvironment(5000), 7000);
 	}
 
 	@Override

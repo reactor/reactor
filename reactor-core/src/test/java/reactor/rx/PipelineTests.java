@@ -43,9 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * @author Jon Brisbin
@@ -276,14 +274,12 @@ public class PipelineTests extends AbstractReactorTest {
 		Promise<Object> deferred = Promises.defer();
 		Throwable error = new Exception();
 		deferred.broadcastError(error);
-		deferred.broadcastNext("alpha");
-		assertTrue(deferred.reason() instanceof Exception);
 		try {
-			deferred.get();
+			deferred.broadcastNext("alpha");
 			fail();
-		} catch (RuntimeException ise) {
-			assertEquals(deferred.reason(), ise.getCause());
+		} catch (IllegalStateException ise) {
 		}
+		assertTrue(deferred.reason() instanceof Exception);
 	}
 
 	<T> void await(Stream<T> s, Matcher<T> expected) throws InterruptedException {

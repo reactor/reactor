@@ -244,7 +244,7 @@ class PromisesSpec extends Specification {
 			value == 'test'
 	}
 
-	def "A promise can be fulfilled with null"() {
+	def "A promise can't be fulfilled with null"() {
 		given:
 			"a promise"
 			def promise = Promises.<Object> defer()
@@ -254,9 +254,9 @@ class PromisesSpec extends Specification {
 			promise.broadcastNext null
 
 		then:
-			"the promise was successful"
+			"the promise was failed"
 			promise.isComplete()
-			promise.isSuccess()
+			promise.isError()
 	}
 
 	def "An Observable can be used to consume a promise's value when it's fulfilled"() {
@@ -311,7 +311,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.fork(function { Promises.success(it + 1).get() })
+			def mappedPromise = promise.fork(function { Promises.success(it + 1) })
 
 		when:
 			"the original promise is fulfilled"
@@ -362,7 +362,7 @@ class PromisesSpec extends Specification {
 		when:
 			"The promise is rejected"
 			def e = new Exception()
-			promise.broadcastNext e
+			promise.broadcastError e
 
 		then:
 			"the consumer is called"
@@ -663,14 +663,13 @@ class PromisesSpec extends Specification {
 		then:
 			"it is rejected"
 			thrown RuntimeException
-			promise.error
 	}
 
 	def "A filtered promise is not fulfilled if the filter does not allow the value to pass through"() {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			promise.filter(predicate { it % 2 == 0 })
+			def filtered = promise.filter(predicate { it % 2 == 0 })
 
 		when:
 			"the promise is fulfilled with an odd value"
@@ -678,7 +677,8 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the filtered promise is not fulfilled"
-			promise.pending
+			filtered.complete
+			!filtered.get()
 	}
 
 	def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
@@ -735,11 +735,12 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			promise.filter(predicate { it % 2 == 0 })
+			def filtered = promise.filter(predicate { it % 2 == 0 })
 
 		then:
 			"the filtered promise is not fulfilled"
-			promise.pending
+			filtered.complete
+			!filtered.get()
 	}
 
 	def "Errors stop compositions"() {

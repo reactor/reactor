@@ -37,7 +37,6 @@ public class CountAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T value) {
 		counter.getAndIncrement();
-		available();
 	}
 
 	public Stream<Long> valueStream() {
@@ -48,7 +47,6 @@ public class CountAction<T> extends Action<T, T> {
 	protected void doFlush() {
 		stream.broadcastNext(counter.get());
 		counter.set(0l);
-		valueStream().broadcastFlush();
 		super.doFlush();
 	}
 

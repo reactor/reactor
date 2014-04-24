@@ -58,7 +58,6 @@ public class TimeoutAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-		available();
 	}
 
 	@Override

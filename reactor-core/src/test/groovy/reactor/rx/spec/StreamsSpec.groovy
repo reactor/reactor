@@ -881,7 +881,9 @@ println reduced.debug()
 
 		then:
 			'results contains the expected values'
+			try{
 			latch.await(5, TimeUnit.SECONDS)
+			}catch(e){}
 			sum.get() == 999
 	}
 

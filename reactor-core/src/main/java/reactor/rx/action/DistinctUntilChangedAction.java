@@ -16,7 +16,6 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -36,6 +35,5 @@ public class DistinctUntilChangedAction<T> extends Action<T,T> {
 			lastData = currentData;
 			broadcastNext(currentData);
 		}
-		available();
 	}
 }

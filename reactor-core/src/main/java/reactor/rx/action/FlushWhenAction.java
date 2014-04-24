@@ -39,7 +39,6 @@ public class FlushWhenAction<T> extends Action<T, Void> {
 		if (consumer.test(value)) {
 			flushOutput.broadcastFlush();
 		}
-		available();
 	}
 
 }

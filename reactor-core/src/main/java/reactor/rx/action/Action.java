@@ -139,6 +139,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				try {
 					log.info(Action.this.getClass().getSimpleName() + " - Complete: " + Action.this);
 					doComplete();
+					/*if(!keepAlive){
+						cancel();
+					}*/
 				} catch (Throwable t) {
 					doError(t);
 				}
@@ -214,7 +217,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public Stream<O> resume() {
 		pause = false;
-		available();
 		return super.resume();
 	}
 
@@ -223,21 +225,14 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return StreamUtils.browse(findOldestStream());
 	}
 
-	protected void available() {
-		if (batchSize != 0 && subscription != null && !pause) {
-			subscription.requestMore(batchSize > 0 ? batchSize : 1);
-		}
-	}
-
 	protected void doFlush() {
 		broadcastFlush();
 	}
 
 	protected void doSubscribe(Subscription subscription) {
-		if (null != this.subscription) {
-			this.subscription = subscription;
+		if (batchSize != 0 && subscription != null && !pause) {
+			subscription.requestMore(batchSize > 0 ? batchSize : 1);
 		}
-		available();
 	}
 
 	protected void doComplete() {
@@ -245,7 +240,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doNext(I ev) {
-		available();
 	}
 
 	protected void doError(Throwable ev) {

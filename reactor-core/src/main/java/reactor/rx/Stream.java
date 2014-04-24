@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values.
@@ -67,9 +67,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
-	static private Logger log = LoggerFactory.getLogger(Stream.class);
+	private static final Logger log = LoggerFactory.getLogger(Stream.class);
 
-	private final AtomicInteger                              minimumCapacity = new AtomicInteger(0);
+	private final AtomicLong                                 minimumCapacity = new AtomicLong(0);
 	private final MultiReaderFastList<StreamSubscription<O>> subscriptions   = MultiReaderFastList.newList(8);
 
 	protected final Dispatcher dispatcher;
@@ -89,7 +89,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	public Stream(Dispatcher dispatcher) {
-		this(dispatcher, -1);
+		this(dispatcher, Integer.MAX_VALUE);
 	}
 
 	public Stream(Dispatcher dispatcher, int batchSize) {
@@ -101,7 +101,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	              int batchSize) {
 		Assert.state(dispatcher != null, "'dispatcher'  cannot be null.");
 		this.environment = environment;
-		this.batchSize = batchSize < 0 ? -1 : batchSize;
+		this.batchSize = batchSize;
 		this.dispatcher = dispatcher;
 	}
 
@@ -573,7 +573,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A>     the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Action<O,A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
+	public <A> Action<O, A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
 		return reduce(fn, Functions.supplier(initial), batchSize);
 	}
 
@@ -594,8 +594,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A>          the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Action<O,A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
-	                            final int batchSize
+	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
+	                               final int batchSize
 	) {
 		final Action<O, A> stream = new ReduceAction<O, A>(batchSize,
 				accumulators,
@@ -614,7 +614,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <A> the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
-	public <A> Action<O,A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return reduce(fn, null, batchSize);
 	}
 
@@ -629,7 +629,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Action<O,A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
+	public <A> Action<O, A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
 		return scan(fn, Functions.supplier(initial));
 	}
 
@@ -648,7 +648,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Action<O,A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
+	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Action<O, A> stream = new ScanAction<O, A>(accumulators,
 				fn,
 				dispatcher);
@@ -664,7 +664,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 * @since 1.1
 	 */
-	public <A> Action<O,A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return scan(fn, (Supplier<A>) null);
 	}
 
@@ -782,12 +782,15 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
+		log.info(this.getClass().getSimpleName() + " - Publisher Subscribe : " + this);
+
 		final StreamSubscription<O> subscription = new StreamSubscription<O>(this, subscriber);
-		log.info(this.getClass().getSimpleName() + " - Publisher#subscribe : " + this);
 
 		addSubscription(subscription);
-		subscriber.onSubscribe(subscription);
-		if ((state == State.SHUTDOWN || state == State.COMPLETE) && buffer.isEmpty()) {
+
+			subscriber.onSubscribe(subscription);
+
+		if (state == State.COMPLETE && buffer.isEmpty()) {
 			subscriber.onComplete();
 		} else if (state == State.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
@@ -799,10 +802,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	public MutableList<StreamSubscription<O>> getSubscriptions() {
 		return subscriptions;
-	}
-
-	public void setBufferSize(long bufferSize) {
-		this.bufferSize = bufferSize;
 	}
 
 	public void setKeepAlive(boolean keepAlive) {
@@ -846,7 +845,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				buffer.add(ev);
 				return;
 			}
-
 
 			list.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 				@Override
@@ -939,13 +937,12 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return this;
 	}
 
-	protected int resetMinimumCapacity(int elements) {
-		int min = subscriptions.injectInto(elements,
-				new Function2<Integer, StreamSubscription<O>, Integer>() {
+	protected long resetMinimumCapacity(long elements) {
+		long min = subscriptions.injectInto(elements,
+				new Function2<Long, StreamSubscription<O>, Long>() {
 					@Override
-					public Integer value(Integer argument1, StreamSubscription<O> argument2) {
-						int capacity = argument2.capacity.get();
-						return capacity == -1 ? argument1 : Math.min(capacity, argument1);
+					public Long value(Long argument1, StreamSubscription<O> argument2) {
+						return Math.min(argument2.capacity.get(), argument1);
 					}
 				});
 
@@ -953,13 +950,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return min;
 	}
 
-	protected void drain(int elements, Subscriber<O> subscriber) {
-		int min = resetMinimumCapacity(elements);
+	protected void drain(long elements, Subscriber<O> subscriber) {
+		long min = resetMinimumCapacity(elements);
 
 		if (buffer.isEmpty()) return;
 
 		O data;
-		int i = 0;
+		long i = 0;
 		while (i < min && (data = buffer.poll()) != null) {
 			broadcastNext(data);
 			i++;

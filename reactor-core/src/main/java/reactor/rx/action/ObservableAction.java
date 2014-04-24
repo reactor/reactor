@@ -18,7 +18,6 @@ package reactor.rx.action;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -38,6 +37,5 @@ public class ObservableAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		observable.notify(key, Event.wrap(ev));
-		available();
 	}
 }

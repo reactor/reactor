@@ -17,7 +17,6 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
-import reactor.rx.Stream;
 import reactor.util.Assert;
 
 /**
@@ -37,6 +36,5 @@ public class MapAction<T, V> extends Action<T, V> {
 	@Override
 	protected void doNext(T value) {
 		broadcastNext(fn.apply(value));
-		available();
 	}
 }

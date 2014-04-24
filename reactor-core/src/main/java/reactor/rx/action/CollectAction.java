@@ -30,7 +30,7 @@ public class CollectAction<T> extends BatchAction<T, List<T>>{
 
 	public CollectAction(int batchsize, Dispatcher dispatcher) {
 		super(batchsize, dispatcher, true, false, batchsize > 0);
-		values = new ArrayList<T>(batchsize > 0 ? batchsize : 64);
+		values = new ArrayList<T>();
 	}
 
 	@Override

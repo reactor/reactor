@@ -21,8 +21,6 @@ import reactor.function.Function;
 import reactor.rx.Stream;
 import reactor.util.Assert;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -70,7 +68,6 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		inlineMerge.prefetch(getBatchSize());
 
 		val.produceTo(inlineMerge);
-		available();
 	}
 
 	@Override

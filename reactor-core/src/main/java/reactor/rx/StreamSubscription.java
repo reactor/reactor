@@ -18,7 +18,7 @@ package reactor.rx;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
@@ -31,20 +31,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StreamSubscription<O> implements Subscription {
 	final Subscriber<O> subscriber;
 	final Stream<O>     publisher;
-	final AtomicInteger capacity;
+	final AtomicLong    capacity;
 
 	boolean terminated;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
-		this.capacity = new AtomicInteger(-1);
+		this.capacity = new AtomicLong();
 		this.terminated = false;
 	}
 
 	@Override
 	public void requestMore(int elements) {
-		if(terminated){
+		if (terminated) {
 			return;
 		}
 
@@ -52,9 +52,7 @@ public class StreamSubscription<O> implements Subscription {
 			throw new IllegalStateException("Cannot request negative number");
 		}
 
-		if(capacity.getAndSet(elements) <= 0){
-			publisher.drain(capacity.get(), subscriber);
-		}
+		publisher.drain(capacity.addAndGet(elements), subscriber);
 
 	}
 

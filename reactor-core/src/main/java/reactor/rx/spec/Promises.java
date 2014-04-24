@@ -16,7 +16,6 @@
 
 package reactor.rx.spec;
 
-import org.reactivestreams.spi.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -28,7 +27,6 @@ import reactor.rx.action.MergeAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -71,7 +69,7 @@ public abstract class Promises {
 	 * @return a new {@link reactor.rx.Promise}
 	 */
 	public static <T> Promise<T> defer(Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(new Action<T,T>(dispatcher),env);
+		return new Promise<T>(new Action<T, T>(dispatcher), env);
 	}
 
 	/**
@@ -101,7 +99,7 @@ public abstract class Promises {
 	 * given supplier.
 	 *
 	 * @param supplier {@link Supplier} that will produce the value
-	 * @param env        The assigned environment
+	 * @param env      The assigned environment
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
@@ -113,14 +111,17 @@ public abstract class Promises {
 	 * Create a {@link Promise} producing the value for the {@link Promise} using the
 	 * given supplier.
 	 *
-	 * @param supplier {@link Supplier} that will produce the value
+	 * @param supplier   {@link Supplier} that will produce the value
 	 * @param env        The assigned environment
 	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>      type of the expected value
+	 * @param <T>        type of the expected value
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Supplier<T> supplier, Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(new SupplierAction<Void,T>(dispatcher,supplier), env);
+		SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, supplier);
+		Promise<T> promise = new Promise<T>(supplierAction, env);
+		supplierAction.subscribe(promise);
+		return promise;
 	}
 
 	/**
@@ -140,7 +141,7 @@ public abstract class Promises {
 	 * immediately.
 	 *
 	 * @param value the value to complete the {@link Promise} with
-	 * @param env        The assigned environment
+	 * @param env   The assigned environment
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
@@ -152,10 +153,10 @@ public abstract class Promises {
 	 * Create a {@link Promise} using the given value to complete the {@link Promise}
 	 * immediately.
 	 *
-	 * @param value the value to complete the {@link Promise} with
+	 * @param value      the value to complete the {@link Promise} with
 	 * @param env        The assigned environment
 	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>   the type of the value
+	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
 	public static <T> Promise<T> success(T value, Environment env, Dispatcher dispatcher) {
@@ -179,7 +180,7 @@ public abstract class Promises {
 	 * immediately.
 	 *
 	 * @param error the error to complete the {@link Promise} with
-	 * @param env        The assigned environment
+	 * @param env   The assigned environment
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
@@ -191,26 +192,35 @@ public abstract class Promises {
 	 * Create a {@link Promise} and use the given error to complete the {@link Promise}
 	 * immediately.
 	 *
-	 * @param error the error to complete the {@link Promise} with
+	 * @param error      the error to complete the {@link Promise} with
 	 * @param env        The assigned environment
 	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>   the type of the value
+	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
 	public static <T> Promise<T> error(Throwable error, Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(error, new Action<T,T>(dispatcher),env);
+		return new Promise<T>(error, new Action<T, T>(dispatcher), env);
 	}
 
 	/**
-	 * Merge given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal Promise
-	 * Promises} have been fulfilled.
+	 * Aggregate given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal
+	 * Promise Promises} have been fulfilled.
 	 *
 	 * @param promises The promises to use.
 	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<List<T>> when(Promise<T>... promises) {
-		return when(Arrays.asList(promises));
+		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
+
+		Stream<T> stream = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, promises)
+				.prefetch(promises.length);
+
+		return next(
+				stream.
+						env(promises[0].getEnvironment()).
+						collect()
+		);
 	}
 
 	/**
@@ -222,20 +232,7 @@ public abstract class Promises {
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
-		Assert.isTrue(promises.size()>0, "Must aggregate at least one promise");
-
-		Stream<T> deferredStream = new Stream<T>(SynchronousDispatcher.INSTANCE, null, promises.size());
-		StreamSpec.StreamSubscriber<T> subscriber = new StreamSpec.StreamSubscriber<T>(deferredStream);
-
-		Promise<T> cursorPromise = null;
-		for (Promise<T> promise : promises) {
-			promise.produceTo(subscriber);
-			cursorPromise = promise;
-		}
-
-		if(cursorPromise == null) return null;
-
-		return next(deferredStream.env(cursorPromise.getEnvironment()).collect());
+		return when(toArray(promises));
 	}
 
 
@@ -249,10 +246,10 @@ public abstract class Promises {
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		return new Promise<T>(
-				new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, promises),
-						promises[0].getEnvironment()
-		);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, promises);
+		mergeAction.env(promises[0].getEnvironment());
+
+		return Promise.wrap(mergeAction);
 	}
 
 
@@ -265,13 +262,8 @@ public abstract class Promises {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> any(Collection<? extends Promise<T>> promises) {
-		Promise<T>[] arrayPromises = new Promise[promises.size()];
-		int i = 0;
-		for(Promise<T> promise : promises){
-			arrayPromises[i++] = promise;
-		}
 
-		return any(arrayPromises);
+		return any(toArray(promises));
 	}
 
 	/**
@@ -288,15 +280,11 @@ public abstract class Promises {
 				new Action<T, T>(),
 				composable.getEnvironment());
 
-		composable.subscribe(new Action<T,T>(){
+		composable.connect(new Action<T, T>(SynchronousDispatcher.INSTANCE, 1) {
 
 			@Override
 			protected void doFlush() {
 				resultPromise.broadcastFlush();
-			}
-
-			@Override
-			protected void doSubscribe(Subscription subscription) {
 			}
 
 			@Override
@@ -316,6 +304,16 @@ public abstract class Promises {
 		});
 
 		return resultPromise;
+	}
+
+	@SuppressWarnings("unchecked")
+	static private <O> Promise<O>[] toArray(Collection<? extends Promise<O>> promises) {
+		Promise<O>[] arrayPromises = new Promise[promises.size()];
+		int i = 0;
+		for (Promise<O> promise : promises) {
+			arrayPromises[i++] = promise;
+		}
+		return arrayPromises;
 	}
 
 }

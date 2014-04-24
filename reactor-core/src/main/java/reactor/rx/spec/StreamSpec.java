@@ -159,6 +159,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 
 		@Override
 		public void onSubscribe(Subscription subscription) {
+			subscription.requestMore(stream.getBatchSize());
 		}
 
 		@Override

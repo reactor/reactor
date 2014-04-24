@@ -55,7 +55,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void doNext(T value) {
 		if (getBatchSize() == -1) {
 			nextCallback(value);
-			available();
 			return;
 		}
 
@@ -78,11 +77,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		} finally {
 			lock.unlock();
 		}
-
-		if (accepted == 0) {
-			available();
-		}
-
 	}
 
 	@Override
