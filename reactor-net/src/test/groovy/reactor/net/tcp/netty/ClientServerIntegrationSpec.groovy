@@ -126,7 +126,7 @@ class ClientServerIntegrationSpec extends Specification {
 					env(env1).dispatcher("sync").
 					listen("127.0.0.1", port).
 					codec(codec).
-					consume({ conn -> data.each { pojo -> conn.out().accept(pojo) } } as Consumer).
+					consume({ conn -> data.each { pojo -> conn.sendAndForget(pojo) } } as Consumer).
 					get()
 
 			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
@@ -151,7 +151,7 @@ class ClientServerIntegrationSpec extends Specification {
 					await(1, TimeUnit.SECONDS)
 
 		and: "data is being sent"
-			[startLatch, dataLatch].each { it.await(30, TimeUnit.SECONDS) }
+			[startLatch, dataLatch].each { it.await(1, TimeUnit.SECONDS) }
 
 		then: "everything went fine"
 			startLatch.count == 0

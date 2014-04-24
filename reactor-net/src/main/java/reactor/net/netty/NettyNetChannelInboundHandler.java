@@ -9,7 +9,7 @@ import reactor.io.Buffer;
 import reactor.net.AbstractNetChannel;
 
 /**
- * Netty {@link io.netty.channel.ChannelInboundHandler} implelmentation that passes data to a Reactor {@link
+ * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
  * reactor.net.AbstractNetChannel}.
  *
  * @author Jon Brisbin

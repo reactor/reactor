@@ -39,10 +39,7 @@ import reactor.net.AbstractNetChannel;
 import reactor.net.NetChannel;
 import reactor.net.config.ServerSocketOptions;
 import reactor.net.config.SslOptions;
-import reactor.net.netty.NettyEventLoopDispatcher;
-import reactor.net.netty.NettyNetChannel;
-import reactor.net.netty.NettyNetChannelInboundHandler;
-import reactor.net.netty.NettyServerSocketOptions;
+import reactor.net.netty.*;
 import reactor.net.tcp.TcpServer;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
 import reactor.support.NamedDaemonThreadFactory;
@@ -57,8 +54,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN>  The type that will be received by this server
- * @param <OUT> The type that will be sent by this server
+ * @param <IN>
+ * 		The type that will be received by this server
+ * @param <OUT>
+ * 		The type that will be sent by this server
+ *
  * @author Jon Brisbin
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
@@ -191,10 +191,11 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
 		AbstractNetChannel<IN, OUT> netChannel = (AbstractNetChannel<IN, OUT>) select(ch);
-		NettyNetChannelInboundHandler handler = new NettyNetChannelInboundHandler()
+		NettyNetChannelInboundHandler readHandler = new NettyNetChannelInboundHandler()
 				.setNetChannel(netChannel);
+		NettyNetChannelOutboundHandler writeHandler = new NettyNetChannelOutboundHandler();
 
-		return new ChannelHandler[]{handler};
+		return new ChannelHandler[]{readHandler, writeHandler};
 	}
 
 }
