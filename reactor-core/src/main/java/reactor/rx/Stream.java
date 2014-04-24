@@ -679,39 +679,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return countAction;
 	}
 
-	@Override
-	public void broadcastFlush() {
-		if (!checkState()) return;
-
-		log.info(this.getClass().getSimpleName() + " - Publisher Flush :" + this);
-
-		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-			@Override
-			public boolean accept(StreamSubscription<O> each) {
-				return Flushable.class.isAssignableFrom(each.subscriber.getClass());
-			}
-		}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
-			@Override
-			public void safeValue(final StreamSubscription<O> object) throws Exception {
-				try {
-					((Flushable) object.subscriber).onFlush();
-				} catch (final Throwable throwable) {
-					subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-						@Override
-						public boolean accept(StreamSubscription<O> each) {
-							return each.subscriber == object;
-						}
-					}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
-						@Override
-						public void safeValue(StreamSubscription<O> subscription) throws Exception {
-							callError(subscription, throwable);
-						}
-					});
-				}
-			}
-		});
-	}
-
 	/**
 	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
 	 * composed actions.
@@ -721,26 +688,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public String debug() {
 		return StreamUtils.browse(this);
-	}
-
-
-	@Override
-	public void broadcastError(final Throwable throwable) {
-		if (!checkState()) return;
-
-		log.error(this.getClass().getSimpleName() + " - Publisher Error :" + this, throwable);
-
-		state = State.ERROR;
-		error = throwable;
-
-		if (subscriptions.isEmpty()) return;
-
-		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
-			@Override
-			public void safeValue(StreamSubscription<O> subscription) throws Exception {
-				callError(subscription, throwable);
-			}
-		});
 	}
 
 	@Override
@@ -761,7 +708,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		return this;
 	}
 
-
 	@Override
 	public void recycle() {
 		buffer.clear();
@@ -780,17 +726,16 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		subscribe(consumer.getSubscriber());
 	}
 
+
 	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
-		log.info(this.getClass().getSimpleName() + " - Publisher Subscribe : " + this);
+		log.info(this.getClass().getSimpleName() + " > OUT onSubscribe: " + this);
 
 		final StreamSubscription<O> subscription = new StreamSubscription<O>(this, subscriber);
 
-		addSubscription(subscription);
-
+		if (checkState() && addSubscription(subscription)) {
 			subscriber.onSubscribe(subscription);
-
-		if (state == State.COMPLETE && buffer.isEmpty()) {
+		}else if (state == State.COMPLETE && buffer.isEmpty()) {
 			subscriber.onComplete();
 		} else if (state == State.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
@@ -800,38 +745,12 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	}
 
-	public MutableList<StreamSubscription<O>> getSubscriptions() {
-		return subscriptions;
-	}
-
-	public void setKeepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
-	}
-
-	public State getState() {
-		return state;
-	}
-
-	public Throwable getError() {
-		return error;
-	}
-
-	/**
-	 * Return defined {@link Stream} batchSize, used to drive new {@link org.reactivestreams.spi.Subscription}
-	 * request needs.
-	 *
-	 * @return
-	 */
-	public int getBatchSize() {
-		return batchSize;
-	}
-
 	@Override
 	public void broadcastNext(final O ev) {
 		try {
 			if (!checkState() && bufferEvent(ev)) return;
 
-			log.info(this.getClass().getSimpleName() + " - Publisher Next : " + ev + " - " + this);
+			log.info(this.getClass().getSimpleName() + " > OUT onNext:" + ev + " - " + this);
 
 			MutableList<StreamSubscription<O>> list = subscriptions.select(new com.gs.collections.api.block.predicate
 					.Predicate<StreamSubscription<O>>() {
@@ -881,13 +800,65 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	@Override
+	public void broadcastFlush() {
+		if (!checkState()) return;
+
+		log.info(this.getClass().getSimpleName() + " > OUT onFlush:" + this);
+
+		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
+			@Override
+			public boolean accept(StreamSubscription<O> each) {
+				return Flushable.class.isAssignableFrom(each.subscriber.getClass());
+			}
+		}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
+			@Override
+			public void safeValue(final StreamSubscription<O> object) throws Exception {
+				try {
+					((Flushable) object.subscriber).onFlush();
+				} catch (final Throwable throwable) {
+					subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
+						@Override
+						public boolean accept(StreamSubscription<O> each) {
+							return each.subscriber == object;
+						}
+					}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
+						@Override
+						public void safeValue(StreamSubscription<O> subscription) throws Exception {
+							callError(subscription, throwable);
+						}
+					});
+				}
+			}
+		});
+	}
+
+	@Override
+	public void broadcastError(final Throwable throwable) {
+		if (!checkState()) return;
+
+		log.error(this.getClass().getSimpleName() + " > OUT onError:" + this, throwable);
+
+		state = State.ERROR;
+		error = throwable;
+
+		if (subscriptions.isEmpty()) return;
+
+		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+			@Override
+			public void safeValue(StreamSubscription<O> subscription) throws Exception {
+				callError(subscription, throwable);
+			}
+		});
+	}
+
+	@Override
 	public void broadcastComplete() {
 		if (!checkState()) return;
 
 		state = State.COMPLETE;
 
 		if (subscriptions.isEmpty() || buffer.size() > 0) return;
-		log.info(this.getClass().getSimpleName() + " - Publisher Complete :" + this);
+		log.info(this.getClass().getSimpleName() + " > OUT onComplete:" + this);
 
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override
@@ -899,33 +870,51 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				}
 			}
 		});
+
 	}
 
-	protected void addSubscription(final StreamSubscription<O> subscription) {
-		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<StreamSubscription<O>>>() {
-			@Override
-			public void safeValue(MutableList<StreamSubscription<O>> streamSubscriptions) throws Exception {
-				if (subscriptions.indexOf(subscription) != -1) {
-					subscription.subscriber.onError(new IllegalStateException("Subscription already exists between this " +
-							"publisher/subscriber pair"));
-				} else {
-					streamSubscriptions.add(subscription);
-				}
-			}
-		});
+	public MutableList<StreamSubscription<O>> getSubscriptions() {
+		return subscriptions;
+	}
+
+	public void setKeepAlive(boolean keepAlive) {
+		this.keepAlive = keepAlive;
+	}
+
+	public State getState() {
+		return state;
+	}
+
+	public Throwable getError() {
+		return error;
+	}
+
+	/**
+	 * Return defined {@link Stream} batchSize, used to drive new {@link org.reactivestreams.spi.Subscription}
+	 * request needs.
+	 *
+	 * @return
+	 */
+	public int getBatchSize() {
+		return batchSize;
+	}
+
+	protected boolean addSubscription(final StreamSubscription<O> subscription) {
+		if (subscriptions.indexOf(subscription) != -1) {
+			subscription.subscriber.onError(new IllegalStateException("Subscription already exists between this " +
+					"publisher/subscriber pair"));
+			return false;
+		} else {
+			return subscriptions.add(subscription);
+		}
 	}
 
 	protected void removeSubscription(final StreamSubscription<O> subscription) {
-		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<StreamSubscription<O>>>() {
-			@Override
-			public void safeValue(MutableList<StreamSubscription<O>> list) throws Exception {
-				list.remove(subscription);
+		subscriptions.remove(subscription);
 
-				if (list.isEmpty() && !keepAlive) {
-					state = State.SHUTDOWN;
-				}
-			}
-		});
+		if (subscriptions.isEmpty() && !keepAlive) {
+			state = State.SHUTDOWN;
+		}
 	}
 
 	protected void setState(State state) {
