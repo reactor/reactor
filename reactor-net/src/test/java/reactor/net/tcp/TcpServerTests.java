@@ -281,7 +281,7 @@ public class TcpServerTests {
 		TcpClient<Buffer, Buffer> client = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
 				.synchronousDispatcher()
-				.connect("127.0.0.1", port)
+				.connect("localhost", port)
 				.get();
 
 		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)
@@ -341,7 +341,7 @@ public class TcpServerTests {
 								         pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
 							         }
 						         }))
-				.listen("localhost", port)
+				.listen(port)
 				.codec(StandardCodecs.STRING_CODEC)
 				.consume(serverHandler)
 				.get();

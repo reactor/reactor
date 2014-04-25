@@ -56,7 +56,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
-					listen("127.0.0.1", port).
+					listen(port).
 					codec(codec).
 					consume({ conn ->
 						conn.consume({ pojo ->
@@ -69,7 +69,7 @@ class ClientServerIntegrationSpec extends Specification {
 			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
-					connect("127.0.0.1", port).
+					connect("localhost", port).
 					get()
 
 		when: 'the server is started'
@@ -109,7 +109,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
-					listen("127.0.0.1", port).
+					listen(port).
 					codec(codec).
 					consume({ conn -> data.each { pojo -> conn.sendAndForget(pojo) } } as Consumer).
 					get()
@@ -117,7 +117,7 @@ class ClientServerIntegrationSpec extends Specification {
 			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
-					connect("127.0.0.1", port).
+					connect("localhost", port).
 					get()
 
 		when: 'the server is started'
