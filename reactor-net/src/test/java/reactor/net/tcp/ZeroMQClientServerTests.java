@@ -47,7 +47,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		latch = new CountDownLatch(1);
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingKryo() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
@@ -56,7 +56,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		                                   d -> d.equals(data));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingJson() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
@@ -65,14 +65,14 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		                                   d -> d.equals(data));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingBuffers() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
 		                                   ZeroMQTcpClient.class,
 		                                   Buffer.wrap("Hello World!"));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void zmqRequestReply() throws InterruptedException {
 		ZMQ.reply("tcp://*:" + getPort())
 		   .consume(ch -> ch.consume(ch::send));
@@ -86,7 +86,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		assertTrue("REQ/REP socket exchanged data", latch.await(60, TimeUnit.SECONDS));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void zmqPushPull() throws InterruptedException {
 		ZMQ.pull("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
@@ -97,7 +97,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void zmqRouterDealer() throws InterruptedException {
 		ZMQ.router("tcp://*:" + getPort())
 		   .consume(ch -> latch.countDown());
@@ -108,7 +108,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		assertTrue("ROUTER socket received data", latch.await(1, TimeUnit.SECONDS));
 	}
 
-	@Test
+	@Test(timeout = 60000)
 	public void zmqInprocRouterDealer() throws InterruptedException {
 		ZMQ.router("inproc://queue" + getPort())
 		   .consume(ch -> {
