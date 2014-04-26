@@ -44,7 +44,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
-		Action<Integer, Integer> action = new Action<Integer, Integer>(env.getDispatcher("sync")) {
+		Action<Integer, Integer> action = new Action<Integer, Integer>(env.getDispatcher("ringBuffer")) {
 			@Override
 			protected void doNext(Integer ev) {
 				broadcastNext(ev);
