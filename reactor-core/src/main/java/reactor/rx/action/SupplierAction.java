@@ -18,11 +18,12 @@ package reactor.rx.action;
 import org.reactivestreams.spi.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
+import reactor.rx.StreamSubscription;
 
 /**
  * @author Stephane Maldini
  */
-public class SupplierAction<T,V> extends Action<T, V> {
+public class SupplierAction<T, V> extends Action<T, V> {
 
 	private final Supplier<V> supplier;
 
@@ -32,11 +33,17 @@ public class SupplierAction<T,V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void drain(long elements, Subscriber<V> subscriber) {
-		if(getSubscription() == null){
-			subscriber.onNext(supplier.get());
-		}else{
-			super.drain(elements,subscriber);
+	protected StreamSubscription<V> createSubscription(Subscriber<V> subscriber) {
+		if (getSubscription() == null) {
+			return new StreamSubscription<V>(this, subscriber) {
+				@Override
+				public void requestMore(int elements) {
+					super.requestMore(elements);
+					onNext(supplier.get());
+				}
+			};
+		} else {
+			return super.createSubscription(subscriber);
 		}
 	}
 

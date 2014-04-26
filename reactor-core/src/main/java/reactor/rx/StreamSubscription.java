@@ -18,6 +18,8 @@ package reactor.rx;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -29,11 +31,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.1
  */
 public class StreamSubscription<O> implements Subscription {
-	final Subscriber<O> subscriber;
-	final Stream<O>     publisher;
-	final AtomicLong    capacity;
+	final           Subscriber<O> subscriber;
+	final           Stream<O>     publisher;
+	protected final AtomicLong    capacity;
+	final Queue<O> buffer = new ConcurrentLinkedQueue<O>();
 
 	boolean terminated;
+
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
 		this.subscriber = subscriber;
@@ -44,21 +48,26 @@ public class StreamSubscription<O> implements Subscription {
 
 	@Override
 	public void requestMore(int elements) {
-		if (terminated) {
+		if (terminated && buffer.isEmpty()) {
 			return;
 		}
 
 		if (elements <= 0) {
-			throw new IllegalStateException("Cannot request negative number");
+			throw new IllegalArgumentException("Cannot request negative number");
 		}
 
-		publisher.drain(capacity.addAndGet(elements), subscriber);
-
+		long currentCapacity = capacity.addAndGet(elements);
+		long i = 0;
+		O element;
+		while (i++ < currentCapacity && (element = buffer.poll()) != null) {
+			onNext(element);
+		}
 	}
 
 	@Override
 	public void cancel() {
 		publisher.removeSubscription(this);
+		buffer.clear();
 		terminated = true;
 	}
 
@@ -91,5 +100,36 @@ public class StreamSubscription<O> implements Subscription {
 
 	public Stream<?> getPublisher() {
 		return publisher;
+	}
+	public Subscriber<O> getSubscriber() {
+		return subscriber;
+	}
+
+	public void onNext(O ev) {
+		if (capacity.getAndDecrement() > 0) {
+			subscriber.onNext(ev);
+		} else {
+			buffer.add(ev);
+			// we just decremented below 0 so increment back one
+			capacity.incrementAndGet();
+		}
+		if(terminated){
+			onComplete();
+		}
+	}
+
+	public void onComplete(){
+		if(buffer.isEmpty()){
+			subscriber.onComplete();
+		}
+		terminated = true;
+	}
+
+	public long getBufferSize() {
+		return buffer.size();
+	}
+
+	public AtomicLong getCapacity() {
+		return capacity;
 	}
 }

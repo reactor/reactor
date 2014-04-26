@@ -100,9 +100,26 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
+	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+		return new StreamSubscription<O>(this, subscriber) {
+			@Override
+			public void requestMore(int elements) {
+				super.requestMore(elements);
+				if (subscription != null) {
+					long currentCapacity = capacity.get();
+					if (!pause && currentCapacity > 0) {
+						int remaining = currentCapacity > elements ? elements : (int) currentCapacity;
+						subscription.requestMore(remaining);
+					}
+				}
+			}
+		};
+	}
+
+	@Override
 	public void accept(I i) {
 		try {
-			log.info(this.getClass().getSimpleName() + " - Next: " + i + " - " + this);
+			log.info(this.getClass().getSimpleName() + " < IN onNext: " + i + " - " + this);
 			doNext(i);
 		} catch (Throwable cause) {
 			doError(cause);
@@ -120,7 +137,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void accept(Void any) {
 				try {
-					log.info(Action.this.getClass().getSimpleName() + " - Flush: " + Action.this);
+					log.info(Action.this.getClass().getSimpleName() + " < IN onFlush: " + Action.this);
 					doFlush();
 				} catch (Throwable t) {
 					doError(t);
@@ -137,7 +154,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void accept(Void any) {
 				try {
-					log.info(Action.this.getClass().getSimpleName() + " - Complete: " + Action.this);
+					log.info(Action.this.getClass().getSimpleName() + " < IN onComplete: " + Action.this);
 					doComplete();
 					/*if(!keepAlive){
 						cancel();
@@ -158,7 +175,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					log.error(Action.this.getClass().getSimpleName() + " - Error : " + Action.this, throwable);
+					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this, throwable);
 					doError(throwable);
 				}
 			};
@@ -170,7 +187,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		log.info(this.getClass().getSimpleName() + " - Subscribe: " + this);
+		log.info(this.getClass().getSimpleName() + " < IN onSubscribe: " + this);
 		if (this.subscription == null) {
 			this.subscription = subscription;
 			try {
@@ -230,9 +247,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doSubscribe(Subscription subscription) {
-		if (batchSize != 0 && subscription != null && !pause) {
-			subscription.requestMore(batchSize > 0 ? batchSize : 1);
-		}
 	}
 
 	protected void doComplete() {
@@ -268,13 +282,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
 				"state=" + getState() +
 				", prefetch=" + getBatchSize() +
-				", in-buffer=" + buffer.size() +
 				(subscription != null &&
-						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ? ", capacity=" + buffer.size() : "") +
-				'}';
+						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
+						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +
+								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity()
+						: ""
+				) + '}';
 	}
 }

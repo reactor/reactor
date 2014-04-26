@@ -39,7 +39,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 	private final Environment env = new Environment();
 
 	public StreamIdentityProcessorVerification() {
-		super(new TestEnvironment(5000), 7000);
+		super(new TestEnvironment(2500), 3500);
 	}
 
 	@Override
@@ -48,6 +48,10 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			@Override
 			protected void doNext(Integer ev) {
 				broadcastNext(ev);
+			}
+
+			public String toString(){
+				return "Identity "+super.toString();
 			}
 		};
 		action.env(env).prefetch(bufferSize);
@@ -58,7 +62,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 	public Publisher<Integer> createHelperPublisher(final int elements) {
 		if (elements > 0) {
 			List<Integer> list = new ArrayList<Integer>(elements);
-			for (int i = 0; i < elements; i++) {
+			for (int i = 1; i <= elements; i++) {
 				list.add(i);
 			}
 			return Streams.defer(list);
