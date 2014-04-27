@@ -18,7 +18,6 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.ClassSelector;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -36,7 +35,7 @@ public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 	}
 
 	@Override
-	protected void doNext(Object ev) {
+	public void onNext(Object ev) {
 		//IGNORE
 	}
 
@@ -46,6 +45,11 @@ public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 		if (selector.matches(cause.getClass())) {
 			consumer.accept((E) cause);
 		}
+	}
+
+	@Override
+	public void onComplete() {
+		//IGNORE
 	}
 
 	@Override

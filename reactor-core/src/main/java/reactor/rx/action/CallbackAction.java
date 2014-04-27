@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
@@ -31,8 +32,14 @@ public class CallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void doSubscribe(Subscription subscription) {
+		subscription.requestMore(getBatchSize());
+	}
+
+	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
+		getSubscription().requestMore(1);
 	}
 
 	@Override

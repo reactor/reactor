@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
@@ -35,7 +36,19 @@ public class ObservableAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void doSubscribe(Subscription subscription) {
+		subscription.requestMore(getBatchSize());
+	}
+
+	@Override
 	protected void doNext(T ev) {
 		observable.notify(key, Event.wrap(ev));
+		getSubscription().requestMore(1);
+	}
+
+
+	@Override
+	public void onComplete() {
+		//IGNORE;
 	}
 }

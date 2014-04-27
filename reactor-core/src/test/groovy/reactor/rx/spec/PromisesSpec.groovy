@@ -244,7 +244,7 @@ class PromisesSpec extends Specification {
 			value == 'test'
 	}
 
-	def "A promise can't be fulfilled with null"() {
+	def "A promise can be fulfilled with null"() {
 		given:
 			"a promise"
 			def promise = Promises.<Object> defer()
@@ -254,9 +254,8 @@ class PromisesSpec extends Specification {
 			promise.broadcastNext null
 
 		then:
-			"the promise was failed"
+			"the promise has completed"
 			promise.isComplete()
-			promise.isError()
 	}
 
 	def "An Observable can be used to consume a promise's value when it's fulfilled"() {
@@ -315,7 +314,9 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the original promise is fulfilled"
+			println promise.debug()
 			promise.broadcastNext 1
+			println promise.debug()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"

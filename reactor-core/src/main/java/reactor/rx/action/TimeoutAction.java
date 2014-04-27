@@ -77,4 +77,10 @@ public class TimeoutAction<T> extends Action<T, Void> {
 		timeoutRegistration.resume();
 		return super.resume();
 	}
+
+	@Override
+	public void onComplete() {
+		timeoutRegistration.cancel();
+	}
+
 }

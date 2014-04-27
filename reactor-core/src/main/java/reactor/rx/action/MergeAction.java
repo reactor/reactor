@@ -26,42 +26,59 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MergeAction<O> extends Action<O, O> {
 
 	final AtomicInteger runningComposables;
+	final Action<O, ?>  delegateAction;
+
 	private final static Pipeline[] EMPTY_PIPELINE = new Pipeline[0];
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher) {
-		this(dispatcher, 0, EMPTY_PIPELINE);
+		this(dispatcher, Integer.MAX_VALUE, null, EMPTY_PIPELINE);
 	}
 
-	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher, Pipeline<O>... composables) {
-		this(dispatcher, composables.length + 1, composables);
+		this(dispatcher, composables.length + 1, null, composables);
 	}
 
 	public MergeAction(Dispatcher dispatcher, int length, Pipeline<O>... composables) {
+		this(dispatcher, length, null, composables);
+	}
+
+	public MergeAction(Dispatcher dispatcher, int length, final Action<O, ?> delegateAction,
+	                   Pipeline<O>... composables) {
 		super(dispatcher);
+		this.delegateAction = delegateAction;
+
 		if (composables != null && composables.length > 0) {
 			this.runningComposables = new AtomicInteger(length);
 			for (Pipeline<O> composable : composables) {
-				composable.connect(new Action<O, Object>(dispatcher) {
+				composable.connect(new Action<O, O>(dispatcher) {
 					@Override
 					protected void doFlush() {
-						MergeAction.this.onFlush();
+						MergeAction.this.doFlush();
+						if (delegateAction != null) {
+							delegateAction.onFlush();
+						}
 					}
 
 					@Override
 					protected void doComplete() {
-						MergeAction.this.onComplete();
+						MergeAction.this.doComplete();
 					}
 
 					@Override
 					protected void doNext(O ev) {
-						MergeAction.this.onNext(ev);
+						MergeAction.this.doNext(ev);
+						if (delegateAction != null) {
+							delegateAction.onNext(ev);
+						}
 					}
 
 					@Override
 					protected void doError(Throwable ev) {
 						MergeAction.this.doError(ev);
+						if (delegateAction != null) {
+							delegateAction.onError(ev);
+						}
 					}
 				});
 			}
@@ -73,13 +90,15 @@ public class MergeAction<O> extends Action<O, O> {
 	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
-		super.doNext(ev);
 	}
 
 	@Override
 	protected void doComplete() {
 		if (runningComposables.decrementAndGet() == 0) {
-			super.doComplete();
+			broadcastComplete();
+			if (delegateAction != null) {
+				delegateAction.onComplete();
+			}
 		}
 	}
 

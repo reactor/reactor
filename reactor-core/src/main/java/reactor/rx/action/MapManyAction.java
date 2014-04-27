@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import org.reactivestreams.api.Consumer;
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
@@ -42,22 +43,22 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 
 	@Override
 	protected void doNext(I value) {
-		E val = fn.apply(value);
 		mergeAction.runningComposables.incrementAndGet();
+		E val = fn.apply(value);
 		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher()) {
 			@Override
 			protected void doFlush() {
-				mergeAction.onFlush();
+				mergeAction.doFlush();
 			}
 
 			@Override
 			protected void doComplete() {
-				mergeAction.onComplete();
+				mergeAction.doComplete();
 			}
 
 			@Override
 			protected void doNext(O ev) {
-				mergeAction.onNext(ev);
+				mergeAction.doNext(ev);
 			}
 
 			@Override
@@ -67,19 +68,27 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		};
 		inlineMerge.prefetch(getBatchSize());
 
-		val.produceTo(inlineMerge);
+		val.connect(inlineMerge);
 	}
 
 	@Override
 	protected void doFlush() {
-		mergeAction.onFlush();
-		super.doFlush();
+		mergeAction.doFlush();
 	}
 
 	@Override
 	protected void doComplete() {
-		mergeAction.onComplete();
-		super.doComplete();
+		mergeAction.doComplete();
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		mergeAction.doError(ev);
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		subscription.requestMore(batchSize);
 	}
 
 	@Override
@@ -101,12 +110,11 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 	}
 
 	@Override
-	protected void doError(Throwable ev) {
-		super.doError(ev);
-	}
-
-	@Override
 	public void produceTo(Consumer<O> consumer) {
 		mergeAction.produceTo(consumer);
+	}
+
+	public MergeAction<O> mergedStream(){
+		return mergeAction;
 	}
 }

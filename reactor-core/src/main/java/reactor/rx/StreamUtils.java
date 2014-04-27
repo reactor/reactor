@@ -17,8 +17,9 @@ package reactor.rx;
 
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
-import reactor.rx.action.Action;
 import reactor.rx.action.FilterAction;
+import reactor.rx.action.MapManyAction;
+import reactor.rx.action.Pipeline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,12 +81,8 @@ public abstract class StreamUtils {
 							.getSimpleName().replaceAll("Action", "") + "[" + composable + "]");
 
 
-			if (Action.class.isAssignableFrom(composable.getClass())
-					&& ((Action<?, O>) composable).getSubscription() != null) {
-				appender.append(" ").append(((Action<?, O>) composable).getSubscription());
-			}
-
 			renderFilter(composable, d);
+			renderMapMany(composable, d);
 
 			if (composable.error != null) {
 				errors.add(composable.error);
@@ -108,13 +105,8 @@ public abstract class StreamUtils {
 				public void safeValue(StreamSubscription<O> registration) throws Exception {
 					if (Stream.class.isAssignableFrom(registration.subscriber.getClass())) {
 						parseComposable((Stream<O>) registration.subscriber, d);
-					} else {
-						appender.append(registration.subscriber.getClass().getSimpleName().isEmpty() ?
-								registration.subscriber :
-								registration.subscriber
-										.getClass()
-										.getSimpleName().replaceAll("Action", "") + "[" + registration.subscriber + "]");
-
+					} else if (Promise.class.isAssignableFrom(registration.subscriber.getClass())) {
+						parseComposable(((Promise<O>) registration.subscriber).delegateAction, d);
 					}
 				}
 			});
@@ -130,6 +122,13 @@ public abstract class StreamUtils {
 					else if (Promise.class.isAssignableFrom(operation.otherwise().getClass()))
 						loopSubscriptions(((Promise<O>) operation.otherwise()).delegateAction.getSubscriptions(), d + 2);
 				}
+			}
+		}
+
+		private <O> void renderMapMany(Stream<O> consumer, int d) {
+			if (MapManyAction.class.isAssignableFrom(consumer.getClass())) {
+				MapManyAction<O, ?, Pipeline<?>> operation = (MapManyAction<O, ?, Pipeline<?>>) consumer;
+				loopSubscriptions(operation.mergedStream().getSubscriptions(), d + 2);
 			}
 		}
 

@@ -49,7 +49,7 @@ class ComponentSpecSpec extends Specification {
 			reactor.getDispatcher() instanceof TraceableDelegatingDispatcher
 	}
 
-	def "Composable correctly built"() {
+	def "Stream correctly built"() {
 
 		when:
 			"we create a plain Composable"

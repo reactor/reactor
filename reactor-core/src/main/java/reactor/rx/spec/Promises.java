@@ -16,6 +16,7 @@
 
 package reactor.rx.spec;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -23,6 +24,7 @@ import reactor.function.Supplier;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+import reactor.rx.action.CollectAction;
 import reactor.rx.action.MergeAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
@@ -213,14 +215,13 @@ public abstract class Promises {
 	public static <T> Promise<List<T>> when(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		Stream<T> stream = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, promises)
-				.prefetch(promises.length);
+		CollectAction<T> collectAction = new CollectAction<T>(promises.length, SynchronousDispatcher.INSTANCE);
+		collectAction.env(promises[0].getEnvironment());
+		Promise<List<T>> resultPromise = next(collectAction);
 
-		return next(
-				stream.
-						env(promises[0].getEnvironment()).
-						collect()
-		);
+		new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, collectAction, promises);
+
+		return resultPromise;
 	}
 
 	/**
@@ -281,6 +282,11 @@ public abstract class Promises {
 				composable.getEnvironment());
 
 		composable.connect(new Action<T, T>(SynchronousDispatcher.INSTANCE, 1) {
+
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.requestMore(1);
+			}
 
 			@Override
 			protected void doFlush() {

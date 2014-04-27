@@ -287,6 +287,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return "{" +
 				"state=" + getState() +
 				", prefetch=" + getBatchSize() +
+				", keepAlive=" + keepAlive +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +

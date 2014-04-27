@@ -171,23 +171,26 @@ public class PipelineTests extends AbstractReactorTest {
 		Selector key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
-		r.on(key, new Consumer<Event<Integer>>() {
+		final Tap<Event<Integer>> tap = new Tap<Event<Integer>>() {
 			@Override
 			public void accept(Event<Integer> integerEvent) {
+				super.accept(integerEvent);
 				latch.countDown();
 			}
-		});
+		};
+
+		r.on(key, tap);
 
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
 						.consume(key.getObject(), r);
-		Tap<Integer> tap = s.tap();
+		System.out.println(s.debug());
 
 		//await(s, is(5));
 		assertThat("latch was counted down", latch.getCount(), is(0l));
-		assertThat("value is 5", tap.get(), is(5));
+		assertThat("value is 5", tap.get().getData(), is(5));
 	}
 
 	@Test
@@ -289,17 +292,17 @@ public class PipelineTests extends AbstractReactorTest {
 	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
-		s.consume(new Consumer<T>() {
+		s.when(Exception.class, new Consumer<Exception>() {
+			@Override
+			public void accept(Exception e) {
+				e.printStackTrace();
+				latch.countDown();
+			}
+		}).consume(new Consumer<T>() {
 			@Override
 			public void accept(T t) {
 				System.out.println(s.debug());
 				ref.set(t);
-				latch.countDown();
-			}
-		}).when(Exception.class, new Consumer<Exception>() {
-			@Override
-			public void accept(Exception e) {
-				e.printStackTrace();
 				latch.countDown();
 			}
 		});
