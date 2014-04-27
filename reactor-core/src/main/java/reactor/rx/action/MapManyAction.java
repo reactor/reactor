@@ -88,7 +88,7 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		subscription.requestMore(batchSize);
+		available();
 	}
 
 	@Override

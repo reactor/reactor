@@ -33,13 +33,12 @@ public class CallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		subscription.requestMore(getBatchSize());
+		available();
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		getSubscription().requestMore(1);
 	}
 
 	@Override

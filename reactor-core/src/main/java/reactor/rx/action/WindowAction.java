@@ -18,6 +18,7 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.rx.Stream;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -54,6 +55,11 @@ public class WindowAction<T> extends Action<T,List<T>> {
 				doWindow(aLong);
 			}
 		}, period, timeUnit, delay);
+	}
+
+	@Override
+	public Stream<List<T>> prefetch(int elements) {
+		return super.prefetch(elements > 0 ? elements : Integer.MAX_VALUE);
 	}
 
 	protected void doWindow(Long aLong) {

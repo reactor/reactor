@@ -37,4 +37,10 @@ public class MapAction<T, V> extends Action<T, V> {
 	protected void doNext(T value) {
 		broadcastNext(fn.apply(value));
 	}
+
+	@Override
+	public void onComplete() {
+		System.out.println("ON m'appelle");
+		super.onComplete();
+	}
 }

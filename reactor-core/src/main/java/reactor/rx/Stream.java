@@ -82,7 +82,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	public Stream(Dispatcher dispatcher) {
-		this(dispatcher, Integer.MAX_VALUE);
+		this(dispatcher, -1);
 	}
 
 	public Stream(Dispatcher dispatcher, int batchSize) {

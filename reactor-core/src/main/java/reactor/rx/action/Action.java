@@ -99,6 +99,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return this;
 	}
 
+	protected void available(){
+		if(subscription != null){
+			subscription.requestMore(batchSize > 0 ? batchSize : 1);
+		}
+	}
+
 	@Override
 	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
 		return new StreamSubscription<O>(this, subscriber) {

@@ -37,13 +37,12 @@ public class ObservableAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		subscription.requestMore(getBatchSize());
+		available();
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		observable.notify(key, Event.wrap(ev));
-		getSubscription().requestMore(1);
 	}
 
 

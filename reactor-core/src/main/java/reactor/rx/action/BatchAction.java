@@ -77,6 +77,10 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		} finally {
 			lock.unlock();
 		}
+
+		if(accepted == 0){
+			available();
+		}
 	}
 
 	@Override

@@ -17,7 +17,6 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.timer.Timer;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +66,7 @@ public class MovingWindowAction<T> extends WindowAction<T> {
     } finally {
       lock.unlock();
     }
+	  available();
   }
 
   @Override
