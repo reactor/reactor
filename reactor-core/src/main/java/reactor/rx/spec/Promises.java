@@ -247,10 +247,17 @@ public abstract class Promises {
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises);
+		Action<T,T> noop = new Action<T, T>(SynchronousDispatcher.INSTANCE, 1){
+			@Override
+			protected void doNext(T ev) {
+				broadcastNext(ev);
+			}
+		};
+		Promise<T> resultPromise = Promise.wrap(noop);
+		noop.subscribe(resultPromise);
+
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, noop, promises);
 		mergeAction.env(promises[0].getEnvironment());
-		Promise<T> resultPromise = Promise.wrap(mergeAction);
-		mergeAction.subscribe(resultPromise);
 
 		return resultPromise;
 	}

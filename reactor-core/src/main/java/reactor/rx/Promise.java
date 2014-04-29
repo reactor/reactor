@@ -411,9 +411,10 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 	public <V, C extends Stream<V>> Promise<V> fork(@Nonnull Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, delegateAction.getDispatcher());
-		connect(d).connect();
-
-		return Promise.wrap(d.mergedStream());
+		connect(d);
+		Promise<V> promise = Promise.wrap(new Action<V, V>());
+		d.mergedStream().subscribe(promise);
+		return promise;
 	}
 
 	public <E extends Throwable> Promise<O> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
