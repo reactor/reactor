@@ -73,6 +73,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
+@Ignore
 public class TcpServerTests {
 
 	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
