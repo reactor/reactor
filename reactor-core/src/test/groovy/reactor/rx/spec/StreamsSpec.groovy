@@ -357,16 +357,6 @@ class StreamsSpec extends Specification {
 			rejectedTap.get() == 2
 
 		when:
-			'value-aware filter'
-			def anotherSource = Streams.<Integer> defer()
-			def tap = anotherSource.filter(function { it == 2 }).tap()
-			anotherSource.broadcastNext(2)
-
-		then:
-			'it is accepted by the filter'
-			tap.get() == 2
-
-		when:
 			'simple filter'
 			anotherSource = Streams.<Boolean> defer()
 			tap = anotherSource.filter().tap()

@@ -443,11 +443,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		return ((Promise<Boolean>) this).filter(FilterAction.simplePredicate);
 	}
 
-	public Promise<O> filter(@Nonnull Function<O, Boolean> fn) {
-		final FilterAction<O, Promise<O>> d = new FilterAction<O, Promise<O>>(fn, delegateAction.getDispatcher());
-		return connect(d);
-	}
-
 	public Promise<O> merge(Promise<O>... composables) {
 		return connect(new MergeAction<O>(delegateAction.getDispatcher(), null, composables));
 	}

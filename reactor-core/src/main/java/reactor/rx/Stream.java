@@ -241,20 +241,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Evaluate each accepted value against the given predicate {@link Function}. If the predicate test succeeds, the
-	 * value is passed into the new {@code Stream}. If the predicate test fails, an exception is propagated into the
-	 * new {@code Stream}.
-	 *
-	 * @param fn the predicate {@link Function} to test values against
-	 * @return a new {@code Stream} containing only values that pass the predicate test
-	 */
-	public FilterAction<O, Stream<O>> filter(@Nonnull final Function<O, Boolean> fn) {
-		final FilterAction<O, Stream<O>> d = new FilterAction<O, Stream<O>>(fn, dispatcher);
-		connect(d);
-		return d;
-	}
-
-	/**
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
 	 * passed into the new {@code Stream}. If the predicate test fails, the value is propagated into the {@link
 	 * reactor.rx.action.FilterAction#otherwise()} composable .
@@ -380,7 +366,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 * @since 1.1
 	 */
-	public <V> Stream<V> split() {
+	public <V, T extends Iterable<V>> Stream<V> split() {
 		return split(batchSize);
 	}
 
@@ -394,7 +380,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Stream<V> split(int batchSize) {
+	public <V,T extends Iterable<V>> Stream<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);

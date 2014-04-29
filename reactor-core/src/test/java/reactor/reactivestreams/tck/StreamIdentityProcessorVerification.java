@@ -50,8 +50,8 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 				broadcastNext(ev);
 			}
 
-			public String toString(){
-				return "Identity "+super.toString();
+			public String toString() {
+				return "Identity " + super.toString();
 			}
 		};
 		action.env(env).prefetch(bufferSize);
@@ -65,15 +65,10 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			for (int i = 1; i <= elements; i++) {
 				list.add(i);
 			}
-			return Streams.defer(list);
+			return Streams.defer(list).filter(integer -> true).map(integer -> integer);
 		} else {
 			final Random random = new Random();
-			return Streams.defer(new Supplier<Integer>() {
-				@Override
-				public Integer get() {
-					return random.nextInt();
-				}
-			});
+			return Streams.defer((Supplier<Integer>) random::nextInt).map(integer -> integer);
 		}
 	}
 
