@@ -26,6 +26,7 @@ import reactor.net.netty.tcp.NettyTcpServer
 import reactor.net.tcp.spec.TcpClientSpec
 import reactor.net.tcp.spec.TcpServerSpec
 import reactor.net.tcp.support.SocketUtils
+import spock.lang.Ignore
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit
 
 import static org.junit.Assert.assertNotNull
 
+@Ignore
 class ClientServerIntegrationSpec extends Specification {
 
 	Environment env1
