@@ -19,31 +19,37 @@ import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * @author Stephane Maldini
  */
 public class CallbackAction<T> extends Action<T, Void> {
 
 	private final Consumer<T> consumer;
+	private final boolean     prefetch;
+	private final AtomicInteger count = new AtomicInteger();
 
-	public CallbackAction(Dispatcher dispatcher, Consumer<T> consumer) {
+	public CallbackAction(Dispatcher dispatcher, Consumer<T> consumer, boolean prefetch) {
 		super(dispatcher);
 		this.consumer = consumer;
+		this.prefetch = prefetch;
 	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		available();
+		if (prefetch) {
+			available();
+		}
 	}
 
 	@Override
 	protected void doNext(T ev) {
+		int counted = count.getAndIncrement();
 		consumer.accept(ev);
-	}
-
-	@Override
-	public void onComplete() {
-		//IGNORE;
+		if(counted >= batchSize){
+			available();
+		}
 	}
 
 }

@@ -28,7 +28,6 @@ import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
-import reactor.util.Assert;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,7 +60,7 @@ public abstract class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
-		return new Stream<T>(dispatcher, env, -1);
+		return new Stream<T>(dispatcher, env, Integer.MAX_VALUE);
 	}
 
 	/**
@@ -100,7 +99,7 @@ public abstract class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Publisher<T> publisher, Environment env, Dispatcher dispatcher) {
-		Stream<T> stream = new Stream<T>(dispatcher, -1).env(env);
+		Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE).env(env);
 		publisher.subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
 	}
@@ -153,7 +152,7 @@ public abstract class Streams {
 				((Reactor) observable).getDispatcher() :
 				SynchronousDispatcher.INSTANCE;
 
-		final Stream<T> stream = new Stream<T>(dispatcher, -1);
+		final Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE);
 		StreamSpec.<T>publisherFrom(observable, broadcastSelector).subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
 	}

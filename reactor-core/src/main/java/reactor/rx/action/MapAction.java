@@ -40,7 +40,6 @@ public class MapAction<T, V> extends Action<T, V> {
 
 	@Override
 	public void onComplete() {
-		System.out.println("ON m'appelle");
 		super.onComplete();
 	}
 }

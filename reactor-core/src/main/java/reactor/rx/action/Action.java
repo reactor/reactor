@@ -99,9 +99,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return this;
 	}
 
-	protected void available(){
-		if(subscription != null){
-			subscription.requestMore(batchSize > 0 ? batchSize : 1);
+	public void available(){
+		if(subscription != null && !pause){
+			subscription.requestMore(batchSize);
 		}
 	}
 
@@ -111,7 +111,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void requestMore(int elements) {
 				super.requestMore(elements);
-				if (subscription != null) {
+				if (subscription != null && !terminated) {
 					long currentCapacity = capacity.get();
 					if (!pause && currentCapacity > 0) {
 						int remaining = currentCapacity > elements ? elements : (int) currentCapacity;
@@ -181,7 +181,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this, throwable);
+					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this, new Exception(throwable));
 					doError(throwable);
 				}
 			};
@@ -233,14 +233,14 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public Stream<O> pause() {
-		pause = true;
 		return super.pause();
 	}
 
 	@Override
 	public Stream<O> resume() {
-		pause = false;
-		return super.resume();
+		super.resume();
+		available();
+		return this;
 	}
 
 	@Override
@@ -293,7 +293,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return "{" +
 				"state=" + getState() +
 				", prefetch=" + getBatchSize() +
-				", keepAlive=" + keepAlive +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +

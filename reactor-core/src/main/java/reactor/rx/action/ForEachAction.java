@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ForEachAction<T> extends Action<Iterable<T>, T> {
 
 	final private Iterable<T> defaultValues;
-	final private boolean     infinite;
 
 	public ForEachAction(Dispatcher dispatcher) {
 		this(null, dispatcher);
@@ -47,7 +46,6 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 			}
 			setKeepAlive(true);
 		}
-		this.infinite = batchSize == -1;
 	}
 
 	@Override
@@ -59,6 +57,8 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 				@Override
 				public void requestMore(int elements) {
 					super.requestMore(elements);
+
+					if(terminated) return;
 
 					long i = 0;
 					Iterator<T> iterator = defaultValues.iterator();
@@ -75,7 +75,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 						i++;
 					}
 
-					if (!iterator.hasNext()) {
+					if (!iterator.hasNext() && !terminated) {
 						onComplete();
 					}
 				}
@@ -92,11 +92,11 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		for (T it : values) {
 			broadcastNext(it);
 			i++;
-			if (defaultValues == null && !infinite && i % batchSize == 0) {
+			if (defaultValues == null && i % batchSize == 0) {
 				broadcastFlush();
 			}
 		}
-		if (defaultValues == null && infinite) {
+		if (defaultValues == null) {
 			broadcastFlush();
 		}
 	}

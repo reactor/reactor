@@ -42,7 +42,7 @@ import java.util.Collection;
  */
 public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> {
 
-	private int batchSize = -1;
+	private int batchSize = Integer.MAX_VALUE;
 	private Iterable<T>  values;
 	private Supplier<T>  valuesSupplier;
 	private Publisher<T> source;

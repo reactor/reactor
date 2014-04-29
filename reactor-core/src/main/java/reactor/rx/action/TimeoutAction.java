@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
@@ -38,6 +39,7 @@ public class TimeoutAction<T> extends Action<T, Void> {
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
 				flushedComposable.broadcastFlush();
+				available();
 			}
 		}
 	};
@@ -52,6 +54,11 @@ public class TimeoutAction<T> extends Action<T, Void> {
 		this.timer = timer;
 		this.timeout = timeout;
 		this.flushedComposable = flushedComposable;
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		super.doSubscribe(subscription);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 

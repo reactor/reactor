@@ -362,14 +362,45 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 	@Override
 	public <E> Promise<E> connect(@Nonnull final Action<O, E> action) {
-		Promise<E> promise = new Promise<E>(action, delegateAction.getEnvironment());
-		produceTo(action);
-		action.produceTo(promise);
+		final Promise<E> promise = new Promise<E>(action, delegateAction.getEnvironment());
+		subscribe(new Action<O, E>() {
+			boolean terminated;
+
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.requestMore(1);
+			}
+
+			@Override
+			public void doNext(O element) {
+				action.consume(new Consumer<E>() {
+					@Override
+					public void accept(E e) {
+						promise.valueAccepted(e);
+					}
+				});
+				action.onNext(element);
+				doComplete();
+			}
+
+			@Override
+			public void doComplete() {
+				if (!terminated)
+					promise.broadcastComplete();
+				terminated = true;
+			}
+
+			@Override
+			public void doError(Throwable cause) {
+				promise.broadcastError(cause);
+				terminated = true;
+			}
+		});
 		return promise;
 	}
 
 	public Promise<O> consume(@Nonnull Consumer<O> consumer) {
-		connect(new CallbackAction<O>(delegateAction.getDispatcher(), consumer));
+		connect(new CallbackAction<O>(delegateAction.getDispatcher(), consumer, true));
 		return this;
 	}
 
@@ -380,9 +411,9 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 	public <V, C extends Stream<V>> Promise<V> fork(@Nonnull Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, delegateAction.getDispatcher());
-		Promise<V> promise = Promise.wrap(d.mergedStream());
-		connect(d);
-		return promise;
+		connect(d).connect();
+
+		return Promise.wrap(d.mergedStream());
 	}
 
 	public <E extends Throwable> Promise<O> when(@Nonnull Class<E> exceptionType, @Nonnull Consumer<E> onError) {
@@ -417,7 +448,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	public Promise<O> merge(Promise<O>... composables) {
-		return connect(new MergeAction<O>(delegateAction.getDispatcher(), composables));
+		return connect(new MergeAction<O>(delegateAction.getDispatcher(), null, composables));
 	}
 
 	public Promise<O> timeout(long timeout) {
@@ -434,28 +465,31 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		return connect(new SupplierAction<O, E>(delegateAction.getDispatcher(), supplier));
 	}
 
-	public String debug(){
+	public String debug() {
 		return delegateAction.debug();
 	}
 
 	@Override
 	public void broadcastError(Throwable ev) {
 		errorAccepted(ev);
+		delegateAction.onComplete();
 	}
 
 	@Override
 	public void broadcastComplete() {
-		delegateAction.broadcastComplete();
+		delegateAction.onComplete();
 	}
 
 	@Override
 	public void broadcastNext(O ev) {
 		valueAccepted(ev);
+		delegateAction.broadcastNext(ev);
+		delegateAction.onComplete();
 	}
 
 	@Override
 	public void broadcastFlush() {
-		delegateAction.broadcastFlush();
+		delegateAction.onFlush();
 	}
 
 	@Override
@@ -483,34 +517,46 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 	@Override
 	public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
+		subscribe(consumer.getSubscriber());
+	}
+
+	@Override
+	public void subscribe(final Subscriber<O> subscriber) {
 		lock.lock();
 		try {
-			final Subscriber<O> subscriber = consumer.getSubscriber();
 			if (!isComplete()) {
 				delegateAction.subscribe(subscriber);
 			} else {
 				if (isError()) {
 					subscriber.onSubscribe(new Subscription() {
+						boolean terminated = false;
+
 						@Override
 						public void cancel() {
 						}
 
 						@Override
 						public void requestMore(int elements) {
+							if (terminated) return;
 							subscriber.onError(delegateAction.error);
 							subscriber.onComplete();
+							terminated = true;
 						}
 					});
 				} else if (isSuccess()) {
 					subscriber.onSubscribe(new Subscription() {
+						boolean terminated = false;
+
 						@Override
 						public void cancel() {
 						}
 
 						@Override
 						public void requestMore(int elements) {
+							if (terminated) return;
 							subscriber.onNext(value);
 							subscriber.onComplete();
+							terminated = true;
 						}
 					});
 				}
@@ -518,11 +564,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		} finally {
 			lock.unlock();
 		}
-	}
-
-	@Override
-	public void subscribe(Subscriber<O> subscriber) {
-		delegateAction.subscribe(subscriber);
 	}
 
 	public Environment getEnvironment() {
@@ -551,7 +592,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 	@Override
 	public void onError(Throwable cause) {
-		delegateAction.onError(cause);
+		broadcastError(cause);
 	}
 
 	@Override
@@ -569,7 +610,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		lock.lock();
 		try {
 			if (!isPending()) throw new IllegalStateException();
-			delegateAction.broadcastError(error);
+			delegateAction.onError(error);
 			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
@@ -584,8 +625,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		try {
 			if (!isPending()) throw new IllegalStateException();
 			this.value = value;
-			delegateAction.broadcastNext(value);
-			delegateAction.broadcastComplete();
 			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;

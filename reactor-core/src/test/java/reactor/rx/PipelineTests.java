@@ -157,12 +157,13 @@ public class PipelineTests extends AbstractReactorTest {
 				stream
 						.map(STRING_2_INTEGER);
 
-		Tap<Integer> first = s.first().tap();
-		Tap<Integer> last = s.last().tap();
+		Stream<Integer> first = s.first();
+		Stream<Integer> last = s.last();
+
 		System.out.println(s.debug());
 
-		assertThat("First is 1", first.get(), is(1));
-		assertThat("Last is 5", last.get(), is(5));
+		assertThat("First is 1", first.tap().get(), is(1));
+		assertThat("Last is 5", last.tap().get(), is(5));
 	}
 
 	@Test

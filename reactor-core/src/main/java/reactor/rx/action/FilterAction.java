@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
@@ -94,4 +95,12 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 		return elseComposable;
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	protected void doSubscribe(Subscription subscription) {
+		super.doSubscribe(subscription);
+		if(elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())){
+			((Action<T,E>)elseComposable).onSubscribe(subscription);
+		}
+	}
 }

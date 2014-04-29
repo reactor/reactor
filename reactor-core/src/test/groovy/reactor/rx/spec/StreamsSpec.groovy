@@ -220,22 +220,6 @@ class StreamsSpec extends Specification {
 
 	}
 
-	def 'When the number of values is unknown, last is never updated'() {
-		given:
-			'a composable that will accept an unknown number of values'
-			def d = Streams.<Integer>defer()
-			Stream composable = d
-
-		when:
-			'last is retrieved'
-			composable.last().tap()
-
-		then:
-			"can't call last() on unbounded stream"
-			thrown(IllegalStateException)
-
-	}
-
 	def 'Last value of a batch is accessible'() {
 		given:
 			'a composable that will accept an unknown number of values'
@@ -290,8 +274,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts a value'
+			println source.debug()
 			def value = mapped.tap()
 			source.broadcastNext(1)
+			println source.debug()
 
 		then:
 			'the value is mapped'
@@ -408,10 +394,12 @@ class StreamsSpec extends Specification {
 			Stream mapped = source.map(function { if(it==1) throw new RuntimeException() else 'na' })
 			def errors = 0
 			mapped.when(Exception, consumer { errors++ })
+			mapped.resume()
 
 		when:
 			'the source accepts a value'
 			source.broadcastNext(1)
+		println source.debug()
 
 		then:
 			'the error is passed on'
@@ -425,6 +413,7 @@ class StreamsSpec extends Specification {
 			Stream filtered = source.filter(predicate { if(it == 1) throw new RuntimeException() else true })
 			def errors = 0
 			filtered.when(Exception, consumer { errors++ })
+			filtered.resume()
 
 		when:
 			'the source accepts a value'
@@ -567,8 +556,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'use an initial value'
-			value = source.reduce(new Reduction(), 2).tap()
+			reduced = source.reduce(new Reduction(), 2)
+			value = reduced.tap()
 			source.broadcastNext(1)
+			reduced.start()
 
 		then:
 			'the updated reduction is available'

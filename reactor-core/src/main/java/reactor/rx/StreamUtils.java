@@ -128,7 +128,7 @@ public abstract class StreamUtils {
 		private <O> void renderMapMany(Stream<O> consumer, int d) {
 			if (MapManyAction.class.isAssignableFrom(consumer.getClass())) {
 				MapManyAction<O, ?, Pipeline<?>> operation = (MapManyAction<O, ?, Pipeline<?>>) consumer;
-				loopSubscriptions(operation.mergedStream().getSubscriptions(), d + 2);
+				parseComposable(operation.mergedStream(), d + 2);
 			}
 		}
 

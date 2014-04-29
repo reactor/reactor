@@ -45,7 +45,14 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 	protected void doNext(I value) {
 		mergeAction.runningComposables.incrementAndGet();
 		E val = fn.apply(value);
-		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher()) {
+		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
+
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				super.doSubscribe(subscription);
+				available();
+			}
+
 			@Override
 			protected void doFlush() {
 				mergeAction.doFlush();
@@ -66,9 +73,9 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 				mergeAction.doError(ev);
 			}
 		};
-		inlineMerge.prefetch(getBatchSize());
+		inlineMerge.prefetch(batchSize);
 
-		val.connect(inlineMerge);
+		val.subscribe(inlineMerge);
 	}
 
 	@Override

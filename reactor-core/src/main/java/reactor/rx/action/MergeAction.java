@@ -15,7 +15,10 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
+import reactor.rx.StreamSubscription;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,39 +28,37 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MergeAction<O> extends Action<O, O> {
 
-	final AtomicInteger runningComposables;
-	final Action<O, ?>  delegateAction;
+	final AtomicInteger  runningComposables;
+	final Subscription[] subscriptions;
+	final Action<O, ?>   processingAction;
 
 	private final static Pipeline[] EMPTY_PIPELINE = new Pipeline[0];
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher) {
-		this(dispatcher, Integer.MAX_VALUE, null, EMPTY_PIPELINE);
+		this(dispatcher, null, EMPTY_PIPELINE);
 	}
 
-	public MergeAction(Dispatcher dispatcher, Pipeline<O>... composables) {
-		this(dispatcher, composables.length + 1, null, composables);
-	}
-
-	public MergeAction(Dispatcher dispatcher, int length, Pipeline<O>... composables) {
-		this(dispatcher, length, null, composables);
-	}
-
-	public MergeAction(Dispatcher dispatcher, int length, final Action<O, ?> delegateAction,
-	                   Pipeline<O>... composables) {
+	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Pipeline<O>... composables) {
 		super(dispatcher);
-		this.delegateAction = delegateAction;
+		this.processingAction = processingAction;
+		this.subscriptions = new Subscription[composables.length];
 
 		if (composables != null && composables.length > 0) {
-			this.runningComposables = new AtomicInteger(length);
-			for (Pipeline<O> composable : composables) {
+			this.runningComposables = new AtomicInteger(composables.length);
+			Pipeline<O> composable;
+			for (int i = 0; i < composables.length; i++) {
+				final int pos = i;
+				composable = composables[i];
 				composable.connect(new Action<O, O>(dispatcher) {
+					@Override
+					protected void doSubscribe(Subscription subscription) {
+						subscriptions[pos] = subscription;
+					}
+
 					@Override
 					protected void doFlush() {
 						MergeAction.this.doFlush();
-						if (delegateAction != null) {
-							delegateAction.onFlush();
-						}
 					}
 
 					@Override
@@ -68,17 +69,11 @@ public class MergeAction<O> extends Action<O, O> {
 					@Override
 					protected void doNext(O ev) {
 						MergeAction.this.doNext(ev);
-						if (delegateAction != null) {
-							delegateAction.onNext(ev);
-						}
 					}
 
 					@Override
 					protected void doError(Throwable ev) {
 						MergeAction.this.doError(ev);
-						if (delegateAction != null) {
-							delegateAction.onError(ev);
-						}
 					}
 				});
 			}
@@ -88,17 +83,65 @@ public class MergeAction<O> extends Action<O, O> {
 	}
 
 	@Override
+	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+		return new StreamSubscription<O>(this, subscriber) {
+			@Override
+			public void requestMore(int elements) {
+				super.requestMore(elements);
+				for (Subscription subscription : subscriptions) {
+					if (subscription != null) {
+						subscription.requestMore(elements);
+					}
+				}
+			}
+		};
+	}
+
+	@Override
 	protected void doNext(O ev) {
-		broadcastNext(ev);
+		if (processingAction != null) {
+			processingAction.doNext(ev);
+		} else {
+			broadcastNext(ev);
+		}
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		if (processingAction != null) {
+			processingAction.onSubscribe(subscription);
+		} else {
+			super.doSubscribe(subscription);
+		}
+	}
+
+	@Override
+	protected void doFlush() {
+		if (processingAction != null) {
+			processingAction.doFlush();
+		} else {
+			super.doFlush();
+		}
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		if (processingAction != null) {
+			processingAction.doError(ev);
+		} else {
+			super.doError(ev);
+		}
 	}
 
 	@Override
 	protected void doComplete() {
 		if (runningComposables.decrementAndGet() == 0) {
-			broadcastComplete();
-			if (delegateAction != null) {
-				delegateAction.onComplete();
+			if (processingAction == null) {
+				broadcastComplete();
+			} else {
+				processingAction.onComplete();
 			}
+
 		}
 	}
 

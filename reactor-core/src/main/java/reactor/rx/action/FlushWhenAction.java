@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Predicate;
 import reactor.rx.Stream;
@@ -35,6 +36,11 @@ public class FlushWhenAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void doSubscribe(Subscription subscription){
+		available();
+	}
+
+	@Override
 	protected void doNext(T value) {
 		if (consumer.test(value)) {
 			flushOutput.broadcastFlush();
@@ -42,7 +48,7 @@ public class FlushWhenAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public void onComplete() {
-		//IGNORE
+	public Subscription getSubscription() {
+		return super.getSubscription();
 	}
 }

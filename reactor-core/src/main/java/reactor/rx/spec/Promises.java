@@ -219,7 +219,7 @@ public abstract class Promises {
 		collectAction.env(promises[0].getEnvironment());
 		Promise<List<T>> resultPromise = next(collectAction);
 
-		new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, collectAction, promises);
+		new MergeAction<T>(SynchronousDispatcher.INSTANCE, collectAction, promises);
 
 		return resultPromise;
 	}
@@ -247,10 +247,12 @@ public abstract class Promises {
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises.length, promises);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises);
 		mergeAction.env(promises[0].getEnvironment());
+		Promise<T> resultPromise = Promise.wrap(mergeAction);
+		mergeAction.subscribe(resultPromise);
 
-		return Promise.wrap(mergeAction);
+		return resultPromise;
 	}
 
 
@@ -290,22 +292,22 @@ public abstract class Promises {
 
 			@Override
 			protected void doFlush() {
-				resultPromise.broadcastFlush();
+				resultPromise.onFlush();
 			}
 
 			@Override
 			protected void doComplete() {
-				resultPromise.broadcastComplete();
+				resultPromise.onComplete();
 			}
 
 			@Override
 			protected void doNext(T ev) {
-				resultPromise.broadcastNext(ev);
+				resultPromise.onNext(ev);
 			}
 
 			@Override
 			protected void doError(Throwable ev) {
-				resultPromise.broadcastError(ev);
+				resultPromise.onError(ev);
 			}
 		});
 

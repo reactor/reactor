@@ -36,7 +36,7 @@ public class StreamSubscription<O> implements Subscription {
 	protected final AtomicLong    capacity;
 	final Queue<O> buffer = new ConcurrentLinkedQueue<O>();
 
-	boolean terminated;
+	protected boolean terminated;
 
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
@@ -52,15 +52,16 @@ public class StreamSubscription<O> implements Subscription {
 			return;
 		}
 
-		if (elements <= 0) {
-			throw new IllegalArgumentException("Cannot request negative number");
-		}
+		checkRequestSize(elements);
 
 		long currentCapacity = capacity.addAndGet(elements);
 		long i = 0;
 		O element;
 		while (i++ < currentCapacity && (element = buffer.poll()) != null) {
 			onNext(element);
+		}
+		if (terminated) {
+			onComplete();
 		}
 	}
 
@@ -113,9 +114,6 @@ public class StreamSubscription<O> implements Subscription {
 			// we just decremented below 0 so increment back one
 			capacity.incrementAndGet();
 		}
-		if(terminated){
-			onComplete();
-		}
 	}
 
 	public void onComplete(){
@@ -131,5 +129,11 @@ public class StreamSubscription<O> implements Subscription {
 
 	public AtomicLong getCapacity() {
 		return capacity;
+	}
+
+	protected void checkRequestSize(int elements){
+		if (elements <= 0) {
+			throw new IllegalArgumentException("Cannot request negative number");
+		}
 	}
 }

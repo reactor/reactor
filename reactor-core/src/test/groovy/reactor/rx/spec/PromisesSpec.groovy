@@ -46,6 +46,7 @@ class PromisesSpec extends Specification {
 		when:
 			"the promise is rejected"
 			promise.broadcastError new Exception()
+		println promise.debug()
 
 		then:
 			"the consumer is invoked with the promise"
@@ -316,7 +317,7 @@ class PromisesSpec extends Specification {
 			"the original promise is fulfilled"
 			println promise.debug()
 			promise.broadcastNext 1
-			println promise.debug()
+			println mappedPromise.debug()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -651,7 +652,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"it is fulfilled"
-			promise.get() == 1
+			promise.await() == 1
 			promise.success
 	}
 
@@ -659,7 +660,7 @@ class PromisesSpec extends Specification {
 		when:
 			"A promise configured with a supplier that throws an exception"
 			def promise = Promises.task(supplier { throw new RuntimeException() })
-			promise.get()
+			promise.await()
 
 		then:
 			"it is rejected"

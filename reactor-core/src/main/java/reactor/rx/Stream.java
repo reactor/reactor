@@ -82,7 +82,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	public Stream(Dispatcher dispatcher) {
-		this(dispatcher, -1);
+		this(dispatcher, Integer.MAX_VALUE);
 	}
 
 	public Stream(Dispatcher dispatcher, int batchSize) {
@@ -117,7 +117,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public <E> Stream<E> connect(@Nonnull final Action<O, E> stream) {
 		stream.prefetch(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
-		this.produceTo(stream);
+		this.subscribe(stream);
 		return stream;
 	}
 
@@ -151,7 +151,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return {@literal this}
 	 */
 	public Stream<O> consume(@Nonnull final Consumer<O> consumer) {
-		connect(new CallbackAction<O>(dispatcher, consumer));
+		connect(new CallbackAction<O>(dispatcher, consumer, true));
 		return this;
 	}
 
@@ -202,7 +202,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public <V, C extends Stream<V>> Stream<V> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
-		return connect(d);
+		connect(d);
+		return d.mergedStream();
 	}
 
 	/**
@@ -213,8 +214,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return the merged stream
 	 * @since 1.1
 	 */
+	@SuppressWarnings("unchecked")
 	public Stream<O> merge(Stream<O>... composables) {
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, composables);
+		Stream<O>[] thisAndComposable = new Stream[composables.length+1];
+		thisAndComposable[0] = this;
+		System.arraycopy(composables,0, thisAndComposable,1, composables.length);
+
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, thisAndComposable);
 		return connect(mergeAction);
 	}
 
@@ -285,7 +291,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public <E> Stream<E> propagate(final Supplier<E> supplier) {
 		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
 		d.env(environment).setKeepAlive(keepAlive);
-		produceTo(d);
+		subscribe(d);
 		return d;
 	}
 
@@ -327,7 +333,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public Stream<O> first(int batchSize) {
 		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
-		produceTo(d);
+		subscribe(d);
 		return d;
 	}
 
@@ -349,7 +355,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public Stream<O> last(int batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
-		produceTo(d);
+		subscribe(d);
 		return d;
 	}
 
@@ -392,7 +398,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
-		iterableStream.produceTo(d);
+		iterableStream.subscribe(d);
 		return d;
 	}
 
@@ -406,7 +412,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public Tap<O> tap() {
 		final Tap<O> tap = new Tap<O>();
-		consume(tap);
+		connect(new CallbackAction<O>(dispatcher, tap, true));
 		return tap;
 	}
 
@@ -431,8 +437,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public CollectAction<O> collect(int batchSize) {
 		final CollectAction<O> d = new CollectAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
-		;
-		produceTo(d);
+		subscribe(d);
 		return d;
 	}
 
@@ -568,8 +573,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				timer,
 				period, timeUnit, delay, backlog);
 		d.prefetch(backlog).env(environment).setKeepAlive(keepAlive);
-		;
-		produceTo(d);
+		subscribe(d);
 		return d;
 	}
 
@@ -612,7 +616,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher
 		);
 		stream.env(environment).setKeepAlive(keepAlive);
-		produceTo(stream);
+		subscribe(stream);
 		return stream;
 	}
 
@@ -775,7 +779,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
 					try {
 						subscription.onNext(ev);
-						if (state == State.COMPLETE) {
+						if (subscription.terminated || state == State.COMPLETE) {
 							subscription.onComplete();
 						}
 					} catch (Throwable throwable) {
@@ -835,7 +839,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastError(final Throwable throwable) {
 		if (!checkState()) return;
 
-		log.error(this.getClass().getSimpleName() + " > OUT onError:" + this, throwable);
+		log.error(this.getClass().getSimpleName() + " > OUT onError:" + this, new Exception(throwable));
 
 		state = State.ERROR;
 		error = throwable;
@@ -941,7 +945,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		subscription.subscriber.onError(cause);
 	}
 
-	private boolean checkState() {
+	protected boolean checkState() {
 		return state != State.ERROR && state != State.COMPLETE && state != State.SHUTDOWN;
 
 	}
@@ -957,6 +961,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public String toString() {
 		return "Stream{" +
 				"state=" + state +
+				", keepAlive=" + keepAlive +
 				'}';
 	}
 

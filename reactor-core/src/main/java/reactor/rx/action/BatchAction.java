@@ -45,7 +45,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void nextCallback(T event) {
 	}
 
-	protected void flushCallback(T event) {
+	protected void  flushCallback(T event) {
 	}
 
 	protected void firstCallback(T event) {
@@ -53,15 +53,10 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		if (getBatchSize() == -1) {
-			nextCallback(value);
-			return;
-		}
-
 		lock.lock();
 		long accepted;
 		try {
-			accepted = (++acceptCount) % getBatchSize();
+			accepted = (++acceptCount) % batchSize;
 
 			if (first && accepted == 1) {
 				firstCallback(value);
@@ -77,7 +72,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		} finally {
 			lock.unlock();
 		}
-
 		if(accepted == 0){
 			available();
 		}
@@ -114,6 +108,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			lock.unlock();
 		}
 		super.doFlush();
+		available();
 	}
 
 
