@@ -283,6 +283,7 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.connect("localhost", port)
+				.uncaughtErrorHandler(t -> {}) // ignore channel errors
 				.get();
 
 		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)
