@@ -80,11 +80,10 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		if ("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			if (log.isInfoEnabled()) {
-				log.info(ctx.channel().toString() + " " + cause.getMessage());
+			if (log.isDebugEnabled()) {
+				log.debug(ctx.channel().toString() + " " + cause.getMessage());
 			}
 		}
-
 		netChannel.notifyError(cause);
 		ctx.close();
 	}
