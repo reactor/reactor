@@ -65,6 +65,7 @@ public class Reactor implements Observable {
 	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private final EventRouter                            eventRouter;
 	private final Consumer<Throwable>                    dispatchErrorHandler;
+	private final Consumer<Throwable>                    uncaughtErrorHandler;
 
 	private volatile UUID id;
 
@@ -123,7 +124,7 @@ public class Reactor implements Observable {
 	               @Nullable Dispatcher dispatcher,
 	               @Nullable EventRouter eventRouter,
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	               @Nullable Consumer<Throwable> uncaughtErrorHandler) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
 		this.dispatcher = (null == dispatcher ? new SynchronousDispatcher() : dispatcher);
@@ -143,19 +144,20 @@ public class Reactor implements Observable {
 		} else {
 			this.dispatchErrorHandler = dispatchErrorHandler;
 		}
+		this.uncaughtErrorHandler = uncaughtErrorHandler;
 
 		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
 			Logger log;
 
 			@Override
 			public void accept(Event<Throwable> ev) {
-				if (null == uncaughtErrorHandler) {
+				if (null == Reactor.this.uncaughtErrorHandler) {
 					if (null == log) {
 						log = LoggerFactory.getLogger(Reactor.class);
 					}
 					log.error(ev.getData().getMessage(), ev.getData());
 				} else {
-					uncaughtErrorHandler.accept(ev.getData());
+					Reactor.this.uncaughtErrorHandler.accept(ev.getData());
 				}
 			}
 		});
@@ -201,6 +203,13 @@ public class Reactor implements Observable {
 		return eventRouter;
 	}
 
+	public Consumer<Throwable> getDispatchErrorHandler() {
+		return dispatchErrorHandler;
+	}
+
+	public Consumer<Throwable> getUncaughtErrorHandler() {
+		return uncaughtErrorHandler;
+	}
 
 	@Override
 	public boolean respondsToKey(Object key) {
