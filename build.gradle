@@ -25,8 +25,8 @@ ext {
 	groovyVersion = '2.3.0'
 
 	// Logging
-	slf4jVersion = '1.7.6'
-	logbackVersion = '1.1.1'
+	slf4jVersion = '1.7.7'
+	logbackVersion = '1.1.2'
 
 	// Libraries
 	disruptorVersion = '3.2.1'
@@ -75,7 +75,6 @@ configure(allprojects) { project ->
 
 	apply plugin: 'propdeps'
 	apply plugin: 'java'
-	apply plugin: 'groovy'
 	apply from: "${gradleScriptDir}/ide.gradle"
 
 	[compileJava, compileTestJava]*.options*.compilerArgs = [
@@ -121,8 +120,8 @@ configure(allprojects) { project ->
 	}
 
 	configurations.all {
-		exclude group: 'commons-logging'
-		exclude module: 'junit'
+		exclude group: 'commons-logging', module: 'commons-logging'
+		//exclude module: 'junit'
 	}
 
 	test {
@@ -256,6 +255,7 @@ project('reactor-core') {
 	description = 'Core Reactor components'
 
 	apply plugin: 'osgi'
+	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'net.openhft.chronicle;resolution:=optional',
@@ -368,8 +368,10 @@ project('reactor-logback') {
 }
 
 project('reactor-net') {
-	apply plugin: 'osgi'
 	description = 'Reactor TCP components'
+
+	apply plugin: 'osgi'
+	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'org.zeromq;resolution:=optional',
@@ -399,9 +401,4 @@ project('reactor-net') {
 			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
 	}
-}
-
-task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
-	group = 'Project Setup'
-	gradleVersion = "$gradleVersion"
 }
