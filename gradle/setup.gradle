@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: "sonar-runner"
+apply plugin: 'groovy'
+apply plugin: 'sonar-runner'
 
 sonarRunner {
 	sonarProperties {
@@ -30,6 +31,11 @@ sonarRunner {
 	}
 }
 
+task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
+	group = 'Project Setup'
+	gradleVersion = "$gradleVersion"
+}
+
 configure(subprojects) { subproject ->
 	apply plugin: 'propdeps-maven'
 	apply plugin: 'maven'
@@ -38,6 +44,33 @@ configure(subprojects) { subproject ->
 		repositories.mavenInstaller {
 			customizePom(pom, subproject)
 		}
+	}
+
+	jar {
+		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
+		manifest.attributes["Implementation-Title"] = subproject.name
+		manifest.attributes["Implementation-Version"] = subproject.version
+	}
+
+	task sourcesJar(type: Jar) {
+		classifier = 'sources'
+		from sourceSets.main.allSource
+	}
+
+	task groovydocJar(type: Jar) {
+		classifier = 'groovydoc'
+		from groovydoc
+	}
+
+	task javadocJar(type: Jar) {
+		classifier = 'javadoc'
+		from javadoc
+	}
+
+	artifacts {
+		archives sourcesJar
+		archives javadocJar
+		archives groovydocJar
 	}
 }
 
