@@ -39,16 +39,16 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		if (prefetch) {
-			available();
+			subscription.requestMore(Integer.MAX_VALUE);
 		}
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		int counted = count.getAndIncrement();
+		int counted = count.incrementAndGet();
 		consumer.accept(ev);
-		if(counted >= batchSize){
-			available();
+		if(counted % Integer.MAX_VALUE == 0){
+			getSubscription().requestMore(Integer.MAX_VALUE);
 		}
 	}
 

@@ -45,7 +45,6 @@ public class ScanAction<T, A> extends Action<T,A> {
 		}
 		acc = fn.apply(Tuple.of(ev, acc));
 		broadcastNext(acc);
-		getSubscription().requestMore(1);
 	}
 
 }

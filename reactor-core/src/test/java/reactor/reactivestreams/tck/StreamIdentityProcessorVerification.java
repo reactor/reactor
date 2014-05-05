@@ -26,6 +26,7 @@ import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
+import reactor.tuple.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,10 +60,14 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 		return action
 				.env(env)
 				.prefetch(bufferSize)
+				.buffer()
 				.map(integer -> integer)
 				.distinctUntilChanged()
 				.filter(integer -> integer >= 0)
 				.flatMap(integer -> Promises.success(integer))
+				.scan(Tuple2<Integer, Integer>::getT1)
+				.collect(1)
+				.<Integer>split()
 				.combine();
 	}
 

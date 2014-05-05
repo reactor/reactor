@@ -76,8 +76,7 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 			}
 		};
 		val.subscribe(inlineMerge);
-		inlineMerge.prefetch(batchSize);
-		inlineMerge.available();
+		inlineMerge.prefetch(batchSize).available();
 	}
 
 	@Override

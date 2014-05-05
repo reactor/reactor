@@ -229,7 +229,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a buffered stream
 	 * @since 1.1
 	 */
-	public Stream<O> buffer() {
+	public Action<O,O> buffer() {
 		return connect(new Action<O, O>(dispatcher, batchSize) {
 			@Override
 			protected void doNext(O ev) {
@@ -364,7 +364,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 * @since 1.1
 	 */
-	public <V, T extends Iterable<V>> ForEachAction<V> split() {
+	public <V> ForEachAction<V> split() {
 		return split(batchSize);
 	}
 
@@ -378,7 +378,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public <V, T extends Iterable<V>> ForEachAction<V> split(int batchSize) {
+	public <V> ForEachAction<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
