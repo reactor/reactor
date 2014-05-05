@@ -41,13 +41,14 @@ public class MergeAction<O> extends Action<O, O> {
 
 	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Pipeline<O>... composables) {
 		super(dispatcher);
+		int length = composables.length;
 		this.processingAction = processingAction;
-		this.subscriptions = new Subscription[composables.length];
+		this.subscriptions = new Subscription[length];
 
-		if (composables != null && composables.length > 0) {
-			this.runningComposables = new AtomicInteger(composables.length);
+		if (composables != null && length > 0) {
+			this.runningComposables = new AtomicInteger(processingAction == null ? length + 1 : length);
 			Pipeline<O> composable;
-			for (int i = 0; i < composables.length; i++) {
+			for (int i = 0; i < length; i++) {
 				final int pos = i;
 				composable = composables[i];
 				composable.connect(new Action<O, O>(dispatcher) {
@@ -88,13 +89,13 @@ public class MergeAction<O> extends Action<O, O> {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void requestMore(int elements) {
-					super.requestMore(elements);
-					requestUpstream(capacity, terminated, elements);
+					super.requestMore(elements * (subscriptions.length + 1));
 					for (Subscription subscription : subscriptions) {
 						if (subscription != null) {
 							subscription.requestMore(elements);
 						}
 					}
+					requestUpstream(capacity, terminated, elements);
 				}
 
 				@Override

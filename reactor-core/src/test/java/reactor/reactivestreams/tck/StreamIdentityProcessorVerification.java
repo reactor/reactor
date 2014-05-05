@@ -24,6 +24,7 @@ import reactor.core.Environment;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 
 import java.util.ArrayList;
@@ -55,15 +56,13 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			}
 		};
 
-		List<Integer> negativeIntegers = new ArrayList<Integer>(bufferSize);
-		int mergedSize = 3;
-		for(int i = 1;i<mergedSize; i++){
-			negativeIntegers.add(-i);
-		}
-
-		action.env(env).prefetch(bufferSize);
 		return action
+				.env(env)
+				.prefetch(bufferSize)
 				.map(integer -> integer)
+				.distinctUntilChanged()
+				.filter(integer -> integer >= 0)
+				.flatMap(integer -> Promises.success(integer))
 				.combine();
 	}
 
@@ -74,10 +73,18 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			for (int i = 1; i <= elements; i++) {
 				list.add(i);
 			}
-			return Streams.defer(list).filter(integer -> true).map(integer -> integer);
+
+			return Streams
+					.defer(list, env)
+					.filter(integer -> true)
+					.map(integer -> integer);
+
 		} else {
 			final Random random = new Random();
-			return Streams.defer((Supplier<Integer>) random::nextInt).map(integer -> integer);
+
+			return Streams
+					.defer((Supplier<Integer>) random::nextInt, env)
+					.map(Math::abs);
 		}
 	}
 

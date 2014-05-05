@@ -21,6 +21,7 @@ import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
@@ -112,7 +113,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		if (subscription != null && !terminated) {
 			int currentCapacity = capacity.intValue();
 			if (!pause && currentCapacity > 0) {
-				elements = elements < batchSize ? batchSize : elements;
 				int remaining = currentCapacity > elements ? elements : currentCapacity;
 				subscription.requestMore(remaining);
 			}
@@ -124,6 +124,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return new StreamSubscription<O>(this, subscriber) {
 			@Override
 			public void requestMore(int elements) {
+				log.info("{} is requesting {} element(s)", subscriber, elements);
 				super.requestMore(elements);
 				requestUpstream(capacity, terminated, elements);
 			}
@@ -280,6 +281,11 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public Action<I,O> prefetch(int elements) {
 		return (Action<I,O>)super.prefetch(elements);
+	}
+
+	@Override
+	public Action<I,O> env(Environment environment) {
+		return (Action<I,O>)super.env(environment);
 	}
 
 	protected void doFlush() {

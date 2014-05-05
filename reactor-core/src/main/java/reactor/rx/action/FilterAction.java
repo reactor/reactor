@@ -100,7 +100,7 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
 		if(elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())){
-			((Action<T,E>)elseComposable).onSubscribe(subscription);
+			((Action<T,E>)elseComposable).prefetch(batchSize).onSubscribe(subscription);
 		}
 	}
 }

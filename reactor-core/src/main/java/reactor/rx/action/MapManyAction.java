@@ -42,7 +42,6 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		this.mergeAction = new MergeAction<O>(dispatcher){
 			@Override
 			protected void requestUpstream(AtomicLong currentCapacity, boolean terminated, int elements) {
-				super.requestUpstream(currentCapacity, terminated, elements);
 				if(currentCapacity.get() > 0){
 					MapManyAction.this.requestUpstream(currentCapacity, terminated, elements);
 				}
@@ -83,6 +82,7 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription){
+		mergeAction.prefetch(batchSize);
 		mergeAction.onSubscribe(subscription);
 	}
 
