@@ -84,17 +84,32 @@ public class MergeAction<O> extends Action<O, O> {
 
 	@Override
 	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
-		return new StreamSubscription<O>(this, subscriber) {
-			@Override
-			public void requestMore(int elements) {
-				super.requestMore(elements);
-				for (Subscription subscription : subscriptions) {
-					if (subscription != null) {
-						subscription.requestMore(elements);
+		if (subscriptions.length > 0) {
+			return new StreamSubscription<O>(this, subscriber) {
+				@Override
+				public void requestMore(int elements) {
+					super.requestMore(elements);
+					requestUpstream(capacity, terminated, elements);
+					for (Subscription subscription : subscriptions) {
+						if (subscription != null) {
+							subscription.requestMore(elements);
+						}
 					}
 				}
-			}
-		};
+
+				@Override
+				public void cancel() {
+					super.cancel();
+					for (Subscription subscription : subscriptions) {
+						if (subscription != null) {
+							subscription.cancel();
+						}
+					}
+				}
+			};
+		} else {
+			return super.createSubscription(subscriber);
+		}
 	}
 
 	@Override

@@ -47,8 +47,4 @@ public class FlushWhenAction<T> extends Action<T, Void> {
 		}
 	}
 
-	@Override
-	public Subscription getSubscription() {
-		return super.getSubscription();
-	}
 }

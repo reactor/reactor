@@ -358,8 +358,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'simple filter'
-			anotherSource = Streams.<Boolean> defer()
-			tap = anotherSource.filter().tap()
+			def anotherSource = Streams.<Boolean> defer()
+			def tap = anotherSource.filter().tap()
 			anotherSource.broadcastNext(true)
 
 		then:

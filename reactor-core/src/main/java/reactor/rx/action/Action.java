@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import org.reactivestreams.api.Processor;
+import org.reactivestreams.spi.Publisher;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 import org.slf4j.Logger;
@@ -31,6 +32,8 @@ import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
 import reactor.timer.Timer;
 import reactor.util.Assert;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -99,25 +102,30 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return this;
 	}
 
-	public void available(){
-		if(subscription != null && !pause){
+	public void available() {
+		if (subscription != null && !pause) {
 			subscription.requestMore(batchSize);
 		}
 	}
 
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+		if (subscription != null && !terminated) {
+			int currentCapacity = capacity.intValue();
+			if (!pause && currentCapacity > 0) {
+				elements = elements < batchSize ? batchSize : elements;
+				int remaining = currentCapacity > elements ? elements : currentCapacity;
+				subscription.requestMore(remaining);
+			}
+		}
+	}
+
 	@Override
-	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
 		return new StreamSubscription<O>(this, subscriber) {
 			@Override
 			public void requestMore(int elements) {
 				super.requestMore(elements);
-				if (subscription != null && !terminated) {
-					long currentCapacity = capacity.get();
-					if (!pause && currentCapacity > 0) {
-						int remaining = currentCapacity > elements ? elements : (int) currentCapacity;
-						subscription.requestMore(remaining);
-					}
-				}
+				requestUpstream(capacity, terminated, elements);
 			}
 		};
 	}
@@ -181,7 +189,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this, new Exception(throwable));
+					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this,
+							new Exception(throwable));
 					doError(throwable);
 				}
 			};
@@ -209,19 +218,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 */
 	@Override
 	public void start() {
-		Stream<?> stream = findOldestStream();
-		if (Flushable.class.isAssignableFrom(stream.getClass())) {
-			((Flushable) stream).onFlush();
-		} else {
-			stream.broadcastFlush();
-		}
+		Action<?, ?> stream = findOldestStream();
+		stream.onFlush();
 	}
 
 	@Override
 	protected void removeSubscription(StreamSubscription<O> sub) {
 		super.removeSubscription(sub);
-		if (subscription != null)
+		if(getState() == State.SHUTDOWN && subscription != null){
 			subscription.cancel();
+		}
 	}
 
 	@Override
@@ -248,6 +254,34 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return StreamUtils.browse(findOldestStream());
 	}
 
+	@SuppressWarnings("unchecked")
+	public <E> Processor<E, O> combine() {
+		final Subscriber<E> subscriber = (Subscriber<E>)findOldestStream();
+		final Publisher<O> publisher = this;
+
+		return new Processor<E, O>() {
+			@Override
+			public Subscriber<E> getSubscriber() {
+				return subscriber;
+			}
+
+			@Override
+			public Publisher<O> getPublisher() {
+				return publisher;
+			}
+
+			@Override
+			public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
+				publisher.subscribe(consumer.getSubscriber());
+			}
+		};
+	}
+
+	@Override
+	public Action<I,O> prefetch(int elements) {
+		return (Action<I,O>)super.prefetch(elements);
+	}
+
 	protected void doFlush() {
 		broadcastFlush();
 	}
@@ -266,7 +300,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		broadcastError(ev);
 	}
 
-	private Stream<?> findOldestStream() {
+	private Action<?, ?> findOldestStream() {
 		Action<?, ?> that = this;
 
 		while (that.subscription != null

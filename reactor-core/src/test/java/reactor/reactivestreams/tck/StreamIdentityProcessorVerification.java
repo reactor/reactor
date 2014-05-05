@@ -54,8 +54,17 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 				return "Identity " + super.toString();
 			}
 		};
+
+		List<Integer> negativeIntegers = new ArrayList<Integer>(bufferSize);
+		int mergedSize = 3;
+		for(int i = 1;i<mergedSize; i++){
+			negativeIntegers.add(-i);
+		}
+
 		action.env(env).prefetch(bufferSize);
-		return action;
+		return action
+				.map(integer -> integer)
+				.combine();
 	}
 
 	@Override

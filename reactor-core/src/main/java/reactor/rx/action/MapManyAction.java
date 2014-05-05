@@ -15,12 +15,13 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.api.Consumer;
 import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
 import reactor.util.Assert;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -38,7 +39,16 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		super(dispatcher);
 		Assert.notNull(fn, "FlatMap function cannot be null.");
 		this.fn = fn;
-		this.mergeAction = new MergeAction<O>(dispatcher);
+		this.mergeAction = new MergeAction<O>(dispatcher){
+			@Override
+			protected void requestUpstream(AtomicLong currentCapacity, boolean terminated, int elements) {
+				super.requestUpstream(currentCapacity, terminated, elements);
+				if(currentCapacity.get() > 0){
+					MapManyAction.this.requestUpstream(currentCapacity, terminated, elements);
+				}
+			}
+		};
+		this.mergeAction.runningComposables.incrementAndGet();
 	}
 
 	@Override
@@ -46,13 +56,6 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		mergeAction.runningComposables.incrementAndGet();
 		E val = fn.apply(value);
 		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
-
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				super.doSubscribe(subscription);
-				available();
-			}
-
 			@Override
 			protected void doFlush() {
 				mergeAction.doFlush();
@@ -73,9 +76,14 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 				mergeAction.doError(ev);
 			}
 		};
-		inlineMerge.prefetch(batchSize);
-
 		val.subscribe(inlineMerge);
+		inlineMerge.prefetch(batchSize);
+		inlineMerge.available();
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription){
+		mergeAction.onSubscribe(subscription);
 	}
 
 	@Override
@@ -94,31 +102,15 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		available();
-	}
-
-	@Override
 	public Stream<O> resume() {
 		mergeAction.resume();
 		return super.resume();
 	}
 
 	@Override
-	public Stream<O> cancel() {
-		mergeAction.cancel();
-		return super.cancel();
-	}
-
-	@Override
 	public Stream<O> pause() {
 		mergeAction.pause();
 		return super.pause();
-	}
-
-	@Override
-	public void produceTo(Consumer<O> consumer) {
-		mergeAction.produceTo(consumer);
 	}
 
 	public MergeAction<O> mergedStream(){

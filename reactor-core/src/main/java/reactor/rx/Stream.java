@@ -65,7 +65,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	private static final Logger log = LoggerFactory.getLogger(Stream.class);
 
-	private final MultiReaderFastList<StreamSubscription<O>> subscriptions   = MultiReaderFastList.newList(8);
+	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(8);
 
 	protected final Dispatcher dispatcher;
 
@@ -114,7 +114,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	@Override
-	public <E> Stream<E> connect(@Nonnull final Action<O, E> stream) {
+	public <E> Action<O, E> connect(@Nonnull final Action<O, E> stream) {
 		stream.prefetch(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
 		this.subscribe(stream);
@@ -175,7 +175,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Stream} containing the transformed values
 	 */
-	public <V> Stream<V> map(@Nonnull final Function<O, V> fn) {
+	public <V> Action<O, V> map(@Nonnull final Function<O, V> fn) {
 		final MapAction<O, V> d = new MapAction<O, V>(fn, dispatcher);
 		return connect(d);
 	}
@@ -187,7 +187,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
 	 * @since 1.1
 	 */
-	public <V, C extends Stream<V>> Stream<V> flatMap(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Stream<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
 		return mapMany(fn);
 	}
 
@@ -200,7 +200,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} containing the transformed values
 	 * @since 1.1
 	 */
-	public <V, C extends Stream<V>> Stream<V> mapMany(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Stream<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
 		connect(d);
 		return d.mergedStream();
@@ -215,13 +215,11 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public Stream<O> merge(Stream<O>... composables) {
-		Stream<O>[] thisAndComposable = new Stream[composables.length+1];
-		thisAndComposable[0] = this;
-		System.arraycopy(composables,0, thisAndComposable,1, composables.length);
-
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, thisAndComposable);
-		return connect(mergeAction);
+	@SafeVarargs
+	public final MergeAction<O> merge(Stream<O>... composables) {
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, composables);
+		connect(mergeAction);
+		return mergeAction;
 	}
 
 	/**
@@ -232,7 +230,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	public Stream<O> buffer() {
-		return connect(new Action<O, O>(dispatcher, batchSize){
+		return connect(new Action<O, O>(dispatcher, batchSize) {
 			@Override
 			protected void doNext(O ev) {
 				this.broadcastNext(ev);
@@ -274,7 +272,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are generated on each flush
 	 * @since 1.1
 	 */
-	public <E> Stream<E> propagate(final Supplier<E> supplier) {
+	public <E> SupplierAction<O, E> propagate(final Supplier<E> supplier) {
 		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -297,7 +295,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to
 	 * have been set.
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
@@ -310,13 +308,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to
 	 * have been set.
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
-	public Stream<O> first(int batchSize) {
+	public FirstAction<O> first(int batchSize) {
 		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -328,7 +326,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
-	public Stream<O> last() {
+	public LastAction<O> last() {
 		return last(batchSize);
 	}
 
@@ -338,7 +336,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
-	public Stream<O> last(int batchSize) {
+	public LastAction<O> last(int batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -352,7 +350,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 * @since 1.1
 	 */
-	public Stream<O> distinctUntilChanged() {
+	public Action<O, O> distinctUntilChanged() {
 		final DistinctUntilChangedAction<O> d = new DistinctUntilChangedAction<O>(dispatcher);
 		return connect(d);
 	}
@@ -360,19 +358,19 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
 	 * @since 1.1
 	 */
-	public <V, T extends Iterable<V>> Stream<V> split() {
+	public <V, T extends Iterable<V>> ForEachAction<V> split() {
 		return split(batchSize);
 	}
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p/>
+	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
@@ -380,7 +378,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public <V,T extends Iterable<V>> Stream<V> split(int batchSize) {
+	public <V, T extends Iterable<V>> ForEachAction<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
@@ -409,7 +407,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @return a new {@code Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
-	public Stream<List<O>> collect() {
+	public CollectAction<O> collect() {
 		return collect(batchSize);
 	}
 
@@ -580,7 +578,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p/>
+	 * <p>
 	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
 	 * only. But when a {@code batchSize} has been, the accumulated
 	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of
@@ -636,7 +634,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p/>
+	 * <p>
 	 * The accumulated value will be published on the returned {@code Stream} every time
 	 * a
 	 * value is accepted.
@@ -907,8 +905,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			@Override
 			public void safeValue(StreamSubscription<O> oStreamSubscription) throws Exception {
 				long capacity = oStreamSubscription.capacity.get();
-				if(capacity > 0){
-					oStreamSubscription.requestMore(batchSize > capacity ? batchSize : (int)capacity);
+				if (capacity > 0) {
+					oStreamSubscription.requestMore(batchSize > capacity ? batchSize : (int) capacity);
 				}
 			}
 		});
