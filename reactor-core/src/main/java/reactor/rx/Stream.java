@@ -187,7 +187,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
 	 * @since 1.1
 	 */
-	public <V, C extends Stream<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Pipeline<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
 		return mapMany(fn);
 	}
 
@@ -200,7 +200,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} containing the transformed values
 	 * @since 1.1
 	 */
-	public <V, C extends Stream<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Pipeline<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
 		connect(d);
 		return d.mergedStream();
