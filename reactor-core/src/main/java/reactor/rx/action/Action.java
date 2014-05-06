@@ -50,6 +50,19 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	private Subscription subscription;
 
+	public static <O> Action<O,O> passthrough(){
+		return passthrough(null);
+	}
+
+	public static <O> Action<O,O> passthrough(Dispatcher dispatcher){
+		return new Action<O,O>(dispatcher){
+			@Override
+			protected void doNext(O ev) {
+				broadcastNext(ev);
+			}
+		};
+	}
+
 	public Action() {
 		super();
 	}

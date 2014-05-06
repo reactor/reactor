@@ -247,12 +247,7 @@ public abstract class Promises {
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		Action<T,T> noop = new Action<T, T>(SynchronousDispatcher.INSTANCE, 1){
-			@Override
-			protected void doNext(T ev) {
-				broadcastNext(ev);
-			}
-		};
+		Action<T,T> noop = Action.<T>passthrough().prefetch(1);
 		Promise<T> resultPromise = Promise.wrap(noop);
 		noop.subscribe(resultPromise);
 

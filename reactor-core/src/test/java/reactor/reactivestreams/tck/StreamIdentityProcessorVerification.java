@@ -46,18 +46,8 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
-		Action<Integer, Integer> action = new Action<Integer, Integer>(env.getDispatcher("ringBuffer")) {
-			@Override
-			protected void doNext(Integer ev) {
-				broadcastNext(ev);
-			}
-
-			public String toString() {
-				return "Identity " + super.toString();
-			}
-		};
-
-		return action
+		return
+				Action.<Integer>passthrough(env.getDispatcher("ringBuffer"))
 				.env(env)
 				.prefetch(bufferSize)
 				.buffer()

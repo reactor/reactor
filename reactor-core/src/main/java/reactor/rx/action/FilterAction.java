@@ -38,12 +38,7 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 
 	@SuppressWarnings("unchecked")
 	public FilterAction(Predicate<T> p, Dispatcher dispatcher) {
-		this(p, dispatcher, (E) new Action<T,T>(dispatcher) {
-			@Override
-			protected void doNext(T ev) {
-				broadcastNext(ev);
-			}
-		});
+		this(p, dispatcher, (E) passthrough(dispatcher));
 	}
 
 	public FilterAction(final Function<T,Boolean> p, Dispatcher dispatcher) {
