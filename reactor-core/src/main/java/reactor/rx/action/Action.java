@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, Subscriber<I>, Flushable {
 
-	private static final Router ROUTER = new ConsumerFilteringRouter(
+	protected static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
 

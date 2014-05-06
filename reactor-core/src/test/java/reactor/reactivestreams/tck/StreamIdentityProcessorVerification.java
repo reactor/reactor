@@ -63,11 +63,15 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 				.buffer()
 				.map(integer -> integer)
 				.distinctUntilChanged()
-				.filter(integer -> integer >= 0)
 				.flatMap(integer -> Promises.success(integer))
 				.scan(Tuple2<Integer, Integer>::getT1)
+				.filter(integer -> integer >= 0)
 				.collect(1)
+				.last()
 				.<Integer>split()
+				.window(100)
+				.<Integer>split()
+				.flatMap(integer -> Streams.defer(integer))
 				.combine();
 	}
 

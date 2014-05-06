@@ -81,8 +81,7 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription){
-		mergeAction.prefetch(batchSize);
-		mergeAction.onSubscribe(subscription);
+		mergeAction.prefetch(batchSize).env(getEnvironment()).onSubscribe(subscription);
 	}
 
 	@Override

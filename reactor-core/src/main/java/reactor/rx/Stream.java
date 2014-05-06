@@ -300,7 +300,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
 	 */
-	public Stream<O> first() {
+	public FirstAction<O> first() {
 		return first(batchSize);
 	}
 
