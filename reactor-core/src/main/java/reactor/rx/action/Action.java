@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.Router;
@@ -51,7 +52,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	private Subscription subscription;
 
 	public static <O> Action<O,O> passthrough(){
-		return passthrough(null);
+		return passthrough(SynchronousDispatcher.INSTANCE);
 	}
 
 	public static <O> Action<O,O> passthrough(Dispatcher dispatcher){

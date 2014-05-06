@@ -55,7 +55,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Flushable {
+public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Consumer<O>, Flushable {
 
 	private final ReentrantLock lock = new ReentrantLock();
 
@@ -599,6 +599,11 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	@Override
 	public void onFlush() {
 		delegateAction.onFlush();
+	}
+
+	@Override
+	public void accept(O o) {
+		onNext(o);
 	}
 
 

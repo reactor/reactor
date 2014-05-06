@@ -5,9 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -18,6 +15,8 @@ import reactor.net.tcp.TcpServer;
 import reactor.net.zmq.ZeroMQNetChannel;
 import reactor.net.zmq.ZeroMQServerSocketOptions;
 import reactor.net.zmq.ZeroMQWorker;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 import reactor.util.UUIDUtils;
@@ -36,6 +35,7 @@ import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
@@ -129,10 +129,10 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	public Promise<Boolean> shutdown() {
 		if (null == worker) {
-			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started")).get();
+			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started"));
 		}
 
-		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		worker.shutdown();
 		if (!workerFuture.isDone()) {
@@ -143,11 +143,11 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			threadPool.awaitTermination(30, TimeUnit.SECONDS);
 			d.accept(true);
 		} catch (InterruptedException e) {
-			d.accept(e);
+			d.broadcastError(e);
 		}
 		notifyShutdown();
 
-		return d.compose();
+		return d;
 	}
 
 }

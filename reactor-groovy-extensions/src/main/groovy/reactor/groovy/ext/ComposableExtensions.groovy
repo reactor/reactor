@@ -18,11 +18,11 @@ package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
 import groovy.transform.TypeCheckingMode
-import reactor.rx.Deferred
-import reactor.rx.Promise
-import reactor.rx.Stream
 import reactor.function.*
 import reactor.groovy.support.*
+import reactor.rx.Promise
+import reactor.rx.Stream
+import reactor.rx.action.Pipeline
 import reactor.tuple.Tuple2
 
 /**
@@ -47,10 +47,6 @@ class ComposableExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T, V> Stream<V> map(final Deferred selfType, final Closure<V> closure) {
-		selfType.compose().map new ClosureFunction<T, V>(closure)
-	}
-
 	static <T, V> Stream<V> map(final Stream<T> selfType, final Closure<V> closure) {
 		selfType.map new ClosureFunction<T, V>(closure)
 	}
@@ -67,12 +63,8 @@ class ComposableExtensions {
 		selfType.mapMany new ClosureFunction<T, C>(closure)
 	}
 
-	static <T, V, C extends Promise<V>> Promise<V> bind(final Promise<T> selfType, final Closure<C> closure) {
-		selfType.mapMany new ClosureFunction<T, C>(closure)
-	}
-
-	static <T> Stream<T> consume(final Deferred selfType, final Closure closure) {
-		selfType.compose().consume new ClosureConsumer<T>(closure)
+	static <T, V, C extends Promise<V>> Promise<V> fork(final Promise<T> selfType, final Closure<C> closure) {
+		selfType.fork new ClosureFunction<T, C>(closure)
 	}
 
 	static <T> Promise<T> consume(final Promise<T> selfType, final Closure closure) {
@@ -83,20 +75,12 @@ class ComposableExtensions {
 		selfType.filter new ClosurePredicate<T>(closure)
 	}
 
-	static <T> Stream<T> filter(final Deferred selfType, final Closure<Boolean> closure) {
-		selfType.compose().filter new ClosurePredicate<T>(closure)
-	}
-
 	static <T> Promise<T> filter(final Promise<T> selfType, final Closure<Boolean> closure) {
 		selfType.filter new ClosurePredicate<T>(closure)
 	}
 
 	static <T, E> Stream<T> when(final Stream<T> selfType, final Class<E> exceptionType, final Closure closure) {
 		selfType.when exceptionType, new ClosureConsumer<E>(closure)
-	}
-
-	static <T, E> Stream<T> when(final Deferred selfType, final Class<E> exceptionType, final Closure closure) {
-		selfType.compose().when exceptionType, new ClosureConsumer<E>(closure)
 	}
 
 	static <T, E> Promise<T> when(final Promise<T> selfType, final Class<E> exceptionType, final Closure closure) {
@@ -157,14 +141,6 @@ class ComposableExtensions {
 		map selfType, other
 	}
 
-	static <T, V> Stream<V> or(final Deferred selfType, final Function<T, V> other) {
-		selfType.compose().map other
-	}
-
-	static <T, V> Stream<V> or(final Deferred selfType, final Closure<V> other) {
-		map selfType, other
-	}
-
 	static <T, V> Promise<V> or(final Promise<T> selfType, final Function<T, V> other) {
 		selfType.then other, (Consumer<Throwable>) null
 	}
@@ -183,10 +159,6 @@ class ComposableExtensions {
 		filter selfType, other
 	}
 
-	static <T> Stream<T> and(final Deferred selfType, final Closure<Boolean> other) {
-		filter selfType, other
-	}
-
 	static <T> Stream<T> and(final Stream<T> selfType, final Predicate<T> other) {
 		selfType.filter other
 	}
@@ -195,25 +167,13 @@ class ComposableExtensions {
 		selfType.filter other
 	}
 
-	static <T> Stream<T> and(final Deferred selfType, final Predicate<T> other) {
-		selfType.compose().filter other
-	}
-
 
 	//Consuming
 	static <T> Stream<T> leftShift(final Stream<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 
-	static <T> Stream<T> leftShift(final Deferred selfType, final Consumer<T> other) {
-		selfType.compose().consume other
-	}
-
 	static <T> Stream<T> leftShift(final Stream<T> selfType, final Closure other) {
-		consume selfType, other
-	}
-
-	static <T> Stream<T> leftShift(final Deferred selfType, final Closure other) {
 		consume selfType, other
 	}
 
@@ -231,8 +191,8 @@ class ComposableExtensions {
 		selfType
 	}
 
-	static <T, X extends Stream<T>> Deferred<T, X> leftShift(final Deferred<T, X> selfType, T value) {
-		selfType.accept value
+	static <T> Pipeline<T> leftShift(final Pipeline<T> selfType, T value) {
+		selfType.broadcastNext value
 		selfType
 	}
 

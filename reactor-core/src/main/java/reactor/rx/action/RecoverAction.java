@@ -38,7 +38,7 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void onError(Throwable cause) {
+	public void onError(final Throwable cause) {
 		try {
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override

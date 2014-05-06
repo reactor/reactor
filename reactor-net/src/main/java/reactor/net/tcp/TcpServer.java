@@ -18,9 +18,6 @@ package reactor.net.tcp;
 
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.rx.Deferred;
-import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -29,6 +26,8 @@ import reactor.net.NetChannel;
 import reactor.net.NetServer;
 import reactor.net.config.ServerSocketOptions;
 import reactor.net.config.SslOptions;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -75,14 +74,14 @@ public abstract class TcpServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public Promise<Boolean> start() {
-		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {
-				d.accept(true);
+				d.broadcastNext(true);
 			}
 		});
-		return d.compose();
+		return d;
 	}
 
 	/**

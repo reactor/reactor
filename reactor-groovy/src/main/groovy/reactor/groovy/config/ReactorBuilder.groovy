@@ -4,9 +4,6 @@ import groovy.transform.CompileStatic
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
-import reactor.rx.Deferred
-import reactor.rx.Stream
-import reactor.rx.spec.Streams
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.Dispatcher
@@ -16,15 +13,14 @@ import reactor.event.routing.Router
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
 import reactor.event.support.CallbackEvent
-import reactor.filter.Filter
-import reactor.filter.FirstFilter
-import reactor.filter.PassThroughFilter
-import reactor.filter.RandomFilter
-import reactor.filter.RoundRobinFilter
+import reactor.filter.*
 import reactor.function.Consumer
 import reactor.function.Predicate
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
+import reactor.rx.Deferred
+import reactor.rx.Stream
+import reactor.rx.spec.Streams
 
 /**
  * @author Stephane Maldini
@@ -169,7 +165,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		stream((Selector) null, closure)
 	}
 
-	void stream(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
+	void stream(Stream<Event<?>, Stream<Event<?>>> head> tail) {
 		stream((Selector) null, head, tail)
 	}
 
@@ -180,13 +176,13 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	void stream(Selector selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = Stream) Closure<Stream> closure) {
-		Deferred<Event<?>, Stream<Event<?>>> head = Streams.<Event<?>> defer().get()
-		Stream newTail = DSLUtils.delegateFirstAndRun(head.compose(), closure)
+		Stream<Event<?>> defer().get()
+		Stream newTail = DSLUtils.delegateFirstAndRun(head, closure)
 		stream selector, head, newTail
 	}
 
 
-	void stream(Selector selector, Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
+	void stream(Selector selector, Stream<Event<?>, Stream<Event<?>>> head> tail) {
 		if (tail) {
 			streams << new HeadAndTail(head, tail, selector)
 		}
@@ -209,7 +205,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		if (router) {
 			spec.eventRouter(router)
 		} else if (streams) {
-			Deferred<Event<?>, Stream<Event<?>>> deferred = null
+			Stream<Event<?>> deferred = null
 			Stream<Event<?>> tail = null
 			HeadAndTail stream
 			HeadAndTail anticipatedStream
@@ -223,18 +219,18 @@ class ReactorBuilder implements Supplier<Reactor> {
 				if (first) {
 					first = false
 					deferred = Streams.<Event<?>> defer().get()
-					tail = deferred.compose()
+					tail = deferred
 				}
 				if (stream.selector) {
 					if (it.hasNext()) {
 						anticipatedStream = it.next()
 					} else {
 						def finalDeferred = Streams.<Event<?>> defer().get()
-						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred.compose(), null)
+						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred, null)
 					}
-					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).connect(stream.head.compose())
+					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).connect(stream.head)
 				} else {
-					tail.connect(stream.head.compose())
+					tail.connect(stream.head)
 				}
 				tail = stream.tail
 			}
@@ -329,11 +325,11 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	@CompileStatic
 	final class HeadAndTail implements Comparable<HeadAndTail> {
-		final Deferred<Event<?>, Stream<Event<?>>> head
+		final Stream<Event<?>> head
 		final Stream<Event<?>> tail
 		final Selector selector
 
-		HeadAndTail(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail, Selector selector) {
+		HeadAndTail(Stream<Event<?>, Stream<Event<?>>> head> tail, Selector selector) {
 			this.head = head
 			this.tail = tail
 			this.selector = selector

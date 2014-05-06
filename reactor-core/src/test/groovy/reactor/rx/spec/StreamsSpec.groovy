@@ -759,7 +759,7 @@ println reduced.debug()
 			'the second value is accepted'
 			source.broadcastNext(2)
 			source.broadcastNext(2)
-			sleep(1500)
+			sleep(2000)
 
 		then:
 			'the collected list contains the first and second elements'

@@ -230,7 +230,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	public Action<O,O> buffer() {
-		return connect(Action.passthrough(dispatcher));
+		return connect(Action.<O>passthrough(dispatcher));
 	}
 
 	/**

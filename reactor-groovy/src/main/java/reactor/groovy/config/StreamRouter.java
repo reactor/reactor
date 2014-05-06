@@ -1,7 +1,6 @@
 package reactor.groovy.config;
 
-import reactor.rx.Deferred;
-import reactor.rx.Stream;
+
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.routing.ConsumerFilteringRouter;
@@ -10,6 +9,7 @@ import reactor.event.support.CallbackEvent;
 import reactor.filter.Filter;
 import reactor.function.Consumer;
 import reactor.function.support.CancelConsumerException;
+import reactor.rx.Stream;
 
 import java.util.List;
 
@@ -20,7 +20,7 @@ public class StreamRouter extends ConsumerFilteringRouter {
 
 	public static final String KEY_HEADER = "___key";
 
-	private final Deferred<Event<?>, Stream<Event<?>>> stream;
+	private final Stream<Event<?>> stream;
 
 	public StreamRouter(Filter filter, ConsumerInvoker consumerInvoker, Deferred<Event<?>,
 			Stream<Event<?>>> stream) {

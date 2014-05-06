@@ -10,9 +10,6 @@ import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.Dispatcher;
 import reactor.io.Buffer;
@@ -24,6 +21,8 @@ import reactor.net.tcp.spec.TcpClientSpec;
 import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.zmq.ZeroMQClientSocketOptions;
 import reactor.net.zmq.ZeroMQServerSocketOptions;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.util.Assert;
 
 import java.lang.reflect.Field;
@@ -122,7 +121,7 @@ public class ZeroMQ<T> {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 		Assert.isTrue(addrs.startsWith("tcp:"), "Only tcp:// addresses currently supported.");
 
-		Deferred<NetChannel<T, T>, Promise<NetChannel<T, T>>> d = Promises.defer(env, dispatcher);
+		Promise<NetChannel<T, T>> d = Promises.defer(env, dispatcher);
 
 		TcpServer<T, T> server = new TcpServerSpec<T, T>(ZeroMQTcpServer.class)
 				.env(env).dispatcher(dispatcher).codec(codec)
@@ -136,7 +135,7 @@ public class ZeroMQ<T> {
 
 		server.start();
 
-		return d.compose();
+		return d;
 	}
 
 	public void shutdown() {

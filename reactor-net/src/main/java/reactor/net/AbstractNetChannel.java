@@ -4,10 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.rx.Deferred;
-import reactor.rx.Promise;
-import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
@@ -21,6 +17,10 @@ import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.queue.BlockingQueueFactory;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
+import reactor.rx.spec.Streams;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -36,6 +36,7 @@ import static reactor.event.selector.Selectors.$;
  * reactor.rx.Stream} and {@link reactor.function.Consumer} handling.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT> {
 
@@ -92,14 +93,14 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Stream<IN> in() {
-		final Deferred<IN, Stream<IN>> d = new Deferred<IN, Stream<IN>>(new Stream<IN>(eventsReactor, -1, null, env));
+		final Stream<IN> d = Streams.<IN>defer(env, eventsReactor.getDispatcher());
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
-				d.accept(in);
+				d.broadcastNext(in);
 			}
 		});
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -148,9 +149,9 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<Void> send(OUT data) {
-		Deferred<Void, Promise<Void>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		Promise<Void> d = Promises.defer(env, eventsReactor.getDispatcher());
 		send(data, d);
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -161,20 +162,20 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<IN> sendAndReceive(OUT data) {
-		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		final Promise<IN> d = Promises.defer(env, eventsReactor.getDispatcher());
 		Selector sel = $();
 		eventsReactor.on(sel, new EventConsumer<IN>(d)).cancelAfterUse();
 		replyToKeys.add(sel.getObject());
 		send(data, null);
-		return d.compose();
+		return d;
 	}
 
 	@Override
 	public Promise<Boolean> close() {
-		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
+		Promise<Boolean> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
 		eventsReactor.getConsumerRegistry().unregister(read.getObject());
 		close(d);
-		return d.compose();
+		return d;
 	}
 
 	/**
@@ -184,7 +185,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param data       The outgoing data.
 	 * @param onComplete The callback to invoke when the write is complete.
 	 */
-	protected void send(OUT data, final Deferred<Void, Promise<Void>> onComplete) {
+	protected void send(OUT data, final Promise<Void> onComplete) {
 		ioReactor.schedule(new WriteConsumer(onComplete), data);
 	}
 
@@ -219,7 +220,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param data       The data to write, as a {@link Buffer}.
 	 * @param onComplete The callback to invoke when the write is complete.
 	 */
-	protected void write(Buffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(Buffer data, Promise<Void> onComplete, boolean flush) {
 		write(data.byteBuffer(), onComplete, flush);
 	}
 
@@ -230,7 +231,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param onComplete The callback to invoke when the write is complete.
 	 * @param flush      whether to flush the underlying IO channel
 	 */
-	protected abstract void write(ByteBuffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
+	protected abstract void write(ByteBuffer data, Promise<Void> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
@@ -239,7 +240,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * @param onComplete The callback to invoke when the write is complete.
 	 * @param flush      whether to flush the underlying IO channel
 	 */
-	protected abstract void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush);
+	protected abstract void write(Object data, Promise<Void> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform IO flushes.
@@ -259,10 +260,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	private final class WriteConsumer implements BatchConsumer<OUT> {
-		private final Deferred<Void, Promise<Void>> onComplete;
+		private final Promise<Void> onComplete;
 		private volatile boolean autoflush = true;
 
-		private WriteConsumer(Deferred<Void, Promise<Void>> onComplete) {
+		private WriteConsumer(Promise<Void> onComplete) {
 			this.onComplete = onComplete;
 		}
 
@@ -295,7 +296,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 			} catch (Throwable t) {
 				eventsReactor.notify(t.getClass(), Event.wrap(t));
 				if (null != onComplete) {
-					onComplete.accept(t);
+					onComplete.broadcastError(t);
 				}
 			}
 		}

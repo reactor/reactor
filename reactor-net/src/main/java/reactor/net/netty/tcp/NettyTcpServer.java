@@ -29,9 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.rx.Deferred;
-import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -45,6 +42,8 @@ import reactor.net.netty.NettyNetChannelInboundHandler;
 import reactor.net.netty.NettyServerSocketOptions;
 import reactor.net.tcp.TcpServer;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 
 import javax.annotation.Nonnull;
@@ -60,6 +59,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
@@ -151,7 +151,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 		getReactor().schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})
@@ -164,7 +164,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							public void operationComplete(Future future) throws Exception {
 								if (groupsToShutdown.decrementAndGet() == 0) {
 									notifyShutdown();
-									d.accept(true);
+									d.broadcastNext(true);
 								}
 							}
 						};
@@ -175,7 +175,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				null
 		);
 
-		return d.compose();
+		return d;
 	}
 
 	@Override
