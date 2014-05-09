@@ -103,9 +103,9 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
 				if (success) {
-					onComplete.accept((Void) null);
+					onComplete.onNext((Void) null);
 				} else {
-					onComplete.accept(new RuntimeException("ZeroMQ Message could not be sent"));
+					onComplete.onError(new RuntimeException("ZeroMQ Message could not be sent"));
 				}
 			}
 		}

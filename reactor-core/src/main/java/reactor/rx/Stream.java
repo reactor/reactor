@@ -719,8 +719,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
-		log.info(this.getClass().getSimpleName() + " > OUT onSubscribe: " + this);
-
 		final StreamSubscription<O> subscription = createSubscription(subscriber);
 
 		if (checkState() && addSubscription(subscription)) {
@@ -743,8 +741,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastNext(final O ev) {
 		try {
 			if (!checkState()) return;
-
-			log.info(this.getClass().getSimpleName() + " > OUT onNext:" + ev + " - " + this);
 
 			MutableList<StreamSubscription<O>> list = subscriptions.select(new com.gs.collections.api.block.predicate
 					.Predicate<StreamSubscription<O>>() {
@@ -786,8 +782,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastFlush() {
 		if (!checkState()) return;
 
-		log.info(this.getClass().getSimpleName() + " > OUT onFlush:" + this);
-
 		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
 			@Override
 			public boolean accept(StreamSubscription<O> each) {
@@ -819,12 +813,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public void broadcastError(final Throwable throwable) {
 		if (!checkState()) return;
 
-		log.error(this.getClass().getSimpleName() + " > OUT onError:" + this, new Exception(throwable));
-
 		state = State.ERROR;
 		error = throwable;
 
-		if (subscriptions.isEmpty()) return;
+		if (subscriptions.isEmpty()){
+			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(throwable));
+			return;
+		}
 
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override
@@ -842,8 +837,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			state = State.COMPLETE;
 			return;
 		}
-
-		log.info(this.getClass().getSimpleName() + " > OUT onComplete:" + this);
 
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override

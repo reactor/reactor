@@ -138,7 +138,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return new StreamSubscription<O>(this, subscriber) {
 			@Override
 			public void requestMore(int elements) {
-				log.info("{} is requesting {} element(s)", subscriber, elements);
 				super.requestMore(elements);
 				requestUpstream(capacity, terminated, elements);
 			}
@@ -148,7 +147,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
-			log.info(this.getClass().getSimpleName() + " < IN onNext: " + i + " - " + this);
 			doNext(i);
 		} catch (Throwable cause) {
 			doError(cause);
@@ -166,7 +164,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void accept(Void any) {
 				try {
-					log.info(Action.this.getClass().getSimpleName() + " < IN onFlush: " + Action.this);
 					doFlush();
 				} catch (Throwable t) {
 					doError(t);
@@ -183,7 +180,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void accept(Void any) {
 				try {
-					log.info(Action.this.getClass().getSimpleName() + " < IN onComplete: " + Action.this);
 					doComplete();
 					/*if(!keepAlive){
 						cancel();
@@ -204,8 +200,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					log.error(Action.this.getClass().getSimpleName() + " < IN onError : " + Action.this,
-							new Exception(throwable));
 					doError(throwable);
 				}
 			};
@@ -217,7 +211,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		log.info(this.getClass().getSimpleName() + " < IN onSubscribe: " + this);
 		if (this.subscription == null) {
 			this.subscription = subscription;
 			try {
