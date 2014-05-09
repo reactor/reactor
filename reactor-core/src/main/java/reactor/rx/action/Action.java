@@ -233,7 +233,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 */
 	@Override
 	public void start() {
-		Action<?, ?> stream = findOldestStream();
+		Action<?, ?> stream = findOldestStream(false);
 		stream.onFlush();
 	}
 
@@ -266,12 +266,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public String debug() {
-		return StreamUtils.browse(findOldestStream());
+		return StreamUtils.browse(findOldestStream(false));
+	}
+
+	public <E> Processor<E, O> combine() {
+		return combine(false);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <E> Processor<E, O> combine() {
-		final Subscriber<E> subscriber = (Subscriber<E>)findOldestStream();
+	public <E> Processor<E, O> combine(boolean reuse) {
+		final Subscriber<E> subscriber = (Subscriber<E>)findOldestStream(reuse);
 		final Publisher<O> publisher = this;
 
 		return new Processor<E, O>() {
@@ -293,11 +297,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Action<I,O> prefetch(int elements) {
 		return (Action<I,O>)super.prefetch(elements);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Action<I,O> env(Environment environment) {
 		return (Action<I,O>)super.env(environment);
 	}
@@ -320,14 +326,29 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		broadcastError(ev);
 	}
 
-	private Action<?, ?> findOldestStream() {
+	protected void resetState(Action<?,?> action){
+		action.setState(State.READY);
+		error = null;
+	}
+
+	private Action<?, ?> findOldestStream(boolean resetState) {
 		Action<?, ?> that = this;
+
+		if(resetState){
+			resetState(that);
+		}
 
 		while (that.subscription != null
 				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
 				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
 				) {
+
 			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
+
+			if(resetState){
+				resetState(that);
+			}
+
 		}
 		return that;
 	}

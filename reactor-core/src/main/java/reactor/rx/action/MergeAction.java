@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Publisher;
 import org.reactivestreams.spi.Subscriber;
 import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
@@ -32,14 +33,14 @@ public class MergeAction<O> extends Action<O, O> {
 	final Subscription[] subscriptions;
 	final Action<O, ?>   processingAction;
 
-	private final static Pipeline[] EMPTY_PIPELINE = new Pipeline[0];
+	private final static Publisher[] EMPTY_PIPELINE = new Publisher[0];
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher) {
 		this(dispatcher, null, EMPTY_PIPELINE);
 	}
 
-	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Pipeline<O>... composables) {
+	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Publisher<O>... composables) {
 		super(dispatcher);
 		int length = composables.length;
 		this.processingAction = processingAction;
@@ -47,11 +48,11 @@ public class MergeAction<O> extends Action<O, O> {
 
 		if (composables != null && length > 0) {
 			this.runningComposables = new AtomicInteger(processingAction == null ? length + 1 : length);
-			Pipeline<O> composable;
+			Publisher<O> composable;
 			for (int i = 0; i < length; i++) {
 				final int pos = i;
 				composable = composables[i];
-				composable.connect(new Action<O, O>(dispatcher) {
+				composable.subscribe(new Action<O, O>(dispatcher) {
 					@Override
 					protected void doSubscribe(Subscription subscription) {
 						subscriptions[pos] = subscription;
@@ -77,6 +78,11 @@ public class MergeAction<O> extends Action<O, O> {
 						MergeAction.this.doError(ev);
 					}
 				});
+
+				if(processingAction != null){
+					processingAction.doSubscribe(createSubscription(processingAction));
+
+				}
 			}
 		} else {
 			this.runningComposables = new AtomicInteger(0);

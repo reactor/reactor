@@ -162,8 +162,8 @@ public class HashWheelTimer implements Timer {
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
+	@SuppressWarnings("unchecked")
 	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
 	                                                          long period,
 	                                                          TimeUnit timeUnit) {
@@ -172,14 +172,14 @@ public class HashWheelTimer implements Timer {
 		return schedule(ms, ms, consumer).cancelAfterUse();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
+	@SuppressWarnings("unchecked")
 	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
 		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
+	@SuppressWarnings("unchecked")
 	public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit) {

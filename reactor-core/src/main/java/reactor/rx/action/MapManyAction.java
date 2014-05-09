@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.spi.Publisher;
 import org.reactivestreams.spi.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
@@ -28,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
+public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 
 	private final Function<I, E> fn;
 	private final MergeAction<O> mergeAction;
@@ -56,6 +57,11 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 		E val = fn.apply(value);
 		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
 			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.requestMore(batchSize);
+			}
+
+			@Override
 			protected void doFlush() {
 				mergeAction.doFlush();
 			}
@@ -76,7 +82,6 @@ public class MapManyAction<I, O, E extends Pipeline<O>> extends Action<I, O> {
 			}
 		};
 		val.subscribe(inlineMerge);
-		inlineMerge.prefetch(batchSize).available();
 	}
 
 	@Override

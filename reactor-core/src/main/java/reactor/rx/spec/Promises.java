@@ -92,7 +92,7 @@ public abstract class Promises {
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Supplier<T> supplier) {
+	public static <T> Promise<T> syncTask(Supplier<T> supplier) {
 		return task(supplier, null, SynchronousDispatcher.INSTANCE);
 	}
 
@@ -215,7 +215,12 @@ public abstract class Promises {
 	public static <T> Promise<List<T>> when(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		CollectAction<T> collectAction = new CollectAction<T>(promises.length, SynchronousDispatcher.INSTANCE);
+		CollectAction<T> collectAction = new CollectAction<T>(promises.length, SynchronousDispatcher.INSTANCE){
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.requestMore(1);
+			}
+		};
 		collectAction.env(promises[0].getEnvironment());
 		Promise<List<T>> resultPromise = next(collectAction);
 
@@ -247,7 +252,18 @@ public abstract class Promises {
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
 
-		Action<T,T> noop = Action.<T>passthrough().prefetch(1);
+		Action<T,T> noop = new Action<T,T>(){
+			@Override
+			protected void doNext(T ev) {
+				broadcastNext(ev);
+			}
+
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.requestMore(1);
+			}
+		};
+
 		Promise<T> resultPromise = Promise.wrap(noop);
 		noop.subscribe(resultPromise);
 

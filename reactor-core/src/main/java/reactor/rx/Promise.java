@@ -169,19 +169,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	/**
-	 * Assign both a success {@link Consumer} and an optional (possibly {@code null}) error {@link Consumer}.
-	 *
-	 * @param onSuccess the success {@link Consumer}
-	 * @param onError   the error {@link Consumer}
-	 * @return {@literal this}
-	 * @see #onSuccess(Consumer)
-	 * @see #onError(Consumer)
-	 */
-	public Promise<O> then(@Nonnull Consumer<O> onSuccess, @Nullable Consumer<Throwable> onError) {
-		return onSuccess(onSuccess).onError(onError);
-	}
-
-	/**
 	 * Assign a success {@link Function} that will either be invoked later, when the {@code Promise} is successfully
 	 * completed with a value, or, if this {@code Promise} has already been fulfilled, the function is immediately
 	 * scheduled to be executed on the current {@link reactor.event.dispatch.Dispatcher}.
@@ -409,7 +396,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		return this;
 	}
 
-	public <V, C extends Stream<V>> Promise<V> fork(@Nonnull Function<O, C> fn) {
+	public <V, C extends Promise<V>> Promise<V> fork(@Nonnull Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, delegateAction.getDispatcher());
 		connect(d);
 		Promise<V> promise = Promise.wrap(new Action<V, V>());

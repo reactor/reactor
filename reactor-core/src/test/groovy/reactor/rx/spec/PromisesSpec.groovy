@@ -24,8 +24,6 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.GroovyTestUtils.*
-
 /**
  * @author Stephane Maldini
  * @author Andy Wilkinson
@@ -39,14 +37,14 @@ class PromisesSpec extends Specification {
 			def promise = Promises.defer()
 			def acceptedPromise
 
-			promise.onComplete(consumer { self ->
+			promise.onComplete { self ->
 				acceptedPromise = self
-			})
+			}
 
 		when:
 			"the promise is rejected"
 			promise.broadcastError new Exception()
-		println promise.debug()
+			println promise.debug()
 
 		then:
 			"the consumer is invoked with the promise"
@@ -63,9 +61,9 @@ class PromisesSpec extends Specification {
 			"an onComplete consumer is added"
 			def acceptedPromise
 
-			promise.onComplete(consumer { self ->
+			promise.onComplete { self ->
 				acceptedPromise = self
-			})
+			}
 
 		then:
 			"the consumer is invoked with the promise"
@@ -79,9 +77,9 @@ class PromisesSpec extends Specification {
 			def promise = Promises.defer()
 			def acceptedPromise
 
-			promise.onComplete(consumer { self ->
+			promise.onComplete { self ->
 				acceptedPromise = self
-			})
+			}
 
 		when:
 			"the promise is fulfilled"
@@ -102,9 +100,9 @@ class PromisesSpec extends Specification {
 			"an onComplete consumer is added"
 			def acceptedPromise
 
-			promise.onComplete(consumer { self ->
+			promise.onComplete { self ->
 				acceptedPromise = self
-			})
+			}
 
 		then:
 			"the consumer is invoked with the promise"
@@ -118,9 +116,9 @@ class PromisesSpec extends Specification {
 			def promise = Promises.defer()
 			def acceptedValue
 
-			promise.onSuccess(consumer { v ->
+			promise.onSuccess { v ->
 				acceptedValue = v
-			})
+			}
 
 		when:
 			"the promise is fulfilled"
@@ -140,9 +138,9 @@ class PromisesSpec extends Specification {
 			"an onSuccess consumer is added"
 			def acceptedValue
 
-			promise.onSuccess(consumer { v ->
+			promise.onSuccess { v ->
 				acceptedValue = v
-			})
+			}
 
 		then:
 			"the consumer is invoked with the fulfilling value"
@@ -156,7 +154,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an onSuccess consumer is added"
-			promise.onSuccess(consumer {})
+			promise.onSuccess {}
 
 		then:
 			"no exception is thrown"
@@ -170,7 +168,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an onError consumer is added"
-			promise.onSuccess(consumer {})
+			promise.onSuccess {}
 
 		then:
 			"no exception is thrown"
@@ -183,9 +181,9 @@ class PromisesSpec extends Specification {
 			def promise = Promises.defer()
 			def acceptedValue
 
-			promise.onError(consumer { v ->
+			promise.onError { v ->
 				acceptedValue = v
-			})
+			}
 
 		when:
 			"the promise is rejected"
@@ -207,9 +205,9 @@ class PromisesSpec extends Specification {
 			"an onError consumer is added"
 			def acceptedValue
 
-			promise.onError(consumer { v ->
+			promise.onError { v ->
 				acceptedValue = v
-			})
+			}
 
 		then:
 			"the consumer is invoked with the rejecting value"
@@ -294,7 +292,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a mapping function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.map(function { it * 2 })
+			def mappedPromise = promise.map { it * 2 }
 
 		when:
 			"the original promise is fulfilled"
@@ -311,7 +309,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.fork(function { Promises.success(it + 1) })
+			def mappedPromise = promise.fork { Promises.success(it + 1) }
 
 		when:
 			"the original promise is fulfilled"
@@ -331,7 +329,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a mapping function is added"
-			def mappedPromise = promise.map(function { it * 2 })
+			def mappedPromise = promise.map { it * 2 }
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -343,7 +341,7 @@ class PromisesSpec extends Specification {
 			"A promise with an onSuccess consumer registered using then"
 			Promise<String> promise = Promises.<String> defer()
 			def value = null
-			promise.then(consumer { value = it }, null)
+			promise.onSuccess { value = it }
 
 		when:
 			"The promise is fulfilled"
@@ -359,7 +357,7 @@ class PromisesSpec extends Specification {
 			"A promise with an onError consumer registered using then"
 			Promise<String> promise = Promises.<String> config().synchronousDispatcher().get()
 			def value
-			promise.then(consumer {}, consumer { value = it })
+			promise.onSuccess {}.onError { value = it }
 
 		when:
 			"The promise is rejected"
@@ -380,7 +378,7 @@ class PromisesSpec extends Specification {
 		when:
 			"An onError consumer is registered via then"
 			def value
-			promise.then(consumer {}, consumer { value = it })
+			promise.then({null}){ value = it }
 
 		then:
 			"The consumer is called"
@@ -395,7 +393,7 @@ class PromisesSpec extends Specification {
 		when:
 			"An onSuccess consumer is registered via then"
 			def value
-			promise.then(consumer { value = it }, null)
+			promise.onSuccess{ value = it }
 
 		then:
 			"The consumer is called"
@@ -406,7 +404,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with an onSuccess function registered using then"
 			Promise<String> promise = Promises.<String> defer()
-			def transformed = promise.then(function { it * 2 }, null)
+			def transformed = promise.then ({ it * 2 }, null)
 
 		when:
 			"the promise is fulfilled"
@@ -424,7 +422,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"An onSuccess function is registered via then"
-			def transformed = promise.then(function { it * 2 }, null)
+			def transformed = promise.then( { it * 2 }, null)
 
 		then:
 			"The function is called and the transformed promise is fulfilled"
@@ -437,7 +435,7 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			Promise<String> promise = Promises.<String> defer()
 			def e = new RuntimeException()
-			def mapped = promise.map(function { throw e })
+			def mapped = promise.map { throw e }
 
 		when:
 			"the promise is fulfilled"
@@ -456,7 +454,7 @@ class PromisesSpec extends Specification {
 		when:
 			"a mapping function that throws an exception is added"
 			def e = new RuntimeException()
-			def mapped = promise.map(function { throw e })
+			def mapped = promise.map { throw e }
 
 		then:
 			"the mapped promise is rejected"
@@ -511,8 +509,8 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Promises.<Integer>defer()
-			def promise2 = Promises.<Integer>defer()
+			def promise1 = Promises.<Integer> defer()
+			def promise2 = Promises.<Integer> defer()
 
 		when:
 			"a combined promise is first created"
@@ -543,8 +541,8 @@ class PromisesSpec extends Specification {
 	def "A combined promise is rejected once any of its component promises are rejected"() {
 		given:
 			"two unfulfilled promises"
-			def promise1 = Promises.<Integer>defer()
-			def promise2 = Promises.<Integer>defer()
+			def promise1 = Promises.<Integer> defer()
+			def promise2 = Promises.<Integer> defer()
 
 		when:
 			"a combined promise is first created"
@@ -580,8 +578,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"promises are supplied"
-			promise1 = Promises.task(supplier { '1' })
-			promise2 = Promises.task(supplier { '2' })
+			promise1 = Promises.syncTask { '1' }
+			promise2 = Promises.syncTask { '2' }
 			combined = Promises.when(promise1, promise2)
 
 		then:
@@ -648,7 +646,7 @@ class PromisesSpec extends Specification {
 	def "A promise can be fulfilled with a Supplier"() {
 		when:
 			"A promise configured with a supplier"
-			def promise = Promises.task(supplier { 1 })
+			def promise = Promises.syncTask { 1 }
 
 		then:
 			"it is fulfilled"
@@ -659,7 +657,7 @@ class PromisesSpec extends Specification {
 	def "A promise with a Supplier that throws an exception is rejected"() {
 		when:
 			"A promise configured with a supplier that throws an exception"
-			def promise = Promises.task(supplier { throw new RuntimeException() })
+			def promise = Promises.syncTask { throw new RuntimeException() }
 			promise.await()
 
 		then:
@@ -671,7 +669,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			def filtered = promise.filter(predicate { it % 2 == 0 })
+			def filtered = promise.filter { it % 2 == 0 }
 
 		when:
 			"the promise is fulfilled with an odd value"
@@ -687,7 +685,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			promise.filter(predicate { it % 2 == 0 })
+			promise.filter { it % 2 == 0 }
 
 		when:
 			"the promise is fulfilled with an even value"
@@ -704,7 +702,7 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			def promise = Promises.defer()
 			def e = new RuntimeException()
-			def filteredPromise = promise.filter(predicate { throw e })
+			def filteredPromise = promise.filter { throw e }
 
 		when:
 			"the promise is fulfilled"
@@ -722,7 +720,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			promise.filter(predicate { it % 2 == 0 })
+			promise.filter { it % 2 == 0 }
 
 		then:
 			"the filtered promise is fulfilled"
@@ -737,7 +735,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			def filtered = promise.filter(predicate { it % 2 == 0 })
+			def filtered = promise.filter { it % 2 == 0 }
 
 		then:
 			"the filtered promise is not fulfilled"
@@ -757,9 +755,9 @@ class PromisesSpec extends Specification {
 
 		when:
 			"p1 is consumed by p2"
-			Promise p2 = p1.then(function { Integer.parseInt it }, null).
-					when(NumberFormatException, consumer { latch.countDown() }).
-					then(function { println('not in log'); true }, null)
+			Promise p2 = p1.then( { Integer.parseInt it }, null).
+					when(NumberFormatException, { latch.countDown() }).
+					map { println('not in log'); true }
 
 		and:
 			"setting a value"

@@ -16,19 +16,18 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
-import reactor.core.Reactor
-
-import static reactor.event.selector.Selectors.$
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
 import reactor.core.Environment
+import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.EventLoopDispatcher
 import spock.lang.Shared
 import spock.lang.Specification
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+import static reactor.event.selector.Selectors.$
 
 /**
  * @author Stephane Maldini (smaldini)
@@ -51,7 +50,7 @@ class GroovyReactorSpec extends Specification {
 
 		when: 'Using simple arguments'
 		def result = ""
-		r1.on('test2') { String s ->
+		r1.react('test2') { String s ->
 			result = s
 			latch.countDown()
 		}
@@ -85,7 +84,7 @@ class GroovyReactorSpec extends Specification {
 		given: "a simple Reactor"
 		def r = Reactors.reactor().get()
 		def result = ""
-		r.on('supplier') { String s ->
+		r.react('supplier') { String s ->
 			result = s
 		}
 
@@ -104,7 +103,7 @@ class GroovyReactorSpec extends Specification {
 
 		when: 'Using simple arguments'
 		def data2 = ""
-		reactor.on($('test')){ String s ->
+		reactor.react($('test')){ String s ->
 			reply(s + ' ok')
 		}  // ugly hack until I can get Groovy Closure invocation support built-in
 
@@ -141,7 +140,7 @@ class GroovyReactorSpec extends Specification {
 
 	//FIXME Groovy issue -> invokes Reactor.notify(Object key) instead of Observable.extensions(Observable self,
 	// Map params)
-	//@CompileStatic
+	@CompileStatic
 	class Producer{
 		Reactor r
 		void makeNoise(String noise){
@@ -154,7 +153,7 @@ class GroovyReactorSpec extends Specification {
 		def result = new CountDownLatch(1)
 
 		void setupMessages(){
-			r.on($('makeNoise')) { String noise ->
+			r.react($('makeNoise')) { String noise ->
 				println noise
 				result.countDown()
 			}

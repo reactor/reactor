@@ -209,8 +209,8 @@ public abstract class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 1.1
 	 */
-	public static <T> SupplierAction<Void, T> defer(Supplier<T> value) {
-		return defer(value, null, SynchronousDispatcher.INSTANCE);
+	public static <T> SupplierAction<Void, T> generate(Supplier<T> value) {
+		return generate(value, null, SynchronousDispatcher.INSTANCE);
 	}
 
 	/**
@@ -224,8 +224,8 @@ public abstract class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 1.1
 	 */
-	public static <T> SupplierAction<Void, T> defer(Supplier<T> value, Environment env) {
-		return defer(value, env, env.getDefaultDispatcher());
+	public static <T> SupplierAction<Void, T> generate(Supplier<T> value, Environment env) {
+		return generate(value, env, env.getDefaultDispatcher());
 	}
 
 
@@ -241,7 +241,7 @@ public abstract class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 1.1
 	 */
-	public static <T> SupplierAction<Void, T> defer(Supplier<T> value, Environment env, Dispatcher dispatcher) {
+	public static <T> SupplierAction<Void, T> generate(Supplier<T> value, Environment env, Dispatcher dispatcher) {
 		if(value == null) throw new IllegalArgumentException("Supplier must be provided");
 		SupplierAction<Void, T> action = new SupplierAction<Void, T>(dispatcher, value);
 		action.prefetch(1).env(env);

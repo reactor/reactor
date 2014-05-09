@@ -85,9 +85,10 @@ public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T
 		if (value != null) {
 			return new Promise<T>(value, new Action<T,T>(dispatcher), env);
 		} else if (valueSupplier != null) {
-			SupplierAction<T, T> supplierAction = new SupplierAction<T,T>(dispatcher, valueSupplier);
-			supplierAction.env(env);
-			return Promise.wrap(supplierAction);
+			SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, valueSupplier);
+			Promise<T> promise = new Promise<T>(supplierAction, env);
+			supplierAction.subscribe(promise);
+			return promise;
 		} else if (error != null) {
 			return new Promise<T>(error, new Action<T,T>(dispatcher), env);
 		} else {

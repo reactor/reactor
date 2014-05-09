@@ -82,7 +82,7 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 			final Random random = new Random();
 
 			return Streams
-					.defer((Supplier<Integer>) random::nextInt, env)
+					.generate((Supplier<Integer>) random::nextInt, env)
 					.map(Math::abs);
 		}
 	}

@@ -39,7 +39,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static reactor.GroovyTestUtils.$
-import static reactor.GroovyTestUtils.consumer
 import static reactor.event.selector.Selectors.T
 
 /**
@@ -59,9 +58,9 @@ class DispatcherSpec extends Specification {
 			def eventRouter = new ConsumerFilteringRouter(
 					new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
 			def sel = $('test')
-			registry.register(sel, consumer {
+			registry.register(sel,{ Event<?> ev->
 				taskThread = Thread.currentThread()
-			})
+			} as Consumer<Event<?>>)
 
 		when:
 			"a task is submitted"
@@ -95,12 +94,12 @@ class DispatcherSpec extends Specification {
 
 		when:
 			"listen for recursive event"
-			r.on($('test'), consumer { int i ->
-				if (i < 2) {
+			r.on($('test')) { Event<Integer> ev ->
+				if (ev.data < 2) {
 					latch.countDown()
-					r.notify('test', Event.wrap(++i))
+					r.notify('test', Event.wrap(++ev.data))
 				}
-			})
+			}
 
 		and:
 			"call the reactor"

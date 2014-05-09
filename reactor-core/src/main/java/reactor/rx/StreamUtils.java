@@ -17,9 +17,9 @@ package reactor.rx;
 
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import org.reactivestreams.spi.Publisher;
 import reactor.rx.action.FilterAction;
 import reactor.rx.action.MapManyAction;
-import reactor.rx.action.Pipeline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -125,9 +125,10 @@ public abstract class StreamUtils {
 			}
 		}
 
+		@SuppressWarnings("unchecked")
 		private <O> void renderMapMany(Stream<O> consumer, int d) {
 			if (MapManyAction.class.isAssignableFrom(consumer.getClass())) {
-				MapManyAction<O, ?, Pipeline<?>> operation = (MapManyAction<O, ?, Pipeline<?>>) consumer;
+				MapManyAction<O, ?, Publisher<?>> operation = (MapManyAction<O, ?, Publisher<?>>) consumer;
 				parseComposable(operation.mergedStream(), d + 2);
 			}
 		}

@@ -19,6 +19,7 @@ package reactor.rx;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
+import org.reactivestreams.spi.Publisher;
 import org.reactivestreams.spi.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -187,7 +188,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
 	 * @since 1.1
 	 */
-	public <V, C extends Pipeline<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Publisher<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
 		return mapMany(fn);
 	}
 
@@ -200,7 +201,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} containing the transformed values
 	 * @since 1.1
 	 */
-	public <V, C extends Pipeline<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Publisher<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
 		connect(d);
 		return d.mergedStream();
@@ -216,7 +217,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	@SuppressWarnings("unchecked")
 	@SafeVarargs
-	public final MergeAction<O> merge(Stream<O>... composables) {
+	public final MergeAction<O> merge(Publisher<O>... composables) {
 		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, composables);
 		connect(mergeAction);
 		return mergeAction;

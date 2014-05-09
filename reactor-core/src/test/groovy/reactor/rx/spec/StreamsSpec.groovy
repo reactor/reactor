@@ -21,7 +21,6 @@ import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.selector.Selectors
 import reactor.function.Function
-import reactor.function.Supplier
 import reactor.rx.Stream
 import reactor.tuple.Tuple2
 import spock.lang.Specification
@@ -29,8 +28,6 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-
-import static reactor.GroovyTestUtils.*
 
 class StreamsSpec extends Specification {
 
@@ -52,7 +49,7 @@ class StreamsSpec extends Specification {
 		given:
 			String test = ""
 			'a composable with an initial value'
-			Stream stream = Streams.defer(supplier { test })
+			def stream = Streams.<String>generate { test }
 
 		when:
 			'the value is retrieved'
@@ -65,7 +62,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'nothing is provided'
-			Streams.defer((Supplier<Object>) null)
+			Streams.generate(null)
 
 		then:
 			"exception is thrown"
@@ -107,16 +104,16 @@ class StreamsSpec extends Specification {
 
 	def 'A Stream with an unknown set of values makes those values available when flush predicate agrees'() {
 		given:
-			'a composable to defer'
+			'a composable to generate'
 			Stream s = Streams.<Integer> defer()
 
 		when:
 			'a flushable propagate action is attached'
-			def tap = s.propagate(supplier {5}).filter(predicate { println it; it == 5 }).tap()
+			def tap = s.propagate{5}.filter{ println it; it == 5 }.tap()
 
 		and:
 			'a start trigger and a filtered tap are attached'
-			s.flushWhen(predicate { it == 1 })
+			s.flushWhen{ it == 1 }
 
 		and:
 			'values are accepted'
@@ -138,7 +135,7 @@ class StreamsSpec extends Specification {
 		when:
 			'a Consumer is registered'
 			def values = []
-			stream.consume(consumer { values << it })
+			stream.consume{ values << it }
 
 		then:
 			'the initial values are passed'
@@ -175,7 +172,7 @@ class StreamsSpec extends Specification {
 			'a composable with a registered consumer of RuntimeExceptions'
 			Stream composable = Streams.<Integer>defer()
 			def errors = 0
-			composable.when(RuntimeException, consumer { errors++ })
+			composable.when(RuntimeException) { errors++ }
 			println composable.debug()
 
 		when:
@@ -188,7 +185,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A new error consumer is subscribed'
-			composable.when(RuntimeException, consumer { errors++ })
+			composable.when(RuntimeException) { errors++ }
 
 		then:
 			'it is called since publisher is in error state'
@@ -253,7 +250,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a mapping function'
 			def source = Streams.<Integer>defer()
-			Stream mapped = source.map(function { it * 2 })
+			Stream mapped = source.map{ it * 2 }
 
 		when:
 			'the source accepts a value'
@@ -270,7 +267,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Streams.<Integer> defer()
 			Stream<Integer> mapped = source.
-					flatMap(function { Integer v -> Streams.<Integer> defer(v * 2) })
+					flatMap { Integer v -> Streams.<Integer> defer(v * 2) }
 
 		when:
 			'the source accepts a value'
@@ -326,7 +323,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a filter that rejects odd values'
 			def source = Streams.<Integer>defer()
-			Stream filtered = source.filter(predicate { it % 2 == 0 })
+			Stream filtered = source.filter { it % 2 == 0 }
 
 		when:
 			'the source accepts an even value'
@@ -347,7 +344,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'add a rejected stream'
-			def rejectedSource = filtered.filter(predicate { false }).otherwise()
+			def rejectedSource = filtered.filter { false }.otherwise()
 			def rejectedTap = rejectedSource.tap()
 			source.broadcastNext(2)
 			println source.debug()
@@ -381,9 +378,9 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a mapping function that throws an exception'
 			def source = Streams.<Integer>defer()
-			Stream mapped = source.map(function { if(it==1) throw new RuntimeException() else 'na' })
+			Stream mapped = source.map { if(it==1) throw new RuntimeException() else 'na' }
 			def errors = 0
-			mapped.when(Exception, consumer { errors++ })
+			mapped.when(Exception) { errors++ }
 			mapped.resume()
 
 		when:
@@ -400,9 +397,9 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable with a filter function that throws an exception'
 			def source = Streams.<Integer>defer()
-			Stream filtered = source.filter(predicate { if(it == 1) throw new RuntimeException() else true })
+			Stream filtered = source.filter { if(it == 1) throw new RuntimeException() else true }
 			def errors = 0
-			filtered.when(Exception, consumer { errors++ })
+			filtered.when(Exception){ errors++ }
 			filtered.resume()
 
 		when:
@@ -449,7 +446,7 @@ class StreamsSpec extends Specification {
 		when:
 			'a consumer is registered'
 			def values = []
-			reduced.consume(consumer { values << it })
+			reduced.consume { values << it }
 
 		then:
 			'the consumer only receives the final value'
@@ -462,7 +459,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer>config().batchSize(5).get()
 			Stream reduced = source.reduce(new Reduction())
 			def values = []
-			reduced.consume(consumer { values << it })
+			reduced.consume { values << it }
 
 		when:
 			'the expected number of values is accepted'
@@ -669,8 +666,8 @@ class StreamsSpec extends Specification {
 			'accept a value'
 			CountDownLatch latch = new CountDownLatch(2)
 			def v = ""
-			source.consume(consumer { v = 'ok'; latch.countDown() })
-			source2.consume(consumer { v = 'ok'; latch.countDown() })
+			source.consume { v = 'ok'; latch.countDown() }
+			source2.consume { v = 'ok'; latch.countDown() }
 			source.broadcastNext(1)
 			source2.broadcastNext(1)
 
@@ -690,7 +687,7 @@ class StreamsSpec extends Specification {
 			def r = Reactors.reactor().get()
 			def selector = Selectors.anonymous()
 			int event = 0
-			Streams.<Integer> on(r, selector).consume(consumer { event = it })
+			Streams.<Integer> on(r, selector).consume { event = it }
 
 		when:
 			'accept a value'
@@ -741,7 +738,8 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.collect(5).timeout(1000)
 			def value = reduced.tap()
-println reduced.debug()
+			println reduced.debug()
+
 		when:
 			'the first values are accepted on the source'
 			source.broadcastNext(1)
@@ -850,11 +848,11 @@ println reduced.debug()
 					dispatcher(Environment.THREAD_POOL).
 					get()
 			Stream tail = head.collect()
-			tail.consume(consumer { List<Integer> ints ->
+			tail.consume { List<Integer> ints ->
 				println ints.size()
 				sum.addAndGet(ints.size())
 				latch.countDown()
-			})
+			}
 
 		when:
 			'values are accepted into the head'
