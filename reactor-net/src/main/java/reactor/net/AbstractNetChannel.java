@@ -67,7 +67,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		                                 eventsReactor.getDispatchErrorHandler(),
 		                                 eventsReactor.getUncaughtErrorHandler());
 		this.eventsReactor.getConsumerRegistry().clear();
-		for (Registration<? extends Consumer<? extends Event<?>>> reg : eventsReactor.getConsumerRegistry()) {
+		for (Registration<? extends Consumer<?>> reg : eventsReactor.getConsumerRegistry()) {
 			this.eventsReactor.getConsumerRegistry().register(reg.getSelector(), reg.getObject());
 		}
 		this.codec = codec;

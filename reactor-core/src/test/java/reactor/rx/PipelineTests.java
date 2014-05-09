@@ -299,7 +299,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> tasks = d.mapMany(s -> Promises.success(s, env, env.getDispatcher(Environment.THREAD_POOL))
 						.<Integer>map(str -> {
 							try {
-								Thread.sleep(random.nextInt(500));
+								Thread.sleep(random.nextInt(250));
 							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
@@ -308,12 +308,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 		tasks.consume(i -> latch.countDown());
 
-		for (int i = 0; i < items; i++) {
+		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
 
-		assertTrue(latch.getCount() + " of " + items + " items were counted down",
-				latch.await(items, TimeUnit.SECONDS));
+		latch.await(items, TimeUnit.SECONDS);
+		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == items);
 	}
 
 	@Test

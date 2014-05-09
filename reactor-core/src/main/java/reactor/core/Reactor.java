@@ -65,12 +65,14 @@ public class Reactor implements Observable {
 	private final Registry<Consumer<?>> consumerRegistry;
 	private final Router                router;
 	private final Consumer<Throwable>   dispatchErrorHandler;
+	private final Consumer<Throwable> uncaughtErrorHandler;
 
 	private volatile UUID id;
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
-	 * reactor.event.routing.Router} that broadcast events to all of the registered consumers that {@link Selector#matches(Object) match}
+	 * reactor.event.routing.Router} that broadcast events to all of the registered consumers that {@link 
+	 * Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
 	 * @param dispatcher
@@ -143,6 +145,8 @@ public class Reactor implements Observable {
 		} else {
 			this.dispatchErrorHandler = dispatchErrorHandler;
 		}
+
+		this.uncaughtErrorHandler = uncaughtErrorHandler;
 
 		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
 			Logger log;
