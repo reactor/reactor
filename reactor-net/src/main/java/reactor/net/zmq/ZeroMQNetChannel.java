@@ -1,7 +1,7 @@
 package reactor.net.zmq;
 
 import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
 import org.slf4j.Logger;
@@ -22,7 +22,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -101,35 +100,29 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
 		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
 		if (null != msg) {
-			if (!msg.send(socket)) {
-				close(null);
-			}
+			boolean success = msg.send(socket);
 			if (null != onComplete) {
-				onComplete.accept((Void) null);
+				if (success) {
+					onComplete.accept((Void) null);
+				} else {
+					onComplete.accept(new RuntimeException("ZeroMQ Message could not be sent"));
+				}
 			}
 		}
 	}
 
 	@Override
 	public void close(final Consumer<Boolean> onClose) {
-		try {
-			socket.close();
-		} catch (Exception e) {
-			// socket might already be closed
-			if (!ClosedChannelException.class.isInstance(e) && log.isTraceEnabled()) {
-				log.trace(e.getMessage(), e);
-			}
-		}
 		getEventsReactor().schedule(new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
-				closeHandlers.forEach(new CheckedProcedure<Runnable>() {
+				closeHandlers.removeIf(new CheckedPredicate<Runnable>() {
 					@Override
-					public void safeValue(Runnable r) throws Exception {
+					public boolean safeAccept(Runnable r) throws Exception {
 						r.run();
+						return true;
 					}
 				});
-				closeHandlers.clear();
 				if (null != onClose) {
 					onClose.accept(true);
 				}

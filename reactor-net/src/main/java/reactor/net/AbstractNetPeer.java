@@ -67,22 +67,14 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	public void close(@Nullable final Consumer<Boolean> onClose) {
-		reactor.schedule(
-				new Consumer<Void>() {
-					@Override
-					public void accept(Void v) {
-						for (Registration<? extends NetChannel<IN, OUT>> reg : getChannels()) {
-							if (null == reg) {
-								continue;
-							}
-							doCloseChannel(reg.getObject());
-						}
-						getChannels().clear();
-						doClose(onClose);
-					}
-				},
-				null
-		);
+		for (Registration<? extends NetChannel<IN, OUT>> reg : getChannels()) {
+			if (!reg.isCancelled()) {
+				doCloseChannel(reg.getObject());
+			}
+		}
+		if (null != onClose) {
+			reactor.schedule(onClose, true);
+		}
 	}
 
 	public Iterator<NetChannel<IN, OUT>> iterator() {

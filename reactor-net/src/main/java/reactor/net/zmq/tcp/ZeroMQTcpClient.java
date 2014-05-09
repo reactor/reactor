@@ -6,6 +6,7 @@ import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -34,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
@@ -69,7 +69,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.zmqOpts = null;
 		}
 
-		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-tcp-client"));
+		this.threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq-client"));
 	}
 
 	@Override
@@ -93,6 +93,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			throw new IllegalStateException("This ZeroMQ server has not been started");
 		}
 
+		super.close(null);
+
 		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker<IN, OUT>, Future<?>>() {
 			@Override
 			public void safeValue(ZeroMQWorker<IN, OUT> w, Future<?> f) throws Exception {
@@ -102,16 +104,10 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				}
 			}
 		});
-
 		threadPool.shutdownNow();
-		try {
-			threadPool.awaitTermination(30, TimeUnit.SECONDS);
-			super.close(onClose);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		} finally {
-			notifyShutdown();
-		}
+
+		getReactor().schedule(onClose, true);
+		notifyShutdown();
 	}
 
 	@Override
@@ -135,7 +131,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final UUID id = UUIDUtils.random();
 
 		int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
-		ZMQ.Context zmq = (null != zmqOpts ? zmqOpts.context() : null);
+		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
 		ZeroMQWorker<IN, OUT> worker = new ZeroMQWorker<IN, OUT>(id, socketType, ioThreadCount, zmq) {
 			@Override
@@ -152,12 +148,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 			@Override
 			protected void start(final ZMQ.Socket socket) {
-				String addr;
-				if (null != zmqOpts && null != zmqOpts.connectAddresses()) {
-					addr = zmqOpts.connectAddresses();
-				} else {
-					addr = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
-				}
+				String addr = createConnectAddress();
 				if (log.isInfoEnabled()) {
 					String type = findSocketTypeName(socket.getType());
 					log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
@@ -181,6 +172,16 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 		};
 		workers.put(worker, threadPool.submit(worker));
+	}
+
+	private String createConnectAddress() {
+		String addrs;
+		if (null != zmqOpts && null != zmqOpts.connectAddresses()) {
+			addrs = zmqOpts.connectAddresses();
+		} else {
+			addrs = "tcp://" + getConnectAddress().getHostString() + ":" + getConnectAddress().getPort();
+		}
+		return addrs;
 	}
 
 }

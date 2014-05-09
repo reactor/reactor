@@ -99,7 +99,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'collected must remove duplicates'
-			tap.get() == [1,2,3]
+			tap.get() == [1, 2, 3]
 	}
 
 	def 'A Stream with an unknown set of values makes those values available when flush predicate agrees'() {
@@ -297,7 +297,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == [1,2,3]
+			tap.get() == [1, 2, 3]
 	}
 
 
@@ -585,7 +585,6 @@ class StreamsSpec extends Specification {
 			'the updated reduction is available'
 			value.get() == 4
 	}
-
 
 
 	def 'Reduce will accumulate a list of accepted values'() {

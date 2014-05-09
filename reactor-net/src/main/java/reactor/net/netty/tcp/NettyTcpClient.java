@@ -36,10 +36,7 @@ import reactor.net.NetChannel;
 import reactor.net.Reconnect;
 import reactor.net.config.ClientSocketOptions;
 import reactor.net.config.SslOptions;
-import reactor.net.netty.NettyClientSocketOptions;
-import reactor.net.netty.NettyEventLoopDispatcher;
-import reactor.net.netty.NettyNetChannel;
-import reactor.net.netty.NettyNetChannelInboundHandler;
+import reactor.net.netty.*;
 import reactor.net.tcp.TcpClient;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
@@ -196,9 +193,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	protected ChannelHandler[] createChannelHandlers(SocketChannel ioChannel) {
 		NettyNetChannel<IN, OUT> conn = (NettyNetChannel<IN, OUT>) createChannel(ioChannel);
-		return new ChannelHandler[]{
-				new NettyNetChannelInboundHandler().setNetChannel(conn)
-		};
+		NettyNetChannelInboundHandler readHandler = new NettyNetChannelInboundHandler()
+				.setNetChannel(conn);
+		NettyNetChannelOutboundHandler writeHandler = new NettyNetChannelOutboundHandler();
+
+		return new ChannelHandler[]{readHandler, writeHandler};
 	}
 
 	private void openChannel(ChannelFutureListener listener) {

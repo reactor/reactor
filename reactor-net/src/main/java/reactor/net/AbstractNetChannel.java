@@ -4,10 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
@@ -58,8 +58,18 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		Assert.notNull(env, "IO Dispatcher cannot be null");
 		Assert.notNull(env, "Events Reactor cannot be null");
 		this.env = env;
-		this.ioReactor = Reactors.reactor(env, ioDispatcher);
-		this.eventsReactor = Reactors.reactor(env, eventsReactor.getDispatcher());
+		this.ioReactor = new Reactor(ioDispatcher,
+		                             null,
+		                             eventsReactor.getDispatchErrorHandler(),
+		                             eventsReactor.getUncaughtErrorHandler());
+		this.eventsReactor = new Reactor(eventsReactor.getDispatcher(),
+		                                 null,
+		                                 eventsReactor.getDispatchErrorHandler(),
+		                                 eventsReactor.getUncaughtErrorHandler());
+		this.eventsReactor.getConsumerRegistry().clear();
+		for (Registration<? extends Consumer<? extends Event<?>>> reg : eventsReactor.getConsumerRegistry()) {
+			this.eventsReactor.getConsumerRegistry().register(reg.getSelector(), reg.getObject());
+		}
 		this.codec = codec;
 		if (null != codec) {
 			this.decoder = codec.decoder(new NotifyConsumer<IN>(read.getObject(), this.eventsReactor));
@@ -182,8 +192,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
 	 * reactor.io.Buffer}. The given callback will be invoked when the write has completed.
 	 *
-	 * @param data       The outgoing data.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param data
+	 * 		The outgoing data.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
 	 */
 	protected void send(OUT data, final Promise<Void> onComplete) {
 		ioReactor.schedule(new WriteConsumer(onComplete), data);
@@ -192,7 +204,9 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Performing necessary decoding on the data and notify the internal {@link Reactor} of any results.
 	 *
-	 * @param data The data to decode.
+	 * @param data
+	 * 		The data to decode.
+	 *
 	 * @return {@literal true} if any more data is remaining to be consumed in the given {@link Buffer}, {@literal false}
 	 * otherwise.
 	 */
@@ -217,8 +231,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data       The data to write, as a {@link Buffer}.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * @param data
+	 * 		The data to write, as a {@link Buffer}.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
 	 */
 	protected void write(Buffer data, Promise<Void> onComplete, boolean flush) {
 		write(data.byteBuffer(), onComplete, flush);
@@ -227,18 +243,24 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data       The data to write.
-	 * @param onComplete The callback to invoke when the write is complete.
-	 * @param flush      whether to flush the underlying IO channel
+	 * @param data
+	 * 		The data to write.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
+	 * @param flush
+	 * 		whether to flush the underlying IO channel
 	 */
 	protected abstract void write(ByteBuffer data, Promise<Void> onComplete, boolean flush);
 
 	/**
 	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
 	 *
-	 * @param data       The data to write.
-	 * @param onComplete The callback to invoke when the write is complete.
-	 * @param flush      whether to flush the underlying IO channel
+	 * @param data
+	 * 		The data to write.
+	 * @param onComplete
+	 * 		The callback to invoke when the write is complete.
+	 * @param flush
+	 * 		whether to flush the underlying IO channel
 	 */
 	protected abstract void write(Object data, Promise<Void> onComplete, boolean flush);
 

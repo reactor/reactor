@@ -19,6 +19,7 @@ package reactor.rx;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
@@ -34,7 +35,9 @@ import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -284,6 +287,41 @@ public class PipelineTests extends AbstractReactorTest {
 		} catch (IllegalStateException ise) {
 		}
 		assertTrue(deferred.reason() instanceof Exception);
+	}
+
+	@Test
+	public void mapManyFlushesAllValuesThoroughly() throws InterruptedException {
+		int items = 30;
+		CountDownLatch latch = new CountDownLatch(items);
+		Random random = ThreadLocalRandom.current();
+
+		Stream<String> d = Streams.defer(env);
+		Stream<Integer> tasks = d.mapMany(s -> Promises.success(s, env, env.getDispatcher(Environment.THREAD_POOL))
+						.<Integer>map(str -> {
+							try {
+								Thread.sleep(random.nextInt(500));
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+							}
+							return Integer.parseInt(str);
+						}));
+
+		tasks.consume(i -> latch.countDown());
+
+		for (int i = 0; i < items; i++) {
+			d.broadcastNext(String.valueOf(i));
+		}
+
+		assertTrue(latch.getCount() + " of " + items + " items were counted down",
+				latch.await(items, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
+		int iterations = 10;
+		for (int i = 0; i < iterations; i++) {
+			mapManyFlushesAllValuesThoroughly();
+		}
 	}
 
 	<T> void await(Stream<T> s, Matcher<T> expected) throws InterruptedException {

@@ -164,6 +164,16 @@ public class CachingRegistry<T> implements Registry<T> {
 		return FastList.<Registration<? extends T>>newList(registrations).iterator();
 	}
 
+	@Override
+	public String toString() {
+		return "CachingRegistry{" +
+				"useCache=" + useCache +
+				", onNotFound=" + onNotFound +
+				", registrations=" + registrations +
+				", cache=" + cache +
+				'}';
+	}
+
 	private boolean isDirectMatchable(Selector sel) {
 		Class<?> objType = sel.getObject().getClass();
 		if (Object.class.equals(objType) || Selectors.AnonymousKey.class.equals(objType)) {

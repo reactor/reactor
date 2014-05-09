@@ -9,7 +9,7 @@ import reactor.io.Buffer;
 import reactor.net.AbstractNetChannel;
 
 /**
- * Netty {@link io.netty.channel.ChannelInboundHandler} implelmentation that passes data to a Reactor {@link
+ * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
  * reactor.net.AbstractNetChannel}.
  *
  * @author Jon Brisbin
@@ -80,11 +80,10 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
 		if ("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			if (log.isInfoEnabled()) {
-				log.info(ctx.channel().toString() + " " + cause.getMessage());
+			if (log.isDebugEnabled()) {
+				log.debug(ctx.channel().toString() + " " + cause.getMessage());
 			}
 		}
-
 		netChannel.notifyError(cause);
 		ctx.close();
 	}

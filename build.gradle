@@ -362,6 +362,7 @@ project('reactor-net') {
 	description = 'Reactor TCP components'
 
 	ext.bundleImportPackages = [
+			'org.zeromq;resolution:=optional',
 			'com.fasterxml.jackson.core;resolution:=optional',
 			'com.fasterxml.jackson.databind;resolution:=optional',
 			'com.fasterxml.jackson.module;resolution:=optional',

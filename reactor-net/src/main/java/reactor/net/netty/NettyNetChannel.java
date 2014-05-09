@@ -14,6 +14,7 @@ import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.net.AbstractNetChannel;
 import reactor.rx.Promise;
+import reactor.tuple.Tuple;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -84,7 +85,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@Override
 	protected void write(Object data, final Promise<Void> onComplete, boolean flush) {
-		ChannelFuture writeFuture = (flush ? ioChannel.writeAndFlush(data) : ioChannel.write(data));
+		ChannelFuture writeFuture = ioChannel.write(Tuple.of(data, flush));
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
@@ -103,7 +104,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@Override
 	protected void flush() {
-		ioChannel.flush();
+		ioChannel.write(Tuple.of(null, true));
 	}
 
 	@Override

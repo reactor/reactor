@@ -1,9 +1,8 @@
 package reactor.net.zmq;
 
-import org.zeromq.ZFrame;
-import org.zeromq.ZLoop;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMsg;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zeromq.*;
 import reactor.io.Buffer;
 
 import java.util.UUID;
@@ -13,19 +12,21 @@ import java.util.UUID;
  */
 public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 
-	private final ZLoop zloop = new ZLoop();
+	private final Logger log   = LoggerFactory.getLogger(getClass());
+	private final ZLoop  zloop = new ZLoop();
 
 	private final UUID                id;
 	private final int                 socketType;
 	private final int                 ioThreadCount;
 	private final ZLoop.IZLoopHandler inputHandler;
 
+	private volatile boolean      closed;
 	private volatile boolean      shutdownCtx;
-	private volatile ZMQ.Context  zmq;
+	private volatile ZContext     zmq;
 	private volatile ZMQ.Socket   socket;
 	private volatile ZMQ.PollItem pollin;
 
-	public ZeroMQWorker(UUID id, int socketType, int ioThreadCount, ZMQ.Context zmq) {
+	public ZeroMQWorker(UUID id, int socketType, int ioThreadCount, ZContext zmq) {
 		this.id = id;
 		this.socketType = socketType;
 		this.ioThreadCount = ioThreadCount;
@@ -34,6 +35,12 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 			@Override
 			public int handle(ZLoop loop, ZMQ.PollItem item, Object arg) {
 				ZMsg msg = ZMsg.recvMsg(socket);
+				if (null == msg || msg.size() == 0) {
+					return 0;
+				}
+				if (closed) {
+					return -1;
+				}
 
 				String connId;
 				switch (ZeroMQWorker.this.socketType) {
@@ -60,28 +67,41 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 
 	@Override
 	public void run() {
+		if (closed) {
+			return;
+		}
 		if (null == zmq) {
-			zmq = ZMQ.context(ioThreadCount);
+			zmq = new ZContext(ioThreadCount);
 			shutdownCtx = true;
 		}
-		socket = zmq.socket(socketType);
+		socket = zmq.createSocket(socketType);
 		socket.setIdentity(id.toString().getBytes());
 		configure(socket);
 
 		pollin = new ZMQ.PollItem(socket, ZMQ.Poller.POLLIN);
+		if (log.isTraceEnabled()) {
+			zloop.verbose(true);
+		}
 		zloop.addPoller(pollin, inputHandler, null);
 
 		start(socket);
 
 		zloop.start();
+
+		zmq.destroySocket(socket);
 	}
 
 	public void shutdown() {
+		if (closed) {
+			return;
+		}
 		zloop.removePoller(pollin);
 		zloop.destroy();
-		socket.close();
+
+		closed = true;
+
 		if (shutdownCtx) {
-			zmq.term();
+			zmq.destroy();
 		}
 	}
 
