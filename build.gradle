@@ -124,15 +124,13 @@ configure(allprojects) { project ->
 		//exclude module: 'junit'
 	}
 
-	gradle.taskGraph.whenReady {taskGraph ->
-		configure(project.tasks.withType(Test)) {
-			systemProperty("java.awt.headless", "true")
-			systemProperty("testGroups", project.properties.get("testGroups"))
-			scanForTestClasses = false
-			include '**/*Tests.*'
-			include '**/*Spec.*'
-			exclude '**/*Abstract*.*'
-		}
+	project.tasks.withType(Test).all {
+		systemProperty("java.awt.headless", "true")
+		systemProperty("testGroups", project.properties.get("testGroups"))
+		scanForTestClasses = false
+		include '**/*Tests.*'
+		include '**/*Spec.*'
+		exclude '**/*Abstract*.*'
 	}
 
 	repositories {
