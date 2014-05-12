@@ -18,7 +18,7 @@
 description = 'Reactive fast data framework for the JVM'
 
 ext {
-	gradleVersion = '1.11'
+	gradleVersion = '1.12'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
@@ -123,15 +123,13 @@ configure(allprojects) { project ->
 		//exclude module: 'junit'
 	}
 
-	gradle.taskGraph.whenReady {taskGraph ->
-		configure(project.tasks.withType(Test)) {
-			systemProperty("java.awt.headless", "true")
-			systemProperty("testGroups", project.properties.get("testGroups"))
-			scanForTestClasses = false
-			include '**/*Tests.*'
-			include '**/*Spec.*'
-			exclude '**/*Abstract*.*'
-		}
+	project.tasks.withType(Test).all {
+		systemProperty("java.awt.headless", "true")
+		systemProperty("testGroups", project.properties.get("testGroups"))
+		scanForTestClasses = false
+		include '**/*Tests.*'
+		include '**/*Spec.*'
+		exclude '**/*Abstract*.*'
 	}
 
 	repositories {
