@@ -59,12 +59,12 @@ ext {
 
 buildscript {
 	repositories {
-		maven { url "http://repo.spring.io/plugins-release" }
+		maven { url "http://repo.spring.io/plugins-snapshot" }
 		jcenter()
 	}
 	dependencies {
 		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4',
-							'org.springframework.build.gradle:springio-platform-plugin:0.0.3.RELEASE',
+							'org.springframework.build.gradle:springio-platform-plugin:0.0.3.BUILD-SNAPSHOT',
 							'com.github.jengelman.gradle.plugins:shadow:0.8'
 	}
 }
