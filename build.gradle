@@ -59,12 +59,12 @@ ext {
 
 buildscript {
 	repositories {
-		maven { url "http://repo.spring.io/plugins-snapshot" }
+		maven { url "http://repo.spring.io/plugins-release" }
 		jcenter()
 	}
 	dependencies {
 		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4',
-							'org.springframework.build.gradle:springio-platform-plugin:0.0.3.BUILD-SNAPSHOT',
+							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
 							'com.github.jengelman.gradle.plugins:shadow:0.8'
 	}
 }
@@ -170,6 +170,12 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 configure(subprojects) { subproject ->
+	apply plugin: 'spring-io'
+
+	dependencies {
+		springIoVersions 'io.spring.platform:platform-versions:1.0.0.BUILD-SNAPSHOT@properties'
+	}
+
 	test {
 		testLogging {
 			jvmArgs "-javaagent:${configurations.jacoco.asPath}=destfile=${buildDir}/jacoco.exec,includes=reactor.*"
@@ -218,7 +224,6 @@ project('reactor-core') {
 	description = 'Core Reactor components'
 
 	apply plugin: 'osgi'
-	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'net.openhft.chronicle;resolution:=optional',
@@ -330,7 +335,6 @@ project('reactor-net') {
 	description = 'Reactor TCP components'
 
 	apply plugin: 'osgi'
-	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'org.zeromq;resolution:=optional',
