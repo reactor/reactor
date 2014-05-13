@@ -59,7 +59,7 @@ ext {
 
 buildscript {
 	repositories {
-		maven { url "http://repo.spring.io/plugins-snapshot" }
+		maven { url "http://repo.spring.io/plugins-release" }
 		jcenter()
 	}
 	dependencies {
@@ -172,38 +172,10 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 configure(subprojects) { subproject ->
-
 	apply plugin: 'spring-io'
 
 	dependencies {
 		springIoVersions 'io.spring.platform:platform-versions:1.0.0.BUILD-SNAPSHOT@properties'
-	}
-
-	jar {
-		manifest.attributes["Created-By"] = "${System.getProperty("java.version")} (${System.getProperty("java.specification.vendor")})"
-		manifest.attributes["Implementation-Title"] = subproject.name
-		manifest.attributes["Implementation-Version"] = subproject.version
-	}
-
-	task sourcesJar(type: Jar) {
-		classifier = 'sources'
-		from sourceSets.main.allSource
-	}
-
-	task groovydocJar(type: Jar) {
-		classifier = 'groovydoc'
-		from groovydoc
-	}
-
-	task javadocJar(type: Jar) {
-		classifier = 'javadoc'
-		from javadoc
-	}
-
-	artifacts {
-		archives sourcesJar
-		archives javadocJar
-		archives groovydocJar
 	}
 
 	test {
@@ -255,7 +227,6 @@ project('reactor-core') {
 	description = 'Core Reactor components'
 
 	apply plugin: 'osgi'
-	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'net.openhft.chronicle;resolution:=optional',
@@ -371,7 +342,6 @@ project('reactor-net') {
 	description = 'Reactor TCP components'
 
 	apply plugin: 'osgi'
-	apply plugin: 'springio-platform'
 
 	ext.bundleImportPackages = [
 			'org.zeromq;resolution:=optional',
