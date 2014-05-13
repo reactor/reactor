@@ -59,7 +59,7 @@ ext {
 
 buildscript {
 	repositories {
-		maven { url "http://repo.spring.io/plugins-release" }
+		maven { url "http://repo.spring.io/plugins-snapshot" }
 		jcenter()
 	}
 	dependencies {
