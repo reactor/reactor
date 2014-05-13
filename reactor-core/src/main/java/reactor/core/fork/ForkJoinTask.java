@@ -93,7 +93,7 @@ public class ForkJoinTask<T, C extends Composable<T>> implements Consumer<Object
 		tasks.forEach(new CheckedProcedure<Function>() {
 			@SuppressWarnings("unchecked")
 			@Override
-			public void safeValue(Function fn) throws Exception {
+			public void safeValue(final Function fn) throws Exception {
 				executor.execute(new Runnable() {
 					@Override
 					public void run() {
