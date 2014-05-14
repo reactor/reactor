@@ -17,6 +17,7 @@
 package reactor.rx;
 
 import org.hamcrest.Matcher;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.Environment;
@@ -290,6 +291,7 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 	@Test
+	@Ignore
 	public void mapManyFlushesAllValuesThoroughly() throws InterruptedException {
 		int items = 30;
 		CountDownLatch latch = new CountDownLatch(items);
@@ -317,6 +319,7 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 	@Test
+	@Ignore
 	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
 		int iterations = 10;
 		for (int i = 0; i < iterations; i++) {
