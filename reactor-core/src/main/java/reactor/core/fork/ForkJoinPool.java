@@ -89,10 +89,8 @@ public class ForkJoinPool {
 				public ImmutableList<V> apply(Object o) {
 					try {
 						V result = (V) fn.apply(o);
-						if (null != result) {
-							synchronized (results) {
-								results.add(result);
-							}
+						synchronized (results) {
+							results.add(result);
 						}
 					} finally {
 						if (count.decrementAndGet() == 0) {
