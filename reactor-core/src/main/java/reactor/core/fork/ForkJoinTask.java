@@ -5,12 +5,11 @@ import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.composable.Composable;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.action.Pipeline;
 
 import java.util.concurrent.Executor;
 
@@ -18,16 +17,17 @@ import java.util.concurrent.Executor;
  * Represents a collection of asynchronous tasks that will be executed once per {@link #submit()}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class ForkJoinTask<T, C extends Composable<T>> implements Consumer<Object> {
+public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> {
 
 	private final Logger                              log   = LoggerFactory.getLogger(getClass());
 	private final MultiReaderFastList<Function<?, ?>> tasks = MultiReaderFastList.newList();
 
 	private final Executor       executor;
-	private final Deferred<T, C> deferred;
+	private final Pipeline<T> deferred;
 
-	ForkJoinTask(Executor executor, Deferred<T, C> deferred) {
+	ForkJoinTask(Executor executor, Pipeline<T> deferred) {
 		this.executor = executor;
 		this.deferred = deferred;
 	}
@@ -60,11 +60,11 @@ public class ForkJoinTask<T, C extends Composable<T>> implements Consumer<Object
 	/**
 	 * Compose actions against the asynchronous results.
 	 *
-	 * @return {@link reactor.core.composable.Promise} or a {@link reactor.core.composable.Stream} depending on the
+	 * @return {@link reactor.rx.Promise} or a {@link reactor.rx.Stream} depending on the
 	 * implementation.
 	 */
-	public C compose() {
-		return deferred.compose();
+	public Pipeline<T> compose() {
+		return deferred;
 	}
 
 	/**
@@ -100,11 +100,11 @@ public class ForkJoinTask<T, C extends Composable<T>> implements Consumer<Object
 						try {
 							Object result = fn.apply(arg);
 							if (null != result) {
-								deferred.accept((T) result);
+								deferred.broadcastNext((T) result);
 							}
 						} catch (Exception e) {
 							if (compose() instanceof Stream || !((Promise) compose()).isComplete()) {
-								deferred.accept(e);
+								deferred.broadcastError(e);
 							} else {
 								log.error(e.getMessage(), e);
 							}
