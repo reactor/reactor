@@ -68,7 +68,7 @@ public class ConsumerFilteringEventRouter implements EventRouter {
 			for (int i = 0; i < size; i++) {
 				Registration<? extends Consumer<? extends Event<?>>> reg = regs.get(i);
 
-				if (reg.isCancelled() || reg.isPaused()) {
+				if (null == reg || reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
 				try {
