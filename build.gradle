@@ -170,10 +170,16 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 configure(subprojects) { subproject ->
-	apply plugin: 'spring-io'
+	if (project.hasProperty('platformVersion')) {
+		apply plugin: 'spring-io'
 
-	dependencies {
-		springIoVersions 'io.spring.platform:platform-versions:1.0.0.BUILD-SNAPSHOT@properties'
+		repositories {
+			maven { url 'http://repo.spring.io/libs-snapshot' }
+		}
+
+		dependencies {
+			springIoVersions "io.spring.platform:platform-versions:$platformVersion@properties"
+		}
 	}
 
 	test {
