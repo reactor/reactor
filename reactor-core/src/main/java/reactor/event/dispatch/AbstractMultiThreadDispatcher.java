@@ -25,7 +25,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	private final List<List<Task>>                      tailRecursionPileList;
 	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
-	private final Map<Integer, Integer> tailsThreadIndexLookup = new HashMap<Integer, Integer>();
+	private final Map<Long, Integer> tailsThreadIndexLookup = new HashMap<Long, Integer>();
 	private final AtomicInteger         indexAssignPile        = new AtomicInteger();
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
@@ -48,7 +48,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 			tailRecursionPileSizeArray[i] = 0;
 			tailRecurseSeqArray[i] = -1;
 			tailRecursionPileList.add(new ArrayList<Task>(backlog));
-			tailsThreadIndexLookup.put(System.identityHashCode(Thread.currentThread()), null);
+			tailsThreadIndexLookup.put(Thread.currentThread().getId(), null);
 			expandTailRecursionPile(i, backlog);
 		}
 	}
@@ -67,10 +67,10 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		Integer index = tailsThreadIndexLookup.get(System.identityHashCode(Thread.currentThread()));
+		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
 		if(null == index) {
 			index = indexAssignPile.getAndIncrement() % numberThreads;
-			tailsThreadIndexLookup.put(Thread.currentThread().hashCode(), index);
+			tailsThreadIndexLookup.put(Thread.currentThread().getId(), index);
 		}
 		int next = ++tailRecurseSeqArray[index];
 		if(next == tailRecursionPileSizeArray[index]) {
@@ -88,7 +88,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		public void run() {
 			route(this);
 
-			Integer index = tailsThreadIndexLookup.get(System.identityHashCode(Thread.currentThread()));
+			Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
 			if(null == index || tailRecurseSeqArray[index] < 0) {
 				return;
 			}
