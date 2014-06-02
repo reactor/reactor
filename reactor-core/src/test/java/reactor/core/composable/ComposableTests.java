@@ -379,4 +379,41 @@ public class ComposableTests extends AbstractReactorTest {
 		}
 	}
 
+	/**
+	 * This test failed with Java 7 (see issue #294):
+	 * the consumer received more calls than expected
+	 * @throws InterruptedException
+	 */
+	@Test
+    public void mapNotifiesOnce() throws InterruptedException {
+
+        final int COUNT = 5000;
+        final CountDownLatch latch = new CountDownLatch(COUNT);
+
+        Environment e = new Environment();
+        Deferred<Object, Stream<Object>> d = Streams.defer(e, e.getDispatcher("workQueue"));
+
+        final AtomicInteger iter = new AtomicInteger(0);
+
+        d.compose().map(new Function<Object, Object>() {
+            @Override
+            public Object apply(Object o) {
+                return o;
+            }
+        })
+        .consume(new Consumer<Object>() {
+            @Override
+            public void accept(Object o) {
+                iter.incrementAndGet();
+                latch.countDown();
+            }
+        });
+
+        for (int i = 0; i < COUNT; i++) {
+            d.accept(i);
+        }  
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+        assertEquals(COUNT, iter.get());
+    }
+	
 }
