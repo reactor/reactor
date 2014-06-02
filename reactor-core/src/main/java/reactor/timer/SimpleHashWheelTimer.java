@@ -102,6 +102,7 @@ public class SimpleHashWheelTimer implements Timer {
 								Thread.sleep(resolution);
 							} catch(InterruptedException e) {
 								Thread.currentThread().interrupt();
+								return;
 							}
 						}
 					}

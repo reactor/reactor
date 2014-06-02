@@ -132,7 +132,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			System.exit(1);
+			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
 

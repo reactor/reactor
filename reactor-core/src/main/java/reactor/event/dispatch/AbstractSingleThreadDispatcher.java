@@ -15,8 +15,8 @@ public abstract class AbstractSingleThreadDispatcher extends AbstractLifecycleDi
 	private final List<Task> tailRecursionPile = new ArrayList<Task>();
 	private final int backlog;
 
-	private int tailRecurseSeq        = -1;
-	private int tailRecursionPileSize = 0;
+	private volatile int tailRecurseSeq        = -1;
+	private volatile int tailRecursionPileSize = 0;
 
 	public AbstractSingleThreadDispatcher(int backlog) {
 		this.backlog = backlog;

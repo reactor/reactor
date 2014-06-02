@@ -52,8 +52,8 @@ ext {
 	javadocLinks = [
 			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/",
-			"http://www.goldmansachs.com/gs-collections/javadoc/5.0.0/",
-			"http://fasterxml.github.com/jackson-core/javadoc/2.3.2/"
+			"http://fasterxml.github.com/jackson-core/javadoc/2.3.2/",
+			"http://www.goldmansachs.com/gs-collections/javadoc/5.0.0/"
 	] as String[]
 }
 
@@ -64,8 +64,8 @@ buildscript {
 	}
 	dependencies {
 		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.4',
-							'com.github.jengelman.gradle.plugins:shadow:0.8',
-							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE'
+							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
+							'com.github.jengelman.gradle.plugins:shadow:0.8'
 	}
 }
 apply from: "$gradleScriptDir/setup.gradle"
@@ -172,10 +172,16 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 configure(subprojects) { subproject ->
-	apply plugin: 'spring-io'
+	if (project.hasProperty('platformVersion')) {
+		apply plugin: 'spring-io'
 
-	dependencies {
-		springIoVersions 'io.spring.platform:platform-versions:1.0.0.BUILD-SNAPSHOT@properties'
+		repositories {
+			maven { url 'http://repo.spring.io/libs-snapshot' }
+		}
+
+		dependencies {
+			springIoVersions "io.spring.platform:platform-versions:$platformVersion@properties"
+		}
 	}
 
 	test {
