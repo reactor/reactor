@@ -386,11 +386,11 @@ public class PipelineTests extends AbstractReactorTest {
         final CountDownLatch latch = new CountDownLatch(COUNT);
 
         Environment e = new Environment();
-        Deferred<Object, Stream<Object>> d = Streams.defer(e, e.getDispatcher("workQueue"));
+        Stream<Object> d = Streams.defer(e, e.getDispatcher("workQueue"));
 
         final AtomicInteger iter = new AtomicInteger(0);
 
-        d.compose().map(new Function<Object, Object>() {
+        d.map(new Function<Object, Object>() {
             @Override
             public Object apply(Object o) {
                 return o;
@@ -405,7 +405,7 @@ public class PipelineTests extends AbstractReactorTest {
         });
 
         for (int i = 0; i < COUNT; i++) {
-            d.accept(i);
+            d.broadcastNext(i);
         }  
         assertTrue(latch.await(5, TimeUnit.SECONDS));
         assertEquals(COUNT, iter.get());
