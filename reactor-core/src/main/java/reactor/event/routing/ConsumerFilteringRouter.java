@@ -18,7 +18,6 @@ package reactor.event.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.filter.Filter;
 import reactor.function.Consumer;

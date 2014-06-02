@@ -25,9 +25,9 @@ public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> 
 	private final MultiReaderFastList<Function<?, ?>> tasks = MultiReaderFastList.newList();
 
 	private final Executor       executor;
-	private final Pipeline<T> deferred;
+	private final C deferred;
 
-	ForkJoinTask(Executor executor, Pipeline<T> deferred) {
+	ForkJoinTask(Executor executor, C deferred) {
 		this.executor = executor;
 		this.deferred = deferred;
 	}
@@ -63,7 +63,7 @@ public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> 
 	 * @return {@link reactor.rx.Promise} or a {@link reactor.rx.Stream} depending on the
 	 * implementation.
 	 */
-	public Pipeline<T> compose() {
+	public C compose() {
 		return deferred;
 	}
 
