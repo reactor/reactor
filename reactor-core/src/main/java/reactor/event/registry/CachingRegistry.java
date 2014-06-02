@@ -6,7 +6,7 @@ import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
-import com.gs.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
+import com.gs.collections.impl.multimap.set.SynchronizedPutUnifiedSetMultimap;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
@@ -30,8 +30,8 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final boolean          useCache;
 	private final Consumer<Object> onNotFound;
 
-	private final MultiReaderFastList<Registration<? extends T>>                     registrations;
-	private final SynchronizedPutFastListMultimap<Object, Registration<? extends T>> cache;
+	private final MultiReaderFastList<Registration<? extends T>>                       registrations;
+	private final SynchronizedPutUnifiedSetMultimap<Object, Registration<? extends T>> cache;
 
 	public CachingRegistry() {
 		this(true, null);
@@ -41,7 +41,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		this.useCache = useCache;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
-		this.cache = SynchronizedPutFastListMultimap.newMultimap();
+		this.cache = SynchronizedPutUnifiedSetMultimap.newMultimap();
 	}
 
 	@Override
@@ -128,7 +128,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 
 		List<Registration<? extends T>> regs;
-		if (useCache && !((regs = cache.get(key)).isEmpty())) {
+		if (useCache && !((regs = cache.get(key).toList()).isEmpty())) {
 			return regs;
 		} else {
 			cacheMiss(key);
