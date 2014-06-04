@@ -15,10 +15,8 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.api.Producer;
-import org.reactivestreams.api.Consumer;
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.event.lifecycle.Pausable;
 
 import javax.annotation.Nonnull;
@@ -36,12 +34,12 @@ import javax.annotation.Nonnull;
  * @author Jon Brisbin
  * @since 1.1
  */
-public interface Pipeline<O> extends Producer<O>, Publisher<O>, Pausable {
+public interface Pipeline<O> extends Publisher<O>, Pausable {
 
 	/**
 	 * Subscribe an {@link Action} to the actual pipeline. Additionally to producing events (error,complete,next and
 	 * eventually flush), it will generally take care of setting the environment if available and
-	 * an initial prefetch size used for {@link org.reactivestreams.spi.Subscription#requestMore(int)}.
+	 * an initial prefetch size used for {@link org.reactivestreams.Subscription#request(int)}.
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 *
 	 * @param action the processor to subscribe.
@@ -49,7 +47,7 @@ public interface Pipeline<O> extends Producer<O>, Publisher<O>, Pausable {
 	 *
 	 * @return the current {link Pipeline} instance
 	 *
-	 * @see {@link Producer#produceTo(Consumer)}
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 1.1
 	 */
 	<E> Pipeline<E> connect(@Nonnull Action<O, E> action);

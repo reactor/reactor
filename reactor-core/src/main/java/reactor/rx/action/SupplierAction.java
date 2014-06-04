@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
@@ -37,8 +37,8 @@ public class SupplierAction<T, V> extends Action<T, V> {
 		if (getSubscription() == null) {
 			return new StreamSubscription<V>(this, subscriber) {
 				@Override
-				public void requestMore(int elements) {
-					super.requestMore(elements);
+				public void request(int elements) {
+					super.request(elements);
 					onNext(supplier.get());
 				}
 			};

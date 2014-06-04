@@ -15,8 +15,8 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
@@ -58,7 +58,7 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
 			@Override
 			protected void doSubscribe(Subscription subscription) {
-				subscription.requestMore(batchSize);
+				subscription.request(batchSize);
 			}
 
 			@Override

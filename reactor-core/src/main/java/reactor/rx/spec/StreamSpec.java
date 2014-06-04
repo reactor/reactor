@@ -15,10 +15,9 @@
  */
 package reactor.rx.spec;
 
-import org.reactivestreams.api.Producer;
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -57,16 +56,6 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	public StreamSpec<T> batchSize(int batchSize) {
 		this.batchSize = batchSize;
 		return this;
-	}
-
-	/**
-	 * Configures the stream to tap data from the given {@param producer}.
-	 *
-	 * @param producer The {@link Producer<T>}
-	 * @return {@code this}
-	 */
-	public StreamSpec<T> source(Producer<T> producer) {
-		return source(producer.getPublisher());
 	}
 
 	/**
@@ -149,8 +138,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	}
 
 
-	static class StreamSubscriber<T> implements org.reactivestreams.spi.Subscriber<T>,
-			org.reactivestreams.api.Consumer<T> {
+	static class StreamSubscriber<T> implements org.reactivestreams.Subscriber<T>{
 		private final Stream<T> stream;
 
 		public StreamSubscriber(Stream<T> stream) {
@@ -159,7 +147,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 
 		@Override
 		public void onSubscribe(Subscription subscription) {
-			subscription.requestMore(stream.getBatchSize());
+			subscription.request(stream.getBatchSize());
 		}
 
 		@Override
@@ -175,11 +163,6 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 		@Override
 		public void onError(Throwable cause) {
 			stream.broadcastError(cause);
-		}
-
-		@Override
-		public Subscriber<T> getSubscriber() {
-			return this;
 		}
 	}
 }

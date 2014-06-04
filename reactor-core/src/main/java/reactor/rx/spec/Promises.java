@@ -16,7 +16,7 @@
 
 package reactor.rx.spec;
 
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -218,7 +218,7 @@ public abstract class Promises {
 		CollectAction<T> collectAction = new CollectAction<T>(promises.length, SynchronousDispatcher.INSTANCE){
 			@Override
 			protected void doSubscribe(Subscription subscription) {
-				subscription.requestMore(1);
+				subscription.request(1);
 			}
 		};
 		collectAction.env(promises[0].getEnvironment());
@@ -260,7 +260,7 @@ public abstract class Promises {
 
 			@Override
 			protected void doSubscribe(Subscription subscription) {
-				subscription.requestMore(1);
+				subscription.request(1);
 			}
 		};
 
@@ -305,7 +305,7 @@ public abstract class Promises {
 
 			@Override
 			protected void doSubscribe(Subscription subscription) {
-				subscription.requestMore(1);
+				subscription.request(1);
 			}
 
 			@Override

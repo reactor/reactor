@@ -3,7 +3,7 @@ package reactor.groovy.config
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
-import org.reactivestreams.api.Processor
+import org.reactivestreams.Processor
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor

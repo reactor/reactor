@@ -15,9 +15,9 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.StreamSubscription;
 
@@ -94,11 +94,11 @@ public class MergeAction<O> extends Action<O, O> {
 		if (subscriptions.length > 0) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
-				public void requestMore(int elements) {
-					super.requestMore(elements * (subscriptions.length + 1));
+				public void request(int elements) {
+					super.request(elements * (subscriptions.length + 1));
 					for (Subscription subscription : subscriptions) {
 						if (subscription != null) {
-							subscription.requestMore(elements);
+							subscription.request(elements);
 						}
 					}
 					requestUpstream(capacity, terminated, elements);

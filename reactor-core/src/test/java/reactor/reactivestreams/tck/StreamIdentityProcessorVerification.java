@@ -15,12 +15,10 @@
  */
 package reactor.reactivestreams.tck;
 
-import org.reactivestreams.api.Processor;
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.tck.IdentityProcessorVerification;
-import org.reactivestreams.tck.TestEnvironment;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.testng.annotations.Test;
-import reactor.core.Environment;
+import reactor.AbstractReactorTest;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -36,15 +34,8 @@ import java.util.Random;
  * @author Stephane Maldini
  */
 @Test
-public class StreamIdentityProcessorVerification extends IdentityProcessorVerification<Integer> {
+public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 
-	private final Environment env = new Environment();
-
-	public StreamIdentityProcessorVerification() {
-		super(new TestEnvironment(2500), 3500);
-	}
-
-	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
 		return
 				Action.<Integer>passthrough(env.getDispatcher("ringBuffer"))
@@ -65,7 +56,6 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 				.combine();
 	}
 
-	@Override
 	public Publisher<Integer> createHelperPublisher(final int elements) {
 		if (elements > 0) {
 			List<Integer> list = new ArrayList<Integer>(elements);
@@ -87,14 +77,12 @@ public class StreamIdentityProcessorVerification extends IdentityProcessorVerifi
 		}
 	}
 
-	@Override
 	public Publisher<Integer> createCompletedStatePublisher() {
 		Stream<Integer> stream = Streams.defer(env);
 		stream.broadcastComplete();
 		return stream;
 	}
 
-	@Override
 	public Publisher<Integer> createErrorStatePublisher() {
 		Stream<Integer> stream = Streams.defer(env);
 		stream.broadcastError(new Exception("oops"));

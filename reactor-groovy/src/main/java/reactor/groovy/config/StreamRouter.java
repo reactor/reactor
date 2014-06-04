@@ -1,9 +1,9 @@
 package reactor.groovy.config;
 
 
-import org.reactivestreams.api.Processor;
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
@@ -37,11 +37,11 @@ public class StreamRouter extends ConsumerFilteringRouter {
 		Processor<Event<?>, Event<?>> processor;
 		for (Registration<? extends Processor<Event<?>, Event<?>>> registration : processorRegistry.select(key)){
 			processor = registration.getObject();
-			processor.getSubscriber().onNext((Event<?>) event);
-			processor.getPublisher().subscribe(new Subscriber<Event<?>>() {
+			processor.onNext((Event<?>) event);
+			processor.subscribe(new Subscriber<Event<?>>() {
 				@Override
 				public void onSubscribe(Subscription subscription) {
-					subscription.requestMore(Integer.MAX_VALUE);
+					subscription.request(Integer.MAX_VALUE);
 				}
 
 				@Override

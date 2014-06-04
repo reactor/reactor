@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;

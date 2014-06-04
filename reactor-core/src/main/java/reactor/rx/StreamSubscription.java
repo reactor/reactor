@@ -15,8 +15,8 @@
  */
 package reactor.rx;
 
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -47,7 +47,7 @@ public class StreamSubscription<O> implements Subscription {
 	}
 
 	@Override
-	public void requestMore(int elements) {
+	public void request(int elements) {
 		if (terminated && buffer.isEmpty()) {
 			return;
 		}

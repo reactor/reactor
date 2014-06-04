@@ -16,9 +16,9 @@
 
 package reactor.rx;
 
-import org.reactivestreams.api.Processor;
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
@@ -55,7 +55,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Consumer<O>, Flushable {
+public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Consumer<O>, Flushable {
 
 	private final ReentrantLock lock = new ReentrantLock();
 
@@ -355,7 +355,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 
 			@Override
 			protected void doSubscribe(Subscription subscription) {
-				subscription.requestMore(1);
+				subscription.request(1);
 			}
 
 			@Override
@@ -494,16 +494,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	@Override
-	public Promise<O> getPublisher() {
-		return this;
-	}
-
-	@Override
-	public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
-		subscribe(consumer.getSubscriber());
-	}
-
-	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
 		lock.lock();
 		try {
@@ -519,7 +509,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 						}
 
 						@Override
-						public void requestMore(int elements) {
+						public void request(int elements) {
 							if (terminated) return;
 							subscriber.onError(delegateAction.error);
 							subscriber.onComplete();
@@ -535,7 +525,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 						}
 
 						@Override
-						public void requestMore(int elements) {
+						public void request(int elements) {
 							if (terminated) return;
 							subscriber.onNext(value);
 							subscriber.onComplete();
@@ -554,13 +544,8 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	@Override
-	public Subscriber<O> getSubscriber() {
-		return this;
-	}
-
-	@Override
 	public void onSubscribe(Subscription subscription) {
-		subscription.requestMore(1);
+		subscription.request(1);
 	}
 
 	@Override

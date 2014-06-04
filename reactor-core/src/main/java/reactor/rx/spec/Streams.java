@@ -16,8 +16,7 @@
 
 package reactor.rx.spec;
 
-import org.reactivestreams.api.Producer;
-import org.reactivestreams.spi.Publisher;
+import org.reactivestreams.Publisher;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.Reactor;
@@ -102,19 +101,6 @@ public abstract class Streams {
 		Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE).env(env);
 		publisher.subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
-	}
-
-
-	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values from the given producer. A producer will start
-	 * producing next elements until onComplete is called.
-	 *
-	 * @param producer the publisher to broadcast the Stream subscriber
-	 * @param <T>      the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> defer(Producer<T> producer) {
-		return defer(producer.getPublisher());
 	}
 
 	/**

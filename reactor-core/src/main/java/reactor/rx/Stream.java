@@ -19,8 +19,8 @@ package reactor.rx;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.alloc.Recyclable;
@@ -185,7 +185,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn  the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Stream} containing the transformed values
-	 * @see {@link org.reactivestreams.api.Producer#produceTo(org.reactivestreams.api.Consumer)}
 	 * @since 1.1
 	 */
 	public <V, C extends Publisher<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
@@ -712,12 +711,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	@Override
-	public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
-		subscribe(consumer.getSubscriber());
-	}
-
-
-	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
 		final StreamSubscription<O> subscription = createSubscription(subscriber);
 
@@ -869,7 +862,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Return defined {@link Stream} batchSize, used to drive new {@link org.reactivestreams.spi.Subscription}
+	 * Return defined {@link Stream} batchSize, used to drive new {@link org.reactivestreams.Subscription}
 	 * request needs.
 	 *
 	 * @return
@@ -895,7 +888,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			public void safeValue(StreamSubscription<O> oStreamSubscription) throws Exception {
 				long capacity = oStreamSubscription.capacity.get();
 				if (capacity > 0) {
-					oStreamSubscription.requestMore(batchSize > capacity ? batchSize : (int) capacity);
+					oStreamSubscription.request(batchSize > capacity ? batchSize : (int) capacity);
 				}
 			}
 		});
@@ -907,12 +900,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	protected void setState(State state) {
 		this.state = state;
 	}
-
-	@Override
-	public Stream<O> getPublisher() {
-		return this;
-	}
-
 
 	private void callError(StreamSubscription<O> subscription, Throwable cause) {
 		subscription.subscriber.onError(cause);

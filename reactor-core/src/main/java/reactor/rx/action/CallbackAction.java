@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.dispatch.Dispatcher;
@@ -43,7 +43,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		if (prefetch) {
-			subscription.requestMore(Integer.MAX_VALUE);
+			subscription.request(Integer.MAX_VALUE);
 		}
 	}
 
@@ -52,7 +52,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 		int counted = count.incrementAndGet();
 		consumer.accept(ev);
 		if (counted % Integer.MAX_VALUE == 0) {
-			getSubscription().requestMore(Integer.MAX_VALUE);
+			getSubscription().request(Integer.MAX_VALUE);
 		}
 	}
 

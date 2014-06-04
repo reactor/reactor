@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.spi.Subscriber;
+import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.StreamSubscription;
 
@@ -55,8 +55,8 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 				AtomicLong cursor = new AtomicLong();
 
 				@Override
-				public void requestMore(int elements) {
-					super.requestMore(elements);
+				public void request(int elements) {
+					super.request(elements);
 
 					if(terminated) return;
 

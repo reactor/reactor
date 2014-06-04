@@ -17,7 +17,7 @@ package reactor.rx;
 
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
-import org.reactivestreams.spi.Publisher;
+import org.reactivestreams.Publisher;
 import reactor.rx.action.FilterAction;
 import reactor.rx.action.MapManyAction;
 

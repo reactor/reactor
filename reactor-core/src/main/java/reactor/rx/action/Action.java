@@ -15,10 +15,10 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.api.Processor;
-import org.reactivestreams.spi.Publisher;
-import org.reactivestreams.spi.Subscriber;
-import org.reactivestreams.spi.Subscription;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, Subscriber<I>, Flushable {
+public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, Flushable {
 
 	protected static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -119,7 +119,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	public void available() {
 		if (subscription != null && !pause) {
-			subscription.requestMore(batchSize);
+			subscription.request(batchSize);
 		}
 	}
 
@@ -128,7 +128,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			int currentCapacity = capacity.intValue();
 			if (!pause && currentCapacity > 0) {
 				int remaining = currentCapacity > elements ? elements : currentCapacity;
-				subscription.requestMore(remaining);
+				subscription.request(remaining);
 			}
 		}
 	}
@@ -137,8 +137,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
 		return new StreamSubscription<O>(this, subscriber) {
 			@Override
-			public void requestMore(int elements) {
-				super.requestMore(elements);
+			public void request(int elements) {
+				super.request(elements);
 				requestUpstream(capacity, terminated, elements);
 			}
 		};
@@ -273,18 +273,28 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 		return new Processor<E, O>() {
 			@Override
-			public Subscriber<E> getSubscriber() {
-				return subscriber;
+			public void subscribe(Subscriber<O> s) {
+				publisher.subscribe(s);
 			}
 
 			@Override
-			public Publisher<O> getPublisher() {
-				return publisher;
+			public void onSubscribe(Subscription s) {
+				subscriber.onSubscribe(s);
 			}
 
 			@Override
-			public void produceTo(org.reactivestreams.api.Consumer<O> consumer) {
-				publisher.subscribe(consumer.getSubscriber());
+			public void onNext(E e) {
+				subscriber.onNext(e);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				subscriber.onError(t);
+			}
+
+			@Override
+			public void onComplete() {
+				subscriber.onComplete();
 			}
 		};
 	}
@@ -348,11 +358,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	public Subscription getSubscription() {
 		return subscription;
-	}
-
-	@Override
-	public Subscriber<I> getSubscriber() {
-		return this;
 	}
 
 	@Override
