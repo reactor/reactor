@@ -17,7 +17,8 @@ package reactor.reactivestreams.tck;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import org.testng.annotations.Test;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
@@ -25,15 +26,16 @@ import reactor.rx.action.Action;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
+import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author Stephane Maldini
  */
-@Test
 public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
@@ -87,5 +89,40 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 		Stream<Integer> stream = Streams.defer(env);
 		stream.broadcastError(new Exception("oops"));
 		return stream;
+	}
+
+	@org.junit.Test
+	public void testIdentityProcessor() throws InterruptedException {
+
+		final int elements = 10;
+		CountDownLatch latch = new CountDownLatch(elements);
+
+		Processor<Integer,Integer> processor = createIdentityProcessor(15);
+		createHelperPublisher(elements).subscribe(processor);
+		processor.subscribe(new Subscriber<Integer>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(elements);
+			}
+
+			@Override
+			public void onNext(Integer integer) {
+				latch.countDown();
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				t.printStackTrace();
+			}
+
+			@Override
+			public void onComplete() {
+
+			}
+		});
+
+		latch.await();
+		Assert.isTrue(latch.getCount() == 0);
+
 	}
 }

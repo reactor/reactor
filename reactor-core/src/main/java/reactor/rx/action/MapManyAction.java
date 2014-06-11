@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
-import reactor.rx.Stream;
 import reactor.util.Assert;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -47,6 +46,11 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 					MapManyAction.this.requestUpstream(currentCapacity, terminated, elements);
 				}
 			}
+
+			@Override
+			public String debug() {
+				return MapManyAction.this.debug()+"\n"+super.debug();
+			}
 		};
 		this.mergeAction.runningComposables.incrementAndGet();
 	}
@@ -57,10 +61,9 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 		E val = fn.apply(value);
 		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
 			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(batchSize);
+			protected void doSubscribe(Subscription s) {
+				available();
 			}
-
 			@Override
 			protected void doFlush() {
 				mergeAction.doFlush();
@@ -74,12 +77,14 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 			@Override
 			protected void doNext(O ev) {
 				mergeAction.doNext(ev);
+				available();
 			}
 
 			@Override
 			protected void doError(Throwable ev) {
 				mergeAction.doError(ev);
 			}
+
 		};
 		val.subscribe(inlineMerge);
 	}
@@ -105,13 +110,13 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 	}
 
 	@Override
-	public Stream<O> resume() {
+	public Action<I,O> resume() {
 		mergeAction.resume();
 		return super.resume();
 	}
 
 	@Override
-	public Stream<O> pause() {
+	public Action<I,O> pause() {
 		mergeAction.pause();
 		return super.pause();
 	}

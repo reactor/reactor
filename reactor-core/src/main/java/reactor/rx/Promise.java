@@ -55,7 +55,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Consumer<O>, Flushable {
+public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Consumer<O>, Flushable {
 
 	private final ReentrantLock lock = new ReentrantLock();
 
@@ -185,6 +185,56 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Co
 	public <V> Promise<V> then(@Nonnull final Function<O, V> onSuccess, @Nullable final Consumer<Throwable> onError) {
 		onError(onError);
 		return map(onSuccess);
+	}
+
+	/**
+	 * Assign a success {@link Action} that will either be invoked later, when the {@code Promise} is successfully
+	 * completed with a value, or, if this {@code Promise} has already been fulfilled, the action is immediately
+	 * scheduled to be executed on the current {@link reactor.event.dispatch.Dispatcher}.
+	 * <p/>
+	 * A new {@code Promise} is returned that will be populated by result of the given transformation {@link Action}
+	 * that
+	 * turns the incoming {@code T} into a {@code V}.
+	 *
+	 * @param action the success transformation {@link Action}
+	 * @param <A>       the type of the value returned by the transformation {@link Function}
+	 * @return a new {@code Promise} that will be populated by the result of the transformation {@link Function}
+	 */
+	public <A> Promise<A> then(@Nonnull final Action<O, A> action){
+		final Promise<A> promise = new Promise<A>(action, delegateAction.getEnvironment());
+		subscribe(new Action<O, A>() {
+			boolean terminated;
+
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.request(1);
+			}
+
+			@Override
+			public void doNext(O element) {
+				action.consume(new Consumer<A>() {
+					@Override
+					public void accept(A e) {
+						promise.valueAccepted(e);
+					}
+				});
+				action.onNext(element);
+			}
+
+			@Override
+			public void doComplete() {
+				if (!terminated)
+					promise.broadcastComplete();
+				terminated = true;
+			}
+
+			@Override
+			public void doError(Throwable cause) {
+				promise.broadcastError(cause);
+				terminated = true;
+			}
+		});
+		return promise;
 	}
 
 	/**
@@ -348,42 +398,9 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Co
 	}
 
 	@Override
-	public <E> Promise<E> connect(@Nonnull final Action<O, E> action) {
-		final Promise<E> promise = new Promise<E>(action, delegateAction.getEnvironment());
-		subscribe(new Action<O, E>() {
-			boolean terminated;
-
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(1);
-			}
-
-			@Override
-			public void doNext(O element) {
-				action.consume(new Consumer<E>() {
-					@Override
-					public void accept(E e) {
-						promise.valueAccepted(e);
-					}
-				});
-				action.onNext(element);
-				doComplete();
-			}
-
-			@Override
-			public void doComplete() {
-				if (!terminated)
-					promise.broadcastComplete();
-				terminated = true;
-			}
-
-			@Override
-			public void doError(Throwable cause) {
-				promise.broadcastError(cause);
-				terminated = true;
-			}
-		});
-		return promise;
+	public <A,E extends Action<O,A>> E connect(@Nonnull final E action) {
+		then(action);
+		return action;
 	}
 
 	public Promise<O> consume(@Nonnull Consumer<O> consumer) {
@@ -412,17 +429,17 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Co
 	public <E extends Throwable> Promise<E> recover(@Nonnull Class<E> exceptionType) {
 		RecoverAction<O, E> recoverAction = new RecoverAction<O, E>(delegateAction.getDispatcher(),
 				Selectors.T(exceptionType));
-		return connect(recoverAction);
+		return then(recoverAction);
 	}
 
 	public <V> Promise<V> map(@Nonnull final Function<O, V> fn) {
 		final MapAction<O, V> d = new MapAction<O, V>(fn, delegateAction.getDispatcher());
-		return connect(d);
+		return then(d);
 	}
 
 	public Promise<O> filter(@Nonnull final Predicate<O> p) {
 		final FilterAction<O, Promise<O>> d = new FilterAction<O, Promise<O>>(p, delegateAction.getDispatcher());
-		return connect(d);
+		return then(d);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -431,21 +448,19 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Co
 	}
 
 	public Promise<O> merge(Promise<O>... composables) {
-		return connect(new MergeAction<O>(delegateAction.getDispatcher(), null, composables));
+		return then(new MergeAction<O>(delegateAction.getDispatcher(), null, composables));
 	}
 
 	public Promise<O> timeout(long timeout) {
-		delegateAction.timeout(timeout);
-		return this;
+		return Promise.wrap(delegateAction.timeout(timeout));
 	}
 
 	public Promise<O> timeout(long timeout, Timer timer) {
-		delegateAction.timeout(timeout, timer);
-		return this;
+		return Promise.wrap(delegateAction.timeout(timeout,timer));
 	}
 
 	public <E> Promise<E> propagate(Supplier<E> supplier) {
-		return connect(new SupplierAction<O, E>(delegateAction.getDispatcher(), supplier));
+		return then(new SupplierAction<O, E>(delegateAction.getDispatcher(), supplier));
 	}
 
 	public String debug() {
@@ -596,7 +611,10 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Co
 	protected void valueAccepted(O value) {
 		lock.lock();
 		try {
-			if (!isPending()) throw new IllegalStateException();
+			if (!isPending()){
+				System.out.println(value + " rejected");
+				throw new IllegalStateException();
+			}
 			this.value = value;
 			if (hasBlockers) {
 				pendingCondition.signalAll();

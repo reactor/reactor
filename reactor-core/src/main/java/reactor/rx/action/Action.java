@@ -84,7 +84,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 * @return this {@link Stream}
 	 * @since 1.1
 	 */
-	public Stream<O> timeout(long timeout) {
+	public Action<O,O> timeout(long timeout) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return timeout(timeout, getEnvironment().getRootTimer());
@@ -100,7 +100,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public Stream<O> timeout(long timeout, Timer timer) {
+	public Action<O,O> timeout(long timeout, Timer timer) {
 		Stream<?> composable = subscription != null &&
 				StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 				((StreamSubscription<O>) subscription).getPublisher() :
@@ -112,14 +112,23 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				timer,
 				timeout
 		);
-		connect(d);
-
-		return this;
+		return connect(d);
 	}
 
 	public void available() {
 		if (subscription != null && !pause) {
-			subscription.request(batchSize);
+			reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
+				@Override
+				public void accept(Void any) {
+					try {
+						subscription.request(batchSize);
+					} catch (Throwable t) {
+						doError(t);
+					}
+				}
+			};
+			dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+
 		}
 	}
 
@@ -139,7 +148,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void request(int elements) {
 				super.request(elements);
-				requestUpstream(capacity, terminated, elements);
+				requestUpstream(capacity, buffer.isComplete(), elements);
 			}
 		};
 	}
@@ -213,11 +222,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onSubscribe(Subscription subscription) {
 		if (this.subscription == null) {
 			this.subscription = subscription;
-			try {
-				doSubscribe(subscription);
-			} catch (Throwable t) {
-				doError(t);
-			}
+			reactor.function.Consumer<Subscription> completeHandler = new reactor.function.Consumer<Subscription>() {
+				@Override
+				public void accept(Subscription subscription) {
+					try {
+						doSubscribe(subscription);
+					} catch (Throwable t) {
+						doError(t);
+					}
+				}
+			};
+			dispatcher.dispatch(this, subscription, null, null, ROUTER, completeHandler);
 		}
 	}
 
@@ -239,19 +254,21 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
-	public Stream<O> cancel() {
+	public Action<I,O> cancel() {
 		if (subscription != null)
 			subscription.cancel();
-		return super.cancel();
+		super.cancel();
+		return this;
 	}
 
 	@Override
-	public Stream<O> pause() {
-		return super.pause();
+	public Action<I,O> pause() {
+		super.pause();
+		return this;
 	}
 
 	@Override
-	public Stream<O> resume() {
+	public Action<I,O> resume() {
 		super.resume();
 		available();
 		return this;

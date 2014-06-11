@@ -58,7 +58,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 				public void request(int elements) {
 					super.request(elements);
 
-					if(terminated) return;
+					if(buffer.isComplete()) return;
 
 					long i = 0;
 					Iterator<T> iterator = defaultValues.iterator();
@@ -75,7 +75,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 						i++;
 					}
 
-					if (!iterator.hasNext() && !terminated) {
+					if (!iterator.hasNext() && !buffer.isComplete()) {
 						onComplete();
 					}
 				}

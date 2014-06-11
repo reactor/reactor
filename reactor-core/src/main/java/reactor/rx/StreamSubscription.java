@@ -17,50 +17,60 @@ package reactor.rx;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.queue.CompletableConcurrentLinkedQueue;
+import reactor.queue.CompletableQueue;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
- * <p/>
+ * <p>
  * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
  *
  * @author Stephane Maldini
  * @since 1.1
  */
 public class StreamSubscription<O> implements Subscription {
-	final           Subscriber<O> subscriber;
-	final           Stream<O>     publisher;
-	protected final AtomicLong    capacity;
-	final Queue<O> buffer = new ConcurrentLinkedQueue<O>();
-
-	protected boolean terminated;
-
+	final           Subscriber<O>       subscriber;
+	final           Stream<O>           publisher;
+	protected final AtomicLong          capacity;
+	protected final CompletableQueue<O> buffer;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
+		this(publisher, subscriber, new CompletableConcurrentLinkedQueue<O>());
+	}
+
+	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber, CompletableQueue<O> buffer) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
 		this.capacity = new AtomicLong();
-		this.terminated = false;
+		this.buffer = buffer;
 	}
 
 	@Override
 	public void request(int elements) {
-		if (terminated && buffer.isEmpty()) {
+		if (buffer.isComplete() && buffer.isEmpty()) {
 			return;
 		}
 
 		checkRequestSize(elements);
 
-		long currentCapacity = capacity.addAndGet(elements);
-		long i = 0;
+		int i = 0;
 		O element;
-		while (i++ < currentCapacity && (element = buffer.poll()) != null) {
-			onNext(element);
+		while (i < elements && (element = buffer.poll()) != null) {
+			subscriber.onNext(element);
+			i++;
 		}
-		if (terminated) {
+
+		int remaining = elements - i;
+
+		if(Long.MAX_VALUE - capacity.get() > remaining) {
+			capacity.addAndGet(remaining);
+		}else{
+			capacity.set(Long.MAX_VALUE);
+		}
+
+		if (buffer.isComplete()) {
 			onComplete();
 		}
 	}
@@ -69,7 +79,7 @@ public class StreamSubscription<O> implements Subscription {
 	public void cancel() {
 		publisher.removeSubscription(this);
 		buffer.clear();
-		terminated = true;
+		buffer.complete();
 	}
 
 	@Override
@@ -102,6 +112,7 @@ public class StreamSubscription<O> implements Subscription {
 	public Stream<?> getPublisher() {
 		return publisher;
 	}
+
 	public Subscriber<O> getSubscriber() {
 		return subscriber;
 	}
@@ -116,11 +127,11 @@ public class StreamSubscription<O> implements Subscription {
 		}
 	}
 
-	public void onComplete(){
-		if(buffer.isEmpty()){
+	public void onComplete() {
+		if (buffer.isEmpty()) {
 			subscriber.onComplete();
 		}
-		terminated = true;
+		buffer.complete();
 	}
 
 	public long getBufferSize() {
@@ -131,7 +142,7 @@ public class StreamSubscription<O> implements Subscription {
 		return capacity;
 	}
 
-	protected void checkRequestSize(int elements){
+	protected void checkRequestSize(int elements) {
 		if (elements <= 0) {
 			throw new IllegalArgumentException("Cannot request negative number");
 		}

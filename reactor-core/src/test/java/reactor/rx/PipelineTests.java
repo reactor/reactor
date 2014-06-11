@@ -187,7 +187,7 @@ public class PipelineTests extends AbstractReactorTest {
 		r.on(key, tap);
 
 		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
-		Stream<Integer> s =
+		Stream<Void> s =
 				stream
 						.map(STRING_2_INTEGER)
 						.consume(key.getObject(), r);
@@ -291,31 +291,32 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 	@Test
-	@Ignore
 	public void mapManyFlushesAllValuesThoroughly() throws InterruptedException {
 		int items = 30;
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
 		Stream<String> d = Streams.defer(env);
-		Stream<Integer> tasks = d.mapMany(s -> Promises.success(s, env, env.getDispatcher(Environment.THREAD_POOL))
+		Stream<Integer> tasks = d.mapMany(s -> Streams.defer(s, env, env.getDispatcher(Environment.THREAD_POOL))
 						.<Integer>map(str -> {
 							try {
 								Thread.sleep(random.nextInt(250));
 							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
+							System.out.println(str);
 							return Integer.parseInt(str);
 						}));
-
+System.out.println(tasks.debug());
 		tasks.consume(i -> latch.countDown());
 
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
 
-		latch.await(items, TimeUnit.SECONDS);
-		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == items);
+		System.out.println(tasks.debug());
+		latch.await();
+		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
 	}
 
 	@Test

@@ -26,10 +26,12 @@ import java.util.Iterator;
  * elements in the queue to a {@link QueuePersistor}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class PersistentQueue<T> extends AbstractQueue<T> {
+public class PersistentQueue<T> extends AbstractQueue<T> implements CompletableQueue<T>{
 
 	private final QueuePersistor<T> persistor;
+	boolean terminated = false;
 
 	/**
 	 * Create a {@literal PersistentQueue} using the given {@link QueuePersistor}.
@@ -59,7 +61,7 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 
 	@Override
 	public boolean offer(T obj) {
-		return (null != persistor.offer().apply(obj));
+		return (null != persistor.offer(obj));
 	}
 
 	@Override
@@ -67,7 +69,7 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 		if(size() == 0 || !persistor.hasNext()) {
 			return null;
 		}
-		return persistor.remove().get();
+		return persistor.remove();
 	}
 
 	@Override
@@ -76,7 +78,16 @@ public class PersistentQueue<T> extends AbstractQueue<T> {
 			return null;
 		}
 		Long lastId = persistor.lastId();
-		return persistor.get().apply(lastId);
+		return persistor.get(lastId);
 	}
 
+	@Override
+	public void complete() {
+		terminated = true;
+	}
+
+	@Override
+	public boolean isComplete() {
+		return terminated;
+	}
 }

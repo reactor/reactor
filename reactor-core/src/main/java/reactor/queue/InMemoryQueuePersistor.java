@@ -16,9 +16,6 @@
 
 package reactor.queue;
 
-import reactor.function.Function;
-import reactor.function.Supplier;
-
 import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,20 +27,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * A {@link QueuePersistor} implementations that stores items in-memory.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 
-	private final Map<Long, T> objects   = Collections.synchronizedMap(new HashMap<Long, T>());
+	private final Map<Long, T> objects;
 	private final AtomicLong   counter   = new AtomicLong();
 	private final AtomicLong   currentId = new AtomicLong();
-	private final Function<T, Long> offerFun;
-	private final Function<Long, T> getFun;
-	private final Supplier<T>       removeFun;
 
 	public InMemoryQueuePersistor() {
-		this.offerFun = new MapOfferFunction();
-		this.getFun = new MapGetFunction();
-		this.removeFun = new MapRemoveFunction();
+		this.objects = Collections.synchronizedMap(new HashMap<Long, T>());
 	}
 
 	@Override
@@ -53,12 +46,12 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 
 	@Override
 	public long size() {
-		return objects.size();
+		return counter.get();
 	}
 
 	@Override
 	public boolean hasNext() {
-		return !objects.isEmpty();
+		return counter.get() <= 0l;
 	}
 
 	@Override
@@ -66,50 +59,26 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 		return objects.values().iterator();
 	}
 
-	@Nonnull
 	@Override
-	public Function<T, Long> offer() {
-		return offerFun;
+	public Long offer(@Nonnull T obj) {
+		Long id = counter.getAndIncrement();
+		objects.put(id, obj);
+		return id;
 	}
 
-	@Nonnull
 	@Override
-	public Function<Long, T> get() {
-		return getFun;
+	public T get(Long idx) {
+		return objects.get(idx);
 	}
 
-	@Nonnull
 	@Override
-	public Supplier<T> remove() {
-		return removeFun;
+	public T remove() {
+		Long id = currentId.getAndIncrement();
+		counter.getAndDecrement();
+		return objects.remove(id);
 	}
 
 	@Override
 	public void close() {
 	}
-
-	private class MapOfferFunction implements Function<T, Long> {
-		@Override
-		public Long apply(T obj) {
-			Long id = counter.getAndIncrement();
-			objects.put(id, obj);
-			return id;
-		}
-	}
-
-	private class MapGetFunction implements Function<Long, T> {
-		@Override
-		public T apply(Long l) {
-			return objects.get(l);
-		}
-	}
-
-	private class MapRemoveFunction implements Supplier<T> {
-		@Override
-		public T get() {
-			Long id = currentId.getAndIncrement();
-			return objects.remove(id);
-		}
-	}
-
 }

@@ -115,7 +115,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	@Override
-	public <E> Action<O, E> connect(@Nonnull final Action<O, E> stream) {
+	public <A,E extends Action<O, A>> E connect(@Nonnull final E stream) {
 		stream.prefetch(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
 		this.subscribe(stream);
@@ -151,9 +151,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
-	public Stream<O> consume(@Nonnull final Consumer<O> consumer) {
-		connect(new CallbackAction<O>(dispatcher, consumer, true));
-		return this;
+	public Action<O,Void> consume(@Nonnull final Consumer<O> consumer) {
+		return connect(new CallbackAction<O>(dispatcher, consumer, true));
 	}
 
 	/**
@@ -163,9 +162,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param observable the {@link Observable} to notify
 	 * @return {@literal this}
 	 */
-	public Stream<O> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
-		connect(new ObservableAction<O>(dispatcher, observable, key));
-		return this;
+	public Action<O,Void> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
+		return connect(new ObservableAction<O>(dispatcher, observable, key));
 	}
 
 	/**
@@ -281,9 +279,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return the current Stream
 	 * @since 1.1
 	 */
-	public Stream<O> flushWhen(Predicate<O> predicate) {
-		connect(new FlushWhenAction<O>(predicate, dispatcher, this));
-		return this;
+	public Stream<Void> flushWhen(Predicate<O> predicate) {
+		return connect(new FlushWhenAction<O>(predicate, dispatcher, this));
 	}
 
 	/**
@@ -739,7 +736,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 					.Predicate<StreamSubscription<O>>() {
 				@Override
 				public boolean accept(StreamSubscription<O> oStreamSubscription) {
-					return !oStreamSubscription.terminated;
+					return !oStreamSubscription.buffer.isComplete();
 				}
 			});
 
@@ -748,7 +745,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
 					try {
 						subscription.onNext(ev);
-						if (subscription.terminated || state == State.COMPLETE) {
+						if (subscription.buffer.isComplete() || state == State.COMPLETE) {
 							subscription.onComplete();
 						}
 					} catch (Throwable throwable) {

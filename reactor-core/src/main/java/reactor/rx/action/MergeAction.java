@@ -101,7 +101,7 @@ public class MergeAction<O> extends Action<O, O> {
 							subscription.request(elements);
 						}
 					}
-					requestUpstream(capacity, terminated, elements);
+					requestUpstream(capacity, buffer.isComplete(), elements);
 				}
 
 				@Override

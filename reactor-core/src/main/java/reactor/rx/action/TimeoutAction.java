@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class TimeoutAction<T> extends Action<T, Void> {
+public class TimeoutAction<T> extends Action<T, T> {
 
 	private final Timer     timer;
 	private final long      timeout;
@@ -39,7 +39,6 @@ public class TimeoutAction<T> extends Action<T, Void> {
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
 				flushedComposable.broadcastFlush();
-				available();
 			}
 		}
 	};
@@ -64,23 +63,24 @@ public class TimeoutAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doNext(T ev) {
+		broadcastNext(ev);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
-	public Stream<Void> cancel() {
+	public Action<T,T> cancel() {
 		timeoutRegistration.cancel();
 		return super.cancel();
 	}
 
 	@Override
-	public Stream<Void> pause() {
+	public Action<T,T> pause() {
 		timeoutRegistration.pause();
 		return super.pause();
 	}
 
 	@Override
-	public Stream<Void> resume() {
+	public Action<T,T> resume() {
 		timeoutRegistration.resume();
 		return super.resume();
 	}

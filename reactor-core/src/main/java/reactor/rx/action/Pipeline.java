@@ -50,7 +50,7 @@ public interface Pipeline<O> extends Publisher<O>, Pausable {
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 1.1
 	 */
-	<E> Pipeline<E> connect(@Nonnull Action<O, E> action);
+	<A,E extends Action<O,A>> E connect(@Nonnull E action);
 
 	/**
 	 * Trigger a flush event to all the attached {@link Subscriber} that implement {@link Flushable},

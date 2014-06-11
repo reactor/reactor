@@ -34,20 +34,20 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an Object is persisted"
-			def id = persistor.offer().apply(obj)
+			def id = persistor.offer(obj)
 
 		then:
 			"the Object was persisted"
 			id > -1
-			persistor.get().apply(id) == obj
+			persistor.get(id) == obj
 
 		when:
 			"an Object is removed"
-			persistor.remove().get()
+			persistor.remove()
 
 		then:
 			"the Object was removed"
-			null == persistor.get().apply(id)
+			null == persistor.get(id)
 			persistor.size() == 0
 
 		cleanup:
@@ -70,17 +70,17 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an object is persisted"
-			def id = persistor.offer().apply(obj)
+			def id = persistor.offer(obj)
 
 		then:
 			"the object was persisted"
 			id > -1
-			persistor.get().apply(id) == obj
+			persistor.get(id) == obj
 			persistor.hasNext()
 
 		when:
 			"the object is removed"
-			persistor.remove().get()
+			persistor.remove()
 
 		then:
 			"the object was removed"
