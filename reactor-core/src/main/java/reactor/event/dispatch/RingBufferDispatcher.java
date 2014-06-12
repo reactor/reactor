@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
+public class RingBufferDispatcher extends SingleThreadDispatcher {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -143,6 +143,11 @@ public class RingBufferDispatcher extends AbstractSingleThreadDispatcher {
 		executor.shutdownNow();
 		disruptor.halt();
 		super.halt();
+	}
+
+	@Override
+	public long getRemainingSlots() {
+		return ringBuffer.remainingCapacity();
 	}
 
 	@Override

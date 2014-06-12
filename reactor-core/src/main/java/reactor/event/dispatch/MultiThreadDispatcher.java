@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Jon Brisbin
  * @since 1.1
  */
-public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDispatcher {
+public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher {
 
 	private final int                                   backlog;
 	private final int                                   numberThreads;
@@ -28,7 +28,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	private final Map<Long, Integer> tailsThreadIndexLookup = new HashMap<Long, Integer>();
 	private final AtomicInteger         indexAssignPile        = new AtomicInteger();
 
-	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
+	protected MultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
 		this.numberThreads = numberThreads;
 		this.tailRecurseSeqArray = new int[numberThreads];
@@ -53,8 +53,26 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		}
 	}
 
+	@Override
+	public boolean supportsOrdering() {
+		return false;
+	}
+
 	public int getBacklog() {
 		return backlog;
+	}
+
+	public int getNumberThreads() {
+		return numberThreads;
+	}
+
+	public Integer getThreadIndex(){
+		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
+		if(index == null) {
+			index = indexAssignPile.getAndIncrement() % numberThreads;
+			tailsThreadIndexLookup.put(Thread.currentThread().getId(), index);
+		}
+		return index;
 	}
 
 	protected void expandTailRecursionPile(int index, int amount) {
@@ -67,11 +85,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
-		if(null == index) {
-			index = indexAssignPile.getAndIncrement() % numberThreads;
-			tailsThreadIndexLookup.put(Thread.currentThread().getId(), index);
-		}
+		Integer index = getThreadIndex();
 		int next = ++tailRecurseSeqArray[index];
 		if(next == tailRecursionPileSizeArray[index]) {
 			expandTailRecursionPile(index, backlog);

@@ -16,22 +16,18 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.util.Assert;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
+public class MapManyAction<I, O, E extends Publisher<O>> extends DynamicMergeAction<I, O, E> {
 
 	private final Function<I, E> fn;
-	private final MergeAction<O> mergeAction;
 
 	public MapManyAction(Function<I, E> fn,
 	                     Dispatcher dispatcher
@@ -39,89 +35,11 @@ public class MapManyAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 		super(dispatcher);
 		Assert.notNull(fn, "FlatMap function cannot be null.");
 		this.fn = fn;
-		this.mergeAction = new MergeAction<O>(dispatcher){
-			@Override
-			protected void requestUpstream(AtomicLong currentCapacity, boolean terminated, int elements) {
-				if(currentCapacity.get() > 0){
-					MapManyAction.this.requestUpstream(currentCapacity, terminated, elements);
-				}
-			}
-
-			@Override
-			public String debug() {
-				return MapManyAction.this.debug()+"\n"+super.debug();
-			}
-		};
-		this.mergeAction.runningComposables.incrementAndGet();
 	}
 
 	@Override
 	protected void doNext(I value) {
-		mergeAction.runningComposables.incrementAndGet();
-		E val = fn.apply(value);
-		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(),1) {
-			@Override
-			protected void doSubscribe(Subscription s) {
-				available();
-			}
-			@Override
-			protected void doFlush() {
-				mergeAction.doFlush();
-			}
-
-			@Override
-			protected void doComplete() {
-				mergeAction.doComplete();
-			}
-
-			@Override
-			protected void doNext(O ev) {
-				mergeAction.doNext(ev);
-				available();
-			}
-
-			@Override
-			protected void doError(Throwable ev) {
-				mergeAction.doError(ev);
-			}
-
-		};
-		val.subscribe(inlineMerge);
+		mergedStream().addPublisher(fn.apply(value));
 	}
 
-	@Override
-	protected void doSubscribe(Subscription subscription){
-		mergeAction.prefetch(batchSize).env(getEnvironment()).onSubscribe(subscription);
-	}
-
-	@Override
-	protected void doFlush() {
-		mergeAction.doFlush();
-	}
-
-	@Override
-	protected void doComplete() {
-		mergeAction.doComplete();
-	}
-
-	@Override
-	protected void doError(Throwable ev) {
-		mergeAction.doError(ev);
-	}
-
-	@Override
-	public Action<I,O> resume() {
-		mergeAction.resume();
-		return super.resume();
-	}
-
-	@Override
-	public Action<I,O> pause() {
-		mergeAction.pause();
-		return super.pause();
-	}
-
-	public MergeAction<O> mergedStream(){
-		return mergeAction;
-	}
 }

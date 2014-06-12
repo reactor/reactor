@@ -64,9 +64,7 @@ public class StreamSubscription<O> implements Subscription {
 
 		int remaining = elements - i;
 
-		if(Long.MAX_VALUE - capacity.get() > remaining) {
-			capacity.addAndGet(remaining);
-		}else{
+		if(capacity.addAndGet(remaining) < 0) {
 			capacity.set(Long.MAX_VALUE);
 		}
 

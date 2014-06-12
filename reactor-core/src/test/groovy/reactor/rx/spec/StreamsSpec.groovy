@@ -841,12 +841,8 @@ class StreamsSpec extends Specification {
 			def sum = new AtomicInteger()
 			def latch = new CountDownLatch(3)
 			Environment env = new Environment()
-			Stream head = Streams.<Integer>config().
-					env(env).
-					batchSize(333).
-					dispatcher(Environment.THREAD_POOL).
-					get()
-			Stream tail = head.collect()
+			Stream head = Streams.<Integer>defer(env)
+			Stream tail = head.parallel(env.getDispatcher('threadPoolExecutor')).merge().collect(333)
 			tail.consume { List<Integer> ints ->
 				println ints.size()
 				sum.addAndGet(ints.size())
@@ -860,8 +856,9 @@ class StreamsSpec extends Specification {
 		then:
 			'results contains the expected values'
 			try{
-			latch.await(5, TimeUnit.SECONDS)
+			latch.await(7, TimeUnit.SECONDS)
 			}catch(e){}
+		println head.debug()
 			sum.get() == 999
 	}
 

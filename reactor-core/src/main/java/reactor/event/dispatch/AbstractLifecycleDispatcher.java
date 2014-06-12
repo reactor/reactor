@@ -105,11 +105,20 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                         Consumer<Throwable> errorConsumer,
 	                         Router router,
 	                         Consumer<E> completionConsumer) {
+		doDispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, isInContext());
+	}
+
+	@SuppressWarnings("unchecked")
+	protected  <E> void doDispatch(Object key,
+	                         E event,
+	                         Registry<Consumer<?>> consumerRegistry,
+	                         Consumer<Throwable> errorConsumer,
+	                         Router router,
+	                         Consumer<E> completionConsumer, boolean isInContext) {
 		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
 		try {
 			Task task;
-			boolean isInContext = isInContext();
 			if (isInContext) {
 				task = allocateRecursiveTask();
 			} else {
@@ -125,9 +134,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 			if (completionConsumer != null)
 				task.setCompletionConsumer((Consumer<Object>) completionConsumer);
 
-			if (isInContext) {
-				addToTailRecursionPile(task);
-			} else {
+			if (!isInContext) {
 				execute(task);
 			}
 		} catch (Exception e) {
@@ -144,9 +151,6 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 				command.run();
 			}
 		}, null);
-	}
-
-	protected void addToTailRecursionPile(Task task) {
 	}
 
 	protected abstract Task allocateRecursiveTask();

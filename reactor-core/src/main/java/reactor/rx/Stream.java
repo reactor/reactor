@@ -27,6 +27,7 @@ import reactor.alloc.Recyclable;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.MultiThreadDispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selectors;
 import reactor.function.*;
@@ -79,7 +80,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	private State state = State.READY;
 
 	public Stream() {
-		this(SynchronousDispatcher.INSTANCE);
+		this(Integer.MAX_VALUE);
+
+	}
+
+	public Stream(int batchSize) {
+		this.dispatcher = SynchronousDispatcher.INSTANCE;
+		this.batchSize = batchSize;
 	}
 
 	public Stream(Dispatcher dispatcher) {
@@ -90,10 +97,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		this(dispatcher, null, batchSize);
 	}
 
-	public Stream(Dispatcher dispatcher,
+	public Stream(@Nonnull Dispatcher dispatcher,
 	              @Nullable Environment environment,
 	              int batchSize) {
-		Assert.state(dispatcher != null, "'dispatcher'  cannot be null.");
 		this.environment = environment;
 		this.batchSize = batchSize;
 		this.dispatcher = dispatcher;
@@ -115,7 +121,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	@Override
-	public <A,E extends Action<O, A>> E connect(@Nonnull final E stream) {
+	public <A, E extends Action<O, A>> E connect(@Nonnull final E stream) {
 		stream.prefetch(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
 		this.subscribe(stream);
@@ -151,7 +157,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
-	public Action<O,Void> consume(@Nonnull final Consumer<O> consumer) {
+	public Action<O, Void> consume(@Nonnull final Consumer<O> consumer) {
 		return connect(new CallbackAction<O>(dispatcher, consumer, true));
 	}
 
@@ -162,7 +168,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param observable the {@link Observable} to notify
 	 * @return {@literal this}
 	 */
-	public Action<O,Void> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
+	public Action<O, Void> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
 		return connect(new ObservableAction<O>(dispatcher, observable, key));
 	}
 
@@ -206,7 +212,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * {@link this#connect(Action)} all the passed {@param composables} to this {@link Stream},
-	 * merging values streams into the current pipeline.
+	 * merging values streams into a new pipeline.
 	 *
 	 * @param composables the the composables to connect
 	 * @return the merged stream
@@ -221,13 +227,67 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
+	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 *
+	 * @return the merged stream
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
+		final Stream<Stream<E>> thiz = (Stream<Stream<E>>) this;
+		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
+		connect(mergeAction);
+		return mergeAction;
+	}
+
+	/**
+	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive thread
+	 * assigned from passed {@link MultiThreadDispatcher} {@param dispatcher} such as {@link reactor.event.dispatch
+	 * .WorkQueueDispatcher}
+	 * or {@link reactor.event.dispatch.ThreadPoolExecutorDispatcher}.
+	 *
+	 * @param dispatcher The MultiThreadDispatcher to support concurrent Stream executions.
+	 * @return A Stream of {@link Stream<O>}
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E extends Action<O, O>> Stream<E> parallel(Dispatcher dispatcher) {
+		return parallel(0, dispatcher);
+	}
+
+	/**
+	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive thread
+	 * assigned from passed {@link MultiThreadDispatcher} {@param dispatcher} such as {@link reactor.event.dispatch
+	 * .WorkQueueDispatcher}
+	 * or {@link reactor.event.dispatch.ThreadPoolExecutorDispatcher}.
+	 *
+	 * @param poolsize   The level of concurrency to use
+	 * @param dispatcher The MultiThreadDispatcher to support concurrent Stream executions.
+	 * @return A Stream of {@link Stream<O>}
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E extends Stream<O>> Stream<E> parallel(Integer poolsize, final Dispatcher dispatcher) {
+		final ParallelAction<O,E> parallelAction = new ParallelAction<O,E>(
+				this.dispatcher, dispatcher, poolsize,
+				new Supplier<E>() {
+					@Override
+					public E get() {
+						return (E)new Stream<O>(dispatcher, environment, batchSize).buffer();
+					}
+				}
+		);
+		return connect(parallelAction);
+	}
+
+	/**
 	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if no subscriber is attached
 	 * downstream.
 	 *
 	 * @return a buffered stream
 	 * @since 1.1
 	 */
-	public Action<O,O> buffer() {
+	public Action<O, O> buffer() {
 		return connect(Action.<O>passthrough(dispatcher));
 	}
 
@@ -806,7 +866,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		state = State.ERROR;
 		error = throwable;
 
-		if (subscriptions.isEmpty()){
+		if (subscriptions.isEmpty()) {
 			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(throwable));
 			return;
 		}

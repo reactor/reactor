@@ -1,6 +1,5 @@
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
@@ -101,6 +100,16 @@ public final class ActorDispatcher implements Dispatcher {
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
 		dispatch(null, event, null, errorConsumer, router, consumer);
+	}
+
+	@Override
+	public long getRemainingSlots() {
+		return -1;
+	}
+
+	@Override
+	public boolean supportsOrdering() {
+		return false;
 	}
 
 	@Override

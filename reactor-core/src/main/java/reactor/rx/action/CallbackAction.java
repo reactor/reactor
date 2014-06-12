@@ -55,9 +55,4 @@ public class CallbackAction<T> extends Action<T, Void> {
 			getSubscription().request(Integer.MAX_VALUE);
 		}
 	}
-
-	@Override
-	protected void doError(Throwable ev) {
-		log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, ev);
-	}
 }

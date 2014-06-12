@@ -417,7 +417,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, delegateAction.getDispatcher());
 		connect(d);
 		Promise<V> promise = Promise.wrap(new Action<V, V>());
-		d.mergedStream().subscribe(promise);
+		d.subscribe(promise);
 		return promise;
 	}
 

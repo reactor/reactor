@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SingleThreadDispatcher;
 import reactor.rx.StreamSubscription;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,9 +30,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MergeAction<O> extends Action<O, O> {
 
-	final AtomicInteger  runningComposables;
-	final Subscription[] subscriptions;
-	final Action<O, ?>   processingAction;
+	final AtomicInteger          runningComposables;
+	final Subscription[]         subscriptions;
+	final Action<O, ?>           processingAction;
+	final SingleThreadDispatcher mergedDispatcher;
 
 	private final static Publisher[] EMPTY_PIPELINE = new Publisher[0];
 
@@ -42,6 +44,9 @@ public class MergeAction<O> extends Action<O, O> {
 
 	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Publisher<O>... composables) {
 		super(dispatcher);
+		this.mergedDispatcher = SingleThreadDispatcher.class.isAssignableFrom(dispatcher.getClass()) ?
+				(SingleThreadDispatcher)dispatcher : null;
+
 		int length = composables.length;
 		this.processingAction = processingAction;
 		this.subscriptions = new Subscription[length];
@@ -79,7 +84,7 @@ public class MergeAction<O> extends Action<O, O> {
 					}
 				});
 
-				if(processingAction != null){
+				if (processingAction != null) {
 					processingAction.doSubscribe(createSubscription(processingAction));
 
 				}
@@ -87,6 +92,48 @@ public class MergeAction<O> extends Action<O, O> {
 		} else {
 			this.runningComposables = new AtomicInteger(0);
 		}
+	}
+
+	@Override
+	public void onNext(O ev) {
+		if(mergedDispatcher != null && mergedDispatcher.getRemainingSlots() <= 0){
+			mergedDispatcher.scheduleWithinLastExecutedDispatch(this, ev, null, null, ROUTER, this);
+		}else{
+			super.onNext(ev);
+		}
+	}
+
+	public void addPublisher(Publisher<O> publisher) {
+		runningComposables.incrementAndGet();
+		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(), batchSize) {
+			@Override
+			protected void doSubscribe(Subscription s) {
+				available();
+			}
+
+			@Override
+			protected void doFlush() {
+				MergeAction.this.doFlush();
+			}
+
+			@Override
+			protected void doComplete() {
+				MergeAction.this.doComplete();
+			}
+
+			@Override
+			protected void doNext(O ev) {
+				MergeAction.this.doNext(ev);
+				available();
+			}
+
+			@Override
+			protected void doError(Throwable ev) {
+				MergeAction.this.doError(ev);
+			}
+
+		};
+		publisher.subscribe(inlineMerge);
 	}
 
 	@Override

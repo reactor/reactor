@@ -25,7 +25,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Object, Registry, Consumer, reactor.event.routing.Router,
+ * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Object, Registry, Consumer,
+ * reactor.event.routing.Router,
  * Consumer)
  * dispatch} {@link Event}s to {@link Consumer}s. The details of how the dispatching is performed, for example on the
  * same thread or using a different thread, are determined by the implementation.
@@ -60,7 +61,8 @@ public interface Dispatcher extends Executor {
 	void shutdown();
 
 	/**
-	 * Shutdown this {@code Dispatcher}, forcibly halting any tasks currently executing and discarding any tasks that have
+	 * Shutdown this {@code Dispatcher}, forcibly halting any tasks currently executing and discarding any tasks that
+	 * have
 	 * not yet been exected.
 	 */
 	void halt();
@@ -72,20 +74,20 @@ public interface Dispatcher extends Executor {
 	 * the event of successful dispatching, the {@code completionConsumer} will be called.
 	 *
 	 * @param key                The key associated with the event
-	 * @param data              The event
+	 * @param data               The event
 	 * @param consumerRegistry   The registry from which consumer's are selected
 	 * @param errorConsumer      The consumer that is invoked if dispatch fails. May be {@code null}
-	 * @param router        Used to route the event to the selected consumers
+	 * @param router             Used to route the event to the selected consumers
 	 * @param completionConsumer The consumer that is driven if dispatch succeeds May be {@code null}
 	 * @param <E>                type of the event
 	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
 	 */
 	<E> void dispatch(Object key,
-																		 E data,
-																		 Registry<Consumer<?>> consumerRegistry,
-																		 Consumer<Throwable> errorConsumer,
-																		 Router router,
-																		 Consumer<E> completionConsumer);
+	                  E data,
+	                  Registry<Consumer<?>> consumerRegistry,
+	                  Consumer<Throwable> errorConsumer,
+	                  Router router,
+	                  Consumer<E> completionConsumer);
 
 	/**
 	 * Instruct the {@code Dispatcher} to dispatch the given {@code data} using the given {@link Consumer}. This
@@ -93,15 +95,37 @@ public interface Dispatcher extends Executor {
 	 * route bypasses all selection and routing so provides a significant throughput boost. If an error occurs, the given
 	 * {@code errorConsumer} will be invoked.
 	 *
-	 * @param data         the event
-	 * @param router   invokes the {@code Consumer} in the correct thread
+	 * @param data          the event
+	 * @param router        invokes the {@code Consumer} in the correct thread
 	 * @param errorConsumer consumer to invoke if dispatch fails (may be {@code null})
 	 * @param <E>           type of the event
 	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
 	 */
 	<E> void dispatch(E data,
-																		 Router router,
-																		 Consumer<E> consumer,
-																		 Consumer<Throwable> errorConsumer);
+	                  Router router,
+	                  Consumer<E> consumer,
+	                  Consumer<Throwable> errorConsumer);
 
+	/**
+	 * Request the remaining capacity for the underlying shared state structure.
+	 * E.g. {@link reactor.event.dispatch.RingBufferDispatcher} will return
+	 * {@link com.lmax.disruptor.RingBuffer#remainingCapacity()}.
+	 * <p>
+	 * No capacity support from the implementation will be signaled with a negative value, usually -1.
+	 *
+	 * @return the remaining capacity if supported otherwise it returns a negative value.
+	 * @since 2.0
+	 */
+	long getRemainingSlots();
+
+
+	/**
+	 * Inspect if the dispatcher supports ordered dispatching:
+	 * Single threaded dispatchers naturally preserve event ordering on dispatch.
+	 * Multi threaded dispatchers can't prevent a single consumer to receives concurrent notifications.
+	 *
+	 * @return true if ordering of dispatch is preserved.
+	 * * @since 2.0
+	 */
+	boolean supportsOrdering();
 }

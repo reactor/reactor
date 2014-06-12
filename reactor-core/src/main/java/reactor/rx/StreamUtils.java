@@ -18,8 +18,10 @@ package reactor.rx;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import org.reactivestreams.Publisher;
+import reactor.rx.action.DynamicMergeAction;
 import reactor.rx.action.FilterAction;
-import reactor.rx.action.MapManyAction;
+import reactor.rx.action.ParallelAction;
+import reactor.rx.action.Pipeline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +84,8 @@ public abstract class StreamUtils {
 
 
 			renderFilter(composable, d);
-			renderMapMany(composable, d);
+			renderDynamicMerge(composable, d);
+			renderParallel(composable, d);
 
 			if (composable.error != null) {
 				errors.add(composable.error);
@@ -126,10 +129,24 @@ public abstract class StreamUtils {
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderMapMany(Stream<O> consumer, int d) {
-			if (MapManyAction.class.isAssignableFrom(consumer.getClass())) {
-				MapManyAction<O, ?, Publisher<?>> operation = (MapManyAction<O, ?, Publisher<?>>) consumer;
+		private <O> void renderDynamicMerge(Stream<O> consumer, int d) {
+			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
+				DynamicMergeAction<O, ?, Publisher<?>> operation = (DynamicMergeAction<O, ?, Publisher<?>>) consumer;
 				parseComposable(operation.mergedStream(), d + 2);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		private <O> void renderParallel(Stream<O> consumer, int d) {
+			if (ParallelAction.class.isAssignableFrom(consumer.getClass())) {
+				ParallelAction<O, Pipeline<O>> operation = (ParallelAction<O, Pipeline<O>>) consumer;
+				Pipeline<O> pipeline;
+				for(int i = 0; i < operation.getPoolSize(); i++){
+					pipeline = operation.getPublishers()[i];
+					if(pipeline != null && Stream.class.isAssignableFrom(pipeline.getClass())){
+						parseComposable((Stream<O>)pipeline, d + 2);
+					}
+				}
 			}
 		}
 

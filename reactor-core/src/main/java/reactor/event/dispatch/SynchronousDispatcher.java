@@ -16,7 +16,6 @@
 
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
@@ -86,4 +85,13 @@ public final class SynchronousDispatcher implements Dispatcher {
 		command.run();
 	}
 
+	@Override
+	public long getRemainingSlots() {
+		return -1;
+	}
+
+	@Override
+	public boolean supportsOrdering() {
+		return true;
+	}
 }

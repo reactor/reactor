@@ -17,7 +17,6 @@
 package reactor.rx;
 
 import org.hamcrest.Matcher;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.Environment;
@@ -30,6 +29,7 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.support.Tap;
+import reactor.rx.action.Action;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
@@ -297,30 +297,30 @@ public class PipelineTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		Stream<String> d = Streams.defer(env);
-		Stream<Integer> tasks = d.mapMany(s -> Streams.defer(s, env, env.getDispatcher(Environment.THREAD_POOL))
-						.<Integer>map(str -> {
+		Stream<Integer> tasks = d.parallel(env.getDispatcher(Environment.THREAD_POOL))
+				.map(stream -> stream.map(str -> {
 							try {
 								Thread.sleep(random.nextInt(250));
 							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
-							System.out.println(str);
 							return Integer.parseInt(str);
-						}));
-System.out.println(tasks.debug());
-		tasks.consume(i -> latch.countDown());
+						})
+				).merge();
+
+		tasks.consume(i -> {
+			latch.countDown();
+		});
 
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
 
-		System.out.println(tasks.debug());
-		latch.await();
+		latch.await(5, TimeUnit.SECONDS);
 		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
 	}
 
 	@Test
-	@Ignore
 	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
 		int iterations = 10;
 		for (int i = 0; i < iterations; i++) {
@@ -378,38 +378,44 @@ System.out.println(tasks.debug());
 	/**
 	 * This test failed with Java 7 (see issue #294):
 	 * the consumer received more calls than expected
+	 *
 	 * @throws InterruptedException
 	 */
 	@Test
-    public void mapNotifiesOnce() throws InterruptedException {
+	public void mapNotifiesOnce() throws InterruptedException {
 
-        final int COUNT = 5000;
-        final CountDownLatch latch = new CountDownLatch(COUNT);
+		final int COUNT = 50;
+		final CountDownLatch latch = new CountDownLatch(COUNT);
 
-        Environment e = new Environment();
-        Stream<Object> d = Streams.defer(e, e.getDispatcher("workQueue"));
+		Environment e = new Environment();
+		Stream<Integer> d = Streams.<Integer>defer(e);
 
-        final AtomicInteger iter = new AtomicInteger(0);
+		final AtomicInteger iter = new AtomicInteger(0);
 
-        d.map(new Function<Object, Object>() {
-            @Override
-            public Object apply(Object o) {
-                return o;
-            }
-        })
-        .consume(new Consumer<Object>() {
-            @Override
-            public void accept(Object o) {
-                iter.incrementAndGet();
-                latch.countDown();
-            }
-        });
+		d.parallel(env.getDispatcher("workQueue")).map(new Function<Action<Integer, Integer>, Action<Integer, Integer>>() {
+			@Override
+			public Action<Integer, Integer> apply(Action<Integer, Integer> o) {
+				return o.map(new Function<Integer, Integer>() {
+					@Override
+					public Integer apply(Integer o) {
+						return o;
+					}
+				});
+			}
+		}).<Integer>merge().consume(new Consumer<Integer>() {
+			@Override
+			public void accept(Integer o) {
+				iter.incrementAndGet();
+				latch.countDown();
+			}
+		});
 
-        for (int i = 0; i < COUNT; i++) {
-            d.broadcastNext(i);
-        }  
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-        assertEquals(COUNT, iter.get());
-    }
-	
+		for (int i = 0; i < COUNT; i++) {
+			d.broadcastNext(i);
+		}
+		latch.await(5, TimeUnit.SECONDS);
+		System.out.println(d.debug());
+		assertEquals("Assert " + COUNT + " different from counted down: " + iter.get(), COUNT, iter.get());
+	}
+
 }

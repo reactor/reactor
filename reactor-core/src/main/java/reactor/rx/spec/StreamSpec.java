@@ -28,6 +28,7 @@ import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
+import reactor.util.Assert;
 
 import java.util.Collection;
 
@@ -109,6 +110,9 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 
 	@Override
 	protected Stream<T> createPipeline(Environment env, Dispatcher dispatcher) {
+
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
+				"MultiThreadDispatcher, refer to #parallel() method. ");
 
 		if(valuesSupplier != null){
 			return new SupplierAction<Void, T>(dispatcher, valuesSupplier).env(env).prefetch(batchSize);

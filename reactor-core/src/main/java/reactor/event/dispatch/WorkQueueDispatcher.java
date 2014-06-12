@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
+public class WorkQueueDispatcher extends MultiThreadDispatcher {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -119,6 +119,11 @@ public class WorkQueueDispatcher extends AbstractMultiThreadDispatcher {
 		executor.shutdownNow();
 		disruptor.halt();
 		super.halt();
+	}
+
+	@Override
+	public long getRemainingSlots() {
+		return ringBuffer.remainingCapacity();
 	}
 
 	@Override

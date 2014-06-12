@@ -17,7 +17,7 @@
 package reactor.net.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.event.dispatch.AbstractMultiThreadDispatcher;
+import reactor.event.dispatch.MultiThreadDispatcher;
 
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
-public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
+public class NettyEventLoopDispatcher extends MultiThreadDispatcher {
 
 	private final EventLoop eventLoop;
 
@@ -79,4 +79,8 @@ public class NettyEventLoopDispatcher extends AbstractMultiThreadDispatcher {
 		eventLoop.execute(command);
 	}
 
+	@Override
+	public long getRemainingSlots() {
+		return -1;
+	}
 }

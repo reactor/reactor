@@ -117,27 +117,30 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	public void available() {
 		if (subscription != null && !pause) {
-			reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
-				@Override
-				public void accept(Void any) {
-					try {
-						subscription.request(batchSize);
-					} catch (Throwable t) {
-						doError(t);
-					}
-				}
-			};
-			dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
-
+			request(batchSize);
 		}
+	}
+
+	protected void request(final int n){
+		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
+			@Override
+			public void accept(Void any) {
+				try {
+					subscription.request(n);
+				} catch (Throwable t) {
+					doError(t);
+				}
+			}
+		};
+		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
 	}
 
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		if (subscription != null && !terminated) {
 			int currentCapacity = capacity.intValue();
 			if (!pause && currentCapacity > 0) {
-				int remaining = currentCapacity > elements ? elements : currentCapacity;
-				subscription.request(remaining);
+				final int remaining = currentCapacity > elements ? elements : currentCapacity;
+				request(remaining);
 			}
 		}
 	}
@@ -284,11 +287,11 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@SuppressWarnings("unchecked")
-	public <E> Processor<E, O> combine(boolean reuse) {
-		final Subscriber<E> subscriber = (Subscriber<E>)findOldestStream(reuse);
+	public <E> Action<E, O> combine(boolean reuse) {
+		final Action<E, O> subscriber = (Action<E, O>)findOldestStream(reuse);
 		final Publisher<O> publisher = this;
 
-		return new Processor<E, O>() {
+		return new Action<E, O>() {
 			@Override
 			public void subscribe(Subscriber<O> s) {
 				publisher.subscribe(s);
@@ -312,6 +315,26 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			@Override
 			public void onComplete() {
 				subscriber.onComplete();
+			}
+
+			@Override
+			public void broadcastNext(O ev) {
+				subscriber.broadcastNext(ev);
+			}
+
+			@Override
+			public void broadcastFlush() {
+				subscriber.broadcastFlush();
+			}
+
+			@Override
+			public void broadcastError(Throwable throwable) {
+				subscriber.broadcastError(throwable);
+			}
+
+			@Override
+			public void broadcastComplete() {
+				subscriber.broadcastComplete();
 			}
 		};
 	}

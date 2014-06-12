@@ -2,7 +2,6 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
@@ -98,4 +97,14 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 		delegate.execute(command);
 	}
 
+
+	@Override
+	public boolean supportsOrdering() {
+		return delegate.supportsOrdering();
+	}
+
+	@Override
+	public long getRemainingSlots() {
+		return delegate.getRemainingSlots();
+	}
 }

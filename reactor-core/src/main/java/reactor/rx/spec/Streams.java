@@ -27,6 +27,7 @@ import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
+import reactor.util.Assert;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,6 +60,8 @@ public abstract class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
+				"MultiThreadDispatcher, refer to #parallel() method. ");
 		return new Stream<T>(dispatcher, env, Integer.MAX_VALUE);
 	}
 
@@ -98,6 +101,8 @@ public abstract class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Publisher<T> publisher, Environment env, Dispatcher dispatcher) {
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
+				"MultiThreadDispatcher, refer to #parallel() method. ");
 		Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE).env(env);
 		publisher.subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
@@ -277,6 +282,8 @@ public abstract class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> ForEachAction<T> defer(Iterable<T> values, Environment env, Dispatcher dispatcher) {
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
+				"MultiThreadDispatcher, refer to #parallel() method. ");
 		ForEachAction<T> forEachAction = new ForEachAction<T>(values, dispatcher);
 		forEachAction.env(env);
 		return forEachAction;
