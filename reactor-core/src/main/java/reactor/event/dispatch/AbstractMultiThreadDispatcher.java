@@ -4,10 +4,12 @@ import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+ 
+import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
+import com.gs.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * Base implementation for multi-threaded dispatchers
@@ -25,8 +27,8 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	private final List<List<Task>>                      tailRecursionPileList;
 	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
-	private final Map<Long, Integer> tailsThreadIndexLookup = new HashMap<Long, Integer>();
-	private final AtomicInteger         indexAssignPile        = new AtomicInteger();
+	private final Map<Long, Integer> tailsThreadIndexLookup		= SynchronizedMutableMap.of(UnifiedMap.<Long, Integer>newMap());
+	private final AtomicInteger         indexAssignPile        	= new AtomicInteger();
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;

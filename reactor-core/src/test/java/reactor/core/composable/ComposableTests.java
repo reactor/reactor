@@ -48,6 +48,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
+
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -380,40 +382,78 @@ public class ComposableTests extends AbstractReactorTest {
 	}
 
 	/**
-	 * This test failed with Java 7 (see issue #294):
-	 * the consumer received more calls than expected
+	 * See #294
+	 * the consumer received more or less calls than expected
+	 * Better reproducible with big thread pools, e.g. 128 threads
 	 * @throws InterruptedException
 	 */
 	@Test
     public void mapNotifiesOnce() throws InterruptedException {
 
-        final int COUNT = 5000;
-        final CountDownLatch latch = new CountDownLatch(COUNT);
+		final int COUNT = 5000;
+		final Object internalLock = new Object();
+		final Object consumerLock = new Object();
+        
+        final CountDownLatch internalLatch = new CountDownLatch(COUNT);
+        final CountDownLatch counsumerLatch = new CountDownLatch(COUNT);
+
+        final AtomicInteger internalCounter = new AtomicInteger(0);
+        final AtomicInteger consumerCounter = new AtomicInteger(0);
+
+        final ConcurrentHashMap<Object, Long> seenInternal = new ConcurrentHashMap<>(); 
+        final ConcurrentHashMap<Object, Long> seenConsumer = new ConcurrentHashMap<>(); 
 
         Environment e = new Environment();
-        Deferred<Object, Stream<Object>> d = Streams.defer(e, e.getDispatcher("workQueue"));
+        Deferred<Integer, Stream<Integer>> d = Streams.defer(e, e.getDispatcher("workQueue"));
 
-        final AtomicInteger iter = new AtomicInteger(0);
-
-        d.compose().map(new Function<Object, Object>() {
+        d.compose().map(new Function<Integer, Integer>() {
             @Override
-            public Object apply(Object o) {
-                return o;
+            public Integer apply(Integer o) {
+            	synchronized(internalLock) {
+            		
+	            	internalCounter.incrementAndGet();
+	            	
+	            	long curThreadId = Thread.currentThread().getId();
+	            	Long prevThreadId = seenInternal.put( o, curThreadId );
+	            	if( prevThreadId != null ) {
+		            	fail(String.format(
+	            				"The object %d has already been seen internally on the thread %d, current thread %d",
+	            				o, prevThreadId, curThreadId ));
+	            	}
+	            	
+	            	internalLatch.countDown();
+            	}
+                return -o;
             }
         })
-        .consume(new Consumer<Object>() {
+        .consume(new Consumer<Integer>() {
             @Override
-            public void accept(Object o) {
-                iter.incrementAndGet();
-                latch.countDown();
+            public void accept(Integer o) {
+            	synchronized(consumerLock) {
+		            consumerCounter.incrementAndGet();
+		            
+	            	long curThreadId = Thread.currentThread().getId();
+	            	Long prevThreadId = seenConsumer.put( o, curThreadId );
+	            	if( prevThreadId != null ) {
+	            		System.out.println( String.format(
+	            				"The object %d has already been seen by the consumer on the thread %d, current thread %d",
+	            				o, prevThreadId, curThreadId ));
+		            	fail();
+	            	}
+		            
+		            counsumerLatch.countDown();
+            	}
             }
         });
 
         for (int i = 0; i < COUNT; i++) {
             d.accept(i);
         }  
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-        assertEquals(COUNT, iter.get());
+        
+        assertTrue(internalLatch.await(5, TimeUnit.SECONDS));
+        assertEquals(COUNT, internalCounter.get());
+        assertTrue(counsumerLatch.await(5, TimeUnit.SECONDS));
+        assertEquals(COUNT, consumerCounter.get());
     }
-	
+
 }
