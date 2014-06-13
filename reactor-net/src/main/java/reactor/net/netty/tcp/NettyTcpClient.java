@@ -110,8 +110,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
 		this.connectAddress = connectAddress;
 
-		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+		if (options instanceof NettyClientSocketOptions
+				&& null != ((NettyClientSocketOptions) options).eventLoopGroup()) {
+			this.ioGroup = ((NettyClientSocketOptions) options).eventLoopGroup();
+		} else {
+			int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+		}
 
 		this.bootstrap = new Bootstrap()
 				.group(ioGroup)

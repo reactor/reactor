@@ -61,10 +61,15 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	                           Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, listenAddress, multicastInterface, options, codec, consumers);
 
-		int ioThreadCount = env.getProperty("reactor.udp.ioThreadCount",
-		                                    Integer.class,
-		                                    Environment.PROCESSORS);
-		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
+		if (options instanceof NettyServerSocketOptions
+				&& null != ((NettyServerSocketOptions) options).eventLoopGroup()) {
+			this.ioGroup = ((NettyServerSocketOptions) options).eventLoopGroup();
+		} else {
+			int ioThreadCount = env.getProperty("reactor.udp.ioThreadCount",
+			                                    Integer.class,
+			                                    Environment.PROCESSORS);
+			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
+		}
 
 		final NettyNetChannelInboundHandler inboundHandler = new NettyNetChannelInboundHandler() {
 			@Override
