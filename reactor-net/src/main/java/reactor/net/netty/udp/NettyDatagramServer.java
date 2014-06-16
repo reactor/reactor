@@ -47,6 +47,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
+	private final    NettyServerSocketOptions nettyOptions;
 	private final    Bootstrap                bootstrap;
 	private final    EventLoopGroup           ioGroup;
 	private volatile NioDatagramChannel       channel;
@@ -61,9 +62,14 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	                           Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, listenAddress, multicastInterface, options, codec, consumers);
 
-		if (options instanceof NettyServerSocketOptions
-				&& null != ((NettyServerSocketOptions) options).eventLoopGroup()) {
-			this.ioGroup = ((NettyServerSocketOptions) options).eventLoopGroup();
+		if (options instanceof NettyServerSocketOptions) {
+			this.nettyOptions = (NettyServerSocketOptions) options;
+		} else {
+			this.nettyOptions = null;
+		}
+
+		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
+			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = env.getProperty("reactor.udp.ioThreadCount",
 			                                    Integer.class,
@@ -96,9 +102,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 							config.setNetworkInterface(multicastInterface);
 						}
 
-						if (options instanceof NettyServerSocketOptions
-								&& null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
-							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
+						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 
 						ch.closeFuture().addListener(new ChannelFutureListener() {
@@ -174,7 +179,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 								}
 							}
 						};
-						ioGroup.shutdownGracefully().addListener(listener);
+						if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
+							ioGroup.shutdownGracefully().addListener(listener);
+						}
 					}
 				},
 				null

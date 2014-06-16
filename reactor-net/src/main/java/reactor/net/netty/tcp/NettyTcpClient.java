@@ -70,9 +70,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 
-	private final Bootstrap               bootstrap;
-	private final EventLoopGroup          ioGroup;
-	private final Supplier<ChannelFuture> connectionSupplier;
+	private final NettyClientSocketOptions nettyOptions;
+	private final Bootstrap                bootstrap;
+	private final EventLoopGroup           ioGroup;
+	private final Supplier<ChannelFuture>  connectionSupplier;
 
 	private volatile InetSocketAddress connectAddress;
 	private volatile boolean           closing;
@@ -110,9 +111,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
 		this.connectAddress = connectAddress;
 
-		if (options instanceof NettyClientSocketOptions
-				&& null != ((NettyClientSocketOptions) options).eventLoopGroup()) {
-			this.ioGroup = ((NettyClientSocketOptions) options).eventLoopGroup();
+		if (options instanceof NettyClientSocketOptions) {
+			this.nettyOptions = (NettyClientSocketOptions) options;
+		} else {
+			this.nettyOptions = null;
+
+		}
+		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
+			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -140,9 +146,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if (options instanceof NettyClientSocketOptions
-								&& null != ((NettyClientSocketOptions) options).pipelineConfigurer()) {
-							((NettyClientSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
+						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 					}
@@ -182,14 +187,25 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public void close(@Nullable final Consumer<Boolean> onClose) {
-		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
-			@Override
-			public void operationComplete(Future<Object> future) throws Exception {
-				if (null != onClose) {
-					onClose.accept(future.isDone() && future.isSuccess());
+		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
+			ioGroup.submit(new Runnable() {
+				@Override
+				public void run() {
+					if (null != onClose) {
+						onClose.accept(true);
+					}
 				}
-			}
-		});
+			});
+		} else {
+			ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
+				@Override
+				public void operationComplete(Future<Object> future) throws Exception {
+					if (null != onClose) {
+						onClose.accept(future.isDone() && future.isSuccess());
+					}
+				}
+			});
+		}
 	}
 
 	@Override

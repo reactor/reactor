@@ -65,9 +65,10 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final ServerBootstrap bootstrap;
-	private final EventLoopGroup  selectorGroup;
-	private final EventLoopGroup  ioGroup;
+	private final NettyServerSocketOptions nettyOptions;
+	private final ServerBootstrap          bootstrap;
+	private final EventLoopGroup           selectorGroup;
+	private final EventLoopGroup           ioGroup;
 
 	protected NettyTcpServer(@Nonnull Environment env,
 	                         @Nonnull Reactor reactor,
@@ -78,14 +79,18 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	                         @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		super(env, reactor, listenAddress, options, sslOptions, codec, consumers);
 
+		if (options instanceof NettyServerSocketOptions) {
+			this.nettyOptions = (NettyServerSocketOptions) options;
+		} else {
+			this.nettyOptions = null;
+		}
+
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class,
 		                                        Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
-		if (null != options
-				&& options instanceof NettyServerSocketOptions
-				&& null != ((NettyServerSocketOptions) options).eventLoopGroup()) {
-			this.ioGroup = ((NettyServerSocketOptions) options).eventLoopGroup();
+		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
+			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
@@ -121,9 +126,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
-						if (options instanceof NettyServerSocketOptions
-								&& null != ((NettyServerSocketOptions) options).pipelineConfigurer()) {
-							((NettyServerSocketOptions) options).pipelineConfigurer().accept(ch.pipeline());
+						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 						ch.pipeline().addLast(createChannelHandlers(ch));
 						ch.closeFuture().addListener(new ChannelFutureListener() {
@@ -175,7 +179,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							}
 						};
 						selectorGroup.shutdownGracefully().addListener(listener);
-						ioGroup.shutdownGracefully().addListener(listener);
+						if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
+							ioGroup.shutdownGracefully().addListener(listener);
+						}
 					}
 				},
 				null
