@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -22,7 +23,9 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SingleThreadDispatcher;
 import reactor.rx.StreamSubscription;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -30,144 +33,69 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MergeAction<O> extends Action<O, O> {
 
-	final AtomicInteger          runningComposables;
-	final Subscription[]         subscriptions;
-	final Action<O, ?>           processingAction;
-	final SingleThreadDispatcher mergedDispatcher;
-
-	private final static Publisher[] EMPTY_PIPELINE = new Publisher[0];
+	final CompositeSubscription<O> innerSubscriptions;
+	final AtomicInteger            runningComposables;
+	final Action<O, ?>             processingAction;
+	final SingleThreadDispatcher   mergedDispatcher;
+	final AtomicLong               mergedCapacity;
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher) {
-		this(dispatcher, null, EMPTY_PIPELINE);
+		this(dispatcher, null, null);
 	}
 
-	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, Publisher<O>... composables) {
+	public MergeAction(Dispatcher dispatcher, Action<O, ?> processingAction, List<? extends Publisher<O>> composables) {
 		super(dispatcher);
 		this.mergedDispatcher = SingleThreadDispatcher.class.isAssignableFrom(dispatcher.getClass()) ?
-				(SingleThreadDispatcher)dispatcher : null;
+				(SingleThreadDispatcher) dispatcher : null;
 
-		int length = composables.length;
+		int length = composables != null ? composables.size() : 0;
 		this.processingAction = processingAction;
-		this.subscriptions = new Subscription[length];
 
-		if (composables != null && length > 0) {
+		this.innerSubscriptions = new CompositeSubscription<O>(null, this, length == 0 ?
+				MultiReaderFastList.<Subscription>newList(8) :
+				MultiReaderFastList.<Subscription>newList(length), null);
+
+		this.mergedCapacity = this.innerSubscriptions.getCapacity();
+
+		if (length > 0) {
 			this.runningComposables = new AtomicInteger(processingAction == null ? length + 1 : length);
-			Publisher<O> composable;
-			for (int i = 0; i < length; i++) {
-				final int pos = i;
-				composable = composables[i];
-				composable.subscribe(new Action<O, O>(dispatcher) {
-					@Override
-					protected void doSubscribe(Subscription subscription) {
-						subscriptions[pos] = subscription;
-					}
-
-					@Override
-					protected void doFlush() {
-						MergeAction.this.doFlush();
-					}
-
-					@Override
-					protected void doComplete() {
-						MergeAction.this.doComplete();
-					}
-
-					@Override
-					protected void doNext(O ev) {
-						MergeAction.this.doNext(ev);
-					}
-
-					@Override
-					protected void doError(Throwable ev) {
-						MergeAction.this.doError(ev);
-					}
-				});
-
-				if (processingAction != null) {
-					processingAction.doSubscribe(createSubscription(processingAction));
-
-				}
+			if (processingAction != null) {
+				processingAction.onSubscribe(innerSubscriptions);
+			}
+			for (Publisher<O> composable : composables) {
+				addPublisher(composable);
 			}
 		} else {
 			this.runningComposables = new AtomicInteger(0);
 		}
 	}
 
-	@Override
-	public void onNext(O ev) {
-		if(mergedDispatcher != null && mergedDispatcher.getRemainingSlots() <= 0){
-			mergedDispatcher.scheduleWithinLastExecutedDispatch(this, ev, null, null, ROUTER, this);
-		}else{
-			super.onNext(ev);
-		}
-	}
-
 	public void addPublisher(Publisher<O> publisher) {
 		runningComposables.incrementAndGet();
-		Action<O, Void> inlineMerge = new Action<O, Void>(getDispatcher(), batchSize) {
-			@Override
-			protected void doSubscribe(Subscription s) {
-				available();
-			}
-
-			@Override
-			protected void doFlush() {
-				MergeAction.this.doFlush();
-			}
-
-			@Override
-			protected void doComplete() {
-				MergeAction.this.doComplete();
-			}
-
-			@Override
-			protected void doNext(O ev) {
-				MergeAction.this.doNext(ev);
-				available();
-			}
-
-			@Override
-			protected void doError(Throwable ev) {
-				MergeAction.this.doError(ev);
-			}
-
-		};
+		Subscriber<O> inlineMerge = new InnerSubscriber<O>(this);
 		publisher.subscribe(inlineMerge);
 	}
 
 	@Override
 	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
-		if (subscriptions.length > 0) {
-			return new StreamSubscription<O>(this, subscriber) {
-				@Override
-				public void request(int elements) {
-					super.request(elements * (subscriptions.length + 1));
-					for (Subscription subscription : subscriptions) {
-						if (subscription != null) {
-							subscription.request(elements);
-						}
-					}
-					requestUpstream(capacity, buffer.isComplete(), elements);
-				}
+		return new CompositeSubscription<O>(this, subscriber, innerSubscriptions.subs, innerSubscriptions);
+	}
 
-				@Override
-				public void cancel() {
-					super.cancel();
-					for (Subscription subscription : subscriptions) {
-						if (subscription != null) {
-							subscription.cancel();
-						}
-					}
-				}
-			};
+	@Override
+	public void onNext(O ev) {
+		if (mergedDispatcher != null) {
+			mergedDispatcher.dispatch(this, ev, null, null, ROUTER, this);
 		} else {
-			return super.createSubscription(subscriber);
+			super.onNext(ev);
 		}
 	}
 
 	@Override
 	protected void doNext(O ev) {
+		if(innerSubscriptions.getCapacity().getAndDecrement() > 0){
+			innerSubscriptions.getCapacity().incrementAndGet();
+		}
 		if (processingAction != null) {
 			processingAction.doNext(ev);
 		} else {
@@ -178,18 +106,9 @@ public class MergeAction<O> extends Action<O, O> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		if (processingAction != null) {
-			processingAction.onSubscribe(subscription);
+			processingAction.doSubscribe(subscription);
 		} else {
 			super.doSubscribe(subscription);
-		}
-	}
-
-	@Override
-	protected void doFlush() {
-		if (processingAction != null) {
-			processingAction.doFlush();
-		} else {
-			super.doFlush();
 		}
 	}
 
@@ -206,12 +125,21 @@ public class MergeAction<O> extends Action<O, O> {
 	protected void doComplete() {
 		if (runningComposables.decrementAndGet() == 0) {
 			if (processingAction == null) {
-				broadcastComplete();
+				super.doComplete();
 			} else {
-				processingAction.onComplete();
+				processingAction.doComplete();
 			}
 
 		}
+	}
+
+	@Override
+	public CompositeSubscription<O> getSubscription() {
+		return innerSubscriptions;
+	}
+
+	public MultiReaderFastList<Subscription> getInnerSubscriptions() {
+		return innerSubscriptions.subs;
 	}
 
 	@Override
@@ -219,5 +147,42 @@ public class MergeAction<O> extends Action<O, O> {
 		return super.toString() +
 				"{runningComposables=" + runningComposables +
 				'}';
+	}
+
+	private static class InnerSubscriber<O> implements Subscriber<O> {
+		final MergeAction<O> outerAction;
+
+		Subscription s;
+
+		private InnerSubscriber(MergeAction<O> outerAction) {
+			this.outerAction = outerAction;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			this.s = s;
+			outerAction.innerSubscriptions.subs.add(s);
+			int request = outerAction.mergedCapacity.intValue();
+			if (request > 0) {
+				s.request(request);
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			outerAction.innerSubscriptions.subs.remove(s);
+			outerAction.onComplete();
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			outerAction.onError(t);
+		}
+
+		@Override
+		public void onNext(O ev) {
+			outerAction.onNext(ev);
+		}
+
 	}
 }

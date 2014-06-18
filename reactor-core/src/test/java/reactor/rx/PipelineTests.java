@@ -29,7 +29,6 @@ import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.function.support.Tap;
-import reactor.rx.action.Action;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
@@ -384,7 +383,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void mapNotifiesOnce() throws InterruptedException {
 
-		final int COUNT = 50;
+		final int COUNT = 5000;
 		final CountDownLatch latch = new CountDownLatch(COUNT);
 
 		Environment e = new Environment();
@@ -392,22 +391,13 @@ public class PipelineTests extends AbstractReactorTest {
 
 		final AtomicInteger iter = new AtomicInteger(0);
 
-		d.parallel(env.getDispatcher("workQueue")).map(new Function<Action<Integer, Integer>, Action<Integer, Integer>>() {
-			@Override
-			public Action<Integer, Integer> apply(Action<Integer, Integer> o) {
-				return o.map(new Function<Integer, Integer>() {
-					@Override
-					public Integer apply(Integer o) {
-						return o;
-					}
-				});
-			}
-		}).<Integer>merge().consume(new Consumer<Integer>() {
-			@Override
-			public void accept(Integer o) {
-				iter.incrementAndGet();
-				latch.countDown();
-			}
+		d.parallel(env.getDispatcher("workQueue"))
+				.map(o -> o.map(o1 -> o1))
+				.<Integer>merge()
+				.flatMap(i -> Streams.defer(i, env))
+				.consume(o -> {
+			iter.incrementAndGet();
+			latch.countDown();
 		});
 
 		for (int i = 0; i < COUNT; i++) {

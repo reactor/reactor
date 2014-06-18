@@ -315,7 +315,7 @@ class PromisesSpec extends Specification {
 			"the original promise is fulfilled"
 			println promise.debug()
 			promise.broadcastNext 1
-			println mappedPromise.debug()
+			println promise.debug()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"

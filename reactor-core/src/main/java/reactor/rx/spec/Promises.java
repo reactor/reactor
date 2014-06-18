@@ -29,6 +29,7 @@ import reactor.rx.action.MergeAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -213,20 +214,7 @@ public abstract class Promises {
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<List<T>> when(Promise<T>... promises) {
-		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
-
-		CollectAction<T> collectAction = new CollectAction<T>(promises.length, SynchronousDispatcher.INSTANCE){
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(1);
-			}
-		};
-		collectAction.env(promises[0].getEnvironment());
-		Promise<List<T>> resultPromise = next(collectAction);
-
-		new MergeAction<T>(SynchronousDispatcher.INSTANCE, collectAction, promises);
-
-		return resultPromise;
+		return when(Arrays.asList(promises));
 	}
 
 	/**
@@ -237,8 +225,22 @@ public abstract class Promises {
 	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
-	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
-		return when(toArray(promises));
+	public static <T> Promise<List<T>> when(List<? extends Promise<T>> promises) {
+		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
+
+		CollectAction<T> collectAction = new CollectAction<T>(promises.size(), SynchronousDispatcher.INSTANCE){
+			@Override
+			protected void doSubscribe(Subscription subscription) {
+				subscription.request(1);
+			}
+		};
+		collectAction.env(promises.get(0).getEnvironment());
+		Promise<List<T>> resultPromise = next(collectAction);
+
+		new MergeAction<T>(SynchronousDispatcher.INSTANCE, collectAction, promises);
+
+		return resultPromise;
+
 	}
 
 
@@ -250,7 +252,20 @@ public abstract class Promises {
 	 * @return a {@link Promise}.
 	 */
 	public static <T> Promise<T> any(Promise<T>... promises) {
-		Assert.isTrue(promises.length > 0, "Must aggregate at least one promise");
+		return any(Arrays.asList(promises));
+	}
+
+
+	/**
+	 * Pick the first result coming from any of the given promises and populate a new {@literal Promise}.
+	 *
+	 * @param promises The promises to use.
+	 * @param <T>      The type of the function result.
+	 * @return a {@link Promise}.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
+		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
 		Action<T,T> noop = new Action<T,T>(){
 			@Override
@@ -268,23 +283,9 @@ public abstract class Promises {
 		noop.subscribe(resultPromise);
 
 		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, noop, promises);
-		mergeAction.env(promises[0].getEnvironment());
+		mergeAction.env(promises.get(0).getEnvironment());
 
 		return resultPromise;
-	}
-
-
-	/**
-	 * Pick the first result coming from any of the given promises and populate a new {@literal Promise}.
-	 *
-	 * @param promises The promises to use.
-	 * @param <T>      The type of the function result.
-	 * @return a {@link Promise}.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Promise<T> any(Collection<? extends Promise<T>> promises) {
-
-		return any(toArray(promises));
 	}
 
 	/**
@@ -306,11 +307,6 @@ public abstract class Promises {
 			@Override
 			protected void doSubscribe(Subscription subscription) {
 				subscription.request(1);
-			}
-
-			@Override
-			protected void doFlush() {
-				resultPromise.onFlush();
 			}
 
 			@Override

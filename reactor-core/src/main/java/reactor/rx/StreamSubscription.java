@@ -142,7 +142,7 @@ public class StreamSubscription<O> implements Subscription {
 
 	protected void checkRequestSize(int elements) {
 		if (elements <= 0) {
-			throw new IllegalArgumentException("Cannot request negative number");
+			throw new IllegalArgumentException("Cannot request a non strictly positive number: "+elements);
 		}
 	}
 }

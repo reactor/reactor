@@ -6,7 +6,6 @@ import reactor.function.Consumer;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Base Implementation for single-threaded Dispatchers.
@@ -20,7 +19,6 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 	private final List<Task> tailRecursionPile = new ArrayList<Task>();
 	private final int backlog;
 
-	private final    ReentrantLock expandTailRecursionPileLock = new ReentrantLock();
 	private volatile int           tailRecurseSeq              = -1;
 	private volatile int           tailRecursionPileSize       = 0;
 
@@ -53,15 +51,11 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 	}
 
 	protected void expandTailRecursionPile(int amount) {
-		expandTailRecursionPileLock.lock();
 		try {
 			for (int i = 0; i < amount; i++) {
 				tailRecursionPile.add(new SingleThreadTask());
 			}
 			this.tailRecursionPileSize = tailRecursionPile.size();
-		} finally {
-			expandTailRecursionPileLock.unlock();
-		}
 	}
 
 	protected Task allocateRecursiveTask() {

@@ -17,8 +17,8 @@ package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
+import reactor.rx.StreamSubscription;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,38 +35,33 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	                          Dispatcher dispatcher
 	) {
 		super(dispatcher);
+		final DynamicMergeAction<I, O, E> thiz = this;
 		this.mergeAction = new MergeAction<O>(dispatcher){
+
 			@Override
-			protected void requestUpstream(AtomicLong currentCapacity, boolean terminated, int elements) {
-				if(currentCapacity.get() > 0 && DynamicMergeAction.this.getSubscription() != null){
-					DynamicMergeAction.this.getSubscription().request(elements);
-				}
+			protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+				return new CompositeSubscription<O>(thiz, subscriber, innerSubscriptions.subs, innerSubscriptions);
+			}
+
+			@Override
+			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+				thiz.requestUpstream(capacity, terminated, elements);
+				super.requestUpstream(capacity, terminated, elements);
 			}
 		};
+		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);
 		this.mergeAction.runningComposables.incrementAndGet();
 	}
-
 
 	@Override
 	public void subscribe(Subscriber<O> subscriber) {
 		mergeAction.subscribe(subscriber);
 	}
 
-
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(I value) {
 		mergeAction.addPublisher((E)value);
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription){
-		mergeAction.prefetch(batchSize).env(getEnvironment()).onSubscribe(subscription);
-	}
-
-	@Override
-	protected void doFlush() {
-		mergeAction.doFlush();
 	}
 
 	@Override
@@ -90,6 +85,8 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		mergeAction.pause();
 		return super.pause();
 	}
+
+
 
 	public MergeAction<O> mergedStream(){
 		return mergeAction;

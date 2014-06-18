@@ -33,6 +33,7 @@ import reactor.timer.Timer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -55,7 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Consumer<O>, Flushable {
+public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Subscriber<O>, Consumer<O> {
 
 	private final ReentrantLock lock = new ReentrantLock();
 
@@ -325,7 +326,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	 */
 	public O await(long timeout, TimeUnit unit) throws InterruptedException {
 		if (isPending()) {
-			onFlush();
+			delegateAction.available();
 		}
 
 		if (!isPending()) {
@@ -448,7 +449,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	public Promise<O> merge(Promise<O>... composables) {
-		return then(new MergeAction<O>(delegateAction.getDispatcher(), null, composables));
+		return then(new MergeAction<O>(delegateAction.getDispatcher(), null, Arrays.asList(composables)));
 	}
 
 	public Promise<O> timeout(long timeout) {
@@ -456,7 +457,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	public Promise<O> timeout(long timeout, Timer timer) {
-		return Promise.wrap(delegateAction.timeout(timeout,timer));
+		return Promise.wrap(delegateAction.timeout(timeout, timer));
 	}
 
 	public <E> Promise<E> propagate(Supplier<E> supplier) {
@@ -485,10 +486,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		delegateAction.onComplete();
 	}
 
-	@Override
-	public void broadcastFlush() {
-		delegateAction.onFlush();
-	}
 
 	@Override
 	public Pausable cancel() {
@@ -579,16 +576,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	@Override
-	public void start() {
-		delegateAction.start();
-	}
-
-	@Override
-	public void onFlush() {
-		delegateAction.onFlush();
-	}
-
-	@Override
 	public void accept(O o) {
 		onNext(o);
 	}
@@ -612,7 +599,6 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		lock.lock();
 		try {
 			if (!isPending()){
-				System.out.println(value + " rejected");
 				throw new IllegalStateException();
 			}
 			this.value = value;

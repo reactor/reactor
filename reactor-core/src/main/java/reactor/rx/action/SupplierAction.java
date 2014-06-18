@@ -46,9 +46,4 @@ public class SupplierAction<T, V> extends Action<T, V> {
 			return super.createSubscription(subscriber);
 		}
 	}
-
-	@Override
-	protected void doFlush() {
-		broadcastNext(supplier.get());
-	}
 }

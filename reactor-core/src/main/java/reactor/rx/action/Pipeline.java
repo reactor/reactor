@@ -52,13 +52,6 @@ public interface Pipeline<O> extends Publisher<O>, Pausable {
 	 */
 	<A,E extends Action<O,A>> E connect(@Nonnull E action);
 
-	/**
-	 * Trigger a flush event to all the attached {@link Subscriber} that implement {@link Flushable},
-	 * e.g. {@link CollectAction} or {@link SupplierAction}
-	 *
-	 * @since 1.1
-	 */
-	void broadcastFlush();
 
 	/**
 	 * Send an error to all the attached {@link Subscriber}.

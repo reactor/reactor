@@ -19,7 +19,6 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -33,12 +32,11 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	private final Timer     timer;
 	private final long      timeout;
-	private final Stream<?> flushedComposable;
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
-				flushedComposable.broadcastFlush();
+				available();
 			}
 		}
 	};
@@ -46,13 +44,12 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
-	public TimeoutAction(Dispatcher dispatcher, Stream<?> flushedComposable,
+	public TimeoutAction(Dispatcher dispatcher,
 	                     Timer timer, long timeout) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.timeout = timeout;
-		this.flushedComposable = flushedComposable;
 	}
 
 	@Override
@@ -86,8 +83,9 @@ public class TimeoutAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public void onComplete() {
+	public void doComplete() {
 		timeoutRegistration.cancel();
+		super.doComplete();
 	}
 
 }

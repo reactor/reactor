@@ -88,24 +88,8 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	@Override
 	protected void doNext(Iterable<T> values) {
 		if (values == null) return;
-		int i = 0;
 		for (T it : values) {
 			broadcastNext(it);
-			i++;
-			if (defaultValues == null && i % batchSize == 0) {
-				broadcastFlush();
-			}
-		}
-		if (defaultValues == null) {
-			broadcastFlush();
-		}
-	}
-
-	@Override
-	protected void doFlush() {
-		if (defaultValues != null) {
-			doNext(defaultValues);
-			doComplete();
 		}
 	}
 

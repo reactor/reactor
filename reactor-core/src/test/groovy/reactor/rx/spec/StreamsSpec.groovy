@@ -102,31 +102,6 @@ class StreamsSpec extends Specification {
 			tap.get() == [1, 2, 3]
 	}
 
-	def 'A Stream with an unknown set of values makes those values available when flush predicate agrees'() {
-		given:
-			'a composable to generate'
-			Stream s = Streams.<Integer> defer()
-
-		when:
-			'a flushable propagate action is attached'
-			def tap = s.propagate{5}.filter{ println it; it == 5 }.tap()
-
-		and:
-			'a start trigger and a filtered tap are attached'
-			s.flushWhen{ it == 1 }
-
-		and:
-			'values are accepted'
-			println s.debug()
-			s.broadcastNext(1)
-			println s.debug()
-
-		then:
-			'the filtered tap should see 5 from the propagated values'
-			tap.get() == 5
-
-	}
-
 	def "A Stream's initial values are passed to consumers"() {
 		given:
 			'a composable with values 1 to 5 inclusive'
@@ -267,7 +242,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Streams.<Integer> defer()
 			Stream<Integer> mapped = source.
-					flatMap { Integer v -> Streams.<Integer> defer(v * 2) }
+					flatMap { Integer v -> println v; Streams.<Integer> defer(v * 2) }
 
 		when:
 			'the source accepts a value'
@@ -285,7 +260,7 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to merge, collect and tap'
 			def source1 = Streams.<Integer> defer()
-			def source2 = Streams.<Integer> defer()
+			def source2 = Streams.<Integer> defer().map{it}.map{it}
 			def source3 = Streams.<Integer> defer()
 			def tap = source1.merge(source2, source3).collect(3).tap()
 
@@ -294,6 +269,8 @@ class StreamsSpec extends Specification {
 			source1.broadcastNext(1)
 			source2.broadcastNext(2)
 			source3.broadcastNext(3)
+
+		println source1.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -305,14 +282,13 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to count and tap'
 			def source = Streams.<Integer> defer()
-			def tap = source.count().valueStream().tap()
+			def tap = source.count(3).valueStream().tap()
 
 		when:
 			'the sources accept a value'
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			source.broadcastNext(3)
-			source.broadcastFlush()
 
 		then:
 			'the count value matches the number of accept'
@@ -535,7 +511,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted and flushed'
 			source.broadcastNext(2)
-			reduced.start()
+			reduced.available()
 
 		then:
 			'the updated reduction is available'
@@ -546,7 +522,7 @@ class StreamsSpec extends Specification {
 			reduced = source.reduce(new Reduction(), 2)
 			value = reduced.tap()
 			source.broadcastNext(1)
-			reduced.start()
+			reduced.available()
 
 		then:
 			'the updated reduction is available'
@@ -647,7 +623,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted'
 			source.broadcastNext(2)
-			source.broadcastFlush()
+			reduced.available()
 
 		then:
 			'the collected list contains the first and second elements'

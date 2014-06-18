@@ -80,12 +80,6 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 		super.doComplete();
 	}
 
-	@Override
-	protected void doFlush() {
-		elseComposable.broadcastFlush();
-		super.doFlush();
-	}
-
 	public E otherwise() {
 		return elseComposable;
 	}

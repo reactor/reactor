@@ -17,6 +17,7 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -75,11 +76,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public void onError(Throwable error) {
+	protected void doError(Throwable error) {
 		lock.lock();
 		try {
 			errorCount++;
-			super.onError(error);
+			super.doError(error);
 		} finally {
 			lock.unlock();
 		}
@@ -97,17 +98,28 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void doFlush() {
+	public void available() {
 		lock.lock();
 		try {
 			flushCallback(null);
 		} finally {
 			lock.unlock();
 		}
-		super.doFlush();
-		available();
+		super.available();
 	}
 
+	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+		lock.lock();
+		try {
+			flushCallback(null);
+		} finally {
+			lock.unlock();
+		}
+		if(capacity.get() > 0){
+			super.requestUpstream(capacity, terminated, elements);
+		}
+	}
 
 	@Override
 	public String toString() {

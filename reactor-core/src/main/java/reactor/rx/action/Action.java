@@ -16,7 +16,6 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, Flushable {
+public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I> {
 
 	protected static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -49,14 +48,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	private static final Logger log = LoggerFactory.getLogger(Action.class);
 
+	private final AtomicLong pendingRequest = new AtomicLong();
+
 	private Subscription subscription;
 
-	public static <O> Action<O,O> passthrough(){
+	public static <O> Action<O, O> passthrough() {
 		return passthrough(SynchronousDispatcher.INSTANCE);
 	}
 
-	public static <O> Action<O,O> passthrough(Dispatcher dispatcher){
-		return new Action<O,O>(dispatcher){
+	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
+		return new Action<O, O>(dispatcher) {
 			@Override
 			protected void doNext(O ev) {
 				broadcastNext(ev);
@@ -84,7 +85,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 * @return this {@link Stream}
 	 * @since 1.1
 	 */
-	public Action<O,O> timeout(long timeout) {
+	public Action<O, O> timeout(long timeout) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return timeout(timeout, getEnvironment().getRootTimer());
@@ -100,15 +101,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 * @since 1.1
 	 */
 	@SuppressWarnings("unchecked")
-	public Action<O,O> timeout(long timeout, Timer timer) {
-		Stream<?> composable = subscription != null &&
-				StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
-				((StreamSubscription<O>) subscription).getPublisher() :
-				this;
-
+	public Action<O, O> timeout(long timeout, Timer timer) {
 		final TimeoutAction<O> d = new TimeoutAction<O>(
 				getDispatcher(),
-				composable,
 				timer,
 				timeout
 		);
@@ -121,7 +116,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	protected void request(final int n){
+	protected void request(final int n) {
+		pendingRequest.getAndAdd(n);
+
 		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
 			@Override
 			public void accept(Void any) {
@@ -159,6 +156,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
+			pendingRequest.decrementAndGet();
 			doNext(i);
 		} catch (Throwable cause) {
 			doError(cause);
@@ -168,22 +166,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void onNext(I ev) {
 		dispatcher.dispatch(this, ev, null, null, ROUTER, this);
-	}
-
-	@Override
-	public void onFlush() {
-		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
-			@Override
-			public void accept(Void any) {
-				try {
-					doFlush();
-				} catch (Throwable t) {
-					doError(t);
-				}
-			}
-		};
-		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
-
 	}
 
 	@Override
@@ -239,25 +221,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	/**
-	 * Flush any cached or unprocessed values through this oldest kwown {@link Stream} ancestor.
-	 */
-	@Override
-	public void start() {
-		Action<?, ?> stream = findOldestStream(false);
-		stream.onFlush();
-	}
-
 	@Override
 	protected void removeSubscription(StreamSubscription<O> sub) {
 		super.removeSubscription(sub);
-		if(getState() == State.SHUTDOWN && subscription != null){
+		if (getState() == State.SHUTDOWN && subscription != null) {
 			subscription.cancel();
 		}
 	}
 
 	@Override
-	public Action<I,O> cancel() {
+	public Action<I, O> cancel() {
 		if (subscription != null)
 			subscription.cancel();
 		super.cancel();
@@ -265,13 +238,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
-	public Action<I,O> pause() {
+	public Action<I, O> pause() {
 		super.pause();
 		return this;
 	}
 
 	@Override
-	public Action<I,O> resume() {
+	public Action<I, O> resume() {
 		super.resume();
 		available();
 		return this;
@@ -288,71 +261,45 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@SuppressWarnings("unchecked")
 	public <E> Action<E, O> combine(boolean reuse) {
-		final Action<E, O> subscriber = (Action<E, O>)findOldestStream(reuse);
-		final Publisher<O> publisher = this;
+		final Action<E, O> subscriber = (Action<E, O>) findOldestStream(reuse);
+		final Stream<O> publisher = this;
 
-		return new Action<E, O>() {
-			@Override
-			public void subscribe(Subscriber<O> s) {
-				publisher.subscribe(s);
-			}
-
-			@Override
-			public void onSubscribe(Subscription s) {
-				subscriber.onSubscribe(s);
-			}
-
-			@Override
-			public void onNext(E e) {
-				subscriber.onNext(e);
-			}
-
-			@Override
-			public void onError(Throwable t) {
-				subscriber.onError(t);
-			}
-
-			@Override
-			public void onComplete() {
-				subscriber.onComplete();
-			}
-
-			@Override
-			public void broadcastNext(O ev) {
-				subscriber.broadcastNext(ev);
-			}
-
-			@Override
-			public void broadcastFlush() {
-				subscriber.broadcastFlush();
-			}
-
-			@Override
-			public void broadcastError(Throwable throwable) {
-				subscriber.broadcastError(throwable);
-			}
-
-			@Override
-			public void broadcastComplete() {
-				subscriber.broadcastComplete();
-			}
-		};
+		return new CombineAction<E, O>(publisher, subscriber);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Action<I,O> prefetch(int elements) {
-		return (Action<I,O>)super.prefetch(elements);
+
+	public Action<I, O> prefetch(int elements) {
+		return (Action<I, O>) super.prefetch(elements);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Action<I,O> env(Environment environment) {
-		return (Action<I,O>)super.env(environment);
+	public Action<I, O> env(Environment environment) {
+		return (Action<I, O>) super.env(environment);
 	}
 
-	protected void doFlush() {
-		broadcastFlush();
+	public Action<?, ?> findOldestStream(boolean resetState) {
+		Action<?, ?> that = this;
+
+		if (resetState) {
+			resetState(that);
+		}
+
+		while (that.subscription != null
+				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
+				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
+				) {
+
+			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
+
+			if (resetState) {
+				resetState(that);
+			}
+
+		}
+		return that;
 	}
 
 	protected void doSubscribe(Subscription subscription) {
@@ -369,31 +316,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		broadcastError(ev);
 	}
 
-	protected void resetState(Action<?,?> action){
+	protected void resetState(Action<?, ?> action) {
 		action.setState(State.READY);
 		error = null;
-	}
-
-	private Action<?, ?> findOldestStream(boolean resetState) {
-		Action<?, ?> that = this;
-
-		if(resetState){
-			resetState(that);
-		}
-
-		while (that.subscription != null
-				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
-				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
-				) {
-
-			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
-
-			if(resetState){
-				resetState(that);
-			}
-
-		}
-		return that;
 	}
 
 	public Subscription getSubscription() {
@@ -410,7 +335,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +
 								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity()
-						: ""
+						: ", subscription="+subscription
 				) + '}';
 	}
+
 }

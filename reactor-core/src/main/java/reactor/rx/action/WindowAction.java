@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
@@ -24,7 +25,6 @@ import reactor.util.Assert;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * WindowAction is collecting events on a steam until {@param period} is reached,
@@ -34,71 +34,78 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class WindowAction<T> extends Action<T,List<T>> {
+public class WindowAction<T> extends Action<T, List<T>> {
 
-	private final ReentrantLock lock            = new ReentrantLock();
-	private final List<T>       collectedWindow = new ArrayList<T>();
+	private final List<T> collectedWindow = new ArrayList<T>();
 	private final Registration<? extends Consumer<Long>> timerRegistration;
+
+	private boolean terminated = false;
 
 
 	@SuppressWarnings("unchecked")
 	public WindowAction(Dispatcher dispatcher,
 	                    Timer timer,
 	                    int period, TimeUnit timeUnit, int delay
-  ) {
+	) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timerRegistration = timer.schedule(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {
-				doWindow(aLong);
+				onWindow(aLong);
 			}
 		}, period, timeUnit, delay);
 	}
 
-	protected void doWindow(Long aLong) {
-		lock.lock();
-		try {
-			if(!collectedWindow.isEmpty()){
-				broadcastNext(new ArrayList<T>(collectedWindow));
-				collectedWindow.clear();
+	protected void onWindow(Long aLong) {
+		reactor.function.Consumer<Subscription> completeHandler = new reactor.function.Consumer<Subscription>() {
+			@Override
+			public void accept(Subscription subscription) {
+				if (!collectedWindow.isEmpty()) {
+					broadcastNext(new ArrayList<T>(collectedWindow));
+					collectedWindow.clear();
+
+					if (terminated) {
+						broadcastComplete();
+					}
+				}
+				if (terminated) {
+					timerRegistration.cancel();
+				}
 			}
-		} finally {
-			lock.unlock();
-		}
+		};
+		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
 	}
 
 	@Override
 	protected void doNext(T value) {
-		lock.lock();
-		try {
-			collectedWindow.add(value);
-		} finally {
-			lock.unlock();
+		collectedWindow.add(value);
+	}
+
+	@Override
+	protected void doComplete() {
+		if (collectedWindow.isEmpty()) {
+			super.doComplete();
+		} else {
+			terminated = true;
 		}
 	}
 
 	@Override
 	public WindowAction<T> cancel() {
 		timerRegistration.cancel();
-		return (WindowAction<T>)super.cancel();
+		return (WindowAction<T>) super.cancel();
 	}
 
 	@Override
 	public WindowAction<T> pause() {
 		timerRegistration.pause();
-		return (WindowAction<T>)super.pause();
+		return (WindowAction<T>) super.pause();
 	}
 
 	@Override
 	public WindowAction<T> resume() {
 		timerRegistration.resume();
-		return (WindowAction<T>)super.resume();
+		return (WindowAction<T>) super.resume();
 	}
-
-	@Override
-	protected void doFlush() {
-		doWindow(-1l);
-	}
-
 }

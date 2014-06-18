@@ -28,26 +28,31 @@ public class CountAction<T> extends Action<T, T> {
 
 	private final AtomicLong counter = new AtomicLong(0l);
 	private final Action<T, Long> stream;
+	private final int             i;
 
-	public CountAction(Dispatcher dispatcher) {
+	public CountAction(Dispatcher dispatcher, int i) {
 		super(dispatcher);
-		this.stream = new Action<T,Long>(dispatcher);
+		this.i = i;
+		this.stream = new Action<T, Long>(dispatcher);
+	}
+
+	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+		stream.broadcastNext(counter.get());
+		counter.set(0l);
+		super.requestUpstream(capacity, terminated, elements);
 	}
 
 	@Override
 	protected void doNext(T value) {
-		counter.getAndIncrement();
+		long counter = this.counter.incrementAndGet();
+		if(counter % i == 0){
+			stream.broadcastNext(counter);
+		}
 	}
 
 	public Stream<Long> valueStream() {
 		return connect(stream);
-	}
-
-	@Override
-	protected void doFlush() {
-		stream.broadcastNext(counter.get());
-		counter.set(0l);
-		super.doFlush();
 	}
 
 }

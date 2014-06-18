@@ -44,7 +44,7 @@ public class MovingWindowAction<T> extends WindowAction<T> {
   }
 
   @Override
-  protected void doWindow(Long aLong) {
+  protected void onWindow(Long aLong) {
     lock.lock();
     try {
       int currentPointer = pointer.get();

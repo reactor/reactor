@@ -39,6 +39,7 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -61,13 +62,13 @@ import java.util.concurrent.TimeUnit;
  * @param <O> The type of the output values
  * @author Stephane Maldini
  * @author Jon Brisbin
- * @since 1.1
+ * @since 1.1, 2.0
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	private static final Logger log = LoggerFactory.getLogger(Stream.class);
 
-	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(8);
+	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(1);
 
 	protected final Dispatcher dispatcher;
 
@@ -76,8 +77,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	protected int batchSize;
 
 	protected boolean keepAlive = false;
-	private Environment environment;
-	private State state = State.READY;
+	protected Environment environment;
+	protected State state = State.READY;
 
 	public Stream() {
 		this(Integer.MAX_VALUE);
@@ -191,7 +192,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} containing the transformed values
 	 * @since 1.1
 	 */
-	public <V, C extends Publisher<V>> MergeAction<V> flatMap(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Publisher<V>> MapManyAction<O, V, C> flatMap(@Nonnull final Function<O, C> fn) {
 		return mapMany(fn);
 	}
 
@@ -204,10 +205,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return a new {@code Stream} containing the transformed values
 	 * @since 1.1
 	 */
-	public <V, C extends Publisher<V>> MergeAction<V> mapMany(@Nonnull final Function<O, C> fn) {
+	public <V, C extends Publisher<V>> MapManyAction<O, V, C> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
 		connect(d);
-		return d.mergedStream();
+		return d;
 	}
 
 	/**
@@ -221,7 +222,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	@SafeVarargs
 	public final MergeAction<O> merge(Publisher<O>... composables) {
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, composables);
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, Arrays.asList(composables));
 		connect(mergeAction);
 		return mergeAction;
 	}
@@ -234,7 +235,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
-		final Stream<Stream<E>> thiz = (Stream<Stream<E>>) this;
 		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
 		connect(mergeAction);
 		return mergeAction;
@@ -268,12 +268,12 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Stream<O>> Stream<E> parallel(Integer poolsize, final Dispatcher dispatcher) {
-		final ParallelAction<O,E> parallelAction = new ParallelAction<O,E>(
+		final ParallelAction<O, E> parallelAction = new ParallelAction<O, E>(
 				this.dispatcher, dispatcher, poolsize,
 				new Supplier<E>() {
 					@Override
 					public E get() {
-						return (E)new Stream<O>(dispatcher, environment, batchSize).buffer();
+						return (E) new Stream<O>(dispatcher, environment, batchSize).buffer();
 					}
 				}
 		);
@@ -322,7 +322,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Every time flush is triggered, {@param supplier} is called.
 	 *
 	 * @param supplier the supplier to drain
-	 * @return a new {@code Stream} whose values are generated on each flush
+	 * @return a new {@code Stream} whose values are generated on each request signal
 	 * @since 1.1
 	 */
 	public <E> SupplierAction<O, E> propagate(final Supplier<E> supplier) {
@@ -330,17 +330,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
-	}
-
-	/**
-	 * Consume values and trigger flush when {@param predicate} matches.
-	 *
-	 * @param predicate the test returning true to trigger flush
-	 * @return the current Stream
-	 * @since 1.1
-	 */
-	public Stream<Void> flushWhen(Predicate<O> predicate) {
-		return connect(new FlushWhenAction<O>(predicate, dispatcher, this));
 	}
 
 	/**
@@ -718,12 +707,19 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Count accepted events for each batch (every flush) and pass each accumulated long to the {@param stream}.
+	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 *
-	 * @since 1.1
 	 */
 	public CountAction<O> count() {
-		final CountAction<O> countAction = new CountAction<O>(dispatcher);
+		return count(batchSize);
+	}
+
+	/**
+	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
+	 *
+	 */
+	public CountAction<O> count(int i) {
+		final CountAction<O> countAction = new CountAction<O>(dispatcher, i);
 		connect(countAction);
 		return countAction;
 	}
@@ -800,10 +796,12 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				}
 			});
 
-			list.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+			subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 				@Override
 				public void safeValue(StreamSubscription<O> subscription) throws Exception {
 					try {
+						if (subscription.buffer.isComplete()) return;
+
 						subscription.onNext(ev);
 						if (subscription.buffer.isComplete() || state == State.COMPLETE) {
 							subscription.onComplete();
@@ -826,37 +824,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 			});
 		}
 
-	}
-
-	@Override
-	public void broadcastFlush() {
-		if (!checkState()) return;
-
-		subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-			@Override
-			public boolean accept(StreamSubscription<O> each) {
-				return Flushable.class.isAssignableFrom(each.subscriber.getClass());
-			}
-		}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
-			@Override
-			public void safeValue(final StreamSubscription<O> object) throws Exception {
-				try {
-					((Flushable) object.subscriber).onFlush();
-				} catch (final Throwable throwable) {
-					subscriptions.select(new com.gs.collections.api.block.predicate.Predicate<StreamSubscription<O>>() {
-						@Override
-						public boolean accept(StreamSubscription<O> each) {
-							return each.subscriber == object;
-						}
-					}).forEach(new CheckedProcedure<StreamSubscription<O>>() {
-						@Override
-						public void safeValue(StreamSubscription<O> subscription) throws Exception {
-							callError(subscription, throwable);
-						}
-					});
-				}
-			}
-		});
 	}
 
 	@Override
@@ -929,13 +896,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	protected boolean addSubscription(final StreamSubscription<O> subscription) {
-		if (subscriptions.indexOf(subscription) != -1) {
-			subscription.subscriber.onError(new IllegalStateException("Subscription already exists between this " +
-					"publisher/subscriber pair"));
-			return false;
-		} else {
-			return subscriptions.add(subscription);
-		}
+		return subscriptions.add(subscription);
 	}
 
 	protected void removeSubscription(final StreamSubscription<O> subscription) {
