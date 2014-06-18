@@ -22,6 +22,7 @@ import reactor.AbstractReactorTest;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.spec.Streams;
+import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import java.util.concurrent.CountDownLatch;
@@ -39,20 +40,20 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 						.prefetch(bufferSize)
 						.parallel(env.getDispatcher("workQueue"))
 						.map(stream -> stream
-										//.buffer()
+										.buffer()
 										.map(integer -> integer)
-										//.distinctUntilChanged()
-										//.flatMap(Streams::defer)
-										//.scan(Tuple2<Integer, Integer>::getT1)
-										//.filter(integer -> integer >= 0)
-										//.collect(1)
-										//.last()
-										//.<Integer>split()
+										.distinctUntilChanged()
+										.flatMap(Streams::defer)
+										.scan(Tuple2<Integer, Integer>::getT1)
+										.filter(integer -> integer >= 0)
+										.collect(1)
+										.last()
+										.<Integer>split()
 
 						)
 						.<Integer>merge()
-						//.window(100)
-						//.<Integer>split()
+						.window(100)
+						.<Integer>split()
 						.combine();
 	}
 

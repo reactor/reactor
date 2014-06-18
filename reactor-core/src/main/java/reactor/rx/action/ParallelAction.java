@@ -18,7 +18,6 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.MultiThreadDispatcher;
-import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
@@ -37,7 +36,7 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher, Dispatcher dispatcher,
-	                      Integer poolSize, Supplier<E> pipelineProvider) {
+	                      Integer poolSize) {
 		super(parentDispatcher);
 
 		Assert.state(MultiThreadDispatcher.class.isAssignableFrom(dispatcher.getClass()),
@@ -51,7 +50,7 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 		}
 		this.publishers = (E[]) new Pipeline[this.poolSize];
 		for (int i = 0; i < this.poolSize; i++) {
-			this.publishers[i] = pipelineProvider.get();
+			this.publishers[i] = (E) new ParallelStream<O,E>(this);
 		}
 	}
 
@@ -71,7 +70,6 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 			public void request(int elements) {
 				super.request(elements);
 
-				boolean terminated = false;
 				int i = 0;
 				while (i < poolSize && i < cursor.get()) {
 					i++;
@@ -81,15 +79,6 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 					cursor.getAndIncrement();
 					onNext(publishers[i]);
 					i++;
-					terminated = i == poolSize;
-				}
-
-				if(terminated){
-					capacity.addAndGet(poolSize);
-				}
-
-				if (i >= poolSize) {
-					requestUpstream(capacity, buffer.isComplete(), elements);
 				}
 			}
 		};
@@ -153,5 +142,18 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 			}
 		};
 		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+	}
+
+	static private class ParallelStream<O, E extends Pipeline<O>> extends Action<O, O> {
+		final ParallelAction<O, E> parallelAction;
+
+		private ParallelStream(ParallelAction<O, E> parallelAction) {
+			this.parallelAction = parallelAction;
+		}
+
+		@Override
+		protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+			parallelAction.requestUpstream(capacity, terminated, elements);
+		}
 	}
 }

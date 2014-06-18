@@ -16,7 +16,6 @@
 
 package reactor.rx;
 
-import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
@@ -37,6 +36,7 @@ import reactor.tuple.Tuple2;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -374,7 +374,78 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 	}
 
-	
 
-	
+	/**
+	 * See #294 the consumer received more or less calls than expected Better reproducible with big thread pools,
+	 * e.g. 128
+	 * threads
+	 *
+	 * @throws InterruptedException
+	 */
+	@Test
+	public void mapNotifiesOnce() throws InterruptedException {
+
+		final int COUNT = 5000;
+		final Object internalLock = new Object();
+		final Object consumerLock = new Object();
+
+		final CountDownLatch internalLatch = new CountDownLatch(COUNT);
+		final CountDownLatch counsumerLatch = new CountDownLatch(COUNT);
+
+		final AtomicInteger internalCounter = new AtomicInteger(0);
+		final AtomicInteger consumerCounter = new AtomicInteger(0);
+
+		final ConcurrentHashMap<Object, Long> seenInternal = new ConcurrentHashMap<>();
+		final ConcurrentHashMap<Object, Long> seenConsumer = new ConcurrentHashMap<>();
+
+		Environment e = new Environment();
+		Stream<Integer> d = Streams.defer(e);
+
+		d.parallel(env.getDispatcher("workQueue")).map(stream -> stream.map(o -> {
+			synchronized (internalLock) {
+
+				internalCounter.incrementAndGet();
+
+				long curThreadId = Thread.currentThread().getId();
+				Long prevThreadId = seenInternal.put(o, curThreadId);
+				if (prevThreadId != null) {
+					fail(String.format(
+							"The object %d has already been seen internally on the thread %d, current thread %d",
+							o, prevThreadId, curThreadId));
+				}
+
+				internalLatch.countDown();
+			}
+			return -o;
+		}).consume(o -> {
+			synchronized (consumerLock) {
+				consumerCounter.incrementAndGet();
+
+				long curThreadId = Thread.currentThread().getId();
+				Long prevThreadId = seenConsumer.put(o, curThreadId);
+				if (prevThreadId != null) {
+					System.out.println(String.format(
+							"The object %d has already been seen by the consumer on the thread %d, current thread %d",
+							o, prevThreadId, curThreadId));
+					fail();
+				}
+
+				counsumerLatch.countDown();
+			}
+		})).available();
+
+		for (int i = 0; i < COUNT; i++) {
+			d.broadcastNext(i);
+		}
+
+
+		System.out.println(d.debug());
+		assertTrue(internalLatch.await(5, TimeUnit.SECONDS));
+		System.out.println(d.debug());
+		assertEquals(COUNT, internalCounter.get());
+		assertTrue(counsumerLatch.await(5, TimeUnit.SECONDS));
+		assertEquals(COUNT, consumerCounter.get());
+	}
+
+
 }

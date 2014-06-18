@@ -34,6 +34,7 @@ public class StreamSubscription<O> implements Subscription {
 	final           Subscriber<O>       subscriber;
 	final           Stream<O>           publisher;
 	protected final AtomicLong          capacity;
+
 	protected final CompletableQueue<O> buffer;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
@@ -64,7 +65,7 @@ public class StreamSubscription<O> implements Subscription {
 
 		int remaining = elements - i;
 
-		if(capacity.addAndGet(remaining) < 0) {
+		if (capacity.addAndGet(remaining) < 0) {
 			capacity.set(Long.MAX_VALUE);
 		}
 
@@ -138,6 +139,10 @@ public class StreamSubscription<O> implements Subscription {
 
 	public AtomicLong getCapacity() {
 		return capacity;
+	}
+
+	public CompletableQueue<O> getBuffer() {
+		return buffer;
 	}
 
 	protected void checkRequestSize(int elements) {

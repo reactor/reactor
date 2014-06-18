@@ -251,7 +251,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <E extends Action<O, O>> Stream<E> parallel(Dispatcher dispatcher) {
+	public final <E extends Stream<O>> Stream<E> parallel(Dispatcher dispatcher) {
 		return parallel(0, dispatcher);
 	}
 
@@ -269,13 +269,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public final <E extends Stream<O>> Stream<E> parallel(Integer poolsize, final Dispatcher dispatcher) {
 		final ParallelAction<O, E> parallelAction = new ParallelAction<O, E>(
-				this.dispatcher, dispatcher, poolsize,
-				new Supplier<E>() {
-					@Override
-					public E get() {
-						return (E) new Stream<O>(dispatcher, environment, batchSize).buffer();
-					}
-				}
+				this.dispatcher, dispatcher, poolsize
 		);
 		return connect(parallelAction);
 	}
