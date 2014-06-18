@@ -22,7 +22,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.3.0'
+	groovyVersion = '2.3.2'
 
 	// Logging
 	slf4jVersion = '1.7.7'
@@ -253,11 +253,11 @@ project('reactor-core') {
 		compile "com.lmax:disruptor:$disruptorVersion"
 
 		// Rich Collections
-		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion",
+						"io.gatling:jsr166e:1.0"
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:0.4.0.M1"
-		//testCompile "org.reactivestreams:reactive-streams-tck:0.4.0.M1"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

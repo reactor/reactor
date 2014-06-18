@@ -1,10 +1,10 @@
 package reactor.event.dispatch;
 
+import jsr166e.ConcurrentHashMapV8;
 import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,8 +25,8 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	private final List<List<Task>>                      tailRecursionPileList;
 	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
-	private final Map<Long, Integer> tailsThreadIndexLookup = new HashMap<Long, Integer>();
-	private final AtomicInteger         indexAssignPile        = new AtomicInteger();
+	private final Map<Long, Integer> tailsThreadIndexLookup = new ConcurrentHashMapV8<Long, Integer>();
+	private final AtomicInteger      indexAssignPile        = new AtomicInteger();
 
 	protected MultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -44,11 +44,11 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 				}
 		);
 
-		for(int i = 0; i < numberThreads; i++) {
+		for (int i = 0; i < numberThreads; i++) {
 			tailRecursionPileSizeArray[i] = 0;
 			tailRecurseSeqArray[i] = -1;
 			tailRecursionPileList.add(new ArrayList<Task>(backlog));
-			tailsThreadIndexLookup.put(Thread.currentThread().getId(), null);
+			tailsThreadIndexLookup.put(Thread.currentThread().getId(), 0);
 			expandTailRecursionPile(i, backlog);
 		}
 	}
@@ -77,7 +77,7 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 
 	protected void expandTailRecursionPile(int index, int amount) {
 		List<Task> tailRecursionPile = tailRecursionPileList.get(index);
-		for(int i = 0; i < amount; i++) {
+		for (int i = 0; i < amount; i++) {
 			tailRecursionPile.add(new MultiThreadTask());
 		}
 		this.tailRecursionPileSizeArray[index] = tailRecursionPile.size();
@@ -87,7 +87,7 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	protected Task allocateRecursiveTask() {
 		Integer index = getThreadIndex();
 		int next = ++tailRecurseSeqArray[index];
-		if(next == tailRecursionPileSizeArray[index]) {
+		if (next == tailRecursionPileSizeArray[index]) {
 			expandTailRecursionPile(index, backlog);
 		}
 		return tailRecursionPileList.get(index).get(next);
@@ -103,20 +103,20 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 			route(this);
 
 			Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
-			if(null == index || tailRecurseSeqArray[index] < 0) {
+			if (null == index || tailRecurseSeqArray[index] < 0) {
 				return;
 			}
 			//Process any recursive tasks
 			Task task;
 			List<Task> tailRecursePile = tailRecursionPileList.get(index);
 			int next = 0;
-			while(next <= tailRecurseSeqArray[index]) {
+			while (next <= tailRecurseSeqArray[index]) {
 				task = tailRecursePile.get(next++);
 				route(task);
 			}
 			// clean up extra tasks
 			next = tailRecurseSeqArray[index];
-			while(next > backlog) {
+			while (next > backlog) {
 				tailRecursePile.remove(next--);
 			}
 			tailRecurseSeqArray[index] = -1;

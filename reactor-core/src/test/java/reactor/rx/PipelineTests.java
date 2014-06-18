@@ -16,6 +16,7 @@
 
 package reactor.rx;
 
+import com.gs.collections.impl.map.mutable.ConcurrentHashMap;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
@@ -369,43 +370,11 @@ public class PipelineTests extends AbstractReactorTest {
 	static class String2Integer implements Function<String, Integer> {
 		@Override
 		public Integer apply(String s) {
-			System.out.println(s);
 			return Integer.parseInt(s);
 		}
 	}
 
-	/**
-	 * This test failed with Java 7 (see issue #294):
-	 * the consumer received more calls than expected
-	 *
-	 * @throws InterruptedException
-	 */
-	@Test
-	public void mapNotifiesOnce() throws InterruptedException {
+	
 
-		final int COUNT = 5000;
-		final CountDownLatch latch = new CountDownLatch(COUNT);
-
-		Environment e = new Environment();
-		Stream<Integer> d = Streams.<Integer>defer(e);
-
-		final AtomicInteger iter = new AtomicInteger(0);
-
-		d.parallel(env.getDispatcher("workQueue"))
-				.map(o -> o.map(o1 -> o1))
-				.<Integer>merge()
-				.flatMap(i -> Streams.defer(i, env))
-				.consume(o -> {
-			iter.incrementAndGet();
-			latch.countDown();
-		});
-
-		for (int i = 0; i < COUNT; i++) {
-			d.broadcastNext(i);
-		}
-		latch.await(5, TimeUnit.SECONDS);
-		System.out.println(d.debug());
-		assertEquals("Assert " + COUNT + " different from counted down: " + iter.get(), COUNT, iter.get());
-	}
-
+	
 }
