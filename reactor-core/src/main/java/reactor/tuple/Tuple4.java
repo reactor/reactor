@@ -16,6 +16,11 @@
 
 package reactor.tuple;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Iterator;
+
 /**
  * A tuple that holds four values
  *
@@ -25,23 +30,69 @@ package reactor.tuple;
  * @param <T4> The type of the fourth value held by this tuple
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 
 	private static final long serialVersionUID = 8075447176142642390L;
 
-	Tuple4(Object... values) {
-		super(values);
+	public final T4 t4;
+
+	Tuple4(int size, T1 t1,T2 t2,T3 t3,T4 t4) {
+		super(size, t1, t2, t3);
+		this.t4 = t4;
 	}
 
 	/**
 	 * Type-safe way to get the fourth object of this {@link Tuple}.
 	 *
-	 * @return The fourth object, cast to the correct type.
+	 * @return The fourth object
 	 */
-	@SuppressWarnings("unchecked")
 	public T4 getT4() {
-		return (T4) get(3);
+		return t4;
 	}
 
+	@Nullable
+	@Override
+	public Object get(int index) {
+		switch(index){
+			case 0: return t1;
+			case 1: return t2;
+			case 2: return t3;
+			case 3: return t4;
+			default:
+				return null;
+		}
+	}
+
+	@Override
+	public Object[] toArray() {
+		return new Object[]{t1, t2, t3, t4};
+	}
+
+	@Nonnull
+	@Override
+	public Iterator<?> iterator() {
+		return Arrays.asList(t1, t2, t3, t4).iterator();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Tuple4)) return false;
+		if (!super.equals(o)) return false;
+
+		Tuple4 tuple4 = (Tuple4) o;
+
+		if (t4 != null ? !t4.equals(tuple4.t4) : tuple4.t4 != null) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (t4 != null ? t4.hashCode() : 0);
+		return result;
+	}
 }

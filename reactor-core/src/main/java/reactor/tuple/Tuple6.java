@@ -16,6 +16,11 @@
 
 package reactor.tuple;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Iterator;
+
 /**
  * A tuple that holds six values
  *
@@ -25,25 +30,78 @@ package reactor.tuple;
  * @param <T4> The type of the fourth value held by this tuple
  * @param <T5> The type of the fifth value held by this tuple
  * @param <T6> The type of the sixth value held by this tuple
- *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class Tuple6<T1, T2, T3, T4, T5, T6> extends Tuple5<T1, T2, T3, T4, T5> {
 
 	private static final long serialVersionUID = -4214053259792235250L;
 
-	Tuple6(Object... values) {
-		super(values);
+	public final T6 t6;
+
+	Tuple6(int size, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) {
+		super(size, t1, t2, t3, t4, t5);
+		this.t6 = t6;
 	}
 
 	/**
 	 * Type-safe way to get the sixth object of this {@link Tuple}.
 	 *
-	 * @return The sixth object, cast to the correct type.
+	 * @return The sixth object
 	 */
-	@SuppressWarnings("unchecked")
 	public T6 getT6() {
-		return (T6) get(5);
+		return t6;
 	}
 
+	@Nullable
+	@Override
+	public Object get(int index) {
+		switch (index) {
+			case 0:
+				return t1;
+			case 1:
+				return t2;
+			case 2:
+				return t3;
+			case 3:
+				return t4;
+			case 4:
+				return t5;
+			case 5:
+				return t6;
+			default:
+				return null;
+		}
+	}
+
+	@Override
+	public Object[] toArray() {
+		return new Object[]{t1, t2, t3, t4, t5, t6};
+	}
+
+	@Nonnull
+	@Override
+	public Iterator<?> iterator() {
+		return Arrays.asList(t1, t2, t3, t4, t5, t6).iterator();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Tuple6)) return false;
+		if (!super.equals(o)) return false;
+
+		Tuple6 tuple6 = (Tuple6) o;
+
+		if (t6 != null ? !t6.equals(tuple6.t6) : tuple6.t6 != null) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (t6 != null ? t6.hashCode() : 0);
+		return result;
+	}
 }
