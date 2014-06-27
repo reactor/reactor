@@ -146,7 +146,7 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 	}
 
 	@Override
-	public long getRemainingSlots() {
+	public long remainingSlots() {
 		return ringBuffer.remainingCapacity();
 	}
 

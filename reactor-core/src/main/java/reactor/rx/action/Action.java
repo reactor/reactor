@@ -23,10 +23,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.event.routing.ArgumentConvertingConsumerInvoker;
-import reactor.event.routing.ConsumerFilteringRouter;
-import reactor.event.routing.Router;
-import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
@@ -42,13 +38,36 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I> {
 
-	protected static final Router ROUTER = new ConsumerFilteringRouter(
-			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
-	);
-
 	private static final Logger log = LoggerFactory.getLogger(Action.class);
 
-	private final AtomicLong pendingRequest = new AtomicLong();
+	/**
+	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to batchSize + 4 events can be in-flight
+	 * stacking into a Dispatcher.
+	 */
+	public static final int RESERVED_SLOTS = 4;
+
+	protected int pendingRequest = 0;
+	protected int currentBatch   = 0;
+	protected long resourceID;
+
+	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
+		@Override
+		public void accept(Integer n) {
+			try {
+				int previous = pendingRequest;
+				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
+
+				if (n > batchSize) {
+					subscription.request(batchSize);
+				} else if (previous == 0) {
+					subscription.request(n);
+				}
+
+			} catch (Throwable t) {
+				doError(t);
+			}
+		}
+	};
 
 	private Subscription subscription;
 
@@ -117,19 +136,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void request(final int n) {
-		pendingRequest.getAndAdd(n);
-
-		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
-			@Override
-			public void accept(Void any) {
-				try {
-					subscription.request(n);
-				} catch (Throwable t) {
-					doError(t);
-				}
-			}
-		};
-		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		dispatch(n, requestConsumer);
 	}
 
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
@@ -156,21 +163,40 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
-			pendingRequest.decrementAndGet();
+			/*
+			Assert.state(resourceID == Thread.currentThread().getId(),
+					"resourceID:"+resourceID+" - currentID:"+Thread.currentThread().getId()+
+							" "+this.getClass().getSimpleName()+" "+this);
+			*/
 			doNext(i);
+			doRequest();
 		} catch (Throwable cause) {
 			doError(cause);
 		}
 	}
 
+	protected void doRequest() {
+		if (++currentBatch == pendingRequest) {
+			currentBatch = 0;
+			pendingRequest = 0;
+		} else if (currentBatch == batchSize) {
+			currentBatch = 0;
+			int toRequest = batchSize > pendingRequest ? pendingRequest : batchSize;
+			pendingRequest -= toRequest;
+
+			if (toRequest > 0)
+				subscription.request(toRequest);
+		}
+	}
+
 	@Override
 	public void onNext(I ev) {
-		dispatcher.dispatch(this, ev, null, null, ROUTER, this);
+		dispatch(ev,this);
 	}
 
 	@Override
 	public void onComplete() {
-		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
+		dispatch(new Consumer<Void>() {
 			@Override
 			public void accept(Void any) {
 				try {
@@ -182,8 +208,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					doError(t);
 				}
 			}
-		};
-		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		});
 
 	}
 
@@ -191,13 +216,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onError(Throwable cause) {
 		try {
 			error = cause;
-			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
+			dispatch(cause, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
 					doError(throwable);
 				}
-			};
-			dispatcher.dispatch(this, cause, null, null, ROUTER, dispatchErrorHandler);
+			});
 		} catch (Throwable dispatchError) {
 			error = dispatchError;
 		}
@@ -207,17 +231,19 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onSubscribe(Subscription subscription) {
 		if (this.subscription == null) {
 			this.subscription = subscription;
-			reactor.function.Consumer<Subscription> completeHandler = new reactor.function.Consumer<Subscription>() {
+			dispatch(subscription, new Consumer<Subscription>() {
 				@Override
 				public void accept(Subscription subscription) {
 					try {
+						resourceID = Thread.currentThread().getId();
 						doSubscribe(subscription);
 					} catch (Throwable t) {
 						doError(t);
 					}
 				}
-			};
-			dispatcher.dispatch(this, subscription, null, null, ROUTER, completeHandler);
+			});
+		} else {
+			throw new IllegalStateException("Already subscribed");
 		}
 	}
 
@@ -255,16 +281,15 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return StreamUtils.browse(findOldestStream(false));
 	}
 
-	public <E> Processor<E, O> combine() {
+	public <E> CombineAction<E, O, Action<I, O>> combine() {
 		return combine(false);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <E> Action<E, O> combine(boolean reuse) {
+	public <E> CombineAction<E, O, Action<I, O>> combine(boolean reuse) {
 		final Action<E, O> subscriber = (Action<E, O>) findOldestStream(reuse);
-		final Stream<O> publisher = this;
-
-		return new CombineAction<E, O>(publisher, subscriber);
+		subscriber.subscription = null;
+		return new CombineAction<E, O, Action<I, O>>(this, subscriber);
 	}
 
 	@Override
@@ -286,14 +311,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		if (resetState) {
 			resetState(that);
 		}
-
 		while (that.subscription != null
 				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
 				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
 				) {
 
-			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 
+			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 			if (resetState) {
 				resetState(that);
 			}
@@ -325,17 +349,21 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return subscription;
 	}
 
+
 	@Override
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				"state=" + getState() +
+				"resourceID=" + resourceID +
+				", state=" + getState() +
 				", prefetch=" + getBatchSize() +
+				", pending=" + pendingRequest +
+				", currentBatch=" + currentBatch +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +
 								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity()
-						: ", subscription="+subscription
+						: ", subscription=" + subscription
 				) + '}';
 	}
 

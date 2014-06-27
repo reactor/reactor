@@ -103,8 +103,13 @@ public final class ActorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public long getRemainingSlots() {
-		return -1;
+	public long remainingSlots() {
+		return Long.MAX_VALUE;
+	}
+
+	@Override
+	public int backlogSize() {
+		return Integer.MAX_VALUE;
 	}
 
 	@Override

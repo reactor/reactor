@@ -22,54 +22,55 @@ import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
+public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
-	private final E[]                   publishers;
-	private final MultiThreadDispatcher dispatcher;
+	private final ParallelStream[]      publishers;
+	private final MultiThreadDispatcher multiDispatcher;
 	private final int                   poolSize;
 
 	@SuppressWarnings("unchecked")
-	public ParallelAction(Dispatcher parentDispatcher, Dispatcher dispatcher,
-	                      Integer poolSize) {
+	public ParallelAction(Dispatcher parentDispatcher, Dispatcher multiDispatcher,
+	                      Integer poolSize, Integer batchSize) {
 		super(parentDispatcher);
 
-		Assert.state(MultiThreadDispatcher.class.isAssignableFrom(dispatcher.getClass()),
-				"Given dispatcher [" + dispatcher + "] is not a MultiThreadDispatcher.");
+		Assert.state(MultiThreadDispatcher.class.isAssignableFrom(multiDispatcher.getClass()),
+				"Given dispatcher [" + multiDispatcher + "] is not a MultiThreadDispatcher.");
 
-		this.dispatcher = ((MultiThreadDispatcher) dispatcher);
+		this.multiDispatcher = ((MultiThreadDispatcher) multiDispatcher);
 		if (poolSize <= 0) {
-			this.poolSize = this.dispatcher.getNumberThreads();
+			this.poolSize = this.multiDispatcher.getNumberThreads();
 		} else {
 			this.poolSize = poolSize;
 		}
-		this.publishers = (E[]) new Pipeline[this.poolSize];
+		this.publishers = new ParallelStream[this.poolSize];
 		for (int i = 0; i < this.poolSize; i++) {
-			this.publishers[i] = (E) new ParallelStream<O,E>(this);
+			this.publishers[i] = new ParallelStream<O>(this, batchSize);
 		}
 	}
 
 	@Override
-	public <A, E1 extends Action<E, A>> E1 connect(@Nonnull E1 stream) {
-		E1 action = super.connect(stream);
+	public <A, E extends Action<Action<O, O>, A>> E connect(@Nonnull E stream) {
+		E action = super.connect(stream);
 		action.prefetch(poolSize).env(environment);
 		return action;
 	}
 
 	@Override
-	protected StreamSubscription<E> createSubscription(Subscriber<E> subscriber) {
-		return new StreamSubscription<E>(this, subscriber) {
+	@SuppressWarnings("unchecked")
+	protected StreamSubscription<Action<O, O>> createSubscription(final Subscriber<Action<O, O>> subscriber) {
+		return new StreamSubscription<Action<O, O>>(this, subscriber) {
 			AtomicLong cursor = new AtomicLong();
 
 			@Override
 			public void request(int elements) {
-				super.request(elements);
-
 				int i = 0;
 				while (i < poolSize && i < cursor.get()) {
 					i++;
@@ -77,8 +78,12 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 
 				while (i < elements && i < poolSize) {
 					cursor.getAndIncrement();
-					onNext(publishers[i]);
+						subscriber.onNext(publishers[i]);
 					i++;
+				}
+
+				if(i == poolSize){
+					subscriber.onComplete();
 				}
 			}
 		};
@@ -88,72 +93,102 @@ public class ParallelAction<O, E extends Pipeline<O>> extends Action<O, E> {
 		return poolSize;
 	}
 
-	public E[] getPublishers() {
+	public ParallelStream[] getPublishers() {
 		return publishers;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected void doNext(O ev) {
-		int index = dispatcher.getThreadIndex() % poolSize;
-		try {
-			publishers[index].broadcastNext(ev);
-		} catch (Throwable t) {
-			publishers[index].broadcastError(t);
-		}
+	protected void doNext(final O ev) {
+		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
+			@Override
+			public void accept(Void any) {
+				int index = multiDispatcher.getThreadIndex() % poolSize;
+				try {
+					publishers[index].broadcastNext(ev);
+				} catch (Throwable t) {
+					publishers[index].broadcastError(t);
+				}
+			}
+		};
+		multiDispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
 	}
 
-	@Override
-	public void onNext(O ev) {
-		dispatcher.dispatch(this, ev, null, null, ROUTER, this);
-	}
 
 	@Override
-	public void onError(Throwable ev) {
-		super.onError(ev);
+	protected void doError(Throwable ev) {
+		super.doError(ev);
 		try {
+			final AtomicInteger completed = new AtomicInteger(poolSize);
 			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					for (int i = 0; i < poolSize; i++) {
-						publishers[i].broadcastError(throwable);
+					int i = multiDispatcher.getThreadIndex() % poolSize;
+					completed.decrementAndGet();
+
+					while (completed.get() > 0) {
+						LockSupport.parkNanos(1);
 					}
+
+					publishers[i].broadcastError(throwable);
 				}
 			};
-			dispatcher.dispatch(this, ev, null, null, ROUTER, dispatchErrorHandler);
+			for(int i = 0; i < poolSize; i++){
+				multiDispatcher.dispatch(this, ev, null, null, ROUTER, dispatchErrorHandler);
+			}
 		} catch (Throwable dispatchError) {
 			error = dispatchError;
 		}
 	}
 
 	@Override
-	public void onComplete() {
-		super.onComplete();
+	protected void doComplete() {
+		super.doComplete();
+		final AtomicInteger completed = new AtomicInteger(poolSize);
 		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
 			@Override
 			public void accept(Void any) {
-				for (int i = 0; i < poolSize; i++) {
-					try {
-						publishers[i].broadcastComplete();
-					} catch (Throwable t) {
-						publishers[i].broadcastError(t);
-					}
+				int i = multiDispatcher.getThreadIndex() % poolSize;
+				completed.decrementAndGet();
+
+				while (completed.get() > 0) {
+					LockSupport.parkNanos(1);
+				}
+
+				try {
+					publishers[i].broadcastComplete();
+				} catch (Throwable t) {
+					publishers[i].broadcastError(t);
 				}
 			}
 		};
-		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		for(int i = 0; i < poolSize; i++){
+			multiDispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		}
 	}
 
-	static private class ParallelStream<O, E extends Pipeline<O>> extends Action<O, O> {
-		final ParallelAction<O, E> parallelAction;
+	@Override
+	protected void request(final int n) {
+		super.request(n);
+	}
 
-		private ParallelStream(ParallelAction<O, E> parallelAction) {
+	static private class ParallelStream<O> extends Action<O, O> {
+		final ParallelAction<O> parallelAction;
+
+		private ParallelStream(ParallelAction<O> parallelAction, Integer batchSize) {
+			super(parallelAction.multiDispatcher, batchSize / parallelAction.getPoolSize() - RESERVED_SLOTS);
 			this.parallelAction = parallelAction;
 		}
 
 		@Override
-		protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-			parallelAction.requestUpstream(capacity, terminated, elements);
+		protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+			return new StreamSubscription<O>(this, subscriber) {
+				@Override
+				public void request(int elements) {
+					super.request(elements);
+					parallelAction.requestUpstream(capacity, buffer.isComplete(), elements);
+				}
+			};
 		}
 	}
 }

@@ -147,8 +147,8 @@ public class ThreadPoolExecutorDispatcher extends MultiThreadDispatcher {
 	}
 
 	@Override
-	public long getRemainingSlots() {
-		return workQueue != null ? workQueue.remainingCapacity() : -1;
+	public long remainingSlots() {
+		return workQueue != null ? workQueue.remainingCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override

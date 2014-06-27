@@ -48,8 +48,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	private Publisher<T> source;
 
 	/**
-	 * Configures the stream to have the given {@code batchSize}. A value of {@code -1}, which
-	 * is the default configuration, configures the stream to not be batched.
+	 * Configures the stream to have the given {@code batchSize}.
 	 *
 	 * @param batchSize The batch size of the stream
 	 * @return {@code this}

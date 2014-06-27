@@ -28,16 +28,17 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class CombineAction<E, O> extends Action<E, O> {
-	private final Stream<O>    publisher;
+public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O> {
+	private final S            publisher;
 	private final Action<E, O> subscriber;
 
-	public CombineAction(Stream<O> publisher, Action<E, O> subscriber) {
+	public CombineAction(S publisher, Action<E, O> subscriber) {
+		super(subscriber.getDispatcher(), subscriber.getBatchSize());
 		this.publisher = publisher;
 		this.subscriber = subscriber;
 	}
 
-	public Stream<O> output() {
+	public S output() {
 		return publisher;
 	}
 
@@ -45,15 +46,15 @@ public class CombineAction<E, O> extends Action<E, O> {
 		return subscriber;
 	}
 
-	@Override
-	public void onSubscribe(Subscription s) {
-		super.onSubscribe(s);
-		subscriber.onSubscribe(s);
-	}
 
 	@Override
 	public void subscribe(Subscriber<O> s) {
 		publisher.subscribe(s);
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		subscriber.onSubscribe(s);
 	}
 
 	@Override
@@ -114,5 +115,12 @@ public class CombineAction<E, O> extends Action<E, O> {
 	@Override
 	public String debug() {
 		return publisher.debug();
+	}
+
+
+	@Override
+	public String toString() {
+		return "input=" + (subscriber.getClass().getSimpleName().isEmpty() ? subscriber : subscriber.getClass().getSimpleName().replaceAll("Action","")) +
+				", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass().getSimpleName().replaceAll("Action",""));
 	}
 }

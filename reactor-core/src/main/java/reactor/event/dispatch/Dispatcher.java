@@ -111,12 +111,22 @@ public interface Dispatcher extends Executor {
 	 * E.g. {@link reactor.event.dispatch.RingBufferDispatcher} will return
 	 * {@link com.lmax.disruptor.RingBuffer#remainingCapacity()}.
 	 * <p>
-	 * No capacity support from the implementation will be signaled with a negative value, usually -1.
 	 *
 	 * @return the remaining capacity if supported otherwise it returns a negative value.
 	 * @since 2.0
 	 */
-	long getRemainingSlots();
+	long remainingSlots();
+
+	/**
+	 * Request the capacity for the underlying shared state structure.
+	 * E.g. {@link reactor.event.dispatch.RingBufferDispatcher} will return
+	 * {@link com.lmax.disruptor.RingBuffer#getBufferSize()}.
+	 * <p>
+	 *
+	 * @return the remaining capacity if supported otherwise it returns a negative value.
+	 * @since 2.0
+	 */
+	int backlogSize();
 
 
 	/**

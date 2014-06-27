@@ -15,7 +15,6 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
@@ -58,9 +57,9 @@ public class WindowAction<T> extends Action<T, List<T>> {
 	}
 
 	protected void onWindow(Long aLong) {
-		reactor.function.Consumer<Subscription> completeHandler = new reactor.function.Consumer<Subscription>() {
+		dispatch(aLong, new Consumer<Long>() {
 			@Override
-			public void accept(Subscription subscription) {
+			public void accept(Long aLong) {
 				if (!collectedWindow.isEmpty()) {
 					broadcastNext(new ArrayList<T>(collectedWindow));
 					collectedWindow.clear();
@@ -73,8 +72,7 @@ public class WindowAction<T> extends Action<T, List<T>> {
 					timerRegistration.cancel();
 				}
 			}
-		};
-		dispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		});
 	}
 
 	@Override

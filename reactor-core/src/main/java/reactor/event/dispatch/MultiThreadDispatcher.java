@@ -58,7 +58,8 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 		return false;
 	}
 
-	public int getBacklog() {
+	@Override
+	public int backlogSize() {
 		return backlog;
 	}
 

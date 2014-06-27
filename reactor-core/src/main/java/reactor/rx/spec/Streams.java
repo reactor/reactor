@@ -25,6 +25,7 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
+import reactor.rx.action.Action;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
@@ -62,7 +63,11 @@ public abstract class Streams {
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
 				"MultiThreadDispatcher, refer to #parallel() method. ");
-		return new Stream<T>(dispatcher, env, Integer.MAX_VALUE);
+		return new Stream<T>(dispatcher, env, dispatcher.backlogSize() > 0 ?
+				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
+						dispatcher.backlogSize() :
+						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
+				Integer.MAX_VALUE);
 	}
 
 	/**
@@ -103,7 +108,7 @@ public abstract class Streams {
 	public static <T> Stream<T> defer(Publisher<T> publisher, Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
 				"MultiThreadDispatcher, refer to #parallel() method. ");
-		Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE).env(env);
+		Stream<T> stream = defer(env, dispatcher);
 		publisher.subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
 	}
@@ -143,7 +148,7 @@ public abstract class Streams {
 				((Reactor) observable).getDispatcher() :
 				SynchronousDispatcher.INSTANCE;
 
-		final Stream<T> stream = new Stream<T>(dispatcher, Integer.MAX_VALUE);
+		Stream<T> stream = defer(null, dispatcher);
 		StreamSpec.<T>publisherFrom(observable, broadcastSelector).subscribe(new StreamSpec.StreamSubscriber<T>(stream));
 		return stream;
 	}
@@ -282,5 +287,4 @@ public abstract class Streams {
 		forEachAction.env(env);
 		return forEachAction;
 	}
-
 }

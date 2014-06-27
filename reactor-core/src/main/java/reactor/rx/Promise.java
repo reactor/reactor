@@ -449,7 +449,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	}
 
 	public Promise<O> merge(Promise<O>... composables) {
-		return then(new MergeAction<O>(delegateAction.getDispatcher(), null, Arrays.asList(composables)));
+		return then(new MergeAction<O>(delegateAction.getDispatcher(), null, null, Arrays.asList(composables)));
 	}
 
 	public Promise<O> timeout(long timeout) {

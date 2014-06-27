@@ -122,7 +122,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 	}
 
 	@Override
-	public long getRemainingSlots() {
+	public long remainingSlots() {
 		return ringBuffer.remainingCapacity();
 	}
 

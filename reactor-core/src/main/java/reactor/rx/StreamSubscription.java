@@ -64,9 +64,12 @@ public class StreamSubscription<O> implements Subscription {
 		}
 
 		int remaining = elements - i;
-
-		if (capacity.addAndGet(remaining) < 0) {
-			capacity.set(Long.MAX_VALUE);
+		long current = capacity.get();
+		current = current == -1 ? 0 : current;
+		if (current + remaining < 0) {
+			throw new RuntimeException(""+current+" "+Thread.currentThread());
+		}else{
+			capacity.set(remaining);
 		}
 
 		if (buffer.isComplete()) {
@@ -108,14 +111,6 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
-	public Stream<?> getPublisher() {
-		return publisher;
-	}
-
-	public Subscriber<O> getSubscriber() {
-		return subscriber;
-	}
-
 	public void onNext(O ev) {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
@@ -133,6 +128,18 @@ public class StreamSubscription<O> implements Subscription {
 		buffer.complete();
 	}
 
+	public void onError(Throwable throwable) {
+		subscriber.onError(throwable);
+	}
+
+	public Stream<?> getPublisher() {
+		return publisher;
+	}
+
+	public Subscriber<O> getSubscriber() {
+		return subscriber;
+	}
+
 	public long getBufferSize() {
 		return buffer.size();
 	}
@@ -143,6 +150,10 @@ public class StreamSubscription<O> implements Subscription {
 
 	public CompletableQueue<O> getBuffer() {
 		return buffer;
+	}
+
+	public boolean isComplete() {
+		return buffer.isComplete();
 	}
 
 	protected void checkRequestSize(int elements) {

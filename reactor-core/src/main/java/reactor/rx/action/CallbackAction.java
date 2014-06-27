@@ -16,8 +16,6 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
@@ -27,8 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Stephane Maldini
  */
 public class CallbackAction<T> extends Action<T, Void> {
-
-	private static Logger log = LoggerFactory.getLogger(CallbackAction.class);
 
 	private final Consumer<T> consumer;
 	private final boolean     prefetch;
@@ -43,7 +39,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		if (prefetch) {
-			subscription.request(Integer.MAX_VALUE);
+			subscription.request(batchSize);
 		}
 	}
 
@@ -51,8 +47,8 @@ public class CallbackAction<T> extends Action<T, Void> {
 	protected void doNext(T ev) {
 		int counted = count.incrementAndGet();
 		consumer.accept(ev);
-		if (counted % Integer.MAX_VALUE == 0) {
-			getSubscription().request(Integer.MAX_VALUE);
+		if (counted % batchSize == 0) {
+			getSubscription().request(batchSize);
 		}
 	}
 }

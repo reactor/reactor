@@ -87,7 +87,10 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 
 	@Override
 	protected void doNext(Iterable<T> values) {
-		if (values == null) return;
+		if (values == null) {
+			broadcastNext(null);
+			return;
+		}
 		for (T it : values) {
 			broadcastNext(it);
 		}

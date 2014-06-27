@@ -38,21 +38,10 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void onError(final Throwable cause) {
-		try {
-			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					if (selector.matches(cause.getClass())) {
-						broadcastNext((E) cause);
-					}
-				}
-			};
-			dispatcher.dispatch(this, cause, null, null, ROUTER, dispatchErrorHandler);
-		} catch (Throwable dispatchError) {
-			error = dispatchError;
+	protected void doError(Throwable cause) {
+		if (selector.matches(cause.getClass())) {
+			broadcastNext((E) cause);
 		}
-
 	}
 
 	@Override

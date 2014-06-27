@@ -33,7 +33,8 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 		return true;
 	}
 
-	public int getBacklog() {
+	@Override
+	public int backlogSize() {
 		return backlog;
 	}
 

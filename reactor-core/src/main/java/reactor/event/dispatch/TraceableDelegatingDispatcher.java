@@ -104,7 +104,12 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public long getRemainingSlots() {
-		return delegate.getRemainingSlots();
+	public long remainingSlots() {
+		return delegate.remainingSlots();
+	}
+
+	@Override
+	public int backlogSize() {
+		return delegate.backlogSize();
 	}
 }

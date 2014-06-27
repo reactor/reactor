@@ -18,39 +18,38 @@ package reactor.rx.action;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.StreamSubscription;
+import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
- * @author Jon Brisbin
- * @since 1.1
+ * @since 2.0
  */
 public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, O> {
 
 	private final MergeAction<O> mergeAction;
 
 	public DynamicMergeAction(
-	                          Dispatcher dispatcher
+			Dispatcher dispatcher
 	) {
 		super(dispatcher);
 		final DynamicMergeAction<I, O, E> thiz = this;
-		this.mergeAction = new MergeAction<O>(dispatcher){
-
-			@Override
-			protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
-				return new CompositeSubscription<O>(thiz, subscriber, innerSubscriptions.subs, innerSubscriptions);
-			}
-
+		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
 			@Override
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-				thiz.requestUpstream(capacity, terminated, elements);
 				super.requestUpstream(capacity, terminated, elements);
+				thiz.requestUpstream(capacity, terminated, elements);
 			}
 		};
 		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);
 		this.mergeAction.runningComposables.incrementAndGet();
+		dispatch(new Consumer<Void>() {
+			@Override
+			public void accept(Void o) {
+				mergeAction.resourceID = Thread.currentThread().getId();
+			}
+		});
 	}
 
 	@Override
@@ -61,11 +60,12 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(I value) {
-		mergeAction.addPublisher((E)value);
+		mergeAction.addPublisher((E) value);
 	}
 
 	@Override
 	protected void doComplete() {
+		mergeAction.innerSubscriptions.request(batchSize);
 		mergeAction.doComplete();
 	}
 
@@ -75,20 +75,25 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	}
 
 	@Override
-	public Action<I,O> resume() {
+	public Action<I, O> prefetch(int elements) {
+		mergeAction.prefetch(elements);
+		return super.prefetch(elements);
+	}
+
+	@Override
+	public Action<I, O> resume() {
 		mergeAction.resume();
 		return super.resume();
 	}
 
 	@Override
-	public Action<I,O> pause() {
+	public Action<I, O> pause() {
 		mergeAction.pause();
 		return super.pause();
 	}
 
 
-
-	public MergeAction<O> mergedStream(){
+	public MergeAction<O> mergedStream() {
 		return mergeAction;
 	}
 }

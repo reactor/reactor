@@ -297,7 +297,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		Stream<String> d = Streams.defer(env);
-		Stream<Integer> tasks = d.parallel(env.getDispatcher(Environment.THREAD_POOL))
+		Stream<Integer> tasks = d.parallel(env.getDispatcher(Environment.WORK_QUEUE))
 				.map(stream -> stream.map(str -> {
 							try {
 								Thread.sleep(random.nextInt(250));
@@ -312,11 +312,14 @@ public class PipelineTests extends AbstractReactorTest {
 			latch.countDown();
 		});
 
+		System.out.println(tasks.debug());
+
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
 
-		latch.await(5, TimeUnit.SECONDS);
+		latch.await(10, TimeUnit.SECONDS);
+		System.out.println(tasks.debug());
 		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
 	}
 

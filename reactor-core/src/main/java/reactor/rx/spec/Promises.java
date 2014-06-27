@@ -237,7 +237,7 @@ public abstract class Promises {
 		collectAction.env(promises.get(0).getEnvironment());
 		Promise<List<T>> resultPromise = next(collectAction);
 
-		new MergeAction<T>(SynchronousDispatcher.INSTANCE, collectAction, promises);
+		new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, collectAction, promises);
 
 		return resultPromise;
 
@@ -282,7 +282,7 @@ public abstract class Promises {
 		Promise<T> resultPromise = Promise.wrap(noop);
 		noop.subscribe(resultPromise);
 
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, noop, promises);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE,  null, noop, promises);
 		mergeAction.env(promises.get(0).getEnvironment());
 
 		return resultPromise;
