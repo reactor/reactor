@@ -1,6 +1,7 @@
 package reactor.event.dispatch;
 
-import jsr166e.ConcurrentHashMapV8;
+import com.gs.collections.api.block.function.Function0;
+import com.gs.collections.impl.map.mutable.UnifiedMap;
 import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
 
@@ -24,8 +25,8 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	private final List<List<Task>>                      tailRecursionPileList;
 	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
-	private final ConcurrentHashMapV8<Long, Integer> tailsThreadIndexLookup = new ConcurrentHashMapV8<Long, Integer>();
-	private final AtomicInteger                      indexAssignPile        = new AtomicInteger();
+	private final UnifiedMap<Long, Integer> tailsThreadIndexLookup = UnifiedMap.newMap();
+	private final AtomicInteger             indexAssignPile        = new AtomicInteger();
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -69,9 +70,9 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		Long threadId = Thread.currentThread().getId();
 		Integer index = tailsThreadIndexLookup.get(threadId);
 		if (null == index) {
-			index = tailsThreadIndexLookup.computeIfAbsent(threadId, new ConcurrentHashMapV8.Fun<Long, Integer>() {
+			index = tailsThreadIndexLookup.getIfAbsentPut(threadId, new Function0<Integer>() {
 				@Override
-				public Integer apply(Long l) {
+				public Integer value() {
 					return indexAssignPile.getAndIncrement() % numberThreads;
 				}
 			});
