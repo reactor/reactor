@@ -6,7 +6,6 @@ import reactor.function.Supplier;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,8 +24,8 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 	private final List<List<Task>>                      tailRecursionPileList;
 	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
-	private final Map<Long, Integer> tailsThreadIndexLookup = new ConcurrentHashMapV8<Long, Integer>();
-	private final AtomicInteger      indexAssignPile        = new AtomicInteger();
+	private final ConcurrentHashMapV8<Long, Integer> tailsThreadIndexLookup = new ConcurrentHashMapV8<Long, Integer>();
+	private final AtomicInteger                      indexAssignPile        = new AtomicInteger();
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -48,9 +47,9 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 			tailRecursionPileSizeArray[i] = 0;
 			tailRecurseSeqArray[i] = -1;
 			tailRecursionPileList.add(new ArrayList<Task>(backlog));
-			tailsThreadIndexLookup.put(Thread.currentThread().getId(), 0);
 			expandTailRecursionPile(i, backlog);
 		}
+		tailsThreadIndexLookup.put(Thread.currentThread().getId(), 0);
 	}
 
 	public int getBacklog() {
@@ -67,10 +66,15 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		Integer index = tailsThreadIndexLookup.get(Thread.currentThread().getId());
+		Long threadId = Thread.currentThread().getId();
+		Integer index = tailsThreadIndexLookup.get(threadId);
 		if (null == index) {
-			index = indexAssignPile.getAndIncrement() % numberThreads;
-			tailsThreadIndexLookup.put(Thread.currentThread().getId(), index);
+			index = tailsThreadIndexLookup.computeIfAbsent(threadId, new ConcurrentHashMapV8.Fun<Long, Integer>() {
+				@Override
+				public Integer apply(Long l) {
+					return indexAssignPile.getAndIncrement() % numberThreads;
+				}
+			});
 		}
 		int next = ++tailRecurseSeqArray[index];
 		if (next == tailRecursionPileSizeArray[index]) {
