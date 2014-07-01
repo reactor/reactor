@@ -8,7 +8,6 @@ import com.gs.collections.impl.map.mutable.UnifiedMap;
 import reactor.function.Supplier;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -55,9 +54,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
 		int len = vals.size();
 		if (len == nextAvail) {
-			for (int i = 0; i < size; i++) {
-				vals.add(factory.get());
-			}
+			vals.addAll(preAllocatedListFn.value());
 		}
 
 		return vals.get(nextAvail);
@@ -66,19 +63,16 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 	@Override
 	public Iterator<T> iterator() {
 		Long threadId = Thread.currentThread().getId();
-		final FastList<T> vals = partitions.remove(threadId);
-		if (null == vals || vals.isEmpty()) {
-			return Collections.<T>emptyList().iterator();
-		}
-		nextAvailable.remove(threadId);
+		AtomicInteger nextAvail = nextAvailable.getIfAbsentPut(threadId, atomicIntegerFn);
+		final FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
+		final int end = nextAvail.get();
 
 		return new Iterator<T>() {
 			int currIdx = 0;
-			int len = vals.size();
 
 			@Override
 			public boolean hasNext() {
-				return currIdx < len;
+				return currIdx <= end;
 			}
 
 			@Override
