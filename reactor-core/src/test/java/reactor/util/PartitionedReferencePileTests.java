@@ -3,14 +3,13 @@ package reactor.util;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.iterableWithSize;
 
 /**
  * @author Jon Brisbin
@@ -38,7 +37,7 @@ public class PartitionedReferencePileTests {
 	}
 
 	@Test
-	public void testPartitionedReferencePileProvidesThreadLocal() throws InterruptedException {
+	public void partitionedReferencePileProvidesThreadLocal() throws InterruptedException {
 		int backlog = 32;
 
 		PartitionedReferencePile<Slot> pile = new PartitionedReferencePile<Slot>(backlog, Slot::new);
@@ -63,6 +62,32 @@ public class PartitionedReferencePileTests {
 		}
 
 		assertThat("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void partitionedReferencePileCollectsAllObjects() throws InterruptedException, ExecutionException {
+		int backlog = 32;
+
+		PartitionedReferencePile<Slot> pile = new PartitionedReferencePile<Slot>(backlog, Slot::new);
+
+		Future[] futures = new Future[threadCnt];
+		for (int i = 0; i < threadCnt; i++) {
+			int idx = i;
+			futures[i] = pool.submit(() -> {
+				for (int j = 0; j < backlog * 2; j++) {
+					Slot s = pile.get();
+					s.var0 = idx;
+					s.var1 = j;
+				}
+			});
+		}
+		for (Future f : futures) {
+			f.get();
+		}
+
+		Collection<Slot> slots = pile.collect();
+
+		assertThat("All Slots allocated are available", slots, iterableWithSize(threadCnt * backlog * 2));
 	}
 
 	@Test

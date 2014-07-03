@@ -8,6 +8,7 @@ import com.gs.collections.impl.map.mutable.UnifiedMap;
 import reactor.function.Supplier;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -17,14 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ThreadSafe
 public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 
-	private final MutableMap<Long, FastList<T>>   partitions      = UnifiedMap.newMap();
-	private final MutableMap<Long, AtomicInteger> nextAvailable   = UnifiedMap.newMap();
-	private final Function0<AtomicInteger>        atomicIntegerFn = new Function0<AtomicInteger>() {
-		@Override
-		public AtomicInteger value() {
-			return new AtomicInteger(-1);
-		}
-	};
 	private final int size;
 	private final Function0<FastList<T>> preAllocatedListFn = new Function0<FastList<T>>() {
 		@Override
@@ -37,6 +30,20 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		}
 	};
 	private final Supplier<T> factory;
+	private final MutableMap<Long, FastList<T>>        partitions      = UnifiedMap.newMap();
+	private final MutableMap<Long, AtomicInteger>      nextAvailable   = UnifiedMap.newMap();
+	private final Function0<AtomicInteger>             atomicIntegerFn = new Function0<AtomicInteger>() {
+		@Override
+		public AtomicInteger value() {
+			return new AtomicInteger(-1);
+		}
+	};
+	private final Procedure2<FastList<T>, FastList<T>> zipFn           = new Procedure2<FastList<T>, FastList<T>>() {
+		@Override
+		public void value(FastList<T> vals, FastList<T> agg) {
+			agg.addAll(vals);
+		}
+	};
 
 	public PartitionedReferencePile(Supplier<T> factory) {
 		this(1024, factory);
@@ -60,6 +67,12 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		return vals.get(nextAvail);
 	}
 
+	public Collection<T> collect() {
+		FastList<T> aggregate = FastList.newList();
+		partitions.valuesView().forEachWith(zipFn, aggregate);
+		return aggregate;
+	}
+
 	@Override
 	public Iterator<T> iterator() {
 		Long threadId = Thread.currentThread().getId();
@@ -79,6 +92,11 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 			public T next() {
 				int idx = currIdx++;
 				return vals.get(idx);
+			}
+
+			@Override
+			public void remove() {
+				throw new IllegalStateException("PartitionedReferencePile Iterators are read-only");
 			}
 		};
 	}
