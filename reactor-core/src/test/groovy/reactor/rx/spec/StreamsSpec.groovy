@@ -259,7 +259,7 @@ class StreamsSpec extends Specification {
 	def "Multiple Stream's values can be merged"() {
 		given:
 			'source composables to merge, collect and tap'
-			def source1 = Streams.<Integer> defer()
+			def source1 = Streams.<Integer> defer(new Environment())
 			def source2 = Streams.<Integer> defer().map{it}.map{it}
 			def source3 = Streams.<Integer> defer()
 			def tap = source1.merge(source2, source3).collect(3).tap()
@@ -818,7 +818,7 @@ class StreamsSpec extends Specification {
 			def latch = new CountDownLatch(3)
 			Environment env = new Environment()
 			Stream head = Streams.<Integer>defer(env)
-			Stream tail = head.parallel(env.getDispatcher('threadPoolExecutor')).merge().collect(333)
+			Stream tail = head.parallel().merge().collect(333)
 			tail.consume { List<Integer> ints ->
 				println ints.size()
 				sum.addAndGet(ints.size())

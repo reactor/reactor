@@ -15,45 +15,47 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.rx.StreamSubscription;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
 public class FanInSubscription<O> extends StreamSubscription<O> {
-	final Action<?, O>            publisher;
-	final Map<Long, Subscription> subs;
-	final AtomicLong              pendingSubscriptionAvailable;
+	final Action<?, O>                      publisher;
+	final MultiReaderFastList<Subscription> subscriptions;
 
 	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber) {
-		this(publisher, subscriber, new HashMap<Long, Subscription>(8));
+		this(publisher, subscriber, MultiReaderFastList.<Subscription>newList(8));
 	}
 
 	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber,
-	                         Map<Long, Subscription> subs) {
+	                         MultiReaderFastList<Subscription> subs) {
 		super(publisher, subscriber);
 		this.publisher = publisher;
-		this.subs = subs;
-		this.pendingSubscriptionAvailable = new AtomicLong();
+		this.subscriptions = subs;
 	}
 
 	@Override
 	public void request(final int elements) {
-		final int parallel = subs.size();
 		super.request(elements);
+		final int parallel = subscriptions.size();
 
 		if (parallel > 0) {
-			int batchSize = elements / parallel;
-			for (Subscription sub : subs.values()) {
-				sub.request(batchSize);
-			}
+			final int batchSize = elements / parallel;
+			subscriptions.forEach(new CheckedProcedure<Subscription>() {
+				int remaining = (elements % parallel > 0 ? 1 : 0) + batchSize;
+
+				@Override
+				public void safeValue(Subscription subscription) throws Exception {
+					if (remaining > 0)
+						subscription.request(batchSize + remaining);
+				}
+			});
 
 		} else if (publisher != null && parallel == 0) {
 			publisher.requestUpstream(capacity, buffer.isComplete(), elements);
@@ -62,11 +64,12 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void cancel() {
-		for (Subscription subscription : subs.values()) {
-			if (subscription != null) {
+		subscriptions.forEach(new CheckedProcedure<Subscription>() {
+			@Override
+			public void safeValue(Subscription subscription) throws Exception {
 				subscription.cancel();
 			}
-		}
+		});
 		super.cancel();
 	}
 }

@@ -48,7 +48,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	protected int pendingRequest = 0;
 	protected int currentBatch   = 0;
-	protected long resourceID;
 
 	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
 		@Override
@@ -149,6 +148,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
+
+
 	@Override
 	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
 		return new StreamSubscription<O>(this, subscriber) {
@@ -179,7 +180,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		if (++currentBatch == pendingRequest) {
 			currentBatch = 0;
 			pendingRequest = 0;
-		} else if (currentBatch == batchSize) {
+		} else if (currentBatch == batchSize || pendingRequest < batchSize) {
 			currentBatch = 0;
 			int toRequest = batchSize > pendingRequest ? pendingRequest : batchSize;
 			pendingRequest -= toRequest;
@@ -235,7 +236,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				@Override
 				public void accept(Subscription subscription) {
 					try {
-						resourceID = Thread.currentThread().getId();
 						doSubscribe(subscription);
 					} catch (Throwable t) {
 						doError(t);
@@ -349,20 +349,21 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return subscription;
 	}
 
-
 	@Override
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				"resourceID=" + resourceID +
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher","")+":"+dispatcher.remainingSlots() +
+
+
 				", state=" + getState() +
 				", prefetch=" + getBatchSize() +
-				", pending=" + pendingRequest +
-				", currentBatch=" + currentBatch +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +
-								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity()
+								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity() +
+								", pending=" + pendingRequest +
+								", currentBatch=" + currentBatch
 						: ", subscription=" + subscription
 				) + '}';
 	}

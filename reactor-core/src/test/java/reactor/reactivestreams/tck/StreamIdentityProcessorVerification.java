@@ -19,10 +19,8 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
-import reactor.core.Environment;
 import reactor.rx.Stream;
 import reactor.rx.spec.Streams;
-import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import java.util.concurrent.CountDownLatch;
@@ -37,12 +35,12 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 		return
 				Streams.<Integer>defer(env)
 						.prefetch(bufferSize)
-						.parallel(env.getDispatcher(Environment.THREAD_POOL))
+						.parallel()
 						.map(stream -> stream
 										.buffer()
 										.map(integer -> integer)
 										.distinctUntilChanged()
-										.scan(Tuple2<Integer, Integer>::getT1)
+										.<Integer>scan(tuple -> tuple.getT1())
 										.filter(integer -> integer >= 0)
 										.collect(1)
 										.last()
@@ -55,7 +53,7 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 	}
 
 	@org.junit.Test
-	public void testIdentityProcessor() throws InterruptedException {
+	public void testIdentityProcessor()  {
 		final int elements = 20;
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
@@ -93,7 +91,11 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 		}
 		stream.broadcastComplete();
 
-		latch.await(5,TimeUnit.SECONDS);
+		try {
+			latch.await(5, TimeUnit.SECONDS);
+		}catch(InterruptedException ie){
+			ie.printStackTrace();
+		}
 		System.out.println(stream.debug());
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count);

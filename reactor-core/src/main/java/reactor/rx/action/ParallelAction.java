@@ -17,7 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.MultiThreadDispatcher;
+import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
@@ -32,28 +32,34 @@ import java.util.concurrent.locks.LockSupport;
  */
 public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
-	private final ParallelStream[]      publishers;
-	private final MultiThreadDispatcher multiDispatcher;
-	private final int                   poolSize;
+	private final ParallelStream[] publishers;
+	private final AtomicInteger    pendingSubscriptions;
+	private final int              poolSize;
+
+	private int roundRobinIndex = 0;
 
 	@SuppressWarnings("unchecked")
-	public ParallelAction(Dispatcher parentDispatcher, Dispatcher multiDispatcher,
-	                      Integer poolSize, Integer batchSize) {
+	public ParallelAction(Dispatcher parentDispatcher,
+	                      Supplier<Dispatcher> multiDispatcher,
+	                      Integer poolSize) {
 		super(parentDispatcher);
-
-		Assert.state(MultiThreadDispatcher.class.isAssignableFrom(multiDispatcher.getClass()),
-				"Given dispatcher [" + multiDispatcher + "] is not a MultiThreadDispatcher.");
-
-		this.multiDispatcher = ((MultiThreadDispatcher) multiDispatcher);
-		if (poolSize <= 0) {
-			this.poolSize = this.multiDispatcher.getNumberThreads();
-		} else {
-			this.poolSize = poolSize;
+		Assert.state(poolSize > 0, "Must provide a strictly positive number of concurrent sub-streams (poolSize)");
+		this.poolSize = poolSize;
+		this.pendingSubscriptions = new AtomicInteger(poolSize);
+		this.publishers = new ParallelStream[poolSize];
+		for (int i = 0; i < poolSize; i++) {
+			this.publishers[i] = new ParallelStream<O>(ParallelAction.this, multiDispatcher.get(), i);
 		}
-		this.publishers = new ParallelStream[this.poolSize];
-		for (int i = 0; i < this.poolSize; i++) {
-			this.publishers[i] = new ParallelStream<O>(this, batchSize);
+	}
+
+	@Override
+	public Action<O, Action<O, O>> prefetch(int elements) {
+		super.prefetch(elements);
+		int size = elements / poolSize;
+		for (ParallelStream p : publishers) {
+			p.prefetch(size);
 		}
+		return this;
 	}
 
 	@Override
@@ -78,11 +84,11 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 				while (i < elements && i < poolSize) {
 					cursor.getAndIncrement();
-						subscriber.onNext(publishers[i]);
+					subscriber.onNext(publishers[i]);
 					i++;
 				}
 
-				if(i == poolSize){
+				if (i == poolSize) {
 					subscriber.onComplete();
 				}
 			}
@@ -100,95 +106,82 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
-		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
-			@Override
-			public void accept(Void any) {
-				int index = multiDispatcher.getThreadIndex() % poolSize;
-				try {
-					publishers[index].broadcastNext(ev);
-				} catch (Throwable t) {
-					publishers[index].broadcastError(t);
-				}
-			}
-		};
-		multiDispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		waitForDownstreamSubscription();
+
+		ParallelStream<O> publisher = null;
+		int i = 0;
+
+		while (i++ < poolSize &&
+				(publisher = publishers[roundRobinIndex++]) == null) ;
+
+		if (roundRobinIndex == poolSize) {
+			roundRobinIndex = 0;
+		}
+
+		if (publisher == null) return;
+
+		try {
+			publisher.broadcastNext(ev);
+		} catch (Throwable t) {
+			publisher.broadcastError(t);
+		}
 	}
 
 
 	@Override
-	protected void doError(Throwable ev) {
-		super.doError(ev);
-		try {
-			final AtomicInteger completed = new AtomicInteger(poolSize);
-			reactor.function.Consumer<Throwable> dispatchErrorHandler = new reactor.function.Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					int i = multiDispatcher.getThreadIndex() % poolSize;
-					completed.decrementAndGet();
-
-					while (completed.get() > 0) {
-						LockSupport.parkNanos(1);
-					}
-
-					publishers[i].broadcastError(throwable);
-				}
-			};
-			for(int i = 0; i < poolSize; i++){
-				multiDispatcher.dispatch(this, ev, null, null, ROUTER, dispatchErrorHandler);
-			}
-		} catch (Throwable dispatchError) {
-			error = dispatchError;
+	protected void doError(Throwable throwable) {
+		super.doError(throwable);
+		for (ParallelStream parallelStream : publishers) {
+			parallelStream.onError(throwable);
 		}
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		final AtomicInteger completed = new AtomicInteger(poolSize);
-		reactor.function.Consumer<Void> completeHandler = new reactor.function.Consumer<Void>() {
-			@Override
-			public void accept(Void any) {
-				int i = multiDispatcher.getThreadIndex() % poolSize;
-				completed.decrementAndGet();
-
-				while (completed.get() > 0) {
-					LockSupport.parkNanos(1);
-				}
-
-				try {
-					publishers[i].broadcastComplete();
-				} catch (Throwable t) {
-					publishers[i].broadcastError(t);
-				}
-			}
-		};
-		for(int i = 0; i < poolSize; i++){
-			multiDispatcher.dispatch(this, null, null, null, ROUTER, completeHandler);
+		for (ParallelStream parallelStream : publishers) {
+			parallelStream.onComplete();
 		}
 	}
 
-	@Override
-	protected void request(final int n) {
-		super.request(n);
+	private void waitForDownstreamSubscription() {
+		while (pendingSubscriptions.get() > 0) {
+			LockSupport.parkNanos(1);
+		}
 	}
 
 	static private class ParallelStream<O> extends Action<O, O> {
 		final ParallelAction<O> parallelAction;
+		final int               index;
 
-		private ParallelStream(ParallelAction<O> parallelAction, Integer batchSize) {
-			super(parallelAction.multiDispatcher, batchSize / parallelAction.getPoolSize() - RESERVED_SLOTS);
+		volatile boolean init = false;
+
+		private ParallelStream(ParallelAction<O> parallelAction, Dispatcher dispatcher, int index) {
+			super(dispatcher);
 			this.parallelAction = parallelAction;
+			this.index = index;
 		}
 
 		@Override
 		protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
 					super.request(elements);
+					if (!init) {
+						parallelAction.pendingSubscriptions.decrementAndGet();
+						init = true;
+					}
+
 					parallelAction.requestUpstream(capacity, buffer.isComplete(), elements);
 				}
 			};
+		}
+
+		@Override
+		public String toString() {
+			return super.toString() + "{" + (index + 1) + "/" + parallelAction.poolSize + "}";
 		}
 	}
 }

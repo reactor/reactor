@@ -105,11 +105,11 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                         Consumer<Throwable> errorConsumer,
 	                         Router router,
 	                         Consumer<E> completionConsumer) {
-		doDispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, isInContext());
+		dispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, isInContext());
 	}
 
 	@SuppressWarnings("unchecked")
-	protected  <E> void doDispatch(Object key,
+	public  <E> void dispatch(Object key,
 	                         E event,
 	                         Registry<Consumer<?>> consumerRegistry,
 	                         Consumer<Throwable> errorConsumer,

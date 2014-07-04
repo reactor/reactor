@@ -18,7 +18,6 @@ package reactor.rx.action;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -38,18 +37,14 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
 			@Override
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+				if(thiz.state != State.COMPLETE){
+					thiz.requestUpstream(capacity, terminated, elements);
+				}
 				super.requestUpstream(capacity, terminated, elements);
-				thiz.requestUpstream(capacity, terminated, elements);
 			}
 		};
 		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);
 		this.mergeAction.runningComposables.incrementAndGet();
-		dispatch(new Consumer<Void>() {
-			@Override
-			public void accept(Void o) {
-				mergeAction.resourceID = Thread.currentThread().getId();
-			}
-		});
 	}
 
 	@Override
@@ -65,12 +60,18 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 
 	@Override
 	protected void doComplete() {
-		mergeAction.innerSubscriptions.request(batchSize);
+		super.doComplete();
+		mergeAction.waitForMergeSubscriptions();
+		int v = mergeAction.pendingRequest;
+		if(v > 0){
+			mergeAction.innerSubscriptions.request(v);
+		}
 		mergeAction.doComplete();
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
+		super.doError(ev);
 		mergeAction.doError(ev);
 	}
 
@@ -96,4 +97,5 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	public MergeAction<O> mergedStream() {
 		return mergeAction;
 	}
+
 }

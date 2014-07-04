@@ -19,7 +19,6 @@
 package reactor.core.configuration
 
 import spock.lang.Specification
-import spock.lang.Unroll
 
 class PropertiesConfigurationReaderSpec extends Specification {
 
@@ -35,7 +34,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 			configuration.defaultDispatcherName == 'ringBuffer'
 			dispatchers
 			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 	}
@@ -70,7 +69,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "it contains the expected dispatchers"
 			dispatchers.size() == 5
 			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.SYNCHRONOUS, null, null)
@@ -90,7 +89,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the later profile overrides the earlier profile"
 			dispatchers.size() == 5
 			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.RING_BUFFER, null, null)
@@ -151,7 +150,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "its absence is tolerated"
 			dispatchers.size() == 4
 			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 	}
@@ -187,7 +186,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "the unrecognized dispatcher type is tolerated"
 			dispatchers.size() == 4
 			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 	}

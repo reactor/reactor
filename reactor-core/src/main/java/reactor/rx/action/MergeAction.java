@@ -15,21 +15,19 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.api.list.MutableList;
+import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SingleThreadDispatcher;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
@@ -37,10 +35,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class MergeAction<O> extends Action<O, O> {
 
-	final FanInSubscription<O>   innerSubscriptions;
-	final AtomicInteger          runningComposables;
-	final Action<O, ?>           processingAction;
-	final SingleThreadDispatcher mergedDispatcher;
+	final FanInSubscription<O> innerSubscriptions;
+	final AtomicInteger        runningComposables;
+	final Action<O, ?>         processingAction;
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher, Action<?, O> upstreamAction) {
@@ -50,16 +47,14 @@ public class MergeAction<O> extends Action<O, O> {
 	public MergeAction(Dispatcher dispatcher, Action<?, O> upstreamAction,
 	                   Action<O, ?> processingAction, List<? extends Publisher<O>> composables) {
 		super(dispatcher);
-		this.mergedDispatcher = SingleThreadDispatcher.class.isAssignableFrom(dispatcher.getClass()) ?
-				(SingleThreadDispatcher) dispatcher : null;
 
 		int length = composables != null ? composables.size() : 0;
 		this.processingAction = processingAction;
 
 
 		if (length > 0) {
-			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this, new HashMap<Long,
-					Subscription>(length));
+			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this,
+					MultiReaderFastList.<Subscription>newList(8));
 			this.runningComposables = new AtomicInteger(processingAction == null ? length + 1 : length);
 			if (processingAction != null) {
 				processingAction.onSubscribe(innerSubscriptions);
@@ -74,46 +69,21 @@ public class MergeAction<O> extends Action<O, O> {
 		onSubscribe(this.innerSubscriptions);
 	}
 
-
-	protected void requestUpstream() {
-		long pendingSubAvail = innerSubscriptions.pendingSubscriptionAvailable.get();
-		if (pendingSubAvail <= 0) return;
-
-		if (Integer.MAX_VALUE < pendingSubAvail) {
-			long batches = pendingSubAvail / Integer.MAX_VALUE;
-			for (long i = 0; i < batches; i++) {
-				innerSubscriptions.request(Integer.MAX_VALUE);
-			}
-			int remaining = (int) (pendingSubAvail % Integer.MAX_VALUE);
-			if (remaining > 0) {
-				innerSubscriptions.request(remaining);
-			}
-		} else {
-			innerSubscriptions.request((int) pendingSubAvail);
-		}
-	}
-
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		if(innerSubscriptions.subs.isEmpty()){
-			innerSubscriptions.pendingSubscriptionAvailable.addAndGet(elements);
-		}
-		super.requestUpstream(capacity,terminated,elements);
+		dispatch(new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				waitForMergeSubscriptions();
+			}
+		});
+		super.requestUpstream(capacity, terminated, elements);
 	}
 
 	public void addPublisher(Publisher<O> publisher) {
 		runningComposables.incrementAndGet();
 		Subscriber<O> inlineMerge = new InnerSubscriber<O>(this);
 		publisher.subscribe(inlineMerge);
-	}
-
-	@Override
-	public void onNext(O ev) {
-		if (mergedDispatcher != null) {
-			mergedDispatcher.dispatch(this, ev, null, null, ROUTER, this);
-		} else {
-			super.onNext(ev);
-		}
 	}
 
 	@Override
@@ -160,8 +130,21 @@ public class MergeAction<O> extends Action<O, O> {
 		return innerSubscriptions;
 	}
 
-	public Collection<Subscription> getInnerSubscriptions() {
-		return Collections.unmodifiableCollection(innerSubscriptions.subs.values());
+	public MultiReaderFastList<Subscription> getInnerSubscriptions() {
+		return innerSubscriptions.subscriptions;
+	}
+
+	void waitForMergeSubscriptions() {
+		innerSubscriptions.subscriptions.withReadLockAndDelegate(new CheckedProcedure<MutableList<Subscription>>() {
+			@Override
+			public void safeValue(MutableList<Subscription> subscriptions) throws Exception {
+				while (subscriptions.size() + (innerSubscriptions.publisher != null ? 1 : 0)
+						< runningComposables.get()) {
+					LockSupport.parkNanos(1);
+				}
+			}
+		});
+
 	}
 
 	@Override
@@ -173,35 +156,23 @@ public class MergeAction<O> extends Action<O, O> {
 
 	private static class InnerSubscriber<O> implements Subscriber<O> {
 		final MergeAction<O> outerAction;
-		final AtomicLong     pendingSubscriptions;
 
-		long         resourceId;
-		Subscription s;
-		int          batchSize;
-
-		private InnerSubscriber(MergeAction<O> outerAction) {
+		InnerSubscriber(MergeAction<O> outerAction) {
 			this.outerAction = outerAction;
-			this.pendingSubscriptions = outerAction.innerSubscriptions.pendingSubscriptionAvailable;
-			this.batchSize = outerAction.batchSize;
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public void onSubscribe(Subscription s) {
-			this.s = s;
-			final FanInSubscription<O> fanInSubscription = outerAction.innerSubscriptions;
-			if (StreamSubscription.class.isAssignableFrom(s.getClass())
-					&& Action.class.isAssignableFrom(((StreamSubscription<O>) s).getPublisher().getClass())) {
-
-				final StreamSubscription<O> streamSub = (StreamSubscription<O>) s;
-				resourceId = ((Action<?, O>) ((StreamSubscription<O>) s).getPublisher()).resourceID;
-				s = new InnerSubscription<>(this, streamSub, fanInSubscription, s);
-
-			} else {
-				resourceId = fanInSubscription.subs.size();
-			}
-			fanInSubscription.subs.put(resourceId, s);
-			outerAction.requestUpstream();
+		public void onSubscribe(final Subscription s) {
+			outerAction.
+					innerSubscriptions.
+					subscriptions.
+					withWriteLockAndDelegate(new CheckedProcedure<MutableList<Subscription>>() {
+						@Override
+						public void safeValue(MutableList<Subscription> streamSubscriptions) throws Exception {
+							streamSubscriptions.add(s);
+						}
+					});
 		}
 
 		@Override
@@ -222,63 +193,8 @@ public class MergeAction<O> extends Action<O, O> {
 
 		@Override
 		public String toString() {
-			return "InnerSubscriber{" +
-					"resourceId=" + resourceId +
-					'}';
+			return "InnerSubscriber";
 		}
 
-	}
-
-	private static class InnerSubscription<O> extends StreamSubscription<O> {
-		private final InnerSubscriber       innerSubscriber;
-		private final StreamSubscription<O> streamSub;
-		private final FanInSubscription<O>  fanInSubscription;
-		private final Subscription          upstreamSubscription;
-
-		public InnerSubscription(InnerSubscriber innerSubscriber, StreamSubscription<O> streamSub,
-		                         FanInSubscription<O> fanInSubscription, Subscription upstreamSubscription) {
-			super(null, null);
-			this.innerSubscriber = innerSubscriber;
-			this.streamSub = streamSub;
-			this.fanInSubscription = fanInSubscription;
-			this.upstreamSubscription = upstreamSubscription;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public void request(int elements) {
-			streamSub.getPublisher().dispatch(elements, new Consumer<Integer>() {
-				@Override
-				public void accept(Integer i) {
-					Subscription sub = fanInSubscription.subs.get(Thread.currentThread().getId());
-					if (sub != null) {
-
-						if (InnerSubscription.class.isAssignableFrom(sub.getClass())) {
-							((InnerSubscription<O>) sub).upstreamSubscription.request(i);
-						} else {
-							sub.request(i);
-						}
-
-					} else {
-						innerSubscriber.pendingSubscriptions.addAndGet(i);
-					}
-				}
-			});
-		}
-
-		@Override
-		public void cancel() {
-			streamSub.cancel();
-		}
-
-		@Override
-		public Stream<?> getPublisher() {
-			return streamSub.getPublisher();
-		}
-
-		@Override
-		public Subscriber<O> getSubscriber() {
-			return streamSub.getSubscriber();
-		}
 	}
 }

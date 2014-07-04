@@ -297,7 +297,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		Stream<String> d = Streams.defer(env);
-		Stream<Integer> tasks = d.parallel(env.getDispatcher(Environment.WORK_QUEUE))
+		Stream<Integer> tasks = d.parallel(8)
 				.map(stream -> stream.map(str -> {
 							try {
 								Thread.sleep(random.nextInt(250));
@@ -317,15 +317,14 @@ public class PipelineTests extends AbstractReactorTest {
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
-
-		latch.await(10, TimeUnit.SECONDS);
+		latch.await(5, TimeUnit.SECONDS);
 		System.out.println(tasks.debug());
 		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
 	}
 
 	@Test
 	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
-		int iterations = 10;
+		int iterations = 15;
 		for (int i = 0; i < iterations; i++) {
 			mapManyFlushesAllValuesThoroughly();
 		}
@@ -404,7 +403,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Environment e = new Environment();
 		Stream<Integer> d = Streams.defer(e);
 
-		d.parallel(env.getDispatcher("workQueue")).map(stream -> stream.map(o -> {
+		d.parallel().consume(stream -> stream.map(o -> {
 			synchronized (internalLock) {
 
 				internalCounter.incrementAndGet();
@@ -435,7 +434,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 				counsumerLatch.countDown();
 			}
-		})).available();
+		}));
 
 		for (int i = 0; i < COUNT; i++) {
 			d.broadcastNext(i);
@@ -443,7 +442,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 
 		System.out.println(d.debug());
-		assertTrue(internalLatch.await(5, TimeUnit.SECONDS));
+		internalLatch.await(5, TimeUnit.SECONDS);
 		System.out.println(d.debug());
 		assertEquals(COUNT, internalCounter.get());
 		assertTrue(counsumerLatch.await(5, TimeUnit.SECONDS));

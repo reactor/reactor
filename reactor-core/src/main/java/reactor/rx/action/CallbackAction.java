@@ -47,7 +47,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	protected void doNext(T ev) {
 		int counted = count.incrementAndGet();
 		consumer.accept(ev);
-		if (counted % batchSize == 0) {
+		if (counted % batchSize == 0 && getSubscription() != null) {
 			getSubscription().request(batchSize);
 		}
 	}

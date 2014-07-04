@@ -16,6 +16,8 @@
 
 package reactor.rx;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.dsl.ProducerType;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
@@ -24,7 +26,7 @@ import reactor.alloc.Recyclable;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.MultiThreadDispatcher;
+import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
@@ -228,8 +230,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	@SafeVarargs
 	public final MergeAction<O> merge(Publisher<O>... composables) {
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null, Arrays.asList(composables));
-		connect(mergeAction);
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null,
+				Arrays.asList(composables));
+		mergeAction.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
 		return mergeAction;
 	}
 
@@ -247,35 +250,59 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive thread
-	 * assigned from passed {@link MultiThreadDispatcher} {@param dispatcher} such as {@link reactor.event.dispatch
-	 * .WorkQueueDispatcher}
-	 * or {@link reactor.event.dispatch.ThreadPoolExecutorDispatcher}.
+	 * Partition the stream output into N number of CPU cores sub-streams. Each partition will run on an exclusive
+	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
 	 *
-	 * @param dispatcher The MultiThreadDispatcher to support concurrent Stream executions.
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<Action<O, O>> parallel(Dispatcher dispatcher) {
-		return parallel(0, dispatcher);
+	public final Stream<Action<O, O>> parallel() {
+		return parallel(Runtime.getRuntime().availableProcessors());
 	}
 
 	/**
-	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive thread
-	 * assigned from passed {@link MultiThreadDispatcher} {@param dispatcher} such as {@link reactor.event.dispatch
-	 * .WorkQueueDispatcher}
-	 * or {@link reactor.event.dispatch.ThreadPoolExecutorDispatcher}.
+	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive
+	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
 	 *
 	 * @param poolsize   The level of concurrency to use
-	 * @param dispatcher The MultiThreadDispatcher to support concurrent Stream executions.
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<Action<O, O>> parallel(Integer poolsize, final Dispatcher dispatcher) {
+	public final Stream<Action<O, O>> parallel(final Integer poolsize) {
+		return parallel(poolsize, new Supplier<Dispatcher>() {
+			int roundRobinIndex = 0;
+			Dispatcher[] dispatchers = new Dispatcher[poolsize];
+
+			@Override
+			public Dispatcher get() {
+				if(dispatchers[roundRobinIndex] == null){
+					dispatchers[roundRobinIndex] = new RingBufferDispatcher(
+							"parallel-stream",
+							1024,
+							null,
+							ProducerType.SINGLE,
+							new BlockingWaitStrategy());
+				}
+				return dispatchers[roundRobinIndex++];
+			}
+		});
+	}
+
+	/**
+	 * Partition the stream output into N {@param poolsize} sub-streams. EEach partition will run on an exclusive
+	 * {@link Dispatcher} provided by the given {@param dispatcherSupplier}.
+	 *
+	 * @param poolsize   The level of concurrency to use
+	 * @param dispatcherSupplier The {@link Supplier} to provide concurrent {@link Dispatcher}.
+	 * @return A Stream of {@link Stream<O>}
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final Stream<Action<O, O>> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		final ParallelAction<O> parallelAction = new ParallelAction<O>(
-				this.dispatcher, dispatcher, poolsize, batchSize
+				this.dispatcher, dispatcherSupplier, poolsize
 		);
 		return connect(parallelAction);
 	}

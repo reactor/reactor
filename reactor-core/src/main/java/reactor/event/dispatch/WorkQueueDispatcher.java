@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
  * to execute.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  * @since 1.1
  */
 public class WorkQueueDispatcher extends MultiThreadDispatcher {
@@ -25,6 +26,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 
 	private final ExecutorService           executor;
 	private final Disruptor<WorkQueueTask>  disruptor;
+	private final WaitStrategy              waitStrategy;
 	private final RingBuffer<WorkQueueTask> ringBuffer;
 
 	@SuppressWarnings("unchecked")
@@ -43,6 +45,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 	                           ProducerType producerType,
 	                           WaitStrategy waitStrategy) {
 		super(poolSize, backlog);
+		this.waitStrategy = waitStrategy;
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
 				new NamedDaemonThreadFactory(name, getContext())
@@ -68,7 +71,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 
 			@Override
 			public void handleOnStartException(Throwable ex) {
-				if(null != uncaughtExceptionHandler) {
+				if (null != uncaughtExceptionHandler) {
 					uncaughtExceptionHandler.accept(ex);
 				} else {
 					log.error(ex.getMessage(), ex);
@@ -82,7 +85,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 		});
 
 		WorkHandler<WorkQueueTask>[] workHandlers = new WorkHandler[poolSize];
-		for(int i = 0; i < poolSize; i++) {
+		for (int i = 0; i < poolSize; i++) {
 			workHandlers[i] = new WorkHandler<WorkQueueTask>() {
 				@Override
 				public void onEvent(WorkQueueTask task) throws Exception {
@@ -101,7 +104,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 		try {
 			executor.awaitTermination(timeout, timeUnit);
 			disruptor.shutdown();
-		} catch(InterruptedException e) {
+		} catch (InterruptedException e) {
 			return false;
 		}
 		return true;
@@ -126,6 +129,10 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 		return ringBuffer.remainingCapacity();
 	}
 
+	public void signalAllBlocking() {
+		waitStrategy.signalAllWhenBlocking();
+	}
+
 	@Override
 	protected Task allocateTask() {
 		long seqId = ringBuffer.next();
@@ -133,7 +140,7 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 	}
 
 	protected void execute(Task task) {
-		ringBuffer.publish(((WorkQueueTask)task).getSequenceId());
+		ringBuffer.publish(((WorkQueueTask) task).getSequenceId());
 	}
 
 	private class WorkQueueTask extends MultiThreadTask {

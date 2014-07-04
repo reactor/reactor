@@ -50,7 +50,7 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 	}
 
 	@Override
-	public void onNext(O ev) {
+	public void onNext(final O ev) {
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override
 			public void safeValue(StreamSubscription<O> subscription) throws Exception {

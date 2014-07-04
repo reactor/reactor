@@ -1,9 +1,5 @@
 package reactor.event.dispatch;
 
-import reactor.event.registry.Registry;
-import reactor.event.routing.Router;
-import reactor.function.Consumer;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,15 +36,6 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 
 	public int getTailRecursionPileSize() {
 		return tailRecursionPileSize;
-	}
-
-	public <E> void scheduleWithinLastExecutedDispatch(Object key,
-	                                                   E event,
-	                                                   Registry<Consumer<?>> consumerRegistry,
-	                                                   Consumer<Throwable> errorConsumer,
-	                                                   Router router,
-	                                                   Consumer<E> completionConsumer) {
-		doDispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, true);
 	}
 
 	protected void expandTailRecursionPile(int amount) {
