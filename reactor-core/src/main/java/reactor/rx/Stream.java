@@ -42,7 +42,7 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -98,7 +98,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	public Stream(Dispatcher dispatcher) {
-		this(dispatcher, Integer.MAX_VALUE);
+		this(dispatcher, dispatcher.backlogSize());
 	}
 
 	public Stream(Dispatcher dispatcher, int batchSize) {
@@ -167,7 +167,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return {@literal this}
 	 */
 	public Action<O, Void> consume(@Nonnull final Consumer<O> consumer) {
-		return connect(new CallbackAction<O>(dispatcher, consumer, true));
+		return connect(new CallbackAction<O>(dispatcher, consumer, true)).prefetch(Integer.MAX_VALUE);
 	}
 
 	/**
@@ -230,8 +230,16 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	@SafeVarargs
 	public final MergeAction<O> merge(Publisher<O>... composables) {
+		final List<Publisher<O>> publishers = new ArrayList<Publisher<O>>();
+
+		publishers.add(this);
+		for(Publisher<O> publisher : composables){
+			publishers.add(publisher);
+		}
+
 		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null,
-				Arrays.asList(composables));
+				publishers);
+
 		mergeAction.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
 		return mergeAction;
 	}

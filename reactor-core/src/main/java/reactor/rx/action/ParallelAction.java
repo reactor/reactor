@@ -17,14 +17,13 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
@@ -33,8 +32,26 @@ import java.util.concurrent.locks.LockSupport;
 public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 	private final ParallelStream[] publishers;
-	private final AtomicInteger    pendingSubscriptions;
 	private final int              poolSize;
+	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
+		@Override
+		public void accept(Integer n) {
+			try {
+				int previous = pendingRequest;
+
+				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
+
+				if (n > batchSize) {
+					getSubscription().request(batchSize);
+				} else if (previous < batchSize) {
+					getSubscription().request(n);
+				}
+
+			} catch (Throwable t) {
+				doError(t);
+			}
+		}
+	};
 
 	private int roundRobinIndex = 0;
 
@@ -45,11 +62,15 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 		super(parentDispatcher);
 		Assert.state(poolSize > 0, "Must provide a strictly positive number of concurrent sub-streams (poolSize)");
 		this.poolSize = poolSize;
-		this.pendingSubscriptions = new AtomicInteger(poolSize);
 		this.publishers = new ParallelStream[poolSize];
 		for (int i = 0; i < poolSize; i++) {
 			this.publishers[i] = new ParallelStream<O>(ParallelAction.this, multiDispatcher.get(), i);
 		}
+	}
+
+	@Override
+	protected void onRequest(int n) {
+		dispatch(n, requestConsumer);
 	}
 
 	@Override
@@ -104,10 +125,13 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	}
 
 	@Override
+	public void onNext(O ev) {
+		super.onNext(ev);
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
-		waitForDownstreamSubscription();
-
 		ParallelStream<O> publisher = null;
 		int i = 0;
 
@@ -144,17 +168,9 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 		}
 	}
 
-	private void waitForDownstreamSubscription() {
-		while (pendingSubscriptions.get() > 0) {
-			LockSupport.parkNanos(1);
-		}
-	}
-
 	static private class ParallelStream<O> extends Action<O, O> {
 		final ParallelAction<O> parallelAction;
 		final int               index;
-
-		volatile boolean init = false;
 
 		private ParallelStream(ParallelAction<O> parallelAction, Dispatcher dispatcher, int index) {
 			super(dispatcher);
@@ -164,19 +180,25 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 		@Override
 		protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
-
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
 					super.request(elements);
-					if (!init) {
-						parallelAction.pendingSubscriptions.decrementAndGet();
-						init = true;
-					}
-
 					parallelAction.requestUpstream(capacity, buffer.isComplete(), elements);
 				}
+
+				@Override
+				public void cancel() {
+					super.cancel();
+					parallelAction.publishers[index] = null;
+				}
+
 			};
+		}
+
+		@Override
+		protected void doNext(O ev) {
+			super.doNext(ev);
 		}
 
 		@Override

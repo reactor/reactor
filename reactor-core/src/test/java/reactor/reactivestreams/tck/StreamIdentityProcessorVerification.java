@@ -54,10 +54,16 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 
 	@org.junit.Test
 	public void testIdentityProcessor()  {
-		final int elements = 20;
+		final int elements = 2_000_000;
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
-		Processor<Integer, Integer> processor = createIdentityProcessor(1024);
+		try {
+			latch.await(15, TimeUnit.SECONDS);
+		}catch(InterruptedException ie){
+			ie.printStackTrace();
+		}
+
+		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
 
 		Stream<Integer> stream = Streams.defer(env);
 
@@ -92,7 +98,7 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 		stream.broadcastComplete();
 
 		try {
-			latch.await(5, TimeUnit.SECONDS);
+			latch.await(30, TimeUnit.SECONDS);
 		}catch(InterruptedException ie){
 			ie.printStackTrace();
 		}

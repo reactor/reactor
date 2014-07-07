@@ -57,19 +57,11 @@ public class StreamSubscription<O> implements Subscription {
 		checkRequestSize(elements);
 
 		int i = 0;
+		capacity.addAndGet(elements);
 		O element;
 		while (i < elements && (element = buffer.poll()) != null) {
-			subscriber.onNext(element);
+			onNext(element);
 			i++;
-		}
-
-		int remaining = elements - i;
-		long current = capacity.get();
-		current = current == -1 ? 0 : current;
-		if (current + remaining < 0) {
-			throw new RuntimeException(""+current+" "+Thread.currentThread());
-		}else{
-			capacity.set(remaining);
 		}
 
 		if (buffer.isComplete()) {
@@ -108,6 +100,7 @@ public class StreamSubscription<O> implements Subscription {
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
+				", buffered=" + buffer.size() +
 				'}';
 	}
 

@@ -130,12 +130,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	public void available() {
 		if (subscription != null && !pause) {
-			request(batchSize);
+			onRequest(batchSize);
 		}
-	}
-
-	protected void request(final int n) {
-		dispatch(n, requestConsumer);
 	}
 
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
@@ -143,12 +139,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			int currentCapacity = capacity.intValue();
 			if (!pause && currentCapacity > 0) {
 				final int remaining = currentCapacity > elements ? elements : currentCapacity;
-				request(remaining);
+				onRequest(remaining);
 			}
 		}
 	}
-
-
 
 	@Override
 	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
@@ -161,6 +155,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		};
 	}
 
+
+
 	@Override
 	public void accept(I i) {
 		try {
@@ -170,17 +166,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 							" "+this.getClass().getSimpleName()+" "+this);
 			*/
 			doNext(i);
-			doRequest();
+			doPendingRequest();
 		} catch (Throwable cause) {
 			doError(cause);
 		}
 	}
 
-	protected void doRequest() {
+	protected void doPendingRequest() {
 		if (++currentBatch == pendingRequest) {
 			currentBatch = 0;
 			pendingRequest = 0;
-		} else if (currentBatch == batchSize || pendingRequest < batchSize) {
+		} else if (currentBatch == batchSize ) {
 			currentBatch = 0;
 			int toRequest = batchSize > pendingRequest ? pendingRequest : batchSize;
 			pendingRequest -= toRequest;
@@ -193,6 +189,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void onNext(I ev) {
 		dispatch(ev,this);
+	}
+
+	protected void onRequest(final int n) {
+		dispatch(n, requestConsumer);
 	}
 
 	@Override
@@ -353,9 +353,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher","")+":"+dispatcher.remainingSlots() +
-
-
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher","")+
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":"+dispatcher.remainingSlots()) : "")) +
 				", state=" + getState() +
 				", prefetch=" + getBatchSize() +
 				(subscription != null &&
@@ -364,7 +363,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity() +
 								", pending=" + pendingRequest +
 								", currentBatch=" + currentBatch
-						: ", subscription=" + subscription
+						: (subscription != null ? ", subscription=" + subscription : "")
 				) + '}';
 	}
 

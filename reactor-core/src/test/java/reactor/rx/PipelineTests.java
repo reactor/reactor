@@ -27,11 +27,9 @@ import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.function.Predicate;
 import reactor.function.support.Tap;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
-import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,12 +60,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.defer("Hello World!");
 		Stream<String> s =
 				stream
-						.map(new Function<String, String>() {
-							@Override
-							public String apply(String s) {
-								return "Goodbye then!";
-							}
-						});
+						.map(s1 -> "Goodbye then!");
 
 		await(s, is("Goodbye then!"));
 	}
@@ -96,13 +89,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.filter(new Predicate<Integer>() {
-							@Override
-							public boolean test(Integer i) {
-								return i % 2 == 0;
-							}
-
-						});
+						.filter(i -> i % 2 == 0);
 
 		await(2, s, is(4));
 	}
@@ -128,12 +115,7 @@ public class PipelineTests extends AbstractReactorTest {
 								return sum;
 							}
 						})
-						.when(IllegalArgumentException.class, new Consumer<IllegalArgumentException>() {
-							@Override
-							public void accept(IllegalArgumentException e) {
-								exception.set(true);
-							}
-						});
+						.when(IllegalArgumentException.class, e -> exception.set(true));
 
 		await(5, s, is(10));
 		assertThat("exception triggered", exception.get(), is(true));
@@ -145,12 +127,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.reduce(new Function<Tuple2<Integer, Integer>, Integer>() {
-							@Override
-							public Integer apply(Tuple2<Integer, Integer> r) {
-								return r.getT1() * r.getT2();
-							}
-						}, 1);
+						.reduce(r -> r.getT1() * r.getT2(), 1);
 		await(1, s, is(120));
 	}
 
@@ -208,13 +185,10 @@ public class PipelineTests extends AbstractReactorTest {
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
-		s.consume(new Consumer<List<Integer>>() {
-			@Override
-			public void accept(List<Integer> is) {
-				batchCount.incrementAndGet();
-				for (int i : is) {
-					count.addAndGet(i);
-				}
+		s.consume(is -> {
+			batchCount.incrementAndGet();
+			for (int i : is) {
+				count.addAndGet(i);
 			}
 		});
 
@@ -337,19 +311,13 @@ public class PipelineTests extends AbstractReactorTest {
 	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
-		s.when(Exception.class, new Consumer<Exception>() {
-			@Override
-			public void accept(Exception e) {
-				e.printStackTrace();
-				latch.countDown();
-			}
-		}).consume(new Consumer<T>() {
-			@Override
-			public void accept(T t) {
-				System.out.println(s.debug());
-				ref.set(t);
-				latch.countDown();
-			}
+		s.when(Exception.class, e -> {
+			e.printStackTrace();
+			latch.countDown();
+		}).consume(t -> {
+			System.out.println(s.debug());
+			ref.set(t);
+			latch.countDown();
 		});
 
 		System.out.println(s.debug());

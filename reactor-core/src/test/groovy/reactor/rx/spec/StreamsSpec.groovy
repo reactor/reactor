@@ -259,7 +259,7 @@ class StreamsSpec extends Specification {
 	def "Multiple Stream's values can be merged"() {
 		given:
 			'source composables to merge, collect and tap'
-			def source1 = Streams.<Integer> defer(new Environment())
+			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer().map{it}.map{it}
 			def source3 = Streams.<Integer> defer()
 			def tap = source1.merge(source2, source3).collect(3).tap()
@@ -733,6 +733,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(2)
 			source.broadcastNext(2)
 			sleep(2000)
+			println reduced.debug()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -832,7 +833,7 @@ class StreamsSpec extends Specification {
 		then:
 			'results contains the expected values'
 			try{
-			latch.await(7, TimeUnit.SECONDS)
+			latch.await(4, TimeUnit.SECONDS)
 			}catch(e){}
 		println head.debug()
 			sum.get() == 999

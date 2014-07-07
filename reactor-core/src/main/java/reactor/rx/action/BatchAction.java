@@ -46,7 +46,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void nextCallback(T event) {
 	}
 
-	protected void  flushCallback(T event) {
+	protected void flushCallback(T event) {
 	}
 
 	protected void firstCallback(T event) {

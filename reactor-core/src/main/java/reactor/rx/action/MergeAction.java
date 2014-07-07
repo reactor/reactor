@@ -26,7 +26,6 @@ import reactor.function.Consumer;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -50,12 +49,11 @@ public class MergeAction<O> extends Action<O, O> {
 
 		int length = composables != null ? composables.size() : 0;
 		this.processingAction = processingAction;
-
+		this.runningComposables = new AtomicInteger(0);
 
 		if (length > 0) {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this,
 					MultiReaderFastList.<Subscription>newList(8));
-			this.runningComposables = new AtomicInteger(processingAction == null ? length + 1 : length);
 			if (processingAction != null) {
 				processingAction.onSubscribe(innerSubscriptions);
 			}
@@ -64,20 +62,13 @@ public class MergeAction<O> extends Action<O, O> {
 			}
 		} else {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this);
-			this.runningComposables = new AtomicInteger(0);
 		}
-		onSubscribe(this.innerSubscriptions);
-	}
 
-	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		dispatch(new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				waitForMergeSubscriptions();
-			}
-		});
-		super.requestUpstream(capacity, terminated, elements);
+		if(upstreamAction != null){
+			this.runningComposables.incrementAndGet();
+		}
+
+		onSubscribe(this.innerSubscriptions);
 	}
 
 	public void addPublisher(Publisher<O> publisher) {
@@ -135,16 +126,10 @@ public class MergeAction<O> extends Action<O, O> {
 	}
 
 	void waitForMergeSubscriptions() {
-		innerSubscriptions.subscriptions.withReadLockAndDelegate(new CheckedProcedure<MutableList<Subscription>>() {
-			@Override
-			public void safeValue(MutableList<Subscription> subscriptions) throws Exception {
-				while (subscriptions.size() + (innerSubscriptions.publisher != null ? 1 : 0)
-						< runningComposables.get()) {
-					LockSupport.parkNanos(1);
-				}
-			}
-		});
-
+		while (innerSubscriptions.subscriptions.size() + (innerSubscriptions.publisher != null ? 1 : 0)
+				< runningComposables.get()) {
+			LockSupport.parkNanos(1);
+		}
 	}
 
 	@Override
@@ -173,6 +158,22 @@ public class MergeAction<O> extends Action<O, O> {
 							streamSubscriptions.add(s);
 						}
 					});
+
+			outerAction.dispatch(new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					outerAction.waitForMergeSubscriptions();
+
+					int size = outerAction.pendingRequest / outerAction.
+							innerSubscriptions.
+							subscriptions.size();
+
+					if(size > 0){
+						s.request(size);
+					}
+				}
+			});
+
 		}
 
 		@Override

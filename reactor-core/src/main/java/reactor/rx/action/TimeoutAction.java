@@ -30,13 +30,21 @@ import java.util.concurrent.TimeUnit;
  */
 public class TimeoutAction<T> extends Action<T, T> {
 
-	private final Timer     timer;
-	private final long      timeout;
-	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
+	private final Timer timer;
+	private final long  timeout;
+	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
-				available();
+				onTimeout();
+			}
+		}
+	};
+	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
+		@Override
+		public void accept(Void aVoid) {
+			if (0 < (batchSize - currentBatch)) {
+				getSubscription().request(batchSize - currentBatch);
 			}
 		}
 	};
@@ -52,6 +60,10 @@ public class TimeoutAction<T> extends Action<T, T> {
 		this.timeout = timeout;
 	}
 
+	protected void onTimeout() {
+		dispatch(timeoutRequest);
+	}
+
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
@@ -65,19 +77,19 @@ public class TimeoutAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public Action<T,T> cancel() {
+	public Action<T, T> cancel() {
 		timeoutRegistration.cancel();
 		return super.cancel();
 	}
 
 	@Override
-	public Action<T,T> pause() {
+	public Action<T, T> pause() {
 		timeoutRegistration.pause();
 		return super.pause();
 	}
 
 	@Override
-	public Action<T,T> resume() {
+	public Action<T, T> resume() {
 		timeoutRegistration.resume();
 		return super.resume();
 	}

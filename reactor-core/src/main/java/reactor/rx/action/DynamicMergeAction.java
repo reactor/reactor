@@ -44,7 +44,6 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 			}
 		};
 		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);
-		this.mergeAction.runningComposables.incrementAndGet();
 	}
 
 	@Override
@@ -61,11 +60,6 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		mergeAction.waitForMergeSubscriptions();
-		int v = mergeAction.pendingRequest;
-		if(v > 0){
-			mergeAction.innerSubscriptions.request(v);
-		}
 		mergeAction.doComplete();
 	}
 

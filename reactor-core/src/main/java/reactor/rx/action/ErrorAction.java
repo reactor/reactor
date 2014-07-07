@@ -36,7 +36,6 @@ public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 
 	@Override
 	public void onNext(Object ev) {
-		//IGNORE
 	}
 
 	@Override
