@@ -30,6 +30,7 @@ import reactor.function.Function;
 import reactor.function.support.Tap;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
+import reactor.tuple.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
@@ -418,4 +419,73 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 
+	@Test
+	public void parallelTests() throws InterruptedException {
+		parallelTest("partitioned", 1000);
+		parallelTest("sync", 1000);
+		parallelTest("ringBuffer", 1000);
+	}
+
+	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
+		int[] data;
+		CountDownLatch latch = new CountDownLatch(iterations * 2);
+		Stream<Integer> deferred;
+		Stream<Integer> mapManydeferred;
+
+		switch (dispatcher) {
+			case "partitioned":
+				deferred = Streams.<Integer>defer();
+				deferred
+						.parallel()
+						.consume(stream -> stream
+										.map(i -> i)
+										.scan((Tuple2<Integer, Integer> tup) -> {
+											int last = (null != tup.getT2() ? tup.getT2() : 1);
+											return last + tup.getT1();
+										})
+										.consume(i -> latch.countDown())
+						);
+
+				mapManydeferred = Streams.<Integer>defer();
+				mapManydeferred
+						.parallel()
+						.map(substream -> substream.consume(i -> latch.countDown())).available();
+				break;
+			default:
+				deferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
+				deferred
+						.map(i -> i)
+						.scan((Tuple2<Integer, Integer> tup) -> {
+							int last = (null != tup.getT2() ? tup.getT2() : 1);
+							return last + tup.getT1();
+						})
+						.consume(i -> latch.countDown());
+
+				mapManydeferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
+				mapManydeferred
+						.flatMap(i -> Streams.defer(i, env, env.getDispatcher(dispatcher)))
+						.consume(i -> latch.countDown());
+		}
+
+		data = new int[iterations];
+		for (int i = 0; i < iterations; i++) {
+			data[i] = i;
+		}
+
+		System.out.println(deferred.debug());
+		System.out.println(mapManydeferred.debug());
+
+		for (int i : data) {
+			deferred.broadcastNext(i);
+		}
+
+		for (int i : data) {
+			mapManydeferred.broadcastNext(i);
+		}
+
+		latch.await(5, TimeUnit.SECONDS);
+		System.out.println(deferred.debug());
+		System.out.println(mapManydeferred.debug());
+		assertEquals(0, latch.getCount());
+	}
 }

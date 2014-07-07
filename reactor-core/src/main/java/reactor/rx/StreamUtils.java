@@ -190,10 +190,10 @@ public abstract class StreamUtils {
 		private <O> void renderMerge(Stream<O> consumer, final int d) {
 			if (MergeAction.class.isAssignableFrom(consumer.getClass())) {
 				MergeAction<O> operation = (MergeAction<O>) consumer;
-				operation.getInnerSubscriptions().forEach(new Procedure<Subscription>() {
+				operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
 					@Override
-					public void value(Subscription subscription) {
-
+					public void value(FanInSubscription.InnerSubscription innerSubscription) {
+						Subscription subscription = innerSubscription.getDelegate();
 						if (StreamSubscription.class.isAssignableFrom(subscription.getClass())) {
 							Publisher<?> publisher = ((StreamSubscription<?>) subscription).getPublisher();
 							if (references.contains(publisher)) return;

@@ -15,6 +15,9 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.api.block.predicate.Predicate;
+import com.gs.collections.api.block.procedure.Procedure;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Subscriber;
@@ -26,15 +29,15 @@ import reactor.rx.StreamSubscription;
  * @since 2.0
  */
 public class FanInSubscription<O> extends StreamSubscription<O> {
-	final Action<?, O>                      publisher;
-	final MultiReaderFastList<Subscription> subscriptions;
+	final Action<?, O>                           publisher;
+	final MultiReaderFastList<InnerSubscription> subscriptions;
 
 	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber) {
-		this(publisher, subscriber, MultiReaderFastList.<Subscription>newList(8));
+		this(publisher, subscriber, MultiReaderFastList.<InnerSubscription>newList(8));
 	}
 
 	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber,
-	                         MultiReaderFastList<Subscription> subs) {
+	                         MultiReaderFastList<InnerSubscription> subs) {
 		super(publisher, subscriber);
 		this.publisher = publisher;
 		this.subscriptions = subs;
@@ -47,18 +50,53 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		if (parallel > 0) {
 			final int batchSize = elements / parallel;
 			final int remaining = (elements % parallel > 0 ? elements : 0);
-			if(batchSize == 0 && elements == 0) return;
+			if (batchSize == 0 && elements == 0) return;
 
 			subscriptions.forEach(new CheckedProcedure<Subscription>() {
 				@Override
 				public void safeValue(Subscription subscription) throws Exception {
-						subscription.request(batchSize + remaining);
+					subscription.request(batchSize + remaining);
 				}
 			});
+
+			pruneObsoleteSubscriptions();
 
 		} else if (publisher != null && parallel == 0) {
 			publisher.requestUpstream(capacity, buffer.isComplete(), elements);
 		}
+	}
+
+	void addSubscription(final InnerSubscription s) {
+		pruneObsoleteSubscriptions();
+
+		subscriptions.
+				withWriteLockAndDelegate(new CheckedProcedure<MutableList<FanInSubscription.InnerSubscription>>() {
+					@Override
+					public void safeValue(MutableList<FanInSubscription.InnerSubscription> streamSubscriptions)
+							throws Exception {
+						streamSubscriptions.add(s);
+					}
+				});
+
+	}
+
+	public void pruneObsoleteSubscriptions() {
+		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<InnerSubscription>>() {
+			@Override
+			public void safeValue(final MutableList<InnerSubscription> innerSubscriptions) throws Exception {
+				innerSubscriptions.select(new Predicate<InnerSubscription>() {
+					@Override
+					public boolean accept(InnerSubscription innerSubscription) {
+						return innerSubscription.toRemove;
+					}
+				}).forEach(new Procedure<InnerSubscription>() {
+					@Override
+					public void value(InnerSubscription innerSubscription) {
+						innerSubscriptions.remove(innerSubscription);
+					}
+				});
+			}
+		});
 	}
 
 	@Override
@@ -70,5 +108,29 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 			}
 		});
 		super.cancel();
+	}
+
+	public static class InnerSubscription implements Subscription {
+
+		final Subscription wrapped;
+		boolean toRemove = false;
+
+		public InnerSubscription(Subscription wrapped) {
+			this.wrapped = wrapped;
+		}
+
+		@Override
+		public void request(int n) {
+			wrapped.request(n);
+		}
+
+		@Override
+		public void cancel() {
+			wrapped.cancel();
+		}
+
+		public Subscription getDelegate() {
+			return wrapped;
+		}
 	}
 }

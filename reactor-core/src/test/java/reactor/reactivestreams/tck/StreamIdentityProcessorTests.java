@@ -92,7 +92,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		stream.broadcastComplete();
 
 		try {
-			latch.await(30, TimeUnit.SECONDS);
+			latch.await(120, TimeUnit.SECONDS);
 		}catch(InterruptedException ie){
 			ie.printStackTrace();
 		}

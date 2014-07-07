@@ -15,8 +15,6 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -52,7 +50,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 		if (length > 0) {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this,
-					MultiReaderFastList.<Subscription>newList(8));
+					MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8));
 			if (processingAction != null) {
 				processingAction.onSubscribe(innerSubscriptions);
 			}
@@ -63,7 +61,7 @@ public class MergeAction<O> extends Action<O, O> {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this);
 		}
 
-		if(upstreamAction != null){
+		if (upstreamAction != null) {
 			this.runningComposables.incrementAndGet();
 		}
 
@@ -120,7 +118,7 @@ public class MergeAction<O> extends Action<O, O> {
 		return innerSubscriptions;
 	}
 
-	public MultiReaderFastList<Subscription> getInnerSubscriptions() {
+	public MultiReaderFastList<FanInSubscription.InnerSubscription> getInnerSubscriptions() {
 		return innerSubscriptions.subscriptions;
 	}
 
@@ -133,6 +131,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 	private static class InnerSubscriber<O> implements Subscriber<O> {
 		final MergeAction<O> outerAction;
+		FanInSubscription.InnerSubscription s;
 
 		InnerSubscriber(MergeAction<O> outerAction) {
 			this.outerAction = outerAction;
@@ -140,28 +139,22 @@ public class MergeAction<O> extends Action<O, O> {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public void onSubscribe(final Subscription s) {
-			outerAction.
-					innerSubscriptions.
-					subscriptions.
-					withWriteLockAndDelegate(new CheckedProcedure<MutableList<Subscription>>() {
-						@Override
-						public void safeValue(MutableList<Subscription> streamSubscriptions) throws Exception {
-							streamSubscriptions.add(s);
-						}
-					});
-
+		public void onSubscribe(final Subscription subscription) {
+			this.s = new FanInSubscription.InnerSubscription(subscription);
 			outerAction.dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
+					outerAction.innerSubscriptions.addSubscription(s);
+
 					int size = outerAction.pendingRequest / outerAction.
 							innerSubscriptions.
 							subscriptions.size();
-					int remaining =  outerAction.pendingRequest % outerAction.
+					int remaining = outerAction.pendingRequest % outerAction.
 							innerSubscriptions.
 							subscriptions.size();
-					if(size > 0){
-						s.request(size+remaining);
+
+					if (size > 0) {
+						s.request(size + remaining);
 					}
 				}
 			});
@@ -170,7 +163,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 		@Override
 		public void onComplete() {
-			//outerAction.innerSubscriptions.subs.remove(Thread.currentThread().getId());
+			s.toRemove = true;
 			outerAction.onComplete();
 		}
 
@@ -188,6 +181,6 @@ public class MergeAction<O> extends Action<O, O> {
 		public String toString() {
 			return "InnerSubscriber";
 		}
-
 	}
+
 }
