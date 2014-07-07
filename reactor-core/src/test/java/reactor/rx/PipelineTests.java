@@ -362,7 +362,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void mapNotifiesOnce() throws InterruptedException {
 
-		final int COUNT = 500000;
+		final int COUNT = 10000;
 		final Object internalLock = new Object();
 		final Object consumerLock = new Object();
 

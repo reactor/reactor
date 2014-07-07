@@ -38,16 +38,16 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	private static final Router COMPLETION_CONSUMER_EVENT_ROUTER = new Router() {
 		@Override
 		public <E> void route(Object key,
-		                  E event,
-		                  List<Registration<? extends Consumer<?>>> consumers,
-		                  Consumer<E> completionConsumer,
-		                  Consumer<Throwable> errorConsumer) {
+		                      E event,
+		                      List<Registration<? extends Consumer<?>>> consumers,
+		                      Consumer<E> completionConsumer,
+		                      Consumer<Throwable> errorConsumer) {
 			completionConsumer.accept(event);
 		}
 	};
 
 	private final AtomicBoolean alive   = new AtomicBoolean(true);
-	private final ClassLoader   context = new ClassLoader(Thread.currentThread()
+	public final  ClassLoader   context = new ClassLoader(Thread.currentThread()
 			.getContextClassLoader()) {
 	};
 
@@ -94,7 +94,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                               Router router,
 	                               Consumer<E> consumer,
 	                               Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, router, consumer);
+		dispatch(null, event, null, errorConsumer, router, consumer, isInContext());
 	}
 
 	@Override
@@ -138,8 +138,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 				execute(task);
 			}
 		} catch (Exception e) {
-			IllegalStateException wrapped = new IllegalStateException(e.getMessage()+" "+Thread.currentThread(), e);
-			throw wrapped;
+			throw new IllegalStateException(e.getMessage()+" "+Thread.currentThread(), e);
 		}
 	}
 
@@ -160,10 +159,11 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	protected abstract void execute(Task task);
 
 	protected static void route(Task task) {
-		if (null == task.router) {
-			return;
-		}
 		try {
+			if (null == task.router) {
+				return;
+			}
+
 			task.router.route(
 					task.key,
 					task.data,

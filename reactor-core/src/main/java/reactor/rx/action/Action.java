@@ -160,11 +160,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
-			/*
-			Assert.state(resourceID == Thread.currentThread().getId(),
-					"resourceID:"+resourceID+" - currentID:"+Thread.currentThread().getId()+
-							" "+this.getClass().getSimpleName()+" "+this);
-			*/
 			doNext(i);
 			doPendingRequest();
 		} catch (Throwable cause) {

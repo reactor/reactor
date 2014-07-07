@@ -15,8 +15,8 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 	private final List<Task> tailRecursionPile = new ArrayList<Task>();
 	private final int backlog;
 
-	private volatile int tailRecurseSeq        = -1;
-	private volatile int tailRecursionPileSize = 0;
+	private int tailRecurseSeq        = -1;
+	private int tailRecursionPileSize = 0;
 
 	public SingleThreadDispatcher(int backlog) {
 		this.backlog = backlog;
@@ -56,6 +56,7 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 	protected abstract Task allocateTask();
 
 	protected class SingleThreadTask extends Task {
+
 		@Override
 		public void run() {
 			route(this);
@@ -72,7 +73,7 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 			}
 			// clean up extra tasks
 			next = tailRecurseSeq;
-			while (next > backlog) {
+			while (next >= backlog) {
 				tailRecursionPile.remove(next--);
 			}
 			tailRecurseSeq = -1;
