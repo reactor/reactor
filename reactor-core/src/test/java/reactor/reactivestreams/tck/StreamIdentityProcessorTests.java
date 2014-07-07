@@ -15,6 +15,7 @@
  */
 package reactor.reactivestreams.tck;
 
+import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -52,10 +53,13 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 						.combine();
 	}
 
-	@org.junit.Test
-	public void testIdentityProcessor()  {
+	@Test
+	public void testIdentityProcessor() throws InterruptedException {
+
 		final int elements = 1_000_000;
-		CountDownLatch latch = new CountDownLatch(elements+1);
+		CountDownLatch latch = new CountDownLatch(elements + 1);
+
+		latch.await(15, TimeUnit.SECONDS);
 
 		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
 
@@ -91,11 +95,8 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		}
 		stream.broadcastComplete();
 
-		try {
-			latch.await(120, TimeUnit.SECONDS);
-		}catch(InterruptedException ie){
-			ie.printStackTrace();
-		}
+		latch.await(120, TimeUnit.SECONDS);
+
 		System.out.println(stream.debug());
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count);

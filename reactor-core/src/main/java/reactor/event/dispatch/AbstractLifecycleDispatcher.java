@@ -138,8 +138,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 				execute(task);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new IllegalStateException(e.getMessage(), e);
+			IllegalStateException wrapped = new IllegalStateException(e.getMessage()+" "+Thread.currentThread(), e);
+			throw wrapped;
 		}
 	}
 

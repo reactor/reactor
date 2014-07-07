@@ -183,8 +183,10 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
-					super.request(elements);
-					parallelAction.requestUpstream(capacity, buffer.isComplete(), elements);
+					if (elements > 0) {
+						super.request(elements);
+						parallelAction.onRequest(elements);
+					}
 				}
 
 				@Override

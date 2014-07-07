@@ -345,6 +345,12 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 	}
 
+	@Test
+	public void mapNotifiesOnceConsistent() throws InterruptedException {
+		for(int i = 0; i < 15; i++){
+			mapNotifiesOnce();
+		}
+	}
 
 	/**
 	 * See #294 the consumer received more or less calls than expected Better reproducible with big thread pools,
@@ -356,7 +362,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void mapNotifiesOnce() throws InterruptedException {
 
-		final int COUNT = 5000;
+		final int COUNT = 500000;
 		final Object internalLock = new Object();
 		final Object consumerLock = new Object();
 
