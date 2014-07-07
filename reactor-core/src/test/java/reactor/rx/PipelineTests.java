@@ -427,7 +427,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelTest("partitioned", 1000);
+		parallelTest("partitioned", 10000);
 		parallelTest("sync", 1000);
 		parallelTest("ringBuffer", 1000);
 	}
@@ -440,7 +440,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		switch (dispatcher) {
 			case "partitioned":
-				deferred = Streams.<Integer>defer();
+				deferred = Streams.<Integer>defer(env);
 				deferred
 						.parallel()
 						.consume(stream -> stream
@@ -452,7 +452,7 @@ public class PipelineTests extends AbstractReactorTest {
 										.consume(i -> latch.countDown())
 						);
 
-				mapManydeferred = Streams.<Integer>defer();
+				mapManydeferred = Streams.<Integer>defer(env);
 				mapManydeferred
 						.parallel()
 						.map(substream -> substream.consume(i -> latch.countDown())).available();

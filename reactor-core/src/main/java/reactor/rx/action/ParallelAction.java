@@ -53,7 +53,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 		}
 	};
 
-	private int roundRobinIndex = 0;
+	private int roundRobinIndex = -1;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -132,16 +132,11 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
-		ParallelStream<O> publisher = null;
-		int i = 0;
-
-		while (i++ < poolSize &&
-				(publisher = publishers[roundRobinIndex++]) == null) ;
-
-		if (roundRobinIndex == poolSize) {
+		if(++roundRobinIndex == poolSize){
 			roundRobinIndex = 0;
 		}
 
+		ParallelStream<O> publisher = publishers[roundRobinIndex];
 		if (publisher == null) return;
 
 		try {
