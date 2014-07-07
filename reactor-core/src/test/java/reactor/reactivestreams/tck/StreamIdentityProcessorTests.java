@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Stephane Maldini
  */
-public class StreamIdentityProcessorVerification extends AbstractReactorTest {
+public class StreamIdentityProcessorTests extends AbstractReactorTest {
 
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
 		return
@@ -47,21 +47,15 @@ public class StreamIdentityProcessorVerification extends AbstractReactorTest {
 										.<Integer>split()
 
 						)
-						.<Integer>merge().prefetch(bufferSize)
+						.<Integer>merge()
 
 						.combine();
 	}
 
 	@org.junit.Test
 	public void testIdentityProcessor()  {
-		final int elements = 2_000_000;
+		final int elements = 1_000_000;
 		CountDownLatch latch = new CountDownLatch(elements+1);
-
-		try {
-			latch.await(15, TimeUnit.SECONDS);
-		}catch(InterruptedException ie){
-			ie.printStackTrace();
-		}
 
 		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
 

@@ -829,12 +829,10 @@ class StreamsSpec extends Specification {
 		when:
 			'values are accepted into the head'
 			(1..1000).each { head.broadcastNext(it) }
+			latch.await(4, TimeUnit.SECONDS)
 
 		then:
 			'results contains the expected values'
-			try{
-			latch.await(4, TimeUnit.SECONDS)
-			}catch(e){}
 		println head.debug()
 			sum.get() == 999
 	}

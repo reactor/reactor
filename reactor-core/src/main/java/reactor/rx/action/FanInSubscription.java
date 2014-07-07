@@ -46,12 +46,12 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 		if (parallel > 0) {
 			final int batchSize = elements / parallel;
-			subscriptions.forEach(new CheckedProcedure<Subscription>() {
-				int remaining = (elements % parallel > 0 ? 1 : 0) + batchSize;
+			final int remaining = (elements % parallel > 0 ? elements : 0);
+			if(batchSize == 0 && elements == 0) return;
 
+			subscriptions.forEach(new CheckedProcedure<Subscription>() {
 				@Override
 				public void safeValue(Subscription subscription) throws Exception {
-					if (remaining > 0)
 						subscription.request(batchSize + remaining);
 				}
 			});

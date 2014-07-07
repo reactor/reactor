@@ -253,7 +253,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
 		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
-		connect(mergeAction);
+		connect(mergeAction).prefetch(dispatcher.backlogSize());
 		return mergeAction;
 	}
 
@@ -441,7 +441,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1
 	 */
 	public <V> ForEachAction<V> split() {
-		return split(batchSize);
+		return split(Integer.MAX_VALUE);
 	}
 
 	/**

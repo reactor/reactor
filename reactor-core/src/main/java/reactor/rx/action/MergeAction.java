@@ -26,7 +26,6 @@ import reactor.function.Consumer;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
@@ -125,13 +124,6 @@ public class MergeAction<O> extends Action<O, O> {
 		return innerSubscriptions.subscriptions;
 	}
 
-	void waitForMergeSubscriptions() {
-		while (innerSubscriptions.subscriptions.size() + (innerSubscriptions.publisher != null ? 1 : 0)
-				< runningComposables.get()) {
-			LockSupport.parkNanos(1);
-		}
-	}
-
 	@Override
 	public String toString() {
 		return super.toString() +
@@ -162,14 +154,14 @@ public class MergeAction<O> extends Action<O, O> {
 			outerAction.dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					outerAction.waitForMergeSubscriptions();
-
 					int size = outerAction.pendingRequest / outerAction.
 							innerSubscriptions.
 							subscriptions.size();
-
+					int remaining =  outerAction.pendingRequest % outerAction.
+							innerSubscriptions.
+							subscriptions.size();
 					if(size > 0){
-						s.request(size);
+						s.request(size+remaining);
 					}
 				}
 			});
