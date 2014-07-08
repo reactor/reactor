@@ -72,11 +72,11 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 				route(task);
 			}
 			// clean up extra tasks
-			next = tailRecurseSeq;
+			/*next = tailRecurseSeq;
 			while (next >= backlog) {
 				tailRecursionPile.remove(next--);
 			}
-			tailRecurseSeq = -1;
+			tailRecurseSeq = -1;*/
 		}
 	}
 

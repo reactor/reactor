@@ -75,6 +75,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final Object                   monitor          = new Object();
 	private final Filter                   dispatcherFilter = new RoundRobinFilter();
 
+	private final ReactorConfiguration              configuration;
 	private final MultiValueMap<String, Dispatcher> dispatchers;
 	private final String                            defaultDispatcher;
 
@@ -90,8 +91,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * Creates a new Environment that will use the given {@code configurationReader} to obtain its initial configuration.
 	 *
-	 * @param configurationReader
-	 * 		The configuration reader to use to obtain initial configuration
+	 * @param configurationReader The configuration reader to use to obtain initial configuration
 	 */
 	public Environment(ConfigurationReader configurationReader) {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), configurationReader);
@@ -101,35 +101,16 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Creates a new Environment that will contain the given {@code dispatchers}, will use the given {@code
 	 * configurationReader} to obtain additional configuration.
 	 *
-	 * @param dispatchers
-	 * 		The dispatchers to add include in the Environment
-	 * @param configurationReader
-	 * 		The configuration reader to use to obtain additional configuration
+	 * @param dispatchers         The dispatchers to add include in the Environment
+	 * @param configurationReader The configuration reader to use to obtain additional configuration
 	 */
 	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
 		this.dispatchers = new LinkedMultiValueMap<String, Dispatcher>(dispatchers);
 
-		ReactorConfiguration configuration = configurationReader.read();
+		configuration = configurationReader.read();
 		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
 				DEFAULT_DISPATCHER_NAME;
 		env = configuration.getAdditionalProperties();
-
-		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
-			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
-				int size = getSize(dispatcherConfiguration, 0);
-				for (int i = 0; i < size; i++) {
-					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
-				}
-			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
-			} else if(DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
-			} else if(DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
-			} else if (DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
-			}
-		}
 
 		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
@@ -140,8 +121,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		int backlog = getBacklog(dispatcherConfiguration, 128);
 
 		return new ThreadPoolExecutorDispatcher(size,
-		                                        backlog,
-		                                        dispatcherConfiguration.getName());
+				backlog,
+				dispatcherConfiguration.getName());
 	}
 
 	private WorkQueueDispatcher createWorkQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
@@ -149,18 +130,18 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		int backlog = getBacklog(dispatcherConfiguration, 16384);
 
 		return new WorkQueueDispatcher("workQueueDispatcher",
-		                               size,
-		                               backlog,
-		                               null);
+				size,
+				backlog,
+				null);
 	}
 
 	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
 		return new RingBufferDispatcher(dispatcherConfiguration.getName(),
-		                                backlog,
-		                                null,
-		                                ProducerType.MULTI,
-		                                new BlockingWaitStrategy());
+				backlog,
+				null,
+				ProducerType.MULTI,
+				new BlockingWaitStrategy());
 	}
 
 	private EventLoopDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
@@ -192,11 +173,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Gets the property with the given {@code key}. If the property does not exist {@code defaultValue} will be
 	 * returned.
 	 *
-	 * @param key
-	 * 		The property key
-	 * @param defaultValue
-	 * 		The value to return if the property does not exist
-	 *
+	 * @param key          The property key
+	 * @param defaultValue The value to return if the property does not exist
 	 * @return The value for the property
 	 */
 	public String getProperty(String key, String defaultValue) {
@@ -208,13 +186,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * StandardConverters#CONVERTERS standard converters}. fF the property does not exist {@code defaultValue} will be
 	 * returned.
 	 *
-	 * @param key
-	 * 		The property key
-	 * @param type
-	 * 		The type to convert the property to
-	 * @param defaultValue
-	 * 		The value to return if the property does not exist
-	 *
+	 * @param key          The property key
+	 * @param type         The type to convert the property to
+	 * @param defaultValue The value to return if the property does not exist
 	 * @return The converted value for the property
 	 */
 	@SuppressWarnings("unchecked")
@@ -243,15 +217,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * Returns the dispatcher with the given {@code name}.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 *
+	 * @param name The name of the dispatcher
 	 * @return The matching dispatcher, never {@code null}.
-	 * @throws IllegalArgumentException
-	 * 		if the dispatcher does not exist
+	 * @throws IllegalArgumentException if the dispatcher does not exist
 	 */
 	public Dispatcher getDispatcher(String name) {
 		synchronized (monitor) {
+			initDispatcherFromConfiguration(name);
 			List<Dispatcher> filteredDispatchers = Collections.emptyList();
 			List<Dispatcher> dispatchers = this.dispatchers.get(name);
 			if (dispatchers != null) {
@@ -268,11 +240,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * Adds the {@code dispatcher} to the environment, storing it using the given {@code name}.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 * @param dispatcher
-	 * 		The dispatcher
-	 *
+	 * @param name       The name of the dispatcher
+	 * @param dispatcher The dispatcher
 	 * @return This Environment
 	 */
 	public Environment addDispatcher(String name, Dispatcher dispatcher) {
@@ -288,9 +257,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * Removes the Dispatcher, stored using the given {@code name} from the environment.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 *
+	 * @param name The name of the dispatcher
 	 * @return This Environment
 	 */
 	public Environment removeDispatcher(String name) {
@@ -345,6 +312,30 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	@Override
 	public Iterator<Map.Entry<String, List<Dispatcher>>> iterator() {
 		return this.dispatchers.entrySet().iterator();
+	}
+
+	private void initDispatcherFromConfiguration(String name){
+		if(dispatchers.get(name) != null) return;
+
+		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
+
+			if(!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
+
+			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
+				int size = getSize(dispatcherConfiguration, 0);
+				for (int i = 0; i < size; i++) {
+					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
+				}
+			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
+			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
+			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
+			} else if (DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
+			}
+		}
 	}
 
 }

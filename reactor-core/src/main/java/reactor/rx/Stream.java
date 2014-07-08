@@ -233,7 +233,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		final List<Publisher<O>> publishers = new ArrayList<Publisher<O>>();
 
 		publishers.add(this);
-		for(Publisher<O> publisher : composables){
+		for (Publisher<O> publisher : composables) {
 			publishers.add(publisher);
 		}
 
@@ -273,7 +273,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive
 	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
 	 *
-	 * @param poolsize   The level of concurrency to use
+	 * @param poolsize The level of concurrency to use
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
@@ -285,7 +285,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 			@Override
 			public Dispatcher get() {
-				if(dispatchers[roundRobinIndex] == null){
+				if (dispatchers[roundRobinIndex] == null) {
 					dispatchers[roundRobinIndex] = new RingBufferDispatcher(
 							"parallel-stream",
 							1024,
@@ -302,7 +302,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Partition the stream output into N {@param poolsize} sub-streams. EEach partition will run on an exclusive
 	 * {@link Dispatcher} provided by the given {@param dispatcherSupplier}.
 	 *
-	 * @param poolsize   The level of concurrency to use
+	 * @param poolsize           The level of concurrency to use
 	 * @param dispatcherSupplier The {@link Supplier} to provide concurrent {@link Dispatcher}.
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
@@ -825,8 +825,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		try {
 			downstreamSubscription.onNext(ev);
 
-				if (state == State.COMPLETE || downstreamSubscription.isComplete()) {
-					downstreamSubscription.onComplete();
+			if (state == State.COMPLETE || downstreamSubscription.isComplete()) {
+				downstreamSubscription.onComplete();
 			}
 		} catch (Throwable throwable) {
 			callError(downstreamSubscription, throwable);

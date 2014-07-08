@@ -23,6 +23,7 @@ import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
+import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
@@ -427,17 +428,24 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelTest("partitioned", 10000);
-		parallelTest("sync", 1000);
-		parallelTest("ringBuffer", 1000);
+		//parallelTest("partitioned", 1_000_000);
+		//parallelTest("sync", 1_000_000);
+		parallelTest("ringBuffer", 3_000_000);
+		//parallelMapManyTest("partitioned", 1_000_000);
+		//parallelMapManyTest("sync", 10_000_000);
+		//parallelMapManyTest("ringBuffer", 1_000_000);
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
-		int[] data;
-		CountDownLatch latch = new CountDownLatch(iterations * 2);
-		Stream<Integer> deferred;
-		Stream<Integer> mapManydeferred;
 
+
+		System.out.println("Dispatcher: " + dispatcher);
+		System.out.println("..........:  " + iterations);
+
+		int[] data;
+		CountDownLatch latch = new CountDownLatch(iterations);
+		Stream<Integer> deferred;
+		latch.await(15, TimeUnit.SECONDS);
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Streams.<Integer>defer(env);
@@ -451,11 +459,6 @@ public class PipelineTests extends AbstractReactorTest {
 										})
 										.consume(i -> latch.countDown())
 						);
-
-				mapManydeferred = Streams.<Integer>defer(env);
-				mapManydeferred
-						.parallel()
-						.map(substream -> substream.consume(i -> latch.countDown())).available();
 				break;
 			default:
 				deferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
@@ -466,10 +469,52 @@ public class PipelineTests extends AbstractReactorTest {
 							return last + tup.getT1();
 						})
 						.consume(i -> latch.countDown());
+		}
 
+		data = new int[iterations];
+		for (int i = 0; i < iterations; i++) {
+			data[i] = i;
+		}
+
+		long start = System.currentTimeMillis();
+		for (int i : data) {
+			deferred.broadcastNext(i);
+		}
+
+		latch.await();
+
+		long stop = System.currentTimeMillis() - start;
+
+		System.out.println("Time spent: " + stop + "ms");
+		System.out.println("ev/ms: " + iterations / stop);
+		System.out.println("ev/s: " + iterations / stop * 1000);
+		System.out.println("");
+		System.out.println(deferred.debug());
+		assertEquals(0, latch.getCount());
+
+	}
+
+	private void parallelMapManyTest(String dispatcher, int iterations) throws InterruptedException {
+
+		System.out.println("MM Dispatcher: " + dispatcher);
+		System.out.println("..........:  " + iterations);
+
+		int[] data;
+		CountDownLatch latch = new CountDownLatch(iterations);
+		Stream<Integer> mapManydeferred;
+		latch.await(15, TimeUnit.SECONDS);
+		switch (dispatcher) {
+			case "partitioned":
+				mapManydeferred = Streams.<Integer>defer(env);
+				mapManydeferred
+						.parallel()
+						.map(substream -> substream.consume(i -> latch.countDown())).available();
+				break;
+			default:
+				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
 				mapManydeferred
-						.flatMap(i -> Streams.defer(i, env, env.getDispatcher(dispatcher)))
+						.flatMap(i -> Streams.defer(i, env, dispatcher1))
 						.consume(i -> latch.countDown());
 		}
 
@@ -478,20 +523,21 @@ public class PipelineTests extends AbstractReactorTest {
 			data[i] = i;
 		}
 
-		System.out.println(deferred.debug());
-		System.out.println(mapManydeferred.debug());
-
-		for (int i : data) {
-			deferred.broadcastNext(i);
-		}
+		long start = System.currentTimeMillis();
 
 		for (int i : data) {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		latch.await(5, TimeUnit.SECONDS);
-		System.out.println(deferred.debug());
-		System.out.println(mapManydeferred.debug());
+		latch.await();
 		assertEquals(0, latch.getCount());
+
+		long stop = System.currentTimeMillis() - start;
+
+		System.out.println("Dispatcher: " + dispatcher);
+		System.out.println("Time spent: "+stop+"ms");
+		System.out.println("ev/ms: "+iterations / stop);
+		System.out.println("ev/s: " + iterations / stop * 1000);
+		System.out.println("");
 	}
 }
