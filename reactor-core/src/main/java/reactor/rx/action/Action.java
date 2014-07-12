@@ -289,7 +289,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	@SuppressWarnings("unchecked")
-
 	public Action<I, O> prefetch(int elements) {
 		return (Action<I, O>) super.prefetch(elements);
 	}

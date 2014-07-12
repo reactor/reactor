@@ -825,7 +825,7 @@ class StreamsSpec extends Specification {
 				sum.addAndGet(ints.size())
 				latch.countDown()
 			}
-
+			latch.await(2,TimeUnit.SECONDS)
 		when:
 			'values are accepted into the head'
 			(1..1000).each { head.broadcastNext(it) }

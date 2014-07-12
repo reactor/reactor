@@ -66,21 +66,19 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 			if (tailRecurseSeq < 0) {
 				return;
 			}
-			Task task;
-			int next = 0;
-				while (next <= tailRecurseSeq) {
-					task = tailRecursionPile.get(next++);
-					route(task);
-				}
+			int next = -1;
+			while (next < tailRecurseSeq) {
+				route(tailRecursionPile.get(++next));
+			}
 
-				// clean up extra tasks
-				next = tailRecurseSeq;
-				int max = backlog * 2;
-				while (next >= max) {
-					tailRecursionPile.remove(next--);
-				}
-				tailRecursionPileSize = max;
-				tailRecurseSeq = -1;
+			// clean up extra tasks
+			next = tailRecurseSeq;
+			int max = backlog * 2;
+			while (next >= max) {
+				tailRecursionPile.remove(next--);
+			}
+			tailRecursionPileSize = max;
+			tailRecurseSeq = -1;
 		}
 	}
 

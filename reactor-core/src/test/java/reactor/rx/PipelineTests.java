@@ -510,7 +510,7 @@ public class PipelineTests extends AbstractReactorTest {
 				break;
 			default:
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
-				mapManydeferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
+				mapManydeferred = Streams.<Integer>defer(env, dispatcher1);
 				mapManydeferred
 						.flatMap(i -> Streams.defer(i, env, dispatcher1))
 						.consume(i -> latch.countDown());
