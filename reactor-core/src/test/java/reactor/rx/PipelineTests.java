@@ -428,12 +428,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		//parallelTest("partitioned", 1_000_000);
-		//parallelTest("sync", 1_000_000);
-		parallelTest("ringBuffer", 3_000_000);
-		//parallelMapManyTest("partitioned", 1_000_000);
-		//parallelMapManyTest("sync", 10_000_000);
-		//parallelMapManyTest("ringBuffer", 1_000_000);
+		parallelTest("partitioned", 1_000_000);
+		parallelTest("sync", 1_000_000);
+		parallelTest("ringBuffer", 1_000_000);
+		parallelMapManyTest("partitioned", 1_000_000);
+		parallelMapManyTest("sync", 1_000_000);
+		parallelMapManyTest("ringBuffer", 1_000_000);
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
@@ -445,7 +445,6 @@ public class PipelineTests extends AbstractReactorTest {
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
 		Stream<Integer> deferred;
-		latch.await(15, TimeUnit.SECONDS);
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Streams.<Integer>defer(env);
@@ -502,7 +501,6 @@ public class PipelineTests extends AbstractReactorTest {
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
 		Stream<Integer> mapManydeferred;
-		latch.await(15, TimeUnit.SECONDS);
 		switch (dispatcher) {
 			case "partitioned":
 				mapManydeferred = Streams.<Integer>defer(env);

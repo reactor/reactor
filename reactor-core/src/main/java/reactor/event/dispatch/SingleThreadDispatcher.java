@@ -39,10 +39,11 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 	}
 
 	protected void expandTailRecursionPile(int amount) {
-		for (int i = 0; i < amount; i++) {
+		int toAdd = amount * 2;
+		for (int i = 0; i < toAdd; i++) {
 			tailRecursionPile.add(new SingleThreadTask());
 		}
-		this.tailRecursionPileSize = tailRecursionPile.size();
+		this.tailRecursionPileSize += toAdd;
 	}
 
 	protected Task allocateRecursiveTask() {
@@ -67,16 +68,19 @@ public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher
 			}
 			Task task;
 			int next = 0;
-			while (next <= tailRecurseSeq) {
-				task = tailRecursionPile.get(next++);
-				route(task);
-			}
-			// clean up extra tasks
-			/*next = tailRecurseSeq;
-			while (next >= backlog) {
-				tailRecursionPile.remove(next--);
-			}
-			tailRecurseSeq = -1;*/
+				while (next <= tailRecurseSeq) {
+					task = tailRecursionPile.get(next++);
+					route(task);
+				}
+
+				// clean up extra tasks
+				next = tailRecurseSeq;
+				int max = backlog * 2;
+				while (next >= max) {
+					tailRecursionPile.remove(next--);
+				}
+				tailRecursionPileSize = max;
+				tailRecurseSeq = -1;
 		}
 	}
 
