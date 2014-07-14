@@ -37,10 +37,12 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
 			@Override
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-				if(thiz.state != State.COMPLETE){
+				if(thiz.state == State.READY){
 					thiz.requestUpstream(capacity, terminated, elements);
+					pendingRequest += elements;
+				}else{
+					super.requestUpstream(capacity, terminated, elements);
 				}
-				super.requestUpstream(capacity, terminated, elements);
 			}
 		};
 		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);

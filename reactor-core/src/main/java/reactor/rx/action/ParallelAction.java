@@ -193,7 +193,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 		@Override
 		protected void doNext(O ev) {
-			super.doNext(ev);
+			broadcastNext(ev);
 		}
 
 		@Override
