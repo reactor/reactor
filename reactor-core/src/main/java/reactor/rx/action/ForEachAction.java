@@ -21,7 +21,6 @@ import reactor.rx.StreamSubscription;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -52,7 +51,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	protected StreamSubscription<T> createSubscription(Subscriber<T> subscriber) {
 		if (defaultValues != null) {
 			return new StreamSubscription<T>(this, subscriber) {
-				AtomicLong cursor = new AtomicLong();
+				long cursor = 0l;
 
 				@Override
 				public void request(int elements) {
@@ -63,14 +62,14 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 					long i = 0;
 					Iterator<T> iterator = defaultValues.iterator();
 
-					while (i < cursor.get() && iterator.hasNext()) {
+					while (i < cursor && iterator.hasNext()) {
 						iterator.next();
 						i++;
 					}
 					i = 0;
 
 					while (i < elements && iterator.hasNext()) {
-						cursor.getAndIncrement();
+						cursor++;
 						onNext(iterator.next());
 						i++;
 					}

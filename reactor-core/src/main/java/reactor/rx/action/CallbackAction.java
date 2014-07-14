@@ -19,8 +19,6 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * @author Stephane Maldini
  */
@@ -28,7 +26,6 @@ public class CallbackAction<T> extends Action<T, Void> {
 
 	private final Consumer<T> consumer;
 	private final boolean     prefetch;
-	private final AtomicInteger count = new AtomicInteger();
 
 	public CallbackAction(Dispatcher dispatcher, Consumer<T> consumer, boolean prefetch) {
 		super(dispatcher);
@@ -45,10 +42,9 @@ public class CallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doNext(T ev) {
-		int counted = count.incrementAndGet();
 		consumer.accept(ev);
-		if (counted % batchSize == 0 && getSubscription() != null) {
-			onRequest(batchSize);
+		if (currentBatch % batchSize == 0) {
+			pendingRequest += batchSize;
 		}
 	}
 }

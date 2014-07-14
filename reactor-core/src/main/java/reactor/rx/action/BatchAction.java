@@ -18,7 +18,6 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author Stephane Maldini
@@ -26,14 +25,12 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public abstract class BatchAction<T, V> extends Action<T, V> {
 
-	protected final ReentrantLock lock = new ReentrantLock();
-
 	final boolean next;
 	final boolean flush;
 	final boolean first;
 
-	private volatile long errorCount  = 0l;
-	private volatile long acceptCount = 0l;
+	private long errorCount  = 0l;
+	private long acceptCount = 0l;
 
 	public BatchAction(int batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
@@ -54,69 +51,44 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		lock.lock();
 		long accepted;
-		try {
-			accepted = (++acceptCount) % batchSize;
+		accepted = (++acceptCount) % batchSize;
 
-			if (first && accepted == 1) {
-				firstCallback(value);
-			}
+		if (first && accepted == 1) {
+			firstCallback(value);
+		}
 
-			if (next) {
-				nextCallback(value);
-			}
+		if (next) {
+			nextCallback(value);
+		}
 
-			if (flush && accepted == 0) {
-				flushCallback(value);
-			}
-		} finally {
-			lock.unlock();
+		if (flush && accepted == 0) {
+			flushCallback(value);
 		}
 	}
 
 	@Override
 	protected void doError(Throwable error) {
-		lock.lock();
-		try {
-			errorCount++;
-			super.doError(error);
-		} finally {
-			lock.unlock();
-		}
+		errorCount++;
+		super.doError(error);
 	}
 
 	@Override
 	protected void doComplete() {
-		lock.lock();
-		try {
-			flushCallback(null);
-		} finally {
-			lock.unlock();
-		}
+		flushCallback(null);
 		super.doComplete();
 	}
 
 	@Override
 	public void available() {
-		lock.lock();
-		try {
-			flushCallback(null);
-		} finally {
-			lock.unlock();
-		}
+		flushCallback(null);
 		super.available();
 	}
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		lock.lock();
-		try {
-			flushCallback(null);
-		} finally {
-			lock.unlock();
-		}
-		if(capacity.get() > 0){
+		flushCallback(null);
+		if (capacity.get() > 0) {
 			super.requestUpstream(capacity, terminated, elements);
 		}
 	}

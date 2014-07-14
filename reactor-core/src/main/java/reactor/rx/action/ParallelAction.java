@@ -23,7 +23,6 @@ import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -94,17 +93,17 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	@SuppressWarnings("unchecked")
 	protected StreamSubscription<Action<O, O>> createSubscription(final Subscriber<Action<O, O>> subscriber) {
 		return new StreamSubscription<Action<O, O>>(this, subscriber) {
-			AtomicLong cursor = new AtomicLong();
+			long cursor = 0l;
 
 			@Override
 			public void request(int elements) {
 				int i = 0;
-				while (i < poolSize && i < cursor.get()) {
+				while (i < poolSize && i < cursor) {
 					i++;
 				}
 
 				while (i < elements && i < poolSize) {
-					cursor.getAndIncrement();
+					cursor++;
 					subscriber.onNext(publishers[i]);
 					i++;
 				}

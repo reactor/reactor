@@ -160,6 +160,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void accept(I i) {
 		try {
+			++currentBatch;
 			doNext(i);
 			doPendingRequest();
 		} catch (Throwable cause) {
@@ -168,7 +169,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doPendingRequest() {
-		if (++currentBatch == pendingRequest) {
+		if (currentBatch == pendingRequest) {
 			currentBatch = 0;
 			pendingRequest = 0;
 		} else if (currentBatch == batchSize ) {

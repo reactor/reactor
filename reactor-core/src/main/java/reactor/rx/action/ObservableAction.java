@@ -20,8 +20,6 @@ import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * @author Stephane Maldini
  * @since 1.1
@@ -30,7 +28,7 @@ public class ObservableAction<T> extends Action<T, Void> {
 
 	private final Observable observable;
 	private final Object     key;
-	private final AtomicInteger count = new AtomicInteger();
+	private int count = 0;
 
 	public ObservableAction(Dispatcher dispatcher, Observable observable, Object key) {
 		super(dispatcher);
@@ -45,9 +43,8 @@ public class ObservableAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doNext(T ev) {
-		int counted = count.getAndIncrement();
 		observable.notify(key, Event.wrap(ev));
-		if(counted >= batchSize){
+		if(count++ >= batchSize){
 			available();
 		}
 	}
