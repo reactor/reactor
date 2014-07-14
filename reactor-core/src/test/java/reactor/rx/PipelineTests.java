@@ -348,7 +348,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void mapNotifiesOnceConsistent() throws InterruptedException {
-		for(int i = 0; i < 15; i++){
+		for (int i = 0; i < 15; i++) {
 			mapNotifiesOnce();
 		}
 	}
@@ -431,7 +431,7 @@ public class PipelineTests extends AbstractReactorTest {
 		parallelTest("partitioned", 1_000_000);
 		parallelTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("partitioned", 1_000_000);
+		parallelMapManyTest("partitioned", 1_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelMapManyTest("ringBuffer", 1_000_000);
 	}
@@ -527,14 +527,19 @@ public class PipelineTests extends AbstractReactorTest {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		latch.await();
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			System.out.println(mapManydeferred.debug());
+		}
+		;
 		assertEquals(0, latch.getCount());
 
+
 		long stop = System.currentTimeMillis() - start;
+		stop = stop > 0 ? stop : 1;
 
 		System.out.println("Dispatcher: " + dispatcher);
-		System.out.println("Time spent: "+stop+"ms");
-		System.out.println("ev/ms: "+iterations / stop);
+		System.out.println("Time spent: " + stop + "ms");
+		System.out.println("ev/ms: " + iterations / stop);
 		System.out.println("ev/s: " + iterations / stop * 1000);
 		System.out.println("");
 	}

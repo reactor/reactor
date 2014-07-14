@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class CompletableConcurrentLinkedQueue<T> extends ConcurrentLinkedQueue<T> implements CompletableQueue<T>{
+final public class CompletableConcurrentLinkedQueue<T> extends ConcurrentLinkedQueue<T> implements CompletableQueue<T>{
 
 	boolean terminated = false;
 

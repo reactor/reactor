@@ -25,6 +25,7 @@ import reactor.rx.spec.Streams;
 import reactor.util.Assert;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
@@ -92,7 +93,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		}
 		stream.broadcastComplete();
 
-		latch.await();
+		latch.await(30, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		long count = latch.getCount();

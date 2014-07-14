@@ -20,7 +20,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -141,23 +140,19 @@ public class MergeAction<O> extends Action<O, O> {
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
 			this.s = new FanInSubscription.InnerSubscription(subscription);
-			outerAction.dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					outerAction.innerSubscriptions.addSubscription(s);
 
-					int size = outerAction.pendingRequest / outerAction.
-							innerSubscriptions.
-							subscriptions.size();
-					int remaining = outerAction.pendingRequest % outerAction.
-							innerSubscriptions.
-							subscriptions.size();
+			outerAction.innerSubscriptions.addSubscription(s);
 
-					if (size > 0) {
-						s.request(size + remaining);
-					}
-				}
-			});
+			int size = outerAction.pendingRequest / outerAction.
+					innerSubscriptions.
+					subscriptions.size();
+			int remaining = outerAction.pendingRequest % outerAction.
+					innerSubscriptions.
+					subscriptions.size();
+
+			if (size > 0) {
+				s.request(size + remaining);
+			}
 
 		}
 

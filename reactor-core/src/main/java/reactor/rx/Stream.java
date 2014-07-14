@@ -841,7 +841,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		error = throwable;
 
 		if (downstreamSubscription == null) {
-			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(throwable));
+			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug(),throwable));
 			return;
 		}
 

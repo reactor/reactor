@@ -150,7 +150,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	protected void doError(Throwable throwable) {
 		super.doError(throwable);
 		for (ParallelStream parallelStream : publishers) {
-			parallelStream.onError(throwable);
+			parallelStream.broadcastError(throwable);
 		}
 	}
 
@@ -158,7 +158,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	protected void doComplete() {
 		super.doComplete();
 		for (ParallelStream parallelStream : publishers) {
-			parallelStream.onComplete();
+			parallelStream.broadcastComplete();
 		}
 	}
 
@@ -188,11 +188,6 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 				}
 
 			};
-		}
-
-		@Override
-		protected void doNext(O ev) {
-			broadcastNext(ev);
 		}
 
 		@Override
