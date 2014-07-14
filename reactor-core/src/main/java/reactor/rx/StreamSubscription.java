@@ -76,41 +76,15 @@ public class StreamSubscription<O> implements Subscription {
 		buffer.complete();
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		StreamSubscription that = (StreamSubscription) o;
-
-		if (publisher.hashCode() != that.publisher.hashCode()) return false;
-		if (!subscriber.equals(that.subscriber)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = subscriber.hashCode();
-		result = 31 * result + publisher.hashCode();
-		return result;
-	}
-
-	@Override
-	public String toString() {
-		return "{" +
-				"capacity=" + capacity +
-				", buffered=" + buffer.size() +
-				'}';
-	}
-
 	public void onNext(O ev) {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
 		} else {
 			buffer.add(ev);
 			// we just decremented below 0 so increment back one
-			capacity.incrementAndGet();
+			if(capacity.incrementAndGet() > 1){
+				onNext(ev);
+			}
 		}
 	}
 
@@ -147,6 +121,34 @@ public class StreamSubscription<O> implements Subscription {
 
 	public boolean isComplete() {
 		return buffer.isComplete();
+	}
+
+	@Override
+	public int hashCode() {
+		int result = subscriber.hashCode();
+		result = 31 * result + publisher.hashCode();
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		StreamSubscription that = (StreamSubscription) o;
+
+		if (publisher.hashCode() != that.publisher.hashCode()) return false;
+		if (!subscriber.equals(that.subscriber)) return false;
+
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "{" +
+				"capacity=" + capacity +
+				", buffered=" + buffer.size() +
+				'}';
 	}
 
 	protected void checkRequestSize(int elements) {

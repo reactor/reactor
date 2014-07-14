@@ -431,7 +431,7 @@ public class PipelineTests extends AbstractReactorTest {
 		parallelTest("partitioned", 1_000_000);
 		parallelTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("partitioned", 1_000);
+		parallelMapManyTest("partitioned", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelMapManyTest("ringBuffer", 1_000_000);
 	}
@@ -480,9 +480,12 @@ public class PipelineTests extends AbstractReactorTest {
 			deferred.broadcastNext(i);
 		}
 
-		latch.await();
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			System.out.println(deferred.debug());
+		}
 
 		long stop = System.currentTimeMillis() - start;
+		stop = stop > 0 ? stop : 1;
 
 		System.out.println("Time spent: " + stop + "ms");
 		System.out.println("ev/ms: " + iterations / stop);
@@ -530,7 +533,6 @@ public class PipelineTests extends AbstractReactorTest {
 		if (!latch.await(30, TimeUnit.SECONDS)) {
 			System.out.println(mapManydeferred.debug());
 		}
-		;
 		assertEquals(0, latch.getCount());
 
 

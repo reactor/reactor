@@ -816,18 +816,22 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def sum = new AtomicInteger()
-			def latch = new CountDownLatch(3)
-			Environment env = new Environment()
-			Stream head = Streams.<Integer>defer(env)
-			Stream tail = head.parallel().merge().collect(333)
+			int length = 1000
+			int batchSize = 333
+			int latchCount = length / batchSize
+			def latch = new CountDownLatch(latchCount)
+			def env = new Environment()
+			def head = Streams.<Integer>defer(env)
+			def tail = head.parallel().merge().collect(batchSize)
 			tail.consume { List<Integer> ints ->
 				println ints.size()
 				sum.addAndGet(ints.size())
 				latch.countDown()
 			}
+		latch.await(5,TimeUnit.SECONDS)
 		when:
 			'values are accepted into the head'
-			(1..1000).each { head.broadcastNext(it) }
+			(1..length).each { head.broadcastNext(it) }
 			latch.await(4, TimeUnit.SECONDS)
 
 		then:
