@@ -39,7 +39,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		if (prefetch) {
-			subscription.request(batchSize);
+			onRequest(batchSize);
 		}
 	}
 
@@ -48,7 +48,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 		int counted = count.incrementAndGet();
 		consumer.accept(ev);
 		if (counted % batchSize == 0 && getSubscription() != null) {
-			getSubscription().request(batchSize);
+			onRequest(batchSize);
 		}
 	}
 }

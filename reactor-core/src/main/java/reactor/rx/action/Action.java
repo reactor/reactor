@@ -172,9 +172,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			currentBatch = 0;
 			pendingRequest = 0;
 		} else if (currentBatch == batchSize ) {
-			currentBatch = 0;
+			pendingRequest -= currentBatch;
 			int toRequest = batchSize > pendingRequest ? pendingRequest : batchSize;
-			pendingRequest -= toRequest;
+			currentBatch = 0;
 
 			if (toRequest > 0)
 				subscription.request(toRequest);
