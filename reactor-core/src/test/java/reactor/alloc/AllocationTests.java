@@ -23,6 +23,7 @@ import reactor.core.Environment;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
@@ -31,6 +32,12 @@ import static org.junit.Assert.assertTrue;
  * @author Jon Brisbin
  */
 public class AllocationTests extends AbstractPerformanceTest {
+
+	@Override
+	public void setup() {
+		super.setup();
+		pool = Executors.newFixedThreadPool(Environment.PROCESSORS);
+	}
 
 	@Test
 	public void threadPartitionedAllocatorAllocatesByThread() throws Exception {
