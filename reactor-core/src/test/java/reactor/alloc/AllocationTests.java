@@ -16,145 +16,42 @@
 
 package reactor.alloc;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
+import com.gs.collections.impl.list.mutable.FastList;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.function.Function;
+import reactor.AbstractPerformanceTest;
+import reactor.core.Environment;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static junit.framework.Assert.assertTrue;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
  */
-public class AllocationTests {
-
-	private final Logger log = LoggerFactory.getLogger(getClass());
-	private ExecutorService tasks;
-
-	@Before
-	public void setup() {
-		tasks = Executors.newCachedThreadPool();
-	}
-
-	@After
-	public void cleanup() throws InterruptedException {
-		tasks.shutdown();
-		assertTrue("Tasks were terminated cleanly", tasks.awaitTermination(5, TimeUnit.SECONDS));
-	}
+public class AllocationTests extends AbstractPerformanceTest {
 
 	@Test
-	@Ignore
-	public void testCustomIteratorThroughput() throws InterruptedException {
-		final int items = 1000;
-		final long timeout = 15000;
-		final String[] strs = new String[items];
-		for(int i = 0; i < items; i++) {
-			strs[i] = "Hello World #" + i + "!";
-		}
+	public void threadPartitionedAllocatorAllocatesByThread() throws Exception {
+		int threadCnt = Environment.PROCESSORS;
+		CountDownLatch latch = new CountDownLatch(threadCnt);
+		Allocator<RecyclableNumber> alloc = new ThreadPartitionedAllocator<>(RecyclableNumber::new);
+		List<Long> threadIds = FastList.newList();
 
-		final FixedIterator<String> fixedIter = new FixedIterator<String>();
-		Function<Long, Integer> fn1 = new Function<Long, Integer>() {
-			Iterator<String> iter;
+		fork(threadCnt, () -> {
+			long threadId = Thread.currentThread().getId();
+			alloc.allocate().get().setValue(threadId);
+			threadIds.add(threadId);
+		});
 
-			@Override
-			public Integer apply(Long count) {
-				if(null == iter || !iter.hasNext()) {
-					iter = fixedIter.setValues(strs);
-				}
-				iter.next();
-				return 1;
+		fork(threadCnt, () -> {
+			if (threadIds.contains(alloc.allocate().get().longValue())) {
+				latch.countDown();
 			}
-		};
-		doTest("Array-based, reusable Iterator", fn1, timeout);
+		});
 
-		Thread.sleep(1000);
-
-		Function<Long, Integer> fn2 = new Function<Long, Integer>() {
-			Iterator<String> iter;
-
-			@Override
-			public Integer apply(Long count) {
-				if(null == iter || !iter.hasNext()) {
-					iter = Arrays.asList(strs).iterator();
-				}
-				iter.next();
-				return 1;
-			}
-		};
-		doTest("ArrayList, one-off Iterator", fn2, timeout);
-	}
-
-	private void doTest(String test, Function<Long, Integer> fn, long timeout) {
-		long count = 0;
-		long start = System.currentTimeMillis();
-		long end;
-		double elapsed;
-
-		while(((end = System.currentTimeMillis()) - start) < timeout) {
-			int delta = fn.apply(count);
-			if(delta < 0) {
-				break;
-			}
-			count += delta;
-		}
-
-		elapsed = end - start;
-		long throughput = (long)(count / (elapsed / 1000.0));
-
-		log.info("{} throughput: {}/sec in {}ms", test, throughput, (long)elapsed);
-	}
-
-	private static class FixedIterator<T> implements Iterator<T> {
-		//		private static final AtomicIntegerFieldUpdater<FixedIterator> idxUpd = AtomicIntegerFieldUpdater.newUpdater(
-		//				FixedIterator.class,
-		//				"index"
-		//		);
-		private T[] values;
-		private int len;
-		private int index = 0;
-
-		Iterator<T> setValues(T[] values) {
-			this.values = values;
-			this.len = values.length;
-			this.index = 0;
-			return this;
-		}
-
-		Iterator<T> reset() {
-			this.values = null;
-			this.len = 0;
-			this.index = 0;
-			return this;
-		}
-
-		@Override
-		public void remove() {
-
-		}
-
-		@Override
-		public boolean hasNext() {
-			return index < len;
-		}
-
-		@Override
-		public T next() {
-			try {
-				return values[index++];
-			} catch(IndexOutOfBoundsException ignored) {
-				throw new NoSuchElementException("No element at index " + (index - 1));
-			}
-		}
+		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 	}
 
 }
