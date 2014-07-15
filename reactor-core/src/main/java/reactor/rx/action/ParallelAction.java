@@ -42,7 +42,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 				if (n > batchSize) {
 					getSubscription().request(batchSize);
-				} else if (previous < batchSize) {
+				} else if (previous <= batchSize) {
 					getSubscription().request(n);
 				}
 

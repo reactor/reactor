@@ -80,6 +80,7 @@ public class StreamSubscription<O> implements Subscription {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
 		} else {
+
 			// we just decremented below 0 so increment back one
 			if(capacity.incrementAndGet() > 0){
 				onNext(ev);
