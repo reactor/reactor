@@ -49,7 +49,7 @@ class StreamsSpec extends Specification {
 		given:
 			String test = ""
 			'a composable with an initial value'
-			def stream = Streams.<String>generate { test }
+			def stream = Streams.<String> generate { test }
 
 		when:
 			'the value is retrieved'
@@ -110,7 +110,7 @@ class StreamsSpec extends Specification {
 		when:
 			'a Consumer is registered'
 			def values = []
-			stream.consume{ values << it }
+			stream.consume { values << it }
 
 		then:
 			'the initial values are passed'
@@ -122,7 +122,7 @@ class StreamsSpec extends Specification {
 	def 'Accepted values are passed to a registered Consumer'() {
 		given:
 			'a composable with a registered consumer'
-			def composable = Streams.<Integer>defer()
+			def composable = Streams.<Integer> defer()
 			def value = composable.tap()
 
 		when:
@@ -145,7 +145,7 @@ class StreamsSpec extends Specification {
 	def 'Accepted errors are passed to a registered Consumer'() {
 		given:
 			'a composable with a registered consumer of RuntimeExceptions'
-			Stream composable = Streams.<Integer>defer()
+			Stream composable = Streams.<Integer> defer()
 			def errors = 0
 			composable.when(RuntimeException) { errors++ }
 			println composable.debug()
@@ -195,7 +195,7 @@ class StreamsSpec extends Specification {
 	def 'Last value of a batch is accessible'() {
 		given:
 			'a composable that will accept an unknown number of values'
-			def d = Streams.<Integer>config().batchSize(3).get()
+			def d = Streams.<Integer> config().batchSize(3).get()
 			Stream composable = d
 
 		when:
@@ -224,8 +224,8 @@ class StreamsSpec extends Specification {
 	def "A Stream's values can be mapped"() {
 		given:
 			'a source composable with a mapping function'
-			def source = Streams.<Integer>defer()
-			Stream mapped = source.map{ it * 2 }
+			def source = Streams.<Integer> defer()
+			Stream mapped = source.map { it * 2 }
 
 		when:
 			'the source accepts a value'
@@ -260,7 +260,7 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to merge, collect and tap'
 			def source1 = Streams.<Integer> defer()
-			def source2 = Streams.<Integer> defer().map{it}.map{it}
+			def source2 = Streams.<Integer> defer().map { it }.map { it }
 			def source3 = Streams.<Integer> defer()
 			def tap = source1.merge(source2, source3).collect(3).tap()
 
@@ -270,7 +270,7 @@ class StreamsSpec extends Specification {
 			source2.broadcastNext(2)
 			source3.broadcastNext(3)
 
-		println source1.debug()
+			println source1.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -298,7 +298,7 @@ class StreamsSpec extends Specification {
 	def "A Stream's values can be filtered"() {
 		given:
 			'a source composable with a filter that rejects odd values'
-			def source = Streams.<Integer>defer()
+			def source = Streams.<Integer> defer()
 			Stream filtered = source.filter { it % 2 == 0 }
 
 		when:
@@ -353,8 +353,8 @@ class StreamsSpec extends Specification {
 	def "When a mapping function throws an exception, the mapped composable accepts the error"() {
 		given:
 			'a source composable with a mapping function that throws an exception'
-			def source = Streams.<Integer>defer()
-			Stream mapped = source.map { if(it==1) throw new RuntimeException() else 'na' }
+			def source = Streams.<Integer> defer()
+			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
 			mapped.when(Exception) { errors++ }
 			mapped.resume()
@@ -362,7 +362,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the source accepts a value'
 			source.broadcastNext(1)
-		println source.debug()
+			println source.debug()
 
 		then:
 			'the error is passed on'
@@ -372,10 +372,10 @@ class StreamsSpec extends Specification {
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {
 		given:
 			'a source composable with a filter function that throws an exception'
-			def source = Streams.<Integer>defer()
-			Stream filtered = source.filter { if(it == 1) throw new RuntimeException() else true }
+			def source = Streams.<Integer> defer()
+			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
-			filtered.when(Exception){ errors++ }
+			filtered.when(Exception) { errors++ }
 			filtered.resume()
 
 		when:
@@ -404,7 +404,7 @@ class StreamsSpec extends Specification {
 		when:
 			'use an initial value'
 			value = source.reduce(new Reduction(), 2).tap()
-		println source.debug()
+			println source.debug()
 
 		then:
 			'the updated reduction is available'
@@ -414,7 +414,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known set of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known set of values and a reduce function'
-			Stream reduced = Streams.<Integer>config().each([1, 2, 3, 4, 5]).
+			Stream reduced = Streams.<Integer> config().each([1, 2, 3, 4, 5]).
 					synchronousDispatcher().
 					get().
 					reduce(new Reduction())
@@ -432,7 +432,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known number of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known number of values and a reduce function'
-			def source = Streams.<Integer>config().batchSize(5).get()
+			def source = Streams.<Integer> config().batchSize(5).get()
 			Stream reduced = source.reduce(new Reduction())
 			def values = []
 			reduced.consume { values << it }
@@ -566,13 +566,13 @@ class StreamsSpec extends Specification {
 	def 'Reduce will accumulate a list of accepted values'() {
 		given:
 			'a composable'
-			def source = Streams.<Integer>config().batchSize(1).get()
+			def source = Streams.<Integer> config().batchSize(1).get()
 			Stream reduced = source.collect()
 			def value = reduced.tap()
 
 		when:
 			'the first value is accepted'
-		println reduced.debug()
+			println reduced.debug()
 			source.broadcastNext(1)
 			println reduced.debug()
 
@@ -584,7 +584,7 @@ class StreamsSpec extends Specification {
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer>config().batchSize(2).get()
+			def source = Streams.<Integer> config().batchSize(2).get()
 			Stream reduced = source.collect()
 			def value = reduced.tap()
 
@@ -608,7 +608,7 @@ class StreamsSpec extends Specification {
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer>defer()
+			def source = Streams.<Integer> defer()
 			Stream reduced = source.collect()
 			def value = reduced.tap()
 
@@ -821,14 +821,16 @@ class StreamsSpec extends Specification {
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
 			def env = new Environment()
-			def head = Streams.<Integer>defer(env)
-			def tail = head.parallel().merge().collect(batchSize)
-			tail.consume { List<Integer> ints ->
-				println ints.size()
-				sum.addAndGet(ints.size())
-				latch.countDown()
-			}
-		latch.await(5,TimeUnit.SECONDS)
+			def head = Streams.<Integer> defer(env)
+			head.parallel().map {
+				s -> s.map { it }
+			}.merge()
+					.collect(batchSize)
+					.consume { List<Integer> ints ->
+						println ints.size()
+						sum.addAndGet(ints.size())
+						latch.countDown()
+					}
 		when:
 			'values are accepted into the head'
 			(1..length).each { head.broadcastNext(it) }
@@ -836,14 +838,14 @@ class StreamsSpec extends Specification {
 
 		then:
 			'results contains the expected values'
-		println head.debug()
+			println head.debug()
 			sum.get() == 999
 	}
 
 	def 'An Observable can consume values from a Stream'() {
 		given:
 			'a Stream and a Observable consumer'
-			def d = Streams.<Integer>defer()
+			def d = Streams.<Integer> defer()
 			Stream composable = d
 			Observable observable = Mock(Observable)
 			composable.consume('key', observable)
