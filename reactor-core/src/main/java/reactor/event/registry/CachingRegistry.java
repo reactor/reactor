@@ -53,7 +53,9 @@ public class CachingRegistry<T> implements Registry<T> {
 				regs.add(reg);
 			}
 		});
-		threadLocalCache.clear();
+		if (useCache) {
+			threadLocalCache.clear();
+		}
 
 		return reg;
 	}
@@ -70,35 +72,46 @@ public class CachingRegistry<T> implements Registry<T> {
 						modified.compareAndSet(false, true);
 					}
 				}
+				if (useCache && modified.get()) {
+					threadLocalCache.clear();
+				}
 			}
 		});
-		if (modified.get()) {
-			threadLocalCache.clear();
-		}
 		return modified.get();
 	}
 
 	@Override
 	public List<Registration<? extends T>> select(Object key) {
+		// use a thread-local cache
 		UnifiedMap<Object, List<Registration<? extends T>>> allRegs = threadLocalRegs();
-		List<Registration<? extends T>> selectedRegs;
-		if (null != (selectedRegs = allRegs.get(key))
-				|| !((selectedRegs = allRegs.getIfAbsentPut(key, newRegsFn)).isEmpty())) {
+
+		// maybe pull Registrations from cache for this key
+		List<Registration<? extends T>> selectedRegs = null;
+		if (useCache
+				&& (null != (selectedRegs = allRegs.get(key))
+				|| !((selectedRegs = allRegs.getIfAbsentPut(key, newRegsFn)).isEmpty()))) {
 			return selectedRegs;
 		}
 
+		// cache not used or cache miss
 		cacheMiss(key);
+		if (null == selectedRegs) {
+			selectedRegs = FastList.newList();
+		}
 
+		// find Registrations based on Selector
 		for (Registration<? extends T> reg : this) {
 			if (reg.getSelector().matches(key)) {
 				selectedRegs.add(reg);
 			}
 		}
 
+		// nothing found, maybe invoke handler
 		if (selectedRegs.isEmpty() && null != onNotFound) {
 			onNotFound.accept(key);
 		}
 
+		// return
 		return selectedRegs;
 	}
 
