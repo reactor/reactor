@@ -124,14 +124,9 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	}
 
 	@Override
-	public void onNext(O ev) {
-		super.onNext(ev);
-	}
-
-	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
-		if(++roundRobinIndex == poolSize){
+		if (++roundRobinIndex == poolSize) {
 			roundRobinIndex = 0;
 		}
 
@@ -177,8 +172,8 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
-						super.request(elements);
-						parallelAction.onRequest(elements);
+					super.request(elements);
+					parallelAction.onRequest(elements);
 				}
 
 				@Override

@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
  *
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
 public class StreamSubscription<O> implements Subscription {
 	final           Subscriber<O>       subscriber;
@@ -80,10 +80,11 @@ public class StreamSubscription<O> implements Subscription {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
 		} else {
-			buffer.add(ev);
 			// we just decremented below 0 so increment back one
-			if(capacity.incrementAndGet() > 1){
+			if(capacity.incrementAndGet() > 0){
 				onNext(ev);
+			}else{
+				buffer.add(ev);
 			}
 		}
 	}

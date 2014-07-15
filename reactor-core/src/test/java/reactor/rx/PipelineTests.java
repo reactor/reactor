@@ -428,9 +428,9 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelTest("partitioned", 1_000_000);
-		parallelTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
+		parallelTest("sync", 1_000_000);
+		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelMapManyTest("ringBuffer", 1_000_000);
