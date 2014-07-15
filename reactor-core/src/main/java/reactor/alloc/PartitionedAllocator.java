@@ -13,7 +13,7 @@ import java.util.List;
  */
 public abstract class PartitionedAllocator<T extends Recyclable> implements Allocator<T> {
 
-	private final ConcurrentHashMapV8<Long, Reference<T>>     partitions = new ConcurrentHashMapV8<>();
+	private final ConcurrentHashMapV8<Long, Reference<T>>     partitions = new ConcurrentHashMapV8<Long, Reference<T>>();
 	private final ConcurrentHashMapV8.Fun<Long, Reference<T>> newRefFn   = new ConcurrentHashMapV8.Fun<Long, Reference<T>>() {
 		@Override
 		public Reference<T> apply(Long partId) {
