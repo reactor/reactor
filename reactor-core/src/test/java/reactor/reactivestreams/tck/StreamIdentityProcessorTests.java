@@ -93,7 +93,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		}
 		stream.broadcastComplete();
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(120, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		long count = latch.getCount();
