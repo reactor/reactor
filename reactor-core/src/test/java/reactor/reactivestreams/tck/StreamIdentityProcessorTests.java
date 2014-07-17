@@ -56,7 +56,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 
-		final int elements = 1_000_000;
+		final int elements = 10_000;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
 		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
