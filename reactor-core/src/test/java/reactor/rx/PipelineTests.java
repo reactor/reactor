@@ -135,15 +135,10 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testFirstAndLast() throws InterruptedException {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
-		Stream<Integer> s =
-				stream
-						.map(STRING_2_INTEGER);
+		Stream<Integer> s = Streams.defer(Arrays.asList(1, 2, 3, 4, 5));
 
 		Stream<Integer> first = s.first();
 		Stream<Integer> last = s.last();
-
-		System.out.println(s.debug());
 
 		assertThat("First is 1", first.tap().get(), is(1));
 		assertThat("Last is 5", last.tap().get(), is(5));
@@ -428,12 +423,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelTest("ringBuffer", 1_000_000);
 		parallelTest("sync", 1_000_000);
+		parallelMapManyTest("sync", 1_000_000);
+		parallelTest("ringBuffer", 1_000_000);
+		parallelMapManyTest("ringBuffer", 1_000_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
-		parallelMapManyTest("sync", 1_000_000);
-		parallelMapManyTest("ringBuffer", 1_000_000);
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
@@ -480,7 +475,7 @@ public class PipelineTests extends AbstractReactorTest {
 			deferred.broadcastNext(i);
 		}
 
-		if (!latch.await(30, TimeUnit.SECONDS)) {
+		if (!latch.await(60, TimeUnit.SECONDS)) {
 			System.out.println(deferred.debug());
 		}
 
@@ -530,7 +525,7 @@ public class PipelineTests extends AbstractReactorTest {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		if (!latch.await(30, TimeUnit.SECONDS)) {
+		if (!latch.await(60, TimeUnit.SECONDS)) {
 			System.out.println(mapManydeferred.debug());
 		}
 		assertEquals(0, latch.getCount());

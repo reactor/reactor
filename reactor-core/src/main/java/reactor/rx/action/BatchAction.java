@@ -88,9 +88,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		flushCallback(null);
-		if (capacity.get() > 0) {
-			super.requestUpstream(capacity, terminated, elements);
-		}
+		super.requestUpstream(capacity, terminated, elements);
 	}
 
 	@Override

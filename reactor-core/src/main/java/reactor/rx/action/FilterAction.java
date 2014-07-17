@@ -34,14 +34,15 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 	};
 
 	private final Predicate<T> p;
-	private final E            elseComposable;
+
+	private volatile E elseComposable;
 
 	@SuppressWarnings("unchecked")
 	public FilterAction(Predicate<T> p, Dispatcher dispatcher) {
-		this(p, dispatcher, (E) passthrough(dispatcher));
+		this(p, dispatcher, null);
 	}
 
-	public FilterAction(final Function<T,Boolean> p, Dispatcher dispatcher) {
+	public FilterAction(final Function<T, Boolean> p, Dispatcher dispatcher) {
 		this(new Predicate<T>() {
 			@Override
 			public boolean test(T t) {
@@ -61,7 +62,9 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 		if (p.test(value)) {
 			broadcastNext(value);
 		} else {
-			elseComposable.broadcastNext(value);
+			if (elseComposable != null) {
+				elseComposable.broadcastNext(value);
+			}
 			// GH-154: Verbose error level logging of every event filtered out by a Stream filter
 			// Fix: ignore Predicate failures and drop values rather than notifying of errors.
 			//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
@@ -70,17 +73,27 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		elseComposable.broadcastError(ev);
+		if (elseComposable != null) {
+			elseComposable.broadcastError(ev);
+		}
 		super.doError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		elseComposable.broadcastComplete();
+		if (elseComposable != null) {
+			elseComposable.broadcastComplete();
+		}
 		super.doComplete();
 	}
 
+	@SuppressWarnings("unchecked")
 	public E otherwise() {
+		if (elseComposable == null) {
+			Action<T, T> passthrough = Action.<T>passthrough(dispatcher);
+			passthrough.prefetch(batchSize).setKeepAlive(keepAlive);
+			elseComposable = (E) passthrough;
+		}
 		return elseComposable;
 	}
 
@@ -88,8 +101,8 @@ public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		if(elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())){
-			((Action<T,E>)elseComposable).prefetch(batchSize).onSubscribe(subscription);
+		if (elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())) {
+			((Action<T, E>) elseComposable).prefetch(batchSize).onSubscribe(subscription);
 		}
 	}
 }

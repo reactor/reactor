@@ -18,8 +18,6 @@ package reactor.rx.action;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -27,9 +25,8 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
-import reactor.timer.Timer;
-import reactor.util.Assert;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -38,7 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I> {
 
-	private static final Logger log = LoggerFactory.getLogger(Action.class);
+	//private static final Logger log = LoggerFactory.getLogger(Action.class);
 
 	/**
 	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to batchSize + 4 events can be in-flight
@@ -48,11 +45,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	protected int pendingRequest = 0;
 	protected int currentBatch   = 0;
+	protected boolean firehose = false;
 
 	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
 		@Override
 		public void accept(Integer n) {
 			try {
+				if(firehose){
+					subscription.request(batchSize);
+					return;
+				}
+
 				int previous = pendingRequest;
 				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
 
@@ -80,6 +83,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			protected void doNext(O ev) {
 				broadcastNext(ev);
 			}
+
+			@Override
+			protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+				return new StreamSubscription<O>(this, subscriber) {
+					@Override
+					public void request(int elements) {
+						super.request(elements);
+						requestUpstream(capacity, buffer.isComplete(), elements);
+					}
+				};
+			}
 		};
 	}
 
@@ -95,39 +109,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		super(dispatcher, batchSize);
 	}
 
-	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return this {@link Stream}
-	 * @since 1.1
-	 */
-	public Action<O, O> timeout(long timeout) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
-	 * @return this {@link Stream}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public Action<O, O> timeout(long timeout, Timer timer) {
-		final TimeoutAction<O> d = new TimeoutAction<O>(
-				getDispatcher(),
-				timer,
-				timeout
-		);
-		return connect(d);
-	}
-
 	public void available() {
 		if (subscription != null && !pause) {
 			onRequest(batchSize);
@@ -137,7 +118,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		if (subscription != null && !terminated) {
 			int currentCapacity = capacity.intValue();
-			if (!pause && currentCapacity > 0) {
+			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
+			if (!pause && (currentCapacity > 0)) {
 				final int remaining = currentCapacity > elements ? elements : currentCapacity;
 				onRequest(remaining);
 			}
@@ -146,13 +128,22 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
-		return new StreamSubscription<O>(this, subscriber) {
-			@Override
-			public void request(int elements) {
-				super.request(elements);
-				requestUpstream(capacity, buffer.isComplete(), elements);
-			}
-		};
+		if(subscription == null){
+			return new StreamSubscription<O>(this, subscriber) {
+				@Override
+				public void request(int elements) {
+					super.request(elements);
+					requestUpstream(capacity, buffer.isComplete(), elements);
+				}
+			};
+		}else{
+			return new StreamSubscription.Firehose<O>(this, subscriber) {
+				@Override
+				public void request(int elements) {
+					requestUpstream(capacity, isComplete(), elements);
+				}
+			};
+		}
 	}
 
 
@@ -162,7 +153,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		try {
 			++currentBatch;
 			doNext(i);
-			doPendingRequest();
+			if(!firehose){
+				doPendingRequest();
+			}
 		} catch (Throwable cause) {
 			doError(cause);
 		}
@@ -228,16 +221,26 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onSubscribe(Subscription subscription) {
 		if (this.subscription == null) {
 			this.subscription = subscription;
+			this.firehose = StreamSubscription.Firehose.class.isAssignableFrom(subscription.getClass());
+
+			final CountDownLatch startedCountDown = new CountDownLatch(1);
+
 			dispatch(subscription, new Consumer<Subscription>() {
 				@Override
 				public void accept(Subscription subscription) {
 					try {
 						doSubscribe(subscription);
+						startedCountDown.countDown();
 					} catch (Throwable t) {
 						doError(t);
 					}
 				}
 			});
+			try {
+				startedCountDown.await();
+			} catch (InterruptedException e) {
+				doError(e);
+			}
 		} else {
 			throw new IllegalStateException("Already subscribed");
 		}
@@ -354,8 +357,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				", prefetch=" + getBatchSize() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
-						", buffered=" + ((StreamSubscription<O>) subscription).getBufferSize() +
-								", capacity=" + ((StreamSubscription<O>) subscription).getCapacity() +
+						", subscription=" + subscription +
 								", pending=" + pendingRequest +
 								", currentBatch=" + currentBatch
 						: (subscription != null ? ", subscription=" + subscription : "")

@@ -44,7 +44,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	protected void doNext(T ev) {
 		consumer.accept(ev);
 		if (currentBatch % batchSize == 0) {
-			pendingRequest += batchSize;
+			onRequest(batchSize);
 		}
 	}
 }

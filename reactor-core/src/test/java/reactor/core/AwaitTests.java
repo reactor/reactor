@@ -18,11 +18,11 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +45,6 @@ public class AwaitTests extends AbstractReactorTest {
 		for (int i = 0; i < 1000; i++) {
 			final Promise<String> deferred = Promises.<String>config()
 					.env(env)
-					.dispatcher(dispatcher)
 					.get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
@@ -66,7 +65,8 @@ public class AwaitTests extends AbstractReactorTest {
 
 			}, null);
 
-			assertThat("latch is counted down", latch.await(5, TimeUnit.SECONDS));
+			boolean latchRes = latch.await(5, TimeUnit.SECONDS);
+			assertThat("latch is not counted down : "+latch.getCount()+" "+deferred.debug(), latchRes);
 		}
 	}
 

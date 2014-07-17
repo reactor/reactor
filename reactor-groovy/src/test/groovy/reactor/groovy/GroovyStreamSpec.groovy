@@ -108,11 +108,10 @@ class GroovyStreamSpec extends Specification {
 	def "consume first and last with a composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5'])
+			def d = Streams.defer([1, 2, 3, 4, 5])
 
 		and:
 			'apply a transformation'
-			def d = c | { Integer.parseInt it }
 
 		and:
 			'reference first and last'

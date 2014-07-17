@@ -51,7 +51,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	protected StreamSubscription<T> createSubscription(Subscriber<T> subscriber) {
 		if (defaultValues != null) {
 			return new StreamSubscription<T>(this, subscriber) {
-				long cursor = 0l;
+				Iterator<T> iterator = defaultValues.iterator();
 
 				@Override
 				public void request(int elements) {
@@ -60,16 +60,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 					if(buffer.isComplete()) return;
 
 					long i = 0;
-					Iterator<T> iterator = defaultValues.iterator();
-
-					while (i < cursor && iterator.hasNext()) {
-						iterator.next();
-						i++;
-					}
-					i = 0;
-
 					while (i < elements && iterator.hasNext()) {
-						cursor++;
 						onNext(iterator.next());
 						i++;
 					}

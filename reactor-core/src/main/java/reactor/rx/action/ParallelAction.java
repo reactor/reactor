@@ -22,8 +22,6 @@ import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
-import javax.annotation.Nonnull;
-
 /**
  * @author Stephane Maldini
  * @since 2.0
@@ -74,7 +72,7 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 	@Override
 	public Action<O, Action<O, O>> prefetch(int elements) {
-		super.prefetch(elements);
+		super.prefetch(elements - (poolSize * RESERVED_SLOTS) + RESERVED_SLOTS);
 		int size = elements / poolSize;
 		for (ParallelStream p : publishers) {
 			p.prefetch(size);
@@ -83,16 +81,9 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	}
 
 	@Override
-	public <A, E extends Action<Action<O, O>, A>> E connect(@Nonnull E stream) {
-		E action = super.connect(stream);
-		action.prefetch(poolSize).env(environment);
-		return action;
-	}
-
-	@Override
 	@SuppressWarnings("unchecked")
 	protected StreamSubscription<Action<O, O>> createSubscription(final Subscriber<Action<O, O>> subscriber) {
-		return new StreamSubscription<Action<O, O>>(this, subscriber) {
+		return new StreamSubscription.Firehose<Action<O, O>>(this, subscriber) {
 			long cursor = 0l;
 
 			@Override
@@ -104,12 +95,12 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 				while (i < elements && i < poolSize) {
 					cursor++;
-					subscriber.onNext(publishers[i]);
+					onNext(publishers[i]);
 					i++;
 				}
 
 				if (i == poolSize) {
-					subscriber.onComplete();
+					onComplete();
 				}
 			}
 		};

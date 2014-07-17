@@ -17,6 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,7 +46,6 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 				}
 			}
 		};
-		this.mergeAction.prefetch(batchSize).env(getEnvironment()).setKeepAlive(false);
 	}
 
 	@Override
@@ -75,6 +75,18 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	public Action<I, O> prefetch(int elements) {
 		mergeAction.prefetch(elements);
 		return super.prefetch(elements);
+	}
+
+	@Override
+	public void setKeepAlive(boolean keepAlive) {
+		mergeAction.setKeepAlive(keepAlive);
+		super.setKeepAlive(keepAlive);
+	}
+
+	@Override
+	public Action<I, O> env(Environment environment) {
+		mergeAction.env(environment);
+		return super.env(environment);
 	}
 
 	@Override

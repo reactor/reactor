@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 2.0
  */
 public class StreamSubscription<O> implements Subscription {
-	final           Subscriber<O>       subscriber;
-	final           Stream<O>           publisher;
-	protected final AtomicLong          capacity;
+	final           Subscriber<O> subscriber;
+	final           Stream<O>     publisher;
+	protected final AtomicLong    capacity;
 
 	protected final CompletableQueue<O> buffer;
 
@@ -80,13 +80,9 @@ public class StreamSubscription<O> implements Subscription {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
 		} else {
-
+			buffer.add(ev);
 			// we just decremented below 0 so increment back one
-			if(capacity.incrementAndGet() > 0){
-				onNext(ev);
-			}else{
-				buffer.add(ev);
-			}
+			capacity.incrementAndGet();
 		}
 	}
 
@@ -95,6 +91,12 @@ public class StreamSubscription<O> implements Subscription {
 			subscriber.onComplete();
 		}
 		buffer.complete();
+	}
+
+	protected void checkRequestSize(int elements) {
+		if (elements <= 0) {
+			throw new IllegalArgumentException("Cannot request a non strictly positive number: " + elements);
+		}
 	}
 
 	public void onError(Throwable throwable) {
@@ -110,7 +112,7 @@ public class StreamSubscription<O> implements Subscription {
 	}
 
 	public long getBufferSize() {
-		return buffer.size();
+		return buffer != null ? buffer.size() : -1l;
 	}
 
 	public AtomicLong getCapacity() {
@@ -153,9 +155,49 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
-	protected void checkRequestSize(int elements) {
-		if (elements <= 0) {
-			throw new IllegalArgumentException("Cannot request a non strictly positive number: "+elements);
+	public static class Firehose<O> extends StreamSubscription<O> {
+		protected volatile boolean terminated = false;
+
+		public Firehose(Stream<O> publisher, Subscriber<O> subscriber) {
+			super(publisher, subscriber, null);
+			capacity.set(Long.MAX_VALUE);
+		}
+
+		@Override
+		public void request(int elements) {
+		}
+
+		@Override
+		public void cancel() {
+			publisher.removeSubscription(this);
+			terminated = true;
+		}
+
+		@Override
+		public void onComplete() {
+			if (!terminated) {
+				subscriber.onComplete();
+			}
+			terminated = true;
+		}
+
+		@Override
+		public void onNext(O ev) {
+			if (!terminated) {
+				subscriber.onNext(ev);
+			}
+		}
+
+		@Override
+		public boolean isComplete() {
+			return terminated;
+		}
+
+		@Override
+		public String toString() {
+			return "{" +
+					"firehose!" +
+					'}';
 		}
 	}
 }

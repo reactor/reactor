@@ -143,15 +143,8 @@ public class MergeAction<O> extends Action<O, O> {
 
 			outerAction.innerSubscriptions.addSubscription(s);
 
-			int size = outerAction.pendingRequest / outerAction.
-					innerSubscriptions.
-					subscriptions.size();
-			int remaining = outerAction.pendingRequest % outerAction.
-					innerSubscriptions.
-					subscriptions.size();
-
-			if (size > 0) {
-				s.request(size + remaining);
+			if (outerAction.pendingRequest > 0) {
+				s.request(outerAction.pendingRequest);
 			}
 
 		}

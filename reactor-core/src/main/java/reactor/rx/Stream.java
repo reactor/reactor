@@ -124,7 +124,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 	                                            @Nonnull final Consumer<E> onError) {
-		connect(new ErrorAction<O, E>(dispatcher, Selectors.T(exceptionType), onError));
+		ErrorAction<O, E> errorAction = new ErrorAction<O, E>(dispatcher, Selectors.T(exceptionType), onError);
+		checkAndSubscribe(
+				errorAction,
+				new StreamSubscription.Firehose<O>(this, errorAction));
 		return this;
 	}
 
@@ -253,7 +256,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
 		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
-		connect(mergeAction).prefetch(dispatcher.backlogSize());
+		connect(mergeAction);
 		return mergeAction;
 	}
 
@@ -742,6 +745,39 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	public Action<O, O> timeout(long timeout) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return timeout(timeout, getEnvironment().getRootTimer());
+	}
+
+	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timer   the reactor timer to run the timeout on
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public Action<O, O> timeout(long timeout, Timer timer) {
+		final TimeoutAction<O> d = new TimeoutAction<O>(
+				getDispatcher(),
+				timer,
+				timeout
+		);
+		return connect(d);
+	}
+
+	/**
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
 	public CountAction<O> count() {
@@ -801,8 +837,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<O> subscriber) {
-		final StreamSubscription<O> subscription = createSubscription(subscriber);
+		checkAndSubscribe(subscriber, createSubscription(subscriber));
+	}
 
+	private void checkAndSubscribe(Subscriber<O> subscriber, StreamSubscription<O> subscription) {
 		if (checkState() && addSubscription(subscription)) {
 			subscriber.onSubscribe(subscription);
 		} else if (state == State.COMPLETE) {
@@ -841,7 +879,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		error = throwable;
 
 		if (downstreamSubscription == null) {
-			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug(),throwable));
+			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug(), throwable));
 			return;
 		}
 
