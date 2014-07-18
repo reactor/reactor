@@ -17,12 +17,15 @@
 package reactor.core;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
 import reactor.event.dispatch.*;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
+import reactor.function.Consumer;
+import reactor.function.Supplier;
 import reactor.timer.SimpleHashWheelTimer;
 import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;
@@ -39,9 +42,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>> {
 
 	/**
-	 * The name of the default event loop dispatcher
+	 * The name of the default ring buffer group dispatcher
 	 */
-	public static final String EVENT_LOOP = "eventLoop";
+	public static final String RING_BUFFER_GROUP = "ringBufferGroup";
 
 	/**
 	 * The name of the default ring buffer dispatcher
@@ -70,10 +73,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private final Properties env;
 
-	private final AtomicReference<Timer>   timer            = new AtomicReference<Timer>();
-	private final AtomicReference<Reactor> rootReactor      = new AtomicReference<Reactor>();
-	private final Object                   monitor          = new Object();
-	private final Filter                   dispatcherFilter = new RoundRobinFilter();
+	private final AtomicReference<Timer>   timer               = new AtomicReference<Timer>();
+	private final AtomicReference<Reactor> rootReactor         = new AtomicReference<Reactor>();
+	private final Object                   monitor             = new Object();
+	private final Filter                   dispatcherFilter    = new RoundRobinFilter();
+	private final Map<String,Supplier <Dispatcher>>  dispatcherFactories = new HashMap<String,Supplier<Dispatcher>>();
 
 	private final ReactorConfiguration              configuration;
 	private final MultiValueMap<String, Dispatcher> dispatchers;
@@ -115,6 +119,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
 
+	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize) {
+		return createDispatcherFactory("parallel",poolsize, 1024, null, ProducerType.SINGLE, new BlockingWaitStrategy());
+	}
+
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
 			                                                                        dispatcherConfiguration) {
 		int size = getSize(dispatcherConfiguration, 0);
@@ -142,12 +150,6 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				null,
 				ProducerType.MULTI,
 				new BlockingWaitStrategy());
-	}
-
-	private EventLoopDispatcher createBlockingQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
-		int backlog = getBacklog(dispatcherConfiguration, 128);
-
-		return new EventLoopDispatcher(dispatcherConfiguration.getName(), backlog);
 	}
 
 	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
@@ -215,6 +217,36 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
+	 * Returns the default dispatcher group for this environment. By default, when a {@link PropertiesConfigurationReader} is
+	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.ringBufferGroup} property.
+	 *
+	 * @return The default dispatcher group
+	 * @since 2.0
+	 */
+	public Supplier<Dispatcher> getDefaulDispatcherFactory() {
+		return getDispatcherFactory(RING_BUFFER_GROUP);
+	}
+
+	/**
+	 * Returns the dispatcher factory with the given {@code name}.
+	 *
+	 * @param name The name of the dispatcher factory
+	 * @return The matching dispatcher factory, never {@code null}.
+	 * @throws IllegalArgumentException if the dispatcher does not exist
+	 */
+	public Supplier<Dispatcher> getDispatcherFactory(String name) {
+		synchronized (monitor) {
+			initDispatcherFactoryFromConfiguration(name);
+			Supplier<Dispatcher> factory = this.dispatcherFactories.get(name);
+			if (factory == null) {
+				throw new IllegalArgumentException("No Dispatcher Factory found for name '" + name + "'");
+			} else {
+				return factory;
+			}
+		}
+	}
+
+	/**
 	 * Returns the dispatcher with the given {@code name}.
 	 *
 	 * @param name The name of the dispatcher
@@ -250,6 +282,20 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			if (name.equals(defaultDispatcher)) {
 				this.dispatchers.add(DEFAULT_DISPATCHER_NAME, dispatcher);
 			}
+		}
+		return this;
+	}
+
+	/**
+	 * Adds the {@code dispatcher} to the environment, storing it using the given {@code name}.
+	 *
+	 * @param name       The name of the dispatcher
+	 * @param dispatcherFactory The dispatcher factory
+	 * @return This Environment
+	 */
+	public Environment addDispatcherFactory(String name, Supplier<Dispatcher> dispatcherFactory) {
+		synchronized (monitor) {
+			this.dispatcherFactories.put(name, dispatcherFactory);
 		}
 		return this;
 	}
@@ -314,19 +360,15 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		return this.dispatchers.entrySet().iterator();
 	}
 
-	private void initDispatcherFromConfiguration(String name){
-		if(dispatchers.get(name) != null) return;
+
+	private void initDispatcherFromConfiguration(String name) {
+		if (dispatchers.get(name) != null) return;
 
 		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
 
-			if(!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
+			if (!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
 
-			if (DispatcherType.EVENT_LOOP == dispatcherConfiguration.getType()) {
-				int size = getSize(dispatcherConfiguration, 0);
-				for (int i = 0; i < size; i++) {
-					addDispatcher(dispatcherConfiguration.getName(), createBlockingQueueDispatcher(dispatcherConfiguration));
-				}
-			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+			if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
 			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
@@ -336,6 +378,56 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
 			}
 		}
+	}
+
+
+	private void initDispatcherFactoryFromConfiguration(String name) {
+		if (dispatcherFactories.get(name) != null) return;
+		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
+
+			if (!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
+
+			if (DispatcherType.RING_BUFFER_GROUP == dispatcherConfiguration.getType()) {
+				addDispatcherFactory(dispatcherConfiguration.getName(),
+						createDispatcherFactory(
+								dispatcherConfiguration.getName(),
+								dispatcherConfiguration.getSize() == 0 ? PROCESSORS : dispatcherConfiguration.getSize(),
+								dispatcherConfiguration.getBacklog(),
+								null,
+								ProducerType.SINGLE,
+								new BlockingWaitStrategy()
+						));
+			}
+		}
+	}
+
+	private static Supplier<Dispatcher> createDispatcherFactory(final String name,
+	                                                            final int poolsize,
+	                                                            final int bufferSize,
+	                                                            final Consumer<Throwable> errorHandler,
+	                                                            final ProducerType producerType,
+	                                                            final WaitStrategy waitStrategy){
+		return new Supplier<Dispatcher>() {
+			int roundRobinIndex = -1;
+			Dispatcher[] dispatchers = new Dispatcher[poolsize];
+
+			@Override
+			public Dispatcher get() {
+				if(++roundRobinIndex == poolsize){
+					roundRobinIndex = 0;
+				}
+				if (dispatchers[roundRobinIndex] == null) {
+					dispatchers[roundRobinIndex] = new RingBufferDispatcher(
+							name,
+							bufferSize,
+							errorHandler,
+							producerType,
+							waitStrategy);
+				}
+
+				return dispatchers[roundRobinIndex];
+			}
+		};
 	}
 
 }

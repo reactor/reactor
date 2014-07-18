@@ -748,7 +748,6 @@ class PromisesSpec extends Specification {
 			"a promise"
 			def p1 = Promises.<String> config()
 					.env(new Environment())
-					.dispatcher('eventLoop')
 					.get()
 
 			final latch = new CountDownLatch(1)

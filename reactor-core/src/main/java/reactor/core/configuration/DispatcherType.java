@@ -25,13 +25,14 @@ import java.util.concurrent.ThreadPoolExecutor;
  * An enumeration of supported types of {@link Dispatcher}.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public enum DispatcherType {
 
 	/**
-	 * A {@link Dispatcher} which uses an event loop for dispatching
+	 * A grouped {@link Dispatcher}
 	 */
-	EVENT_LOOP,
+	RING_BUFFER_GROUP,
 
 	/**
 	 * A {@link Dispatcher} which uses a {@link RingBuffer} for dispatching

@@ -145,8 +145,8 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 	private DispatcherType getType(String dispatcherName, Properties configuration) {
 		String type = configuration.getProperty(String.format(FORMAT_DISPATCHER_TYPE, dispatcherName));
-		if("eventLoop".equals(type)) {
-			return DispatcherType.EVENT_LOOP;
+		if("ringBufferGroup".equals(type)) {
+			return DispatcherType.RING_BUFFER_GROUP;
 		} else if("ringBuffer".equals(type)) {
 			return DispatcherType.RING_BUFFER;
 		} else if("synchronous".equals(type)) {

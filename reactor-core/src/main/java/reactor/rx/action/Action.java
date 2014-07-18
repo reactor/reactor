@@ -52,17 +52,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Integer n) {
 			try {
 				if(firehose){
-					subscription.request(batchSize);
+					subscription.request(n);
 					return;
 				}
 
 				int previous = pendingRequest;
 				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
 
-				if (n > batchSize) {
-					subscription.request(batchSize);
-				} else if (previous == 0) {
-					subscription.request(n);
+				if (previous < batchSize) {
+					int upperBound = batchSize - previous;
+					int toRequest = n - previous;
+					subscription.request(toRequest > upperBound ? upperBound : n);
 				}
 
 			} catch (Throwable t) {
@@ -230,16 +230,20 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				public void accept(Subscription subscription) {
 					try {
 						doSubscribe(subscription);
-						startedCountDown.countDown();
+						if(!firehose){
+							startedCountDown.countDown();
+						}
 					} catch (Throwable t) {
 						doError(t);
 					}
 				}
 			});
-			try {
-				startedCountDown.await();
-			} catch (InterruptedException e) {
-				doError(e);
+			if(!firehose) {
+				try {
+					startedCountDown.await();
+				} catch (InterruptedException e) {
+					doError(e);
+				}
 			}
 		} else {
 			throw new IllegalStateException("Already subscribed");

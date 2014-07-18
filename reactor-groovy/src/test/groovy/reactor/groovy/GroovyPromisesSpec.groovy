@@ -18,7 +18,6 @@
 package reactor.groovy
 
 import reactor.core.Environment
-import reactor.event.dispatch.EventLoopDispatcher
 import reactor.rx.Promise
 import reactor.rx.spec.Promises
 import spock.lang.Shared
@@ -37,7 +36,6 @@ class GroovyPromisesSpec extends Specification {
 
 	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop', new EventLoopDispatcher('eventLoop', 256))
 	}
 
 	def "Promise returns value"() {
@@ -141,7 +139,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-			def p = Promises.<String> config().env(testEnv).dispatcher('eventLoop').get()
+			def p = Promises.<String> config().env(testEnv).get()
 			final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

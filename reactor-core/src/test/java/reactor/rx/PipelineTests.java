@@ -99,7 +99,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
 		Stream<String> stream =
-				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"), env, env.getDispatcher("eventLoop"));
+				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"), env);
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -423,12 +423,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelTest("sync", 1_000_000);
-		parallelMapManyTest("sync", 1_000_000);
-		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("ringBuffer", 1_000_000);
-		parallelTest("partitioned", 1_000_000);
-		parallelMapManyTest("partitioned", 1_000_000);
+		parallelTest("sync", 100_000);
+		parallelMapManyTest("sync", 100_000);
+		parallelTest("ringBuffer", 100_000);
+		parallelMapManyTest("ringBuffer", 100_000);
+		parallelTest("partitioned", 100_000);
+		parallelMapManyTest("partitioned", 100_000);
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
@@ -475,8 +475,8 @@ public class PipelineTests extends AbstractReactorTest {
 			deferred.broadcastNext(i);
 		}
 
-		if (!latch.await(60, TimeUnit.SECONDS)) {
-			System.out.println(deferred.debug());
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			throw new RuntimeException(deferred.debug());
 		}
 
 		long stop = System.currentTimeMillis() - start;
@@ -525,8 +525,8 @@ public class PipelineTests extends AbstractReactorTest {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		if (!latch.await(60, TimeUnit.SECONDS)) {
-			System.out.println(mapManydeferred.debug());
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			throw new RuntimeException(mapManydeferred.debug());
 		}
 		assertEquals(0, latch.getCount());
 

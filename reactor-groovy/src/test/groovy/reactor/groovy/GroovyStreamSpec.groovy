@@ -17,7 +17,6 @@ package reactor.groovy
 
 import reactor.core.Environment
 import reactor.core.spec.Reactors
-import reactor.event.dispatch.EventLoopDispatcher
 import reactor.function.support.Tap
 import reactor.rx.Stream
 import reactor.rx.spec.Streams
@@ -40,7 +39,6 @@ class GroovyStreamSpec extends Specification {
 
 	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop', new EventLoopDispatcher('eventLoop', 256))
 	}
 
 
@@ -189,7 +187,7 @@ class GroovyStreamSpec extends Specification {
 	def "relay events to reactor"() {
 		given:
 			'a reactor and a selector'
-			def r = Reactors.reactor().env(testEnv).dispatcher('eventLoop').get()
+			def r = Reactors.reactor().env(testEnv).get()
 			def key = $()
 
 		when:

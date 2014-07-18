@@ -16,8 +16,6 @@
 
 package reactor.rx;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
@@ -26,7 +24,6 @@ import reactor.alloc.Recyclable;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.RingBufferDispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
@@ -170,7 +167,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return {@literal this}
 	 */
 	public Action<O, Void> consume(@Nonnull final Consumer<O> consumer) {
-		return connect(new CallbackAction<O>(dispatcher, consumer, true)).prefetch(Integer.MAX_VALUE);
+		return connect(new CallbackAction<O>(dispatcher, consumer, true));
 	}
 
 	/**
@@ -282,23 +279,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Action<O, O>> parallel(final Integer poolsize) {
-		return parallel(poolsize, new Supplier<Dispatcher>() {
-			int roundRobinIndex = 0;
-			Dispatcher[] dispatchers = new Dispatcher[poolsize];
-
-			@Override
-			public Dispatcher get() {
-				if (dispatchers[roundRobinIndex] == null) {
-					dispatchers[roundRobinIndex] = new RingBufferDispatcher(
-							"parallel-stream",
-							1024,
-							null,
-							ProducerType.SINGLE,
-							new BlockingWaitStrategy());
-				}
-				return dispatchers[roundRobinIndex++];
-			}
-		});
+		return parallel(poolsize, environment != null ?
+				environment.getDefaulDispatcherFactory() :
+				Environment.newDispatcherFactory(poolsize));
 	}
 
 	/**

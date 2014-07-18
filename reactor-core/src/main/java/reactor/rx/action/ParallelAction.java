@@ -17,7 +17,6 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
@@ -30,25 +29,6 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
-	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
-		@Override
-		public void accept(Integer n) {
-			try {
-				int previous = pendingRequest;
-
-				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
-
-				if (n > batchSize) {
-					getSubscription().request(batchSize);
-				} else if (previous < batchSize) {
-					getSubscription().request(n);
-				}
-
-			} catch (Throwable t) {
-				doError(t);
-			}
-		}
-	};
 
 	private int roundRobinIndex = -1;
 
@@ -63,11 +43,6 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 		for (int i = 0; i < poolSize; i++) {
 			this.publishers[i] = new ParallelStream<O>(ParallelAction.this, multiDispatcher.get(), i);
 		}
-	}
-
-	@Override
-	protected void onRequest(int n) {
-		dispatch(n, requestConsumer);
 	}
 
 	@Override

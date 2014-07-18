@@ -33,7 +33,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 		then: "it contains the expected dispatchers"
 			configuration.defaultDispatcherName == 'ringBuffer'
 			dispatchers
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
@@ -68,8 +68,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "it contains the expected dispatchers"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.SYNCHRONOUS, null, null)
@@ -88,7 +87,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the later profile overrides the earlier profile"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
@@ -108,7 +107,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the active profile overrides the default profile"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
@@ -120,7 +119,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		when: "a profile is enabled and a system property override is set"
 			System.setProperty("reactor.profiles.active", "override-default, custom")
-			System.setProperty("reactor.dispatchers.alpha.type", "eventLoop")
+			System.setProperty("reactor.dispatchers.alpha.type", "ringBufferGroup")
 			def configuration = reader.read()
 			System.clearProperty("reactor.profiles.active")
 			System.clearProperty("reactor.dispatchers.alpha.type")
@@ -129,11 +128,11 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the system property takes precedence"
 			dispatchers.size() == 5
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 512)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
-			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.EVENT_LOOP, null, null)
+			matchesExpectedDefaultConfiguration(dispatchers.alpha, DispatcherType.RING_BUFFER_GROUP, null, null)
 	}
 
 	def "Missing active profiles are tolerated"() {
@@ -149,7 +148,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "its absence is tolerated"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
@@ -185,7 +184,7 @@ class PropertiesConfigurationReaderSpec extends Specification {
 
 		then: "the unrecognized dispatcher type is tolerated"
 			dispatchers.size() == 4
-			matchesExpectedDefaultConfiguration(dispatchers.eventLoop, DispatcherType.EVENT_LOOP, 0, 2048)
+			matchesExpectedDefaultConfiguration(dispatchers.ringBufferGroup, DispatcherType.RING_BUFFER_GROUP, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.ringBuffer, DispatcherType.RING_BUFFER, null, 8192)
 			matchesExpectedDefaultConfiguration(dispatchers.workQueue, DispatcherType.WORK_QUEUE, 0, 2048)
 			matchesExpectedDefaultConfiguration(dispatchers.threadPoolExecutor, DispatcherType.THREAD_POOL_EXECUTOR, 0, 2048)
