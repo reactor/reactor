@@ -130,13 +130,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public <A, E extends Action<O, A>> E connect(@Nonnull final E stream) {
-		stream.prefetch(batchSize).env(environment);
+		stream.capacity(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
 		this.subscribe(stream);
 		return stream;
 	}
 
-	public Stream<O> prefetch(int elements) {
+	public Stream<O> capacity(int elements) {
 		this.batchSize = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
 		return this;
@@ -240,7 +240,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null,
 				publishers);
 
-		mergeAction.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
+		mergeAction.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
 		return mergeAction;
 	}
 
@@ -265,7 +265,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<Action<O, O>> parallel() {
+	public final Stream<Stream<O>> parallel() {
 		return parallel(Runtime.getRuntime().availableProcessors());
 	}
 
@@ -278,7 +278,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<Action<O, O>> parallel(final Integer poolsize) {
+	public final Stream<Stream<O>> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaulDispatcherFactory() :
 				Environment.newDispatcherFactory(poolsize));
@@ -294,7 +294,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<Action<O, O>> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
+	public final Stream<Stream<O>> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		final ParallelAction<O> parallelAction = new ParallelAction<O>(
 				this.dispatcher, dispatcherSupplier, poolsize
 		);
@@ -443,7 +443,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	public <V> ForEachAction<V> split(int batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
-		d.prefetch(batchSize).env(environment).setKeepAlive(keepAlive);
+		d.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
 		iterableStream.subscribe(d);
 		return d;
 	}
@@ -618,7 +618,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 				dispatcher,
 				timer,
 				period, timeUnit, delay, backlog);
-		d.prefetch(backlog).env(environment).setKeepAlive(keepAlive);
+		d.capacity(backlog).env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -728,39 +728,6 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	public Action<O, O> timeout(long timeout) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public Action<O, O> timeout(long timeout, Timer timer) {
-		final TimeoutAction<O> d = new TimeoutAction<O>(
-				getDispatcher(),
-				timer,
-				timeout
-		);
-		return connect(d);
-	}
-
-	/**
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
 	public CountAction<O> count() {
@@ -823,7 +790,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		checkAndSubscribe(subscriber, createSubscription(subscriber));
 	}
 
-	private void checkAndSubscribe(Subscriber<O> subscriber, StreamSubscription<O> subscription) {
+	protected void checkAndSubscribe(Subscriber<O> subscriber, StreamSubscription<O> subscription) {
 		if (checkState() && addSubscription(subscription)) {
 			subscriber.onSubscribe(subscription);
 		} else if (state == State.COMPLETE) {

@@ -39,7 +39,7 @@ public interface Pipeline<O> extends Publisher<O>, Pausable {
 	/**
 	 * Subscribe an {@link Action} to the actual pipeline. Additionally to producing events (error,complete,next and
 	 * eventually flush), it will generally take care of setting the environment if available and
-	 * an initial prefetch size used for {@link org.reactivestreams.Subscription#request(int)}.
+	 * an initial capacity size used for {@link org.reactivestreams.Subscription#request(int)}.
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 *
 	 * @param action the processor to subscribe.

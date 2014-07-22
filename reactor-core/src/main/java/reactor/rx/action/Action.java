@@ -25,6 +25,8 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
+import reactor.timer.Timer;
+import reactor.util.Assert;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
@@ -38,26 +40,27 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	//private static final Logger log = LoggerFactory.getLogger(Action.class);
 
 	/**
-	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to batchSize + 4 events can be in-flight
+	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to batchSize + 4 events can be
+	 * in-flight
 	 * stacking into a Dispatcher.
 	 */
 	public static final int RESERVED_SLOTS = 4;
 
-	protected int pendingRequest = 0;
-	protected int currentBatch   = 0;
-	protected boolean firehose = false;
+	protected int     pendingNextSignals = 0;
+	protected int     currentNextSignals = 0;
+	protected boolean firehose           = false;
 
-	private final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
+	protected final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
 		@Override
 		public void accept(Integer n) {
 			try {
-				if(firehose){
+				if (firehose) {
 					subscription.request(n);
 					return;
 				}
 
-				int previous = pendingRequest;
-				if ((pendingRequest += n) < 0) pendingRequest = Integer.MAX_VALUE;
+				int previous = pendingNextSignals;
+				if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
 
 				if (previous < batchSize) {
 					int upperBound = batchSize - previous;
@@ -115,6 +118,39 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
+	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	public Action<O, O> timeout(long timeout) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return timeout(timeout, getEnvironment().getRootTimer());
+	}
+
+	/**
+	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
+	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timer   the reactor timer to run the timeout on
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public Action<O, O> timeout(long timeout, Timer timer) {
+		final TimeoutAction<O> d = new TimeoutAction<O>(
+				getDispatcher(),
+				timer,
+				timeout
+		);
+		return connect(d);
+	}
+
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		if (subscription != null && !terminated) {
 			int currentCapacity = capacity.intValue();
@@ -128,7 +164,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
-		if(subscription == null){
+		if (subscription == null) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
@@ -136,7 +172,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					requestUpstream(capacity, buffer.isComplete(), elements);
 				}
 			};
-		}else{
+		} else {
 			return new StreamSubscription.Firehose<O>(this, subscriber) {
 				@Override
 				public void request(int elements) {
@@ -147,13 +183,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 
-
 	@Override
 	public void accept(I i) {
 		try {
-			++currentBatch;
+			++currentNextSignals;
 			doNext(i);
-			if(!firehose){
+			if (!firehose) {
+				--pendingNextSignals;
 				doPendingRequest();
 			}
 		} catch (Throwable cause) {
@@ -162,13 +198,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doPendingRequest() {
-		if (currentBatch == pendingRequest) {
-			currentBatch = 0;
-			pendingRequest = 0;
-		} else if (currentBatch == batchSize ) {
-			pendingRequest -= currentBatch;
-			int toRequest = batchSize > pendingRequest ? pendingRequest : batchSize;
-			currentBatch = 0;
+		if (currentNextSignals == batchSize) {
+			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
+			currentNextSignals = 0;
 
 			if (toRequest > 0)
 				subscription.request(toRequest);
@@ -177,7 +209,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onNext(I ev) {
-		dispatch(ev,this);
+		dispatch(ev, this);
 	}
 
 	protected void onRequest(final int n) {
@@ -230,7 +262,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				public void accept(Subscription subscription) {
 					try {
 						doSubscribe(subscription);
-						if(!firehose){
+						if (!firehose) {
 							startedCountDown.countDown();
 						}
 					} catch (Throwable t) {
@@ -238,7 +270,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					}
 				}
 			});
-			if(!firehose) {
+			if (!firehose) {
 				try {
 					startedCountDown.await();
 				} catch (InterruptedException e) {
@@ -297,8 +329,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Action<I, O> prefetch(int elements) {
-		return (Action<I, O>) super.prefetch(elements);
+	public Action<I, O> capacity(int elements) {
+		return (Action<I, O>) super.capacity(elements);
 	}
 
 	@Override
@@ -355,15 +387,16 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher","")+
-				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":"+dispatcher.remainingSlots()) : "")) +
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
+						"")) +
 				", state=" + getState() +
-				", prefetch=" + getBatchSize() +
+				", capacity=" + getBatchSize() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", subscription=" + subscription +
-								", pending=" + pendingRequest +
-								", currentBatch=" + currentBatch
+								", pending=" + pendingNextSignals +
+								", currentNextSignals=" + currentNextSignals
 						: (subscription != null ? ", subscription=" + subscription : "")
 				) + '}';
 	}

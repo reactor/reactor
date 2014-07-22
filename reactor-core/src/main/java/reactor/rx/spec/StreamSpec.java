@@ -114,9 +114,9 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 				"MultiThreadDispatcher, refer to #parallel() method. ");
 
 		if(valuesSupplier != null){
-			return new SupplierAction<Void, T>(dispatcher, valuesSupplier).env(env).prefetch(batchSize);
+			return new SupplierAction<Void, T>(dispatcher, valuesSupplier).env(env).capacity(batchSize);
 		}else if(values != null){
-			return new ForEachAction<T>(values, dispatcher).env(env).prefetch(batchSize);
+			return new ForEachAction<T>(values, dispatcher).env(env).capacity(batchSize);
 		}else{
 			Stream<T> stream = new Stream<T>(dispatcher, env, batchSize);
 			if (source != null) {

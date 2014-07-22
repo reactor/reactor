@@ -43,7 +43,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		if (currentBatch % batchSize == 0) {
+		if (currentNextSignals % batchSize == 0) {
 			onRequest(batchSize);
 		}
 	}

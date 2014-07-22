@@ -18,6 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
+import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
 
@@ -25,7 +26,7 @@ import reactor.util.Assert;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class ParallelAction<O> extends Action<O, Action<O, O>> {
+public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
@@ -46,19 +47,19 @@ public class ParallelAction<O> extends Action<O, Action<O, O>> {
 	}
 
 	@Override
-	public Action<O, Action<O, O>> prefetch(int elements) {
-		super.prefetch(elements - (poolSize * RESERVED_SLOTS) + RESERVED_SLOTS);
+	public Action<O, Stream<O>> capacity(int elements) {
+		super.capacity(elements - (poolSize * RESERVED_SLOTS) + RESERVED_SLOTS);
 		int size = elements / poolSize;
 		for (ParallelStream p : publishers) {
-			p.prefetch(size);
+			p.capacity(size);
 		}
 		return this;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected StreamSubscription<Action<O, O>> createSubscription(final Subscriber<Action<O, O>> subscriber) {
-		return new StreamSubscription.Firehose<Action<O, O>>(this, subscriber) {
+	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<Stream<O>> subscriber) {
+		return new StreamSubscription.Firehose<Stream<O>>(this, subscriber) {
 			long cursor = 0l;
 
 			@Override

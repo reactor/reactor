@@ -21,6 +21,7 @@ import reactor.queue.CompletableConcurrentLinkedQueue;
 import reactor.queue.CompletableQueue;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
@@ -31,10 +32,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 2.0
  */
 public class StreamSubscription<O> implements Subscription {
-	final           Subscriber<O> subscriber;
-	final           Stream<O>     publisher;
-	protected final AtomicLong    capacity;
-
+	final           Subscriber<O>       subscriber;
+	final           Stream<O>           publisher;
+	protected final AtomicLong          capacity;
+	protected final ReentrantLock       bufferLock;
 	protected final CompletableQueue<O> buffer;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
@@ -46,6 +47,11 @@ public class StreamSubscription<O> implements Subscription {
 		this.publisher = publisher;
 		this.capacity = new AtomicLong();
 		this.buffer = buffer;
+		if (buffer != null) {
+			bufferLock = new ReentrantLock();
+		} else {
+			bufferLock = null;
+		}
 	}
 
 	@Override
@@ -57,15 +63,23 @@ public class StreamSubscription<O> implements Subscription {
 		checkRequestSize(elements);
 
 		int i = 0;
-		capacity.addAndGet(elements);
 		O element;
-		while (i < elements && (element = buffer.poll()) != null) {
-			onNext(element);
-			i++;
-		}
+		bufferLock.lock();
+		try {
+			while (i < elements && (element = buffer.poll()) != null) {
+				subscriber.onNext(element);
+				i++;
+			}
 
-		if (buffer.isComplete()) {
-			onComplete();
+			if (buffer.isComplete()) {
+				onComplete();
+			}
+
+			if (i < elements) {
+				capacity.getAndAdd(elements - i);
+			}
+		} finally {
+			bufferLock.unlock();
 		}
 	}
 
@@ -80,9 +94,18 @@ public class StreamSubscription<O> implements Subscription {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
 		} else {
-			buffer.add(ev);
-			// we just decremented below 0 so increment back one
-			capacity.incrementAndGet();
+			bufferLock.lock();
+			try {
+				// we just decremented below 0 so increment back one
+				if (capacity.incrementAndGet() > 0) {
+					onNext(ev);
+				} else{
+					buffer.add(ev);
+				}
+			} finally {
+				bufferLock.unlock();
+			}
+
 		}
 	}
 

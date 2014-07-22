@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -36,14 +37,27 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		super(dispatcher);
 		final DynamicMergeAction<I, O, E> thiz = this;
 		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
+			public Consumer<Integer> updatePendingElements = new Consumer<Integer>() {
+				@Override
+				public void accept(Integer elements) {
+					pendingNextSignals += elements;
+					if (runningComposables.get() > 0 && innerSubscriptions.subscriptions.size() == runningComposables.get()) {
+						requestConsumer.accept(elements);
+					}
+				}
+			};
+
+			@Override
+			protected void onRequest(int n) {
+				dispatch(n, updatePendingElements);
+			}
+
 			@Override
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-				if(thiz.state == State.READY){
+				if (thiz.state == State.READY) {
 					thiz.requestUpstream(capacity, terminated, elements);
-					pendingRequest += elements;
-				}else{
-					super.requestUpstream(capacity, terminated, elements);
 				}
+				super.requestUpstream(capacity, terminated, elements);
 			}
 		};
 	}
@@ -72,9 +86,9 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	}
 
 	@Override
-	public Action<I, O> prefetch(int elements) {
-		mergeAction.prefetch(elements);
-		return super.prefetch(elements);
+	public Action<I, O> capacity(int elements) {
+		mergeAction.capacity(elements);
+		return super.capacity(elements);
 	}
 
 	@Override

@@ -35,7 +35,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
 		return
 				Streams.<Integer>defer(env)
-						.prefetch(bufferSize)
+						.capacity(bufferSize)
 						.parallel()
 						.map(stream -> stream
 										.buffer()
@@ -56,7 +56,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 
-		final int elements = 10_000;
+		final int elements = 1_000;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
 		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
@@ -93,7 +93,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		}
 		stream.broadcastComplete();
 
-		latch.await(120, TimeUnit.SECONDS);
+		latch.await(5, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		long count = latch.getCount();

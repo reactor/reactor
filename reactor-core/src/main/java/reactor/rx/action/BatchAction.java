@@ -29,9 +29,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean flush;
 	final boolean first;
 
-	private long errorCount  = 0l;
-	private long acceptCount = 0l;
-
 	public BatchAction(int batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
 		super(dispatcher, batchSize);
@@ -51,10 +48,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		long accepted;
-		accepted = (++acceptCount) % batchSize;
-
-		if (first && accepted == 1) {
+		if (first && currentNextSignals == 1) {
 			firstCallback(value);
 		}
 
@@ -62,15 +56,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && accepted == 0) {
+		if (flush && currentNextSignals % batchSize == 0) {
 			flushCallback(value);
 		}
-	}
-
-	@Override
-	protected void doError(Throwable error) {
-		errorCount++;
-		super.doError(error);
 	}
 
 	@Override
@@ -89,10 +77,5 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		flushCallback(null);
 		super.requestUpstream(capacity, terminated, elements);
-	}
-
-	@Override
-	public String toString() {
-		return super.toString() + "{accepted=" + acceptCount + ", errors=" + errorCount + "}";
 	}
 }

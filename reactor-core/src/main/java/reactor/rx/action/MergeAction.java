@@ -76,7 +76,7 @@ public class MergeAction<O> extends Action<O, O> {
 	@Override
 	protected void doNext(O ev) {
 		if (processingAction != null) {
-			processingAction.doNext(ev);
+			processingAction.onNext(ev);
 		} else {
 			broadcastNext(ev);
 		}
@@ -94,7 +94,7 @@ public class MergeAction<O> extends Action<O, O> {
 	@Override
 	protected void doError(Throwable ev) {
 		if (processingAction != null) {
-			processingAction.doError(ev);
+			processingAction.onError(ev);
 		} else {
 			super.doError(ev);
 		}
@@ -106,7 +106,7 @@ public class MergeAction<O> extends Action<O, O> {
 			if (processingAction == null) {
 				super.doComplete();
 			} else {
-				processingAction.doComplete();
+				processingAction.onComplete();
 			}
 
 		}
@@ -143,8 +143,8 @@ public class MergeAction<O> extends Action<O, O> {
 
 			outerAction.innerSubscriptions.addSubscription(s);
 
-			if (outerAction.pendingRequest > 0) {
-				s.request(outerAction.pendingRequest);
+			if (outerAction.pendingNextSignals > 0) {
+				s.request(outerAction.pendingNextSignals);
 			}
 
 		}

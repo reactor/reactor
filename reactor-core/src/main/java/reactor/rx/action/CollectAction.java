@@ -46,4 +46,9 @@ public class CollectAction<T> extends BatchAction<T, List<T>>{
 		broadcastNext(new ArrayList<T>(values));
 		values.clear();
 	}
+
+	@Override
+	public String toString() {
+		return super.toString() +"{collected="+values.size()+"}";
+	}
 }

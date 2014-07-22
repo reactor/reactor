@@ -41,7 +41,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		this.defaultValues = defaultValues;
 		if (defaultValues != null) {
 			if (Collection.class.isAssignableFrom(defaultValues.getClass())) {
-				prefetch(((Collection<T>) defaultValues).size());
+				capacity(((Collection<T>) defaultValues).size());
 			}
 			setKeepAlive(true);
 		}

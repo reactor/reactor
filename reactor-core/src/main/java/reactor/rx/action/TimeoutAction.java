@@ -35,21 +35,22 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
-			if (timeoutRegistration == null || timeoutRegistration.getObject() == this) {
-				onTimeout();
-			}
+			if(timeoutRegistration.getObject() == this)
+				dispatch(timeoutRequest);
 		}
 	};
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			if (0 < (batchSize - currentBatch)) {
-				getSubscription().request(batchSize - currentBatch);
+			int toRequest = batchSize - currentNextSignals;
+			if (0 < toRequest) {
+				getSubscription().request(toRequest);
 			}
+			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 		}
 	};
 
-	private Registration<? extends Consumer<Long>> timeoutRegistration;
+	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
 	public TimeoutAction(Dispatcher dispatcher,
@@ -58,10 +59,6 @@ public class TimeoutAction<T> extends Action<T, T> {
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.timeout = timeout;
-	}
-
-	protected void onTimeout() {
-		dispatch(timeoutRequest);
 	}
 
 	@Override
@@ -73,6 +70,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+		timeoutRegistration.cancel();
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 

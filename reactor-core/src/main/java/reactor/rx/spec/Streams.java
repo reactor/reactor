@@ -191,7 +191,7 @@ public abstract class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T> ForEachAction<T> defer(T value, Environment env, Dispatcher dispatcher) {
 		ForEachAction<T> forEachAction = new ForEachAction<T>(Arrays.asList(value), dispatcher);
-		forEachAction.prefetch(1).env(env);
+		forEachAction.capacity(1).env(env);
 		return forEachAction;
 	}
 
@@ -237,7 +237,7 @@ public abstract class Streams {
 	public static <T> SupplierAction<Void, T> generate(Supplier<T> value, Environment env, Dispatcher dispatcher) {
 		if(value == null) throw new IllegalArgumentException("Supplier must be provided");
 		SupplierAction<Void, T> action = new SupplierAction<Void, T>(dispatcher, value);
-		action.prefetch(1).env(env);
+		action.capacity(1).env(env);
 		return action;
 	}
 

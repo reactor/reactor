@@ -711,7 +711,7 @@ class StreamsSpec extends Specification {
 			'a source and a collected stream'
 			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.collect(5).timeout(1000)
+			Stream reduced = source.collect(5).timeout(600)
 			def value = reduced.tap()
 			println reduced.debug()
 
