@@ -17,7 +17,7 @@ package reactor.rx;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.queue.CompletableConcurrentLinkedQueue;
+import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -39,7 +39,7 @@ public class StreamSubscription<O> implements Subscription {
 	protected final CompletableQueue<O> buffer;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
-		this(publisher, subscriber, new CompletableConcurrentLinkedQueue<O>());
+		this(publisher, subscriber, new CompletableLinkedQueue<O>());
 	}
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber, CompletableQueue<O> buffer) {

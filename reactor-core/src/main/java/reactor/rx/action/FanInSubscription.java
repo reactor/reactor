@@ -45,7 +45,6 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void request(final int elements) {
-		super.request(elements);
 		final int parallel = subscriptions.size();
 
 		if (parallel > 0) {

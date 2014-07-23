@@ -66,7 +66,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					int upperBound = batchSize - previous;
 					int toRequest = n - previous;
 					subscription.request(toRequest > upperBound ? upperBound : n);
-				}
+					}
 
 			} catch (Throwable t) {
 				doError(t);
@@ -203,9 +203,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			currentNextSignals = 0;
 
 			if (toRequest > 0)
-				subscription.request(toRequest);
-		}
-	}
+					subscription.request(toRequest);
+				}
+			}
 
 	@Override
 	public void onNext(I ev) {
@@ -391,7 +391,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
 						"")) +
 				", state=" + getState() +
-				", capacity=" + getBatchSize() +
+				", max-capacity=" + getBatchSize() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", subscription=" + subscription +

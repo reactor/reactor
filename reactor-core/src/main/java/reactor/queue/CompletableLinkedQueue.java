@@ -16,15 +16,15 @@
 
 package reactor.queue;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedTransferQueue;
 
 /**
- * A {@literal ConcurrentLinkedQueue} that supports a terminal state.
+ * A {@literal LinkedQueue} that supports a terminal state.
  *
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class CompletableConcurrentLinkedQueue<T> extends ConcurrentLinkedQueue<T> implements CompletableQueue<T>{
+final public class CompletableLinkedQueue<T> extends LinkedTransferQueue<T> implements CompletableQueue<T>{
 
 	boolean terminated = false;
 

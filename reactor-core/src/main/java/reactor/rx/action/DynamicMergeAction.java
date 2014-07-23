@@ -40,9 +40,10 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 			public Consumer<Integer> updatePendingElements = new Consumer<Integer>() {
 				@Override
 				public void accept(Integer elements) {
-					pendingNextSignals += elements;
 					if (runningComposables.get() > 0 && innerSubscriptions.subscriptions.size() == runningComposables.get()) {
 						requestConsumer.accept(elements);
+					}else{
+						if((pendingNextSignals += elements) < 0) pendingNextSignals = Integer.MAX_VALUE;
 					}
 				}
 			};
@@ -56,8 +57,8 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 				if (thiz.state == State.READY) {
 					thiz.requestUpstream(capacity, terminated, elements);
+					super.requestUpstream(capacity, terminated, elements);
 				}
-				super.requestUpstream(capacity, terminated, elements);
 			}
 		};
 	}

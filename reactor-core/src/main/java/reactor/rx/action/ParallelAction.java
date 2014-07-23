@@ -31,7 +31,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
 
-	private int roundRobinIndex = -1;
+	private int           roundRobinIndex = -1;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -49,7 +49,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	public Action<O, Stream<O>> capacity(int elements) {
 		super.capacity(elements - (poolSize * RESERVED_SLOTS) + RESERVED_SLOTS);
-		int size = elements / poolSize;
+		int size = batchSize / poolSize;
 		for (ParallelStream p : publishers) {
 			p.capacity(size);
 		}
@@ -124,7 +124,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 	}
 
-	static private class ParallelStream<O> extends Action<O, O> {
+	static private class ParallelStream<O> extends Stream<O> {
 		final ParallelAction<O> parallelAction;
 		final int               index;
 
