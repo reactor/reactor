@@ -562,7 +562,7 @@ public class PipelineTests extends AbstractReactorTest {
 	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
 		final int NUM_MESSAGES = 1000000;
 		final int BATCH_SIZE = 1000;
-		final int TIMEOUT = 50;
+		final int TIMEOUT = 100;
 		final int PARALLEL_STREAMS = 2;
 
 		/**
