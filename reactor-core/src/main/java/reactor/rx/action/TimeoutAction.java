@@ -35,7 +35,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
-			if(timeoutRegistration.getObject() == this)
+			if (timeoutRegistration.getObject() == this)
 				dispatch(timeoutRequest);
 		}
 	};
@@ -70,9 +70,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		broadcastNext(ev);
 
-		if(timeoutRegistration != null)
-			timeoutRegistration.cancel();
-
+		timeoutRegistration.cancel();
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
