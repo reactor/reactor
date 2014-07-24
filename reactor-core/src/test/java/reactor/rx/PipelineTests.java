@@ -33,9 +33,7 @@ import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
@@ -475,7 +473,7 @@ public class PipelineTests extends AbstractReactorTest {
 			deferred.broadcastNext(i);
 		}
 
-		if (!latch.await(15, TimeUnit.SECONDS)) {
+		if (!latch.await(30, TimeUnit.SECONDS)) {
 			throw new RuntimeException(deferred.debug());
 		}
 
@@ -539,5 +537,65 @@ public class PipelineTests extends AbstractReactorTest {
 		System.out.println("ev/ms: " + iterations / stop);
 		System.out.println("ev/s: " + iterations / stop * 1000);
 		System.out.println("");
+	}
+
+	/**
+	 * original from @oiavorskyl
+	 * https://github.com/reactor/reactor/issues/358
+	 * @throws Exception
+	 */
+	//@Test
+	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
+		final int NUM_MESSAGES = 1000000;
+		final int BATCH_SIZE = 1000;
+		final int TIMEOUT = 100;
+		final int PARALLEL_STREAMS = 2;
+
+		Stream<Integer> batchingStreamDef = Streams.defer(env);
+
+		List<Integer> testDataset = createTestDataset(NUM_MESSAGES + 1);
+
+		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
+		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
+
+		batchingStreamDef.parallel(PARALLEL_STREAMS)
+				.consume(stream ->
+					stream
+							.collect(BATCH_SIZE)
+							.timeout(TIMEOUT)
+							.map(items -> {
+								batchesDistribution.compute(items.size(),
+										( key,
+										  value ) -> value == null ? 1 : value + 1);
+								items.forEach(item -> latch.countDown());
+
+								return items;
+							}).available()
+		);
+
+		testDataset.forEach(batchingStreamDef::broadcastNext);
+		if(!latch.await(1, TimeUnit.SECONDS)){
+			throw new RuntimeException(batchingStreamDef.debug());
+
+		};
+
+		int messagesProcessed = batchesDistribution.entrySet()
+				.stream()
+				.mapToInt(entry -> entry.getKey() * entry
+						.getValue())
+				.reduce(Integer::sum).getAsInt();
+
+		System.out.println(batchingStreamDef.debug());
+
+		assertEquals(NUM_MESSAGES, messagesProcessed);
+		assertEquals(NUM_MESSAGES / BATCH_SIZE, batchesDistribution.get(BATCH_SIZE).intValue());
+	}
+
+	private List<Integer> createTestDataset(int i){
+		List<Integer> list = new ArrayList<>(i);
+		for(int k = 0; k<i; k++){
+			list.add(k);
+		}
+		return list;
 	}
 }

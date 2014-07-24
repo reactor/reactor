@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
@@ -54,6 +55,22 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			p.capacity(size);
 		}
 		return this;
+	}
+
+	@Override
+	public Action<O, Stream<O>> env(Environment environment) {
+		for (ParallelStream p : publishers) {
+			p.env(environment);
+		}
+		return super.env(environment);
+	}
+
+	@Override
+	public void setKeepAlive(boolean keepAlive) {
+		super.setKeepAlive(keepAlive);
+		for (ParallelStream p : publishers) {
+			p.setKeepAlive(keepAlive);
+		}
 	}
 
 	@Override
