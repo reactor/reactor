@@ -544,7 +544,7 @@ public class PipelineTests extends AbstractReactorTest {
 	 * https://github.com/reactor/reactor/issues/358
 	 * @throws Exception
 	 */
-	//@Test
+	@Test
 	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
 		final int NUM_MESSAGES = 1000000;
 		final int BATCH_SIZE = 1000;
@@ -553,24 +553,23 @@ public class PipelineTests extends AbstractReactorTest {
 
 		Stream<Integer> batchingStreamDef = Streams.defer(env);
 
-		List<Integer> testDataset = createTestDataset(NUM_MESSAGES + 1);
+		List<Integer> testDataset = createTestDataset(NUM_MESSAGES);
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
 
 		batchingStreamDef.parallel(PARALLEL_STREAMS)
-				.consume(stream ->
-					stream
+				.consume(substream ->
+								substream
 							.collect(BATCH_SIZE)
 							.timeout(TIMEOUT)
-							.map(items -> {
+							.consume(items -> {
 								batchesDistribution.compute(items.size(),
 										( key,
 										  value ) -> value == null ? 1 : value + 1);
 								items.forEach(item -> latch.countDown());
+							})
 
-								return items;
-							}).available()
 		);
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);

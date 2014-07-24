@@ -265,7 +265,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 			final CountDownLatch startedCountDown = new CountDownLatch(1);
 
-			trySyncDispatch(subscription, new Consumer<Subscription>() {
+			dispatch(subscription, new Consumer<Subscription>() {
 				@Override
 				public void accept(Subscription subscription) {
 					try {
