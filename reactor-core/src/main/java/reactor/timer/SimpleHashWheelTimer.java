@@ -76,7 +76,7 @@ public class SimpleHashWheelTimer implements Timer {
 	public SimpleHashWheelTimer(final int resolution) {
 		this.resolution = resolution;
 
-		this.loop = new NamedDaemonThreadFactory("hash-wheel-timer").newThread(
+		this.loop = new NamedDaemonThreadFactory("simple-hash-wheel-timer").newThread(
 				new Runnable() {
 					@Override
 					public void run() {
