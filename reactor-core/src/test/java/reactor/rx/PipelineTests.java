@@ -523,7 +523,7 @@ public class PipelineTests extends AbstractReactorTest {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		if (!latch.await(30, TimeUnit.SECONDS)) {
+		if (!latch.await(50, TimeUnit.SECONDS)) {
 			throw new RuntimeException(mapManydeferred.debug());
 		}
 		assertEquals(0, latch.getCount());
