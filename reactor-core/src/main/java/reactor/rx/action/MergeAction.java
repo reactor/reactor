@@ -147,10 +147,11 @@ public class MergeAction<O> extends Action<O, O> {
 				@Override
 				public void accept(Void aVoid) {
 					if (outerAction.pendingNextSignals > 0) {
-						int batchSize = outerAction.batchSize /
-								outerAction.innerSubscriptions.subscriptions.size();
-						int toRequest = outerAction.batchSize %
-								outerAction.innerSubscriptions.subscriptions.size() + batchSize;
+						int size = outerAction.innerSubscriptions.subscriptions.size();
+						if(size == 0) return;
+
+						int batchSize = outerAction.batchSize / size;
+						int toRequest = outerAction.batchSize % size + batchSize;
 
 						s.request(toRequest > outerAction.pendingNextSignals ? toRequest : outerAction.pendingNextSignals);
 					}

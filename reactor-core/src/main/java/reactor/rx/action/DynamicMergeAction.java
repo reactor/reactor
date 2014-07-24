@@ -50,7 +50,7 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 
 			@Override
 			protected void onRequest(int n) {
-				dispatch(n, updatePendingElements);
+				trySyncDispatch(n, updatePendingElements);
 			}
 
 			@Override

@@ -35,6 +35,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
+		batchSize = firehose ? Integer.MAX_VALUE : batchSize;
 		if (prefetch) {
 			requestConsumer.accept(batchSize);
 		}

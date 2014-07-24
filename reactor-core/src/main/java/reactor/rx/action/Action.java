@@ -66,7 +66,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					int upperBound = batchSize - previous;
 					int toRequest = n - previous;
 					subscription.request(toRequest > upperBound ? upperBound : n);
-					}
+				}
 
 			} catch (Throwable t) {
 				doError(t);
@@ -114,7 +114,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	public void available() {
 		if (subscription != null && !pause) {
-			onRequest(batchSize);
+			dispatch(batchSize, requestConsumer);
 		}
 	}
 
@@ -203,22 +203,30 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			currentNextSignals = 0;
 
 			if (toRequest > 0)
-					subscription.request(toRequest);
-				}
-			}
+				subscription.request(toRequest);
+		}
+	}
+
+	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
+		if(firehose){
+			action.accept(data);
+		}else{
+			dispatch(data, action);
+		}
+	}
 
 	@Override
 	public void onNext(I ev) {
-		dispatch(ev, this);
+		trySyncDispatch(ev, this);
 	}
 
 	protected void onRequest(final int n) {
-		dispatch(n, requestConsumer);
+		trySyncDispatch(n, requestConsumer);
 	}
 
 	@Override
 	public void onComplete() {
-		dispatch(new Consumer<Void>() {
+		trySyncDispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void any) {
 				try {
@@ -238,7 +246,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onError(Throwable cause) {
 		try {
 			error = cause;
-			dispatch(cause, new Consumer<Throwable>() {
+			trySyncDispatch(cause, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
 					doError(throwable);
@@ -257,7 +265,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 			final CountDownLatch startedCountDown = new CountDownLatch(1);
 
-			dispatch(subscription, new Consumer<Subscription>() {
+			trySyncDispatch(subscription, new Consumer<Subscription>() {
 				@Override
 				public void accept(Subscription subscription) {
 					try {

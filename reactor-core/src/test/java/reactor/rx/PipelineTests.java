@@ -423,15 +423,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-/*		parallelTest("sync", 1_000_000);
+		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("ringBuffer", 100_000);*/
-		Thread.sleep(15000);
-		for(int i = 0; i < 15; i++){
-			parallelTest("partitioned", 1_000_000);
-		}
-		//parallelMapManyTest("partitioned", 1_000_000);
+		parallelMapManyTest("ringBuffer", 100_000);
+		parallelTest("partitioned", 1_000_000);
+		parallelMapManyTest("partitioned", 1_000_000);
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
