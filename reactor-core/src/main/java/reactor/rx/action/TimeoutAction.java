@@ -46,7 +46,6 @@ public class TimeoutAction<T> extends Action<T, T> {
 			if (0 < toRequest) {
 				getSubscription().request(toRequest);
 			}
-			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 		}
 	};
 
@@ -70,7 +69,10 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
-		timeoutRegistration.cancel();
+
+		if(timeoutRegistration != null)
+			timeoutRegistration.cancel();
+
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 

@@ -189,7 +189,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			++currentNextSignals;
 			doNext(i);
 			if (!firehose) {
-				--pendingNextSignals;
 				doPendingRequest();
 			}
 		} catch (Throwable cause) {
@@ -202,8 +201,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
 			currentNextSignals = 0;
 
-			if (toRequest > 0)
+			if (toRequest > 0){
+				pendingNextSignals -= toRequest;
 				subscription.request(toRequest);
+			}
 		}
 	}
 

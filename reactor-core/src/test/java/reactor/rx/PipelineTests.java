@@ -539,6 +539,20 @@ public class PipelineTests extends AbstractReactorTest {
 		System.out.println("");
 	}
 
+
+
+	/**
+	 * original from @oiavorskyl
+	 * https://github.com/reactor/reactor/issues/358
+	 * @throws Exception
+	 */
+	@Test
+	public void shouldNotFlushStreamOnTimeoutPrematurelyAndShouldDoItConsistently() throws Exception {
+		for(int i =0; i < 10; i++){
+			shouldNotFlushStreamOnTimeoutPrematurely();
+		}
+	}
+
 	/**
 	 * original from @oiavorskyl
 	 * https://github.com/reactor/reactor/issues/358
@@ -548,8 +562,9 @@ public class PipelineTests extends AbstractReactorTest {
 	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
 		final int NUM_MESSAGES = 1000000;
 		final int BATCH_SIZE = 1000;
-		final int TIMEOUT = 100;
+		final int TIMEOUT = 150;
 		final int PARALLEL_STREAMS = 2;
+
 
 		Stream<Integer> batchingStreamDef = Streams.defer(env);
 
@@ -573,7 +588,7 @@ public class PipelineTests extends AbstractReactorTest {
 		);
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
-		if(!latch.await(1, TimeUnit.SECONDS)){
+		if(!latch.await(3, TimeUnit.SECONDS)){
 			throw new RuntimeException(batchingStreamDef.debug());
 
 		};
@@ -587,6 +602,7 @@ public class PipelineTests extends AbstractReactorTest {
 		System.out.println(batchingStreamDef.debug());
 
 		assertEquals(NUM_MESSAGES, messagesProcessed);
+		System.out.println(batchesDistribution);
 		assertEquals(NUM_MESSAGES / BATCH_SIZE, batchesDistribution.get(BATCH_SIZE).intValue());
 	}
 
