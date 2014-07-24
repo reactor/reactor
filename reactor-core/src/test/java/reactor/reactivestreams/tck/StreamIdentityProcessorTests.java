@@ -53,6 +53,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 						.combine();
 	}
 
+
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 
