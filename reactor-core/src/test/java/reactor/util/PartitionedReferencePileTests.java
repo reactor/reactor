@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
@@ -85,7 +86,7 @@ public class PartitionedReferencePileTests {
 			f.get();
 		}
 
-		Collection<Slot> slots = pile.collect();
+		Set<Slot> slots = pile.collect().castToSet();
 
 		assertThat("All Slots allocated are available", slots, iterableWithSize(threadCnt * backlog * 2));
 	}

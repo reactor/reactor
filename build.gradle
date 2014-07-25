@@ -254,7 +254,8 @@ project('reactor-core') {
 		compile "com.lmax:disruptor:$disruptorVersion"
 
 		// Rich Collections
-		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion",
+						"io.gatling:jsr166e:1.0"
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:0.4.0.M1"

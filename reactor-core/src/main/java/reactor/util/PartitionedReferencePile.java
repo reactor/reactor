@@ -1,14 +1,17 @@
 package reactor.util;
 
 import com.gs.collections.api.block.function.Function0;
+import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.block.procedure.Procedure2;
 import com.gs.collections.api.map.MutableMap;
+import com.gs.collections.api.multimap.MutableMultimap;
+import com.gs.collections.api.set.ImmutableSet;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
+import com.gs.collections.impl.set.mutable.UnifiedSet;
 import reactor.function.Supplier;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -67,18 +70,46 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		return vals.get(nextAvail);
 	}
 
-	public Collection<T> collect() {
-		FastList<T> aggregate = FastList.newList();
-		partitions.valuesView().forEachWith(zipFn, aggregate);
-		return aggregate;
+	public ImmutableSet<T> collect() {
+		final UnifiedSet<T> vals = UnifiedSet.newSet();
+		partitions.keysView().forEach(new Procedure<Long>() {
+			@Override
+			public void value(Long threadId) {
+				Iterator<T> iter = iteratorFor(threadId);
+				while (iter.hasNext()) {
+					vals.add(iter.next());
+				}
+			}
+		});
+		return vals.toImmutable();
 	}
 
 	@Override
 	public Iterator<T> iterator() {
-		Long threadId = Thread.currentThread().getId();
+		return iteratorFor(Thread.currentThread().getId());
+	}
+
+	@Override
+	public String toString() {
+		final StringBuilder sb = new StringBuilder("PartitionedReferencePile{\n");
+		partitions.forEachKeyValue(new Procedure2<Long, FastList<T>>() {
+			@Override
+			public void value(Long threadId, FastList<T> vals) {
+				sb.append("\tthread:")
+				  .append(threadId)
+				  .append("=")
+				  .append(vals.getFirst().getClass().getSimpleName())
+				  .append("[").append(vals.size()).append("],\n");
+			}
+		});
+		sb.append("}");
+		return sb.toString();
+	}
+
+	private Iterator<T> iteratorFor(Long threadId) {
 		AtomicInteger nextAvail = nextAvailable.getIfAbsentPut(threadId, atomicIntegerFn);
 		final FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
-		final int end = nextAvail.get();
+		final int end = nextAvail.getAndSet(-1);
 
 		return new Iterator<T>() {
 			int currIdx = 0;
@@ -100,22 +131,4 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 			}
 		};
 	}
-
-	@Override
-	public String toString() {
-		final StringBuilder sb = new StringBuilder("PartitionedReferencePile{\n");
-		partitions.forEachKeyValue(new Procedure2<Long, FastList<T>>() {
-			@Override
-			public void value(Long threadId, FastList<T> vals) {
-				sb.append("\tthread:")
-				  .append(threadId)
-				  .append("=")
-				  .append(vals.getFirst().getClass().getSimpleName())
-				  .append("[").append(vals.size()).append("],\n");
-			}
-		});
-		sb.append("}");
-		return sb.toString();
-	}
-
 }

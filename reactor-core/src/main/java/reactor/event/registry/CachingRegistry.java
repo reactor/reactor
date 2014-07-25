@@ -1,37 +1,34 @@
 package reactor.event.registry;
 
+import com.gs.collections.api.block.function.Function0;
+import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.function.checked.CheckedFunction;
-import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
-import com.gs.collections.impl.multimap.set.SynchronizedPutUnifiedSetMultimap;
+import com.gs.collections.impl.map.mutable.UnifiedMap;
+import jsr166e.ConcurrentHashMapV8;
 import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Implementation of {@link reactor.event.registry.Registry} that uses a level 1 cache. New registrations are cached if
- * they are an {@link reactor.event.selector.ObjectSelector} since that means a fast object equality match so the cache
- * can be safely primed. New registrations will also be matched against all the keys in the cache to see if they match
- * any and if so, the new item is added to that cache entry.
+ * Implementation of {@link reactor.event.registry.Registry} that uses a partitioned cache that partitions on thread
+ * id.
  *
  * @author Jon Brisbin
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private final boolean          useCache;
-	private final Consumer<Object> onNotFound;
+	private final NewThreadLocalRegsFn newThreadLocalRegsFn = new NewThreadLocalRegsFn();
+	private final NewRegsFn            newRegsFn            = new NewRegsFn();
 
-	private final MultiReaderFastList<Registration<? extends T>>                       registrations;
-	private final SynchronizedPutUnifiedSetMultimap<Object, Registration<? extends T>> cache;
+	private final boolean                                                                        useCache;
+	private final Consumer<Object>                                                               onNotFound;
+	private final MultiReaderFastList<Registration<? extends T>>                                 registrations;
+	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>> threadLocalCache;
 
 	public CachingRegistry() {
 		this(true, null);
@@ -41,122 +38,87 @@ public class CachingRegistry<T> implements Registry<T> {
 		this.useCache = useCache;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
-		this.cache = SynchronizedPutUnifiedSetMultimap.newMultimap();
+		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>>();
 	}
 
 	@Override
-	public <V extends T> Registration<V> register(final Selector sel, V obj) {
-		final SelectorCacheKeyPredicate selectorPredicate = new SelectorCacheKeyPredicate(sel);
+	public <V extends T> Registration<V> register(Selector sel, V obj) {
+		RemoveRegistration removeFn = new RemoveRegistration();
+		final Registration<V> reg = new CachableRegistration<V>(sel, obj, removeFn);
+		removeFn.reg = reg;
 
-		final AtomicReference<CachableRegistration<V>> ref = new AtomicReference<CachableRegistration<V>>();
-		final CachableRegistration<V> reg = new CachableRegistration<V>(
-				sel,
-				obj,
-				new Runnable() {
-					@Override
-					public void run() {
-						registrations.withWriteLockAndDelegate(
-								new CheckedProcedure<MutableList<Registration<? extends T>>>() {
-									@Override
-									public void safeValue(MutableList<Registration<? extends T>> regs) throws Exception {
-										regs.remove(ref.get());
-									}
-								}
-						);
-						cache.keysView()
-						     .select(selectorPredicate)
-						     .forEach(new CheckedProcedure<Object>() {
-							     @Override
-							     public void safeValue(Object key) throws Exception {
-								     cache.removeAll(key);
-							     }
-						     });
-
-					}
-				}
-		);
-		// this little trick is to be able to reference this reg later for cancellation
-		ref.set(reg);
-		// add to main list
-		registrations.withWriteLockAndDelegate(
-				new CheckedProcedure<MutableList<Registration<? extends T>>>() {
-					@Override
-					public void safeValue(MutableList<Registration<? extends T>> regs) throws Exception {
-						regs.add(reg);
-					}
-				}
-		);
-
-		if (useCache) {
-			if (isDirectMatchable(sel)) {
-				cache.put(sel.getObject(), reg);
-			} else {
-				cache.keysView()
-				     .select(selectorPredicate)
-				     .forEach(new CheckedProcedure<Object>() {
-					     @Override
-					     public void safeValue(Object cacheKey) throws Exception {
-						     cache.put(cacheKey, reg);
-					     }
-				     });
+		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+			@Override
+			public void value(MutableList<Registration<? extends T>> regs) {
+				regs.add(reg);
 			}
+		});
+		if (useCache) {
+			threadLocalCache.clear();
 		}
 
 		return reg;
 	}
 
 	@Override
-	public boolean unregister(Object key) {
-		final AtomicBoolean changed = new AtomicBoolean(false);
-		registrations
-				.select(new CacheKeyPredicate<T>(key))
-				.forEach(new CheckedProcedure<Registration<? extends T>>() {
-					@Override
-					public void safeValue(Registration<? extends T> reg) throws Exception {
-						changed.set(true);
-						reg.cancel();
+	public boolean unregister(final Object key) {
+		final AtomicBoolean modified = new AtomicBoolean(false);
+		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+			@Override
+			public void value(final MutableList<Registration<? extends T>> regs) {
+				for (Registration<? extends T> reg : regs) {
+					if (reg.getSelector().matches(key)) {
+						regs.remove(reg);
+						modified.compareAndSet(false, true);
 					}
-				});
-		return changed.get();
+				}
+				if (useCache && modified.get()) {
+					threadLocalCache.clear();
+				}
+			}
+		});
+		return modified.get();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public List<Registration<? extends T>> select(final Object key) {
-		if (null == key) {
-			return Collections.emptyList();
+	public List<Registration<? extends T>> select(Object key) {
+		// use a thread-local cache
+		UnifiedMap<Object, List<Registration<? extends T>>> allRegs = threadLocalRegs();
+
+		// maybe pull Registrations from cache for this key
+		List<Registration<? extends T>> selectedRegs = null;
+		if (useCache
+				&& (null != (selectedRegs = allRegs.get(key))
+				|| !((selectedRegs = allRegs.getIfAbsentPut(key, newRegsFn)).isEmpty()))) {
+			return selectedRegs;
 		}
 
-		List<Registration<? extends T>> regs;
-		if (useCache && !((regs = cache.get(key).toList()).isEmpty())) {
-			return regs;
-		} else {
-			cacheMiss(key);
+		// cache not used or cache miss
+		cacheMiss(key);
+		if (null == selectedRegs) {
+			selectedRegs = FastList.newList();
 		}
 
-		regs = registrations
-				.select(new CacheKeyPredicate<T>(key))
-				.collect(new CheckedFunction<Registration<? extends T>, Registration<? extends T>>() {
-					@Override
-					public Registration<? extends T> safeValueOf(Registration<? extends T> reg) throws Exception {
-						if (useCache) {
-							cache.put(key, reg);
-						}
-						return reg;
-					}
-				});
+		// find Registrations based on Selector
+		for (Registration<? extends T> reg : this) {
+			if (reg.getSelector().matches(key)) {
+				selectedRegs.add(reg);
+			}
+		}
 
-		if (regs.isEmpty() && null != onNotFound) {
+		// nothing found, maybe invoke handler
+		if (selectedRegs.isEmpty() && null != onNotFound) {
 			onNotFound.accept(key);
 		}
 
-		return regs;
+		// return
+		return selectedRegs;
 	}
 
 	@Override
 	public void clear() {
 		registrations.clear();
-		cache.clear();
+		threadLocalCache.clear();
 	}
 
 	@Override
@@ -164,51 +126,45 @@ public class CachingRegistry<T> implements Registry<T> {
 		return FastList.<Registration<? extends T>>newList(registrations).iterator();
 	}
 
-	@Override
-	public String toString() {
-		return "CachingRegistry{" +
-				"useCache=" + useCache +
-				", onNotFound=" + onNotFound +
-				", registrations=" + registrations +
-				", cache=" + cache +
-				'}';
-	}
-
-	private boolean isDirectMatchable(Selector sel) {
-		Class<?> objType = sel.getObject().getClass();
-		if (Object.class.equals(objType) || Selectors.AnonymousKey.class.equals(objType)) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
 	protected void cacheMiss(Object key) {
 	}
 
-	private static class SelectorCacheKeyPredicate extends CheckedPredicate<Object> {
-		private final Selector sel;
-
-		private SelectorCacheKeyPredicate(Selector sel) {
-			this.sel = sel;
+	private UnifiedMap<Object, List<Registration<? extends T>>> threadLocalRegs() {
+		Long threadId = Thread.currentThread().getId();
+		UnifiedMap<Object, List<Registration<? extends T>>> regs;
+		if (null == (regs = threadLocalCache.get(threadId))) {
+			regs = threadLocalCache.computeIfAbsent(threadId, newThreadLocalRegsFn);
 		}
+		return regs;
+	}
+
+	private final class RemoveRegistration implements Runnable {
+		Registration<? extends T> reg;
 
 		@Override
-		public boolean safeAccept(Object cacheKey) throws Exception {
-			return sel.matches(cacheKey);
+		public void run() {
+			registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+				@Override
+				public void value(MutableList<Registration<? extends T>> regs) {
+					regs.remove(reg);
+					threadLocalCache.clear();
+				}
+			});
 		}
 	}
 
-	private static class CacheKeyPredicate<T> extends CheckedPredicate<Registration<? extends T>> {
-		private final Object cacheKey;
-
-		private CacheKeyPredicate(Object cacheKey) {
-			this.cacheKey = cacheKey;
-		}
-
+	private final class NewThreadLocalRegsFn
+			implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<? extends T>>>> {
 		@Override
-		public boolean safeAccept(Registration<? extends T> reg) throws Exception {
-			return !reg.isCancelled() && reg.getSelector().matches(cacheKey);
+		public UnifiedMap<Object, List<Registration<? extends T>>> apply(Long aLong) {
+			return UnifiedMap.newMap();
+		}
+	}
+
+	private final class NewRegsFn implements Function0<List<Registration<? extends T>>> {
+		@Override
+		public List<Registration<? extends T>> value() {
+			return FastList.newList();
 		}
 	}
 
