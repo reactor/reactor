@@ -54,6 +54,13 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 	}
 
 
+	//@Test
+	public void testIdentityProcessorConsistently() throws InterruptedException {
+		for(int i = 0; i<15; i++){
+			testIdentityProcessor();
+		}
+	}
+
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 

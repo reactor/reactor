@@ -161,7 +161,7 @@ public class MergeAction<O> extends Action<O, O> {
 		@Override
 		public void onComplete() {
 			s.toRemove = true;
-			if (outerAction.runningComposables.decrementAndGet() <= 0) {
+			if (outerAction.runningComposables.decrementAndGet() == 0) {
 				outerAction.innerSubscriptions.onComplete();
 			}
 		}
