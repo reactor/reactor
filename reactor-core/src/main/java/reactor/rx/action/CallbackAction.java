@@ -35,8 +35,8 @@ public class CallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		batchSize = firehose ? Integer.MAX_VALUE : batchSize;
 		if (prefetch) {
+			batchSize = firehose ? Integer.MAX_VALUE : batchSize;
 			requestConsumer.accept(batchSize);
 		}
 	}
@@ -44,7 +44,7 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		if (currentNextSignals % batchSize == 0) {
+		if (prefetch && currentNextSignals % batchSize == 0) {
 			requestConsumer.accept(batchSize);
 		}
 	}

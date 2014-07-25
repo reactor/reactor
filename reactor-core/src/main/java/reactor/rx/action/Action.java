@@ -22,6 +22,9 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
+import reactor.function.Supplier;
+import reactor.queue.CompletableLinkedQueue;
+import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
@@ -78,11 +81,11 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	protected Subscription subscription;
 
-	public static <O> Action<O, O> passthrough() {
-		return passthrough(SynchronousDispatcher.INSTANCE);
+	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
+		return passthrough(dispatcher, null);
 	}
 
-	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
+	public static <O> Action<O, O> passthrough(Dispatcher dispatcher,final Supplier<CompletableQueue<O>> queue) {
 		return new Action<O, O>(dispatcher) {
 			@Override
 			protected void doNext(O ev) {
@@ -91,7 +94,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 			@Override
 			protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
-				return new StreamSubscription<O>(this, subscriber) {
+				return new StreamSubscription<O>(this, subscriber, queue == null ? new CompletableLinkedQueue<O>() : queue.get()) {
 					@Override
 					public void request(int elements) {
 						super.request(elements);

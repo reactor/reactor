@@ -32,6 +32,7 @@ import reactor.event.selector.Selectors;
 import reactor.filter.PassThroughFilter;
 import reactor.function.*;
 import reactor.function.support.Tap;
+import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
@@ -62,7 +63,7 @@ import java.util.concurrent.TimeUnit;
  * @param <O> The type of the output values
  * @author Stephane Maldini
  * @author Jon Brisbin
- * @since 1.1, 2.0
+ * @since 1.1, 2.0, 2.0
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
@@ -153,6 +154,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param exceptionType the type of exceptions to handle
 	 * @param <E>           type of the exception to handle
 	 * @return {@literal this}
+	 * @since 2.0
 	 */
 	public <E extends Throwable> Stream<E> recover(@Nonnull final Class<E> exceptionType) {
 		RecoverAction<O, E> recoverAction = new RecoverAction<O, E>(dispatcher, Selectors.T(exceptionType));
@@ -161,13 +163,26 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}.
+	 * Stream}. It will eagerly prefetch upstream publisher, for a passive version
+	 * see {@link this#observe(reactor.function.Consumer)}
 	 *
 	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
 	public Action<O, Void> consume(@Nonnull final Consumer<O> consumer) {
 		return connect(new CallbackAction<O>(dispatcher, consumer, true));
+	}
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any values accepted by this {@code
+	 * Stream}.
+	 *
+	 * @param consumer the conumer to invoke on each value
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public Action<O, Void> observe(@Nonnull final Consumer<O> consumer) {
+		return connect(new CallbackAction<O>(dispatcher, consumer, false));
 	}
 
 	/**
@@ -198,7 +213,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn  the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Stream} containing the transformed values
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public <V, C extends Publisher<V>> MapManyAction<O, V, C> flatMap(@Nonnull final Function<O, C> fn) {
 		return mapMany(fn);
@@ -211,7 +226,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn  the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Stream} containing the transformed values
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <V, C extends Publisher<V>> MapManyAction<O, V, C> mapMany(@Nonnull final Function<O, C> fn) {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
@@ -225,7 +240,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @param composables the the composables to connect
 	 * @return the merged stream
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	@SafeVarargs
@@ -248,7 +263,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
 	 *
 	 * @return the merged stream
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
@@ -303,13 +318,33 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if no subscriber is attached
-	 * downstream.
+	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
+	 * blocking).
 	 *
 	 * @return a buffered stream
-	 * @since 1.1
+	 * @since 2.0
 	 */
-	public Action<O, O> buffer() {
-		return connect(Action.<O>passthrough(dispatcher));
+	public Action<O, O> overflowFactory() {
+		return overflow(null);
+	}
+
+	/**
+	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if no subscriber is attached
+	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
+	 * blocking).
+	 *
+	 * @param queue A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 * @return a buffered stream
+	 * @since 2.0
+	 */
+	public Action<O, O> overflow(CompletableQueue<O> queue) {
+		Action<O, O> stream = Action.<O>passthrough(dispatcher);
+		stream.capacity(batchSize).env(environment);
+		stream.setKeepAlive(keepAlive);
+		checkAndSubscribe(stream, queue != null ?
+				new StreamSubscription<O>(this, stream, queue) :
+				new StreamSubscription<O>(this, stream));
+		return stream;
 	}
 
 	/**
@@ -331,7 +366,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * passed into the new {@code Stream}. If the predicate test fails, the value is ignored.
 	 *
 	 * @return a new {@code Stream} containing only values that pass the predicate test
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public FilterAction<Boolean, Stream<Boolean>> filter() {
@@ -344,7 +379,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @param supplier the supplier to drain
 	 * @return a new {@code Stream} whose values are generated on each request signal
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <E> SupplierAction<O, E> propagate(final Supplier<E> supplier) {
 		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
@@ -410,7 +445,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Create a new {@code Stream} that filters out consecutive equals values.
 	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public Action<O, O> distinctUntilChanged() {
 		final DistinctUntilChangedAction<O> d = new DistinctUntilChangedAction<O>(dispatcher);
@@ -424,7 +459,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <V> ForEachAction<V> split() {
 		return split(Integer.MAX_VALUE);
@@ -437,7 +472,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values result from the iterable input
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public <V> ForEachAction<V> split(int batchSize) {
@@ -494,7 +529,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @param period the time period when each window close and flush the attached consumer
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> window(int period) {
 		return window(period, TimeUnit.MILLISECONDS);
@@ -509,7 +544,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param period  the time period when each window close and flush the attached consumer
 	 * @param backlog maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> movingWindow(int period, int backlog) {
 		return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
@@ -523,7 +558,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param period   the time period when each window close and flush the attached consumer
 	 * @param timeUnit the time unit used for the period
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> window(int period, TimeUnit timeUnit) {
 		return window(period, timeUnit, 0);
@@ -537,7 +572,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param timeUnit the time unit used for the period
 	 * @param backlog  maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
 		return movingWindow(period, timeUnit, 0, backlog);
@@ -552,7 +587,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param timeUnit the time unit used for the period
 	 * @param delay    the initial delay in milliseconds
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> window(int period, TimeUnit timeUnit, int delay) {
 		Assert.state(getEnvironment() != null,
@@ -571,7 +606,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param delay    the initial delay in milliseconds
 	 * @param backlog  maximum amount of items to keep
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
 		Assert.state(getEnvironment() != null,
@@ -589,7 +624,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param delay    the initial delay in milliseconds
 	 * @param timer    the reactor timer to run the window on
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
 		final Action<O, List<O>> d = new WindowAction<O>(
@@ -611,7 +646,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param backlog  maximum amount of items to keep
 	 * @param timer    the reactor timer to run the window on
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
 		final Action<O, List<O>> d = new MovingWindowAction<O>(
@@ -686,7 +721,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param <A>     the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
 		return scan(fn, Functions.supplier(initial));
@@ -705,7 +740,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param accumulators the {@link Supplier} that will provide accumulators
 	 * @param <A>          the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		final Action<O, A> stream = new ScanAction<O, A>(accumulators,
@@ -721,7 +756,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn  the reduce function
 	 * @param <A> the type of the reduced object
 	 * @return a new {@code Stream} whose values contain only the reduced objects
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return scan(fn, (Supplier<A>) null);
@@ -747,7 +782,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
 	 * composed actions.
 	 *
-	 * @since 1.1
+	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public String debug() {
