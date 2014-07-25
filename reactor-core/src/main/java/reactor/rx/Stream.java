@@ -51,8 +51,7 @@ import java.util.concurrent.TimeUnit;
  * <p/>
  * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
  * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
- * eventually
- * produce a result {@param <O>} and will offer cascading over its own subscribers.
+ * eventually produce a result {@param <O>} and will offer cascading over its own subscribers.
  * <p/>
  * * <p>
  * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
@@ -63,7 +62,7 @@ import java.util.concurrent.TimeUnit;
  * @param <O> The type of the output values
  * @author Stephane Maldini
  * @author Jon Brisbin
- * @since 1.1, 2.0, 2.0
+ * @since 1.1, 2.0
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
@@ -317,19 +316,19 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if no subscriber is attached
+	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 *
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Action<O, O> overflowFactory() {
+	public Action<O, O> overflow() {
 		return overflow(null);
 	}
 
 	/**
-	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if no subscriber is attached
+	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 *
@@ -342,8 +341,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		stream.capacity(batchSize).env(environment);
 		stream.setKeepAlive(keepAlive);
 		checkAndSubscribe(stream, queue != null ?
-				new StreamSubscription<O>(this, stream, queue) :
-				new StreamSubscription<O>(this, stream));
+				createSubscription(stream).wrap(queue) :
+				createSubscription(stream));
 		return stream;
 	}
 

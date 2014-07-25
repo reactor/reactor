@@ -38,7 +38,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 						.capacity(bufferSize)
 						.parallel()
 						.map(stream -> stream
-										.overflowFactory()
+										.overflow()
 										.map(integer -> integer)
 										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())

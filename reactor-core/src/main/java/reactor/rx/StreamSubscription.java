@@ -116,12 +116,6 @@ public class StreamSubscription<O> implements Subscription {
 		buffer.complete();
 	}
 
-	protected void checkRequestSize(int elements) {
-		if (elements <= 0) {
-			throw new IllegalArgumentException("Cannot request a non strictly positive number: " + elements);
-		}
-	}
-
 	public void onError(Throwable throwable) {
 		subscriber.onError(throwable);
 	}
@@ -178,6 +172,17 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
+	protected void checkRequestSize(int elements) {
+		if (elements <= 0) {
+			throw new IllegalArgumentException("Cannot request a non strictly positive number: " + elements);
+		}
+	}
+
+	StreamSubscription<O> wrap(CompletableQueue<O> queue){
+		final StreamSubscription<O> thiz = this;
+		return new WrappedStreamSubscription<O>(thiz, queue);
+	}
+
 	public static class Firehose<O> extends StreamSubscription<O> {
 		protected volatile boolean terminated = false;
 
@@ -222,5 +227,45 @@ public class StreamSubscription<O> implements Subscription {
 					"firehose!" +
 					'}';
 		}
+	}
+
+	static class WrappedStreamSubscription<O> extends StreamSubscription<O> {
+		final StreamSubscription<O> thiz;
+
+		public WrappedStreamSubscription(final StreamSubscription<O> thiz, CompletableQueue<O> queue) {
+			super(null, new Subscriber<O>() {
+					@Override
+					public void onSubscribe(Subscription s) {
+					}
+
+					@Override
+					public void onNext(O o) {
+						thiz.onNext(o);
+					}
+
+					@Override
+					public void onError(Throwable t) {
+						thiz.onError(t);
+					}
+
+					@Override
+					public void onComplete() {
+						thiz.onComplete();
+					}
+				}, queue);
+			this.thiz = thiz;
+		}
+
+		@Override
+	public void request(int elements) {
+		super.request(elements);
+		thiz.request(elements);
+	}
+
+		@Override
+	public void cancel() {
+		super.cancel();
+		thiz.cancel();
+	}
 	}
 }
