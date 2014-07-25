@@ -300,6 +300,7 @@ class ReactorsSpec extends Specification {
 			reactor.respondsToKey 'test'
 			reactor.consumerRegistry.unregister('test')
 			!reactor.respondsToKey('test')
+
 	}
 
 	def "Multiple consumers can use the same selector"() {
