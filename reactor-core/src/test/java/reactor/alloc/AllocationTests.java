@@ -17,6 +17,8 @@
 package reactor.alloc;
 
 import com.gs.collections.impl.list.mutable.FastList;
+import org.junit.Ignore;
+import org.junit.Test;
 import reactor.AbstractPerformanceTest;
 import reactor.core.Environment;
 
@@ -38,7 +40,8 @@ public class AllocationTests extends AbstractPerformanceTest {
 		pool = Executors.newFixedThreadPool(Environment.PROCESSORS);
 	}
 
-	//@Test
+	@Test
+	@Ignore
 	public void threadPartitionedAllocatorAllocatesByThread() throws Exception {
 		int threadCnt = Environment.PROCESSORS;
 		CountDownLatch latch = new CountDownLatch(threadCnt);
