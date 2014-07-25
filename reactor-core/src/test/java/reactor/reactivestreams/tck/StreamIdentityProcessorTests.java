@@ -60,7 +60,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 		final int elements = 1_00_000;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Processor<Integer, Integer> processor = createIdentityProcessor(8192);
+		Processor<Integer, Integer> processor = createIdentityProcessor(4056);
 
 		Stream<Integer> stream = Streams.defer(env);
 
