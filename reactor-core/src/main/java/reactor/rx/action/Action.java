@@ -54,6 +54,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		@Override
 		public void accept(Integer n) {
 			try {
+				if(subscription == null) return;
+
 				if (firehose) {
 					subscription.request(n);
 					return;
