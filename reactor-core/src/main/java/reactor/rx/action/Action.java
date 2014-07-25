@@ -74,7 +74,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	};
 
-	private Subscription subscription;
+	protected Subscription subscription;
 
 	public static <O> Action<O, O> passthrough() {
 		return passthrough(SynchronousDispatcher.INSTANCE);

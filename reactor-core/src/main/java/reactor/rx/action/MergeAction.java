@@ -103,13 +103,10 @@ public class MergeAction<O> extends Action<O, O> {
 
 	@Override
 	protected void doComplete() {
-		if (runningComposables.decrementAndGet() == 0) {
-			if (processingAction == null) {
-				super.doComplete();
-			} else {
-				processingAction.onComplete();
-			}
-
+		if (processingAction == null) {
+			super.doComplete();
+		} else {
+			processingAction.onComplete();
 		}
 	}
 
@@ -148,7 +145,7 @@ public class MergeAction<O> extends Action<O, O> {
 				public void accept(Void aVoid) {
 					if (outerAction.pendingNextSignals > 0) {
 						int size = outerAction.innerSubscriptions.subscriptions.size();
-						if(size == 0) return;
+						if (size == 0) return;
 
 						int batchSize = outerAction.batchSize / size;
 						int toRequest = outerAction.batchSize % size + batchSize;
@@ -164,17 +161,19 @@ public class MergeAction<O> extends Action<O, O> {
 		@Override
 		public void onComplete() {
 			s.toRemove = true;
-			outerAction.onComplete();
+			if (outerAction.runningComposables.decrementAndGet() <= 0) {
+				outerAction.innerSubscriptions.onComplete();
+			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			outerAction.onError(t);
+			outerAction.innerSubscriptions.onError(t);
 		}
 
 		@Override
 		public void onNext(O ev) {
-			outerAction.onNext(ev);
+			outerAction.innerSubscriptions.onNext(ev);
 		}
 
 		@Override

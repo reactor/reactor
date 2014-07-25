@@ -29,7 +29,10 @@ import reactor.rx.StreamSubscription;
  * @since 2.0
  */
 public class FanInSubscription<O> extends StreamSubscription<O> {
-	final Action<?, O>                           publisher;
+	private final FanInSubscription.MutableListCheckedProcedure pruneProcedure = new FanInSubscription
+			.MutableListCheckedProcedure();
+
+	final Action<?, O> publisher;
 	final MultiReaderFastList<InnerSubscription> subscriptions;
 
 	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber) {
@@ -45,6 +48,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void request(final int elements) {
+		super.request(elements);
 		final int parallel = subscriptions.size();
 
 		if (parallel > 0) {
@@ -66,6 +70,17 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
+	@Override
+	public void cancel() {
+		subscriptions.forEach(new CheckedProcedure<Subscription>() {
+			@Override
+			public void safeValue(Subscription subscription) throws Exception {
+				subscription.cancel();
+			}
+		});
+		super.cancel();
+	}
+
 	void addSubscription(final InnerSubscription s) {
 		pruneObsoleteSubscriptions();
 
@@ -81,34 +96,10 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	}
 
 	public void pruneObsoleteSubscriptions() {
-		subscriptions.withWriteLockAndDelegate(new CheckedProcedure<MutableList<InnerSubscription>>() {
-			@Override
-			public void safeValue(final MutableList<InnerSubscription> innerSubscriptions) throws Exception {
-				innerSubscriptions.select(new Predicate<InnerSubscription>() {
-					@Override
-					public boolean accept(InnerSubscription innerSubscription) {
-						return innerSubscription.toRemove;
-					}
-				}).forEach(new Procedure<InnerSubscription>() {
-					@Override
-					public void value(InnerSubscription innerSubscription) {
-						innerSubscriptions.remove(innerSubscription);
-					}
-				});
-			}
-		});
+		subscriptions.withWriteLockAndDelegate(pruneProcedure);
 	}
 
-	@Override
-	public void cancel() {
-		subscriptions.forEach(new CheckedProcedure<Subscription>() {
-			@Override
-			public void safeValue(Subscription subscription) throws Exception {
-				subscription.cancel();
-			}
-		});
-		super.cancel();
-	}
+
 
 	public static class InnerSubscription implements Subscription {
 
@@ -131,6 +122,23 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 		public Subscription getDelegate() {
 			return wrapped;
+		}
+	}
+
+	private static class MutableListCheckedProcedure extends CheckedProcedure<MutableList<InnerSubscription>> {
+		@Override
+		public void safeValue(final MutableList<InnerSubscription> innerSubscriptions) throws Exception {
+			innerSubscriptions.select(new Predicate<InnerSubscription>() {
+				@Override
+				public boolean accept(InnerSubscription innerSubscription) {
+					return innerSubscription.toRemove;
+				}
+			}).forEach(new Procedure<InnerSubscription>() {
+				@Override
+				public void value(InnerSubscription innerSubscription) {
+					innerSubscriptions.remove(innerSubscription);
+				}
+			});
 		}
 	}
 }

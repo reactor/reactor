@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,6 +29,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean next;
 	final boolean flush;
 	final boolean first;
+	final Consumer<Void> flushConsumer = new FlushConsumer();
 
 	public BatchAction(int batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
@@ -69,13 +71,20 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public void available() {
-		flushCallback(null);
+		dispatch(flushConsumer);
 		super.available();
 	}
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		flushCallback(null);
+		dispatch(flushConsumer);
 		super.requestUpstream(capacity, terminated, elements);
+	}
+
+	private class FlushConsumer implements Consumer<Void> {
+		@Override
+		public void accept(Void n) {
+			flushCallback(null);
+		}
 	}
 }

@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -37,20 +36,9 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		super(dispatcher);
 		final DynamicMergeAction<I, O, E> thiz = this;
 		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
-			public Consumer<Integer> updatePendingElements = new Consumer<Integer>() {
-				@Override
-				public void accept(Integer elements) {
-					if (runningComposables.get() > 0 && innerSubscriptions.subscriptions.size() == runningComposables.get()) {
-						requestConsumer.accept(elements);
-					}else{
-						if((pendingNextSignals += elements) < 0) pendingNextSignals = Integer.MAX_VALUE;
-					}
-				}
-			};
-
 			@Override
 			protected void onRequest(int n) {
-				dispatch(n, updatePendingElements);
+				dispatch(n, requestConsumer);
 			}
 
 			@Override
@@ -77,7 +65,9 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		mergeAction.doComplete();
+		if (mergeAction.runningComposables.decrementAndGet() == 0) {
+			mergeAction.doComplete();
+		}
 	}
 
 	@Override

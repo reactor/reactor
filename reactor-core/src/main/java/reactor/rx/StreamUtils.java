@@ -20,6 +20,7 @@ import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.function.Consumer;
 import reactor.rx.action.*;
 
 import java.util.ArrayList;
@@ -36,29 +37,32 @@ import java.util.Set;
 public abstract class StreamUtils {
 
 	public static <O> String browse(Stream<O> composable) {
-		ComposableVisitor composableVisitor = new ComposableVisitor(composable);
-		composableVisitor.drawComposablePublisher(composable);
-		return composableVisitor.toString();
+		return browse(composable, new ComposableVisitor());
+	}
+
+	public static <O> String browse(Stream<O> composable, Consumer<Stream<?>> visitor) {
+		visitor.accept(composable);
+		return visitor.toString();
 	}
 
 	public static <O> String browse(Promise<O> composable) {
-		ComposableVisitor composableVisitor = new ComposableVisitor(composable.delegateAction);
-		composableVisitor.drawComposablePublisher(composable.delegateAction);
-		return composableVisitor.toString();
+		return browse(composable, new ComposableVisitor());
 	}
 
-	protected static class ComposableVisitor {
+	public static <O> String browse(Promise<O> composable, Consumer<Stream<?>> visitor) {
+		visitor.accept(composable.delegateAction);
+		return visitor.toString();
+	}
 
-		final private StringBuilder appender;
+	protected static class ComposableVisitor implements Consumer<Stream<?>>{
+
+		final private StringBuilder appender = new StringBuilder();;
 		final private List<Throwable> errors     = new ArrayList<Throwable>();
 		final private Set<Object>     references = new HashSet<Object>();
 
-		private <O> ComposableVisitor(Stream<O> composable) {
-			this.appender = new StringBuilder();
-		}
-
-		private <O> ComposableVisitor drawComposablePublisher(Stream<O> composableProcessor) {
-			parseComposable(composableProcessor, 0);
+		@Override
+		public void accept(Stream<?> composable) {
+			parseComposable(composable, 0);
 			if (!errors.isEmpty()) {
 				System.out.println("\n" + errors.size() + " exception traces (in order of appearance):");
 				for (Throwable error : errors) {
@@ -66,7 +70,6 @@ public abstract class StreamUtils {
 					System.out.println("\n");
 				}
 			}
-			return this;
 		}
 
 		private void newLine(int d) {

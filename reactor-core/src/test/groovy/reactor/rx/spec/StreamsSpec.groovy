@@ -246,8 +246,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts a value'
-			println source.debug()
 			def value = mapped.tap()
+			println source.debug()
 			source.broadcastNext(1)
 			println source.debug()
 
