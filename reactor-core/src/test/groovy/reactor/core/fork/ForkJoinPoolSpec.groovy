@@ -53,7 +53,7 @@ class ForkJoinPoolSpec extends Specification {
 		when: "tasks are forked"
 			def fj = pool.fork()
 			fj.compose().
-					collect(4).
+					buffer(4).
 					consume(consumer { threads -> threads.each { latch.countDown() } })
 			(1..4).each {
 				fj.add(task).submit()

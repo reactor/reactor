@@ -451,6 +451,67 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
+	 * Create a new {@code Stream} that will signal next elements up to {@param max} times.
+	 *
+	 * @param max the number of times to broadcast next signals before dropping
+	 *
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public LimitAction<O> limit(long max) {
+		return limit(max, null);
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true.
+	 *
+	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 *
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public LimitAction<O> limit(Predicate<O> limitMatcher) {
+		return limit(Long.MAX_VALUE, limitMatcher);
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true or
+	 * up to {@param max} times.
+	 *
+	 * @param max the number of times to broadcast next signals before dropping
+	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 *
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public LimitAction<O> limit(long max, Predicate<O> limitMatcher) {
+		return connect(new LimitAction<O>(dispatcher, limitMatcher, max));
+	}
+
+	/**
+	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link <T>}
+	 * associated data
+	 *
+	 * @return a new {@code Stream} that emits tuples of nano time and matching data
+	 * @since 2.0
+	 */
+	public TimestampAction<O> timestamp() {
+		return connect(new TimestampAction<O>(dispatcher));
+	}
+
+	/**
+	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link <T>}
+	 * associated data. The nanotime corresponds to the elapsed time between the subscribe and the first next signals OR
+	 * between two next signals.
+	 *
+	 * @return a new {@code Stream} that emits tuples of nano time and matching data
+	 * @since 2.0
+	 */
+	public ElapsedAction<O> elapsed() {
+		return connect(new ElapsedAction<O>(dispatcher));
+	}
+
+	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
 	 * to
 	 * have been set.
@@ -566,8 +627,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @return a new {@code Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
-	public CollectAction<O> collect() {
-		return collect(batchSize);
+	public BufferAction<O> buffer() {
+		return buffer(batchSize);
 	}
 
 	/**
@@ -577,8 +638,37 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param batchSize the collected size
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public CollectAction<O> collect(int batchSize) {
-		final CollectAction<O> d = new CollectAction<O>(batchSize, dispatcher);
+	public BufferAction<O> buffer(int batchSize) {
+		final BufferAction<O> d = new BufferAction<O>(batchSize, dispatcher);
+		d.env(environment).setKeepAlive(keepAlive);
+		subscribe(d);
+		return d;
+	}
+
+	/**
+	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
+	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getMaxCapacity()}, complete signal or request signal.
+	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 *
+	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 * @since 2.0
+	 */
+	public SortAction<O> sort() {
+		return sort(batchSize);
+	}
+
+	/**
+	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
+	 * fresh {@link Stream}. Possible flush triggers are: {@param batchSize}, complete signal or request signal.
+	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 *
+	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
+	 *
+	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 * @since 2.0
+	 */
+	public SortAction<O> sort(int maxCapacity) {
+		final SortAction<O> d = new SortAction<O>(maxCapacity, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
@@ -971,7 +1061,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @return
 	 */
-	public int getBatchSize() {
+	public int getMaxCapacity() {
 		return batchSize;
 	}
 

@@ -24,7 +24,7 @@ import reactor.function.Supplier;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.CollectAction;
+import reactor.rx.action.BufferAction;
 import reactor.rx.action.MergeAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
@@ -228,16 +228,16 @@ public abstract class Promises {
 	public static <T> Promise<List<T>> when(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		CollectAction<T> collectAction = new CollectAction<T>(promises.size(), SynchronousDispatcher.INSTANCE){
+		BufferAction<T> bufferAction = new BufferAction<T>(promises.size(), SynchronousDispatcher.INSTANCE){
 			@Override
 			protected void doSubscribe(Subscription subscription) {
 				subscription.request(1);
 			}
 		};
-		collectAction.env(promises.get(0).getEnvironment());
-		Promise<List<T>> resultPromise = next(collectAction);
+		bufferAction.env(promises.get(0).getEnvironment());
+		Promise<List<T>> resultPromise = next(bufferAction);
 
-		new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, collectAction, promises);
+		new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, bufferAction, promises);
 
 		return resultPromise;
 

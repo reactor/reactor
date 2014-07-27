@@ -95,7 +95,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the values are filtered and result is collected'
-			def tap = s.distinctUntilChanged().collect().tap()
+			def tap = s.distinctUntilChanged().buffer().tap()
 
 		then:
 			'collected must remove duplicates'
@@ -258,11 +258,11 @@ class StreamsSpec extends Specification {
 
 	def "Multiple Stream's values can be merged"() {
 		given:
-			'source composables to merge, collect and tap'
+			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer().map { it }.map { it }
 			def source3 = Streams.<Integer> defer()
-			def tap = source1.merge(source2, source3).collect(3).tap()
+			def tap = source1.merge(source2, source3).buffer(3).tap()
 
 		when:
 			'the sources accept a value'
@@ -567,7 +567,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable'
 			def source = Streams.<Integer> config().batchSize(1).get()
-			Stream reduced = source.collect()
+			Stream reduced = source.buffer()
 			def value = reduced.tap()
 
 		when:
@@ -585,7 +585,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Streams.<Integer> config().batchSize(2).get()
-			Stream reduced = source.collect()
+			Stream reduced = source.buffer()
 			def value = reduced.tap()
 
 		when:
@@ -609,7 +609,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Streams.<Integer> defer()
-			Stream reduced = source.collect()
+			Stream reduced = source.buffer()
 			def value = reduced.tap()
 
 		when:
@@ -711,7 +711,7 @@ class StreamsSpec extends Specification {
 			'a source and a collected stream'
 			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.collect(5).timeout(600)
+			Stream reduced = source.buffer(5).timeout(600)
 			def value = reduced.tap()
 			println reduced.debug()
 
@@ -825,7 +825,7 @@ class StreamsSpec extends Specification {
 			head.parallel().map {
 				s -> s.map { it }
 			}.merge()
-					.collect(batchSize)
+					.buffer(batchSize)
 					.consume { List<Integer> ints ->
 				println ints.size()
 				sum.addAndGet(ints.size())
@@ -942,7 +942,7 @@ class StreamsSpec extends Specification {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry{
+			}.retry {
 				i == 1
 			}.count().tap().get()
 			println stream.debug()
@@ -959,7 +959,7 @@ class StreamsSpec extends Specification {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry{
+			}.retry {
 				i == 1
 			}.count()
 			stream.broadcastNext('test')
@@ -971,6 +971,98 @@ class StreamsSpec extends Specification {
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
 			value2.tap().get() == 1
+	}
+
+
+	def 'A Stream can be timestamped'() {
+		given:
+			'a composable with an initial value and a relative time'
+			def stream = Streams.defer('test')
+			def timestamp = System.nanoTime()
+
+		when:
+			'timestamp operation is added and the stream is retrieved'
+			def value = stream.timestamp().tap().get()
+
+		then:
+			'it is available'
+			value.t1 > timestamp
+			value.t2 == 'test'
+	}
+
+	def 'A Stream can be benchmarked'() {
+		given:
+			'a composable with an initial value and a relative time'
+			def stream = Streams.defer('test')
+			long timestamp = System.nanoTime()
+
+		when:
+			'elapsed operation is added and the stream is retrieved'
+			def value = stream.observe {
+				sleep(1000)
+			}.elapsed().tap().get()
+
+			long totalElapsed = System.nanoTime() - timestamp
+
+		then:
+			'it is available'
+			value.t1 < totalElapsed
+			value.t2 == 'test'
+	}
+
+	def 'A Stream can be sorted'() {
+		given:
+			'a composable with an initial value and a relative time'
+			def stream = Streams.defer([43, 32122, 422, 321, 43, 443311])
+
+		when:
+			'sorted operation is added and the stream is retrieved'
+			def value = stream.sort().buffer().tap().get()
+
+		then:
+			'it is available'
+			value == [43, 43, 321, 422, 32122, 443311]
+
+		when:
+			'a composable with an initial value and a relative time'
+			stream = Streams.defer([43, 32122, 422, 321, 43, 443311])
+
+		and:
+			'sorted operation is added for up to 3 elements ordered at once and the stream is retrieved'
+			value = stream.sort(3).buffer(6).tap().get()
+
+		then:
+			'it is available'
+			value == [43, 422, 32122, 43, 321, 443311]
+	}
+
+	def 'A Stream can be limited'() {
+		given:
+			'a composable with an initial values'
+			def stream = Streams.defer(['test', 'test2', 'test3'])
+
+		when:
+			'limit to the first 2 elements'
+			def value = stream.limit(2).tap().get()
+
+		then:
+			'the second is the last available'
+			value == 'test2'
+
+		when:
+			'limit until test2 is seen'
+			stream = Streams.defer()
+			def value2 = stream.limit {
+				'test3' == it
+			}.tap()
+
+			stream.broadcastNext('test1')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+
+		then:
+			'the second is the last available'
+			value2.get() == 'test2'
 	}
 
 

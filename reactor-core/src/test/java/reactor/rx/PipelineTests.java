@@ -176,7 +176,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<List<Integer>> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.collect();
+						.buffer();
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
@@ -581,7 +581,7 @@ public class PipelineTests extends AbstractReactorTest {
 		batchingStreamDef.parallel(PARALLEL_STREAMS)
 				.consume(substream ->
 								substream
-							.collect(BATCH_SIZE)
+							.buffer(BATCH_SIZE)
 							.timeout(TIMEOUT)
 							.consume(items -> {
 								batchesDistribution.compute(items.size(),
@@ -609,7 +609,7 @@ public class PipelineTests extends AbstractReactorTest {
 		assertEquals(NUM_MESSAGES, messagesProcessed);
 		System.out.println(batchesDistribution);
 		assertTrue("Less than 90% ("+NUM_MESSAGES / BATCH_SIZE * TOLERANCE+
-						") of the batches are matching the collect() size: "+batchesDistribution.get(BATCH_SIZE),
+						") of the batches are matching the buffer() size: "+batchesDistribution.get(BATCH_SIZE),
 				NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);
 	}
 

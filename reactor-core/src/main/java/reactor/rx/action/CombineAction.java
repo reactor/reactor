@@ -33,7 +33,7 @@ public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O> {
 	private final Action<E, O> subscriber;
 
 	public CombineAction(S publisher, Action<E, O> subscriber) {
-		super(subscriber.getDispatcher(), subscriber.getBatchSize());
+		super(subscriber.getDispatcher(), subscriber.getMaxCapacity());
 		this.publisher = publisher;
 		this.subscriber = subscriber;
 	}

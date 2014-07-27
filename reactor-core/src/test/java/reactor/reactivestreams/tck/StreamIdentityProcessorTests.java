@@ -43,7 +43,7 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())
 										.filter(integer -> integer >= 0)
-										.collect(1)
+										.buffer(1)
 										.last()
 										.<Integer>split()
 

@@ -17,20 +17,19 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class CollectAction<T> extends BatchAction<T, List<T>>{
+public class SortAction<T> extends BatchAction<T, T>{
 
-	private final List<T> values;
+	private final PriorityQueue<T> values;
 
-	public CollectAction(int batchsize, Dispatcher dispatcher) {
+	public SortAction(int batchsize, Dispatcher dispatcher) {
 		super(batchsize, dispatcher, true, false, batchsize > 0);
-		values = new ArrayList<T>();
+		values = new PriorityQueue<T>();
 	}
 
 	@Override
@@ -43,12 +42,14 @@ public class CollectAction<T> extends BatchAction<T, List<T>>{
 		if (values.isEmpty()) {
 			return;
 		}
-		broadcastNext(new ArrayList<T>(values));
-		values.clear();
+		T value;
+		while((value = values.poll()) != null){
+			broadcastNext(value);
+		}
 	}
 
 	@Override
 	public String toString() {
-		return super.toString() +"{collected="+values.size()+"}";
+		return super.toString() + "{collected=" + values.size() + "}";
 	}
 }

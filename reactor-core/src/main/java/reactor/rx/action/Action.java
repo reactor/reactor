@@ -387,7 +387,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
 						"")) +
 				", state=" + getState() +
-				", max-capacity=" + getBatchSize() +
+				", max-capacity=" + getMaxCapacity() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", subscription=" + subscription +
