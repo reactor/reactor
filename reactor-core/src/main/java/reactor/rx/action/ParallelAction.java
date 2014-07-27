@@ -18,6 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
@@ -152,6 +153,26 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 
 		@Override
+		public void broadcastComplete() {
+			dispatch(new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					ParallelStream.super.broadcastComplete();
+				}
+			});
+		}
+
+		@Override
+		public void broadcastError(Throwable throwable) {
+			dispatch(throwable, new Consumer<Throwable>() {
+				@Override
+				public void accept(Throwable throwable) {
+					ParallelStream.super.broadcastError(throwable);
+				}
+			});
+		}
+
+		@Override
 		protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
@@ -167,6 +188,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				}
 
 			};
+
+
 		}
 
 		@Override

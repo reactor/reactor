@@ -41,6 +41,7 @@ import reactor.util.Assert;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -66,7 +67,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class Stream<O> implements Pipeline<O>, Recyclable {
 
-	private static final Logger log = LoggerFactory.getLogger(Stream.class);
+	protected static final Logger log = LoggerFactory.getLogger(Stream.class);
 
 	public static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -80,7 +81,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	protected boolean   pause = false;
 	protected int batchSize;
 
-	protected boolean keepAlive = false;
+	protected boolean keepAlive = true;
 	protected Environment environment;
 	protected State state = State.READY;
 
@@ -168,7 +169,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param consumer the conumer to invoke on each value
 	 * @return {@literal this}
 	 */
-	public Action<O, Void> consume(@Nonnull final Consumer<O> consumer) {
+	public CallbackAction<O> consume(@Nonnull final Consumer<O> consumer) {
 		return connect(new CallbackAction<O>(dispatcher, consumer, true));
 	}
 
@@ -180,7 +181,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
-	public Action<O, Void> observe(@Nonnull final Consumer<O> consumer) {
+	public CallbackAction<O> observe(@Nonnull final Consumer<O> consumer) {
 		return connect(new CallbackAction<O>(dispatcher, consumer, false));
 	}
 
@@ -190,8 +191,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param key        the key to notify on
 	 * @param observable the {@link Observable} to notify
 	 * @return {@literal this}
+	 * @since 1.1, 2.0
 	 */
-	public Action<O, Void> consume(@Nonnull final Object key, @Nonnull final Observable observable) {
+	public ObservableAction<O> notify(@Nonnull final Object key, @Nonnull final Observable observable) {
 		return connect(new ObservableAction<O>(dispatcher, observable, key));
 	}
 
@@ -247,9 +249,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		final List<Publisher<O>> publishers = new ArrayList<Publisher<O>>();
 
 		publishers.add(this);
-		for (Publisher<O> publisher : composables) {
-			publishers.add(publisher);
-		}
+		Collections.addAll(publishers, composables);
 
 		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null,
 				publishers);
@@ -382,9 +382,72 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public <E> SupplierAction<O, E> propagate(final Supplier<E> supplier) {
 		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
-		d.env(environment).setKeepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(d);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose only value will be the current instance of the {@link Stream}.
+	 *
+	 * @return a new {@code Stream} whose only value will be the materialized current {@link Stream}
+	 * @since 2.0
+	 */
+	public NestAction<O, Stream<O>> nest() {
+		return connect(new NestAction<O, Stream<O>>(dispatcher, this));
+	}
+
+	/**
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * propagating errors after {@literal Integer.MAX_VALUE}.
+	 *
+	 * @return a new fault-tolerant {@code Stream}
+	 * @since 2.0
+	 */
+	public RetryAction<O> retry() {
+		return retry(Integer.MAX_VALUE);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * propagating errors after {@param numRetries}.
+	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 *
+	 * @param numRetries the number of times to tolerate an error
+	 *
+	 * @return a new fault-tolerant {@code Stream}
+	 * @since 2.0
+	 */
+	public RetryAction<O> retry(int numRetries) {
+		return retry(numRetries, null);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair.
+	 * {@param retryMatcher} will test an incoming {@link Throwable}, if positive the retry will occur.
+	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 *
+	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
+	 *
+	 * @return a new fault-tolerant {@code Stream}
+	 * @since 2.0
+	 */
+	public RetryAction<O> retry(Predicate<Throwable> retryMatcher) {
+		return retry(Integer.MAX_VALUE, retryMatcher);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable}, if positive
+	 * the retry will occur (in conjonction with the {@param numRetries} condition).
+	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 *
+	 * @param numRetries the number of times to tolerate an error
+	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
+	 *
+	 * @return a new fault-tolerant {@code Stream}
+	 * @since 2.0
+	 */
+	public RetryAction<O> retry(int numRetries, Predicate<Throwable> retryMatcher) {
+		return connect(new RetryAction<O>(dispatcher, numRetries, retryMatcher));
 	}
 
 	/**
@@ -742,11 +805,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
-		final Action<O, A> stream = new ScanAction<O, A>(accumulators,
+		return connect(new ScanAction<O, A>(accumulators,
 				fn,
-				dispatcher);
-		connect(stream);
-		return stream;
+				dispatcher));
 	}
 
 	/**
@@ -772,9 +833,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
 	 */
 	public CountAction<O> count(int i) {
-		final CountAction<O> countAction = new CountAction<O>(dispatcher, i);
-		connect(countAction);
-		return countAction;
+		return connect(new CountAction<O>(dispatcher, i));
 	}
 
 	/**
@@ -842,7 +901,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	@Override
 	public void broadcastNext(final O ev) {
-		if (!checkState() || downstreamSubscription == null) return;
+		if (!checkState() || downstreamSubscription == null) {
+			return;
+		}
 
 		try {
 			downstreamSubscription.onNext(ev);

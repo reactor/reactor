@@ -15,41 +15,28 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-
-import java.util.concurrent.atomic.AtomicLong;
+import reactor.rx.Stream;
+import reactor.rx.StreamSubscription;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class CountAction<T> extends Action<T, Long> {
+public class NestAction<T, E extends Stream<T>> extends Action<T, E> {
 
-	private final AtomicLong counter = new AtomicLong(0l);
-	private final Integer i;
+	private final E stream;
 
-	public CountAction(Dispatcher dispatcher, int i) {
+	public NestAction(Dispatcher dispatcher, E stream) {
 		super(dispatcher);
-		this.i = i;
+		this.stream = stream;
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		broadcastNext(counter.getAndSet(0));
-		super.requestUpstream(capacity, terminated, elements);
-	}
-
-	@Override
-	protected void doNext(T value) {
-		long counter = this.counter.incrementAndGet();
-		if (i != null && counter % i == 0) {
-			broadcastNext(counter);
-		}
-	}
-
-	@Override
-	protected void doComplete() {
-		broadcastNext(counter.get());
-		super.doComplete();
+	protected StreamSubscription<E> createSubscription(Subscriber<E> subscriber) {
+		StreamSubscription<E> streamSubscription = super.createSubscription(subscriber);
+		streamSubscription.onNext(stream);
+		return  streamSubscription;
 	}
 }

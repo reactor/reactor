@@ -99,7 +99,7 @@ public class StreamSubscription<O> implements Subscription {
 				// we just decremented below 0 so increment back one
 				if (capacity.incrementAndGet() > 0) {
 					onNext(ev);
-				} else{
+				} else {
 					buffer.add(ev);
 				}
 			} finally {
@@ -178,7 +178,7 @@ public class StreamSubscription<O> implements Subscription {
 		}
 	}
 
-	StreamSubscription<O> wrap(CompletableQueue<O> queue){
+	StreamSubscription<O> wrap(CompletableQueue<O> queue) {
 		final StreamSubscription<O> thiz = this;
 		return new WrappedStreamSubscription<O>(thiz, queue);
 	}
@@ -233,39 +233,49 @@ public class StreamSubscription<O> implements Subscription {
 		final StreamSubscription<O> thiz;
 
 		public WrappedStreamSubscription(final StreamSubscription<O> thiz, CompletableQueue<O> queue) {
-			super(null, new Subscriber<O>() {
-					@Override
-					public void onSubscribe(Subscription s) {
-					}
+			super(thiz.publisher, new Subscriber<O>() {
+				@Override
+				public void onSubscribe(Subscription s) {
+				}
 
-					@Override
-					public void onNext(O o) {
-						thiz.onNext(o);
-					}
+				@Override
+				public void onNext(O o) {
+					thiz.onNext(o);
+				}
 
-					@Override
-					public void onError(Throwable t) {
-						thiz.onError(t);
-					}
+				@Override
+				public void onError(Throwable t) {
+					thiz.onError(t);
+				}
 
-					@Override
-					public void onComplete() {
-						thiz.onComplete();
-					}
-				}, queue);
+				@Override
+				public void onComplete() {
+					thiz.onComplete();
+				}
+			}, queue);
 			this.thiz = thiz;
 		}
 
 		@Override
-	public void request(int elements) {
-		super.request(elements);
-		thiz.request(elements);
-	}
+		public void request(int elements) {
+			super.request(elements);
+			thiz.request(elements);
+		}
 
 		@Override
-	public void cancel() {
-		super.cancel();
-		thiz.cancel();
-	}
+		public void cancel() {
+			super.cancel();
+			thiz.cancel();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return !(o == null ||thiz.getClass() != o.getClass()) && thiz.equals(o);
+		}
+
+		@Override
+		public int hashCode() {
+			return thiz.hashCode();
+		}
 	}
 }

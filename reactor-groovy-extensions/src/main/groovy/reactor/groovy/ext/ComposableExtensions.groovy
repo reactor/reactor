@@ -42,7 +42,7 @@ class ComposableExtensions {
 	 */
 	static <T, X extends Stream<T>> X to(final X selfType, final Object key,
 	                                         final reactor.core.Observable observable) {
-		selfType.consume key, observable
+		selfType.notify key, observable
 	}
 
 

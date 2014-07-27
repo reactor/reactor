@@ -22,7 +22,7 @@ import reactor.function.Consumer;
 /**
  * @author Stephane Maldini
  */
-public class CallbackAction<T> extends Action<T, Void> {
+public class CallbackAction<T> extends Action<T, T> {
 
 	private final Consumer<T> consumer;
 	private final boolean     prefetch;
@@ -44,8 +44,19 @@ public class CallbackAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		if (prefetch && currentNextSignals % batchSize == 0) {
-			requestConsumer.accept(batchSize);
+		if(prefetch){
+			if (currentNextSignals % batchSize == 0) {
+				requestConsumer.accept(batchSize);
+			}
+		}else{
+			broadcastNext(ev);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return super.toString()+(!prefetch ? "{" +
+				"observing"+
+				'}' : "");
 	}
 }

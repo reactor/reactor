@@ -231,7 +231,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public void onError(Throwable cause) {
 		try {
-			error = cause;
 			trySyncDispatch(cause, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
@@ -247,6 +246,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	public void onSubscribe(Subscription subscription) {
 		if (this.subscription == null) {
 			this.subscription = subscription;
+			this.state = State.READY;
 			this.firehose = StreamSubscription.Firehose.class.isAssignableFrom(subscription.getClass());
 
 			final CountDownLatch startedCountDown = new CountDownLatch(1);
@@ -286,8 +286,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public Action<I, O> cancel() {
-		if (subscription != null)
+		if (subscription != null) {
 			subscription.cancel();
+			subscription = null;
+		}
 		super.cancel();
 		return this;
 	}
@@ -344,8 +346,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
 				) {
 
-
 			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
+
 			if (resetState) {
 				resetState(that);
 			}
@@ -369,8 +371,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void resetState(Action<?, ?> action) {
-		action.setState(State.READY);
-		error = null;
+		action.state = State.READY;
+		action.error = null;
 	}
 
 	public Subscription getSubscription() {

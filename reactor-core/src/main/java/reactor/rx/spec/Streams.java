@@ -61,8 +61,8 @@ public abstract class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
-				"MultiThreadDispatcher, refer to #parallel() method. ");
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
+				" Refer to #parallel() method. ");
 		return new Stream<T>(dispatcher, env, dispatcher.backlogSize() > 0 ?
 				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
 						dispatcher.backlogSize() :

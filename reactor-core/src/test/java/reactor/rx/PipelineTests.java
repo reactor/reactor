@@ -162,7 +162,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Void> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.consume(key.getObject(), r);
+						.notify(key.getObject(), r);
 		System.out.println(s.debug());
 
 		//await(s, is(5));

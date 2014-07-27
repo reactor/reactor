@@ -282,7 +282,7 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to count and tap'
 			def source = Streams.<Integer> defer()
-			def tap = source.count(3).valueStream().tap()
+			def tap = source.count(3).tap()
 
 		when:
 			'the sources accept a value'
@@ -827,10 +827,10 @@ class StreamsSpec extends Specification {
 			}.merge()
 					.collect(batchSize)
 					.consume { List<Integer> ints ->
-						println ints.size()
-						sum.addAndGet(ints.size())
-						latch.countDown()
-					}
+				println ints.size()
+				sum.addAndGet(ints.size())
+				latch.countDown()
+			}
 		when:
 			'values are accepted into the head'
 			(1..length).each { head.broadcastNext(it) }
@@ -848,7 +848,7 @@ class StreamsSpec extends Specification {
 			def d = Streams.<Integer> defer()
 			Stream composable = d
 			Observable observable = Mock(Observable)
-			composable.consume('key', observable)
+			composable.notify('key', observable)
 
 		when:
 			'the composable accepts a value'
@@ -867,12 +867,112 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a stream consumer is registerd'
-			stream.consume('key', observable)
+			stream.notify('key', observable)
 
 		then:
 			'the observable is notified of the values'
 			3 * observable.notify('key', _)
 	}
+
+
+	def 'A Stream can be materialized for recursive signal or introspection'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.defer('test')
+
+		when:
+			'the stream is retrieved and a consumer is dynamically added'
+			def value = null
+
+			stream.nest().consume { theStream ->
+				theStream.consume {
+					value = it
+				}
+			}
+
+		then:
+			'it is available'
+			value == 'test'
+	}
+
+
+	def 'A Stream can re-subscribe its oldest parent on error signals'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.defer(['test', 'test2', 'test3']).capacity(3)
+
+		when:
+			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
+			def i = 0
+			def value = stream.observe {
+				if (i++ < 2) {
+					throw new RuntimeException()
+				}
+			}.retry(2).count().tap().get()
+			println stream.debug()
+
+		then:
+			'1 + 3 values are passed since it is a cold stream resubscribed 2 times'
+			value == 4
+
+		when:
+			'the stream triggers an exception for the 2 first elements and is using retry() to ignore them'
+			i = 0
+			stream = Streams.defer()
+			def value2 = stream.observe {
+				if (i++ < 2) {
+					throw new RuntimeException()
+				}
+			}.retry().count()
+			stream.broadcastNext('test')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+			stream.broadcastComplete()
+			println stream.debug()
+
+		then:
+			'it is a hot stream and only 1 value (the most recent) is available'
+			value2.tap().get() == 1
+
+		when:
+			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			i = 0
+			stream = Streams.defer(['test', 'test2', 'test3']).capacity(3)
+			value = stream.observe {
+				if (i++ < 2) {
+					throw new RuntimeException()
+				}
+			}.retry{
+				i == 1
+			}.count().tap().get()
+			println stream.debug()
+
+		then:
+			'1 + 3 values are passed since it is a cold stream resubscribed 2 times'
+			value == 4
+
+		when:
+			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			i = 0
+			stream = Streams.defer()
+			value2 = stream.observe {
+				if (i++ < 2) {
+					throw new RuntimeException()
+				}
+			}.retry{
+				i == 1
+			}.count()
+			stream.broadcastNext('test')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+			stream.broadcastComplete()
+			println stream.debug()
+
+		then:
+			'it is a hot stream and only 1 value (the most recent) is available'
+			value2.tap().get() == 1
+	}
+
 
 	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
 		@Override

@@ -85,7 +85,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 	public Promise(Action<?, O> delegateAction,
 	               @Nullable Environment env) {
 		this.delegateAction = delegateAction;
-		delegateAction.env(env).capacity(1);
+		delegateAction.env(env).capacity(1).setKeepAlive(false);
 		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
 		this.pendingCondition = lock.newCondition();
 	}
