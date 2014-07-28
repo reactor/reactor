@@ -42,6 +42,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -675,7 +676,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public SortAction<O> sort() {
-		return sort(batchSize);
+		return sort(null);
 	}
 
 	/**
@@ -690,7 +691,38 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public SortAction<O> sort(int maxCapacity) {
-		final SortAction<O> d = new SortAction<O>(maxCapacity, dispatcher);
+		return sort(maxCapacity, null);
+	}
+
+	/**
+	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
+	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getMaxCapacity()}, complete signal or request signal.
+	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 *
+	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
+	 *
+	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 *
+	 * @since 2.0
+	 */
+	public SortAction<O> sort(Comparator<O> comparator) {
+		return sort(batchSize, comparator);
+	}
+
+	/**
+	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
+	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
+	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 *
+	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
+	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
+	 *
+	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 *
+	 * @since 2.0
+	 */
+	public SortAction<O> sort(int maxCapacity, Comparator<O> comparator) {
+		final SortAction<O> d = new SortAction<O>(maxCapacity, dispatcher, comparator);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
@@ -719,7 +751,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public Stream<Stream<O>> window(int backlog) {
-		return connect(new WindowAction<O>( dispatcher, backlog));
+		return connect(new WindowAction<O>(dispatcher, backlog));
 	}
 
 	/**

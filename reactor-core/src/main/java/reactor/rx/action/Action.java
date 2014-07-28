@@ -27,7 +27,6 @@ import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
 import reactor.timer.Timer;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -215,28 +214,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			this.state = State.READY;
 			this.firehose = StreamSubscription.Firehose.class.isAssignableFrom(subscription.getClass());
 
-			final CountDownLatch startedCountDown = new CountDownLatch(1);
 
 			dispatch(subscription, new Consumer<Subscription>() {
 				@Override
 				public void accept(Subscription subscription) {
 					try {
 						doSubscribe(subscription);
-						if (!firehose) {
-							startedCountDown.countDown();
-						}
 					} catch (Throwable t) {
 						doError(t);
 					}
 				}
 			});
-			if (!firehose) {
-				try {
-					startedCountDown.await();
-				} catch (InterruptedException e) {
-					doError(e);
-				}
-			}
 		} else {
 			throw new IllegalStateException("Already subscribed");
 		}

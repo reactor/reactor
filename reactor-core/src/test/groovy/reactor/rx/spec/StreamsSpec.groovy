@@ -652,13 +652,13 @@ class StreamsSpec extends Specification {
 			def source = Streams.<SimplePojo> defer()
 			def result = [:]
 
-			source.groupBy {
-				it.id
-			}.consume {
-				it.buffer().split().consume{ pojo ->
-					if(result[pojo.id]){
+			source.groupBy { pojo ->
+				pojo.id
+			}.consume { stream ->
+				stream.consume { pojo ->
+					if (result[pojo.id]) {
 						result[pojo.id] << pojo.title
-					}else{
+					} else {
 						result[pojo.id] = [pojo.title]
 					}
 				}
@@ -674,15 +674,15 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
 			source.broadcastComplete()
-		println source.debug()
+			println source.debug()
 
 		then:
-			'the collected list is not yet available'
+			'the result should group titles by id'
 			result
 			result == [
-			    1:['Stephane', 'Jon','Sandrine'],
-			    2:['Acme'],
-			    3:['Acme2','Acme3']
+					1: ['Stephane', 'Jon', 'Sandrine'],
+					2: ['Acme'],
+					3: ['Acme2', 'Acme3']
 			]
 	}
 
@@ -1156,6 +1156,22 @@ class StreamsSpec extends Specification {
 		then:
 			'it is available'
 			value == [43, 422, 32122, 43, 321, 443311]
+
+		when:
+			'a composable with an initial value and a relative time'
+			stream = Streams.defer([1, 2, 3, 4])
+
+		and:
+			'revese sorted operation is added and the stream is retrieved'
+			value = stream
+					.sort({ a, b -> b <=> a } as Comparator<Integer>)
+					.buffer()
+					.tap()
+					.get()
+
+		then:
+			'it is available'
+			value == [4, 3, 2, 1]
 	}
 
 	def 'A Stream can be limited'() {
