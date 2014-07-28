@@ -39,7 +39,9 @@ public class ElapsedAction<T> extends Action<T, Tuple2<Long, T>> {
 
 	@Override
 	protected void doNext(T ev) {
-		lastTime = System.nanoTime() - lastTime;
-		broadcastNext(Tuple.of(lastTime, ev));
+		long previousTime = lastTime;
+		lastTime = System.nanoTime();
+
+		broadcastNext(Tuple.of(lastTime - previousTime, ev));
 	}
 }

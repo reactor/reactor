@@ -26,57 +26,70 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class TimeoutAction<T> extends Action<T, T> {
+public class ThrottleAction<T> extends Action<T, T> {
 
 	private final Timer timer;
-	private final long  timeout;
-	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
+	private final long  period;
+	private final   Consumer<Long>    periodTask        = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
-			if (timeoutRegistration.getObject() == this)
-				dispatch(timeoutRequest);
+			dispatch(periodRequest);
 		}
 	};
-	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
+	protected final Consumer<Integer> throttledConsumer = new Consumer<Integer>() {
+		@Override
+		public void accept(Integer n) {
+			if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
+		}
+	};
+
+	private final Consumer<Void> periodRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = batchSize - currentNextSignals;
-			if (0 < toRequest) {
-				if(!firehose && pendingNextSignals > 0){
-					pendingNextSignals -= toRequest;
-					getSubscription().request(toRequest);
-				}else if(firehose){
-					getSubscription().request(toRequest);
-				}
+			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
+			if (toRequest > 0) {
+				--pendingNextSignals;
+				subscription.request(toRequest);
 			}
 		}
 	};
+	private final long delay;
 
-	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
+	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
-	public TimeoutAction(Dispatcher dispatcher,
-	                     Timer timer, long timeout) {
+	public ThrottleAction(Dispatcher dispatcher,
+	                      Timer timer, long period, long delay) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
-		this.timeout = timeout;
+		this.period = period;
+		this.delay = delay;
 	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS, delay);
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+	}
 
-		timeoutRegistration.cancel();
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+	@Override
+	protected void onRequest(int n) {
+		trySyncDispatch(n, throttledConsumer);
+	}
+
+	@Override
+	protected void doPendingRequest() {
+		if (currentNextSignals == batchSize) {
+			currentNextSignals = 0; //reset currentNextSignals only
+		}
 	}
 
 	@Override

@@ -28,7 +28,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O> {
+final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O> {
 	private final S            publisher;
 	private final Action<E, O> subscriber;
 

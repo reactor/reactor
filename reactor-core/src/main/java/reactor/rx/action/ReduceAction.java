@@ -53,7 +53,7 @@ public class ReduceAction<T, A> extends BatchAction<T,A> {
 	}
 
 	@Override
-	protected void doComplete(){
-		broadcastComplete();
+	public String toString() {
+		return super.toString()+(acc != null ? "{current-reduced="+acc+"}" : "");
 	}
 }

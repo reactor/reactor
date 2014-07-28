@@ -38,8 +38,4 @@ public class MapAction<T, V> extends Action<T, V> {
 		broadcastNext(fn.apply(value));
 	}
 
-	@Override
-	public void onComplete() {
-		super.onComplete();
-	}
 }

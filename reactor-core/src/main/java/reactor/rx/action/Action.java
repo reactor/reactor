@@ -26,7 +26,6 @@ import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
 import reactor.timer.Timer;
-import reactor.util.Assert;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,7 +39,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	//private static final Logger log = LoggerFactory.getLogger(Action.class);
 
 	/**
-	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to batchSize + 4 events can be
+	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to capacity + 4 events can be
 	 * in-flight
 	 * stacking into a Dispatcher.
 	 */
@@ -103,39 +102,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	public Action<O, O> timeout(long timeout) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Flush the parent if any or the current composable otherwise when the last notification occurred before {@param
-	 * timeout} milliseconds. Timeout is run on the provided {@param timer}.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public Action<O, O> timeout(long timeout, Timer timer) {
-		final TimeoutAction<O> d = new TimeoutAction<O>(
-				getDispatcher(),
-				timer,
-				timeout
-		);
-		return connect(d);
-	}
-
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		if (subscription != null && !terminated) {
 			int currentCapacity = capacity.intValue();
@@ -186,7 +152,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
 			currentNextSignals = 0;
 
-			if (toRequest > 0){
+			if (toRequest > 0) {
 				pendingNextSignals -= toRequest;
 				subscription.request(toRequest);
 			}
@@ -194,9 +160,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if(firehose){
+		if (firehose) {
 			action.accept(data);
-		}else{
+		} else {
 			dispatch(data, action);
 		}
 	}
@@ -303,8 +269,41 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public Action<I, O> resume() {
 		super.resume();
-		available();
+		if(subscription != null){
+
+			dispatch(new Consumer<Void>() {
+				@Override
+				public void accept(Void integer) {
+					if(pendingNextSignals > 0){
+						int toRequest = pendingNextSignals;
+						pendingNextSignals = 0;
+						requestConsumer.accept(toRequest);
+					}
+				}
+			});
+		}
 		return this;
+	}
+
+	@Override
+	public Action<O, O> throttle(long period, long delay, Timer timer) {
+		final ThrottleAction<O> d = new ThrottleAction<O>(
+				getDispatcher(),
+				timer,
+				period,
+				delay
+		);
+		d.env(environment).capacity(batchSize).setKeepAlive(keepAlive);
+		checkAndSubscribe(d, new StreamSubscription<O>(this, d) {
+			@Override
+			public void request(int elements) {
+				if (capacity.get() == 0) {
+					super.request(1);
+				}
+				requestUpstream(new AtomicLong(elements), buffer.isComplete(), elements);
+			}
+		});
+		return d;
 	}
 
 	@Override

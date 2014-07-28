@@ -23,7 +23,7 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
+final public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 
 	private final Consumer<E>   consumer;
 	private final ClassSelector selector;

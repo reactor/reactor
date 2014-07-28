@@ -48,12 +48,12 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	private Publisher<T> source;
 
 	/**
-	 * Configures the stream to have the given {@code batchSize}.
+	 * Configures the stream to have the given {@code capacity}.
 	 *
 	 * @param batchSize The batch size of the stream
 	 * @return {@code this}
 	 */
-	public StreamSpec<T> batchSize(int batchSize) {
+	public StreamSpec<T> capacity(int batchSize) {
 		this.batchSize = batchSize;
 		return this;
 	}
@@ -118,7 +118,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 		}else if(values != null){
 			return new ForEachAction<T>(values, dispatcher).env(env).capacity(batchSize);
 		}else{
-			Stream<T> stream = new Stream<T>(dispatcher, env, batchSize);
+			Stream<T> stream = new Stream<T>(dispatcher, env, batchSize).capacity(batchSize);
 			if (source != null) {
 				source.subscribe(new StreamSubscriber<T>(stream));
 			}

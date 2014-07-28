@@ -23,10 +23,7 @@ import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.action.*;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A simple collection of utils to assist in various tasks such as Debugging
@@ -54,9 +51,10 @@ public abstract class StreamUtils {
 		return visitor.toString();
 	}
 
-	protected static class ComposableVisitor implements Consumer<Stream<?>>{
+	protected static class ComposableVisitor implements Consumer<Stream<?>> {
 
-		final private StringBuilder appender = new StringBuilder();;
+		final private StringBuilder appender = new StringBuilder();
+		;
 		final private List<Throwable> errors     = new ArrayList<Throwable>();
 		final private Set<Object>     references = new HashSet<Object>();
 
@@ -96,6 +94,8 @@ public abstract class StreamUtils {
 							.getSimpleName().replaceAll("Action", "") + "[" + composable + "]");
 
 			renderParallel(composable, d);
+			renderWindow(composable, d);
+			renderGroupBy(composable, d);
 			renderFilter(composable, d);
 			renderDynamicMerge(composable, d);
 			renderMerge(composable, d);
@@ -159,69 +159,93 @@ public abstract class StreamUtils {
 			}
 		}
 
+		private <O> void renderWindow(Stream<O> consumer, int d) {
+			if (WindowAction.class.isAssignableFrom(consumer.getClass())) {
+				WindowAction<O> operation = (WindowAction<O>) consumer;
 
-		@SuppressWarnings("unchecked")
-		private <O> void renderCombine(Stream<O> consumer, int d) {
-			if (CombineAction.class.isAssignableFrom(consumer.getClass())) {
-				CombineAction<O, ?, ?> operation = (CombineAction<O, ?, ?>) consumer;
-				parseComposable(operation.input(), d + 2);
-			}
-		}
-
-		@SuppressWarnings("unchecked")
-		private <O> void renderDynamicMerge(Stream<O> consumer, int d) {
-			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
-				DynamicMergeAction<O, ?, Publisher<?>> operation = (DynamicMergeAction<O, ?, Publisher<?>>) consumer;
-				parseComposable(operation.mergedStream(), d);
-			}
-		}
-
-		@SuppressWarnings("unchecked")
-		private <O> void renderParallel(Stream<O> consumer, int d) {
-			if (ParallelAction.class.isAssignableFrom(consumer.getClass())) {
-				ParallelAction<O> operation = (ParallelAction<O>) consumer;
-				for (Stream<O> s : operation.getPublishers()) {
-					if (!references.contains(s)) {
-						parseComposable(s, d + 2);
-						newLine(d + 2, false);
-					}
+				if (operation.currentWindow() != null) {
+					loopSubscriptions(operation.currentWindow().downstreamSubscription(), d + 2);
 				}
 			}
 		}
 
-		@SuppressWarnings("unchecked")
-		private <O> void renderMerge(Stream<O> consumer, final int d) {
-			if (MergeAction.class.isAssignableFrom(consumer.getClass())) {
-				MergeAction<O> operation = (MergeAction<O>) consumer;
-				operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
-					@Override
-					public void value(FanInSubscription.InnerSubscription innerSubscription) {
-						Subscription subscription = innerSubscription.getDelegate();
-						if (StreamSubscription.class.isAssignableFrom(subscription.getClass())) {
-							Publisher<?> publisher = ((StreamSubscription<?>) subscription).getPublisher();
-							if (references.contains(publisher)) return;
-							if (Action.class.isAssignableFrom(publisher.getClass())) {
-								parseComposable(((Action<?, ?>) publisher).findOldestStream(false), d + 2);
-							} else if (Stream.class.isAssignableFrom(publisher.getClass())) {
-								parseComposable((Stream<?>) publisher, d + 2);
-							} else {
-								appender.append("Subscriber[").append(publisher).append(", ").append(subscription).append("]");
-								newLine(d + 2, false);
-							}
-						} else {
-							newLine(d + 2);
-							appender.append("Subscription[").append(subscription).append("]");
+
+			@SuppressWarnings("unchecked")
+			private <O> void renderCombine (Stream < O > consumer,int d){
+				if (CombineAction.class.isAssignableFrom(consumer.getClass())) {
+					CombineAction<O, ?, ?> operation = (CombineAction<O, ?, ?>) consumer;
+					parseComposable(operation.input(), d + 2);
+				}
+			}
+
+			@SuppressWarnings("unchecked")
+			private <O> void renderDynamicMerge (Stream < O > consumer,int d){
+				if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
+					DynamicMergeAction<O, ?, Publisher<?>> operation = (DynamicMergeAction<O, ?, Publisher<?>>) consumer;
+					parseComposable(operation.mergedStream(), d);
+				}
+			}
+
+			@SuppressWarnings("unchecked")
+			private <O> void renderParallel (Stream < O > consumer,int d){
+				if (ParallelAction.class.isAssignableFrom(consumer.getClass())) {
+					ParallelAction<O> operation = (ParallelAction<O>) consumer;
+					for (Stream<O> s : operation.getPublishers()) {
+						if (!references.contains(s)) {
+							parseComposable(s, d + 2);
+							newLine(d + 2, false);
 						}
-						newLine(d + 2, false);
 					}
-				});
+				}
+			}
+			@SuppressWarnings("unchecked")
+			private <O> void renderGroupBy (Stream < O > consumer,int d){
+				if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
+					GroupByAction<O, ?> operation = (GroupByAction<O, ?>) consumer;
+					for (Map.Entry<?, Stream<O>> s : operation.groupByMap().entrySet()) {
+						if (!references.contains(s)) {
+							newLine(d + 2, false);
+							appender.append("key<").append(s.getKey()).append(">");
+							parseComposable(s.getValue(), d + 2);
+							newLine(d + 2, false);
+						}
+					}
+				}
+			}
+
+			@SuppressWarnings("unchecked")
+			private <O> void renderMerge (Stream < O > consumer,final int d){
+				if (MergeAction.class.isAssignableFrom(consumer.getClass())) {
+					MergeAction<O> operation = (MergeAction<O>) consumer;
+					operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
+						@Override
+						public void value(FanInSubscription.InnerSubscription innerSubscription) {
+							Subscription subscription = innerSubscription.getDelegate();
+							if (StreamSubscription.class.isAssignableFrom(subscription.getClass())) {
+								Publisher<?> publisher = ((StreamSubscription<?>) subscription).getPublisher();
+								if (references.contains(publisher)) return;
+								if (Action.class.isAssignableFrom(publisher.getClass())) {
+									parseComposable(((Action<?, ?>) publisher).findOldestStream(false), d + 2);
+								} else if (Stream.class.isAssignableFrom(publisher.getClass())) {
+									parseComposable((Stream<?>) publisher, d + 2);
+								} else {
+									appender.append("Subscriber[").append(publisher).append(", ").append(subscription).append("]");
+									newLine(d + 2, false);
+								}
+							} else {
+								newLine(d + 2);
+								appender.append("Subscription[").append(subscription).append("]");
+							}
+							newLine(d + 2, false);
+						}
+					});
+				}
+			}
+
+
+			@Override
+			public String toString () {
+				return appender.toString();
 			}
 		}
-
-
-		@Override
-		public String toString() {
-			return appender.toString();
-		}
 	}
-}

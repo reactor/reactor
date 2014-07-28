@@ -100,14 +100,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		};
 	}
 
-	public int getPoolSize() {
-		return poolSize;
-	}
-
-	public ParallelStream[] getPublishers() {
-		return publishers;
-	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
@@ -125,7 +117,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 	}
 
-
 	@Override
 	protected void doError(Throwable throwable) {
 		super.doError(throwable);
@@ -134,12 +125,21 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 	}
 
+
 	@Override
 	protected void doComplete() {
 		super.doComplete();
 		for (ParallelStream parallelStream : publishers) {
 			parallelStream.broadcastComplete();
 		}
+	}
+
+	public int getPoolSize() {
+		return poolSize;
+	}
+
+	public ParallelStream[] getPublishers() {
+		return publishers;
 	}
 
 	static private class ParallelStream<O> extends Stream<O> {

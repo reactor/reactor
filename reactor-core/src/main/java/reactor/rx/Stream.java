@@ -43,22 +43,21 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values.
  * Provides base functionality and an internal contract for subclasses that make use of
  * the {@link #map(reactor.function.Function)} and {@link #filter(reactor.function.Predicate)} methods.
- * <p/>
+ * 
  * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
  * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
  * eventually produce a result {@param <O>} and will offer cascading over its own subscribers.
- * <p/>
- * * <p>
+ * 
+ * * 
  * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
  * create a {@link reactor.rx.spec.Streams} and configure it with the appropriate {@link Environment},
  * {@link Dispatcher}, and other settings.
- * </p>
+ * 
  *
  * @param <O> The type of the output values
  * @author Stephane Maldini
@@ -512,10 +511,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity}
 	 * to
 	 * have been set.
-	 * <p>
+	 * 
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values are the first value of each batch
@@ -525,10 +524,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code batchSize}
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity}
 	 * to
 	 * have been set.
-	 * <p>
+	 * 
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
@@ -542,7 +541,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
+	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code capacity}
 	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
@@ -551,7 +550,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code batchSize}
+	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code capacity}
 	 *
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the last value of each batch
@@ -568,6 +567,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * Create a new {@code Stream} that filters out consecutive equals values.
 	 *
 	 * @return a new {@code Stream} whose values are the last value of each batch
+	 *
 	 * @since 2.0
 	 */
 	public Action<O, O> distinctUntilChanged() {
@@ -578,10 +578,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 *
 	 * @since 1.1, 2.0
 	 */
 	public <V> ForEachAction<V> split() {
@@ -590,11 +590,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p>
+	 * 
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
+	 *
 	 * @return a new {@code Stream} whose values result from the iterable input
+	 *
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -623,7 +625,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	/**
 	 * Collect incoming values into a {@link java.util.List} that will be pushed into the returned {@code Stream} every
 	 * time {@code
-	 * batchSize} or flush is triggered has been reached.
+	 * capacity} or flush is triggered has been reached.
 	 *
 	 * @return a new {@code Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
@@ -633,9 +635,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
-	 * batchSize} has been reached.
+	 * capacity} has been reached.
 	 *
 	 * @param batchSize the collected size
+	 *
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public BufferAction<O> buffer(int batchSize) {
@@ -646,11 +649,29 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
+	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
+	 * {@code Stream}. The buffer will retain up to the last {@param backlog} elements in memory.
+	 *
+	 * @param backlog  maximum amount of items to keep
+	 *
+	 * @return a new {@code Stream} whose values are a {@link List} of all values in this buffer
+	 *
+	 * @since 2.0
+	 */
+	public Stream<List<O>> movingBuffer(int backlog) {
+		final Action<O, List<O>> d = new MovingBufferAction<O>(dispatcher, backlog);
+		d.capacity(backlog).env(environment).setKeepAlive(keepAlive);
+		subscribe(d);
+		return d;
+	}
+
+	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
 	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getMaxCapacity()}, complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 *
 	 * @since 2.0
 	 */
 	public SortAction<O> sort() {
@@ -659,12 +680,13 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@param batchSize}, complete signal or request signal.
+	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
 	 *
 	 * @return a new {@code Stream} whose values re-ordered using a PriorityQueue.
+	 *
 	 * @since 2.0
 	 */
 	public SortAction<O> sort(int maxCapacity) {
@@ -675,139 +697,43 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
-	 * time from the {@param period} in milliseconds. The window runs on a timer from the stream {@link
-	 * this#environment}.
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link this#getMaxCapacity()}
+	 * times. The nested streams will be pushed into the returned {@code Stream}.
 	 *
-	 * @param period the time period when each window close and flush the attached consumer
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
+	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
+	 *
+	 * @since 2.0
 	 */
-	public Stream<List<O>> window(int period) {
-		return window(period, TimeUnit.MILLISECONDS);
+	public Stream<Stream<O>> window() {
+		return window(batchSize);
 	}
 
 	/**
-	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified {@param period} in milliseconds. The window runs on a timer from the stream {@link
-	 * this#environment}. After accepting {@param backlog} of items, every old item will be dropped. Resulting {@link
-	 * List} will be at most {@param backlog} items long.
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@param backlog} times.
+	 * The nested streams will be pushed into the returned {@code Stream}.
 	 *
-	 * @param period  the time period when each window close and flush the attached consumer
-	 * @param backlog maximum amount of items to keep
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
+	 * @param backlog the time period when each window close and flush the attached consumer
+	 *
+	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
+	 *
+	 * @since 2.0
 	 */
-	public Stream<List<O>> movingWindow(int period, int backlog) {
-		return movingWindow(period, TimeUnit.MILLISECONDS, backlog);
+	public Stream<Stream<O>> window(int backlog) {
+		return connect(new WindowAction<O>( dispatcher, backlog));
 	}
 
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
-	 * time from the {@param period} and a {@param timeUnit}. The window
-	 * runs on a timer from the stream {@link this#environment}.
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
+	 * {param keyMapper}.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
-	 */
-	public Stream<List<O>> window(int period, TimeUnit timeUnit) {
-		return window(period, timeUnit, 0);
-	}
-
-	/**
-	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit}.
+	 * @param keyMapper the key mapping function that evaluates an incoming data and returns a key.
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param backlog  maximum amount of items to keep
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
-	 */
-	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int backlog) {
-		return movingWindow(period, timeUnit, 0, backlog);
-	}
-
-	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
-	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
-	 * runs on a timer from the stream {@link this#environment}.
+	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
 	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
+	 * @since 2.0
 	 */
-	public Stream<List<O>> window(int period, TimeUnit timeUnit, int delay) {
-		Assert.state(getEnvironment() != null,
-				"Cannot use default timer as no environment has been provided to this Stream");
-		return window(period, timeUnit, delay, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param
-	 * delay}
-	 * in milliseconds.
-	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param backlog  maximum amount of items to keep
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
-	 */
-	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog) {
-		Assert.state(getEnvironment() != null,
-				"Cannot use default timer as no environment has been provided to this Stream");
-		return movingWindow(period, timeUnit, delay, backlog, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every specified
-	 * time from the {@param period}, {@param timeUnit} after an initial {@param delay} in milliseconds. The window
-	 * runs on a supplied {@param timer}.
-	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param timer    the reactor timer to run the window on
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
-	 */
-	public Stream<List<O>> window(int period, TimeUnit timeUnit, int delay, Timer timer) {
-		final Action<O, List<O>> d = new WindowAction<O>(
-				dispatcher,
-				timer,
-				period, timeUnit, delay);
-		return connect(d);
-	}
-
-	/**
-	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
-	 * {@code Stream} every specified time from the {@param period} and a {@param timeUnit} after an initial {@param
-	 * delay}
-	 * in milliseconds.
-	 *
-	 * @param period   the time period when each window close and flush the attached consumer
-	 * @param timeUnit the time unit used for the period
-	 * @param delay    the initial delay in milliseconds
-	 * @param backlog  maximum amount of items to keep
-	 * @param timer    the reactor timer to run the window on
-	 * @return a new {@code Stream} whose values are a {@link List} of all values in this window
-	 * @since 1.1, 2.0
-	 */
-	public Stream<List<O>> movingWindow(int period, TimeUnit timeUnit, int delay, int backlog, Timer timer) {
-		final Action<O, List<O>> d = new MovingWindowAction<O>(
-				dispatcher,
-				timer,
-				period, timeUnit, delay, backlog);
-		d.capacity(backlog).env(environment).setKeepAlive(keepAlive);
-		subscribe(d);
-		return d;
+	public <K> Stream<Stream<O>> groupBy(Function<O,K> keyMapper) {
+		return connect(new GroupByAction<O, K>(keyMapper, dispatcher));
 	}
 
 	/**
@@ -817,6 +743,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn      the reduce function
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param <A>     the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
@@ -826,10 +753,10 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
-	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p>
+	 * Stream}, or on the first value of each batch, if a {@code capacity} is set.
+	 * 
 	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
-	 * only. But when a {@code batchSize} has been, the accumulated
+	 * only. But when a {@code capacity} has been, the accumulated
 	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of
 	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
 	 * a new accumulator.
@@ -838,6 +765,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param accumulators the {@link Supplier} that will provide accumulators
 	 * @param batchSize    the batch size to use
 	 * @param <A>          the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
@@ -858,6 +786,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @param fn  the reduce function
 	 * @param <A> the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
@@ -872,7 +801,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn      the scan function
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param <A>     the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 *
 	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
@@ -882,8 +813,8 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	/**
 	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
-	 * Stream}, or on the first value of each batch, if a {@code batchSize} is set.
-	 * <p>
+	 * Stream}, or on the first value of each batch, if a {@code capacity} is set.
+	 * 
 	 * The accumulated value will be published on the returned {@code Stream} every time
 	 * a
 	 * value is accepted.
@@ -891,7 +822,9 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @param fn           the scan function
 	 * @param accumulators the {@link Supplier} that will provide accumulators
 	 * @param <A>          the type of the reduced object
+	 *
 	 * @return a new {@code Stream} whose values contain only the reduced objects
+	 *
 	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
@@ -924,6 +857,100 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 */
 	public CountAction<O> count(int i) {
 		return connect(new CountAction<O>(dispatcher, i));
+	}
+
+	/**
+	 * Request the parent stream when the last notification occurred after {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 *
+	 * @return this {@link Stream}
+	 *
+	 * @since 1.1
+	 */
+	public Action<O, O> timeout(long timeout) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return timeout(timeout, getEnvironment().getRootTimer());
+	}
+
+	/**
+	 * Request the parent stream when the last notification occurred after {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timer   the reactor timer to run the timeout on
+	 *
+	 * @return this {@link Stream}
+	 *
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public Action<O, O> timeout(long timeout, Timer timer) {
+		final TimeoutAction<O> d = new TimeoutAction<O>(
+				getDispatcher(),
+				timer,
+				timeout
+		);
+		return connect(d);
+	}
+
+	/**
+	 * Request the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param period the period in milliseconds between two notifications on this stream
+	 *
+	 * @return this {@link Stream}
+	 *
+	 * @since 2.0
+	 */
+	public Action<O, O> throttle(long period) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return throttle(period, 0l);
+	}
+
+	/**
+	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
+	 * Timeout is run on the environment root timer.
+	 *
+	 * @param delay the timeout in milliseconds before starting consuming
+	 * @param period the period in milliseconds between two notifications on this stream
+	 *
+	 * @return this {@link Stream}
+	 *
+	 * @since 2.0
+	 */
+	public Action<O, O> throttle(long period, long delay) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return throttle(period, delay, getEnvironment().getRootTimer());
+	}
+
+	/**
+	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
+	 * Timeout is run on the given {@param timer}.
+	 *
+	 * @param period the timeout in milliseconds between two notifications on this stream
+	 * @param delay the timeout in milliseconds before starting consuming
+	 * @param timer   the reactor timer to run the timeout on
+	 *
+	 * @return this {@link Stream}
+	 *
+	 * @since 2.0
+	 */
+	public Action<O, O> throttle(long period, long delay, Timer timer) {
+		final ThrottleAction<O> d = new ThrottleAction<O>(
+				getDispatcher(),
+				timer,
+				period,
+				delay
+		);
+		d.env(environment).capacity(1).setKeepAlive(keepAlive);
+		subscribe(d);
+
+		return d;
 	}
 
 	/**
@@ -1056,7 +1083,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	}
 
 	/**
-	 * Return defined {@link Stream} batchSize, used to drive new {@link org.reactivestreams.Subscription}
+	 * Return defined {@link Stream} capacity, used to drive new {@link org.reactivestreams.Subscription}
 	 * request needs.
 	 *
 	 * @return

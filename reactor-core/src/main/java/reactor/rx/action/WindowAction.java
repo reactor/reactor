@@ -16,94 +16,54 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.registry.Registration;
-import reactor.function.Consumer;
-import reactor.timer.Timer;
-import reactor.util.Assert;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import reactor.rx.Stream;
 
 /**
- * WindowAction is collecting events on a steam until {@param period} is reached,
- * after that streams collected events further, clears the internal collection and
- * starts collecting items from empty list.
+ * WindowAction is forwarding events on a steam until {@param backlog} is reached,
+ * after that streams collected events further, complete it and create a fresh new stream.
  *
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class WindowAction<T> extends Action<T, List<T>> {
+public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
-	private final List<T> collectedWindow = new ArrayList<T>();
-	private final Registration<? extends Consumer<Long>> timerRegistration;
-
-	private boolean terminated = false;
-
+	private Stream<T> currentWindow;
 
 	@SuppressWarnings("unchecked")
-	public WindowAction(Dispatcher dispatcher,
-	                    Timer timer,
-	                    int period, TimeUnit timeUnit, int delay
-	) {
-		super(dispatcher);
-		Assert.state(timer != null, "Timer must be supplied");
-		this.timerRegistration = timer.schedule(new Consumer<Long>() {
-			@Override
-			public void accept(Long aLong) {
-				onWindow(aLong);
-			}
-		}, period, timeUnit, delay);
+	public WindowAction(Dispatcher dispatcher, int backlog) {
+		super(backlog, dispatcher, true, true, true);
 	}
 
-	protected void onWindow(Long aLong) {
-		dispatch(aLong, new Consumer<Long>() {
-			@Override
-			public void accept(Long aLong) {
-				if (!collectedWindow.isEmpty()) {
-					broadcastNext(new ArrayList<T>(collectedWindow));
-					collectedWindow.clear();
+	public Stream<T> currentWindow() {
+		return currentWindow;
+	}
 
-					if (terminated) {
-						broadcastComplete();
-					}
-				}
-				if (terminated) {
-					timerRegistration.cancel();
-				}
-			}
-		});
+	private void createWindowStream() {
+		currentWindow = new Stream<T>(dispatcher, batchSize).env(environment).capacity(batchSize);
+		currentWindow.setKeepAlive(false);
 	}
 
 	@Override
-	protected void doNext(T value) {
-		collectedWindow.add(value);
+	protected void doError(Throwable ev) {
+		super.doError(ev);
+		currentWindow.broadcastError(ev);
 	}
 
 	@Override
-	protected void doComplete() {
-		if (collectedWindow.isEmpty()) {
-			super.doComplete();
-		} else {
-			terminated = true;
+	protected void firstCallback(T event) {
+		createWindowStream();
+		broadcastNext(currentWindow);
+	}
+
+	@Override
+	protected void nextCallback(T event) {
+		currentWindow.broadcastNext(event);
+	}
+
+	@Override
+	protected void flushCallback(T event) {
+		if(currentWindow != null){
+			currentWindow.broadcastComplete();
 		}
-	}
-
-	@Override
-	public WindowAction<T> cancel() {
-		timerRegistration.cancel();
-		return (WindowAction<T>) super.cancel();
-	}
-
-	@Override
-	public WindowAction<T> pause() {
-		timerRegistration.pause();
-		return (WindowAction<T>) super.pause();
-	}
-
-	@Override
-	public WindowAction<T> resume() {
-		timerRegistration.resume();
-		return (WindowAction<T>) super.resume();
 	}
 }

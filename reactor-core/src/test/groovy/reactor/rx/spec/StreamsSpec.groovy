@@ -21,6 +21,7 @@ import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.selector.Selectors
 import reactor.function.Function
+import reactor.function.support.Tap
 import reactor.rx.Stream
 import reactor.tuple.Tuple2
 import spock.lang.Specification
@@ -195,7 +196,7 @@ class StreamsSpec extends Specification {
 	def 'Last value of a batch is accessible'() {
 		given:
 			'a composable that will accept an unknown number of values'
-			def d = Streams.<Integer> config().batchSize(3).get()
+			def d = Streams.<Integer> config().capacity(3).get()
 			Stream composable = d
 
 		when:
@@ -357,7 +358,7 @@ class StreamsSpec extends Specification {
 			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
 			mapped.when(Exception) { errors++ }
-			mapped.resume()
+			mapped.available()
 
 		when:
 			'the source accepts a value'
@@ -376,7 +377,7 @@ class StreamsSpec extends Specification {
 			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
 			filtered.when(Exception) { errors++ }
-			filtered.resume()
+			filtered.available()
 
 		when:
 			'the source accepts a value'
@@ -432,7 +433,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known number of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known number of values and a reduce function'
-			def source = Streams.<Integer> config().batchSize(5).get()
+			def source = Streams.<Integer> config().capacity(5).get()
 			Stream reduced = source.reduce(new Reduction())
 			def values = []
 			reduced.consume { values << it }
@@ -453,7 +454,7 @@ class StreamsSpec extends Specification {
 	def 'A known number of values can be reduced'() {
 		given:
 			'a composable that will accept 5 values and a reduce function'
-			def source = Streams.<Integer> config().batchSize(5).get()
+			def source = Streams.<Integer> config().capacity(5).get()
 			Stream reduced = source.reduce(new Reduction())
 			def value = reduced.tap()
 
@@ -473,7 +474,7 @@ class StreamsSpec extends Specification {
 	def 'When a known number of values is being reduced, only the final value is made available'() {
 		given:
 			'a composable that will accept 2 values and a reduce function'
-			def source = Streams.<Integer> config().batchSize(2).get()
+			def source = Streams.<Integer> config().capacity(2).get()
 			def value = source.reduce(new Reduction()).tap()
 
 		when:
@@ -566,7 +567,7 @@ class StreamsSpec extends Specification {
 	def 'Reduce will accumulate a list of accepted values'() {
 		given:
 			'a composable'
-			def source = Streams.<Integer> config().batchSize(1).get()
+			def source = Streams.<Integer> config().capacity(1).get()
 			Stream reduced = source.buffer()
 			def value = reduced.tap()
 
@@ -584,7 +585,7 @@ class StreamsSpec extends Specification {
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> config().batchSize(2).get()
+			def source = Streams.<Integer> config().capacity(2).get()
 			Stream reduced = source.buffer()
 			def value = reduced.tap()
 
@@ -603,6 +604,86 @@ class StreamsSpec extends Specification {
 		then:
 			'the collected list contains the first and second elements'
 			value.get() == [1, 2]
+	}
+
+	def 'Window will re-route N elements to a fresh nested stream'() {
+		given:
+			'a source and a collected window stream'
+			def source = Streams.<Integer> config().capacity(2).get()
+			Tap<List<Integer>> value = null
+
+			source.window().consume {
+				value = it.buffer(2).tap()
+			}
+
+
+		when:
+			'the first value is accepted on the source'
+			source.broadcastNext(1)
+
+		then:
+			'the collected list is not yet available'
+			value
+			value.get() == null
+
+		when:
+			'the second value is accepted'
+			source.broadcastNext(2)
+			println source.debug()
+
+		then:
+			'the collected list contains the first and second elements'
+			value.get() == [1, 2]
+
+		when:
+			'2 more values are accepted'
+			source.broadcastNext(3)
+			source.broadcastNext(4)
+			println source.debug()
+
+		then:
+			'the collected list contains the first and second elements'
+			value.get() == [3, 4]
+	}
+
+	def 'GroupBy will re-route N elements to a nested stream based on the mapped key'() {
+		given:
+			'a source and a collected window stream'
+			def source = Streams.<SimplePojo> defer()
+			def result = [:]
+
+			source.groupBy {
+				it.id
+			}.consume {
+				it.buffer().split().consume{ pojo ->
+					if(result[pojo.id]){
+						result[pojo.id] << pojo.title
+					}else{
+						result[pojo.id] = [pojo.title]
+					}
+				}
+			}
+
+
+		when:
+			'some values are accepted'
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
+			source.broadcastComplete()
+		println source.debug()
+
+		then:
+			'the collected list is not yet available'
+			result
+			result == [
+			    1:['Stephane', 'Jon','Sandrine'],
+			    2:['Acme'],
+			    3:['Acme2','Acme3']
+			]
 	}
 
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
@@ -673,12 +754,12 @@ class StreamsSpec extends Specification {
 			event == 1
 	}
 
-	def 'Window will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
+	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
-			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.window(500)
+			def source = Streams.<Integer> config().env(environment).get()
+			def reduced = source.buffer().throttle(300)
 			def value = reduced.tap()
 
 		when:
@@ -686,6 +767,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			sleep(1200)
+			println source.debug()
 
 		then:
 			'the collected list is available'
@@ -744,12 +826,51 @@ class StreamsSpec extends Specification {
 
 	}
 
-	def 'Moving Window accumulate items without dropping previous'() {
+	def 'A Stream can be throttled'() {
+		given:
+			'a source and a throttled stream'
+			Environment environment = new Environment()
+			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
+			long avgTime = 150l
+			long nanotime = avgTime * 1_000_000
+
+			def reduced = source
+					.throttle(avgTime)
+					.elapsed()
+					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
+				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+			}
+
+			def value = reduced.tap()
+			println source.debug()
+
+		when:
+			'the first values are accepted on the source'
+			source.broadcastNext(1)
+			source.broadcastNext(1)
+			source.broadcastNext(1)
+			source.broadcastNext(1)
+			source.broadcastNext(1)
+			source.broadcastComplete()
+			sleep(1500)
+			println source.debug()
+			println(((long) (value.get() / 1_000_000)) + " milliseconds on average")
+
+		then:
+			'the average elapsed time between 2 signals is greater than throttled time'
+			value.get() >= nanotime * 0.9
+
+		cleanup:
+			environment.shutdown()
+
+	}
+
+	def 'Moving Buffer accumulate items without dropping previous'() {
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.movingWindow(500, 5)
+			def reduced = source.movingBuffer(5).throttle(400)
 			def value = reduced.tap()
 
 		when:
@@ -757,6 +878,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			sleep(1200)
+			println source.debug()
 
 		then:
 			'it outputs received values'
@@ -786,16 +908,16 @@ class StreamsSpec extends Specification {
 			environment.shutdown()
 	}
 
-	def 'Moving Window will drop overflown items'() {
+	def 'Moving Buffer will drop overflown items'() {
 		given:
 			'a source and a collected stream'
 			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			Stream reduced = source.movingWindow(500, 5)
+			def reduced = source.movingBuffer(5).throttle(500)
 			def value = reduced.tap()
 
 		when:
-			'the window overflows'
+			'the buffer overflows'
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			source.broadcastNext(3)
@@ -1065,6 +1187,10 @@ class StreamsSpec extends Specification {
 			value2.get() == 'test2'
 	}
 
+	static class SimplePojo {
+		int id
+		String title
+	}
 
 	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
 		@Override
