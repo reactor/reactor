@@ -15,6 +15,7 @@
  */
 package reactor.rx.spec
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
 import reactor.core.Observable
 import reactor.core.spec.Reactors
@@ -648,7 +649,7 @@ class StreamsSpec extends Specification {
 
 	def 'GroupBy will re-route N elements to a nested stream based on the mapped key'() {
 		given:
-			'a source and a collected window stream'
+			'a source and a grouped by ID stream'
 			def source = Streams.<SimplePojo> defer()
 			def result = [:]
 
@@ -664,6 +665,8 @@ class StreamsSpec extends Specification {
 				}
 			}
 
+		def objetMapper = new ObjectMapper()
+		println objetMapper.writeValueAsString(source.debug().toMap())
 
 		when:
 			'some values are accepted'
@@ -674,7 +677,6 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
 			source.broadcastComplete()
-			println source.debug()
 
 		then:
 			'the result should group titles by id'
@@ -684,6 +686,42 @@ class StreamsSpec extends Specification {
 					2: ['Acme'],
 					3: ['Acme2', 'Acme3']
 			]
+	}
+
+	def 'StreamUtils will parse a Stream to a Map'() {
+		given:
+			'a source and a grouped by ID stream'
+			def source = Streams.<SimplePojo> defer()
+
+			source.groupBy { pojo ->
+				pojo.id
+			}.consume { stream ->
+				stream.consume { pojo ->
+
+				}
+			}
+
+		when:
+			'some values are accepted'
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
+			source.broadcastComplete()
+			def result = source.debug().toMap()
+
+		then:
+			'the result should contain all stream titles by id'
+			result.to[0].id == "GroupBy"
+			result.to[0].to[0].id == "Callback"
+			result.to[0].boundTo[0].id == "1"
+			result.to[0].boundTo[1].id == "2"
+			result.to[0].boundTo[2].id == "3"
+			result.to[0].boundTo[0].to[0].id == "Callback"
+			result.to[0].boundTo[1].to[0].id == "Callback"
+			result.to[0].boundTo[2].to[0].id == "Callback"
 	}
 
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {

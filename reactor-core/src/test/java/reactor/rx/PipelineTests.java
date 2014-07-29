@@ -474,7 +474,7 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(30, TimeUnit.SECONDS)) {
-			throw new RuntimeException(deferred.debug());
+			throw new RuntimeException(deferred.debug().toString());
 		}
 
 		long stop = System.currentTimeMillis() - start;
@@ -524,7 +524,7 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(50, TimeUnit.SECONDS)) {
-			throw new RuntimeException(mapManydeferred.debug());
+			throw new RuntimeException(mapManydeferred.debug().toString());
 		}
 		assertEquals(0, latch.getCount());
 
@@ -594,7 +594,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
 		if(!latch.await(30, TimeUnit.SECONDS)) {
-			throw new RuntimeException(batchingStreamDef.debug());
+			throw new RuntimeException(batchingStreamDef.debug().toString());
 
 		}
 

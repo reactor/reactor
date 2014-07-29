@@ -465,7 +465,7 @@ public class Promise<O> implements Pipeline<O>, Supplier<O>, Processor<O, O>, Su
 		return then(new SupplierAction<O, E>(delegateAction.getDispatcher(), supplier));
 	}
 
-	public String debug() {
+	public StreamUtils.StreamVisitor debug() {
 		return delegateAction.debug();
 	}
 

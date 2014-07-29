@@ -34,6 +34,7 @@ import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
+import reactor.rx.action.support.GroupedByStream;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -764,7 +765,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 *
 	 * @since 2.0
 	 */
-	public <K> Stream<Stream<O>> groupBy(Function<O,K> keyMapper) {
+	public <K> Stream<GroupedByStream<K, O>> groupBy(Function<O,K> keyMapper) {
 		return connect(new GroupByAction<O, K>(keyMapper, dispatcher));
 	}
 
@@ -992,7 +993,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public String debug() {
+	public StreamUtils.StreamVisitor debug() {
 		return StreamUtils.browse(this);
 	}
 
@@ -1073,7 +1074,7 @@ public class Stream<O> implements Pipeline<O>, Recyclable {
 		error = throwable;
 
 		if (downstreamSubscription == null) {
-			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug(), throwable));
+			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(), throwable));
 			return;
 		}
 

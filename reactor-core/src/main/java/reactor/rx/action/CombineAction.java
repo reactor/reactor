@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
+import reactor.rx.StreamUtils;
 
 /**
  * Create a Processor where a given head/tail couple is provided as a Stream (Input upstream) and Action (Output
@@ -113,7 +114,7 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 	}
 
 	@Override
-	public String debug() {
+	public StreamUtils.StreamVisitor debug() {
 		return publisher.debug();
 	}
 

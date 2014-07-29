@@ -18,19 +18,16 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
+import reactor.rx.action.support.GroupedByStream;
 import reactor.util.Assert;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * @author Stephane Maldini
- * @since 2.0
- */
-public class GroupByAction<T, K> extends Action<T, Stream<T>> {
+public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 
 	private final Function<T, K> fn;
-	private final Map<K, Stream<T>> groupByMap = new HashMap<K, Stream<T>>();
+	private final Map<K, GroupedByStream<K, T>> groupByMap = new HashMap<K, GroupedByStream<K, T>>();
 
 	public GroupByAction(Function<T, K> fn, Dispatcher dispatcher) {
 		super(dispatcher);
@@ -38,17 +35,17 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 		this.fn = fn;
 	}
 
-	public Map<K, Stream<T>> groupByMap() {
+	public Map<K, GroupedByStream<K, T>> groupByMap() {
 		return groupByMap;
 	}
 
 	@Override
 	protected void doNext(T value) {
-		K key = fn.apply(value);
-		Stream<T> stream = groupByMap.get(key);
+		final K key = fn.apply(value);
+		GroupedByStream<K, T> stream = groupByMap.get(key);
 		if (stream == null) {
-			stream = new Stream<T>(dispatcher).capacity(batchSize).env(environment);
-			stream.setKeepAlive(false);
+			stream = new GroupedByStream<K, T>(key, dispatcher);
+			stream.capacity(batchSize).env(environment).setKeepAlive(false);
 			groupByMap.put(key, stream);
 			broadcastNext(stream);
 		}
@@ -58,7 +55,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		for(Stream<T> stream : groupByMap.values()){
+		for (Stream<T> stream : groupByMap.values()) {
 			stream.broadcastError(ev);
 		}
 	}
@@ -66,8 +63,9 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		for(Stream<T> stream : groupByMap.values()){
+		for (Stream<T> stream : groupByMap.values()) {
 			stream.broadcastComplete();
 		}
 	}
+
 }

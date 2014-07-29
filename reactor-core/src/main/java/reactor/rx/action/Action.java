@@ -295,7 +295,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
-	public String debug() {
+	public StreamUtils.StreamVisitor debug() {
 		return StreamUtils.browse(findOldestStream(false));
 	}
 
