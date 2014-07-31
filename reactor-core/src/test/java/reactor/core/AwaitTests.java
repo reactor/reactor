@@ -48,25 +48,19 @@ public class AwaitTests extends AbstractReactorTest {
 					.get();
 			final CountDownLatch latch = new CountDownLatch(1);
 
-			deferred.onSuccess(new Consumer<String>() {
-
-				@Override
-				public void accept(String t) {
-					latch.countDown();
-				}
-			});
+			deferred.onComplete(t -> latch.countDown());
 
 			innerReactor.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {
-					deferred.broadcastNext("foo");
+					deferred.onNext("foo");
 				}
 
 			}, null);
 
 			boolean latchRes = latch.await(5, TimeUnit.SECONDS);
-			assertThat("latch is not counted down : "+latch.getCount()+" "+deferred.debug(), latchRes);
+			assertThat("latch is not counted down : "+latch.getCount(), latchRes);
 		}
 	}
 

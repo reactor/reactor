@@ -72,7 +72,7 @@ class GroovyPromisesSpec extends Specification {
 
 		then:
 			'Composition contains value'
-			d.await() == 2
+			d.promise().await() == 2
 	}
 
 	def "Promise notifies of Failure"() {
@@ -102,23 +102,23 @@ class GroovyPromisesSpec extends Specification {
 			def p = Promises.<String> defer()
 
 		when: "add a mapping closure"
-			Promise s = p | { Integer.parseInt it }
+			def s = p | { Integer.parseInt it }
 
 		and: "setting a value"
 			p << '10'
 
 		then:
-			s.get() == 10
+			s.promise().get() == 10
 
 		when: "add a mapping closure"
 			p = Promises.defer()
-			s = p.map { Integer.parseInt it }
+			s = p | { Integer.parseInt it }
 
 		and: "setting a value"
 			p << '10'
 
 		then:
-			s.get() == 10
+			s.promise().get() == 10
 	}
 
 	def "A promise can be be consumed by another promise"() {
@@ -143,13 +143,13 @@ class GroovyPromisesSpec extends Specification {
 			final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-			def s = p.map { Integer.parseInt it }.
+			def s = p.stream().map() { Integer.parseInt it }.
 					when(NumberFormatException, { latch.countDown() }).
 					map { println('not in log'); true }
 
 		and: "setting a value"
 			p << 'not a number'
-			s.await(2000, TimeUnit.MILLISECONDS)
+			s.promise().await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
 			thrown(NumberFormatException)
@@ -164,7 +164,7 @@ class GroovyPromisesSpec extends Specification {
 			def s = p | { Integer.parseInt it } | { it * 10 }
 
 		then:
-			s.get() == 100
+			s.promise().get() == 100
 	}
 
 }

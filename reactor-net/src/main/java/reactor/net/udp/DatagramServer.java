@@ -58,7 +58,7 @@ public abstract class DatagramServer<IN, OUT>
 		start(new Runnable() {
 			@Override
 			public void run() {
-				d.broadcastNext(true);
+				d.onNext(true);
 			}
 		});
 		return d;

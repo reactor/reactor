@@ -20,38 +20,34 @@ import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class CompleteAction<T, E> extends Action<T, E> {
+public class FinallyAction<T, C> extends Action<T, T> {
 
-	private final Consumer<E> consumer;
-	private final E           input;
+	private final Consumer<C> consumer;
+	private final C           input;
 
-	public CompleteAction(Dispatcher dispatcher, E input, Consumer<E> consumer) {
+	public FinallyAction(Dispatcher dispatcher, C input, Consumer<C> consumer) {
 		super(dispatcher);
 		this.consumer = consumer;
 		this.input = input;
 	}
 
 	@Override
-	protected void doNext(Object ev) {
-		consumer.accept(input);
+	protected void doNext(T ev) {
+		broadcastNext(ev);
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
+		broadcastError(ev);
 		consumer.accept(input);
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void doComplete() {
+		broadcastComplete();
 		consumer.accept(input);
 	}
 
-	@Override
-	public String toString() {
-		return super.toString()+" % " +
-				"input: " + input;
-	}
 }

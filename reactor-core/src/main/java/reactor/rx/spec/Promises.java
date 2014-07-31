@@ -16,21 +16,16 @@
 
 package reactor.rx.spec;
 
-import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
 import reactor.rx.Promise;
-import reactor.rx.Stream;
-import reactor.rx.action.Action;
-import reactor.rx.action.BufferAction;
 import reactor.rx.action.MergeAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -72,7 +67,7 @@ public abstract class Promises {
 	 * @return a new {@link reactor.rx.Promise}
 	 */
 	public static <T> Promise<T> defer(Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(new Action<T, T>(dispatcher), env);
+		return new Promise<T>(dispatcher, env);
 	}
 
 	/**
@@ -122,7 +117,7 @@ public abstract class Promises {
 	 */
 	public static <T> Promise<T> task(Supplier<T> supplier, Environment env, Dispatcher dispatcher) {
 		SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, supplier);
-		Promise<T> promise = new Promise<T>(supplierAction, env);
+		Promise<T> promise = new Promise<T>(dispatcher, env);
 		supplierAction.subscribe(promise);
 		return promise;
 	}
@@ -163,7 +158,7 @@ public abstract class Promises {
 	 * @return A {@link Promise} that is completed with the given value
 	 */
 	public static <T> Promise<T> success(T value, Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(value, new Action<T, T>(dispatcher), env);
+		return new Promise<T>(value, dispatcher, env);
 	}
 
 	/**
@@ -202,7 +197,7 @@ public abstract class Promises {
 	 * @return A {@link Promise} that is completed with the given error
 	 */
 	public static <T> Promise<T> error(Throwable error, Environment env, Dispatcher dispatcher) {
-		return new Promise<T>(error, new Action<T, T>(dispatcher), env);
+		return new Promise<T>(error, dispatcher, env);
 	}
 
 	/**
@@ -225,22 +220,13 @@ public abstract class Promises {
 	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
-	public static <T> Promise<List<T>> when(List<? extends Promise<T>> promises) {
+	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		BufferAction<T> bufferAction = new BufferAction<T>(promises.size(), SynchronousDispatcher.INSTANCE){
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(1);
-			}
-		};
-		bufferAction.env(promises.get(0).getEnvironment());
-		Promise<List<T>> resultPromise = next(bufferAction);
-
-		new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, bufferAction, promises);
-
-		return resultPromise;
-
+		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, null, promises)
+				.env(promises.get(0).getEnvironment())
+				.buffer(promises.size())
+				.promise();
 	}
 
 
@@ -267,75 +253,10 @@ public abstract class Promises {
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		Action<T,T> noop = new Action<T,T>(){
-			@Override
-			protected void doNext(T ev) {
-				broadcastNext(ev);
-			}
-
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(1);
-			}
-		};
-
-		Promise<T> resultPromise = Promise.wrap(noop);
-		noop.subscribe(resultPromise);
-
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE,  null, noop, promises);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE,  null, null, promises);
 		mergeAction.env(promises.get(0).getEnvironment());
 
-		return resultPromise;
-	}
-
-	/**
-	 * Consume the next value of the given {@link reactor.rx.Stream} and fulfill the returned {@link
-	 * reactor.rx.Promise} on the next value.
-	 *
-	 * @param composable the {@literal Composable} to consume the next value from
-	 * @param <T>        type of the value
-	 * @return a {@link reactor.rx.Promise} that will be fulfilled with the next value coming into the given
-	 * Composable
-	 */
-	public static <T> Promise<T> next(Stream<T> composable) {
-		final Promise<T> resultPromise = new Promise<T>(
-				new Action<T, T>(),
-				composable.getEnvironment());
-
-		composable.connect(new Action<T, T>(SynchronousDispatcher.INSTANCE, 1) {
-
-			@Override
-			protected void doSubscribe(Subscription subscription) {
-				subscription.request(1);
-			}
-
-			@Override
-			protected void doComplete() {
-				resultPromise.onComplete();
-			}
-
-			@Override
-			protected void doNext(T ev) {
-				resultPromise.onNext(ev);
-			}
-
-			@Override
-			protected void doError(Throwable ev) {
-				resultPromise.onError(ev);
-			}
-		});
-
-		return resultPromise;
-	}
-
-	@SuppressWarnings("unchecked")
-	static private <O> Promise<O>[] toArray(Collection<? extends Promise<O>> promises) {
-		Promise<O>[] arrayPromises = new Promise[promises.size()];
-		int i = 0;
-		for (Promise<O> promise : promises) {
-			arrayPromises[i++] = promise;
-		}
-		return arrayPromises;
+		return mergeAction.promise();
 	}
 
 }

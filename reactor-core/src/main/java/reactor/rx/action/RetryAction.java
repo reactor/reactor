@@ -57,7 +57,7 @@ public class RetryAction<T> extends Action<T, T> {
 					currentNumRetries = 0;
 				} else {
 					if (subscription != null) {
-						Action<?,?> rootAction = findOldestStream(true);
+						Action<?,?> rootAction = findOldestAction(true);
 						Action secondAction = rootAction.downstreamSubscription() != null ?
 								(Action)rootAction.downstreamSubscription().getSubscriber() :
 								null;

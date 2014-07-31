@@ -19,29 +19,26 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Supplier;
 import reactor.rx.Promise;
-import reactor.rx.action.Action;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
 
 /**
  * A helper class for specifying a {@link reactor.rx.Promise}.
  *
+ * @param <T> the type of the value that the Promise will contain
  * @author Jon Brisbin
  * @author Stephane Maldini
- *
- * @param <T> the type of the value that the Promise will contain
  */
 public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T>> {
 
-	private T             value;
-	private Supplier<T>   valueSupplier;
-	private Throwable     error;
+	private T           value;
+	private Supplier<T> valueSupplier;
+	private Throwable   error;
 
 	/**
 	 * Configures the promise to have been successfully completed with the given {@code value}.
 	 *
 	 * @param value The value for the promise to contain
-	 *
 	 * @return {@code this}
 	 */
 	public PromiseSpec<T> success(T value) {
@@ -56,7 +53,6 @@ public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T
 	 * {@code valueSupplier}.
 	 *
 	 * @param valueSupplier The supplier of the value for the promise to contain
-	 *
 	 * @return {@code this}
 	 */
 	public PromiseSpec<T> supply(Supplier<T> valueSupplier) {
@@ -70,7 +66,6 @@ public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T
 	 * Configures the promise to have been completed with the given {@code error}.
 	 *
 	 * @param error The error to be held by the Promise
-	 *
 	 * @return {@code this}
 	 */
 	public PromiseSpec<T> error(Throwable error) {
@@ -83,16 +78,16 @@ public final class PromiseSpec<T> extends PipelineSpec<PromiseSpec<T>, Promise<T
 	@Override
 	protected Promise<T> createPipeline(Environment env, Dispatcher dispatcher) {
 		if (value != null) {
-			return new Promise<T>(value, new Action<T,T>(dispatcher), env);
+			return new Promise<T>(value, dispatcher, env);
 		} else if (valueSupplier != null) {
 			SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, valueSupplier);
-			Promise<T> promise = new Promise<T>(supplierAction, env);
+			Promise<T> promise = new Promise<T>(dispatcher, env);
 			supplierAction.subscribe(promise);
 			return promise;
 		} else if (error != null) {
-			return new Promise<T>(error, new Action<T,T>(dispatcher), env);
+			return new Promise<T>(error, dispatcher, env);
 		} else {
-			return new Promise<T>(new Action<T,T>(dispatcher),env);
+			return new Promise<T>(dispatcher, env);
 		}
 	}
 }

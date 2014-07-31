@@ -242,7 +242,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (log.isErrorEnabled()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
-				connection.broadcastError(future.cause());
+				connection.onError(future.cause());
 				return;
 			}
 
@@ -268,7 +268,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			future.channel().eventLoop().submit(new Runnable() {
 				@Override
 				public void run() {
-					connection.broadcastNext(ch);
+					connection.onNext(ch);
 				}
 			});
 		}

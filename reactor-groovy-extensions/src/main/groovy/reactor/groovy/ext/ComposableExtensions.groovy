@@ -23,7 +23,6 @@ import reactor.function.Predicate
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action
-import reactor.rx.action.Pipeline
 import reactor.tuple.Tuple2
 
 /**
@@ -59,8 +58,8 @@ class ComposableExtensions {
 		selfType.map other
 	}
 
-	static <T, V> Promise<V> or(final Promise<T> selfType, final Function<T, V> other) {
-		selfType.then other, (Consumer<Throwable>) null
+	static <T, V> Stream<V> or(final Promise<T> selfType, final Function<T, V> other) {
+		selfType.stream().map(other)
 	}
 
 	//Filtering
@@ -68,8 +67,8 @@ class ComposableExtensions {
 		selfType.filter other
 	}
 
-	static <T> Promise<T> and(final Promise<T> selfType, final Predicate<T> other) {
-		selfType.filter other
+	static <T> Stream<T> and(final Promise<T> selfType, final Predicate<T> other) {
+		selfType.stream().filter(other)
 	}
 
 
@@ -82,9 +81,13 @@ class ComposableExtensions {
 		selfType.onSuccess other
 	}
 
-	static <T> Pipeline<T> leftShift(final Pipeline<T> selfType, T value) {
-		selfType.broadcastNext value
-		selfType
+	//Consuming
+	static <T> Stream<T> leftShift(final Stream<T> selfType, final T value) {
+		selfType.broadcastNext(value)
+	}
+
+	static <T> Promise<T> leftShift(final Promise<T> selfType, final T value) {
+		selfType.onNext value
 	}
 
 }

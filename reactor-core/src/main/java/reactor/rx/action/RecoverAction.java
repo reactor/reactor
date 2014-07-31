@@ -15,8 +15,10 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.ClassSelector;
+import reactor.rx.StreamSubscription;
 
 /**
  * @author Stephane Maldini
@@ -25,10 +27,25 @@ import reactor.event.selector.ClassSelector;
 public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 
 	private final ClassSelector selector;
+	private       E             lastError;
 
 	public RecoverAction(Dispatcher dispatcher, ClassSelector selector) {
 		super(dispatcher);
 		this.selector = selector;
+	}
+
+	@Override
+	protected StreamSubscription<E> createSubscription(final Subscriber<E> subscriber) {
+		if (lastError != null) {
+			return new StreamSubscription<E>(this, subscriber) {
+				@Override
+				public void request(int elements) {
+					subscriber.onNext(lastError);
+				}
+			};
+		} else {
+			return super.createSubscription(subscriber);
+		}
 	}
 
 	@Override
@@ -40,7 +57,10 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
 		if (selector.matches(cause.getClass())) {
+			lastError = (E) cause;
 			broadcastNext((E) cause);
+		} else {
+			super.doError(cause);
 		}
 	}
 

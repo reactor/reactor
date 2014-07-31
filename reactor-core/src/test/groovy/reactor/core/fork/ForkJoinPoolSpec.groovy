@@ -41,7 +41,7 @@ class ForkJoinPoolSpec extends Specification {
 			task.submit()
 
 		then: "tasks were run in another thread"
-			!results.await(5, TimeUnit.SECONDS)?.find { it == main }
+			!results.promise().await(5, TimeUnit.SECONDS)?.find { it == main }
 
 	}
 

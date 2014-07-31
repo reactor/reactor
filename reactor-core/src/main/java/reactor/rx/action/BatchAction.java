@@ -78,7 +78,15 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 		dispatch(flushConsumer);
-		super.requestUpstream(capacity, terminated, elements);
+		if(elements > batchSize) {
+			super.requestUpstream(capacity,
+					terminated, elements);
+		}else{
+			super.requestUpstream(capacity,
+					terminated, batchSize - currentNextSignals > 0 ?
+							batchSize - currentNextSignals :
+							batchSize);
+		}
 	}
 
 	private class FlushConsumer implements Consumer<Void> {

@@ -52,6 +52,11 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		@Override
 		public void accept(Integer n) {
 			try {
+				if (subscription == null){
+
+					return;
+				}
+
 				if (firehose) {
 					subscription.request(n);
 					return;
@@ -296,7 +301,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(findOldestStream(false));
+		return StreamUtils.browse(findOldestAction(false));
 	}
 
 	public <E> CombineAction<E, O, Action<I, O>> combine() {
@@ -305,7 +310,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@SuppressWarnings("unchecked")
 	public <E> CombineAction<E, O, Action<I, O>> combine(boolean reuse) {
-		final Action<E, O> subscriber = (Action<E, O>) findOldestStream(reuse);
+		final Action<E, O> subscriber = (Action<E, O>) findOldestAction(reuse);
 		subscriber.subscription = null;
 		return new CombineAction<E, O, Action<I, O>>(this, subscriber);
 	}
@@ -322,7 +327,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return (Action<I, O>) super.env(environment);
 	}
 
-	public Action<?, ?> findOldestStream(boolean resetState) {
+	public Action<?, ?> findOldestAction(boolean resetState) {
 		Action<?, ?> that = this;
 
 		if (resetState) {
@@ -330,6 +335,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 		while (that.subscription != null
 				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
+				&& ((StreamSubscription<?>) that.subscription).getPublisher() != null
 				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
 				) {
 

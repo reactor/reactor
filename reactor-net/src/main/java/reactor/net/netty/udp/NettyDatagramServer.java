@@ -173,9 +173,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 							@Override
 							public void operationComplete(Future future) throws Exception {
 								if (future.isSuccess()) {
-									d.broadcastNext(true);
+									d.onNext(true);
 								} else {
-									d.broadcastError(future.cause());
+									d.onError(future.cause());
 								}
 							}
 						};
@@ -292,9 +292,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			if (future.isSuccess()) {
-				d.broadcastComplete();
+				d.onComplete();
 			} else {
-				d.broadcastError(future.cause());
+				d.onError(future.cause());
 			}
 		}
 	}

@@ -318,7 +318,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 			} catch (Throwable t) {
 				eventsReactor.notify(t.getClass(), Event.wrap(t));
 				if (null != onComplete) {
-					onComplete.broadcastError(t);
+					onComplete.onError(t);
 				}
 			}
 		}

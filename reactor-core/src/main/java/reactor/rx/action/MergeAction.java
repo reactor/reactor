@@ -51,21 +51,26 @@ public class MergeAction<O> extends Action<O, O> {
 		if (length > 0) {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this,
 					MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8));
+
+			onSubscribe(this.innerSubscriptions);
+
 			if (processingAction != null) {
 				processingAction.onSubscribe(innerSubscriptions);
 			}
+
 			for (Publisher<O> composable : composables) {
 				addPublisher(composable);
 			}
 		} else {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this);
+			onSubscribe(this.innerSubscriptions);
 		}
 
 		if (upstreamAction != null) {
 			this.runningComposables.incrementAndGet();
 		}
 
-		onSubscribe(this.innerSubscriptions);
+
 	}
 
 	public void addPublisher(Publisher<O> publisher) {
@@ -168,6 +173,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 		@Override
 		public void onError(Throwable t) {
+			outerAction.runningComposables.decrementAndGet();
 			outerAction.innerSubscriptions.onError(t);
 		}
 

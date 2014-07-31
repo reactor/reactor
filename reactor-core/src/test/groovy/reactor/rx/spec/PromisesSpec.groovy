@@ -18,7 +18,6 @@ package reactor.rx.spec
 import reactor.core.Environment
 import reactor.core.Observable
 import reactor.rx.Promise
-import reactor.rx.StreamUtils
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -43,8 +42,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is rejected"
-			promise.broadcastError new Exception()
-			println promise.debug()
+			promise.onError new Exception()
 
 		then:
 			"the consumer is invoked with the promise"
@@ -83,7 +81,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is fulfilled"
-			promise.broadcastNext 'test'
+			promise.onNext 'test'
 
 		then:
 			"the consumer is invoked with the promise"
@@ -122,7 +120,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is fulfilled"
-			promise.broadcastNext 'test'
+			promise.onNext 'test'
 
 		then:
 			"the consumer is invoked with the fulfilling value"
@@ -188,7 +186,7 @@ class PromisesSpec extends Specification {
 		when:
 			"the promise is rejected"
 			def failure = new Exception()
-			promise.broadcastError failure
+			promise.onError failure
 
 		then:
 			"the consumer is invoked with the rejecting value"
@@ -208,6 +206,7 @@ class PromisesSpec extends Specification {
 			promise.onError { v ->
 				acceptedValue = v
 			}
+		println promise.debug()
 
 		then:
 			"the consumer is invoked with the rejecting value"
@@ -250,7 +249,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is fulfilled with null"
-			promise.broadcastNext null
+			promise.onNext null
 
 		then:
 			"the promise has completed"
@@ -262,11 +261,11 @@ class PromisesSpec extends Specification {
 			"a promise with a consuming Observable"
 			def promise = Promises.<Object> defer()
 			def observable = Mock(Observable)
-			promise.consume('key', observable)
+			promise.stream().notify('key', observable)
 
 		when:
 			"the promise is fulfilled"
-			promise.broadcastNext 'test'
+			promise.onNext 'test'
 
 		then:
 			"the observable is notified"
@@ -281,7 +280,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an Observable is added as a consumer"
-			promise.consume('key', observable)
+			promise.stream().notify('key', observable)
 
 		then:
 			"the observable is notified"
@@ -292,13 +291,11 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a mapping function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.map { it * 2 }
+			def mappedPromise = promise.stream().map { it * 2 }.promise()
 
 		when:
 			"the original promise is fulfilled"
-			println StreamUtils.browse(mappedPromise)
-			promise.broadcastNext 1
-			println StreamUtils.browse(mappedPromise)
+			promise.onNext 1
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -309,13 +306,11 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.fork { Promises.success(it + 1) }
+			def mappedPromise = promise.stream().flatMap { Promises.success(it + 1) }.promise()
 
 		when:
 			"the original promise is fulfilled"
-			println promise.debug()
-			promise.broadcastNext 1
-			println promise.debug()
+			promise.onNext 1
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -329,7 +324,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a mapping function is added"
-			def mappedPromise = promise.map { it * 2 }
+			def mappedPromise = promise.stream().map { it * 2 }.promise()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -345,7 +340,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"The promise is fulfilled"
-			promise.broadcastNext 'test'
+			promise.onNext 'test'
 
 		then:
 			"the consumer is called"
@@ -362,26 +357,10 @@ class PromisesSpec extends Specification {
 		when:
 			"The promise is rejected"
 			def e = new Exception()
-			promise.broadcastError e
+			promise.onError e
 
 		then:
 			"the consumer is called"
-			value == e
-	}
-
-	def "An onError consumer registered via then is called when the promise is already rejected"() {
-		given:
-			"A promise that has been rejected"
-			def e = new Exception()
-			def promise = Promises.<String> error(e)
-
-		when:
-			"An onError consumer is registered via then"
-			def value
-			promise.then({null}){ value = it }
-
-		then:
-			"The consumer is called"
 			value == e
 	}
 
@@ -400,46 +379,16 @@ class PromisesSpec extends Specification {
 			value == 'test'
 	}
 
-	def "An onSuccess function registered via then is called when the promise is fulfilled"() {
-		given:
-			"a promise with an onSuccess function registered using then"
-			Promise<String> promise = Promises.<String> defer()
-			def transformed = promise.then ({ it * 2 }, null)
-
-		when:
-			"the promise is fulfilled"
-			promise.broadcastNext 1
-
-		then:
-			"the function is called and the transformed promise is fulfilled"
-			transformed.get() == 2
-	}
-
-	def "An onSuccess function registered via then is called when the promise is already fulfilled"() {
-		given:
-			"A promise that has been fulfilled"
-			def promise = Promises.success(1)
-
-		when:
-			"An onSuccess function is registered via then"
-			def transformed = promise.then( { it * 2 }, null)
-
-		then:
-			"The function is called and the transformed promise is fulfilled"
-			transformed.success
-			transformed.get() == 2
-	}
-
 	def "When a promise is fulfilled, if a mapping function throws an exception the mapped promise is rejected"() {
 		given:
 			"a promise with a filter that throws an exception"
 			Promise<String> promise = Promises.<String> defer()
 			def e = new RuntimeException()
-			def mapped = promise.map { throw e }
+			def mapped = promise.stream().map { throw e }.promise()
 
 		when:
 			"the promise is fulfilled"
-			promise.broadcastNext 2
+			promise.onNext 2
 
 		then:
 			"the mapped promise is rejected"
@@ -454,7 +403,7 @@ class PromisesSpec extends Specification {
 		when:
 			"a mapping function that throws an exception is added"
 			def e = new RuntimeException()
-			def mapped = promise.map { throw e }
+			def mapped = promise.stream().map { throw e }.promise()
 
 		then:
 			"the mapped promise is rejected"
@@ -468,8 +417,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an attempt is made to fulfil it"
-			promise.broadcastNext 1
-			promise.broadcastNext 1
+			promise.onNext 1
+			promise.onNext 1
 
 		then:
 			"an IllegalStateException is thrown"
@@ -483,8 +432,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an attempt is made to fulfil it"
-			promise.broadcastError new Exception()
-			promise.broadcastError new Exception()
+			promise.onError new Exception()
+			promise.onError new Exception()
 
 		then:
 			"an IllegalStateException is thrown"
@@ -498,8 +447,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an attempt is made to fulfil it"
-			promise.broadcastNext 1
-			promise.broadcastError new Exception()
+			promise.onNext 1
+			promise.onError new Exception()
 
 		then:
 			"an IllegalStateException is thrown"
@@ -509,7 +458,7 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Promises.<Integer> defer()
+			def promise1 = Streams.<Integer> defer().observe{ println 'hey'+it }.promise()
 			def promise2 = Promises.<Integer> defer()
 
 		when:
@@ -522,7 +471,9 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the first promise is fulfilled"
-			promise1.broadcastNext 1
+			println promise1.debug()
+			promise1.onNext 1
+			println promise1.debug()
 
 		then:
 			"the combined promise is still pending"
@@ -530,7 +481,9 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the second promise if fulfilled"
-			promise2.broadcastNext 2
+			promise2.onNext 2
+
+		println combined.debug()
 
 		then:
 			"the combined promise is fulfilled with both values"
@@ -554,7 +507,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a component promise is rejected"
-			promise1.broadcastError new Exception()
+			promise1.onError new Exception()
 
 		then:
 			"the combined promise is rejected"
@@ -614,6 +567,9 @@ class PromisesSpec extends Specification {
 		when:
 			"a combined promise is first created"
 			def combined = Promises.when(promise1, promise2)
+	println promise1.debug()
+	println promise2.debug()
+	println combined.debug()
 
 		then:
 			"it is rejected"
@@ -635,7 +591,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the first promise is fulfilled"
-			promise1.broadcastNext 1
+			println promise1.debug()
+			promise1.onNext 1
 
 		then:
 			"the combined promise is fulfilled"
@@ -669,11 +626,11 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			def filtered = promise.filter { it % 2 == 0 }
+			def filtered = promise.stream().filter { it % 2 == 0 }.promise()
 
 		when:
 			"the promise is fulfilled with an odd value"
-			promise.broadcastNext 1
+			promise.onNext 1
 
 		then:
 			"the filtered promise is not fulfilled"
@@ -685,11 +642,11 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			promise.filter { it % 2 == 0 }
+			promise.stream().filter { it % 2 == 0 }.promise()
 
 		when:
 			"the promise is fulfilled with an even value"
-			promise.broadcastNext 2
+			promise.onNext 2
 
 		then:
 			"the filtered promise is fulfilled"
@@ -702,11 +659,11 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			def promise = Promises.defer()
 			def e = new RuntimeException()
-			def filteredPromise = promise.filter { throw e }
+			def filteredPromise = promise.stream().filter { throw e }.promise()
 
 		when:
 			"the promise is fulfilled"
-			promise.broadcastNext 2
+			promise.onNext 2
 
 		then:
 			"the filtered promise is rejected"
@@ -720,7 +677,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			promise.filter { it % 2 == 0 }
+			promise.stream().filter { it % 2 == 0 }
 
 		then:
 			"the filtered promise is fulfilled"
@@ -735,7 +692,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			def filtered = promise.filter { it % 2 == 0 }
+			def filtered = promise.stream().filter { it % 2 == 0 }.promise()
 
 		then:
 			"the filtered promise is not fulfilled"
@@ -754,13 +711,13 @@ class PromisesSpec extends Specification {
 
 		when:
 			"p1 is consumed by p2"
-			Promise p2 = p1.then( { Integer.parseInt it }, null).
+			Promise p2 = p1.onSuccess( { Integer.parseInt it }).stream().
 					when(NumberFormatException, { latch.countDown() }).
-					map { println('not in log'); true }
+					map { println('not in log'); true }.promise()
 
 		and:
 			"setting a value"
-			p1.broadcastNext 'not a number'
+			p1.onNext 'not a number'
 			p2.await(1, TimeUnit.SECONDS)
 
 		then:

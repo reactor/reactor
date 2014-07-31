@@ -224,9 +224,9 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void promiseAcceptCountCannotExceedOne() {
 		Promise<Object> deferred = Promises.<Object>defer();
-		deferred.broadcastNext("alpha");
+		deferred.onNext("alpha");
 		try {
-			deferred.broadcastNext("bravo");
+			deferred.onNext("bravo");
 		} catch (IllegalStateException ise) {
 			// Swallow
 		}
@@ -237,9 +237,9 @@ public class PipelineTests extends AbstractReactorTest {
 	public void promiseErrorCountCannotExceedOne() {
 		Promise<Object> deferred = Promises.defer();
 		Throwable error = new Exception();
-		deferred.broadcastError(error);
+		deferred.onError(error);
 		try {
-			deferred.broadcastNext(error);
+			deferred.onNext(error);
 		} catch (IllegalStateException ise) {
 			// Swallow
 		}
@@ -250,9 +250,9 @@ public class PipelineTests extends AbstractReactorTest {
 	public void promiseAcceptCountAndErrorCountCannotExceedOneInTotal() {
 		Promise<Object> deferred = Promises.defer();
 		Throwable error = new Exception();
-		deferred.broadcastError(error);
+		deferred.onError(error);
 		try {
-			deferred.broadcastNext("alpha");
+			deferred.onNext("alpha");
 			fail();
 		} catch (IllegalStateException ise) {
 		}

@@ -34,6 +34,7 @@ public class ElapsedAction<T> extends Action<T, Tuple2<Long, T>> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
+		super.doSubscribe(subscription);
 		lastTime = System.nanoTime();
 	}
 

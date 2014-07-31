@@ -3,13 +3,9 @@ package reactor.core.fork;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.rx.Promise;
 import reactor.rx.Stream;
-import reactor.rx.action.Pipeline;
 
 import java.util.concurrent.Executor;
 
@@ -19,13 +15,12 @@ import java.util.concurrent.Executor;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> {
+public class ForkJoinTask<T, C extends Stream<T>> implements Consumer<Object> {
 
-	private final Logger                              log   = LoggerFactory.getLogger(getClass());
 	private final MultiReaderFastList<Function<?, ?>> tasks = MultiReaderFastList.newList();
 
-	private final Executor       executor;
-	private final C deferred;
+	private final Executor executor;
+	private final C        deferred;
 
 	ForkJoinTask(Executor executor, C deferred) {
 		this.executor = executor;
@@ -45,11 +40,8 @@ public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> 
 	/**
 	 * Add a task to the collection of tasks to be executed.
 	 *
-	 * @param fn
-	 * 		task to submit
-	 * @param <V>
-	 * 		type of result
-	 *
+	 * @param fn  task to submit
+	 * @param <V> type of result
 	 * @return {@code this}
 	 */
 	public <V> ForkJoinTask<T, C> add(Function<V, T> fn) {
@@ -79,10 +71,8 @@ public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> 
 	 * Submit all configured tasks, possibly in parallel (depending on the configuration of the {@link
 	 * java.util.concurrent.Executor} in use), passing {@code arg} as an input parameter.
 	 *
-	 * @param arg
-	 * 		input parameter
-	 * @param <V>
-	 * 		type of input parameter
+	 * @param arg input parameter
+	 * @param <V> type of input parameter
 	 */
 	public <V> void submit(V arg) {
 		accept(arg);
@@ -103,11 +93,7 @@ public class ForkJoinTask<T, C extends Pipeline<T>> implements Consumer<Object> 
 								deferred.broadcastNext((T) result);
 							}
 						} catch (Exception e) {
-							if (compose() instanceof Stream || !((Promise) compose()).isComplete()) {
-								deferred.broadcastError(e);
-							} else {
-								log.error(e.getMessage(), e);
-							}
+							deferred.broadcastError(e);
 						}
 					}
 				});

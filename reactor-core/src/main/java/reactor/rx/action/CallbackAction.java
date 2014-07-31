@@ -38,6 +38,8 @@ public class CallbackAction<T> extends Action<T, T> {
 		if (prefetch) {
 			batchSize = firehose ? Integer.MAX_VALUE : batchSize;
 			requestConsumer.accept(batchSize);
+		} else {
+			super.doSubscribe(subscription);
 		}
 	}
 

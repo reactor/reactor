@@ -174,7 +174,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							public void operationComplete(Future future) throws Exception {
 								if (groupsToShutdown.decrementAndGet() == 0) {
 									notifyShutdown();
-									d.broadcastNext(true);
+									d.onNext(true);
 								}
 							}
 						};

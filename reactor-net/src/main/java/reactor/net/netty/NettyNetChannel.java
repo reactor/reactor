@@ -96,7 +96,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 					getEventsReactor().notify(t.getClass(), Event.wrap(t));
 				}
 				if (null != onComplete) {
-					onComplete.broadcastComplete();
+					onComplete.onComplete();
 				}
 			}
 		});

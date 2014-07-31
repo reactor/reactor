@@ -120,7 +120,7 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		client.open().consume(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
 			@Override
 			public void accept(NetChannel<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {
@@ -150,7 +150,7 @@ public class TcpClientTests {
 				.connect(new InetSocketAddress(echoServerPort))
 				.get();
 
-		client.open().consume(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
 			@Override
 			public void accept(NetChannel<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {
@@ -182,7 +182,7 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		client.open().consume(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
 			@Override
 			public void accept(NetChannel<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {

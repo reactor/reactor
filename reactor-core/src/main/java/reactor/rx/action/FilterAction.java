@@ -19,12 +19,13 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
+import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class FilterAction<T, E extends Pipeline<T>> extends Action<T, T> {
+public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 
 	public static final Predicate<Boolean> simplePredicate = new Predicate<Boolean>() {
 		@Override

@@ -40,10 +40,22 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		super(dispatcher);
 		this.defaultValues = defaultValues;
 		if (defaultValues != null) {
+			state = State.COMPLETE;
 			if (Collection.class.isAssignableFrom(defaultValues.getClass())) {
 				capacity(((Collection<T>) defaultValues).size());
 			}
 			setKeepAlive(true);
+		}
+	}
+
+	@Override
+	protected void checkAndSubscribe(Subscriber<T> subscriber, StreamSubscription<T> subscription) {
+		if (state == State.SHUTDOWN) {
+			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
+		} else if (state == State.ERROR) {
+			subscriber.onError(error);
+		} else if (addSubscription(subscription)) {
+			subscriber.onSubscribe(subscription);
 		}
 	}
 

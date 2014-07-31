@@ -39,14 +39,6 @@ public abstract class StreamUtils {
 		return browse(composable, new DebugVisitor());
 	}
 
-	public static <O> StreamVisitor browse(Promise<O> composable) {
-		return browse(composable, new DebugVisitor());
-	}
-
-	public static <O> StreamVisitor browse(Promise<O> composable, DebugVisitor visitor) {
-		return browse(composable.delegateAction, visitor);
-	}
-
 	public static <O> StreamVisitor browse(Stream<O> composable, DebugVisitor visitor) {
 		StreamVisitor explorer = new StreamVisitor(visitor);
 		explorer.accept(composable);
@@ -113,6 +105,8 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> void parseComposable(Stream<O> composable, final List<Object> streamTree) {
+			if(composable == null) return;
+
 			Map<Object, Object> freshNestedStreams = new HashMap<Object, Object>();
 			freshNestedStreams.put("id", new StreamKey(composable).toString());
 
@@ -134,13 +128,14 @@ public abstract class StreamUtils {
 
 			List<Object> nextLevelNestedStreams = new ArrayList<Object>();
 
-			renderParallel(composable, nextLevelNestedStreams);
-			renderWindow(composable, nextLevelNestedStreams);
-			renderGroupBy(composable, nextLevelNestedStreams);
-			renderFilter(composable, nextLevelNestedStreams);
-			renderDynamicMerge(composable, nextLevelNestedStreams);
-			renderMerge(composable, nextLevelNestedStreams);
-			renderCombine(composable, nextLevelNestedStreams);
+			boolean hasRenderedSpecial =
+					renderParallel(composable, nextLevelNestedStreams)
+							|| renderWindow(composable, nextLevelNestedStreams)
+							|| renderGroupBy(composable, nextLevelNestedStreams)
+							|| renderFilter(composable, nextLevelNestedStreams)
+							|| renderDynamicMerge(composable, nextLevelNestedStreams)
+							|| renderMerge(composable, nextLevelNestedStreams)
+							|| renderCombine(composable, nextLevelNestedStreams);
 
 			if (!nextLevelNestedStreams.isEmpty()) {
 				freshNestedStreams.put("boundTo", nextLevelNestedStreams);
@@ -178,7 +173,12 @@ public abstract class StreamUtils {
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
 							parseComposable((Stream<?>) subscriber, streamTree);
 						} else if (Promise.class.isAssignableFrom(subscriber.getClass())) {
-							parseComposable(((Promise<?>) subscriber).delegateAction, streamTree);
+							Map<Object,Object> wrappedPromise = new HashMap<Object,Object>();
+							List<Object> wrappedStream = new ArrayList<Object>();
+							wrappedPromise.put("info", subscriber);
+							wrappedPromise.put("state", ((Promise<?>)subscriber).state);
+							streamTree.add(wrappedPromise);
+							parseComposable(((Promise<?>) subscriber).outboundStream, wrappedStream);
 						}
 					}
 				}
@@ -191,75 +191,85 @@ public abstract class StreamUtils {
 			}
 		}
 
-		private <O> void renderFilter(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderFilter(Stream<O> consumer, final List<Object> streamTree) {
 			if (FilterAction.class.isAssignableFrom(consumer.getClass())) {
 				FilterAction<O, ?> operation = (FilterAction<O, ?>) consumer;
 
 				if (operation.otherwise() != null) {
 					if (Stream.class.isAssignableFrom(operation.otherwise().getClass()))
-						loopSubscriptions(((Stream<O>) operation.otherwise()).downstreamSubscription(), streamTree);
-					else if (Promise.class.isAssignableFrom(operation.otherwise().getClass()))
-						loopSubscriptions(((Promise<O>) operation.otherwise()).delegateAction.downstreamSubscription(),
-								streamTree);
+						loopSubscriptions((operation.otherwise()).downstreamSubscription(), streamTree);
 				}
+				return true;
 			}
+			return false;
 		}
 
-		private <O> void renderWindow(Stream<O> consumer, final List<Object> streamTree) {
+		@SuppressWarnings("unchecked")
+		private <O> boolean renderWindow(Stream<O> consumer, final List<Object> streamTree) {
 			if (WindowAction.class.isAssignableFrom(consumer.getClass())) {
 				WindowAction<O> operation = (WindowAction<O>) consumer;
 
 				if (operation.currentWindow() != null) {
 					loopSubscriptions(operation.currentWindow().downstreamSubscription(), streamTree);
 				}
+				return true;
 			}
+			return false;
 		}
 
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderCombine(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderCombine(Stream<O> consumer, final List<Object> streamTree) {
 			if (CombineAction.class.isAssignableFrom(consumer.getClass())) {
 				CombineAction<O, ?, ?> operation = (CombineAction<O, ?, ?>) consumer;
 				parseComposable(operation.input(), streamTree);
+				return true;
 			}
+			return false;
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderDynamicMerge(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderDynamicMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
 				DynamicMergeAction<O, ?, Publisher<?>> operation = (DynamicMergeAction<O, ?, Publisher<?>>) consumer;
 				parseComposable(operation.mergedStream(), streamTree);
+				return true;
 			}
+			return false;
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderParallel(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderParallel(Stream<O> consumer, final List<Object> streamTree) {
 			if (ParallelAction.class.isAssignableFrom(consumer.getClass())) {
 				ParallelAction<O> operation = (ParallelAction<O>) consumer;
 				for (Stream<O> s : operation.getPublishers()) {
 					parseComposable(s, streamTree);
-					if(debugVisitor != null){
+					if (debugVisitor != null) {
 						debugVisitor.newLine(debugVisitor.d, false);
 					}
 				}
+				return true;
 			}
+			return false;
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderGroupBy(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderGroupBy(Stream<O> consumer, final List<Object> streamTree) {
 			if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
 				GroupByAction<O, ?> operation = (GroupByAction<O, ?>) consumer;
 				for (GroupedByStream<?, O> s : operation.groupByMap().values()) {
 					parseComposable(s, streamTree);
-					if(debugVisitor != null){
+					if (debugVisitor != null) {
 						debugVisitor.newLine(debugVisitor.d, false);
 					}
 				}
+				return true;
 			}
+			return false;
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> void renderMerge(Stream<O> consumer, final List<Object> streamTree) {
+		private <O> boolean renderMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (MergeAction.class.isAssignableFrom(consumer.getClass())) {
 				MergeAction<O> operation = (MergeAction<O>) consumer;
 				operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
@@ -270,14 +280,16 @@ public abstract class StreamUtils {
 							Publisher<?> publisher = ((StreamSubscription<?>) subscription).getPublisher();
 							if (references.contains(publisher)) return;
 							if (Action.class.isAssignableFrom(publisher.getClass())) {
-								parseComposable(((Action<?, ?>) publisher).findOldestStream(false), streamTree);
+								parseComposable(((Action<?, ?>) publisher).findOldestAction(false), streamTree);
 							} else if (Stream.class.isAssignableFrom(publisher.getClass())) {
 								parseComposable((Stream<?>) publisher, streamTree);
 							}
 						}
 					}
 				});
+				return true;
 			}
+			return false;
 		}
 
 		public Map<Object, Object> toMap() {
@@ -297,9 +309,9 @@ public abstract class StreamUtils {
 
 		public StreamKey(Stream<?> composable) {
 			this.stream = composable;
-			if(GroupedByStream.class.isAssignableFrom(stream.getClass())){
-				this.key = ((GroupedByStream)stream).key();
-			}else{
+			if (GroupedByStream.class.isAssignableFrom(stream.getClass())) {
+				this.key = ((GroupedByStream) stream).key();
+			} else {
 				this.key = composable.getClass().getSimpleName().isEmpty() ? composable.getClass().getName() + "" +
 						composable :
 						composable

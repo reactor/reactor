@@ -79,7 +79,7 @@ class ComponentSpecSpec extends Specification {
 		when:
 			"we create a plain Promise"
 			Promise promise = Promises.<String>defer()
-			promise.broadcastNext 'test'
+			promise.onNext 'test'
 
 		then:
 			promise.get() == 'test'

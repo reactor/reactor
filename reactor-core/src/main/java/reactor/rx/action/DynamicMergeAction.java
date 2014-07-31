@@ -73,6 +73,7 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
+		mergeAction.runningComposables.decrementAndGet();
 		mergeAction.doError(ev);
 	}
 

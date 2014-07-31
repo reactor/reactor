@@ -20,6 +20,7 @@ import reactor.core.Environment
 import reactor.core.Observable
 import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
@@ -45,6 +46,88 @@ class StreamsSpec extends Specification {
 		then:
 			'it is available'
 			value.get() == 'test'
+	}
+
+	def 'A deferred Stream can listen for terminal states'() {
+		given:
+			'a composable with an initial value'
+			Stream stream = Streams.defer('test')
+
+		when:
+			'the complete signal is observed and stream is retrieved'
+			def value = null
+
+			stream.finallyDo {
+				value = it
+			}.tap()
+
+			println stream.debug()
+
+		then:
+			'it is available'
+			value == stream
+			value.state == Stream.State.COMPLETE
+	}
+
+	def 'A deferred Stream can be run on various dispatchers'() {
+		given:
+			'a composable with an initial value'
+			def dispatcher1 = new SynchronousDispatcher()
+			def dispatcher2 = new SynchronousDispatcher()
+			def stream = Streams.defer(['test', 'test2', 'test3'], null, dispatcher1)
+
+		when:
+			'the stream is retrieved'
+			def tail = stream.dispatchOn(dispatcher2)
+
+		then:
+			'it is available'
+			stream.dispatcher == dispatcher1
+			tail.dispatcher == dispatcher2
+	}
+
+	def 'A deferred Stream can be translated into a list'() {
+		given:
+			'a composable with an initial value'
+			Stream stream = Streams.defer(['test', 'test2', 'test3'])
+
+		when:
+			'the stream is retrieved'
+			def value = stream.map { it + '-ok' }.toList()
+
+			println stream.debug()
+
+		then:
+			'it is available'
+			value == ['test-ok', 'test2-ok', 'test3-ok']
+	}
+
+	def 'A deferred Stream can be translated into a completable queue'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.defer(['test', 'test2', 'test3'], new Environment())
+
+		when:
+			'the stream is retrieved'
+			def queue = stream.map { it + '-ok' }.toBlockingQueue()
+
+			def res
+			def result = []
+
+			for(;;){
+				res = queue.poll()
+
+				if (res)
+					result << res
+
+				if (queue.isComplete())
+					break
+			}
+			println stream.debug()
+
+		then:
+			'it is available'
+			result == ['test-ok', 'test2-ok', 'test3-ok']
 	}
 
 	def 'A deferred Stream with a generated value makes that value available immediately'() {
@@ -665,8 +748,8 @@ class StreamsSpec extends Specification {
 				}
 			}
 
-		def objetMapper = new ObjectMapper()
-		println objetMapper.writeValueAsString(source.debug().toMap())
+			def objetMapper = new ObjectMapper()
+			println objetMapper.writeValueAsString(source.debug().toMap())
 
 		when:
 			'some values are accepted'
