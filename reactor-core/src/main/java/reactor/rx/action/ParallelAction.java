@@ -33,7 +33,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
 
-	private int           roundRobinIndex = -1;
+	private int roundRobinIndex = -1;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,

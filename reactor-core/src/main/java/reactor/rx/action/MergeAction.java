@@ -63,6 +63,7 @@ public class MergeAction<O> extends Action<O, O> {
 			}
 		} else {
 			this.innerSubscriptions = new FanInSubscription<O>(upstreamAction, this);
+
 			onSubscribe(this.innerSubscriptions);
 		}
 
@@ -148,14 +149,15 @@ public class MergeAction<O> extends Action<O, O> {
 			outerAction.dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					if (outerAction.pendingNextSignals > 0) {
+					long currentCapacity = outerAction.innerSubscriptions.getCapacity().get();
+					if (currentCapacity > 0) {
 						int size = outerAction.innerSubscriptions.subscriptions.size();
 						if (size == 0) return;
 
 						int batchSize = outerAction.batchSize / size;
 						int toRequest = outerAction.batchSize % size + batchSize;
 
-						s.request(toRequest > outerAction.pendingNextSignals ? toRequest : outerAction.pendingNextSignals);
+						s.request(toRequest > currentCapacity ? toRequest : (int)currentCapacity);
 					}
 				}
 			});

@@ -967,7 +967,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			for(int i=0; i<10000; i++)
+			for(int i=0; i<1000000; i++)
 			{
 				source.broadcastNext(1)
 			}

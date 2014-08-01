@@ -37,11 +37,6 @@ public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, 
 		final DynamicMergeAction<I, O, E> thiz = this;
 		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
 			@Override
-			protected void onRequest(int n) {
-				dispatch(n, requestConsumer);
-			}
-
-			@Override
 			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
 				if (thiz.state == State.READY) {
 					thiz.requestUpstream(capacity, terminated, elements);

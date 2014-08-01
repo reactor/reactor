@@ -42,7 +42,7 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
-		for (int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 100000; i++) {
 			final Promise<String> deferred = Promises.<String>config()
 					.env(env)
 					.get();
@@ -59,8 +59,11 @@ public class AwaitTests extends AbstractReactorTest {
 
 			}, null);
 
-			boolean latchRes = latch.await(5, TimeUnit.SECONDS);
-			assertThat("latch is not counted down : "+latch.getCount(), latchRes);
+			boolean latchRes = latch.await(25, TimeUnit.SECONDS);
+			if(latch.getCount() > 0){
+				System.out.println(deferred.debug());
+			}
+			assertThat("latch is not counted down : " + latch.getCount(), latchRes);
 		}
 	}
 

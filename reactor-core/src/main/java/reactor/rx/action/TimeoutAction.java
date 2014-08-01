@@ -23,6 +23,7 @@ import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -42,19 +43,22 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = batchSize - currentNextSignals;
-			if (0 < toRequest) {
-				if(!firehose && pendingNextSignals > 0){
-					pendingNextSignals -= toRequest;
-					getSubscription().request(toRequest);
-				}else if(firehose){
-					getSubscription().request(toRequest);
-				}
+			int toRequest = pendingNextSignals < batchSize ? pendingNextSignals : batchSize;
+			if (0 < toRequest && !firehose) {
+				pendingNextSignals -= toRequest;
+				numbTimeout++;
+				getSubscription().request(toRequest);
+				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+			} else if (firehose) {
+				getSubscription().request(toRequest);
+				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+				numbTimeout++;
 			}
 		}
 	};
 
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
+	private long numbTimeout = 0;
 
 	@SuppressWarnings("unchecked")
 	public TimeoutAction(Dispatcher dispatcher,
@@ -80,6 +84,14 @@ public class TimeoutAction<T> extends Action<T, T> {
 	}
 
 	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+		super.requestUpstream(capacity, terminated, elements);
+
+		timeoutRegistration.cancel();
+		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+	}
+
+	@Override
 	public Action<T, T> cancel() {
 		timeoutRegistration.cancel();
 		return super.cancel();
@@ -97,10 +109,20 @@ public class TimeoutAction<T> extends Action<T, T> {
 		return super.resume();
 	}
 
+	public long numberTimeouts() {
+		return numbTimeout;
+	}
+
 	@Override
 	public void doComplete() {
 		timeoutRegistration.cancel();
 		super.doComplete();
 	}
 
+	@Override
+	public String toString() {
+		return super.toString() + "{"
+				+ "number-timeouts=" + numbTimeout
+				+ "}";
+	}
 }

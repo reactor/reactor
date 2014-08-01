@@ -53,7 +53,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Integer n) {
 			try {
 				if (subscription == null){
-
 					return;
 				}
 
@@ -68,7 +67,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				if (previous < batchSize) {
 					int upperBound = batchSize - previous;
 					int toRequest = n - previous;
-					subscription.request(toRequest > upperBound ? upperBound : n);
+					toRequest = toRequest > upperBound ? upperBound : n;
+					pendingNextSignals -= toRequest;
+					subscription.request(toRequest);
 				}
 
 			} catch (Throwable t) {

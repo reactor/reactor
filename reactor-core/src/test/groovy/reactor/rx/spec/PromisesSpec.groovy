@@ -310,7 +310,9 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the original promise is fulfilled"
+			println promise.debug()
 			promise.onNext 1
+		println promise.debug()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"

@@ -421,12 +421,57 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
+		parallelBufferedTimeoutTest(1_000_000, false);
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
 		parallelMapManyTest("ringBuffer", 100_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
+	}
+
+	private void parallelBufferedTimeoutTest(int iterations, final boolean filter) throws InterruptedException {
+
+
+		System.out.println("Buffered Stream: " + iterations);
+
+		final CountDownLatch latch = new CountDownLatch(iterations);
+
+		Stream<String> deferred = Streams.<String>defer(env);
+		deferred
+				.parallel(2)
+				.consume(stream -> (filter ? (stream
+								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
+								.buffer(500)
+								.timeout(100)
+								.consume(batch -> {
+									for ( String i : batch ) latch.countDown();
+								})
+				);
+
+		String[] data = new String[iterations];
+		for ( int i = 0; i < iterations; i++ ) {
+			data[i] = Integer.toString(i);
+		}
+
+		long start = System.currentTimeMillis();
+
+		for ( String i : data ) {
+			deferred.broadcastNext(i);
+		}
+		if ( !latch.await(30, TimeUnit.SECONDS) )
+			throw new RuntimeException(deferred.debug().toString());
+
+
+		long stop = System.currentTimeMillis() - start;
+		stop = stop > 0 ? stop : 1;
+
+		System.out.println("Time spent: " + stop + "ms");
+		System.out.println("ev/ms: " + iterations / stop);
+		System.out.println("ev/s: " + iterations / stop * 1000);
+		System.out.println("");
+		System.out.println(deferred.debug());
+		assertEquals(0, latch.getCount());
 	}
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {

@@ -63,7 +63,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@data resolution} and {@data wheelSize}. All times will
+	 * Create a new {@code HashWheelTimer} using the given timer {@param res} and {@param wheelSize}. All times will
 	 * rounded up to the closest multiple of this resolution.
 	 *
 	 * @param res
@@ -79,7 +79,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@data resolution} and {@data wheelSize}. All times will
+	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param wheelSize}. All times will
 	 * rounded up to the closest multiple of this resolution.
 	 *
 	 * @param name
@@ -253,7 +253,7 @@ public class HashWheelTimer implements Timer {
 		private final AtomicBoolean cancelAfterUse;
 
 		/**
-		 * Creates a new Timer Registration with given {@data rounds}, {@data offset} and {@data delegate}.
+		 * Creates a new Timer Registration with given {@param rounds}, {@param offset} and {@param delegate}.
 		 *
 		 * @param rounds
 		 * 		amount of rounds the Registration should go through until it's elapsed
@@ -422,7 +422,7 @@ public class HashWheelTimer implements Timer {
 	public static interface WaitStrategy {
 
 		/**
-		 * Wait until the given deadline, {@data deadlineMilliseconds}
+		 * Wait until the given deadline, {@param deadlineMilliseconds}
 		 *
 		 * @param deadlineMilliseconds
 		 * 		deadline to wait for, in milliseconds

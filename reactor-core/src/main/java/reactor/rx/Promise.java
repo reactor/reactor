@@ -113,8 +113,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 	public Promise(O value, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		this.value = value;
 		state = Stream.State.COMPLETE;
+		this.value = value;
 	}
 
 	/**
