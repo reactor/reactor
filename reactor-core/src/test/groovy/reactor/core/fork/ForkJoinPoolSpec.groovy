@@ -30,6 +30,10 @@ class ForkJoinPoolSpec extends Specification {
 		}
 	}
 
+	def cleanup(){
+		env.shutdown()
+	}
+
 	def "ForkJoinPool forks tasks"() {
 
 		given: "a standard pool"
@@ -41,7 +45,7 @@ class ForkJoinPoolSpec extends Specification {
 			task.submit()
 
 		then: "tasks were run in another thread"
-			!results.promise().await(5, TimeUnit.SECONDS)?.find { it == main }
+			!results.next().await(5, TimeUnit.SECONDS)?.find { it == main }
 
 	}
 

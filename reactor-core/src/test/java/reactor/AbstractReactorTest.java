@@ -16,11 +16,13 @@
 
 package reactor;
 
+import org.junit.After;
 import org.junit.Before;
 import reactor.core.Environment;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractReactorTest {
 
@@ -29,6 +31,11 @@ public abstract class AbstractReactorTest {
 	@Before
 	public void loadEnv() {
 		env = new Environment();
+	}
+
+	@After
+	public void closeEnv() {
+		env.shutdown();
 	}
 
 }

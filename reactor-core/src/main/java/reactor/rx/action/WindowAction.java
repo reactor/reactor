@@ -38,7 +38,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 		return currentWindow;
 	}
 
-	private void createWindowStream() {
+	protected void createWindowStream() {
 		currentWindow = new Stream<T>(dispatcher, batchSize).env(environment).capacity(batchSize);
 		currentWindow.setKeepAlive(false);
 	}

@@ -26,6 +26,7 @@ import reactor.function.Function
 import reactor.function.support.Tap
 import reactor.rx.Stream
 import reactor.tuple.Tuple2
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -33,6 +34,17 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class StreamsSpec extends Specification {
+
+	@Shared
+	Environment environment
+
+	void setup() {
+		environment = new Environment()
+	}
+
+	def cleanup(){
+		environment.shutdown()
+	}
 
 	def 'A deferred Stream with an initial value makes that value available immediately'() {
 		given:
@@ -74,7 +86,7 @@ class StreamsSpec extends Specification {
 			'a composable with an initial value'
 			def dispatcher1 = new SynchronousDispatcher()
 			def dispatcher2 = new SynchronousDispatcher()
-			def stream = Streams.defer(['test', 'test2', 'test3'], null, dispatcher1)
+			def stream = Streams.defer(null, dispatcher1, 'test', 'test2', 'test3')
 
 		when:
 			'the stream is retrieved'
@@ -89,7 +101,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a list'() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.defer(['test', 'test2', 'test3'])
+			Stream stream = Streams.defer('test', 'test2', 'test3')
 
 		when:
 			'the stream is retrieved'
@@ -99,13 +111,13 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			value == ['test-ok', 'test2-ok', 'test3-ok']
+			value.get() == ['test-ok', 'test2-ok', 'test3-ok']
 	}
 
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.defer(['test', 'test2', 'test3'], new Environment())
+			def stream = Streams.defer(environment, 'test', 'test2', 'test3')
 
 		when:
 			'the stream is retrieved'
@@ -114,7 +126,7 @@ class StreamsSpec extends Specification {
 			def res
 			def result = []
 
-			for(;;){
+			for (; ;) {
 				res = queue.poll()
 
 				if (res)
@@ -296,7 +308,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the expected accept count is set and that number of values is accepted'
-			tap = composable.last(3).tap()
+			tap = composable.every(3).tap()
 			d.broadcastNext(1)
 			d.broadcastNext(2)
 			d.broadcastNext(3)
@@ -835,7 +847,6 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from environment'() {
 		given:
 			'a source stream with a given environment'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> defer(environment, environment.getDispatcher('ringBuffer'))
 			def source2 = Streams.<Integer> defer(environment)
 
@@ -878,7 +889,6 @@ class StreamsSpec extends Specification {
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
 		given:
 			'a source and a collected stream'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> config().env(environment).get()
 			def reduced = source.buffer().throttle(300)
 			def value = reduced.tap()
@@ -909,10 +919,33 @@ class StreamsSpec extends Specification {
 
 	}
 
+	def 'Throttle will generate demand every specified period'() {
+		given:
+			'a source and a collected stream'
+			def random = new Random()
+			def source = Streams.generate(environment) {
+				random.nextInt()
+			}
+
+			def values = []
+
+			source.throttle(200).consume{
+				values << it
+			}
+
+		when:
+			'the first values are accepted on the source'
+			sleep(1200)
+
+		then:
+			'the collected list is available'
+			values
+
+	}
+
 	def 'Collect with Timeout will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			Stream reduced = source.buffer(5).timeout(600)
 			def value = reduced.tap()
@@ -950,7 +983,6 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			long avgTime = 150l
 			long nanotime = avgTime * 1_000_000
@@ -967,8 +999,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			for(int i=0; i<1000000; i++)
-			{
+			for (int i = 0; i < 1000000; i++) {
 				source.broadcastNext(1)
 			}
 			source.broadcastComplete()
@@ -988,7 +1019,6 @@ class StreamsSpec extends Specification {
 	def 'Moving Buffer accumulate items without dropping previous'() {
 		given:
 			'a source and a collected stream'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			def reduced = source.movingBuffer(5).throttle(400)
 			def value = reduced.tap()
@@ -1031,7 +1061,6 @@ class StreamsSpec extends Specification {
 	def 'Moving Buffer will drop overflown items'() {
 		given:
 			'a source and a collected stream'
-			Environment environment = new Environment()
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
 			def reduced = source.movingBuffer(5).throttle(500)
 			def value = reduced.tap()
@@ -1062,8 +1091,7 @@ class StreamsSpec extends Specification {
 			int batchSize = 333
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
-			def env = new Environment()
-			def head = Streams.<Integer> defer(env)
+			def head = Streams.<Integer> defer(environment)
 			head.parallel().map {
 				s -> s.map { it }
 			}.merge()
@@ -1135,6 +1163,64 @@ class StreamsSpec extends Specification {
 		then:
 			'it is available'
 			value == 'test'
+	}
+
+
+	def 'A Stream can be transformed into consumers for reuse'() {
+		given:
+			'a composable and its signal comsumers'
+			def stream = Streams.<String> defer()
+			def completeConsumer = stream.toBroadcastCompleteConsumer()
+			def nextConsumer = stream.toBroadcastNextConsumer()
+
+		when:
+			'the stream is retrieved and consumer are triggered'
+			def promise = stream.toList()
+			nextConsumer.accept('test1')
+			nextConsumer.accept('test2')
+			nextConsumer.accept('test3')
+			completeConsumer.accept(null)
+
+		then:
+			'it is available'
+			promise.get() == ['test1', 'test2', 'test3']
+	}
+
+	def 'A Stream can be transformed into error consumer for reuse'() {
+		given:
+			'a composable and its signal comsumers'
+			def stream = Streams.<String> defer()
+			def errorConsumer = stream.toBroadcastErrorConsumer()
+			def nextConsumer = stream.toBroadcastNextConsumer()
+
+		when:
+			'the stream is retrieved and consumer are triggered'
+			def promise = stream.toList()
+			nextConsumer.accept('test1')
+			nextConsumer.accept('test3')
+			errorConsumer.accept(new Exception())
+			promise.get()
+
+		then:
+			'toList promise is under error'
+			thrown(Exception)
+	}
+
+	def 'A Stream can be controlled to update its properties reactively'() {
+		given:
+			'a composable and its signal comsumers'
+			def stream = Streams.<String> defer()
+			def controlStream = Streams.<Integer> defer()
+
+			stream.control(controlStream) { it.t1.capacity(it.t2) }
+
+		when:
+			'the control stream receives a new capacity size'
+			controlStream.broadcastNext(100)
+
+		then:
+			'Stream has been updated'
+			stream.maxCapacity == 100
 	}
 
 
@@ -1311,7 +1397,7 @@ class StreamsSpec extends Specification {
 			'limit until test2 is seen'
 			stream = Streams.defer()
 			def value2 = stream.limit {
-				'test3' == it
+				'test2' == it
 			}.tap()
 
 			stream.broadcastNext('test1')

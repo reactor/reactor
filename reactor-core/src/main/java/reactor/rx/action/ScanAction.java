@@ -29,7 +29,7 @@ public class ScanAction<T, A> extends Action<T,A> {
 
 	private final    Supplier<A>               accumulators;
 	private final    Function<Tuple2<T, A>, A> fn;
-	private volatile A                         acc;
+	private A                         acc;
 
 
 	public ScanAction(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn, Dispatcher dispatcher) {

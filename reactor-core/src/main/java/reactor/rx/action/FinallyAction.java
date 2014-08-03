@@ -40,14 +40,14 @@ public class FinallyAction<T, C> extends Action<T, T> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		broadcastError(ev);
 		consumer.accept(input);
+		broadcastError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		broadcastComplete();
 		consumer.accept(input);
+		broadcastComplete();
 	}
 
 }

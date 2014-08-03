@@ -15,10 +15,11 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.function.Supplier;
-import reactor.rx.StreamSubscription;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -26,6 +27,7 @@ import reactor.rx.StreamSubscription;
 public class SupplierAction<T, V> extends Action<T, V> {
 
 	private final Supplier<V> supplier;
+	private final Consumer<Void> supplierConsumer = new SupplierConsumer();
 
 	public SupplierAction(Dispatcher dispatcher, Supplier<V> supplier) {
 		super(dispatcher);
@@ -33,17 +35,19 @@ public class SupplierAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected StreamSubscription<V> createSubscription(Subscriber<V> subscriber) {
-		if (getSubscription() == null) {
-			return new StreamSubscription<V>(this, subscriber) {
-				@Override
-				public void request(int elements) {
-					super.request(elements);
-					onNext(supplier.get());
-				}
-			};
-		} else {
-			return super.createSubscription(subscriber);
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+		dispatch(supplierConsumer);
+		super.requestUpstream(capacity, terminated, elements);
+	}
+
+	private class SupplierConsumer implements Consumer<Void> {
+		@Override
+		public void accept(Void aVoid) {
+			try {
+				broadcastNext(supplier.get());
+			} catch (Throwable throwable){
+				doError(throwable);
+			}
 		}
 	}
 }

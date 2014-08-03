@@ -63,6 +63,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 		if (p.test(value)) {
 			broadcastNext(value);
 		} else {
+			pendingNextSignals++;
 			if (elseComposable != null) {
 				elseComposable.broadcastNext(value);
 			}

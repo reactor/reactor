@@ -34,12 +34,6 @@ public class CountAction<T> extends Action<T, Long> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		broadcastNext(counter.getAndSet(0));
-		super.requestUpstream(capacity, terminated, elements);
-	}
-
-	@Override
 	protected void doNext(T value) {
 		long counter = this.counter.incrementAndGet();
 		if (i != null && counter % i == 0) {

@@ -89,7 +89,7 @@ public abstract class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> syncTask(Supplier<T> supplier) {
-		return task(supplier, null, SynchronousDispatcher.INSTANCE);
+		return task(null, SynchronousDispatcher.INSTANCE, supplier);
 	}
 
 	/**
@@ -101,8 +101,8 @@ public abstract class Promises {
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Supplier<T> supplier, Environment env) {
-		return task(supplier, env, env.getDefaultDispatcher());
+	public static <T> Promise<T> task(Environment env, Supplier<T> supplier) {
+		return task(env, env.getDefaultDispatcher(), supplier);
 	}
 
 	/**
@@ -115,7 +115,7 @@ public abstract class Promises {
 	 * @param <T>        type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Supplier<T> supplier, Environment env, Dispatcher dispatcher) {
+	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, Supplier<T> supplier) {
 		SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, supplier);
 		Promise<T> promise = new Promise<T>(dispatcher, env);
 		supplierAction.subscribe(promise);
@@ -131,7 +131,7 @@ public abstract class Promises {
 	 * @return A {@link Promise} that is completed with the given value
 	 */
 	public static <T> Promise<T> success(T value) {
-		return success(value, null, SynchronousDispatcher.INSTANCE);
+		return success(null, SynchronousDispatcher.INSTANCE, value);
 	}
 
 	/**
@@ -143,8 +143,8 @@ public abstract class Promises {
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
-	public static <T> Promise<T> success(T value, Environment env) {
-		return success(value, env, env.getDefaultDispatcher());
+	public static <T> Promise<T> success(Environment env, T value) {
+		return success(env, env.getDefaultDispatcher(), value);
 	}
 
 	/**
@@ -157,7 +157,7 @@ public abstract class Promises {
 	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
-	public static <T> Promise<T> success(T value, Environment env, Dispatcher dispatcher) {
+	public static <T> Promise<T> success(Environment env, Dispatcher dispatcher, T value) {
 		return new Promise<T>(value, dispatcher, env);
 	}
 
@@ -170,7 +170,7 @@ public abstract class Promises {
 	 * @return A {@link Promise} that is completed with the given error
 	 */
 	public static <T> Promise<T> error(Throwable error) {
-		return error(error, null, SynchronousDispatcher.INSTANCE);
+		return error(null, SynchronousDispatcher.INSTANCE, error);
 	}
 
 	/**
@@ -182,8 +182,8 @@ public abstract class Promises {
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
-	public static <T> Promise<T> error(Throwable error, Environment env) {
-		return error(error, env, env.getDefaultDispatcher());
+	public static <T> Promise<T> error(Environment env, Throwable error) {
+		return error(env, env.getDefaultDispatcher(), error);
 	}
 
 	/**
@@ -196,7 +196,7 @@ public abstract class Promises {
 	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
-	public static <T> Promise<T> error(Throwable error, Environment env, Dispatcher dispatcher) {
+	public static <T> Promise<T> error(Environment env, Dispatcher dispatcher, Throwable error) {
 		return new Promise<T>(error, dispatcher, env);
 	}
 
@@ -223,10 +223,10 @@ public abstract class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, null, promises)
+		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises)
 				.env(promises.get(0).getEnvironment())
 				.buffer(promises.size())
-				.promise();
+				.next();
 	}
 
 
@@ -253,10 +253,10 @@ public abstract class Promises {
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE,  null, null, promises);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises);
 		mergeAction.env(promises.get(0).getEnvironment());
 
-		return mergeAction.promise();
+		return mergeAction.next();
 	}
 
 }

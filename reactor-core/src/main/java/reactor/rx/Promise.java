@@ -144,7 +144,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		return stream().connect(new FinallyAction<O, Promise<O>>(dispatcher, this, onComplete)).promise();
+		return stream().connect(new FinallyAction<O, Promise<O>>(dispatcher, this, onComplete)).next();
 	}
 
 	/**
@@ -157,7 +157,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
-		return stream().observe(onSuccess).promise();
+		return stream().observe(onSuccess).next();
 	}
 
 	/**
@@ -169,7 +169,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<Throwable> onError(@Nonnull final Consumer<Throwable> onError) {
-		return stream().recover(Throwable.class).observe(onError).promise();
+		return stream().recover(Throwable.class).observe(onError).next();
 	}
 
 	/**
@@ -422,13 +422,13 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 			this.error = error;
 			this.state = Stream.State.ERROR;
 
+			if (outboundStream != null) {
+				outboundStream.broadcastError(error);
+			}
+
 			if (hasBlockers) {
 				pendingCondition.signalAll();
 				hasBlockers = false;
-			}
-
-			if (outboundStream != null) {
-				outboundStream.broadcastError(error);
 			}
 		} finally {
 			lock.unlock();
@@ -444,13 +444,14 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 			this.value = value;
 			this.state = Stream.State.COMPLETE;
 
-			if (hasBlockers) {
-				pendingCondition.signalAll();
-				hasBlockers = false;
-			}
 			if (outboundStream != null) {
 				outboundStream.broadcastNext(value);
 				outboundStream.broadcastComplete();
+			}
+
+			if (hasBlockers) {
+				pendingCondition.signalAll();
+				hasBlockers = false;
 			}
 		} finally {
 			lock.unlock();
@@ -462,9 +463,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 		try {
 			if (isPending()) {
 				valueAccepted(null);
-			} else if (subscription != null) {
+			} /*else if (subscription != null) {
 				//this.subscription.cancel();
-			}
+			}*/
 		} finally {
 			lock.unlock();
 		}

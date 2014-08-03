@@ -36,12 +36,12 @@ public class LimitAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doNext(T ev) {
-		if (counted++ >= limit || (endPredicate != null && endPredicate.test(ev))) {
+		broadcastNext(ev);
+
+		if (++counted >= limit || (endPredicate != null && endPredicate.test(ev))) {
 			broadcastComplete();
-			return;
 		}
 
-		broadcastNext(ev);
 	}
 
 

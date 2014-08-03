@@ -72,7 +72,7 @@ class GroovyPromisesSpec extends Specification {
 
 		then:
 			'Composition contains value'
-			d.promise().await() == 2
+			d.next().await() == 2
 	}
 
 	def "Promise notifies of Failure"() {
@@ -108,7 +108,7 @@ class GroovyPromisesSpec extends Specification {
 			p << '10'
 
 		then:
-			s.promise().get() == 10
+			s.next().get() == 10
 
 		when: "add a mapping closure"
 			p = Promises.defer()
@@ -118,7 +118,7 @@ class GroovyPromisesSpec extends Specification {
 			p << '10'
 
 		then:
-			s.promise().get() == 10
+			s.next().get() == 10
 	}
 
 	def "A promise can be be consumed by another promise"() {
@@ -149,7 +149,7 @@ class GroovyPromisesSpec extends Specification {
 
 		and: "setting a value"
 			p << 'not a number'
-			s.promise().await(2000, TimeUnit.MILLISECONDS)
+			s.next().await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
 			thrown(NumberFormatException)
@@ -164,7 +164,7 @@ class GroovyPromisesSpec extends Specification {
 			def s = p | { Integer.parseInt it } | { it * 10 }
 
 		then:
-			s.promise().get() == 100
+			s.next().get() == 100
 	}
 
 }

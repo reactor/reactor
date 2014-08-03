@@ -172,13 +172,23 @@ public abstract class StreamUtils {
 						Subscriber<?> subscriber = ((StreamSubscription<?>) registration).getSubscriber();
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
 							parseComposable((Stream<?>) subscriber, streamTree);
-						} else if (Promise.class.isAssignableFrom(subscriber.getClass())) {
-							Map<Object,Object> wrappedPromise = new HashMap<Object,Object>();
-							List<Object> wrappedStream = new ArrayList<Object>();
-							wrappedPromise.put("info", subscriber);
-							wrappedPromise.put("state", ((Promise<?>)subscriber).state);
-							streamTree.add(wrappedPromise);
-							parseComposable(((Promise<?>) subscriber).outboundStream, wrappedStream);
+						} else {
+							Map<Object, Object> wrappedSubscriber = new HashMap<Object, Object>();
+							if (debugVisitor != null) {
+								debugVisitor.newLine(debugVisitor.d);
+								debugVisitor.appender.append(subscriber);
+							}
+							wrappedSubscriber.put("info", subscriber);
+							if (Promise.class.isAssignableFrom(subscriber.getClass())) {
+								List<Object> wrappedStream = new ArrayList<Object>();
+								wrappedSubscriber.put("info", subscriber);
+								wrappedSubscriber.put("state", ((Promise<?>) subscriber).state);
+								parseComposable(((Promise<?>) subscriber).outboundStream, wrappedStream);
+							}
+							streamTree.add(wrappedSubscriber);
+							if (debugVisitor != null) {
+								debugVisitor.newLine(debugVisitor.d, false);
+							}
 						}
 					}
 				}

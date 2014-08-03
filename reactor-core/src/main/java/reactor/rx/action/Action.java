@@ -30,8 +30,38 @@ import reactor.timer.Timer;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
+ * to a {@link reactor.rx.Stream}. Stream is usually the place where actions are created.
+ * <p>
+ * An Action is also a data producer, and therefore implements {@link org.reactivestreams.Processor}.
+ * An imperative programming equivalent of an action is a method or function. The main difference is that it also
+ * reacts on various {@link org.reactivestreams.Subscriber} signals and produce an output data {@param O} for
+ * any downstream subscription.
+ * <p>
+ * The implementation specifics of an Action lies in two core features:
+ * - Its signal scheduler on {@link reactor.event.dispatch.Dispatcher}
+ * - Its smart capacity awareness to prevent {@link reactor.event.dispatch.Dispatcher} overflow
+ * <p>
+ * In effect, an Action will take care of concurrent notifications through its single threaded Dispatcher.
+ * Up to a maximum capacity defined with {@link this#capacity(int)} will be allowed to be dispatched by requesting
+ * the tracked remaining slots to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
+ * is a value to tune accordingly with the system and the requirements. An Action will bypass this feature anytime it is
+ * not the root of stream processing chain e.g.:
+ * <p>
+ * stream.filter(..).map(..) :
+ * <p>
+ * In that Stream, filter is a FilterAction and has no upstream action, only the publisher it is attached to.
+ * The FilterAction will decide to be capacity aware and will track demand.
+ * The MapAction will however behave like a firehose and will not track the demand, passing any request upstream.
+ * <p>
+ * Implementing an Action is highly recommended to work with Stream without dealing with tracking issues and other
+ * threading matters. Usually an implementation will override any doXXXXX method where 'do' is an hint that logic will
+ * safely be dispatched to avoid race-conditions.
+ *
+ * @param <I> The input {@link this#onNext(Object)} signal
+ * @param <O> The output type to listen for with {@link this#subscribe(org.reactivestreams.Subscriber)}
  * @author Stephane Maldini
- * @since 1.1
+ * @since 1.1, 2.0
  */
 public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I> {
 
@@ -47,16 +77,18 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	protected int     pendingNextSignals = 0;
 	protected int     currentNextSignals = 0;
 	protected boolean firehose           = false;
+	protected Subscription subscription;
 
 	protected final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
 		@Override
 		public void accept(Integer n) {
 			try {
-				if (subscription == null){
+				if (subscription == null) {
 					return;
 				}
 
 				if (firehose) {
+					currentNextSignals = 0;
 					subscription.request(n);
 					return;
 				}
@@ -65,10 +97,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
 
 				if (previous < batchSize) {
-					int upperBound = batchSize - previous;
-					int toRequest = n - previous;
-					toRequest = toRequest > upperBound ? upperBound : n;
+					int toRequest = n + previous;
+					toRequest = toRequest > batchSize ? batchSize : toRequest;
 					pendingNextSignals -= toRequest;
+					currentNextSignals = 0;
 					subscription.request(toRequest);
 				}
 
@@ -77,8 +109,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			}
 		}
 	};
-
-	protected Subscription subscription;
 
 	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
 		return new Action<O, O>(dispatcher) {
@@ -172,13 +202,13 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
+	protected void onRequest(final int n) {
+		trySyncDispatch(n, requestConsumer);
+	}
+
 	@Override
 	public void onNext(I ev) {
 		trySyncDispatch(ev, this);
-	}
-
-	protected void onRequest(final int n) {
-		trySyncDispatch(n, requestConsumer);
 	}
 
 	@Override
@@ -263,12 +293,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	public Action<I, O> resume() {
 		super.resume();
-		if(subscription != null){
+		if (subscription != null) {
 
 			dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void integer) {
-					if(pendingNextSignals > 0){
+					if (pendingNextSignals > 0) {
 						int toRequest = pendingNextSignals;
 						pendingNextSignals = 0;
 						requestConsumer.accept(toRequest);
@@ -328,6 +358,20 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return (Action<I, O>) super.env(environment);
 	}
 
+	protected void doSubscribe(Subscription subscription) {
+	}
+
+	protected void doComplete() {
+		broadcastComplete();
+	}
+
+	protected void doNext(I ev) {
+	}
+
+	protected void doError(Throwable ev) {
+		broadcastError(ev);
+	}
+
 	public Action<?, ?> findOldestAction(boolean resetState) {
 		Action<?, ?> that = this;
 
@@ -348,20 +392,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 		}
 		return that;
-	}
-
-	protected void doSubscribe(Subscription subscription) {
-	}
-
-	protected void doComplete() {
-		broadcastComplete();
-	}
-
-	protected void doNext(I ev) {
-	}
-
-	protected void doError(Throwable ev) {
-		broadcastError(ev);
 	}
 
 	protected void resetState(Action<?, ?> action) {

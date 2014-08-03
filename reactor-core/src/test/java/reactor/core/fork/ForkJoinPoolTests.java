@@ -64,7 +64,7 @@ public class ForkJoinPoolTests {
 		System.out.println(fjt.compose().debug());
 		fjt.submit();
 		System.out.println(fjt.compose().debug());
-		ImmutableList<Integer> l = fjt.compose().promise().await(15, TimeUnit.SECONDS);
+		ImmutableList<Integer> l = fjt.compose().next().await(15, TimeUnit.SECONDS);
 		System.out.println(fjt.compose().debug());
 
 		assertThat("Integers were collected", l.size(), is(100));

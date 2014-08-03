@@ -38,6 +38,7 @@ import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
 import reactor.rx.action.support.GroupedByStream;
 import reactor.timer.Timer;
+import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -308,7 +309,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		publishers.add(this);
 		Collections.addAll(publishers, composables);
 
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null, null,
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null,
 				publishers);
 
 		mergeAction.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
@@ -321,7 +322,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
 		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
 		connect(mergeAction);
@@ -335,7 +335,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<Stream<O>> parallel() {
 		return parallel(Runtime.getRuntime().availableProcessors());
 	}
@@ -348,7 +347,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<Stream<O>> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaulDispatcherFactory() :
@@ -364,7 +362,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<Stream<O>> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		final ParallelAction<O> parallelAction = new ParallelAction<O>(
 				this.dispatcher, dispatcherSupplier, poolsize
@@ -448,8 +445,32 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose only value will be the materialized current {@link Stream}
 	 * @since 2.0
 	 */
-	public NestAction<O, Stream<O>> nest() {
-		return connect(new NestAction<O, Stream<O>>(dispatcher, this));
+	public NestAction<O, Stream<O>, ?> nest() {
+		return connect(new NestAction<O, Stream<O>, Object>(dispatcher, this));
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be the current instance of the {@link Stream}. Everytime
+	 * the {@param controlStream} receives a next signal, the current Stream and the input data will be published as a
+	 * {@link reactor.tuple.Tuple2} to the attached {@param controller}.
+	 *
+	 * This is particulary useful to dynamically adapt the {@link Stream} instance : capacity, pause(), resume()...
+	 *
+	 * @param controlStream The consumed stream, each signal will trigger the passed controller
+	 * @param controller The consumer accepting a pair of Stream and user-provided signal type
+	 *
+	 * @return the current {@link Stream} instance
+	 * @since 2.0
+	 */
+	public <E> Stream<O> control(Stream<E> controlStream, final Consumer<Tuple2<Stream<O>, E>> controller) {
+		final Stream<O> thiz = this;
+		controlStream.consume(new Consumer<E>() {
+			@Override
+			public void accept(E e) {
+				controller.accept(Tuple.of(thiz, e));
+			}
+		});
+		return this;
 	}
 
 	/**
@@ -601,7 +622,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public LastAction<O> last() {
-		return last(batchSize);
+		return every(batchSize);
 	}
 
 
@@ -611,7 +632,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
-	public LastAction<O> last(int batchSize) {
+	public LastAction<O> every(int batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -1010,13 +1031,59 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * A promise is a container that will capture only once the first arriving signal error|next|complete
+	 * Create a consumer that broadcast complete signal from any accepted value.
+	 *
+	 * @return a new {@link Consumer} ready to forward complete signal to this stream
+	 * @since 2.0
+	 */
+	public Consumer<?> toBroadcastCompleteConsumer(){
+		return new Consumer<Object>() {
+			@Override
+			public void accept(Object o) {
+				broadcastComplete();
+			}
+		};
+	}
+
+	/**
+	 * Create a consumer that broadcast next signal from accepted values.
+	 *
+	 * @return a new {@link Consumer} ready to forward values to this stream
+	 * @since 2.0
+	 */
+	public Consumer<O> toBroadcastNextConsumer(){
+		return new Consumer<O>() {
+			@Override
+			public void accept(O o) {
+				broadcastNext(o);
+			}
+		};
+	}
+
+	/**
+	 * Create a consumer that broadcast error signal from any accepted value.
+	 *
+	 * @return a new {@link Consumer} ready to forward error to this stream
+	 * @since 2.0
+	 */
+	public Consumer<Throwable> toBroadcastErrorConsumer(){
+		return new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable o) {
+				broadcastError(o);
+			}
+		};
+	}
+
+	/**
+	 * Return the promise of the next triggered signal.
+	 * A promise is a container that will capture only once the first arriving error|next|complete signal
 	 * to this {@link Stream}. It is useful to coordinate on single data streams or await for any signal.
 	 *
 	 * @return a new {@link Promise}
 	 * @since 2.0
 	 */
-	public Promise<O> promise() {
+	public Promise<O> next() {
 		final Promise<O> d = new Promise<O>(
 				dispatcher,
 				environment
@@ -1031,22 +1098,22 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the buffered collection
 	 * @since 2.0
 	 */
-	public List<O> toList() throws InterruptedException {
+	public Promise<List<O>> toList() throws InterruptedException {
 		return toList(-1);
 	}
 
 	/**
-	 * Blocking call to eagerly fetch values from this stream
+	 * Return the promise of N signals collected into an array list.
 	 *
 	 * @param maximum list size and therefore events signal to listen for
 	 * @return the buffered collection
 	 * @since 2.0
 	 */
-	public List<O> toList(int maximum) throws InterruptedException {
+	public Promise<List<O>> toList(int maximum) {
 		if (maximum > 0)
-			return limit(maximum).buffer().promise().await();
+			return limit(maximum).buffer().next();
 		else {
-			return buffer().promise().await();
+			return buffer().next();
 		}
 	}
 
@@ -1154,6 +1221,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public void broadcastNext(final O ev) {
 		if (!checkState() || downstreamSubscription == null) {
+			if(log.isDebugEnabled()){
+				log.debug("event dropped "+ev);
+			}
 			return;
 		}
 

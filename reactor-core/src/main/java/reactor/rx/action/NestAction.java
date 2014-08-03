@@ -15,28 +15,42 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
+import reactor.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
-public class NestAction<T, E extends Stream<T>> extends Action<T, E> {
+public class NestAction<T, E extends Stream<T>, K> extends Action<T, E> {
 
-	private final E stream;
+	private final E                      stream;
+	private final Publisher<K>           controlStream;
+	private final Consumer<Tuple2<E, K>> controller;
 
 	public NestAction(Dispatcher dispatcher, E stream) {
+		this(dispatcher, stream, null, null);
+	}
+
+	public NestAction(Dispatcher dispatcher, E stream, Publisher<K> controlStream, Consumer<Tuple2<E, K>> consumer) {
 		super(dispatcher);
 		this.stream = stream;
+		this.controller = consumer;
+		this.controlStream = controlStream;
 	}
 
 	@Override
 	protected StreamSubscription<E> createSubscription(Subscriber<E> subscriber) {
 		StreamSubscription<E> streamSubscription = super.createSubscription(subscriber);
-		streamSubscription.onNext(stream);
-		return  streamSubscription;
+		if (controller == null) {
+			streamSubscription.onNext(stream);
+			streamSubscription.onComplete();
+		}
+		return streamSubscription;
 	}
 }

@@ -18,6 +18,7 @@ package reactor.rx.spec
 import reactor.core.Environment
 import reactor.core.Observable
 import reactor.rx.Promise
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -29,6 +30,17 @@ import java.util.concurrent.TimeUnit
  * @author Jon Brisbin
  */
 class PromisesSpec extends Specification {
+
+	@Shared
+	Environment environment
+
+	void setup() {
+		environment = new Environment()
+	}
+
+	def cleanup(){
+		environment.shutdown()
+	}
 
 	def "An onComplete consumer is called when a promise is rejected"() {
 		given:
@@ -291,7 +303,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a mapping function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.stream().map { it * 2 }.promise()
+			def mappedPromise = promise.stream().map { it * 2 }.next()
 
 		when:
 			"the original promise is fulfilled"
@@ -306,7 +318,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> defer()
-			def mappedPromise = promise.stream().flatMap { Promises.success(it + 1) }.promise()
+			def mappedPromise = promise.stream().flatMap { Promises.success(it + 1) }.next()
 
 		when:
 			"the original promise is fulfilled"
@@ -326,7 +338,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a mapping function is added"
-			def mappedPromise = promise.stream().map { it * 2 }.promise()
+			def mappedPromise = promise.stream().map { it * 2 }.next()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -386,7 +398,7 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			Promise<String> promise = Promises.<String> defer()
 			def e = new RuntimeException()
-			def mapped = promise.stream().map { throw e }.promise()
+			def mapped = promise.stream().map { throw e }.next()
 
 		when:
 			"the promise is fulfilled"
@@ -405,7 +417,7 @@ class PromisesSpec extends Specification {
 		when:
 			"a mapping function that throws an exception is added"
 			def e = new RuntimeException()
-			def mapped = promise.stream().map { throw e }.promise()
+			def mapped = promise.stream().map { throw e }.next()
 
 		then:
 			"the mapped promise is rejected"
@@ -460,7 +472,7 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Streams.<Integer> defer().observe{ println 'hey'+it }.promise()
+			def promise1 = Streams.<Integer> defer().observe{ println 'hey'+it }.next()
 			def promise2 = Promises.<Integer> defer()
 
 		when:
@@ -628,7 +640,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			def filtered = promise.stream().filter { it % 2 == 0 }.promise()
+			def filtered = promise.stream().filter { it % 2 == 0 }.next()
 
 		when:
 			"the promise is fulfilled with an odd value"
@@ -644,7 +656,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.defer()
-			promise.stream().filter { it % 2 == 0 }.promise()
+			promise.stream().filter { it % 2 == 0 }.next()
 
 		when:
 			"the promise is fulfilled with an even value"
@@ -661,7 +673,7 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			def promise = Promises.defer()
 			def e = new RuntimeException()
-			def filteredPromise = promise.stream().filter { throw e }.promise()
+			def filteredPromise = promise.stream().filter { throw e }.next()
 
 		when:
 			"the promise is fulfilled"
@@ -694,7 +706,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"the promise is filtered with a filter that only accepts even values"
-			def filtered = promise.stream().filter { it % 2 == 0 }.promise()
+			def filtered = promise.stream().filter { it % 2 == 0 }.next()
 
 		then:
 			"the filtered promise is not fulfilled"
@@ -706,7 +718,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise"
 			def p1 = Promises.<String> config()
-					.env(new Environment())
+					.env(environment)
 					.get()
 
 			final latch = new CountDownLatch(1)
@@ -715,7 +727,7 @@ class PromisesSpec extends Specification {
 			"p1 is consumed by p2"
 			Promise p2 = p1.onSuccess( { Integer.parseInt it }).stream().
 					when(NumberFormatException, { latch.countDown() }).
-					map { println('not in log'); true }.promise()
+					map { println('not in log'); true }.next()
 
 		and:
 			"setting a value"

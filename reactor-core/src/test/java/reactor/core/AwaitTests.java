@@ -24,7 +24,6 @@ import reactor.function.Consumer;
 import reactor.rx.Promise;
 import reactor.rx.spec.Promises;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,13 +41,10 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
-		for (int i = 0; i < 100000; i++) {
+		for (int i = 0; i < 10000; i++) {
 			final Promise<String> deferred = Promises.<String>config()
 					.env(env)
 					.get();
-			final CountDownLatch latch = new CountDownLatch(1);
-
-			deferred.onComplete(t -> latch.countDown());
 
 			innerReactor.schedule(new Consumer() {
 
@@ -59,11 +55,8 @@ public class AwaitTests extends AbstractReactorTest {
 
 			}, null);
 
-			boolean latchRes = latch.await(25, TimeUnit.SECONDS);
-			if(latch.getCount() > 0){
-				System.out.println(deferred.debug());
-			}
-			assertThat("latch is not counted down : " + latch.getCount(), latchRes);
+			String latchRes = deferred.await(10, TimeUnit.SECONDS);
+			assertThat("latch is not counted down : " + deferred.debug(), "foo".equals(latchRes));
 		}
 	}
 

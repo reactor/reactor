@@ -23,7 +23,6 @@ import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -57,6 +56,15 @@ public class TimeoutAction<T> extends Action<T, T> {
 		}
 	};
 
+	private final Consumer<Integer> upstreamRequest = new Consumer<Integer>() {
+		@Override
+		public void accept(Integer integer) {
+			timeoutRegistration.cancel();
+			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+			requestConsumer.accept(integer);
+		}
+	};
+
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
 	private long numbTimeout = 0;
 
@@ -78,17 +86,13 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
-
 		timeoutRegistration.cancel();
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-		super.requestUpstream(capacity, terminated, elements);
-
-		timeoutRegistration.cancel();
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+	protected void onRequest(int n) {
+		dispatch(n, upstreamRequest);
 	}
 
 	@Override

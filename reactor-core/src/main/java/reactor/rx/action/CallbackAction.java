@@ -47,7 +47,7 @@ public class CallbackAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		consumer.accept(ev);
 		if(prefetch){
-			if (currentNextSignals % batchSize == 0) {
+			if (currentNextSignals == batchSize) {
 				requestConsumer.accept(batchSize);
 			}
 		}else{

@@ -33,19 +33,17 @@ public class MergeAction<O> extends Action<O, O> {
 
 	final FanInSubscription<O> innerSubscriptions;
 	final AtomicInteger        runningComposables;
-	final Action<O, ?>         processingAction;
 
 	@SuppressWarnings("unchecked")
 	public MergeAction(Dispatcher dispatcher, Action<?, O> upstreamAction) {
-		this(dispatcher, upstreamAction, null, null);
+		this(dispatcher, upstreamAction, null);
 	}
 
 	public MergeAction(Dispatcher dispatcher, Action<?, O> upstreamAction,
-	                   Action<O, ?> processingAction, List<? extends Publisher<O>> composables) {
+	                   List<? extends Publisher<O>> composables) {
 		super(dispatcher);
 
 		int length = composables != null ? composables.size() : 0;
-		this.processingAction = processingAction;
 		this.runningComposables = new AtomicInteger(0);
 
 		if (length > 0) {
@@ -53,10 +51,6 @@ public class MergeAction<O> extends Action<O, O> {
 					MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8));
 
 			onSubscribe(this.innerSubscriptions);
-
-			if (processingAction != null) {
-				processingAction.onSubscribe(innerSubscriptions);
-			}
 
 			for (Publisher<O> composable : composables) {
 				addPublisher(composable);
@@ -82,38 +76,7 @@ public class MergeAction<O> extends Action<O, O> {
 
 	@Override
 	protected void doNext(O ev) {
-		if (processingAction != null) {
-			processingAction.onNext(ev);
-		} else {
 			broadcastNext(ev);
-		}
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription) {
-		if (processingAction != null) {
-			processingAction.doSubscribe(subscription);
-		} else {
-			super.doSubscribe(subscription);
-		}
-	}
-
-	@Override
-	protected void doError(Throwable ev) {
-		if (processingAction != null) {
-			processingAction.onError(ev);
-		} else {
-			super.doError(ev);
-		}
-	}
-
-	@Override
-	protected void doComplete() {
-		if (processingAction == null) {
-			super.doComplete();
-		} else {
-			processingAction.onComplete();
-		}
 	}
 
 	@Override

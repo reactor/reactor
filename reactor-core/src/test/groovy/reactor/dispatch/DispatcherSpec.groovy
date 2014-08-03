@@ -32,7 +32,8 @@ import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
-import reactor.function.support.Boundary
+import reactor.rx.spec.Streams
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -47,6 +48,17 @@ import static reactor.event.selector.Selectors.T
  */
 class DispatcherSpec extends Specification {
 
+	@Shared
+	Environment env
+
+	void setup() {
+		env = new Environment()
+	}
+
+	def cleanup(){
+		env.shutdown()
+	}
+
 	def "Dispatcher executes tasks in correct thread"() {
 
 		given:
@@ -58,7 +70,7 @@ class DispatcherSpec extends Specification {
 			def eventRouter = new ConsumerFilteringRouter(
 					new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
 			def sel = $('test')
-			registry.register(sel,{ Event<?> ev->
+			registry.register(sel, { Event<?> ev ->
 				taskThread = Thread.currentThread()
 			} as Consumer<Event<?>>)
 
@@ -88,7 +100,6 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"ring buffer reactor"
-			def env = new Environment()
 			def r = Reactors.reactor().env(env).dispatcher("ringBuffer").get()
 			def latch = new CountDownLatch(2)
 
@@ -114,7 +125,6 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def env = new Environment()
 			def r = Reactors.reactor().
 					env(env).
 					dispatcher(Environment.THREAD_POOL).
@@ -143,13 +153,13 @@ class DispatcherSpec extends Specification {
 	def "RingBufferDispatcher doesn't deadlock on thrown Exception"() {
 
 		given:
-			def b = new Boundary()
 			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
 			def r = new Reactor(dispatcher)
 
 		when:
-			r.on(T(Throwable), b.bind({ ev ->
-			} as Consumer<Event<Throwable>>, 16))
+			def stream = Streams.<Throwable> defer()
+			def promise = stream.limit(16).count().toList()
+			r.on(T(Throwable), stream.toBroadcastNextConsumer())
 			r.on($("test"), { ev ->
 				sleep(100)
 				1 / 0
@@ -157,9 +167,11 @@ class DispatcherSpec extends Specification {
 			16.times {
 				r.notify "test", Event.wrap("test")
 			}
+			println stream.debug()
 
 		then:
-			b.await(5, TimeUnit.SECONDS)
+			promise.await(5, TimeUnit.SECONDS)
+			promise.get() == [16]
 
 	}
 

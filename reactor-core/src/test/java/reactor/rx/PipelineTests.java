@@ -19,7 +19,6 @@ package reactor.rx;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
@@ -67,7 +66,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -85,7 +84,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -96,8 +95,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Stream<String> stream =
-				Streams.defer(Arrays.asList("1", "2", "3", "4", "5"), env);
+		Stream<String> stream = Streams.defer(env, "1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -123,7 +121,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -158,7 +156,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		r.on(key, tap);
 
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
 		Stream<Void> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -172,7 +170,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testStreamBatchesResults() {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "3", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
 		Stream<List<Integer>> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -193,7 +191,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testHandlersErrorsDownstream() throws InterruptedException {
-		Stream<String> stream = Streams.defer(Arrays.asList("1", "2", "a", "4", "5"));
+		Stream<String> stream = Streams.defer("1", "2", "a", "4", "5");
 		final CountDownLatch latch = new CountDownLatch(1);
 		Stream<Integer> s =
 				stream
@@ -369,8 +367,7 @@ public class PipelineTests extends AbstractReactorTest {
 		final ConcurrentHashMap<Object, Long> seenInternal = new ConcurrentHashMap<>();
 		final ConcurrentHashMap<Object, Long> seenConsumer = new ConcurrentHashMap<>();
 
-		Environment e = new Environment();
-		Stream<Integer> d = Streams.defer(e);
+		Stream<Integer> d = Streams.defer(env);
 
 		d.parallel().consume(stream -> stream.map(o -> {
 			synchronized (internalLock) {
@@ -421,6 +418,9 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
+		for(int i=0; i< 45;i++){
+			parallelMapManyTest("partitioned", 1_000_000);
+		}
 		parallelBufferedTimeoutTest(1_000_000, false);
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
@@ -518,7 +518,7 @@ public class PipelineTests extends AbstractReactorTest {
 			deferred.broadcastNext(i);
 		}
 
-		if (!latch.await(30, TimeUnit.SECONDS)) {
+		if (!latch.await(15, TimeUnit.SECONDS)) {
 			throw new RuntimeException(deferred.debug().toString());
 		}
 
@@ -547,7 +547,9 @@ public class PipelineTests extends AbstractReactorTest {
 				mapManydeferred = Streams.<Integer>defer(env);
 				mapManydeferred
 						.parallel()
-						.map(substream -> substream.consume(i -> latch.countDown())).available();
+						.consume(substream ->
+								substream.consume(i -> latch.countDown())
+						);
 				break;
 			default:
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
