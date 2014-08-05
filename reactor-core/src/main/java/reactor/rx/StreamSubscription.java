@@ -168,7 +168,7 @@ public class StreamSubscription<O> implements Subscription {
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
-				", buffered=" + buffer.size() +
+				", waiting=" + buffer.size() +
 				'}';
 	}
 

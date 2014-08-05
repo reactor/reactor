@@ -55,8 +55,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			log.warn("So, because we try to book some {} slots on the parallel master action and " +
 					"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
 							" leave the parallel master action capacity to {}", elements,
-					cumulatedReservedSlots, cumulatedReservedSlots);
-			super.capacity(cumulatedReservedSlots);
+					cumulatedReservedSlots, elements);
+			super.capacity(elements);
 		}else{
 			super.capacity(elements - cumulatedReservedSlots);
 		}
