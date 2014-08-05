@@ -50,7 +50,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	@Override
 	public Action<O, Stream<O>> capacity(int elements) {
-		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS + RESERVED_SLOTS;
+		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS;
 		if(elements < cumulatedReservedSlots){
 			log.warn("So, because we try to book some {} slots on the parallel master action and " +
 					"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
@@ -58,7 +58,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 					cumulatedReservedSlots, elements);
 			super.capacity(elements);
 		}else{
-			super.capacity(elements - cumulatedReservedSlots);
+			super.capacity(elements - cumulatedReservedSlots + RESERVED_SLOTS);
 		}
 		int size = batchSize / poolSize;
 
