@@ -182,6 +182,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public Stream<O> capacity(int elements) {
 		this.batchSize = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
+		if(batchSize != elements){
+			log.warn("The Stream altered its maximum capacity {} to keep {} slots on the underlying dispatcher " +
+							"for others signals amid error," +
+							" complete, subscribe and upstream request. The assigned capacity is now {}",
+					elements, Action.RESERVED_SLOTS, batchSize);
+		}
 		return this;
 	}
 

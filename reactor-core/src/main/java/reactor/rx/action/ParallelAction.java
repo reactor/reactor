@@ -52,11 +52,11 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	public Action<O, Stream<O>> capacity(int elements) {
 		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS + RESERVED_SLOTS;
 		if(elements < cumulatedReservedSlots){
-			log.warn("So, because we try to book some slots across all parallel streams and that value {} is greater " +
-					"than the minimum {} slots the action requires to never overrun the underlying dispatcher, we decided to" +
-							" leave the parallel master action capacity to {}", cumulatedReservedSlots,
-					elements, elements);
-			super.capacity(elements);
+			log.warn("So, because we try to book some {} slots on the parallel master action and " +
+					"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
+							" leave the parallel master action capacity to {}", elements,
+					cumulatedReservedSlots, cumulatedReservedSlots);
+			super.capacity(cumulatedReservedSlots);
 		}else{
 			super.capacity(elements - cumulatedReservedSlots);
 		}
