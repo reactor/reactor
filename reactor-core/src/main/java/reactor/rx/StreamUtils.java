@@ -176,7 +176,7 @@ public abstract class StreamUtils {
 							Map<Object, Object> wrappedSubscriber = new HashMap<Object, Object>();
 							if (debugVisitor != null) {
 								debugVisitor.newLine(debugVisitor.d);
-								debugVisitor.appender.append(subscriber);
+								debugVisitor.appender.append(subscriber).append(registration);
 							}
 							wrappedSubscriber.put("info", subscriber);
 							if (Promise.class.isAssignableFrom(subscriber.getClass())) {
@@ -241,7 +241,7 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderDynamicMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
-				DynamicMergeAction<O, ?, Publisher<?>> operation = (DynamicMergeAction<O, ?, Publisher<?>>) consumer;
+				DynamicMergeAction<?, O, Publisher<?>> operation = (DynamicMergeAction<?, O, Publisher<?>>) consumer;
 				parseComposable(operation.mergedStream(), streamTree);
 				return true;
 			}
@@ -280,8 +280,8 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderMerge(Stream<O> consumer, final List<Object> streamTree) {
-			if (MergeAction.class.isAssignableFrom(consumer.getClass())) {
-				MergeAction<O> operation = (MergeAction<O>) consumer;
+			if (FanInAction.class.isAssignableFrom(consumer.getClass())) {
+				FanInAction<?, O> operation = (FanInAction<?, O>) consumer;
 				operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
 					@Override
 					public void value(FanInSubscription.InnerSubscription innerSubscription) {

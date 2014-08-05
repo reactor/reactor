@@ -223,7 +223,7 @@ public abstract class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises)
+		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises)
 				.env(promises.get(0).getEnvironment())
 				.buffer(promises.size())
 				.next();
@@ -253,7 +253,7 @@ public abstract class Promises {
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, null, promises);
+		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises);
 		mergeAction.env(promises.get(0).getEnvironment());
 
 		return mergeAction.next();

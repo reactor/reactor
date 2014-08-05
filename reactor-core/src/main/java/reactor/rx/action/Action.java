@@ -182,30 +182,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	protected void doPendingRequest() {
-		if (currentNextSignals == batchSize) {
-			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
-			currentNextSignals = 0;
-
-			if (toRequest > 0) {
-				pendingNextSignals -= toRequest;
-				subscription.request(toRequest);
-			}
-		}
-	}
-
-	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if (firehose) {
-			action.accept(data);
-		} else {
-			dispatch(data, action);
-		}
-	}
-
-	protected void onRequest(final int n) {
-		trySyncDispatch(n, requestConsumer);
-	}
-
 	@Override
 	public void onNext(I ev) {
 		trySyncDispatch(ev, this);
@@ -263,14 +239,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			});
 		} else {
 			throw new IllegalStateException("Already subscribed");
-		}
-	}
-
-	@Override
-	protected void removeSubscription(StreamSubscription<O> sub) {
-		super.removeSubscription(sub);
-		if (getState() == State.SHUTDOWN && subscription != null) {
-			subscription.cancel();
 		}
 	}
 
@@ -358,18 +326,26 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return (Action<I, O>) super.env(environment);
 	}
 
-	protected void doSubscribe(Subscription subscription) {
+	public Subscription getSubscription() {
+		return subscription;
 	}
 
-	protected void doComplete() {
-		broadcastComplete();
-	}
-
-	protected void doNext(I ev) {
-	}
-
-	protected void doError(Throwable ev) {
-		broadcastError(ev);
+	@Override
+	@SuppressWarnings("unchecked")
+	public String toString() {
+		return "{" +
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
+						"")) +
+				", state=" + getState() +
+				", max-capacity=" + getMaxCapacity() +
+				(subscription != null &&
+						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
+						", subscription=" + subscription +
+								", pending=" + pendingNextSignals +
+								", currentNextSignals=" + currentNextSignals
+						: (subscription != null ? ", subscription=" + subscription : "")
+				) + '}';
 	}
 
 	public Action<?, ?> findOldestAction(boolean resetState) {
@@ -394,31 +370,55 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return that;
 	}
 
+	@Override
+	protected void removeSubscription(StreamSubscription<O> sub) {
+		super.removeSubscription(sub);
+		if (getState() == State.SHUTDOWN && subscription != null) {
+			subscription.cancel();
+		}
+	}
+
+	protected void doSubscribe(Subscription subscription) {
+	}
+
+	protected void doComplete() {
+		broadcastComplete();
+	}
+
+	protected void doNext(I ev) {
+	}
+
+	protected void doError(Throwable ev) {
+		broadcastError(ev);
+	}
+
+	protected void doPendingRequest() {
+		if (currentNextSignals == batchSize) {
+			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
+			currentNextSignals = 0;
+
+			if (toRequest > 0) {
+				pendingNextSignals -= toRequest;
+				subscription.request(toRequest);
+			}
+		}
+	}
+
+	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
+		if (firehose) {
+			action.accept(data);
+		} else {
+			dispatch(data, action);
+		}
+	}
+
+	protected void onRequest(final int n) {
+		trySyncDispatch(n, requestConsumer);
+	}
+
 	protected void resetState(Action<?, ?> action) {
 		action.state = State.READY;
 		action.error = null;
-	}
-
-	public Subscription getSubscription() {
-		return subscription;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public String toString() {
-		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
-				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
-						"")) +
-				", state=" + getState() +
-				", max-capacity=" + getMaxCapacity() +
-				(subscription != null &&
-						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
-						", subscription=" + subscription +
-								", pending=" + pendingNextSignals +
-								", currentNextSignals=" + currentNextSignals
-						: (subscription != null ? ", subscription=" + subscription : "")
-				) + '}';
 	}
 
 }

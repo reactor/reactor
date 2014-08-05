@@ -375,6 +375,73 @@ class StreamsSpec extends Specification {
 	}
 
 
+	def "Multiple Stream's values can be joined"() {
+		given:
+			'source composables to merge, buffer and tap'
+			def source2 = Streams.<Integer> defer()
+			def source3 = Streams.<Integer> defer()
+			def source1 = Streams.<Stream<Integer>> defer(source2,source3)
+			def tap = source1.join().tap()
+
+		when:
+			'the sources accept a value'
+			source2.broadcastNext(1)
+			source3.broadcastNext(2)
+			source3.broadcastNext(3)
+			source3.broadcastNext(4)
+
+			println source1.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == [1, 2]
+
+		when:
+			'the sources accept the missing value'
+			source3.broadcastNext(5)
+			source2.broadcastNext(6)
+
+			println source1.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == [3, 6]
+	}
+
+	def "Multiple Stream's values can be zipped"() {
+		given:
+			'source composables to merge, buffer and tap'
+			def source2 = Streams.<Integer> defer()
+			def source3 = Streams.<Integer> defer()
+			def source1 = Streams.<Stream<Integer>> defer(source2,source3)
+			def tap = source1.zip{ it.sum() }.tap()
+
+		when:
+			'the sources accept a value'
+			source2.broadcastNext(1)
+			source3.broadcastNext(2)
+			source3.broadcastNext(3)
+			source3.broadcastNext(4)
+
+			println source1.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == 3
+
+		when:
+			'the sources accept the missing value'
+			source3.broadcastNext(5)
+			source2.broadcastNext(6)
+
+			println source1.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == 9
+	}
+
+
 	def "Stream can be counted"() {
 		given:
 			'source composables to count and tap'
@@ -1009,7 +1076,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the average elapsed time between 2 signals is greater than throttled time'
-			value.get() >= nanotime * 0.9
+			value.get() >= nanotime * 0.6
 
 		cleanup:
 			environment.shutdown()

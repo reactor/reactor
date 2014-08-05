@@ -18,6 +18,8 @@ package reactor.rx.action;
 import com.gs.collections.api.block.predicate.Predicate;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 
@@ -26,6 +28,9 @@ import reactor.rx.StreamSubscription;
  * @since 2.0
  */
 public class FanOutSubscription<O> extends StreamSubscription<O> {
+
+	static final Logger log = LoggerFactory.getLogger(FanOutSubscription.class);
+
 	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(2);
 
 	public FanOutSubscription(Stream<O> publisher, StreamSubscription<O> streamSubscriptionA,
@@ -56,6 +61,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 			public void safeValue(StreamSubscription<O> subscription) throws Exception {
 				try {
 					if (subscription.isComplete()) {
+						if (log.isDebugEnabled()) {
+							log.debug("event ignored [" + ev + "] as downstream subscription is complete");
+						}
 						return;
 					}
 

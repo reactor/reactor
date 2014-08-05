@@ -115,6 +115,18 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
+	 * Cast the current Stream flowing data type into a target class type.
+	 *
+	 * @param <E> the {@link Action} output type
+	 * @return the current {link Stream} instance casted
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public <E> Stream<E> cast(@Nonnull final Class<E> stream) {
+		return (Stream<E>) this;
+	}
+
+	/**
 	 * Subscribe an {@link Action} to the actual pipeline. Additionally to producing events (error,complete,next and
 	 * eventually flush), it will generally take care of setting the environment if available and
 	 * an initial capacity size used for {@link org.reactivestreams.Subscription#request(int)}.
@@ -245,7 +257,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Assign the a new Dispatcher to the returned Stream.
 	 *
-	 * @param dispatcher  the new dispatcher
+	 * @param dispatcher the new dispatcher
 	 * @return a new {@code Stream} running on a different {@link Dispatcher}
 	 */
 	public Action<O, O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
@@ -309,8 +321,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		publishers.add(this);
 		Collections.addAll(publishers, composables);
 
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, null,
-				publishers);
+		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, publishers);
 
 		mergeAction.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
 		return mergeAction;
@@ -322,10 +333,35 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	public final <E> DynamicMergeAction<O, E, Stream<E>> merge() {
-		final DynamicMergeAction<O, E, Stream<E>> mergeAction = new DynamicMergeAction<O, E, Stream<E>>(dispatcher);
-		connect(mergeAction);
-		return mergeAction;
+	public final <E> DynamicMergeAction<O, E, E> merge() {
+		return connect(new DynamicMergeAction<O, E, E>(dispatcher));
+	}
+
+	/**
+	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 *
+	 * @return the merged stream
+	 * @since 2.0
+	 */
+	public final <E> DynamicMergeAction<O, List<E>, E> join() {
+		return zip(new Function<List<E>, List<E>>() {
+			@Override
+			public List<E> apply(List<E> os) {
+				return os;
+			}
+		});
+	}
+
+	/**
+	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 *
+	 * @return the merged stream
+	 * @since 2.0
+	 */
+	public final <E, V> DynamicMergeAction<O, V, E> zip(@Nonnull Function<List<E>, V> zipper) {
+		final DynamicMergeAction<O, V, E> joinAction =
+				new DynamicMergeAction<O, V, E>(dispatcher, new ZipAction<E, V>(dispatcher, zipper, null));
+		return connect(joinAction);
 	}
 
 	/**
@@ -453,12 +489,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Create a new {@code Stream} whose values will be the current instance of the {@link Stream}. Everytime
 	 * the {@param controlStream} receives a next signal, the current Stream and the input data will be published as a
 	 * {@link reactor.tuple.Tuple2} to the attached {@param controller}.
-	 *
+	 * <p>
 	 * This is particulary useful to dynamically adapt the {@link Stream} instance : capacity, pause(), resume()...
 	 *
 	 * @param controlStream The consumed stream, each signal will trigger the passed controller
-	 * @param controller The consumer accepting a pair of Stream and user-provided signal type
-	 *
+	 * @param controller    The consumer accepting a pair of Stream and user-provided signal type
 	 * @return the current {@link Stream} instance
 	 * @since 2.0
 	 */
@@ -1036,7 +1071,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@link Consumer} ready to forward complete signal to this stream
 	 * @since 2.0
 	 */
-	public Consumer<?> toBroadcastCompleteConsumer(){
+	public Consumer<?> toBroadcastCompleteConsumer() {
 		return new Consumer<Object>() {
 			@Override
 			public void accept(Object o) {
@@ -1051,7 +1086,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@link Consumer} ready to forward values to this stream
 	 * @since 2.0
 	 */
-	public Consumer<O> toBroadcastNextConsumer(){
+	public Consumer<O> toBroadcastNextConsumer() {
 		return new Consumer<O>() {
 			@Override
 			public void accept(O o) {
@@ -1066,7 +1101,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@link Consumer} ready to forward error to this stream
 	 * @since 2.0
 	 */
-	public Consumer<Throwable> toBroadcastErrorConsumer(){
+	public Consumer<Throwable> toBroadcastErrorConsumer() {
 		return new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable o) {
@@ -1221,8 +1256,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public void broadcastNext(final O ev) {
 		if (!checkState() || downstreamSubscription == null) {
-			if(log.isDebugEnabled()){
-				log.debug("event dropped "+ev);
+			if (log.isDebugEnabled()) {
+				log.debug("event dropped " + ev);
 			}
 			return;
 		}
@@ -1246,7 +1281,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public void broadcastError(final Throwable throwable) {
-		if (!checkState()) return;
+		if (!checkState()) {
+			if (log.isDebugEnabled()) {
+				log.debug("error dropped", throwable);
+			}
+			return;
+		}
 
 		state = State.ERROR;
 		error = throwable;
@@ -1372,7 +1412,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		READY,
 		ERROR,
 		COMPLETE,
-		SHUTDOWN;
+		SHUTDOWN
 	}
 
 	public void dispatch(Consumer<Void> action) {

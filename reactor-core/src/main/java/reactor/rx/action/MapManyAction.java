@@ -25,7 +25,7 @@ import reactor.util.Assert;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class MapManyAction<I, O, E extends Publisher<O>> extends DynamicMergeAction<I, O, E> {
+public class MapManyAction<I, V, E extends Publisher<V>> extends DynamicMergeAction<I, V, V> {
 
 	private final Function<I, E> fn;
 

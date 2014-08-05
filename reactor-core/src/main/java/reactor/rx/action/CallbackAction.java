@@ -47,11 +47,18 @@ public class CallbackAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		consumer.accept(ev);
 		if(prefetch){
-			if (currentNextSignals == batchSize) {
-				requestConsumer.accept(batchSize);
+			if (pendingNextSignals == 0 && currentNextSignals >= batchSize) {
+				requestConsumer.accept(currentNextSignals);
 			}
 		}else{
 			broadcastNext(ev);
+		}
+	}
+
+	@Override
+	protected void doPendingRequest() {
+		if(!prefetch){
+			super.doPendingRequest();
 		}
 	}
 

@@ -418,9 +418,6 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		for(int i=0; i< 45;i++){
-			parallelMapManyTest("partitioned", 1_000_000);
-		}
 		parallelBufferedTimeoutTest(1_000_000, false);
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
@@ -555,7 +552,7 @@ public class PipelineTests extends AbstractReactorTest {
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Streams.<Integer>defer(env, dispatcher1);
 				mapManydeferred
-						.flatMap(i -> Streams.defer(i, env, dispatcher1))
+						.flatMap(i -> Streams.defer(env, dispatcher1, i))
 						.consume(i -> latch.countDown());
 		}
 
@@ -570,7 +567,7 @@ public class PipelineTests extends AbstractReactorTest {
 			mapManydeferred.broadcastNext(i);
 		}
 
-		if (!latch.await(50, TimeUnit.SECONDS)) {
+		if (!latch.await(20, TimeUnit.SECONDS)) {
 			throw new RuntimeException(mapManydeferred.debug().toString());
 		}
 		assertEquals(0, latch.getCount());

@@ -20,91 +20,90 @@ import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
-public class DynamicMergeAction<I, O, E extends Publisher<O>> extends Action<I, O> {
+public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 
-	private final MergeAction<O> mergeAction;
+	private final FanInAction<E, O> fanInAction;
 
+	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher
+	){
+		this(dispatcher, (FanInAction<E,O>)new MergeAction<O>(dispatcher));
+	}
+
+	public DynamicMergeAction(
+			Dispatcher dispatcher,
+	    FanInAction<E,O> fanInAction
 	) {
 		super(dispatcher);
-		final DynamicMergeAction<I, O, E> thiz = this;
-		this.mergeAction = new MergeAction<O>(dispatcher, thiz) {
-			@Override
-			protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
-				if (thiz.state == State.READY) {
-					thiz.requestUpstream(capacity, terminated, elements);
-					super.requestUpstream(capacity, terminated, elements);
-				}
-			}
-		};
+		this.fanInAction = fanInAction;
+		fanInAction.runningComposables.incrementAndGet();
+		fanInAction.masterAction = this;
 	}
 
 	@Override
 	public void subscribe(Subscriber<O> subscriber) {
-		mergeAction.subscribe(subscriber);
+		fanInAction.subscribe(subscriber);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(I value) {
-		mergeAction.addPublisher((E) value);
+		fanInAction.addPublisher((Publisher<E>) value);
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if (mergeAction.runningComposables.decrementAndGet() == 0) {
-			mergeAction.doComplete();
+		if (fanInAction.runningComposables.decrementAndGet() == 0) {
+			fanInAction.doComplete();
 		}
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		mergeAction.runningComposables.decrementAndGet();
-		mergeAction.doError(ev);
+		fanInAction.runningComposables.decrementAndGet();
+		fanInAction.doError(ev);
 	}
 
 	@Override
 	public Action<I, O> capacity(int elements) {
-		mergeAction.capacity(elements);
+		fanInAction.capacity(elements);
 		return super.capacity(elements);
 	}
 
 	@Override
 	public void setKeepAlive(boolean keepAlive) {
-		mergeAction.setKeepAlive(keepAlive);
+		fanInAction.setKeepAlive(keepAlive);
 		super.setKeepAlive(keepAlive);
 	}
 
 	@Override
 	public Action<I, O> env(Environment environment) {
-		mergeAction.env(environment);
+		fanInAction.env(environment);
 		return super.env(environment);
 	}
 
 	@Override
 	public Action<I, O> resume() {
-		mergeAction.resume();
+		fanInAction.resume();
 		return super.resume();
 	}
 
 	@Override
 	public Action<I, O> pause() {
-		mergeAction.pause();
+		fanInAction.pause();
 		return super.pause();
 	}
 
 
-	public MergeAction<O> mergedStream() {
-		return mergeAction;
+	public FanInAction<E,O> mergedStream() {
+		return fanInAction;
 	}
 
 }

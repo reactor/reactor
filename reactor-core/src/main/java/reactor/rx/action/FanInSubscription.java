@@ -32,23 +32,25 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	private final FanInSubscription.MutableListCheckedProcedure pruneProcedure = new FanInSubscription
 			.MutableListCheckedProcedure();
 
-	final Action<?, O> publisher;
 	final MultiReaderFastList<InnerSubscription> subscriptions;
 
-	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber) {
-		this(publisher, subscriber, MultiReaderFastList.<InnerSubscription>newList(8));
+	public FanInSubscription(Subscriber<O> subscriber) {
+		this(subscriber, MultiReaderFastList.<InnerSubscription>newList(8));
 	}
 
-	public FanInSubscription(Action<?, O> publisher, Subscriber<O> subscriber,
+	public FanInSubscription(Subscriber<O> subscriber,
 	                         MultiReaderFastList<InnerSubscription> subs) {
-		super(publisher, subscriber);
-		this.publisher = publisher;
+		super(null, subscriber);
 		this.subscriptions = subs;
 	}
 
 	@Override
 	public void request(final int elements) {
 		super.request(elements);
+		parallelRequest(elements);
+	}
+
+	protected void parallelRequest(int elements) {
 		final int parallel = subscriptions.size();
 
 		if (parallel > 0) {
@@ -65,8 +67,6 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 			pruneObsoleteSubscriptions();
 
-		} else if (publisher != null && parallel == 0) {
-			publisher.requestUpstream(capacity, buffer.isComplete(), elements);
 		}
 	}
 

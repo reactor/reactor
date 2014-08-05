@@ -20,12 +20,9 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
-import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.util.Assert;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Stephane Maldini
@@ -35,7 +32,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
-	private final AtomicInteger    pendingParallelStream;
 
 	private int roundRobinIndex = -1;
 
@@ -46,7 +42,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		super(parentDispatcher);
 		Assert.state(poolSize > 0, "Must provide a strictly positive number of concurrent sub-streams (poolSize)");
 		this.poolSize = poolSize;
-		this.pendingParallelStream = new AtomicInteger(poolSize);
 		this.publishers = new ParallelStream[poolSize];
 		for (int i = 0; i < poolSize; i++) {
 			this.publishers[i] = new ParallelStream<O>(ParallelAction.this, multiDispatcher.get(), i);
@@ -113,7 +108,12 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 
 		ParallelStream<O> publisher = publishers[roundRobinIndex];
-		if (publisher == null) return;
+		if (publisher == null) {
+			if(log.isDebugEnabled()){
+				log.debug("event dropped "+ev+ " as downstream publisher is shutdown");
+			}
+			return;
+		}
 
 		try {
 			publisher.broadcastNext(ev);
@@ -193,12 +193,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				}
 
 			};
-		}
-
-		class ParallelSubscription<O> extends StreamSubscription<O> {
-			public ParallelSubscription(Stream<O> publisher, Subscriber<O> subscriber, CompletableQueue<O> buffer) {
-				super(publisher, subscriber, buffer);
-			}
 		}
 
 		@Override
