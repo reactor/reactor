@@ -442,21 +442,21 @@ public class PipelineTests extends AbstractReactorTest {
 								.buffer(500)
 								.timeout(100)
 								.consume(batch -> {
-									for ( String i : batch ) latch.countDown();
+									for (String i : batch) latch.countDown();
 								})
 				);
 
 		String[] data = new String[iterations];
-		for ( int i = 0; i < iterations; i++ ) {
+		for (int i = 0; i < iterations; i++) {
 			data[i] = Integer.toString(i);
 		}
 
 		long start = System.currentTimeMillis();
 
-		for ( String i : data ) {
+		for (String i : data) {
 			deferred.broadcastNext(i);
 		}
-		if ( !latch.await(30, TimeUnit.SECONDS) )
+		if (!latch.await(30, TimeUnit.SECONDS))
 			throw new RuntimeException(deferred.debug().toString());
 
 
@@ -545,7 +545,7 @@ public class PipelineTests extends AbstractReactorTest {
 				mapManydeferred
 						.parallel()
 						.consume(substream ->
-								substream.consume(i -> latch.countDown())
+										substream.consume(i -> latch.countDown())
 						);
 				break;
 			default:
@@ -584,15 +584,15 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 
-
 	/**
 	 * original from @oiavorskyl
 	 * https://github.com/reactor/reactor/issues/358
+	 *
 	 * @throws Exception
 	 */
 	//@Test
 	public void shouldNotFlushStreamOnTimeoutPrematurelyAndShouldDoItConsistently() throws Exception {
-		for(int i =0; i < 100; i++){
+		for (int i = 0; i < 100; i++) {
 			shouldNotFlushStreamOnTimeoutPrematurely();
 		}
 	}
@@ -600,6 +600,7 @@ public class PipelineTests extends AbstractReactorTest {
 	/**
 	 * original from @oiavorskyl
 	 * https://github.com/reactor/reactor/issues/358
+	 *
 	 * @throws Exception
 	 */
 	@Test
@@ -625,19 +626,19 @@ public class PipelineTests extends AbstractReactorTest {
 		batchingStreamDef.parallel(PARALLEL_STREAMS)
 				.consume(substream ->
 								substream
-							.buffer(BATCH_SIZE)
-							.timeout(TIMEOUT)
-							.consume(items -> {
-								batchesDistribution.compute(items.size(),
-										( key,
-										  value ) -> value == null ? 1 : value + 1);
-								items.forEach(item -> latch.countDown());
-							})
+										.buffer(BATCH_SIZE)
+										.timeout(TIMEOUT)
+										.consume(items -> {
+											batchesDistribution.compute(items.size(),
+													(key,
+													 value) -> value == null ? 1 : value + 1);
+											items.forEach(item -> latch.countDown());
+										})
 
-		);
+				);
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
-		if(!latch.await(30, TimeUnit.SECONDS)) {
+		if (!latch.await(30, TimeUnit.SECONDS)) {
 			throw new RuntimeException(batchingStreamDef.debug().toString());
 
 		}
@@ -652,14 +653,50 @@ public class PipelineTests extends AbstractReactorTest {
 
 		assertEquals(NUM_MESSAGES, messagesProcessed);
 		System.out.println(batchesDistribution);
-		assertTrue("Less than 90% ("+NUM_MESSAGES / BATCH_SIZE * TOLERANCE+
-						") of the batches are matching the buffer() size: "+batchesDistribution.get(BATCH_SIZE),
+		assertTrue("Less than 90% (" + NUM_MESSAGES / BATCH_SIZE * TOLERANCE +
+						") of the batches are matching the buffer() size: " + batchesDistribution.get(BATCH_SIZE),
 				NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);
 	}
 
-	private List<Integer> createTestDataset(int i){
+
+	@Test
+	public void shouldCorrectlyDispatchBatchedTimeout() throws InterruptedException {
+
+		long timeout = 100;
+		final int batchsize = 4;
+		int parallelStreams = 16;
+		CountDownLatch latch = new CountDownLatch(1);
+
+		final Stream<Integer> streamBatcher = Streams.<Integer>defer(env);
+		streamBatcher
+				.buffer(batchsize)
+				.timeout(timeout)
+				.parallel(parallelStreams)
+				.consume(innerStream ->
+								innerStream
+										.observe(System.out::println)
+										.consume(i -> latch.countDown())
+										.when(Exception.class, Throwable::printStackTrace)
+				);
+
+
+		streamBatcher.broadcastNext(12);
+		streamBatcher.broadcastNext(123);
+		streamBatcher.broadcastNext(42);
+		streamBatcher.broadcastNext(666);
+
+		boolean finished = latch.await(2, TimeUnit.SECONDS);
+		if (!finished)
+			throw new RuntimeException(streamBatcher.debug().toString());
+		else {
+			System.out.println(streamBatcher.debug().toString());
+			assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
+		}
+	}
+
+	private List<Integer> createTestDataset(int i) {
 		List<Integer> list = new ArrayList<>(i);
-		for(int k = 0; k<i; k++){
+		for (int k = 0; k < i; k++) {
 			list.add(k);
 		}
 		return list;
