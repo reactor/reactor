@@ -53,7 +53,9 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS + RESERVED_SLOTS;
 		if(elements < cumulatedReservedSlots){
 			log.warn("So, because we try to book some slots across all parallel streams and that value {} is greater " +
-					"than the asked capacity {}, we decided to force it to that", cumulatedReservedSlots, elements);
+					"than the minimum {} slots the action requires to never overrun the underlying dispatcher, we decided to" +
+							" leave the parallel master action capacity to {}", cumulatedReservedSlots,
+					elements, elements);
 			super.capacity(elements);
 		}else{
 			super.capacity(elements - cumulatedReservedSlots);
@@ -62,7 +64,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 		if(size == 0){
 			log.warn("Of course there are {} parallel streams and there can only be {} max items available at any given time, " +
-							"we baselined that to {}",
+							"we baselined all parallel streams capacity to {}",
 					poolSize, elements, elements);
 			size = elements;
 		}
