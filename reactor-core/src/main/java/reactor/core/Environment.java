@@ -239,7 +239,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			initDispatcherFactoryFromConfiguration(name);
 			Supplier<Dispatcher> factory = this.dispatcherFactories.get(name);
 			if (factory == null) {
-				throw new IllegalArgumentException("No Dispatcher Factory found for name '" + name + "'");
+				throw new IllegalArgumentException("No Supplier<Dispatcher> found for name '" + name + "', it must be present" +
+						"in the configuration properties or being registered programmatically through this#addDispatcherFactory("+name
+						+", someDispatcherSupplier)");
 			} else {
 				return factory;
 			}
@@ -262,7 +264,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
 			}
 			if (filteredDispatchers.isEmpty()) {
-				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "'");
+				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "', it must be present" +
+						"in the configuration properties or being registered programmatically through this#addDispatcher("+name
+						+", someDispatcher)");
 			} else {
 				return filteredDispatchers.get(0);
 			}
