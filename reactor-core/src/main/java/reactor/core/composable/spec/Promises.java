@@ -16,6 +16,7 @@
 
 package reactor.core.composable.spec;
 
+import com.gs.collections.impl.list.mutable.FastList;
 import reactor.core.Environment;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Helper methods for creating {@link Deferred} instances, backed by a {@link Promise}.
@@ -184,26 +186,43 @@ public abstract class Promises {
 	 * @return a {@link DeferredPromiseSpec}.
 	 */
 	public static <T> Promise<List<T>> when(Collection<? extends Promise<T>> promises) {
-		Stream<T> deferredStream = new DeferredStreamSpec<T>()
+		final AtomicInteger count = new AtomicInteger(promises.size());
+		final List<T> values = FastList.newList(promises.size());
+		final Deferred<List<T>, Promise<List<T>>> d = new DeferredPromiseSpec<List<T>>()
 				.synchronousDispatcher()
-				.batchSize(promises.size())
-				.get()
-				.compose();
+				.get();
 
-		Stream<List<T>> aggregatedStream = deferredStream.collect();
-
-		Promise<List<T>> resultPromise = new DeferredPromiseSpec<List<T>>()
-				.link(aggregatedStream)
-				.get()
-				.compose();
-
-		aggregatedStream.connectValues(resultPromise).connectErrors(resultPromise);
-
+		int i = 0;
 		for (Promise<T> promise : promises) {
-			promise.connectErrors(deferredStream).connectValues(deferredStream);
+			final int idx = i++;
+			if (promise.isComplete()) {
+				try {
+					values.add(idx, promise.get());
+					count.decrementAndGet();
+				} catch (Throwable t) {
+					d.accept(t);
+				}
+			} else {
+				promise
+						.onSuccess(new Consumer<T>() {
+							@Override
+							public void accept(T t) {
+								values.add(idx, t);
+								if (count.decrementAndGet() == 0) {
+									d.accept(values);
+								}
+							}
+						})
+						.onError(new Consumer<Throwable>() {
+							@Override
+							public void accept(Throwable throwable) {
+								d.accept(throwable);
+							}
+						});
+			}
 		}
 
-		return resultPromise;
+		return d.compose();
 	}
 
 
