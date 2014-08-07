@@ -17,6 +17,7 @@
 package reactor.core.composable.spec;
 
 import com.gs.collections.impl.list.mutable.FastList;
+import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
@@ -196,11 +197,12 @@ public abstract class Promises {
 		for (Promise<T> promise : promises) {
 			final int idx = i++;
 			if (promise.isComplete()) {
+				count.decrementAndGet();
 				try {
 					values.add(idx, promise.get());
-					count.decrementAndGet();
 				} catch (Throwable t) {
 					d.accept(t);
+					return d.compose();
 				}
 			} else {
 				promise
@@ -209,14 +211,22 @@ public abstract class Promises {
 							public void accept(T t) {
 								values.add(idx, t);
 								if (count.decrementAndGet() == 0) {
-									d.accept(values);
+									if (!d.compose().isComplete()) {
+										d.accept(values);
+									}
 								}
 							}
 						})
 						.onError(new Consumer<Throwable>() {
 							@Override
 							public void accept(Throwable throwable) {
-								d.accept(throwable);
+								count.decrementAndGet();
+								if (!d.compose().isComplete()) {
+									d.accept(throwable);
+								} else {
+									LoggerFactory.getLogger(Promises.class.getName() + ".when")
+									             .error(throwable.getMessage(), throwable);
+								}
 							}
 						});
 			}
