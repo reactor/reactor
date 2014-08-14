@@ -85,8 +85,9 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doNext(T ev) {
-		broadcastNext(ev);
 		timeoutRegistration.cancel();
+		if(numbTimeout > 0) numbTimeout--;
+		broadcastNext(ev);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
@@ -126,7 +127,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	public String toString() {
 		return super.toString() + "{"
-				+ "number-timeouts=" + numbTimeout
+				+ "timeouts-since-data=" + numbTimeout
 				+ "}";
 	}
 }

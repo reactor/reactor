@@ -183,10 +183,10 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		this.batchSize = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
 		if(batchSize != elements){
-			log.warn("The Stream altered its maximum capacity {} to keep {} slots on the underlying dispatcher " +
-							"for others signals amid error," +
+			log.warn("The Stream altered the requested maximum capacity {} to not overrun its Dispatcher which supports " +
+							"up to {} slots for next signals, minus {} slots for others signals amid error," +
 							" complete, subscribe and upstream request. The assigned capacity is now {}",
-					elements, Action.RESERVED_SLOTS, batchSize);
+					elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, batchSize);
 		}
 		return this;
 	}
@@ -391,7 +391,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public final Stream<Stream<O>> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
-				environment.getDefaulDispatcherFactory() :
+				environment.getDefaultDispatcherFactory() :
 				Environment.newDispatcherFactory(poolsize));
 	}
 

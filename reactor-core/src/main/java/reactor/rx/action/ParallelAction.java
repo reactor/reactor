@@ -33,7 +33,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
 
-	private int roundRobinIndex = -1;
+	private int roundRobinIndex = 0;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -51,19 +51,20 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	public Action<O, Stream<O>> capacity(int elements) {
 		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS;
-		if(elements < cumulatedReservedSlots){
+		if (elements < cumulatedReservedSlots) {
 			log.warn("So, because we try to book some {} slots on the parallel master action and " +
-					"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
+							"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
 							" leave the parallel master action capacity to {}", elements,
 					cumulatedReservedSlots, elements);
 			super.capacity(elements);
-		}else{
+		} else {
 			super.capacity(elements - cumulatedReservedSlots + RESERVED_SLOTS);
 		}
 		int size = batchSize / poolSize;
 
-		if(size == 0){
-			log.warn("Of course there are {} parallel streams and there can only be {} max items available at any given time, " +
+		if (size == 0) {
+			log.warn("Of course there are {} parallel streams and there can only be {} max items available at any given " +
+							"time, " +
 							"we baselined all parallel streams capacity to {}",
 					poolSize, elements, elements);
 			size = elements;
@@ -120,23 +121,51 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(final O ev) {
-		if (++roundRobinIndex == poolSize) {
-			roundRobinIndex = 0;
-		}
 
-		ParallelStream<O> publisher = publishers[roundRobinIndex];
-		if (publisher == null) {
-			if(log.isDebugEnabled()){
-				log.debug("event dropped "+ev+ " as downstream publisher is shutdown");
+		ParallelStream<O> publisher;
+		boolean hasCapacity;
+		int tries = 0;
+		int lastExistingPublisher = -1;
+
+		while (tries < poolSize) {
+			publisher = publishers[roundRobinIndex];
+
+			if (publisher != null) {
+				lastExistingPublisher = roundRobinIndex;
+
+				hasCapacity = publisher.downstreamSubscription() != null &&
+						publisher.downstreamSubscription().getCapacity().get() > 0;
+
+				if (hasCapacity) {
+					try {
+						publisher.broadcastNext(ev);
+					} catch (Throwable e) {
+						publisher.broadcastError(e);
+					}
+					return;
+				}
 			}
-			return;
+
+			if (++roundRobinIndex == poolSize) {
+				roundRobinIndex = 0;
+			}
+
+			tries++;
 		}
 
-		try {
-			publisher.broadcastNext(ev);
-		} catch (Throwable t) {
-			publisher.broadcastError(t);
+		if(lastExistingPublisher != -1){
+			publisher = publishers[lastExistingPublisher];
+			try {
+				publisher.broadcastNext(ev);
+			} catch (Throwable e) {
+				publisher.broadcastError(e);
+			}
+		} else {
+			if (log.isDebugEnabled()) {
+				log.debug("event dropped " + ev + " as downstream publisher is shutdown");
+			}
 		}
+
 	}
 
 	@Override

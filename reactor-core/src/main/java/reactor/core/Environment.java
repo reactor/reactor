@@ -223,7 +223,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return The default dispatcher group
 	 * @since 2.0
 	 */
-	public Supplier<Dispatcher> getDefaulDispatcherFactory() {
+	public Supplier<Dispatcher> getDefaultDispatcherFactory() {
 		return getDispatcherFactory(RING_BUFFER_GROUP);
 	}
 
