@@ -770,7 +770,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public Stream<List<O>> movingBuffer(int backlog) {
 		final Action<O, List<O>> d = new MovingBufferAction<O>(dispatcher, backlog);
-		d.capacity(backlog).env(environment).setKeepAlive(keepAlive);
+		d.capacity(backlog+1).env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}

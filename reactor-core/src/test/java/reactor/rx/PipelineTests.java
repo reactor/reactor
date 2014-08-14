@@ -259,15 +259,15 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void mapManyFlushesAllValuesThoroughly() throws InterruptedException {
-		int items = 30;
+		int items = 1000;
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
-		Stream<String> d = Streams.defer(env);
+		Stream<String> d = Streams.<String>defer(env).capacity(512);
 		Stream<Integer> tasks = d.parallel(8)
 				.map(stream -> stream.map(str -> {
 							try {
-								Thread.sleep(random.nextInt(250));
+								Thread.sleep(random.nextInt(50));
 							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
@@ -284,14 +284,14 @@ public class PipelineTests extends AbstractReactorTest {
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
-		latch.await(5, TimeUnit.SECONDS);
+		latch.await(15, TimeUnit.SECONDS);
 		System.out.println(tasks.debug());
 		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
 	}
 
 	@Test
 	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
-		int iterations = 15;
+		int iterations = 10;
 		for (int i = 0; i < iterations; i++) {
 			mapManyFlushesAllValuesThoroughly();
 		}

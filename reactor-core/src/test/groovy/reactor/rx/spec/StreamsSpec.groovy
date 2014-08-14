@@ -1129,8 +1129,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
-			def reduced = source.movingBuffer(5).throttle(500)
-			def value = reduced.tap()
+			def reduced = source.movingBuffer(5)
 
 		when:
 			'the buffer overflows'
@@ -1140,7 +1139,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(4)
 			source.broadcastNext(5)
 			source.broadcastNext(6)
-			sleep(1200)
+			def value = reduced.tap()
 
 		then:
 			'it outputs values dismissing outdated ones'
