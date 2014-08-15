@@ -378,7 +378,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> parallel() {
-		return parallel(Runtime.getRuntime().availableProcessors());
+		return parallel(Environment.PROCESSORS);
 	}
 
 	/**

@@ -120,7 +120,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize) {
-		return createDispatcherFactory("parallel",poolsize, 1024, null, ProducerType.SINGLE, new BlockingWaitStrategy());
+		return newDispatcherFactory(poolsize, "parallel");
+	}
+
+	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize, String name) {
+		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.SINGLE, new BlockingWaitStrategy());
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration

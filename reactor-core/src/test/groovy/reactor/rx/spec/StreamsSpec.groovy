@@ -42,7 +42,7 @@ class StreamsSpec extends Specification {
 		environment = new Environment()
 	}
 
-	def cleanup(){
+	def cleanup() {
 		environment.shutdown()
 	}
 
@@ -380,7 +380,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
-			def source1 = Streams.<Stream<Integer>> defer(source2,source3)
+			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
 			def tap = source1.join().tap()
 
 		when:
@@ -413,8 +413,8 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
-			def source1 = Streams.<Stream<Integer>> defer(source2,source3)
-			def tap = source1.zip{ it.sum() }.tap()
+			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
+			def tap = source1.zip { it.sum() }.tap()
 
 		when:
 			'the sources accept a value'
@@ -996,7 +996,7 @@ class StreamsSpec extends Specification {
 
 			def values = []
 
-			source.throttle(200).consume{
+			source.throttle(200).consume {
 				values << it
 			}
 
@@ -1176,6 +1176,39 @@ class StreamsSpec extends Specification {
 			'results contains the expected values'
 			println head.debug()
 			sum.get() == 999
+	}
+
+	def 'Collect will accumulate values from multiple threads in MP MC scenario'() {
+		given:
+			'a source and a collected stream'
+			def sum = new AtomicInteger()
+			int length = 1000
+			int latchCount = length
+			def latch = new CountDownLatch(latchCount)
+			def head = Streams.<Integer> defer(environment)
+			def parallels = Streams.<Integer> parallel(environment)
+
+			head.parallel().consume {
+				s -> s.map { it } .consume{ parallels.onNext(it) }
+			}
+
+			parallels.consume { s ->
+				s.consume { int i ->
+					sum.addAndGet(1)
+					latch.countDown()
+				}
+			}
+
+		when:
+			'values are accepted into the head'
+			(1..length).each { head.broadcastNext(it) }
+			latch.await(4, TimeUnit.SECONDS)
+
+		then:
+			'results contains the expected values'
+			println head.debug()
+			println parallels.debug()
+			sum.get() == 1000
 	}
 
 	def 'An Observable can consume values from a Stream'() {

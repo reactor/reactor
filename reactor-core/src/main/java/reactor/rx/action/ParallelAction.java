@@ -33,7 +33,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
 
-	private int roundRobinIndex = 0;
+	private volatile int roundRobinIndex = 0;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -126,12 +126,13 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		boolean hasCapacity;
 		int tries = 0;
 		int lastExistingPublisher = -1;
+		int currentRoundRobIndex = roundRobinIndex;
 
 		while (tries < poolSize) {
-			publisher = publishers[roundRobinIndex];
+			publisher = publishers[currentRoundRobIndex];
 
 			if (publisher != null) {
-				lastExistingPublisher = roundRobinIndex;
+				lastExistingPublisher = currentRoundRobIndex;
 
 				hasCapacity = publisher.downstreamSubscription() != null &&
 						publisher.downstreamSubscription().getCapacity().get() > 0;
@@ -146,14 +147,15 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				}
 			}
 
-			if (++roundRobinIndex == poolSize) {
-				roundRobinIndex = 0;
+			if (++currentRoundRobIndex == poolSize) {
+				currentRoundRobIndex = 0;
 			}
 
 			tries++;
 		}
 
 		if(lastExistingPublisher != -1){
+			roundRobinIndex = lastExistingPublisher;
 			publisher = publishers[lastExistingPublisher];
 			try {
 				publisher.broadcastNext(ev);
