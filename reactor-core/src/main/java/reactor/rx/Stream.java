@@ -85,6 +85,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	protected int batchSize;
 
 	protected boolean keepAlive = true;
+	protected boolean ignoreErrors = false;
 	protected Environment environment;
 	protected State state = State.READY;
 
@@ -193,6 +194,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	public Stream<O> env(Environment environment) {
 		this.environment = environment;
+		return this;
+	}
+
+	public Stream<O> ignoreErrors(boolean ignore) {
+		this.ignoreErrors = ignore;
 		return this;
 	}
 
@@ -1294,8 +1300,10 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 			return;
 		}
 
-		state = State.ERROR;
-		error = throwable;
+		if(!ignoreErrors) {
+			state = State.ERROR;
+			error = throwable;
+		}
 
 		if (downstreamSubscription == null) {
 			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(),
@@ -1434,6 +1442,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return "Stream{" +
 				"state=" + state +
 				", keepAlive=" + keepAlive +
+				", ignoreErrors=" + ignoreErrors +
 				'}';
 	}
 

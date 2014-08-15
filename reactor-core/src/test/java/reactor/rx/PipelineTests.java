@@ -119,6 +119,35 @@ public class PipelineTests extends AbstractReactorTest {
 		assertThat("exception triggered", exception.get(), is(true));
 	}
 
+
+	@Test
+	public void testComposedErrorHandlingWitIgnoreErrors() throws InterruptedException {
+		Stream<String> stream = Streams.defer(env, "1", "2", "3", "4", "5");
+
+		final AtomicBoolean exception = new AtomicBoolean(false);
+		Stream<Integer> s =
+				stream
+						.map(STRING_2_INTEGER)
+						.observe(i -> {
+							if (i == 3)
+								throw new IllegalArgumentException();
+						})
+						.ignoreErrors(true)
+						.map(new Function<Integer, Integer>() {
+							int sum = 0;
+
+							@Override
+							public Integer apply(Integer i) {
+								sum += i;
+								return sum;
+							}
+						})
+						.when(IllegalArgumentException.class, e -> exception.set(true));
+
+		await(4, s, is(12));
+		assertThat("exception triggered", exception.get(), is(false));
+	}
+
 	@Test
 	public void testReduce() throws InterruptedException {
 		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");

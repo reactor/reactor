@@ -326,6 +326,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		return (Action<I, O>) super.env(environment);
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public Action<I, O> ignoreErrors(boolean ignore) {
+		return (Action<I, O>) super.ignoreErrors(ignore);
+	}
+
 	public Subscription getSubscription() {
 		return subscription;
 	}
@@ -389,7 +395,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doError(Throwable ev) {
-		broadcastError(ev);
+		if(!ignoreErrors) {
+			broadcastError(ev);
+		}
 	}
 
 	protected void doPendingRequest() {
