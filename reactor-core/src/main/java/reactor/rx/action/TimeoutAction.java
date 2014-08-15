@@ -86,7 +86,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		timeoutRegistration.cancel();
-		if(numbTimeout > 0) numbTimeout--;
+		numbTimeout = 0;
 		broadcastNext(ev);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
