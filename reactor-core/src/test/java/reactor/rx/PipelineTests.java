@@ -28,6 +28,7 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.support.Tap;
+import reactor.rx.action.ParallelAction;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
@@ -292,7 +293,7 @@ public class PipelineTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
-		Stream<String> d = Streams.<String>defer(env).capacity(512);
+		Stream<String> d = Streams.<String>defer(env).capacity(128);
 		Stream<Integer> tasks = d.parallel(8)
 				.map(stream -> stream.map(str -> {
 							try {
@@ -320,7 +321,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void mapManyFlushesAllValuesConsistently() throws InterruptedException {
-		int iterations = 10;
+		int iterations = 5;
 		for (int i = 0; i < iterations; i++) {
 			mapManyFlushesAllValuesThoroughly();
 		}
@@ -447,13 +448,13 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelBufferedTimeoutTest(1_000_000, false);
-		parallelTest("sync", 1_000_000);
+		/*parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
 		parallelMapManyTest("ringBuffer", 100_000);
 		parallelTest("partitioned", 1_000_000);
-		parallelMapManyTest("partitioned", 1_000_000);
+		parallelMapManyTest("partitioned", 1_000_000);*/
+		parallelBufferedTimeoutTest(1_000_000, false);
 	}
 
 	private void parallelBufferedTimeoutTest(int iterations, final boolean filter) throws InterruptedException {
@@ -465,11 +466,11 @@ public class PipelineTests extends AbstractReactorTest {
 
 		Stream<String> deferred = Streams.<String>defer(env);
 		deferred
-				.parallel(2)
+				.parallel(8)
 				.consume(stream -> (filter ? (stream
 								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
-								.buffer(500)
-								.timeout(100)
+								.buffer(1000/8)
+								.timeout(1000)
 								.consume(batch -> {
 									for (String i : batch) latch.countDown();
 								})
@@ -511,9 +512,8 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
-				deferred = Streams.<Integer>defer(env);
-				deferred
-						.parallel()
+				ParallelAction<Integer> parallelStream = Streams.<Integer>parallel(env);
+				parallelStream
 						.consume(stream -> stream
 										.map(i -> i)
 										.scan((Tuple2<Integer, Integer> tup) -> {
@@ -522,7 +522,11 @@ public class PipelineTests extends AbstractReactorTest {
 										})
 										.consume(i -> latch.countDown())
 						);
+
+				deferred = Streams.defer(env);
+				deferred.connect(parallelStream);
 				break;
+
 			default:
 				deferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
 				deferred

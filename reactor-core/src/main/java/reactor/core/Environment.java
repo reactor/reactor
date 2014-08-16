@@ -18,6 +18,7 @@ package reactor.core;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.WaitStrategy;
+import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
@@ -124,7 +125,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize, String name) {
-		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.SINGLE, new BlockingWaitStrategy());
+		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.MULTI, new BlockingWaitStrategy());
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
@@ -153,7 +154,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				backlog,
 				null,
 				ProducerType.MULTI,
-				new BlockingWaitStrategy());
+				new YieldingWaitStrategy());
 	}
 
 	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
@@ -402,8 +403,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 								dispatcherConfiguration.getSize() == 0 ? PROCESSORS : dispatcherConfiguration.getSize(),
 								dispatcherConfiguration.getBacklog(),
 								null,
-								ProducerType.SINGLE,
-								new BlockingWaitStrategy()
+								ProducerType.MULTI,
+								new YieldingWaitStrategy()
 						));
 			}
 		}

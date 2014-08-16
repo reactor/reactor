@@ -33,6 +33,7 @@ import reactor.util.Assert;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A public factory to build {@link Stream}.
@@ -199,10 +200,19 @@ public abstract class Streams {
 	 */
 	public static <T> ParallelAction<T> parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers) {
 		ParallelAction<T> parallelAction = new ParallelAction<T>(SynchronousDispatcher.INSTANCE, dispatchers, poolSize){
+			ReentrantLock lock = new ReentrantLock();
+
 			@Override
 			protected void onRequest(int n) {
-				if(subscription != null){
+				if (subscription != null) {
 					subscription.request(n);
+				}else{
+					lock.lock();
+					try{
+						requestConsumer.accept(n);
+					} finally {
+						lock.unlock();
+					}
 				}
 			}
 		};

@@ -42,7 +42,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = pendingNextSignals < batchSize ? pendingNextSignals : batchSize;
+			int toRequest = generateDemandFromPendingRequests();
 			if (0 < toRequest && !firehose) {
 				pendingNextSignals -= toRequest;
 				numbTimeout++;

@@ -129,4 +129,8 @@ public final class ActorDispatcher implements Dispatcher {
 		delegate.execute(command);
 	}
 
+	@Override
+	public boolean inContext() {
+		return false;
+	}
 }

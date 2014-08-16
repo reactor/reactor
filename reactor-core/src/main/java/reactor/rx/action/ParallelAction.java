@@ -135,7 +135,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				lastExistingPublisher = currentRoundRobIndex;
 
 				hasCapacity = publisher.downstreamSubscription() != null &&
-						publisher.downstreamSubscription().getCapacity().get() > 0;
+						publisher.downstreamSubscription().getCapacity().get() > publisher.getMaxCapacity() * 0.15;
 
 				if (hasCapacity) {
 					try {
@@ -154,7 +154,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			tries++;
 		}
 
-		if(lastExistingPublisher != -1){
+		if (lastExistingPublisher != -1) {
 			roundRobinIndex = lastExistingPublisher;
 			publisher = publishers[lastExistingPublisher];
 			try {
@@ -231,6 +231,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				@Override
 				public void request(int elements) {
 					super.request(elements);
+					parallelAction.roundRobinIndex = index;
 					parallelAction.onRequest(elements);
 				}
 

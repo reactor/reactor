@@ -112,4 +112,9 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	public int backlogSize() {
 		return delegate.backlogSize();
 	}
+
+	@Override
+	public boolean inContext() {
+		return delegate.inContext();
+	}
 }

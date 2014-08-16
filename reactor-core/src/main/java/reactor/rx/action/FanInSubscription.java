@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.api.block.function.Function;
 import com.gs.collections.api.block.predicate.Predicate;
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.list.MutableList;
@@ -29,10 +30,10 @@ import reactor.rx.StreamSubscription;
  * @since 2.0
  */
 public class FanInSubscription<O> extends StreamSubscription<O> {
-	private final FanInSubscription.MutableListCheckedProcedure pruneProcedure = new FanInSubscription
-			.MutableListCheckedProcedure();
-
 	final MultiReaderFastList<InnerSubscription> subscriptions;
+
+	protected final Function<InnerSubscription, InnerSubscription> cleanFuntion = new CleanFunction();
+	protected final Procedure<InnerSubscription> subRemoveProcedure = new SubRemoveProcedure();
 
 	public FanInSubscription(Subscriber<O> subscriber) {
 		this(subscriber, MultiReaderFastList.<InnerSubscription>newList(8));
@@ -58,15 +59,27 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 			final int remaining = (elements % parallel > 0 ? elements : 0);
 			if (batchSize == 0 && elements == 0) return;
 
-			subscriptions.forEach(new CheckedProcedure<Subscription>() {
+			MutableList<InnerSubscription> toRemove = subscriptions.collectIf(new Predicate<InnerSubscription>() {
 				@Override
-				public void safeValue(Subscription subscription) throws Exception {
+				public boolean accept(InnerSubscription subscription) {
 					subscription.request(batchSize + remaining);
+					return subscription.toRemove;
+				}
+			}, cleanFuntion);
+
+			pruneObsoleteSubs(toRemove);
+
+		}
+	}
+
+	protected void pruneObsoleteSubs(final MutableList<InnerSubscription> toRemove){
+		if(toRemove != null && !toRemove.isEmpty()){
+			subscriptions.withWriteLockAndDelegate(new Procedure<MutableList<InnerSubscription>>() {
+				@Override
+				public void value(MutableList<InnerSubscription> each) {
+					toRemove.forEach(subRemoveProcedure);
 				}
 			});
-
-			pruneObsoleteSubscriptions();
-
 		}
 	}
 
@@ -78,27 +91,29 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 				subscription.cancel();
 			}
 		});
+		subscriptions.clear();
 		super.cancel();
 	}
 
 	void addSubscription(final InnerSubscription s) {
-		pruneObsoleteSubscriptions();
-
 		subscriptions.
 				withWriteLockAndDelegate(new CheckedProcedure<MutableList<FanInSubscription.InnerSubscription>>() {
 					@Override
 					public void safeValue(MutableList<FanInSubscription.InnerSubscription> streamSubscriptions)
 							throws Exception {
+
+						streamSubscriptions.collectIf(new Predicate<InnerSubscription>() {
+							@Override
+							public boolean accept(InnerSubscription subscription) {
+								return subscription.toRemove;
+							}
+						}, cleanFuntion).forEach(subRemoveProcedure);
+
 						streamSubscriptions.add(s);
 					}
 				});
 
 	}
-
-	public void pruneObsoleteSubscriptions() {
-		subscriptions.withWriteLockAndDelegate(pruneProcedure);
-	}
-
 
 
 	public static class InnerSubscription implements Subscription {
@@ -125,20 +140,17 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	private static class MutableListCheckedProcedure extends CheckedProcedure<MutableList<InnerSubscription>> {
+	private static class CleanFunction implements Function<InnerSubscription, InnerSubscription> {
 		@Override
-		public void safeValue(final MutableList<InnerSubscription> innerSubscriptions) throws Exception {
-			innerSubscriptions.select(new Predicate<InnerSubscription>() {
-				@Override
-				public boolean accept(InnerSubscription innerSubscription) {
-					return innerSubscription.toRemove;
-				}
-			}).forEach(new Procedure<InnerSubscription>() {
-				@Override
-				public void value(InnerSubscription innerSubscription) {
-					innerSubscriptions.remove(innerSubscription);
-				}
-			});
+		public InnerSubscription valueOf(InnerSubscription innerSubscription) {
+			return innerSubscription;
+		}
+	}
+
+	private class SubRemoveProcedure implements Procedure<InnerSubscription> {
+		@Override
+		public void value(InnerSubscription innerSubscription) {
+			subscriptions.remove(innerSubscription);
 		}
 	}
 }

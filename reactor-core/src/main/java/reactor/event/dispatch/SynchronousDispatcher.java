@@ -99,4 +99,9 @@ public final class SynchronousDispatcher implements Dispatcher {
 	public int backlogSize() {
 		return Integer.MAX_VALUE;
 	}
+
+	@Override
+	public boolean inContext() {
+		return true;
+	}
 }

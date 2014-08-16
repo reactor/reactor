@@ -1374,7 +1374,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 *
 	 * @return integer capacity for this {@link Stream}
 	 */
-	public int getMaxCapacity() {
+	final public int getMaxCapacity() {
 		return batchSize;
 	}
 

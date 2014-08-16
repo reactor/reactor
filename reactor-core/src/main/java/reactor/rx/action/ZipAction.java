@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
+import com.gs.collections.api.block.predicate.Predicate;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -128,14 +128,15 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 		protected void parallelRequest(final int elements) {
 			final int parallel = subscriptions.size();
 			if (parallel > 0) {
-				subscriptions.forEach(new CheckedProcedure<Subscription>() {
-					@Override
-					public void safeValue(Subscription subscription) throws Exception {
-						subscription.request(1);
-					}
-				});
-
-				pruneObsoleteSubscriptions();
+				pruneObsoleteSubs(
+						subscriptions.collectIf(new Predicate<InnerSubscription>() {
+							@Override
+							public boolean accept(InnerSubscription subscription) {
+								subscription.request(1);
+								return subscription.toRemove;
+							}
+						}, cleanFuntion)
+				);
 			}
 		}
 	}

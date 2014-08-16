@@ -84,6 +84,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Integer n) {
 			try {
 				if (subscription == null) {
+					if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
 					return;
 				}
 
@@ -266,9 +267,9 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void integer) {
-					if (pendingNextSignals > 0) {
-						int toRequest = pendingNextSignals;
-						pendingNextSignals = 0;
+					int toRequest = generateDemandFromPendingRequests();
+					if (toRequest > 0) {
+						pendingNextSignals -= toRequest;
 						requestConsumer.accept(toRequest);
 					}
 				}
@@ -385,6 +386,15 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doSubscribe(Subscription subscription) {
+		int toRequest = generateDemandFromPendingRequests();
+		if(toRequest > 0){
+			pendingNextSignals -= toRequest;
+			subscription.request(toRequest);
+		}
+	}
+
+	protected int generateDemandFromPendingRequests(){
+		return pendingNextSignals > batchSize ? batchSize : pendingNextSignals;
 	}
 
 	protected void doComplete() {
@@ -402,7 +412,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	protected void doPendingRequest() {
 		if (currentNextSignals == batchSize) {
-			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
+			int toRequest = generateDemandFromPendingRequests();
 			currentNextSignals = 0;
 
 			if (toRequest > 0) {

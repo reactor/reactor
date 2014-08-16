@@ -138,4 +138,16 @@ public interface Dispatcher extends Executor {
 	 * * @since 2.0
 	 */
 	boolean supportsOrdering();
+
+
+	/**
+	 * A dispatcher context can be bound to the thread(s) it runs on. This method allows any caller to detect if he is
+	 * actually within this dispatcher scope.
+	 *
+	 * @return true if within Dispatcher scope (e.g. a thread).
+	 * * @since 2.0
+	 */
+	boolean inContext();
+
+
 }

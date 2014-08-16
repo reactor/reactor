@@ -15,6 +15,8 @@
  */
 package reactor.rx.action;
 
+import com.gs.collections.api.block.procedure.Procedure;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -139,7 +141,18 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 
 		@Override
 		public void onComplete() {
-			s.toRemove = true;
+			if(outerAction.dispatcher.inContext()){
+				s.toRemove = true;
+			}else {
+				outerAction.innerSubscriptions.subscriptions.withWriteLockAndDelegate(
+						new Procedure<MutableList<FanInSubscription.InnerSubscription>>() {
+
+							@Override
+							public void value(MutableList<FanInSubscription.InnerSubscription> innerSubscriptions) {
+								innerSubscriptions.remove(s);
+							}
+						});
+			}
 			if (outerAction.runningComposables.decrementAndGet() == 0) {
 				outerAction.innerSubscriptions.onComplete();
 			}

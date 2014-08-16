@@ -48,7 +48,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 	private final Consumer<Void> periodRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = batchSize > pendingNextSignals ? pendingNextSignals : batchSize;
+			int toRequest = generateDemandFromPendingRequests();
 			if (toRequest > 0) {
 				--pendingNextSignals;
 				subscription.request(toRequest);

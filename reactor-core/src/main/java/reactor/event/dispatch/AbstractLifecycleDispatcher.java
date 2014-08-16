@@ -81,7 +81,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	 *
 	 * @return boolean true if the programs is already run by this dispatcher
 	 */
-	protected final boolean isInContext() {
+	@Override
+	public final boolean inContext() {
 		return context == Thread.currentThread().getContextClassLoader();
 	}
 
@@ -94,7 +95,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                               Router router,
 	                               Consumer<E> consumer,
 	                               Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, router, consumer, isInContext());
+		dispatch(null, event, null, errorConsumer, router, consumer, inContext());
 	}
 
 	@Override
@@ -105,7 +106,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                         Consumer<Throwable> errorConsumer,
 	                         Router router,
 	                         Consumer<E> completionConsumer) {
-		dispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, isInContext());
+		dispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer, inContext());
 	}
 
 	@SuppressWarnings("unchecked")

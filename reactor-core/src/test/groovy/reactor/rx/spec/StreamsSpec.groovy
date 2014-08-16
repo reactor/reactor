@@ -1202,7 +1202,7 @@ class StreamsSpec extends Specification {
 		when:
 			'values are accepted into the head'
 			(1..length).each { head.broadcastNext(it) }
-			latch.await(4, TimeUnit.SECONDS)
+			latch.await(6, TimeUnit.SECONDS)
 
 		then:
 			'results contains the expected values'
@@ -1335,12 +1335,13 @@ class StreamsSpec extends Specification {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry(2).count().tap().get()
+			}.retry(2).observe{ println it }.count().tap().get()
+
 			println stream.debug()
 
 		then:
-			'1 + 3 values are passed since it is a cold stream resubscribed 2 times'
-			value == 4
+			'3 values are passed since it is a cold stream resubscribed 2 times and finally managed to get the 3 values'
+			value == 3
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry() to ignore them'
@@ -1375,8 +1376,8 @@ class StreamsSpec extends Specification {
 			println stream.debug()
 
 		then:
-			'1 + 3 values are passed since it is a cold stream resubscribed 2 times'
-			value == 4
+			'3 values are passed since it is a cold stream resubscribed 1 time'
+			value == 3
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
