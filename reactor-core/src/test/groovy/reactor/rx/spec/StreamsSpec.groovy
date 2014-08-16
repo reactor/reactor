@@ -132,7 +132,7 @@ class StreamsSpec extends Specification {
 				if (res)
 					result << res
 
-				if (queue.isComplete())
+				if (queue.isComplete() && !queue.peek())
 					break
 			}
 			println stream.debug()
