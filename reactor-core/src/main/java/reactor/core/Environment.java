@@ -16,7 +16,6 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -125,7 +124,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize, String name) {
-		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.MULTI, new BlockingWaitStrategy());
+		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.MULTI,
+				new YieldingWaitStrategy());
+	}
+
+	public static Supplier<Dispatcher> newSingleProducerMultiConsumerDispatcherFactory(final int poolsize, String name) {
+		return createDispatcherFactory(name,poolsize, 1024, null, ProducerType.SINGLE,
+				new YieldingWaitStrategy());
 	}
 
 	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration

@@ -398,7 +398,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public final Stream<Stream<O>> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaultDispatcherFactory() :
-				Environment.newDispatcherFactory(poolsize));
+				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize,"parallel-stream"));
 	}
 
 	/**
