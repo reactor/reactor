@@ -467,6 +467,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<String> deferred = Streams.<String>defer(env);
 		deferred
 				.parallel(8)
+				.monitorLatency(100)
 				.consume(stream -> (filter ? (stream
 								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
 								.buffer(1000/8)

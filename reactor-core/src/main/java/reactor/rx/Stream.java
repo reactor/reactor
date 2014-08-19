@@ -383,7 +383,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final Stream<Stream<O>> parallel() {
+	public final ParallelAction<O> parallel() {
 		return parallel(Environment.PROCESSORS);
 	}
 
@@ -395,7 +395,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final Stream<Stream<O>> parallel(final Integer poolsize) {
+	public final ParallelAction<O> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaultDispatcherFactory() :
 				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize,"parallel-stream"));
@@ -410,7 +410,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final Stream<Stream<O>> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
+	public final ParallelAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		final ParallelAction<O> parallelAction = new ParallelAction<O>(
 				this.dispatcher, dispatcherSupplier, poolsize
 		);

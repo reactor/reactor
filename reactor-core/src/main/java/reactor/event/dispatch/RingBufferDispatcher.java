@@ -21,6 +21,7 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.event.dispatch.wait.WaitingMood;
 import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
 
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher extends SingleThreadDispatcher {
+public class RingBufferDispatcher extends SingleThreadDispatcher implements WaitingMood {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -42,14 +43,15 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 	private final ExecutorService            executor;
 	private final Disruptor<RingBufferTask>  disruptor;
 	private final RingBuffer<RingBufferTask> ringBuffer;
+	private final WaitingMood                waitingMood;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
-	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+	 * wait
 	 * strategy}.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher.
+	 * @param name The name of the dispatcher.
 	 */
 	public RingBufferDispatcher(String name) {
 		this(name, DEFAULT_BUFFER_SIZE);
@@ -57,33 +59,29 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name} and {@param bufferSize},
-	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking wait
+	 * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+	 * wait
 	 * strategy}.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 * @param bufferSize
-	 * 		The size to configure the ring buffer with
-	 *
+	 * @param name       The name of the dispatcher
+	 * @param bufferSize The size to configure the ring buffer with
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
 	                            int bufferSize
-	                           ) {
+	) {
 		this(name, bufferSize, null);
 	}
+
 	/**
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with a producer type of {@link ProducerType#MULTI MULTI}
 	 * and a {@link BlockingWaitStrategy blocking wait. A given @param uncaughtExceptionHandler} will catch anything not
 	 * handled e.g. by the owning {@link reactor.core.Reactor} or {@link reactor.rx.Stream}.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 * @param bufferSize
-	 * 		The size to configure the ring buffer with
-	 * @param uncaughtExceptionHandler
-	 * 		The last resort exception handler
+	 * @param name                     The name of the dispatcher
+	 * @param bufferSize               The size to configure the ring buffer with
+	 * @param uncaughtExceptionHandler The last resort exception handler
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
@@ -92,22 +90,18 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 		this(name, bufferSize, uncaughtExceptionHandler, ProducerType.MULTI, new BlockingWaitStrategy());
 
 	}
+
 	/**
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with the given {@code producerType}, {@param uncaughtExceptionHandler}
 	 * and {@code waitStrategy}. A null {@param uncaughtExceptionHandler} will make this dispatcher logging such
 	 * exceptions.
 	 *
-	 * @param name
-	 * 		The name of the dispatcher
-	 * @param bufferSize
-	 * 		The size to configure the ring buffer with
-	 * @param producerType
-	 * 		The producer type to configure the ring buffer with
-	 * @param waitStrategy
-	 * 		The wait strategy to configure the ring buffer with
-	 * @param uncaughtExceptionHandler
-	 * 		The last resort exception handler
+	 * @param name                     The name of the dispatcher
+	 * @param bufferSize               The size to configure the ring buffer with
+	 * @param producerType             The producer type to configure the ring buffer with
+	 * @param waitStrategy             The wait strategy to configure the ring buffer with
+	 * @param uncaughtExceptionHandler The last resort exception handler
 	 */
 	@SuppressWarnings({"unchecked"})
 	public RingBufferDispatcher(String name,
@@ -116,6 +110,13 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 	                            ProducerType producerType,
 	                            WaitStrategy waitStrategy) {
 		super(bufferSize);
+
+		if (WaitingMood.class.isAssignableFrom(waitStrategy.getClass())) {
+			this.waitingMood = (WaitingMood) waitStrategy;
+		} else {
+			this.waitingMood = null;
+		}
+
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
@@ -189,6 +190,31 @@ public class RingBufferDispatcher extends SingleThreadDispatcher {
 	@Override
 	public long remainingSlots() {
 		return ringBuffer.remainingCapacity();
+	}
+
+	@Override
+	public void nervous() {
+		if (waitingMood != null) {
+			execute(new Runnable() {
+				@Override
+				public void run() {
+					waitingMood.nervous();
+				}
+			});
+		}
+	}
+
+	@Override
+	public void calm() {
+		if (waitingMood != null) {
+			execute(new Runnable() {
+				@Override
+				public void run() {
+					waitingMood.calm();
+				}
+			});
+
+		}
 	}
 
 	@Override

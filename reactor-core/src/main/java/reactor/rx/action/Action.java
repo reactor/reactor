@@ -175,7 +175,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		try {
 			++currentNextSignals;
 			doNext(i);
-			if (!firehose) {
+			if (!firehose && currentNextSignals == batchSize) {
 				doPendingRequest();
 			}
 		} catch (Throwable cause) {
@@ -386,14 +386,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doSubscribe(Subscription subscription) {
-		int toRequest = generateDemandFromPendingRequests();
-		if(toRequest > 0){
-			pendingNextSignals -= toRequest;
-			subscription.request(toRequest);
-		}
+		doPendingRequest();
 	}
 
-	protected int generateDemandFromPendingRequests(){
+	protected int generateDemandFromPendingRequests() {
 		return pendingNextSignals > batchSize ? batchSize : pendingNextSignals;
 	}
 
@@ -405,20 +401,18 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doError(Throwable ev) {
-		if(!ignoreErrors) {
+		if (!ignoreErrors) {
 			broadcastError(ev);
 		}
 	}
 
 	protected void doPendingRequest() {
-		if (currentNextSignals == batchSize) {
-			int toRequest = generateDemandFromPendingRequests();
-			currentNextSignals = 0;
+		int toRequest = generateDemandFromPendingRequests();
+		currentNextSignals = 0;
 
-			if (toRequest > 0) {
-				pendingNextSignals -= toRequest;
-				subscription.request(toRequest);
-			}
+		if (toRequest > 0) {
+			pendingNextSignals -= toRequest;
+			subscription.request(toRequest);
 		}
 	}
 

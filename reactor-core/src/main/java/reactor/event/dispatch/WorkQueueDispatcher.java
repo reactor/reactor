@@ -5,6 +5,7 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.event.dispatch.wait.WaitingMood;
 import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
 
@@ -20,13 +21,13 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class WorkQueueDispatcher extends MultiThreadDispatcher {
+public class WorkQueueDispatcher extends MultiThreadDispatcher implements WaitingMood {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ExecutorService           executor;
 	private final Disruptor<WorkQueueTask>  disruptor;
-	private final WaitStrategy              waitStrategy;
+	private final WaitingMood               waitingMood;
 	private final RingBuffer<WorkQueueTask> ringBuffer;
 
 	@SuppressWarnings("unchecked")
@@ -45,7 +46,13 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 	                           ProducerType producerType,
 	                           WaitStrategy waitStrategy) {
 		super(poolSize, backlog);
-		this.waitStrategy = waitStrategy;
+
+		if (WaitingMood.class.isAssignableFrom(waitStrategy.getClass())) {
+			this.waitingMood = (WaitingMood) waitStrategy;
+		} else {
+			this.waitingMood = null;
+		}
+
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
 				new NamedDaemonThreadFactory(name, getContext())
@@ -125,12 +132,22 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher {
 	}
 
 	@Override
-	public long remainingSlots() {
-		return ringBuffer.remainingCapacity();
+	public void nervous() {
+		if (waitingMood != null) {
+			waitingMood.nervous();
+		}
 	}
 
-	public void signalAllBlocking() {
-		waitStrategy.signalAllWhenBlocking();
+	@Override
+	public void calm() {
+		if (waitingMood != null) {
+			waitingMood.calm();
+		}
+	}
+
+	@Override
+	public long remainingSlots() {
+		return ringBuffer.remainingCapacity();
 	}
 
 	@Override

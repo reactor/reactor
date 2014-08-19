@@ -18,11 +18,15 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
+import reactor.timer.Timer;
 import reactor.util.Assert;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
@@ -34,6 +38,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private final int              poolSize;
 
 	private volatile int roundRobinIndex = 0;
+
+	private Registration<? extends Consumer<Long>> consumerRegistration;
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -173,6 +179,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	protected void doError(Throwable throwable) {
 		super.doError(throwable);
+		if(consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelStream parallelStream : publishers) {
 			parallelStream.broadcastError(throwable);
 		}
@@ -182,9 +189,62 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	protected void doComplete() {
 		super.doComplete();
+		if(consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelStream parallelStream : publishers) {
 			parallelStream.broadcastComplete();
 		}
+	}
+
+	/**
+	 * Monitor all sub-streams latency to hint the next elements to dispatch to the fastest sub-streams in priority.
+	 *
+	 * @param latencyInMs a period in milliseconds to tolerate before assigning a new sub-stream
+	 */
+	public ParallelAction<O> monitorLatency(long latencyInMs) {
+		Assert.isTrue(environment != null, "Require an environment to retrieve the default timer");
+		return monitorLatency(latencyInMs, environment.getRootTimer());
+	}
+
+	/**
+	 * Monitor all sub-streams latency to hint the next elements to dispatch to the fastest sub-streams in priority.
+	 *
+	 * @param latencyInMs a period in milliseconds to tolerate before assigning a new sub-stream
+	 * @param timer       a timer to run on periodically
+	 */
+	public ParallelAction<O> monitorLatency(final long latencyInMs, Timer timer) {
+		consumerRegistration = timer.schedule(new Consumer<Long>() {
+			@Override
+			public void accept(Long aLong) {
+				trySyncDispatch(aLong, new Consumer<Long>() {
+					@Override
+					public void accept(Long aLong) {
+
+						try {
+							if (aLong - publishers[roundRobinIndex].lastRequestedTime < latencyInMs) return;
+						} catch (NullPointerException npe) {
+							//ignore
+						}
+
+						int fasterParallelIndex = -1;
+						for (ParallelStream parallelStream : publishers) {
+							try {
+								if (aLong - parallelStream.lastRequestedTime < latencyInMs) {
+									fasterParallelIndex = parallelStream.index;
+									break;
+								}
+							} catch (NullPointerException npe) {
+								//ignore
+							}
+						}
+
+						if(fasterParallelIndex == -1) return;
+
+						roundRobinIndex = fasterParallelIndex;
+					}
+				});
+			}
+		}, latencyInMs, TimeUnit.MILLISECONDS, latencyInMs);
+		return this;
 	}
 
 	public int getPoolSize() {
@@ -198,6 +258,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	static private class ParallelStream<O> extends Stream<O> {
 		final ParallelAction<O> parallelAction;
 		final int               index;
+
+		volatile long lastRequestedTime = -1l;
 
 		private ParallelStream(ParallelAction<O> parallelAction, Dispatcher dispatcher, int index) {
 			super(dispatcher);
@@ -231,8 +293,14 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				@Override
 				public void request(int elements) {
 					super.request(elements);
-					parallelAction.roundRobinIndex = index;
-					parallelAction.onRequest(elements);
+					lastRequestedTime = System.currentTimeMillis();
+					parallelAction.trySyncDispatch(elements, new Consumer<Integer>() {
+						@Override
+						public void accept(Integer elem) {
+							parallelAction.roundRobinIndex = index;
+							parallelAction.requestConsumer.accept(elem);
+						}
+					});
 				}
 
 				@Override
