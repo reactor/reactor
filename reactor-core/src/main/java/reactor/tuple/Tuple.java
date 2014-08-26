@@ -280,6 +280,6 @@ public class Tuple implements Iterable, Serializable {
 
 		Tuple cast = (Tuple) o;
 
-		return this.size != cast.size;
+		return this.size == cast.size;
 	}
 }
