@@ -9,6 +9,7 @@ import reactor.function.Consumer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 
+import javax.annotation.Nonnull;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executor;
@@ -100,6 +101,8 @@ public class HashWheelTimer implements Timer {
 		this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerRegistration>>() {
 			@Override
 			public Set<TimerRegistration> newInstance() {
+                // TODO: to get O(1) time cost for the add() operations, may change to unsorted collection, and sorting tasks per each tick.
+                // a sorted set take average O(log N) time cost for the add() operations.
 				return new ConcurrentSkipListSet<TimerRegistration>();
 			}
 		}, wheelSize);
@@ -251,6 +254,7 @@ public class HashWheelTimer implements Timer {
 		private final AtomicLong    rounds;
 		private final AtomicInteger status;
 		private final AtomicBoolean cancelAfterUse;
+        private final boolean       lifecycle;
 
 		/**
 		 * Creates a new Timer Registration with given {@data rounds}, {@data offset} and {@data delegate}.
@@ -262,13 +266,17 @@ public class HashWheelTimer implements Timer {
 		 * @param delegate
 		 * 		delegate that will be ran whenever the timer is elapsed
 		 */
-		public TimerRegistration(long rounds, long offset, T delegate, long rescheduleRounds) {
-			this.rescheduleRounds = rescheduleRounds;
+		public TimerRegistration(long rounds, long offset, @Nonnull T delegate, long rescheduleRounds) {
+            if(delegate == null){
+                throw new NullPointerException("given delegate can not be null!");
+            }
+            this.rescheduleRounds = rescheduleRounds;
 			this.scheduleOffset = offset;
 			this.delegate = delegate;
 			this.rounds = new AtomicLong(rounds);
 			this.status = new AtomicInteger(STATUS_READY);
 			this.cancelAfterUse = new AtomicBoolean(false);
+            this.lifecycle = Pausable.class.isAssignableFrom(delegate.getClass());
 		}
 
 		/**
@@ -309,7 +317,12 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		public Registration cancel() {
-			this.status.set(STATUS_CANCELLED);
+            if(!this.isCancelled()){
+                if (lifecycle) {
+                    ((Pausable) delegate).cancel();
+                }
+                this.status.set(STATUS_CANCELLED);
+            }
 			return this;
 		}
 
@@ -330,7 +343,12 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public Registration pause() {
-			this.status.set(STATUS_PAUSED);
+            if(!this.isPaused()){
+                if (lifecycle) {
+                    ((Pausable) delegate).pause();
+                }
+                this.status.set(STATUS_PAUSED);
+            }
 			return this;
 		}
 
@@ -351,8 +369,11 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public Registration resume() {
-			this.status.set(STATUS_READY);
-			return this;
+            if (lifecycle) {
+                ((Pausable) delegate).resume();
+            }
+            this.status.set(STATUS_READY);
+            return this;
 		}
 
 		/**
@@ -372,7 +393,7 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public Object getObject() {
-			return null;
+			return delegate;
 		}
 
 		/**
@@ -383,7 +404,7 @@ public class HashWheelTimer implements Timer {
 		 * @return {@literal this}
 		 */
 		public TimerRegistration<T> cancelAfterUse() {
-			cancelAfterUse.set(false);
+			cancelAfterUse.set(true);
 			return this;
 		}
 
