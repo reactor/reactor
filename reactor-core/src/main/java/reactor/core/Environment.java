@@ -339,7 +339,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @see Environment#getDefaultDispatcher()
 	 */
 	public Reactor getRootReactor() {
-		rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
+		if (null == rootReactor.get()) {
+			synchronized (rootReactor) {
+				rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
+			}
+		}
 		return rootReactor.get();
 	}
 
@@ -349,7 +353,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return the timer.
 	 */
 	public Timer getRootTimer() {
-		if (timer.get() == null) timer.set(new SimpleHashWheelTimer());
+		if (null == timer.get()) {
+			synchronized (timer) {
+				timer.compareAndSet(null, new SimpleHashWheelTimer());
+			}
+		}
 		return timer.get();
 	}
 
