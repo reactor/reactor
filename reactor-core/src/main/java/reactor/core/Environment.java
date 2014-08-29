@@ -324,7 +324,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public Timer getRootTimer() {
 		if (null == timer.get()) {
 			synchronized (timer) {
-				timer.compareAndSet(null, new SimpleHashWheelTimer());
+				SimpleHashWheelTimer t = new SimpleHashWheelTimer();
+				if (!timer.compareAndSet(null, t)) {
+					t.cancel();
+				}
 			}
 		}
 		return timer.get();
