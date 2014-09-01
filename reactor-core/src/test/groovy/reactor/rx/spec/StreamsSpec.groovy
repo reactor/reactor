@@ -359,7 +359,7 @@ class StreamsSpec extends Specification {
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer().map { it }.map { it }
 			def source3 = Streams.<Integer> defer()
-			def tap = source1.merge(source2, source3).buffer(3).tap()
+			def tap = Streams.merge(source1, source2, source3).buffer(3).tap()
 
 		when:
 			'the sources accept a value'
@@ -408,7 +408,7 @@ class StreamsSpec extends Specification {
 			tap.get() == [3, 6]
 	}
 
-	def "Multiple Stream's values can be zipped"() {
+	def "Inline Stream's values can be zipped"() {
 		given:
 			'source composables to merge, buffer and tap'
 			def source2 = Streams.<Integer> defer()
@@ -441,6 +441,39 @@ class StreamsSpec extends Specification {
 			tap.get() == 9
 	}
 
+
+	def "Multiple Stream's values can be zipped"() {
+		given:
+			'source composables to merge, buffer and tap'
+			def source1 = Streams.<Integer> defer()
+			def source2 = Streams.<Integer> defer()
+			def zippedStream = Streams.zip ({ it.sum() }, source1, source2)
+			def tap = zippedStream.tap()
+
+		when:
+			'the sources accept a value'
+			source1.broadcastNext(1)
+			source2.broadcastNext(2)
+			source2.broadcastNext(3)
+			source2.broadcastNext(4)
+
+			println zippedStream.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == 3
+
+		when:
+			'the sources accept the missing value'
+			source2.broadcastNext(5)
+			source1.broadcastNext(6)
+
+			println zippedStream.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap.get() == 9
+	}
 
 	def "Stream can be counted"() {
 		given:

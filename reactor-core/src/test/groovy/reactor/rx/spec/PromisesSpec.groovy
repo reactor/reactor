@@ -502,7 +502,8 @@ class PromisesSpec extends Specification {
 		then:
 			"the combined promise is fulfilled with both values"
 			combined.success
-			combined.get() == [1, 2]
+			combined.get().t1 == 1
+			combined.get().t2 == 2
 	}
 
 	def "A combined promise is rejected once any of its component promises are rejected"() {
@@ -541,7 +542,8 @@ class PromisesSpec extends Specification {
 		then:
 			"it is fulfilled"
 			combined.success
-			combined.get() == [1, 2]
+			combined.get().t1 == 1
+			combined.get().t2 == 2
 
 		when:
 			"promises are supplied"
@@ -552,7 +554,8 @@ class PromisesSpec extends Specification {
 		then:
 			"it is fulfilled"
 			combined.success
-			combined.get() == ['1', '2']
+			combined.get().t1 == '1'
+			combined.get().t2 == '2'
 
 	}
 
@@ -597,7 +600,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a combined promise is first created"
-			def combined = Promises.when(promise1)
+			def combined = Promises.when([promise1])
 
 		then:
 			"it is pending"

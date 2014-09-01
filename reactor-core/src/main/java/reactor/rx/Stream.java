@@ -44,8 +44,6 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -315,28 +313,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		final MapManyAction<O, V, C> d = new MapManyAction<O, V, C>(fn, dispatcher);
 		connect(d);
 		return d;
-	}
-
-	/**
-	 * {@link this#connect(Action)} all the passed {@param composables} to this {@link Stream},
-	 * merging values streams into a new pipeline.
-	 *
-	 * @param composables the the composables to connect
-	 * @return the merged stream
-	 * @since 1.1, 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	@SafeVarargs
-	public final MergeAction<O> merge(Publisher<O>... composables) {
-		final List<Publisher<O>> publishers = new ArrayList<Publisher<O>>();
-
-		publishers.add(this);
-		Collections.addAll(publishers, composables);
-
-		final MergeAction<O> mergeAction = new MergeAction<O>(dispatcher, publishers);
-
-		mergeAction.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
-		return mergeAction;
 	}
 
 	/**
@@ -1281,7 +1257,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 				downstreamSubscription.onComplete();
 			}
 		} catch (Throwable throwable) {
-			throwable.printStackTrace();
 			callError(downstreamSubscription, throwable);
 		}
 	}

@@ -122,6 +122,7 @@ public class SimpleHashWheelTimer implements Timer {
 	                                                       TimeUnit timeUnit,
 	                                                       long delayInMilliseconds) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
+		Assert.isTrue(period % resolution == 0, "Period must be a multiple of timer resolution (e.g. period % resolution == 0 )");
 		return tasks.register(
 				new PeriodSelector(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, resolution),
 				consumer
