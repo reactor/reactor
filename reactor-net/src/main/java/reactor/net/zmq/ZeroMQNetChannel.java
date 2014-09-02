@@ -11,13 +11,12 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.net.AbstractNetChannel;
+import reactor.rx.Promise;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -27,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
@@ -64,7 +64,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, final Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, final Promise<Void> onComplete, boolean flush) {
 		byte[] bytes = new byte[data.remaining()];
 		data.get(bytes);
 		boolean isNewMsg = MSG_UPD.compareAndSet(this, null, new ZMsg());
@@ -86,7 +86,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void write(Object data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(Object data, Promise<Void> onComplete, boolean flush) {
 		Buffer buff = getEncoder().apply((OUT) data);
 		write(buff.byteBuffer(), onComplete, flush);
 	}
@@ -96,16 +96,16 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		doFlush(null);
 	}
 
-	private void doFlush(final Deferred<Void, Promise<Void>> onComplete) {
+	private void doFlush(final Promise<Void> onComplete) {
 		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
 		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
 		if (null != msg) {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
 				if (success) {
-					onComplete.accept((Void) null);
+					onComplete.onNext((Void) null);
 				} else {
-					onComplete.accept(new RuntimeException("ZeroMQ Message could not be sent"));
+					onComplete.onError(new RuntimeException("ZeroMQ Message could not be sent"));
 				}
 			}
 		}

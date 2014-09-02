@@ -29,17 +29,17 @@ import reactor.event.dispatch.ThreadPoolExecutorDispatcher
 import reactor.event.dispatch.WorkQueueDispatcher
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
-import reactor.event.routing.ConsumerFilteringEventRouter
+import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
-import reactor.function.support.Boundary
+import reactor.rx.spec.Streams
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static reactor.GroovyTestUtils.$
-import static reactor.GroovyTestUtils.consumer
 import static reactor.event.selector.Selectors.T
 
 /**
@@ -47,6 +47,17 @@ import static reactor.event.selector.Selectors.T
  * @author Stephane Maldini
  */
 class DispatcherSpec extends Specification {
+
+	@Shared
+	Environment env
+
+	void setup() {
+		env = new Environment()
+	}
+
+	def cleanup(){
+		env.shutdown()
+	}
 
 	def "Dispatcher executes tasks in correct thread"() {
 
@@ -56,12 +67,12 @@ class DispatcherSpec extends Specification {
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
 			def registry = new CachingRegistry<Consumer<Event>>()
-			def eventRouter = new ConsumerFilteringEventRouter(
+			def eventRouter = new ConsumerFilteringRouter(
 					new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
 			def sel = $('test')
-			registry.register(sel, consumer {
+			registry.register(sel, { Event<?> ev ->
 				taskThread = Thread.currentThread()
-			})
+			} as Consumer<Event<?>>)
 
 		when:
 			"a task is submitted"
@@ -89,18 +100,17 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"ring buffer reactor"
-			def env = new Environment()
 			def r = Reactors.reactor().env(env).dispatcher("ringBuffer").get()
 			def latch = new CountDownLatch(2)
 
 		when:
 			"listen for recursive event"
-			r.on($('test'), consumer { int i ->
-				if (i < 2) {
+			r.on($('test')) { Event<Integer> ev ->
+				if (ev.data < 2) {
 					latch.countDown()
-					r.notify('test', Event.wrap(++i))
+					r.notify('test', Event.wrap(++ev.data))
 				}
-			})
+			}
 
 		and:
 			"call the reactor"
@@ -115,7 +125,6 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def env = new Environment()
 			def r = Reactors.reactor().
 					env(env).
 					dispatcher(Environment.THREAD_POOL).
@@ -144,13 +153,13 @@ class DispatcherSpec extends Specification {
 	def "RingBufferDispatcher doesn't deadlock on thrown Exception"() {
 
 		given:
-			def b = new Boundary()
 			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
 			def r = new Reactor(dispatcher)
 
 		when:
-			r.on(T(Throwable), b.bind({ ev ->
-			} as Consumer<Event<Throwable>>, 16))
+			def stream = Streams.<Throwable> defer()
+			def promise = stream.limit(16).count().toList()
+			r.on(T(Throwable), stream.toBroadcastNextConsumer())
 			r.on($("test"), { ev ->
 				sleep(100)
 				1 / 0
@@ -158,9 +167,11 @@ class DispatcherSpec extends Specification {
 			16.times {
 				r.notify "test", Event.wrap("test")
 			}
+			println stream.debug()
 
 		then:
-			b.await(5, TimeUnit.SECONDS)
+			promise.await(5, TimeUnit.SECONDS)
+			promise.get() == [16]
 
 	}
 

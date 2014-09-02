@@ -1,8 +1,7 @@
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.event.registry.Registry;
-import reactor.event.routing.EventRouter;
+import reactor.event.routing.Router;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.util.Assert;
@@ -72,11 +71,11 @@ public final class ActorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key,
+	public <E> void dispatch(Object key,
 	                                          E event,
-	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Registry<Consumer<?>> consumerRegistry,
 	                                          Consumer<Throwable> errorConsumer,
-	                                          EventRouter eventRouter,
+	                                          Router router,
 	                                          Consumer<E> completionConsumer) {
 
 		int hashCode = key == null ? emptyHashcode : key.hashCode();
@@ -91,16 +90,31 @@ public final class ActorDispatcher implements Dispatcher {
 				event,
 				consumerRegistry,
 				errorConsumer,
-				eventRouter,
+				router,
 				completionConsumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(E event,
-	                                          EventRouter eventRouter,
+	public <E> void dispatch(E event,
+	                                          Router router,
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+		dispatch(null, event, null, errorConsumer, router, consumer);
+	}
+
+	@Override
+	public long remainingSlots() {
+		return Long.MAX_VALUE;
+	}
+
+	@Override
+	public int backlogSize() {
+		return Integer.MAX_VALUE;
+	}
+
+	@Override
+	public boolean supportsOrdering() {
+		return false;
 	}
 
 	@Override
@@ -115,4 +129,8 @@ public final class ActorDispatcher implements Dispatcher {
 		delegate.execute(command);
 	}
 
+	@Override
+	public boolean inContext() {
+		return false;
+	}
 }

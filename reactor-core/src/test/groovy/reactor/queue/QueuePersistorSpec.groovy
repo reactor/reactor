@@ -18,10 +18,12 @@ package reactor.queue
 
 import net.openhft.chronicle.ChronicleConfig
 import reactor.io.encoding.StandardCodecs
+import reactor.rx.spec.Streams
 import spock.lang.Specification
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class QueuePersistorSpec extends Specification {
 
@@ -34,20 +36,20 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an Object is persisted"
-			def id = persistor.offer().apply(obj)
+			def id = persistor.offer(obj)
 
 		then:
 			"the Object was persisted"
 			id > -1
-			persistor.get().apply(id) == obj
+			persistor.get(id) == obj
 
 		when:
 			"an Object is removed"
-			persistor.remove().get()
+			persistor.remove()
 
 		then:
 			"the Object was removed"
-			null == persistor.get().apply(id)
+			null == persistor.get(id)
 			persistor.size() == 0
 
 		cleanup:
@@ -70,17 +72,17 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an object is persisted"
-			def id = persistor.offer().apply(obj)
+			def id = persistor.offer(obj)
 
 		then:
 			"the object was persisted"
 			id > -1
-			persistor.get().apply(id) == obj
+			persistor.get(id) == obj
 			persistor.hasNext()
 
 		when:
 			"the object is removed"
-			persistor.remove().get()
+			persistor.remove()
 
 		then:
 			"the object was removed"
@@ -88,6 +90,44 @@ class QueuePersistorSpec extends Specification {
 
 		cleanup:
 			persistor.close()
+
+	}
+
+	def "Stream can use persistent queues"() {
+
+		given:
+			"a persistent queue specification and a Stream"
+			def persistentQueue = new reactor.queue.spec.PersistentQueueSpec()
+					.codec(StandardCodecs.STRING_CODEC)
+					.deleteOnExit(true)
+					.get()
+
+			def stream = Streams.<String> defer()
+			def result = null
+
+			def bufferedStream = stream.overflow(persistentQueue).observe{
+				result = it
+			}
+
+		when:
+			"an object is persisted"
+			stream.broadcastNext("test!")
+
+		then:
+			"the object was persisted"
+			persistentQueue.size() == 1
+
+		when:
+			"the object is read"
+			bufferedStream.tap()
+
+		then:
+			"the object was removed"
+			result
+			persistentQueue.size() == 0
+
+		cleanup:
+			persistentQueue.close()
 
 	}
 

@@ -20,12 +20,11 @@ package reactor.core
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
-import reactor.event.routing.ConsumerFilteringEventRouter
+import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
 import reactor.function.Functions
 import reactor.function.support.SingleUseConsumer
-import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -64,8 +63,8 @@ class ReactorsSpec extends Specification {
 
 		then:
 			"EventRouter has been correctly set"
-			reactor.eventRouter instanceof ConsumerFilteringEventRouter
-			((ConsumerFilteringEventRouter) reactor.eventRouter).filter instanceof RoundRobinFilter
+			reactor.router instanceof ConsumerFilteringRouter
+			((ConsumerFilteringRouter) reactor.router).filter instanceof RoundRobinFilter
 	}
 
 	def "A Reactor can dispatch events properly"() {
@@ -301,6 +300,7 @@ class ReactorsSpec extends Specification {
 			reactor.respondsToKey 'test'
 			reactor.consumerRegistry.unregister('test')
 			!reactor.respondsToKey('test')
+
 	}
 
 	def "Multiple consumers can use the same selector"() {
@@ -389,37 +389,6 @@ class ReactorsSpec extends Specification {
 
 	}
 
-	def "A Producer can override consumer for errors"() {
-
-		given:
-			"a synchronous Reactor"
-			def r = Reactors.reactor().synchronousDispatcher().get()
-
-		when:
-			"an error consumer is registered"
-			def latch = new CountDownLatch(1)
-			def e = null
-			def x
-			r.on(T(Exception),
-					consumer { x = false }
-					as Consumer<Exception>
-			)
-
-		and:
-			"a normal consumer that rise exceptions"
-			r.on($('test'),consumer { throw new Exception('bad') })
-
-		and:
-			"the consumer is invoked with an error consumer bound event"
-			r.notify('test',new Event(null, null, consumer { Exception ex -> e = ex; latch.countDown() }))
-
-		then:
-			"consumer has been invoked and e is an exception but x is not set"
-			latch.await(3, TimeUnit.SECONDS)
-			e && e instanceof Exception
-			!x
-
-	}
 
 	def "A Reactor can run arbitrary consumer"() {
 

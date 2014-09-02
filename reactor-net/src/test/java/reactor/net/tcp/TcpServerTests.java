@@ -48,7 +48,6 @@ import reactor.net.netty.tcp.NettyTcpServer;
 import reactor.net.tcp.spec.TcpClientSpec;
 import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.tcp.support.SocketUtils;
-import reactor.net.zmq.ZeroMQServerSocketOptions;
 import reactor.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.util.UUIDUtils;
 
@@ -366,7 +365,7 @@ public class TcpServerTests {
 		TcpServer<ByteBuf, ByteBuf> server = new TcpServerSpec<ByteBuf, ByteBuf>(NettyTcpServer.class)
 				.env(env)
 				.listen(port)
-				.dispatcher(new SynchronousDispatcher())
+				.dispatcher(SynchronousDispatcher.INSTANCE)
 				.consume(new Consumer<NetChannel<ByteBuf, ByteBuf>>() {
 					@Override
 					public void accept(NetChannel<ByteBuf, ByteBuf> ch) {

@@ -16,17 +16,21 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.FirstParam
 import reactor.core.Reactor
 import reactor.event.Event
-import reactor.event.selector.Selectors
-import reactor.function.*
 import reactor.event.registry.Registration
 import reactor.event.selector.Selector
+import reactor.event.selector.Selectors
+import reactor.function.Consumer
+import reactor.function.Function
+import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
-import reactor.groovy.support.ClosureEventFunction
 
 import static reactor.event.selector.Selectors.$
 import static reactor.event.selector.Selectors.object
+
 /**
  * Extensions for providing syntax sugar for working with {@link reactor.core.Observable}s.
  *
@@ -41,23 +45,22 @@ class ObservableExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T, E extends Event<T>, V> Registration<Consumer<E>> receive(final reactor.core.Observable selfType,
-	                                                                    final Selector key,
-	                                                                    final Closure<V> closure) {
-		selfType.receive key, new ClosureEventFunction<E, V>(closure)
+	static <T> Registration<Consumer<T>> react(Reactor selfType,
+	                                        Selector selector,
+	                                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator,
+			                                        strategy = Closure.DELEGATE_FIRST)
+	                                        @ClosureParams(FirstParam.FirstGenericType)
+			                                        Closure handler) {
+		selfType.on selector, new ClosureEventConsumer<T>(handler)
 	}
 
-	static Registration<Consumer> on(reactor.core.Observable selfType,
-	                                 Selector selector,
-	                                 @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST)
-	                                 Closure handler) {
-		selfType.on selector, new ClosureEventConsumer(handler)
-	}
-
-	static Registration<Consumer> on(reactor.core.Observable selfType,
-	                                 String selector,
-	                                 @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
-		selfType.on object(selector), new ClosureEventConsumer(handler)
+	static <T> Registration<Consumer<T>> react(Reactor selfType,
+	                                        String selector,
+	                                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator,
+			                                        strategy = Closure.DELEGATE_FIRST)
+	                                        @ClosureParams(FirstParam.FirstGenericType)
+			                                        Closure handler) {
+		selfType.on object(selector), new ClosureEventConsumer<T>(handler)
 	}
 
 	/**
@@ -72,16 +75,14 @@ class ObservableExtensions {
 	static <T> Reactor send(Reactor selfType,
 	                        Object key,
 	                        T obj,
-	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler)
-	{
+	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		send selfType, key, Event.wrap(obj), handler
 	}
 
 	static <T> Reactor send(Reactor selfType,
 	                        Object key,
 	                        Event<T> obj,
-	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler)
-	{
+	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		def replyTo = obj.replyTo ? $(obj.replyTo) : Selectors.anonymous()
 		selfType.on replyTo, new ClosureEventConsumer(handler)
 		selfType.send key, obj.setReplyTo(replyTo.object)
@@ -126,7 +127,6 @@ class ObservableExtensions {
 		selfType.notify topic, toSend
 		selfType
 	}
-
 
 	/**
 	 * Alias

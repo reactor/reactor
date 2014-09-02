@@ -7,14 +7,13 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.net.AbstractNetChannel;
+import reactor.rx.Promise;
 import reactor.tuple.Tuple;
 
 import javax.annotation.Nonnull;
@@ -27,6 +26,7 @@ import java.util.concurrent.TimeUnit;
  * {@link reactor.net.NetChannel} implementation that delegates to Netty.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
@@ -77,14 +77,14 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, Promise<Void> onComplete, boolean flush) {
 		ByteBuf buf = ioChannel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
 		write(buf, onComplete, flush);
 	}
 
 	@Override
-	protected void write(Object data, final Deferred<Void, Promise<Void>> onComplete, boolean flush) {
+	protected void write(Object data, final Promise<Void> onComplete, boolean flush) {
 		ChannelFuture writeFuture = ioChannel.write(Tuple.of(data, flush));
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
@@ -94,11 +94,9 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 				if (!success) {
 					Throwable t = future.cause();
 					getEventsReactor().notify(t.getClass(), Event.wrap(t));
-					if (null != onComplete) {
-						onComplete.accept(t);
-					}
-				} else if (null != onComplete) {
-					onComplete.accept((Void) null);
+				}
+				if (null != onComplete) {
+					onComplete.onComplete();
 				}
 			}
 		});

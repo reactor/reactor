@@ -27,9 +27,10 @@ import java.util.concurrent.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher {
+public class ThreadPoolExecutorDispatcher extends MultiThreadDispatcher {
 
-	private final ExecutorService executor;
+	private final ExecutorService         executor;
+	private final BlockingQueue<Runnable> workQueue;
 
 	/**
 	 * Creates a new {@literal ThreadPoolExecutorDispatcher} with the given {@literal poolSize} and {@literal backlog}.
@@ -90,6 +91,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher 
 	                                    BlockingQueue<Runnable> workQueue,
 	                                    RejectedExecutionHandler rejectedExecutionHandler) {
 		super(poolSize, backlog);
+		this.workQueue = workQueue;
 		this.executor = new ThreadPoolExecutor(
 				poolSize,
 				poolSize,
@@ -115,6 +117,7 @@ public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher 
 	public ThreadPoolExecutorDispatcher(int backlog, int poolSize, ExecutorService executor) {
 		super(poolSize, backlog);
 		this.executor = executor;
+		this.workQueue = null;
 	}
 
 	@Override
@@ -141,6 +144,11 @@ public class ThreadPoolExecutorDispatcher extends AbstractMultiThreadDispatcher 
 	public void halt() {
 		executor.shutdownNow();
 		super.halt();
+	}
+
+	@Override
+	public long remainingSlots() {
+		return workQueue != null ? workQueue.remainingCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override

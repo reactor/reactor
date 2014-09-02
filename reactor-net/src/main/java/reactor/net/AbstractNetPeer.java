@@ -3,9 +3,6 @@ package reactor.net;
 import com.gs.collections.impl.list.mutable.FastList;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
 import reactor.event.Event;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
@@ -15,6 +12,8 @@ import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -26,6 +25,7 @@ import java.util.Iterator;
  * Abstract base class that implements common functionality shared by clients and servers.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class AbstractNetPeer<IN, OUT> {
 
@@ -61,9 +61,9 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	public Promise<Boolean> close() {
-		Deferred<Boolean, Promise<Boolean>> d = Promises.defer(env, reactor.getDispatcher());
+		Promise<Boolean> d = Promises.defer(env, reactor.getDispatcher());
 		close(d);
-		return d.compose();
+		return d;
 	}
 
 	public void close(@Nullable final Consumer<Boolean> onClose) {

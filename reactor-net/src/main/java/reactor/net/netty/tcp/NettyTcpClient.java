@@ -28,11 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
-import reactor.core.composable.spec.Streams;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
@@ -44,6 +39,10 @@ import reactor.net.config.SslOptions;
 import reactor.net.netty.*;
 import reactor.net.tcp.TcpClient;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
+import reactor.rx.spec.Streams;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tuple.Tuple2;
 
@@ -58,11 +57,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A Netty-based {@code TcpClient}.
  *
- * @param <IN>
- * 		The type that will be received by this client
- * @param <OUT>
- * 		The type that will be sent by this client
- *
+ * @param <IN>  The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -79,27 +75,21 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private volatile boolean           closing;
 
 	/**
-	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor} to
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code
+	 * reactor} to
 	 * send events. The number of IO threads used by the client is configured by the environment's {@code
 	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
 	 * Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env
-	 * 		The configuration environment
-	 * @param reactor
-	 * 		The reactor used to send events
-	 * @param connectAddress
-	 * 		The address the client will connect to
-	 * @param options
-	 * 		The configuration options for the client's socket
-	 * @param sslOptions
-	 * 		The SSL configuration options for the client's socket
-	 * @param codec
-	 * 		The codec used to encode and decode data
-	 * @param consumers
-	 * 		The consumers that will interact with the connection
+	 * @param env            The configuration environment
+	 * @param reactor        The reactor used to send events
+	 * @param connectAddress The address the client will connect to
+	 * @param options        The configuration options for the client's socket
+	 * @param sslOptions     The SSL configuration options for the client's socket
+	 * @param codec          The codec used to encode and decode data
+	 * @param consumers      The consumers that will interact with the connection
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
 	                      @Nonnull Reactor reactor,
@@ -142,7 +132,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
 							if (log.isDebugEnabled()) {
 								log.debug("SSL enabled using keystore {}",
-								          (null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
+										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
@@ -167,22 +157,22 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
-		final Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection
+		final Promise<NetChannel<IN, OUT>> connection
 				= Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		openChannel(new ConnectingChannelListener(connection));
 
-		return connection.compose();
+		return connection;
 	}
 
 	@Override
 	public Stream<NetChannel<IN, OUT>> open(final Reconnect reconnect) {
-		final Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections
+		final Stream<NetChannel<IN, OUT>> connections
 				= Streams.defer(getEnvironment(), getReactor().getDispatcher());
 
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
 
-		return connections.compose();
+		return connections;
 	}
 
 	@Override
@@ -239,9 +229,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	private class ConnectingChannelListener implements ChannelFutureListener {
-		private final Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection;
+		private final Promise<NetChannel<IN, OUT>> connection;
 
-		private ConnectingChannelListener(Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> connection) {
+		private ConnectingChannelListener(Promise<NetChannel<IN, OUT>> connection) {
 			this.connection = connection;
 		}
 
@@ -252,7 +242,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (log.isErrorEnabled()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
-				connection.accept(future.cause());
+				connection.onError(future.cause());
 				return;
 			}
 
@@ -261,8 +251,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 
 			NettyNetChannelInboundHandler inboundHandler = future.channel()
-			                                                     .pipeline()
-			                                                     .get(NettyNetChannelInboundHandler.class);
+					.pipeline()
+					.get(NettyNetChannelInboundHandler.class);
 			final NetChannel<IN, OUT> ch = inboundHandler.getNetChannel();
 
 			future.channel().closeFuture().addListener(new ChannelFutureListener() {
@@ -278,7 +268,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			future.channel().eventLoop().submit(new Runnable() {
 				@Override
 				public void run() {
-					connection.accept(ch);
+					connection.onNext(ch);
 				}
 			});
 		}
@@ -288,14 +278,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 
-		private final Reconnect                                                  reconnect;
-		private final Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections;
+		private final Reconnect                   reconnect;
+		private final Stream<NetChannel<IN, OUT>> connections;
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
 		                                    Reconnect reconnect,
-		                                    Deferred<NetChannel<IN, OUT>, Stream<NetChannel<IN, OUT>>> connections) {
+		                                    Stream<NetChannel<IN, OUT>> connections) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 			this.connections = connections;
@@ -315,7 +305,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
 						public void run() {
-							connections.accept(future.cause());
+							connections.broadcastError(future.cause());
 						}
 					});
 					return;
@@ -357,7 +347,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				ioCh.eventLoop().submit(new Runnable() {
 					@Override
 					public void run() {
-						connections.accept(ch);
+						connections.broadcastNext(ch);
 					}
 				});
 			}
@@ -373,17 +363,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 
 			getEnvironment().getRootTimer()
-			                .submit(
-					                new Consumer<Long>() {
-						                @Override
-						                public void accept(Long now) {
-							                openChannel(ReconnectingChannelListener.this);
-						                }
-					                },
-					                delay,
-					                TimeUnit.MILLISECONDS
-			                )
-			                .cancelAfterUse();
+					.submit(
+							new Consumer<Long>() {
+								@Override
+								public void accept(Long now) {
+									openChannel(ReconnectingChannelListener.this);
+								}
+							},
+							delay,
+							TimeUnit.MILLISECONDS
+					)
+					.cancelAfterUse();
 		}
 	}
 

@@ -14,10 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
@@ -29,6 +25,9 @@ import reactor.net.netty.NettyNetChannel;
 import reactor.net.netty.NettyNetChannelInboundHandler;
 import reactor.net.netty.NettyServerSocketOptions;
 import reactor.net.udp.DatagramServer;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 
 import javax.annotation.Nonnull;
@@ -42,6 +41,7 @@ import java.util.Collection;
  * {@link reactor.net.udp.DatagramServer} implementation built on Netty.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
@@ -162,7 +162,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		getReactor().schedule(
 				new Consumer<Void>() {
@@ -173,9 +173,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 							@Override
 							public void operationComplete(Future future) throws Exception {
 								if (future.isSuccess()) {
-									d.accept(true);
+									d.onNext(true);
 								} else {
-									d.accept(future.cause());
+									d.onError(future.cause());
 								}
 							}
 						};
@@ -188,7 +188,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		);
 		notifyShutdown();
 
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -218,7 +218,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -232,7 +232,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		}
 		future.addListener(new PromiseCompletingListener(d));
 
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -245,7 +245,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Deferred<Void, Promise<Void>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		final ChannelFuture future;
 		if (null != iface) {
@@ -255,7 +255,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		}
 		future.addListener(new PromiseCompletingListener(d));
 
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -263,7 +263,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		return new NettyNetChannel<IN, OUT>(
 				getEnvironment(),
 				getCodec(),
-				new SynchronousDispatcher(),
+				SynchronousDispatcher.INSTANCE,
 				getReactor(),
 				(NioDatagramChannel) ioChannel
 		);
@@ -283,18 +283,18 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 	private static class PromiseCompletingListener implements ChannelFutureListener {
-		private final Deferred<Void, Promise<Void>> d;
+		private final Promise<Void> d;
 
-		private PromiseCompletingListener(Deferred<Void, Promise<Void>> d) {
+		private PromiseCompletingListener(Promise<Void> d) {
 			this.d = d;
 		}
 
 		@Override
 		public void operationComplete(ChannelFuture future) throws Exception {
 			if (future.isSuccess()) {
-				d.accept((Void) null);
+				d.onComplete();
 			} else {
-				d.accept(future.cause());
+				d.onError(future.cause());
 			}
 		}
 	}

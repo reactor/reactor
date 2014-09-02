@@ -15,19 +15,19 @@
  */
 package reactor.groovy
 
-import static reactor.event.selector.Selectors.$
+import reactor.core.Environment
+import reactor.core.spec.Reactors
+import reactor.function.support.Tap
+import reactor.rx.Stream
+import reactor.rx.spec.Streams
+import reactor.tuple.Tuple2
+import spock.lang.Shared
+import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import reactor.core.Environment
-import reactor.core.composable.Stream
-import reactor.core.composable.spec.Streams
-import reactor.core.spec.Reactors
-import reactor.event.dispatch.EventLoopDispatcher
-import reactor.function.support.Tap
-import spock.lang.Shared
-import spock.lang.Specification
+import static reactor.event.selector.Selectors.$
 
 /**
  * @author Stephane Maldini
@@ -39,44 +39,42 @@ class GroovyStreamSpec extends Specification {
 
 	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop', new EventLoopDispatcher('eventLoop', 256))
 	}
 
 
 	def "Compose from multiple values"() {
 		when:
 			'Defer a composition'
-			Stream s = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def s = Streams.defer(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation'
 			int sum = 0
-			Stream d = s | { Integer.parseInt it } | { sum += it; sum }
+			def d = s | { Integer.parseInt it } | { sum += it; sum }
 
 		then:
-			d.flush()
+			d.tap().get() == sum
 			sum == 15
 	}
 
 	def "Compose from multiple filtered values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation that filters odd elements'
-			def t = new Tap()
-			def d = ((c | { Integer.parseInt it }) & { it % 2 == 0 }) << t
+			def t = new Tap<Integer>()
+			((c | { Integer.parseInt it }) & { it % 2 == 0 }) << t
 
 		then:
-			d.flush()
 			t.get() == 4
 	}
 
 	def "Error handling with composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation that generates an exception for the last value'
@@ -86,7 +84,6 @@ class GroovyStreamSpec extends Specification {
 			d << t
 
 		then:
-			d.flush()
 			t.get() == 10
 	}
 
@@ -94,13 +91,12 @@ class GroovyStreamSpec extends Specification {
 	def "Reduce composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer([1, 2, 3, 4, 5])
 
 		and:
 			'apply a reduction'
-			def d = (c | { Integer.parseInt it }) % { i, acc = 1 -> acc * i;  }
+			def d = c % { Tuple2<Integer,Integer> tuple2 -> tuple2.t1 * (tuple2.t2 ?: 1)}
 			def t = d.tap()
-			d.flush()
 
 		then:
 			t.get() == 120
@@ -110,22 +106,19 @@ class GroovyStreamSpec extends Specification {
 	def "consume first and last with a composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def d = Streams.defer([1, 2, 3, 4, 5])
 
 		and:
 			'apply a transformation'
-			Stream d = c | { Integer.parseInt it }
 
 		and:
 			'reference first and last'
-			def first = d.first().tap()
-			def last = d.last().tap()
-
-			d.flush()
+			def first = d.first()
+			def last = d.last()
 
 		then:
-			first.get() == 1
-			last.get() == 5
+			first.tap().get() == 1
+			last.tap().get() == 5
 	}
 
 	/*def "Compose events (Request/Reply)"() {
@@ -170,7 +163,7 @@ class GroovyStreamSpec extends Specification {
 
 			and:
 				'prepare reduce and notify composition'
-				def c1 = Streams.defer().using(r).get()
+				def c1 = Streams.generate().using(r).get()
 				def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
 
 				r.compose(key.t2, '1', c1)
@@ -181,7 +174,7 @@ class GroovyStreamSpec extends Specification {
 
 			when:
 				'using reduce() alias'
-				c1 = Streams.defer().using(r).get()
+				c1 = Streams.generate().using(r).get()
 				c2 = c1.take(3).reduce()
 
 				r.compose(key.t2, '1', c1)
@@ -194,7 +187,7 @@ class GroovyStreamSpec extends Specification {
 	def "relay events to reactor"() {
 		given:
 			'a reactor and a selector'
-			def r = Reactors.reactor().env(testEnv).dispatcher('eventLoop').get()
+			def r = Reactors.reactor().env(testEnv).get()
 			def key = $()
 
 		when:
@@ -206,26 +199,22 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'Defer a composition'
-			Stream c = Streams.defer(['1', '2', '3', '4', '5']).get()
+			def c = Streams.defer(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation and call an explicit reactor'
-			def s = (c | { Integer.parseInt it }).to(key.object, r)
-			def t = s.tap()
-			s.flush()
-
+			(c | { Integer.parseInt it }).to(key.object, r)
 
 		then:
 			latch.await(1, TimeUnit.SECONDS)
 			latch.count == 0
-			t.get() == 5
 	}
 
 	def "compose from unknown number of values"() {
 
 		when:
 			'Defer a composition'
-			def c = Streams.defer(new TestIterable('1', '2', '3', '4', '5')).get()
+			def c = Streams.defer(new TestIterable('1', '2', '3', '4', '5'))
 
 		and:
 			'apply a transformation and call an explicit reactor'
@@ -234,9 +223,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'set a batch size to tap value after 5 iterations'
-			def t = d.last(5).tap()
-
-			d.flush()
+			def t = d.every(5).tap()
 
 		then:
 			t.get()

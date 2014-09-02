@@ -15,58 +15,56 @@
  */
 
 
-
 package reactor.groovy
+
+import reactor.core.Environment
+import reactor.rx.Promise
+import reactor.rx.spec.Promises
+import spock.lang.Shared
+import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import reactor.core.Environment
-import reactor.core.composable.Deferred
-import reactor.core.composable.Promise
-import reactor.core.composable.spec.Promises
-import reactor.event.dispatch.EventLoopDispatcher
-import spock.lang.Shared
-import spock.lang.Specification
 /**
  * @author Stephane Maldini
  */
 class GroovyPromisesSpec extends Specification {
 
-	@Shared def testEnv
+	@Shared
+	Environment testEnv
 
-	void setupSpec(){
+	void setupSpec() {
 		testEnv = new Environment()
-		testEnv.addDispatcher('eventLoop',new EventLoopDispatcher('eventLoop', 256))
 	}
 
 	def "Promise returns value"() {
 		when: "a deferred Promise"
-		def p = Promises.success("Hello World!").get()
+			def p = Promises.success("Hello World!")
 
 		then: 'Promise contains value'
-		p.get() == "Hello World!"
+			p.get() == "Hello World!"
 	}
 
 
 	def "Promise from Closure"() {
 		when: "a deferred Promise"
-		Promise<String> p = Promises.task{"Hello World!"}.get()
+			def p = Promises.syncTask { "Hello World!" }
 
 		then: 'Promise contains value'
-		p.await() == "Hello World!"
+			p.await() == "Hello World!"
 
 		when: "a deferred Promise"
-		p = Promise.<String>from{"Hello World!"}.get()
+			p = Promise.<String> from { "Hello World!" }.get()
 
 		then: 'Promise contains value'
-		p.await() == "Hello World!"
+			p.await() == "Hello World!"
 	}
 
 	def "Compose from Closure"() {
 		when:
 			'Defer a composition'
-			def c = Promises.task { sleep 500; 1 } get()
+			def c = Promises.<Integer>config().env(testEnv).supply{ sleep 500; 1 }.get()
 
 		and:
 			'apply a transformation'
@@ -74,22 +72,22 @@ class GroovyPromisesSpec extends Specification {
 
 		then:
 			'Composition contains value'
-			d.await() == 2
+			d.next().await() == 2
 	}
 
 	def "Promise notifies of Failure"() {
 		when: "a deferred failed Promise"
-		Promise p = Promises.error(new Exception("Bad code! Bad!")).get()
+			def p = Promises.error(new Exception("Bad code! Bad!"))
 
 		and: "invoke result"
-		p.get()
+			p.get()
 
 		then:
-		p.error
-		thrown(RuntimeException)
+			p.error
+			thrown(RuntimeException)
 
 		when: "a deferred failed Promise with runtime exception"
-			 p = Promises.error(new IllegalArgumentException("Bad code! Bad!")).get()
+			p = Promises.error(new IllegalArgumentException("Bad code! Bad!"))
 
 		and: "invoke result"
 			p.get()
@@ -101,73 +99,72 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be mapped"() {
 		given: "a synchronous promise"
-		Deferred p = Promises.defer().get()
+			def p = Promises.<String> defer()
 
 		when: "add a mapping closure"
-		Promise s = p | { Integer.parseInt it }
+			def s = p | { Integer.parseInt it }
 
 		and: "setting a value"
-		p << '10'
+			p << '10'
 
 		then:
-		s.get() == 10
+			s.next().get() == 10
 
 		when: "add a mapping closure"
-		p = Promises.defer().get()
-		s = p.compose().then { Integer.parseInt it }
+			p = Promises.defer()
+			s = p | { Integer.parseInt it }
 
 		and: "setting a value"
-		p << '10'
+			p << '10'
 
 		then:
-		s.get() == 10
+			s.next().get() == 10
 	}
 
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
-		Deferred p1 = Promises.defer().get()
-		Deferred p2 = Promises.defer().get()
+			def p1 = Promises.<String> defer()
+			def p2 = Promises.<String> defer()
 
 		when: "p1 is consumed by p2"
-		p1 << p2 //p1.consume p2
+			p1 << p2 //p1.consume p2
 
 		and: "setting a value"
-		p1 << 'Hello World!'
+			p1 << 'Hello World!'
 
 		then: 'P2 consumes the value when P1'
-		p2.compose().get() == 'Hello World!'
+			p2.get() == 'Hello World!'
 	}
-
 
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-		Deferred p = Promises.defer().env(testEnv).dispatcher('eventLoop').get()
-		final latch = new CountDownLatch(1)
+			def p = Promises.<String> config().env(testEnv).get()
+			final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"
-		Promise s = p.compose().then{ Integer.parseInt it }.
-				when (NumberFormatException, { latch.countDown() }).
-				then{ println('not in log'); true }
+			def s = p.stream().map() { Integer.parseInt it }.
+					when(NumberFormatException, { latch.countDown() }).
+					map { println('not in log'); true }
 
 		and: "setting a value"
-		p << 'not a number'
-		s.await(2000, TimeUnit.MILLISECONDS)
+			p << 'not a number'
+			s.next().await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
-		thrown(NumberFormatException)
-		latch.count == 0
+			thrown(NumberFormatException)
+			latch.count == 0
 	}
 
 	def "Promise compose after set"() {
 		given: "a synchronous promise"
-		def p = Promises.success('10').get()
+			def p = Promises.success('10')
 
 		when: "composing 2 functions"
-		def s = p | { Integer.parseInt it } | { it*10 }
+			def s = p | { Integer.parseInt it } | { it * 10 }
 
 		then:
-		s.get() == 100
+			s.next().get() == 100
 	}
 
 }

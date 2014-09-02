@@ -99,13 +99,13 @@ configure(allprojects) { project ->
 	]
 
 	compileGroovy {
-		sourceCompatibility = 1.6
-		targetCompatibility = 1.6
+		sourceCompatibility = 1.7
+		targetCompatibility = 1.7
 	}
 
 	compileJava {
-		sourceCompatibility = 1.6
-		targetCompatibility = 1.6
+		sourceCompatibility = 1.7
+		targetCompatibility = 1.7
 	}
 
 	compileTestJava {
@@ -134,9 +134,10 @@ configure(allprojects) { project ->
 	}
 
 	repositories {
-		//mavenLocal()
+		mavenLocal()
 		mavenCentral()
-		maven { url 'http://repo.spring.io/libs-snapshot' }
+		maven { url 'https://oss.sonatype.org/content/repositories/releases' }
+		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
 
 	// dependencies that are common across all java projects
@@ -153,6 +154,7 @@ configure(allprojects) { project ->
 		// Testing
 		testCompile "org.spockframework:spock-core:$spockVersion",
 								"org.hamcrest:hamcrest-library:1.3"
+		testCompile "org.testng:testng:6.8.5"
 		testRuntime "ch.qos.logback:logback-classic:$logbackVersion"
 
 		// Code coverage
@@ -189,6 +191,7 @@ configure(subprojects) { subproject ->
 			exceptionFormat "full"
 		}
 	}
+
 }
 
 configure(rootProject) {
@@ -230,6 +233,7 @@ project('reactor-core') {
 	description = 'Core Reactor components'
 
 	apply plugin: 'osgi'
+	apply plugin: 'groovy'
 
 	ext.bundleImportPackages = [
 			'net.openhft.chronicle;resolution:=optional',
@@ -252,6 +256,9 @@ project('reactor-core') {
 		// Rich Collections
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion",
 						"io.gatling:jsr166e:1.0"
+
+		// Reactive Streams
+		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

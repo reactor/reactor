@@ -5,13 +5,10 @@ import com.gs.collections.impl.list.mutable.FastList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
-import reactor.core.composable.spec.Streams;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
+import reactor.rx.Stream;
+import reactor.rx.spec.Streams;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,10 +17,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Simple {@link java.util.concurrent.Executor} backed fork/join pool that will coalesce results from asynchronous tasks
- * and publish them into a {@link reactor.core.composable.Promise} or a {@link reactor.core.composable.Stream} depending
+ * and publish them into a {@link reactor.rx.Promise} or a {@link reactor.rx.Stream} depending
  * on whether you intend to {@code fork()} an execution or {@code join()} them together. tasks
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ForkJoinPool {
 
@@ -48,7 +46,7 @@ public class ForkJoinPool {
 	/**
 	 * Asynchronously submit the given tasks, one submit per task, to the configured {@link java.util.concurrent.Executor}
 	 * and collecting the results in a {@link java.util.List} that will be the fulfillment of the {@link
-	 * reactor.core.composable.Promise} returned from {@link ForkJoinTask#compose()}.
+	 * reactor.rx.Promise} returned from {@link ForkJoinTask#compose()}.
 	 *
 	 * @param tasks
 	 * 		asynchronous tasks to execute
@@ -57,14 +55,14 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, Promise<ImmutableList<V>>> join(final Function<?, V>... tasks) {
+	public <V> ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> join(final Function<?, V>... tasks) {
 		return join(Arrays.asList(tasks));
 	}
 
 	/**
 	 * Asynchronously submit the given tasks, one submit per task, to the configured {@link java.util.concurrent.Executor}
 	 * and collecting the results in a {@link java.util.List} that will be the fulfillment of the {@link
-	 * reactor.core.composable.Promise} returned from {@link ForkJoinTask#compose()}.
+	 * reactor.rx.Promise} returned from {@link ForkJoinTask#compose()}.
 	 *
 	 * @param tasks
 	 * 		asynchronous tasks to execute
@@ -73,11 +71,11 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, Promise<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
-		final Deferred<ImmutableList<V>, Promise<ImmutableList<V>>> d
-				= Promises.defer(env, dispatcher);
-		final ForkJoinTask<ImmutableList<V>, Promise<ImmutableList<V>>> t
-				= new ForkJoinTask<ImmutableList<V>, Promise<ImmutableList<V>>>(executor, d);
+	public <V> ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
+		final Stream<ImmutableList<V>> d
+				= Streams.defer(env, dispatcher);
+		final ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> t
+				= new ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>>(executor, d);
 
 		final AtomicInteger count = new AtomicInteger(tasks.size());
 		final FastList<V> results = FastList.newList();
@@ -94,7 +92,8 @@ public class ForkJoinPool {
 						}
 					} finally {
 						if (count.decrementAndGet() == 0) {
-							d.accept(results.toImmutable());
+							d.broadcastNext(results.toImmutable());
+							d.broadcastComplete();
 						}
 					}
 					return null;
@@ -107,7 +106,7 @@ public class ForkJoinPool {
 
 	/**
 	 * Asynchronously execute tasks added to the returned {@link reactor.core.fork.ForkJoinTask} and publish the non-null
-	 * results, one per task, to the {@link Stream} returned from {@link ForkJoinTask#compose()}.
+	 * results, one per task, to the {@link reactor.rx.Stream} returned from {@link ForkJoinTask#compose()}.
 	 *
 	 * @param <V>
 	 * 		type of task result
@@ -115,7 +114,7 @@ public class ForkJoinPool {
 	 * @return fork/join task
 	 */
 	public <V> ForkJoinTask<V, Stream<V>> fork() {
-		Deferred<V, Stream<V>> d = Streams.defer(env, dispatcher);
+		Stream<V> d = Streams.defer(env, dispatcher);
 		return new ForkJoinTask<V, Stream<V>>(executor, d);
 	}
 

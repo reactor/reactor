@@ -16,29 +16,72 @@
 
 package reactor.tuple;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.Iterator;
+
 /**
  * A tuple that holds a single value
  *
  * @param <T1> The type held by this tuple
- *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class Tuple1<T1> extends Tuple {
 
 	private static final long serialVersionUID = -1467756857377152573L;
 
-	Tuple1(Object... values) {
-		super(values);
+	public final T1 t1;
+
+	Tuple1(int size, T1 t1) {
+		super(size);
+		this.t1 = t1;
 	}
 
 	/**
 	 * Type-safe way to get the first object of this {@link Tuple}.
 	 *
-	 * @return The first object, cast to the correct type.
+	 * @return The first object
 	 */
-	@SuppressWarnings("unchecked")
 	public T1 getT1() {
-		return (T1) get(0);
+		return t1;
 	}
 
+	@Nullable
+	@Override
+	public Object get(int index) {
+		return index == 0 ? t1 : null;
+	}
+
+	@Override
+	public Object[] toArray() {
+		return new Object[]{t1};
+	}
+
+	@Nonnull
+	@Override
+	public Iterator<?> iterator() {
+		return Arrays.<Object>asList(t1).iterator();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Tuple1)) return false;
+		if (!super.equals(o)) return false;
+
+		Tuple1 tuple1 = (Tuple1) o;
+
+		if (t1 != null ? !t1.equals(tuple1.t1) : tuple1.t1 != null) return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = super.hashCode();
+		result = 31 * result + (t1 != null ? t1.hashCode() : 0);
+		return result;
+	}
 }

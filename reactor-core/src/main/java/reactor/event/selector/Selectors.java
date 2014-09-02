@@ -130,7 +130,7 @@ public abstract class Selectors {
 	 *
 	 * @see ClassSelector
 	 */
-	public static Selector type(Class<?> supertype) {
+	public static ClassSelector type(Class<?> supertype) {
 		return new ClassSelector(supertype);
 	}
 
@@ -147,7 +147,7 @@ public abstract class Selectors {
 	 *
 	 * @see ClassSelector
 	 */
-	public static Selector T(Class<?> supertype) {
+	public static ClassSelector T(Class<?> supertype) {
 		return type(supertype);
 	}
 

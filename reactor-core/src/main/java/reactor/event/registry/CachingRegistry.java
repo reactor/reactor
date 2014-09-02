@@ -66,9 +66,12 @@ public class CachingRegistry<T> implements Registry<T> {
 		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
 			@Override
 			public void value(final MutableList<Registration<? extends T>> regs) {
-				for (Registration<? extends T> reg : regs) {
+				Iterator<Registration<? extends T>> registrationIterator = regs.iterator();
+				Registration<? extends T> reg;
+				while(registrationIterator.hasNext()) {
+					reg = registrationIterator.next();
 					if (reg.getSelector().matches(key)) {
-						regs.remove(reg);
+						registrationIterator.remove();
 						modified.compareAndSet(false, true);
 					}
 				}

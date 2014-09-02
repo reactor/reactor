@@ -2,10 +2,6 @@ package reactor.net.udp;
 
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
@@ -14,6 +10,9 @@ import reactor.net.AbstractNetPeer;
 import reactor.net.NetChannel;
 import reactor.net.NetServer;
 import reactor.net.config.ServerSocketOptions;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -25,6 +24,7 @@ import java.util.Collection;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
 		extends AbstractNetPeer<IN, OUT>
@@ -54,14 +54,14 @@ public abstract class DatagramServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public Promise<Boolean> start() {
-		final Deferred<Boolean, Promise<Boolean>> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {
-				d.accept(true);
+				d.onNext(true);
 			}
 		});
-		return d.compose();
+		return d;
 	}
 
 	@Override
@@ -78,15 +78,15 @@ public abstract class DatagramServer<IN, OUT>
 	public abstract DatagramServer<IN, OUT> send(OUT data);
 
 	/**
-	 * Retrieve the {@link reactor.core.composable.Stream} on which can be composed actions to take when data comes into
+	 * Retrieve the {@link reactor.rx.Stream} on which can be composed actions to take when data comes into
 	 * this {@literal DatagramServer}.
 	 *
-	 * @return the input {@link reactor.core.composable.Stream}
+	 * @return the input {@link reactor.rx.Stream}
 	 */
 	public abstract Stream<IN> in();
 
 	/**
-	 * Retrieve the {@link reactor.core.composable.Stream} into which data can accepted for sending to peers.
+	 * Retrieve the {@link reactor.rx.Stream} into which data can accepted for sending to peers.
 	 *
 	 * @return a {@link reactor.function.batch.BatchConsumer} for sending data out
 	 */

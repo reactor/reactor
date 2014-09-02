@@ -18,20 +18,19 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
+import reactor.rx.Promise;
+import reactor.rx.spec.Promises;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class AwaitTests extends AbstractReactorTest {
@@ -42,31 +41,22 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
-		for(int i = 0; i < 1000; i++) {
-			final Deferred<String, Promise<String>> deferred = Promises.<String>defer()
-			                                                           .env(env)
-			                                                           .dispatcher("threadPoolExecutor")
-			                                                           .get();
-			final CountDownLatch latch = new CountDownLatch(1);
+		for (int i = 0; i < 10000; i++) {
+			final Promise<String> deferred = Promises.<String>config()
+					.env(env)
+					.get();
 
-			Promise<String> promise = deferred.compose();
-			promise.onSuccess(new Consumer<String>() {
-
-				@Override
-				public void accept(String t) {
-					latch.countDown();
-				}
-			});
 			innerReactor.schedule(new Consumer() {
 
 				@Override
 				public void accept(Object t) {
-					deferred.accept("foo");
+					deferred.onNext("foo");
 				}
 
 			}, null);
 
-			assertThat("latch is counted down", latch.await(5, TimeUnit.SECONDS));
+			String latchRes = deferred.await(10, TimeUnit.SECONDS);
+			assertThat("latch is not counted down : " + deferred.debug(), "foo".equals(latchRes));
 		}
 	}
 

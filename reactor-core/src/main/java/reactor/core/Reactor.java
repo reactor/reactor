@@ -25,8 +25,8 @@ import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
-import reactor.event.routing.ConsumerFilteringEventRouter;
-import reactor.event.routing.EventRouter;
+import reactor.event.routing.ConsumerFilteringRouter;
+import reactor.event.routing.Router;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -57,21 +57,22 @@ import java.util.UUID;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class Reactor implements Observable {
 
-	private static final EventRouter DEFAULT_EVENT_ROUTER = new ConsumerFilteringEventRouter(
+	private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
 
-	private final Dispatcher                             dispatcher;
-	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
-	private final EventRouter                            eventRouter;
-	private final Consumer<Throwable>                    dispatchErrorHandler;
-	private final Consumer<Throwable>                    uncaughtErrorHandler;
+	private final Dispatcher            dispatcher;
+	private final Registry<Consumer<?>> consumerRegistry;
+	private final Router                router;
+	private final Consumer<Throwable>   dispatchErrorHandler;
+	private final Consumer<Throwable> uncaughtErrorHandler;
 
 	private volatile UUID id;
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
-	 * EventRouter} that broadcast events to all of the registered consumers that {@link Selector#matches(Object) match}
+	 * reactor.event.routing.Router} that broadcast events to all of the registered consumers that {@link 
+	 * Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
 	 * @param dispatcher
@@ -87,25 +88,25 @@ public class Reactor implements Observable {
 	 *
 	 * @param dispatcher
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is used.
-	 * @param eventRouter
-	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
+	 * @param router
+	 * 		The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
 	 * 		default event router that broadcasts events to all of the registered consumers that {@link
 	 * 		Selector#matches(Object) match} the notification key and does not perform any type conversion will be used.
 	 */
 	public Reactor(@Nullable Dispatcher dispatcher,
-	               @Nullable EventRouter eventRouter) {
-		this(dispatcher, eventRouter, null, null);
+	               @Nullable Router router) {
+		this(dispatcher, router, null, null);
 	}
 
 	public Reactor(@Nullable Dispatcher dispatcher,
-	               @Nullable EventRouter eventRouter,
+	               @Nullable Router router,
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
 	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
-		this(new CachingRegistry<Consumer<? extends Event<?>>>(),
-		     dispatcher,
-		     eventRouter,
-		     dispatchErrorHandler,
-		     uncaughtErrorHandler);
+		this(new CachingRegistry<Consumer<?>>(),
+				dispatcher,
+				router,
+				dispatchErrorHandler,
+				uncaughtErrorHandler);
 	}
 
 	/**
@@ -113,37 +114,38 @@ public class Reactor implements Observable {
 	 *
 	 * @param dispatcher
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher is used.
-	 * @param eventRouter
-	 * 		The {@link EventRouter} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
+	 * @param router
+	 * 		The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in which case the
 	 * 		default event router that broadcasts events to all of the registered consumers that {@link
 	 * 		Selector#matches(Object) match} the notification key and does not perform any type conversion will be used.
 	 * @param consumerRegistry
 	 * 		The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
 	 */
-	public Reactor(@Nonnull Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	public Reactor(@Nonnull Registry<Consumer<?>> consumerRegistry,
 	               @Nullable Dispatcher dispatcher,
-	               @Nullable EventRouter eventRouter,
+	               @Nullable Router router,
 	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable Consumer<Throwable> uncaughtErrorHandler) {
+	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
-		this.dispatcher = (null == dispatcher ? new SynchronousDispatcher() : dispatcher);
-		this.eventRouter = (null == eventRouter ? DEFAULT_EVENT_ROUTER : eventRouter);
+		this.dispatcher = (null == dispatcher ? SynchronousDispatcher.INSTANCE : dispatcher);
+		this.router = (null == router ? DEFAULT_EVENT_ROUTER : router);
 		if (null == dispatchErrorHandler) {
 			this.dispatchErrorHandler = new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable t) {
 					Class<? extends Throwable> type = t.getClass();
-					Reactor.this.eventRouter.route(type,
-					                               Event.wrap(t).setKey(type),
-					                               Reactor.this.consumerRegistry.select(type),
-					                               null,
-					                               null);
+					Reactor.this.router.route(type,
+							Event.wrap(t),
+							Reactor.this.consumerRegistry.select(type),
+							null,
+							null);
 				}
 			};
 		} else {
 			this.dispatchErrorHandler = dispatchErrorHandler;
 		}
+
 		this.uncaughtErrorHandler = uncaughtErrorHandler;
 
 		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
@@ -151,13 +153,13 @@ public class Reactor implements Observable {
 
 			@Override
 			public void accept(Event<Throwable> ev) {
-				if (null == Reactor.this.uncaughtErrorHandler) {
+				if (null == uncaughtErrorHandler) {
 					if (null == log) {
 						log = LoggerFactory.getLogger(Reactor.class);
 					}
 					log.error(ev.getData().getMessage(), ev.getData());
 				} else {
-					Reactor.this.uncaughtErrorHandler.accept(ev.getData());
+					uncaughtErrorHandler.accept(ev.getData());
 				}
 			}
 		});
@@ -181,7 +183,7 @@ public class Reactor implements Observable {
 	 *
 	 * @return The {@link Registry} in use.
 	 */
-	public Registry<Consumer<? extends Event<?>>> getConsumerRegistry() {
+	public Registry<Consumer<?>> getConsumerRegistry() {
 		return consumerRegistry;
 	}
 
@@ -195,12 +197,12 @@ public class Reactor implements Observable {
 	}
 
 	/**
-	 * Get the {@link EventRouter} used to route events to {@link Consumer Consumers}.
+	 * Get the {@link reactor.event.routing.Router} used to route events to {@link Consumer Consumers}.
 	 *
-	 * @return The {@link EventRouter}.
+	 * @return The {@link reactor.event.routing.Router}.
 	 */
-	public EventRouter getEventRouter() {
-		return eventRouter;
+	public Router getRouter() {
+		return router;
 	}
 
 	public Consumer<Throwable> getDispatchErrorHandler() {
@@ -222,11 +224,21 @@ public class Reactor implements Observable {
 	}
 
 	@Override
-	public <E extends Event<?>> Registration<Consumer<E>> on(Selector selector, final Consumer<E> consumer) {
+	public <E extends Event<?>> Registration<Consumer<E>> on(final Selector selector, final Consumer<E> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
-		Registration<Consumer<E>> reg = consumerRegistry.register(selector, consumer);
-		return reg;
+		if (null != selector.getHeaderResolver()) {
+			Consumer<E> proxyConsumer = new Consumer<E>() {
+				@Override
+				public void accept(E e) {
+					e.getHeaders().setAll(selector.getHeaderResolver().resolve(e.getKey()));
+					consumer.accept(e);
+				}
+			};
+			return consumerRegistry.register(selector, proxyConsumer);
+		}else{
+			return consumerRegistry.register(selector, consumer);
+		}
 	}
 
 	@Override
@@ -239,7 +251,7 @@ public class Reactor implements Observable {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
-		dispatcher.dispatch(key, ev, consumerRegistry, dispatchErrorHandler, eventRouter, onComplete);
+		dispatcher.dispatch(key, ev, consumerRegistry, dispatchErrorHandler, router, onComplete);
 
 		return this;
 	}
@@ -299,14 +311,14 @@ public class Reactor implements Observable {
 	@Override
 	public <T> Consumer<Event<T>> prepare(final Object key) {
 		return new Consumer<Event<T>>() {
-			final List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
+			final List<Registration<? extends Consumer<?>>> regs = consumerRegistry.select(key);
 			final int size = regs.size();
 
 			@Override
 			public void accept(Event<T> ev) {
 				for (int i = 0; i < size; i++) {
 					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>) regs.get(i);
-					dispatcher.dispatch(ev.setKey(key), eventRouter, reg.getObject(), dispatchErrorHandler);
+					dispatcher.dispatch(ev.setKey(key), router, reg.getObject(), dispatchErrorHandler);
 				}
 			}
 		};
@@ -320,13 +332,16 @@ public class Reactor implements Observable {
 	@Override
 	public <T> Consumer<Iterable<Event<T>>> batchNotify(final Object key, final Consumer<Void> completeConsumer) {
 		return new Consumer<Iterable<Event<T>>>() {
-			final Consumer<Event<Iterable<Event<T>>>> batchConsumer = new Consumer<Event<Iterable<Event<T>>>>() {
+			final Consumer<Iterable<Event<T>>> batchConsumer = new Consumer<Iterable<Event<T>>>() {
 				@Override
-				public void accept(Event<Iterable<Event<T>>> event) {
-					List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
-					for (Event<T> batchedEvent : event.getData()) {
-						for (Registration<? extends Consumer<? extends Event<?>>> registration : regs) {
-							eventRouter.route(null, batchedEvent, null, registration.getObject(), dispatchErrorHandler);
+				public void accept(Iterable<Event<T>> event) {
+					List<Registration<? extends Consumer<?>>> regs = consumerRegistry.select(key);
+					for (Event<T> batchedEvent : event) {
+						for (Registration<? extends Consumer<?>> registration : regs) {
+							if(registration.getClass().isAssignableFrom(batchedEvent.getClass())){
+								router.route(null, batchedEvent, null, (Consumer<Event<T>>)registration.getObject(),
+										dispatchErrorHandler);
+							}
 						}
 					}
 					if (completeConsumer != null) {
@@ -337,7 +352,7 @@ public class Reactor implements Observable {
 
 			@Override
 			public void accept(Iterable<Event<T>> evs) {
-				dispatcher.dispatch(null, Event.wrap(evs), null, dispatchErrorHandler, eventRouter, batchConsumer);
+				dispatcher.dispatch(null, evs, null, dispatchErrorHandler, router, batchConsumer);
 			}
 		};
 	}
@@ -367,7 +382,7 @@ public class Reactor implements Observable {
 	 * 		The type of the data.
 	 */
 	public <T> void schedule(final Consumer<T> consumer, final T data) {
-		dispatcher.dispatch(null, null, null, dispatchErrorHandler, eventRouter, new Consumer<Event<?>>() {
+		dispatcher.dispatch(null, null, null, dispatchErrorHandler, router, new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
 				consumer.accept(data);
@@ -389,7 +404,7 @@ public class Reactor implements Observable {
 
 		private ReplyToEvent(Event<T> delegate, Observable replyToObservable) {
 			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable,
-			     delegate.getErrorConsumer());
+					delegate.getErrorConsumer());
 		}
 
 		@Override

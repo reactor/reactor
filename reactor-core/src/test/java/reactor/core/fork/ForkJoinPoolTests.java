@@ -6,8 +6,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
-import reactor.core.composable.Promise;
 import reactor.function.Function;
+import reactor.rx.Stream;
 
 import java.util.List;
 import java.util.Random;
@@ -60,10 +60,12 @@ public class ForkJoinPoolTests {
 			tasks.add(task);
 		}
 
-		ForkJoinTask<ImmutableList<Integer>, Promise<ImmutableList<Integer>>> fjt = fjp.join(tasks);
+		ForkJoinTask<ImmutableList<Integer>, Stream<ImmutableList<Integer>>> fjt = fjp.join(tasks);
+		System.out.println(fjt.compose().debug());
 		fjt.submit();
-
-		ImmutableList<Integer> l = fjt.compose().await(15, TimeUnit.SECONDS);
+		System.out.println(fjt.compose().debug());
+		ImmutableList<Integer> l = fjt.compose().next().await(15, TimeUnit.SECONDS);
+		System.out.println(fjt.compose().debug());
 
 		assertThat("Integers were collected", l.size(), is(100));
 	}

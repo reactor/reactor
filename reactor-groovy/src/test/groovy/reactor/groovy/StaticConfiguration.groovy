@@ -17,13 +17,13 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.configuration.DispatcherType
-import reactor.event.dispatch.SynchronousDispatcher
-import reactor.function.Consumer
-import reactor.function.Function
-import reactor.function.Predicate
-import reactor.groovy.config.GroovyEnvironment
 import reactor.event.Event
-import static reactor.event.selector.Selectors.*
+import reactor.event.dispatch.SynchronousDispatcher
+import reactor.groovy.config.GroovyEnvironment
+import reactor.rx.spec.Streams
+
+import static reactor.event.selector.Selectors.matchAll
+import static reactor.event.selector.Selectors.object
 
 @CompileStatic
 class StaticConfiguration {
@@ -107,16 +107,16 @@ class StaticConfiguration {
 			}
 
 			reactor('test1') {
-				stream{
-					map({ Event<?> ev->
-						ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
-					} as Function)
-				}
-				stream(object('test')){
-					map({ Event<?> ev->
-						ev.copy("$ev.data twice")
-					} as Function)
-				}
+				processor matchAll(), Streams.<Event<?>> defer().
+						map { Event<?> ev ->
+							ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
+						}
+
+				processor object('test'), Streams.<Event<?>> defer().
+						map { Event<?> ev ->
+							ev.copy("$ev.data twice")
+						}
+
 				on('test') {
 					reply it
 				}
@@ -127,11 +127,9 @@ class StaticConfiguration {
 			}
 
 			reactor('test2') {
-				stream('test'){
-					filter({ Event<?> ev->
-						false
-					} as Predicate)
-				}
+				processor 'test', Streams.<Event<?>> defer().
+						filter{false}
+
 				on('test') {
 					reply it
 					throw new Exception('never')

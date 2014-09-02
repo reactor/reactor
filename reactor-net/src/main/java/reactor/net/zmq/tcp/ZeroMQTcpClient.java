@@ -10,10 +10,6 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
 import reactor.core.Reactor;
-import reactor.core.composable.Deferred;
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
-import reactor.core.composable.spec.Promises;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -25,6 +21,9 @@ import reactor.net.tcp.TcpClient;
 import reactor.net.zmq.ZeroMQClientSocketOptions;
 import reactor.net.zmq.ZeroMQNetChannel;
 import reactor.net.zmq.ZeroMQWorker;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
+import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.UUIDUtils;
 
@@ -41,6 +40,7 @@ import static reactor.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
@@ -74,12 +74,12 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
-		Deferred<NetChannel<IN, OUT>, Promise<NetChannel<IN, OUT>>> d =
+		Promise<NetChannel<IN, OUT>> d =
 				Promises.defer(getEnvironment(), getReactor().getDispatcher());
 
 		doOpen(d);
 
-		return d.compose();
+		return d;
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 package reactor.net;
 
-import reactor.core.composable.Promise;
-import reactor.core.composable.Stream;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
 import reactor.function.Consumer;
 
 /**
@@ -12,10 +12,10 @@ import reactor.function.Consumer;
 public interface NetClient<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
 
 	/**
-	 * Open a channel to the configured address and return a {@link reactor.core.composable.Promise} that will be
+	 * Open a channel to the configured address and return a {@link reactor.rx.Promise} that will be
 	 * fulfilled with the connected {@link reactor.net.NetChannel}.
 	 *
-	 * @return {@link reactor.core.composable.Promise} that will be completed when connected
+	 * @return {@link reactor.rx.Promise} that will be completed when connected
 	 */
 	Promise<NetChannel<IN, OUT>> open();
 

@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
  * use a backing datastore.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public interface QueuePersistor<T> extends Iterable<T> {
 
@@ -54,26 +55,27 @@ public interface QueuePersistor<T> extends Iterable<T> {
 	/**
 	 * Returns a {@link Function} that will persist the item and return a Long id for the item.
 	 *
+	 * @param t element to persist
+	 *
 	 * @return id of the item just persisted
 	 */
-	@Nonnull
-	Function<T, Long> offer();
+	Long offer(@Nonnull T t);
 
 	/**
 	 * Returns a {@link Function} that will return the item with the given id.
 	 *
+	 * @param idx the given index to lookup
+	 *
 	 * @return item persisted under the given id
 	 */
-	@Nonnull
-	Function<Long, T> get();
+	T get(Long idx);
 
 	/**
 	 * Returns a {@link Supplier} that will simply remove the oldest item from the persistence queue.
 	 *
 	 * @return the oldest item in the queue
 	 */
-	@Nonnull
-	Supplier<T> remove();
+	T remove();
 
 	/**
 	 * Release any internal resources used by the persistence mechanism.

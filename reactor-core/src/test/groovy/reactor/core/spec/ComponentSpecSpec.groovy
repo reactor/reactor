@@ -15,12 +15,12 @@
  */
 package reactor.core.spec
 
-import reactor.core.composable.Deferred
-import reactor.core.composable.Promise
-import reactor.core.composable.spec.Promises
-import reactor.core.composable.spec.Streams
 import reactor.event.dispatch.TraceableDelegatingDispatcher
 import reactor.function.support.Tap
+import reactor.rx.Promise
+import reactor.rx.Stream
+import reactor.rx.spec.Promises
+import reactor.rx.spec.Streams
 import spock.lang.Specification
 
 /**
@@ -49,16 +49,16 @@ class ComponentSpecSpec extends Specification {
 			reactor.getDispatcher() instanceof TraceableDelegatingDispatcher
 	}
 
-	def "Composable correctly built"() {
+	def "Stream correctly built"() {
 
 		when:
 			"we create a plain Composable"
-			Deferred composable = Streams.defer().synchronousDispatcher().get()
-			Tap<String> tap = composable.compose().tap()
-			composable.accept('test')
+			Stream composable = Streams.<String>config().synchronousDispatcher().get()
+			Tap<String> tap = composable.tap()
+			composable.broadcastNext('test')
 
 		then:
-			Deferred.isAssignableFrom(composable.class)
+			Stream.isAssignableFrom(composable.class)
 			tap.get() == 'test'
 
 	}
@@ -67,7 +67,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Promise"
-			Promise promise = Promises.success('test').synchronousDispatcher().get()
+			Promise promise = Promises.<String>config().success('test').synchronousDispatcher().get()
 
 		then:
 			Promise.isAssignableFrom(promise.class)
@@ -78,12 +78,11 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Promise"
-			Deferred promise = Promises.defer().get()
-			promise.accept 'test'
+			Promise promise = Promises.<String>defer()
+			promise.onNext 'test'
 
 		then:
-			Deferred.isAssignableFrom(promise.class)
-			promise.compose().get() == 'test'
+			promise.get() == 'test'
 	}
 
 }

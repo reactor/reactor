@@ -1,31 +1,29 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
+import org.reactivestreams.Processor
 import reactor.convert.Converter
 import reactor.core.Environment
 import reactor.core.Reactor
-import reactor.core.composable.Deferred
-import reactor.core.composable.Stream
-import reactor.core.composable.spec.Streams
 import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.dispatch.Dispatcher
+import reactor.event.dispatch.SynchronousDispatcher
+import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerInvoker
-import reactor.event.routing.EventRouter
-import reactor.event.selector.ObjectSelector
+import reactor.event.routing.Router
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
-import reactor.event.support.CallbackEvent
-import reactor.filter.Filter
-import reactor.filter.FirstFilter
-import reactor.filter.PassThroughFilter
-import reactor.filter.RandomFilter
-import reactor.filter.RoundRobinFilter
+import reactor.filter.*
 import reactor.function.Consumer
-import reactor.function.Predicate
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
+import reactor.rx.Stream
+import reactor.rx.action.Action
+import reactor.rx.spec.Streams
 
 /**
  * @author Stephane Maldini
@@ -43,7 +41,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	Environment env
 	Converter converter
-	EventRouter router
+	Router router
 	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
 	Filter filter
@@ -53,7 +51,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 
 	final String name
 
-	private final SortedSet<HeadAndTail> streams = new TreeSet<HeadAndTail>()
+	private final SortedSet<SelectorProcessor> processors = new TreeSet<SelectorProcessor>()
 	private final Map<String, Object> ext = [:]
 	private final Map<Selector, List<Consumer>> consumers = [:]
 	private final Map<String, ReactorBuilder> reactorMap
@@ -79,7 +77,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 		consumerInvoker = consumerInvoker ?: r.consumerInvoker
 
 		if (!override) {
-			streams.addAll r.streams
+			processors.addAll r.processors
 			childNodes.addAll r.childNodes
 		}
 
@@ -136,7 +134,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 
-
 	ReactorBuilder on(@DelegatesTo(strategy = Closure.DELEGATE_FIRST,
 			value = ClosureEventConsumer.ReplyDecorator) Closure closure) {
 		on noSelector, new ClosureEventConsumer((Closure) closure.clone())
@@ -166,31 +163,37 @@ class ReactorBuilder implements Supplier<Reactor> {
 		this
 	}
 
-	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream) Closure<Stream> closure) {
+	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
+	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            Closure<Action<Event<?>, Event<?>>> closure) {
 		stream((Selector) null, closure)
 	}
 
-	void stream(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
-		stream((Selector) null, head, tail)
-	}
-
-	void stream(String selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
-			value = Stream) Closure<Stream> closure) {
+	void stream(String selector,
+	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
+	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            Closure<Action<Event<?>, Event<?>>> closure) {
 		stream Selectors.$(selector), closure
 	}
 
-	void stream(Selector selector, @DelegatesTo(strategy = Closure.DELEGATE_FIRST,
-			value = Stream) Closure<Stream> closure) {
-		Deferred<Event<?>, Stream<Event<?>>> head = Streams.<Event<?>> defer().get()
-		Stream newTail = DSLUtils.delegateFirstAndRun(head.compose(), closure)
-		stream selector, head, newTail
+	void stream(Selector selector,
+	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
+	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            Closure<Action<Event<?>, Event<?>>> closure) {
+		Stream<Event<?>> head = Streams.<Event<?>> defer(env, SynchronousDispatcher.INSTANCE)
+		Processor<Event<?>, Event<?>> newTail = DSLUtils.delegateFirstAndRun(head, closure)?.combine()
+		if(!newTail){
+			throw new IllegalArgumentException("A Stream closure must return a non null reactor.rx.Action")
+		}
+		processor selector, newTail
 	}
 
+	void processor(String selector, Processor<Event, Event> _processor) {
+		processor Selectors.object(selector), _processor
+	}
 
-	void stream(Selector selector, Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail) {
-		if (tail) {
-			streams << new HeadAndTail(head, tail, selector)
-		}
+	void processor(Selector selector, Processor<Event, Event> processor) {
+		processors.add(new SelectorProcessor(processor, selector ?: Selectors.matchAll()))
 	}
 
 	@Override
@@ -209,46 +212,18 @@ class ReactorBuilder implements Supplier<Reactor> {
 		}
 		if (router) {
 			spec.eventRouter(router)
-		} else if (streams) {
-			Deferred<Event<?>, Stream<Event<?>>> deferred = null
-			Stream<Event<?>> tail = null
-			HeadAndTail stream
-			HeadAndTail anticipatedStream
-			Iterator<HeadAndTail> it = streams.iterator()
-			boolean first = true
+		} else if (processors) {
 
-			while (it.hasNext() || anticipatedStream) {
-				stream = anticipatedStream ?: it.next()
-				anticipatedStream = null
-
-				if (first) {
-					first = false
-					deferred = Streams.<Event<?>> defer().get()
-					tail = deferred.compose()
-				}
-				if (stream.selector) {
-					if (it.hasNext()) {
-						anticipatedStream = it.next()
-					} else {
-						def finalDeferred = Streams.<Event<?>> defer().get()
-						anticipatedStream = new HeadAndTail(finalDeferred, finalDeferred.compose(), null)
-					}
-					tail.filter(new EventRouterPredicate(stream.selector), anticipatedStream.tail).connect(stream.head.compose())
-				} else {
-					tail.connect(stream.head.compose())
-				}
-				tail = stream.tail
+			def registry = new CachingRegistry<Processor<Event<?>,Event<?>>>()
+			Iterator<SelectorProcessor> it = processors.iterator()
+			SelectorProcessor p
+			while(it.hasNext()){
+				p = it.next()
+				registry.register p.selector, p.processor
 			}
 
-			tail.consumeEvent(new Consumer<Event>() {
-				@Override
-				void accept(Event eventEvent) {
-					if (eventEvent.class == CallbackEvent)
-						((CallbackEvent) eventEvent).callback()
-				}
-			})
-			spec.eventRouter(new StreamEventRouter(filter ?: DEFAULT_FILTER,
-					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), deferred))
+			spec.eventRouter(new StreamRouter(filter ?: DEFAULT_FILTER,
+					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), registry))
 
 		} else {
 			if (filter) {
@@ -315,38 +290,6 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	@CompileStatic
-	private final class EventRouterPredicate implements Predicate<Event<?>> {
-		final Selector sel
-
-		EventRouterPredicate(Selector sel) {
-			this.sel = sel
-		}
-
-		@Override
-		boolean test(Event<?> event) {
-			sel.matches(event.headers.get(StreamEventRouter.KEY_HEADER))
-		}
-	}
-
-	@CompileStatic
-	final class HeadAndTail implements Comparable<HeadAndTail> {
-		final Deferred<Event<?>, Stream<Event<?>>> head
-		final Stream<Event<?>> tail
-		final Selector selector
-
-		HeadAndTail(Deferred<Event<?>, Stream<Event<?>>> head, Stream<Event<?>> tail, Selector selector) {
-			this.head = head
-			this.tail = tail
-			this.selector = selector
-		}
-
-		@Override
-		int compareTo(HeadAndTail o) {
-			selector ? 1 : 0
-		}
-	}
-
-	@CompileStatic
 	final class NestedReactorBuilder extends ReactorBuilder {
 
 		NestedReactorBuilder(String reactorName, ReactorBuilder parent, Reactor reactor) {
@@ -358,4 +301,20 @@ class ReactorBuilder implements Supplier<Reactor> {
 		}
 	}
 
+
+	@CompileStatic
+	final class SelectorProcessor implements Comparable<SelectorProcessor> {
+		final Processor<Event<?>, Event<?>> processor
+		final Selector selector
+
+		SelectorProcessor(Processor<Event<?>, Event<?>> processor, Selector selector) {
+			this.processor = processor
+			this.selector = selector
+		}
+
+		@Override
+		int compareTo(SelectorProcessor o) {
+			selector ? 1 : 0
+		}
+	}
 }

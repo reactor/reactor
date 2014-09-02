@@ -2,9 +2,8 @@ package reactor.event.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.Event;
 import reactor.event.registry.Registry;
-import reactor.event.routing.EventRouter;
+import reactor.event.routing.Router;
 import reactor.function.Consumer;
 import reactor.util.Assert;
 
@@ -64,11 +63,11 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(Object key,
+	public <E> void dispatch(Object key,
 	                                          E event,
-	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          Registry<Consumer<?>> consumerRegistry,
 	                                          Consumer<Throwable> errorConsumer,
-	                                          EventRouter eventRouter,
+	                                          Router router,
 	                                          Consumer<E> completionConsumer) {
 		if(log.isTraceEnabled()) {
 			log.trace("dispatch({}, {}, {}, {}, {}, {})",
@@ -76,21 +75,21 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 			          event,
 			          consumerRegistry,
 			          errorConsumer,
-			          eventRouter,
+					router,
 			          completionConsumer);
 		}
-		delegate.dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer);
+		delegate.dispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void dispatch(E event,
-	                                          EventRouter eventRouter,
+	public <E> void dispatch(E event,
+	                                          Router router,
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
-			log.trace("dispatch({}, {}, {}, {})", event, eventRouter, consumer, errorConsumer);
+			log.trace("dispatch({}, {}, {}, {})", event, router, consumer, errorConsumer);
 		}
-		delegate.dispatch(event, eventRouter, consumer, errorConsumer);
+		delegate.dispatch(event, router, consumer, errorConsumer);
 	}
 
 	@Override
@@ -98,4 +97,24 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 		delegate.execute(command);
 	}
 
+
+	@Override
+	public boolean supportsOrdering() {
+		return delegate.supportsOrdering();
+	}
+
+	@Override
+	public long remainingSlots() {
+		return delegate.remainingSlots();
+	}
+
+	@Override
+	public int backlogSize() {
+		return delegate.backlogSize();
+	}
+
+	@Override
+	public boolean inContext() {
+		return delegate.inContext();
+	}
 }
