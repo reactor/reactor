@@ -32,17 +32,17 @@ import java.util.concurrent.locks.ReentrantLock;
  * @since 2.0
  */
 public class StreamSubscription<O> implements Subscription {
-	final           Subscriber<O>       subscriber;
-	final           Stream<O>           publisher;
-	protected final AtomicLong          capacity;
-	protected final ReentrantLock       bufferLock;
-	protected final CompletableQueue<O> buffer;
+	final           Subscriber<? super O> subscriber;
+	final           Stream<O>             publisher;
+	protected final AtomicLong            capacity;
+	protected final ReentrantLock         bufferLock;
+	protected final CompletableQueue<O>   buffer;
 
-	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber) {
+	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this(publisher, subscriber, new CompletableLinkedQueue<O>());
 	}
 
-	public StreamSubscription(Stream<O> publisher, Subscriber<O> subscriber, CompletableQueue<O> buffer) {
+	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
 		this.capacity = new AtomicLong();
@@ -55,7 +55,7 @@ public class StreamSubscription<O> implements Subscription {
 	}
 
 	@Override
-	public void request(int elements) {
+	public void request(long elements) {
 		if (buffer.isComplete() && buffer.isEmpty()) {
 			return;
 		}
@@ -124,7 +124,7 @@ public class StreamSubscription<O> implements Subscription {
 		return publisher;
 	}
 
-	public Subscriber<O> getSubscriber() {
+	public Subscriber<? super O> getSubscriber() {
 		return subscriber;
 	}
 
@@ -172,8 +172,8 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
-	protected void checkRequestSize(int elements) {
-		if (elements <= 0) {
+	protected void checkRequestSize(long elements) {
+		if (elements <= 0l) {
 			throw new IllegalArgumentException("Cannot request a non strictly positive number: " + elements);
 		}
 	}
@@ -186,13 +186,13 @@ public class StreamSubscription<O> implements Subscription {
 	public static class Firehose<O> extends StreamSubscription<O> {
 		protected volatile boolean terminated = false;
 
-		public Firehose(Stream<O> publisher, Subscriber<O> subscriber) {
+		public Firehose(Stream<O> publisher, Subscriber<? super O> subscriber) {
 			super(publisher, subscriber, null);
 			capacity.set(Long.MAX_VALUE);
 		}
 
 		@Override
-		public void request(int elements) {
+		public void request(long elements) {
 		}
 
 		@Override
@@ -257,7 +257,7 @@ public class StreamSubscription<O> implements Subscription {
 		}
 
 		@Override
-		public void request(int elements) {
+		public void request(long elements) {
 			super.request(elements);
 			thiz.request(elements);
 		}
@@ -270,7 +270,7 @@ public class StreamSubscription<O> implements Subscription {
 
 		@Override
 		public boolean equals(Object o) {
-			return !(o == null ||thiz.getClass() != o.getClass()) && thiz.equals(o);
+			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
 		}
 
 		@Override

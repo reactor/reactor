@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Its smart capacity awareness to prevent {@link reactor.event.dispatch.Dispatcher} overflow
  * <p>
  * In effect, an Action will take care of concurrent notifications through its single threaded Dispatcher.
- * Up to a maximum capacity defined with {@link this#capacity(int)} will be allowed to be dispatched by requesting
+ * Up to a maximum capacity defined with {@link this#capacity(long)} will be allowed to be dispatched by requesting
  * the tracked remaining slots to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
  * is a value to tune accordingly with the system and the requirements. An Action will bypass this feature anytime it is
  * not the root of stream processing chain e.g.:
@@ -74,17 +74,17 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	 */
 	public static final int RESERVED_SLOTS = 4;
 
-	protected int     pendingNextSignals = 0;
-	protected int     currentNextSignals = 0;
+	protected long    pendingNextSignals = 0;
+	protected long    currentNextSignals = 0;
 	protected boolean firehose           = false;
 	protected Subscription subscription;
 
-	protected final Consumer<Integer> requestConsumer = new Consumer<Integer>() {
+	protected final Consumer<Long> requestConsumer = new Consumer<Long>() {
 		@Override
-		public void accept(Integer n) {
+		public void accept(Long n) {
 			try {
 				if (subscription == null) {
-					if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
+					if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 					return;
 				}
 
@@ -94,12 +94,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 					return;
 				}
 
-				int previous = pendingNextSignals;
-				if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
+				long previous = pendingNextSignals;
+				if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 
-				if (previous < batchSize) {
-					int toRequest = n + previous;
-					toRequest = toRequest > batchSize ? batchSize : toRequest;
+				if (previous < capacity) {
+					long toRequest = n + previous;
+					toRequest = toRequest > capacity ? capacity : toRequest;
 					pendingNextSignals -= toRequest;
 					currentNextSignals = 0;
 					subscription.request(toRequest);
@@ -128,33 +128,33 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		super(dispatcher);
 	}
 
-	public Action(Dispatcher dispatcher, int batchSize) {
+	public Action(Dispatcher dispatcher, long batchSize) {
 		super(dispatcher, batchSize);
 	}
 
 	public void available() {
 		if (subscription != null && !pause) {
-			dispatch(batchSize, requestConsumer);
+			dispatch(capacity, requestConsumer);
 		}
 	}
 
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		if (subscription != null && !terminated) {
-			int currentCapacity = capacity.intValue();
+			long currentCapacity = capacity.get();
 			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
 			if (!pause && (currentCapacity > 0)) {
-				final int remaining = currentCapacity > elements ? elements : currentCapacity;
+				final long remaining = currentCapacity > elements ? elements : currentCapacity;
 				onRequest(remaining);
 			}
 		}
 	}
 
 	@Override
-	protected StreamSubscription<O> createSubscription(final Subscriber<O> subscriber) {
+	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber) {
 		if (subscription == null) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
-				public void request(int elements) {
+				public void request(long elements) {
 					super.request(elements);
 					requestUpstream(capacity, buffer.isComplete(), elements);
 				}
@@ -162,7 +162,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		} else {
 			return new StreamSubscription.Firehose<O>(this, subscriber) {
 				@Override
-				public void request(int elements) {
+				public void request(long elements) {
 					requestUpstream(capacity, isComplete(), elements);
 				}
 			};
@@ -175,7 +175,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		try {
 			++currentNextSignals;
 			doNext(i);
-			if (!firehose && currentNextSignals == batchSize) {
+			if (!firehose && currentNextSignals == capacity) {
 				doPendingRequest();
 			}
 		} catch (Throwable cause) {
@@ -267,7 +267,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void integer) {
-					int toRequest = generateDemandFromPendingRequests();
+					long toRequest = generateDemandFromPendingRequests();
 					if (toRequest > 0) {
 						pendingNextSignals -= toRequest;
 						requestConsumer.accept(toRequest);
@@ -286,12 +286,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				period,
 				delay
 		);
-		d.env(environment).capacity(batchSize).setKeepAlive(keepAlive);
+		d.env(environment).capacity(capacity).setKeepAlive(keepAlive);
 		checkAndSubscribe(d, new StreamSubscription<O>(this, d) {
 			@Override
-			public void request(int elements) {
-				if (capacity.get() == 0) {
-					super.request(1);
+			public void request(long elements) {
+				if (capacity.get() == 0l) {
+					super.request(1l);
 				}
 				requestUpstream(new AtomicLong(elements), buffer.isComplete(), elements);
 			}
@@ -317,7 +317,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Action<I, O> capacity(int elements) {
+	public Action<I, O> capacity(long elements) {
 		return (Action<I, O>) super.capacity(elements);
 	}
 
@@ -389,8 +389,8 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		doPendingRequest();
 	}
 
-	protected int generateDemandFromPendingRequests() {
-		return pendingNextSignals > batchSize ? batchSize : pendingNextSignals;
+	protected long generateDemandFromPendingRequests() {
+		return pendingNextSignals > capacity ? capacity : pendingNextSignals;
 	}
 
 	protected void doComplete() {
@@ -407,7 +407,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void doPendingRequest() {
-		int toRequest = generateDemandFromPendingRequests();
+		long toRequest = generateDemandFromPendingRequests();
 		currentNextSignals = 0;
 
 		if (toRequest > 0) {
@@ -424,7 +424,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	protected void onRequest(final int n) {
+	protected void onRequest(final long n) {
 		trySyncDispatch(n, requestConsumer);
 	}
 

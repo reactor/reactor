@@ -883,6 +883,46 @@ class StreamsSpec extends Specification {
 			]
 	}
 
+	def 'GroupBy will re-route N elements to a nested stream based on hashcode'() {
+		given:
+			'a source and a grouped by ID stream'
+			def source = Streams.<SimplePojo> defer()
+			def result = [:]
+
+			def partitionStream = source.partition()
+			partitionStream.consume { stream ->
+				stream.cast(SimplePojo).consume { pojo ->
+					if (result[pojo.id]) {
+						result[pojo.id] << pojo.title
+					} else {
+						result[pojo.id] = [pojo.title]
+					}
+				}
+			}
+
+			def objetMapper = new ObjectMapper()
+			println objetMapper.writeValueAsString(source.debug().toMap())
+
+		when:
+			'some values are accepted'
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
+
+
+		then:
+			'the result should group titles by id'
+			result
+			result == [
+					1: ['Stephane', 'Jon', 'Sandrine'],
+					2: ['Acme'],
+					3: ['Acme2', 'Acme3']
+			]
+	}
+
 	def 'StreamUtils will parse a Stream to a Map'() {
 		given:
 			'a source and a grouped by ID stream'
@@ -1545,6 +1585,8 @@ class StreamsSpec extends Specification {
 	static class SimplePojo {
 		int id
 		String title
+
+		int hashcode(){ id }
 	}
 
 	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {

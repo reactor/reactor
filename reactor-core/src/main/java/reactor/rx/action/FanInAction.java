@@ -74,7 +74,7 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		super.requestUpstream(capacity, terminated, elements);
 		if(masterAction != null && masterAction.getState() == State.READY){
 			masterAction.requestUpstream(capacity, terminated, elements);
@@ -128,9 +128,9 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 						int size = outerAction.innerSubscriptions.subscriptions.size();
 						if (size == 0) return;
 
-						int batchSize = outerAction.batchSize / size;
-						int toRequest = outerAction.batchSize % size + batchSize;
-						toRequest = toRequest > currentCapacity ? toRequest : (int) currentCapacity;
+						long batchSize = outerAction.capacity / size;
+						long toRequest = outerAction.capacity % size + batchSize;
+						toRequest = toRequest > currentCapacity ? toRequest : currentCapacity;
 						s.request(toRequest);
 					}
 				}

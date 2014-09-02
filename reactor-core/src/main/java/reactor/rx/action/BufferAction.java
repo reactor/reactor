@@ -28,7 +28,7 @@ public class BufferAction<T> extends BatchAction<T, List<T>>{
 
 	private final List<T> values;
 
-	public BufferAction(int batchsize, Dispatcher dispatcher) {
+	public BufferAction(long batchsize, Dispatcher dispatcher) {
 		super(batchsize, dispatcher, true, false, batchsize > 0);
 		values = new ArrayList<T>();
 	}

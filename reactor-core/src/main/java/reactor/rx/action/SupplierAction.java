@@ -35,7 +35,7 @@ public class SupplierAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(supplierConsumer);
 		super.requestUpstream(capacity, terminated, elements);
 	}

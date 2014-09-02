@@ -204,7 +204,7 @@ public final class Streams {
 			ReentrantLock lock = new ReentrantLock();
 
 			@Override
-			protected void onRequest(int n) {
+			protected void onRequest(long n) {
 				if (subscription != null) {
 					subscription.request(n);
 				} else {
@@ -476,12 +476,12 @@ public final class Streams {
 	 * @param env              The assigned environment
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	@SafeVarargs
 	public static <T> MergeAction<T> merge(Environment env, Dispatcher dispatcher, Publisher<T>... mergedPublishers) {
 		final List<Publisher<T>> publishers = new ArrayList<Publisher<T>>();
-		int maxCapacity = scanPublisher(publishers, mergedPublishers);
+		long maxCapacity = scanPublisher(publishers, mergedPublishers);
 
 		final MergeAction<T> mergeAction = new MergeAction<T>(dispatcher, publishers);
 
@@ -497,7 +497,7 @@ public final class Streams {
 	 * @param mergedPublishers The upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T, V> ZipAction<T, V> zip(Function<List<T>, V> zipper, Publisher<T>... mergedPublishers) {
 		return zip(null, SynchronousDispatcher.INSTANCE, zipper, mergedPublishers);
@@ -513,7 +513,7 @@ public final class Streams {
 	 * .core.Environment#getDefaultDispatcher()}
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T, V> ZipAction<T, V> zip(Environment env, Function<List<T>, V> zipper, Publisher<T>... mergedPublishers) {
 		return zip(env, env.getDefaultDispatcher(), zipper, mergedPublishers);
@@ -530,7 +530,7 @@ public final class Streams {
 	 * @param env              The assigned environment
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	@SafeVarargs
 	public static <T, V> ZipAction<T, V> zip(Environment env, Dispatcher dispatcher,
@@ -555,7 +555,7 @@ public final class Streams {
 	 * @param mergedPublishers The upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> ZipAction<T, List<T>>  join(Publisher<T>... mergedPublishers) {
 		return join(null, SynchronousDispatcher.INSTANCE, mergedPublishers);
@@ -572,7 +572,7 @@ public final class Streams {
 	 * .core.Environment#getDefaultDispatcher()}
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> ZipAction<T, List<T>>  join(Environment env, Publisher<T>... mergedPublishers) {
 		return join(env, env.getDefaultDispatcher(), mergedPublishers);
@@ -590,7 +590,7 @@ public final class Streams {
 	 * @param env              The assigned environment
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> ZipAction<T, List<T>> join(Environment env, Dispatcher dispatcher,
 	                                             Publisher<T>... mergedPublishers) {
@@ -603,8 +603,8 @@ public final class Streams {
 	}
 
 	@SafeVarargs
-	private static <T> int scanPublisher(List<Publisher<T>> publishers, Publisher<T>... mergedPublishers) {
-		int maxCapacity = Integer.MAX_VALUE;
+	private static <T> long scanPublisher(List<Publisher<T>> publishers, Publisher<T>... mergedPublishers) {
+		long maxCapacity = Long.MAX_VALUE;
 
 		for (Publisher<T> publisher : mergedPublishers) {
 			publishers.add(publisher);

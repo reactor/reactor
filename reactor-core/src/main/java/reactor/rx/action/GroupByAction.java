@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.support.GroupedByStream;
@@ -39,13 +40,39 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 		return groupByMap;
 	}
 
+	public Action<T, GroupedByStream<K, T>> cancel(K key) {
+		dispatch(key, new Consumer<K>() {
+			@Override
+			public void accept(K k) {
+				Stream<T> s = groupByMap.remove(k);
+				if(s != null){
+					s.cancel();
+				}
+			}
+		});
+		return this;
+	}
+
+	public Action<T, GroupedByStream<K, T>> complete(K key) {
+		dispatch(key, new Consumer<K>() {
+			@Override
+			public void accept(K k) {
+				Stream<T> s = groupByMap.remove(k);
+				if(s != null){
+					s.broadcastComplete();
+				}
+			}
+		});
+		return this;
+	}
+
 	@Override
 	protected void doNext(T value) {
 		final K key = fn.apply(value);
 		GroupedByStream<K, T> stream = groupByMap.get(key);
 		if (stream == null) {
 			stream = new GroupedByStream<K, T>(key, dispatcher);
-			stream.capacity(batchSize).env(environment).setKeepAlive(false);
+			stream.capacity(capacity).env(environment).setKeepAlive(false);
 			groupByMap.put(key, stream);
 			broadcastNext(stream);
 		}

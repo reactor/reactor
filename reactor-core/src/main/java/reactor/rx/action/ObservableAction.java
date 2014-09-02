@@ -44,7 +44,7 @@ public class ObservableAction<T> extends Action<T, Void> {
 	@Override
 	protected void doNext(T ev) {
 		observable.notify(key, Event.wrap(ev));
-		if(count++ >= batchSize){
+		if(count++ >= capacity){
 			available();
 		}
 	}

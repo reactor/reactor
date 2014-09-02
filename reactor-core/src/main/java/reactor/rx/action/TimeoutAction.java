@@ -42,7 +42,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = generateDemandFromPendingRequests();
+			long toRequest = generateDemandFromPendingRequests();
 			if (0 < toRequest && !firehose) {
 				pendingNextSignals -= toRequest;
 				numbTimeout++;
@@ -56,9 +56,9 @@ public class TimeoutAction<T> extends Action<T, T> {
 		}
 	};
 
-	private final Consumer<Integer> upstreamRequest = new Consumer<Integer>() {
+	private final Consumer<Long> upstreamRequest = new Consumer<Long>() {
 		@Override
-		public void accept(Integer integer) {
+		public void accept(Long integer) {
 			timeoutRegistration.cancel();
 			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 			requestConsumer.accept(integer);
@@ -92,7 +92,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void onRequest(int n) {
+	protected void onRequest(long n) {
 		dispatch(n, upstreamRequest);
 	}
 

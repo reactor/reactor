@@ -36,7 +36,6 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
-import reactor.rx.action.support.GroupedByStream;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -80,9 +79,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	protected Throwable error = null;
 	protected boolean   pause = false;
-	protected int batchSize;
+	protected long capacity;
 
-	protected boolean keepAlive = true;
+	protected boolean keepAlive    = true;
 	protected boolean ignoreErrors = false;
 	protected Environment environment;
 	protected State state = State.READY;
@@ -92,24 +91,24 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	}
 
-	public Stream(int batchSize) {
+	public Stream(long capacity) {
 		this.dispatcher = SynchronousDispatcher.INSTANCE;
-		this.batchSize = batchSize;
+		this.capacity = capacity;
 	}
 
 	public Stream(Dispatcher dispatcher) {
 		this(dispatcher, dispatcher.backlogSize());
 	}
 
-	public Stream(Dispatcher dispatcher, int batchSize) {
-		this(dispatcher, null, batchSize);
+	public Stream(Dispatcher dispatcher, long capacity) {
+		this(dispatcher, null, capacity);
 	}
 
 	public Stream(@Nonnull Dispatcher dispatcher,
 	              @Nullable Environment environment,
-	              int batchSize) {
+	              long capacity) {
 		this.environment = environment;
-		this.batchSize = batchSize;
+		this.capacity = capacity;
 		this.dispatcher = dispatcher;
 	}
 
@@ -128,7 +127,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Subscribe an {@link Action} to the actual pipeline. Additionally to producing events (error,complete,next and
 	 * eventually flush), it will generally take care of setting the environment if available and
-	 * an initial capacity size used for {@link org.reactivestreams.Subscription#request(int)}.
+	 * an initial capacity size used for {@link org.reactivestreams.Subscription#request(long)}.
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 *
 	 * @param stream the processor to subscribe.
@@ -138,7 +137,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public <A, E extends Action<O, A>> E connect(@Nonnull final E stream) {
-		stream.capacity(batchSize).env(environment);
+		stream.capacity(capacity).env(environment);
 		stream.setKeepAlive(keepAlive);
 		this.subscribe(stream);
 		return stream;
@@ -178,14 +177,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return this;
 	}
 
-	public Stream<O> capacity(int elements) {
-		this.batchSize = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
+	public Stream<O> capacity(long elements) {
+		this.capacity = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
-		if(batchSize != elements){
+		if(capacity != elements){
 			log.warn("The Stream altered the requested maximum capacity {} to not overrun its Dispatcher which supports " +
 							"up to {} slots for next signals, minus {} slots for others signals amid error," +
 							" complete, subscribe and upstream request. The assigned capacity is now {}",
-					elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, batchSize);
+					elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, capacity);
 		}
 		return this;
 	}
@@ -416,7 +415,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public Action<O, O> overflow(CompletableQueue<O> queue) {
 		Action<O, O> stream = Action.<O>passthrough(dispatcher);
-		stream.capacity(batchSize).env(environment);
+		stream.capacity(capacity).env(environment);
 		stream.setKeepAlive(keepAlive);
 		checkAndSubscribe(stream, queue != null ?
 				createSubscription(stream).wrap(queue) :
@@ -619,7 +618,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the first value of each batch
 	 */
 	public FirstAction<O> first() {
-		return first(batchSize);
+		return first(capacity);
 	}
 
 	/**
@@ -632,7 +631,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
-	public FirstAction<O> first(int batchSize) {
+	public FirstAction<O> first(long batchSize) {
 		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -645,7 +644,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public LastAction<O> last() {
-		return every(batchSize);
+		return every(capacity);
 	}
 
 
@@ -655,7 +654,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @param batchSize the batch size to use
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
-	public LastAction<O> every(int batchSize) {
+	public LastAction<O> every(long batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -682,7 +681,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 1.1, 2.0
 	 */
 	public <V> ForEachAction<V> split() {
-		return split(Integer.MAX_VALUE);
+		return split(Long.MAX_VALUE);
 	}
 
 	/**
@@ -695,7 +694,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> ForEachAction<V> split(int batchSize) {
+	public <V> ForEachAction<V> split(long batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
 		d.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
@@ -725,7 +724,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
 	public BufferAction<O> buffer() {
-		return buffer(batchSize);
+		return buffer(capacity);
 	}
 
 	/**
@@ -735,7 +734,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @param batchSize the collected size
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public BufferAction<O> buffer(int batchSize) {
+	public BufferAction<O> buffer(long batchSize) {
 		final BufferAction<O> d = new BufferAction<O>(batchSize, dispatcher);
 		d.env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
@@ -797,7 +796,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public SortAction<O> sort(Comparator<O> comparator) {
-		return sort(batchSize, comparator);
+		return sort((int)capacity, comparator);
 	}
 
 	/**
@@ -826,7 +825,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public Stream<Stream<O>> window() {
-		return window(batchSize);
+		return window(capacity);
 	}
 
 	/**
@@ -837,7 +836,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public Stream<Stream<O>> window(int backlog) {
+	public Stream<Stream<O>> window(long backlog) {
 		return connect(new WindowAction<O>(dispatcher, backlog));
 	}
 
@@ -849,8 +848,23 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public <K> Stream<GroupedByStream<K, O>> groupBy(Function<O, K> keyMapper) {
+	public <K> GroupByAction<O, K> groupBy(Function<O, K> keyMapper) {
 		return connect(new GroupByAction<O, K>(keyMapper, dispatcher));
+	}
+	/**
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
+	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning
+	 *
+	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
+	 * @since 2.0
+	 */
+	public GroupByAction<O, Integer> partition() {
+		return groupBy(new Function<O, Integer>() {
+			@Override
+			public Integer apply(O o) {
+				return o.hashCode();
+			}
+		});
 	}
 
 	/**
@@ -863,7 +877,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
-		return reduce(fn, Functions.supplier(initial), batchSize);
+		return reduce(fn, Functions.supplier(initial), capacity);
 	}
 
 	/**
@@ -884,9 +898,10 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
-	                               final int batchSize
+	                               final long batchSize
 	) {
-		final Action<O, A> stream = new ReduceAction<O, A>(batchSize,
+		final Action<O, A> stream = new ReduceAction<O, A>(
+				batchSize,
 				accumulators,
 				fn,
 				dispatcher
@@ -904,7 +919,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
-		return reduce(fn, null, batchSize);
+		return reduce(fn, null, capacity);
 	}
 
 	/**
@@ -959,13 +974,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
 	public CountAction<O> count() {
-		return count(batchSize);
+		return count(capacity);
 	}
 
 	/**
 	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
 	 */
-	public CountAction<O> count(int i) {
+	public CountAction<O> count(long i) {
 		return connect(new CountAction<O>(dispatcher, i));
 	}
 
@@ -1132,7 +1147,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the buffered collection
 	 * @since 2.0
 	 */
-	public Promise<List<O>> toList(int maximum) {
+	public Promise<List<O>> toList(long maximum) {
 		if (maximum > 0)
 			return limit(maximum).buffer().next();
 		else {
@@ -1228,7 +1243,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	@Override
-	public void subscribe(final Subscriber<O> subscriber) {
+	public void subscribe(final Subscriber<? super O> subscriber) {
 		checkAndSubscribe(subscriber, createSubscription(subscriber));
 	}
 
@@ -1311,7 +1326,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		state = State.COMPLETE;
 	}
 
-	protected void checkAndSubscribe(Subscriber<O> subscriber, StreamSubscription<O> subscription) {
+	protected void checkAndSubscribe(Subscriber<? super O> subscriber, StreamSubscription<O> subscription) {
 		if (checkState() && addSubscription(subscription)) {
 			subscriber.onSubscribe(subscription);
 		} else if (state == State.COMPLETE) {
@@ -1323,7 +1338,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		}
 	}
 
-	protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber) {
 		return new StreamSubscription<O>(this, subscriber);
 	}
 
@@ -1349,8 +1364,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 *
 	 * @return integer capacity for this {@link Stream}
 	 */
-	final public int getMaxCapacity() {
-		return batchSize;
+	final public long getMaxCapacity() {
+		return capacity;
 	}
 
 	@SuppressWarnings("unchecked")

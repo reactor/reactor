@@ -24,7 +24,7 @@ import reactor.util.Assert;
  */
 public class FirstAction<T> extends BatchAction<T, T> {
 
-	public FirstAction(int batchSize, Dispatcher dispatcher) {
+	public FirstAction(long batchSize, Dispatcher dispatcher) {
 		super(batchSize, dispatcher, false, true, false);
 
 		Assert.state(batchSize > 0, "Cannot first() an unbounded Stream. Try extracting a batch first.");

@@ -93,7 +93,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 	public E otherwise() {
 		if (elseComposable == null) {
 			Action<T, T> passthrough = Action.<T>passthrough(dispatcher);
-			passthrough.capacity(batchSize).setKeepAlive(keepAlive);
+			passthrough.capacity(capacity).setKeepAlive(keepAlive);
 			elseComposable = (E) passthrough;
 		}
 		return elseComposable;
@@ -104,7 +104,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
 		if (elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())) {
-			((Action<T, E>) elseComposable).capacity(batchSize).onSubscribe(subscription);
+			((Action<T, E>) elseComposable).capacity(capacity).onSubscribe(subscription);
 		}
 	}
 }

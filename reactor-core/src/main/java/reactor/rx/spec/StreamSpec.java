@@ -129,7 +129,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	static <T> Publisher<T> publisherFrom(final Observable observable, final Selector selector) {
 		return new Publisher<T>() {
 			@Override
-			public void subscribe(final Subscriber<T> subscriber) {
+			public void subscribe(final Subscriber<? super T> subscriber) {
 				observable.on(selector, new Consumer<Event<T>>() {
 					@Override
 					public void accept(Event<T> event) {

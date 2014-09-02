@@ -31,7 +31,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean first;
 	final Consumer<Void> flushConsumer = new FlushConsumer();
 
-	public BatchAction(int batchSize,
+	public BatchAction(long batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
 		super(dispatcher, batchSize);
 		this.first = first;
@@ -58,7 +58,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && currentNextSignals % batchSize == 0) {
+		if (flush && currentNextSignals % capacity == 0) {
 			flushCallback(value);
 		}
 	}
@@ -76,16 +76,16 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, int elements) {
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(flushConsumer);
-		if(elements > batchSize) {
+		if(elements > this.capacity) {
 			super.requestUpstream(capacity,
 					terminated, elements);
 		}else{
 			super.requestUpstream(capacity,
-					terminated, batchSize - currentNextSignals > 0 ?
-							batchSize - currentNextSignals :
-							batchSize);
+					terminated, this.capacity - currentNextSignals > 0 ?
+							this.capacity - currentNextSignals :
+							this.capacity);
 		}
 	}
 

@@ -26,9 +26,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class CountAction<T> extends Action<T, Long> {
 
 	private final AtomicLong counter = new AtomicLong(0l);
-	private final Integer i;
+	private final Long i;
 
-	public CountAction(Dispatcher dispatcher, int i) {
+	public CountAction(Dispatcher dispatcher, long i) {
 		super(dispatcher);
 		this.i = i;
 	}
@@ -36,7 +36,7 @@ public class CountAction<T> extends Action<T, Long> {
 	@Override
 	protected void doNext(T value) {
 		long counter = this.counter.incrementAndGet();
-		if (i != null && counter % i == 0) {
+		if (i != null && counter % i == 0l) {
 			broadcastNext(counter);
 		}
 	}

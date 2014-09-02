@@ -30,7 +30,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	private Stream<T> currentWindow;
 
 	@SuppressWarnings("unchecked")
-	public WindowAction(Dispatcher dispatcher, int backlog) {
+	public WindowAction(Dispatcher dispatcher, long backlog) {
 		super(backlog, dispatcher, true, true, true);
 	}
 
@@ -39,7 +39,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected void createWindowStream() {
-		currentWindow = new Stream<T>(dispatcher, batchSize).env(environment).capacity(batchSize);
+		currentWindow = new Stream<T>(dispatcher, capacity).env(environment).capacity(capacity);
 		currentWindow.setKeepAlive(false);
 	}
 

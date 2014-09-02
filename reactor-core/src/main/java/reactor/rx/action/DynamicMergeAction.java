@@ -46,7 +46,7 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	}
 
 	@Override
-	public void subscribe(Subscriber<O> subscriber) {
+	public void subscribe(Subscriber<? super O> subscriber) {
 		fanInAction.subscribe(subscriber);
 	}
 
@@ -72,7 +72,7 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	}
 
 	@Override
-	public Action<I, O> capacity(int elements) {
+	public Action<I, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
 	}

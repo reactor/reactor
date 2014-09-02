@@ -35,11 +35,11 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 	}
 
 	@Override
-	protected StreamSubscription<E> createSubscription(final Subscriber<E> subscriber) {
+	protected StreamSubscription<E> createSubscription(final Subscriber<? super E> subscriber) {
 		if (lastError != null) {
 			return new StreamSubscription<E>(this, subscriber) {
 				@Override
-				public void request(int elements) {
+				public void request(long elements) {
 					subscriber.onNext(lastError);
 				}
 			};

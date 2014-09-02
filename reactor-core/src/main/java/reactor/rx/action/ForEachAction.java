@@ -49,7 +49,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 	@Override
-	protected void checkAndSubscribe(Subscriber<T> subscriber, StreamSubscription<T> subscription) {
+	protected void checkAndSubscribe(Subscriber<? super T> subscriber, StreamSubscription<T> subscription) {
 		if (state == State.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
 		} else if (state == State.ERROR) {
@@ -60,13 +60,13 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 	@Override
-	protected StreamSubscription<T> createSubscription(Subscriber<T> subscriber) {
+	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber) {
 		if (defaultValues != null) {
 			return new StreamSubscription<T>(this, subscriber) {
 				Iterator<T> iterator = defaultValues.iterator();
 
 				@Override
-				public void request(int elements) {
+				public void request(long elements) {
 					super.request(elements);
 
 					if(buffer.isComplete()) return;

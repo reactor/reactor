@@ -66,7 +66,7 @@ public class RetryAction<T> extends Action<T, T> {
 							secondAction.cancel();
 							rootAction.subscribe(secondAction);
 						}
-						requestConsumer.accept(1);
+						requestConsumer.accept(1l);
 					}
 				}
 

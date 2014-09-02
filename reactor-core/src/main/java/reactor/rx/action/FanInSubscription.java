@@ -46,17 +46,17 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	}
 
 	@Override
-	public void request(final int elements) {
+	public void request(final long elements) {
 		super.request(elements);
 		parallelRequest(elements);
 	}
 
-	protected void parallelRequest(int elements) {
+	protected void parallelRequest(long elements) {
 		final int parallel = subscriptions.size();
 
 		if (parallel > 0) {
-			final int batchSize = elements / parallel;
-			final int remaining = (elements % parallel > 0 ? elements : 0);
+			final long batchSize = elements / parallel;
+			final long remaining = (elements % parallel > 0 ? elements : 0);
 			if (batchSize == 0 && elements == 0) return;
 
 			MutableList<InnerSubscription> toRemove = subscriptions.collectIf(new Predicate<InnerSubscription>() {
@@ -126,7 +126,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 
 		@Override
-		public void request(int n) {
+		public void request(long n) {
 			wrapped.request(n);
 		}
 

@@ -49,7 +49,7 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 
 
 	@Override
-	public void subscribe(Subscriber<O> s) {
+	public void subscribe(Subscriber<? super O> s) {
 		publisher.subscribe(s);
 	}
 

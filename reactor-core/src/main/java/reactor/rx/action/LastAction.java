@@ -24,7 +24,7 @@ import reactor.util.Assert;
  */
 public class LastAction<T> extends BatchAction<T, T> {
 
-	public LastAction(int batchSize, Dispatcher dispatcher) {
+	public LastAction(long batchSize, Dispatcher dispatcher) {
 		super(batchSize, dispatcher, false, false, true);
 
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");

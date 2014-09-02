@@ -38,17 +38,17 @@ public class ThrottleAction<T> extends Action<T, T> {
 			dispatch(periodRequest);
 		}
 	};
-	protected final Consumer<Integer> throttledConsumer = new Consumer<Integer>() {
+	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
 		@Override
-		public void accept(Integer n) {
-			if ((pendingNextSignals += n) < 0) pendingNextSignals = Integer.MAX_VALUE;
+		public void accept(Long n) {
+			if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 		}
 	};
 
 	private final Consumer<Void> periodRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			int toRequest = generateDemandFromPendingRequests();
+			long toRequest = generateDemandFromPendingRequests();
 			if (toRequest > 0) {
 				--pendingNextSignals;
 				subscription.request(toRequest);
@@ -81,13 +81,13 @@ public class ThrottleAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void onRequest(int n) {
+	protected void onRequest(long n) {
 		trySyncDispatch(n, throttledConsumer);
 	}
 
 	@Override
 	protected void doPendingRequest() {
-		if (currentNextSignals == batchSize) {
+		if (currentNextSignals == capacity) {
 			currentNextSignals = 0; //reset currentNextSignals only
 		}
 	}

@@ -351,7 +351,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 	}
 
 	@Override
-	public void subscribe(final Subscriber<O> subscriber) {
+	public void subscribe(final Subscriber<? super O> subscriber) {
 		stream().subscribe(subscriber);
 	}
 

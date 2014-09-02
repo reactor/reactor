@@ -258,7 +258,7 @@ project('reactor-core') {
 						"io.gatling:jsr166e:1.0"
 
 		// Reactive Streams
-		compile "org.reactivestreams:reactive-streams:0.4.0.M1"
+		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

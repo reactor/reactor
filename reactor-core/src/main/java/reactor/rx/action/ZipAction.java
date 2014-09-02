@@ -36,9 +36,9 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 	final Function<List<O>, V> accumulator;
 	final List<O>              buffer;
 
-	final Consumer<Integer> upstreamConsumer = new Consumer<Integer>() {
+	final Consumer<Long> upstreamConsumer = new Consumer<Long>() {
 		@Override
-		public void accept(Integer integer) {
+		public void accept(Long integer) {
 			try {
 				if (!buffer.isEmpty()) {
 					broadcastNext(accumulator.apply(buffer));
@@ -66,7 +66,7 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 	@Override
 	protected void doNext(O ev) {
 		buffer.add(ev);
-		if (currentNextSignals == batchSize) {
+		if (currentNextSignals == capacity) {
 			broadcastNext(accumulator.apply(new ArrayList<O>(buffer)));
 			buffer.clear();
 		}
@@ -74,13 +74,13 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 
 	@Override
 	protected FanInAction.InnerSubscriber<O, V> createSubscriber() {
-		batchSize = innerSubscriptions.subscriptions.size() + 1;
+		capacity = innerSubscriptions.subscriptions.size() + 1;
 		return new ZipAction.InnerSubscriber<O, V>(this);
 	}
 
 
 	@Override
-	protected void onRequest(int n) {
+	protected void onRequest(long n) {
 		dispatch(n, upstreamConsumer);
 	}
 
@@ -125,7 +125,7 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 		}
 
 		@Override
-		protected void parallelRequest(final int elements) {
+		protected void parallelRequest(final long elements) {
 			final int parallel = subscriptions.size();
 			if (parallel > 0) {
 				pruneObsoleteSubs(

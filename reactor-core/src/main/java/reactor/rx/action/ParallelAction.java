@@ -55,7 +55,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	}
 
 	@Override
-	public Action<O, Stream<O>> capacity(int elements) {
+	public Action<O, Stream<O>> capacity(long elements) {
 		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS;
 		if (elements < cumulatedReservedSlots) {
 			log.warn("So, because we try to book some {} slots on the parallel master action and " +
@@ -66,7 +66,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		} else {
 			super.capacity(elements - cumulatedReservedSlots + RESERVED_SLOTS);
 		}
-		int size = batchSize / poolSize;
+		long size = capacity / poolSize;
 
 		if (size == 0) {
 			log.warn("Of course there are {} parallel streams and there can only be {} max items available at any given " +
@@ -100,12 +100,12 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<Stream<O>> subscriber) {
+	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber) {
 		return new StreamSubscription.Firehose<Stream<O>>(this, subscriber) {
 			long cursor = 0l;
 
 			@Override
-			public void request(int elements) {
+			public void request(long elements) {
 				int i = 0;
 				while (i < poolSize && i < cursor) {
 					i++;
@@ -288,15 +288,15 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 
 		@Override
-		protected StreamSubscription<O> createSubscription(Subscriber<O> subscriber) {
+		protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
-				public void request(int elements) {
+				public void request(long elements) {
 					super.request(elements);
 					lastRequestedTime = System.currentTimeMillis();
-					parallelAction.trySyncDispatch(elements, new Consumer<Integer>() {
+					parallelAction.trySyncDispatch(elements, new Consumer<Long>() {
 						@Override
-						public void accept(Integer elem) {
+						public void accept(Long elem) {
 							parallelAction.roundRobinIndex = index;
 							parallelAction.requestConsumer.accept(elem);
 						}

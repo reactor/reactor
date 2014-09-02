@@ -118,8 +118,8 @@ bf322d5 add Test, fix new filter() signature
 5307e75 few 	 * @since 1.1 add simple form filter() that evaluates incoming Boolean
 a935dc5 Added CHANGELOG.
 1a7f414 Formatting changes while code reviewing.
-7be7d0a remove EventBatcher since Stream.defer().batchSize(123).get().flushWhen{ predicate }.consumeFlush{ do stuff once }.consume{ do for each data }
-beeb805 Re align test with previous scenario to compare (1 reduce vs N reduce) Add Stream#reduce(function, supplier, batchSize) to arbitrarely select the batch size for a reduce
+7be7d0a remove EventBatcher since Stream.defer().capacity(123).get().flushWhen{ predicate }.consumeFlush{ do stuff once }.consume{ do for each data }
+beeb805 Re align test with previous scenario to compare (1 reduce vs N reduce) Add Stream#reduce(function, supplier, capacity) to arbitrarely select the batch size for a reduce
 ef78622 update gadle wrapper, update developers list
 269e3b6 is this the end ?
 8825f15 move things around to fix package tangles
@@ -128,7 +128,7 @@ ef78622 update gadle wrapper, update developers list
 87f34ae Merge pull request #286 from reactor/enhancement-27-batchNotify
 ea8c2dd fix test
 4ad12ad Merge branch 'refs/heads/master' into enhancement-27-batchNotify
-bfa2ec0 100% test coverage for Stream Add Flushable interface for propagating flushes callbacks All stateful actions (reduce, collect, buffer, ..) are now Flushable Add collectWithTimeout, a size and time bound collection Add FlushableAction to consume flushes Add SupplyAction to notify an observable with a supplied value Add StreamSpec#generate(Supplier) to generate values on flush Add Stream#whenFlush(Predicate) to flush the Stream if predicate matches Add Composable#consumeFlush(Flushable) callback Cascade Composable Flush (listens for parent flush) Add Deferred#batcher(batchSize) to arbitrary produce batching windows from any Stream  Remove Stream#BufferStream (replaced by deferred#batcher)  Remove Stream#batchSize constraints on collect, reduce, buffer since flush can drain unbounded batches  Split Stream#reduce and Stream#scan  Add Stream#bufferWithErrors to collect errors in addition to values, aimed to be used by services dynamically creating Stream -  Add Stream#collectWithTimeout to collect up to a timeout limit in millisecond  Add Stream#propagate to pass the argument values (supplier or iterable) into downstream sink on flush
+bfa2ec0 100% test coverage for Stream Add Flushable interface for propagating flushes callbacks All stateful actions (reduce, collect, buffer, ..) are now Flushable Add collectWithTimeout, a size and time bound collection Add FlushableAction to consume flushes Add SupplyAction to notify an observable with a supplied value Add StreamSpec#generate(Supplier) to generate values on flush Add Stream#whenFlush(Predicate) to flush the Stream if predicate matches Add Composable#consumeFlush(Flushable) callback Cascade Composable Flush (listens for parent flush) Add Deferred#batcher(capacity) to arbitrary produce batching windows from any Stream  Remove Stream#BufferStream (replaced by deferred#batcher)  Remove Stream#capacity constraints on collect, reduce, buffer since flush can drain unbounded batches  Split Stream#reduce and Stream#scan  Add Stream#bufferWithErrors to collect errors in addition to values, aimed to be used by services dynamically creating Stream -  Add Stream#collectWithTimeout to collect up to a timeout limit in millisecond  Add Stream#propagate to pass the argument values (supplier or iterable) into downstream sink on flush
 936feae Tweaks to RingBufferAllocator batch allocation.
 ff1abf8 Add resolution getter to Timers.
 cd6d4d5 Upgrade TaskExecutor implementations to also implement ScheduledExecutorService for us as a Spring Integration TaskScheduler, which requires greater scheduling flexibility than just an Executor.
@@ -227,7 +227,7 @@ bd48fac Pick fixes for minor dispatcher issues from batchNotify branch
 290d3c7 Merge master and fix minor dispatcher issues
 53b9b48 Merge master and fix minor dispatcher issues
 2d98464 Fix #237 by adding a dedicated primeCache and update tests Minor compilation warning fix
-6a20bf1 Add batchNotify on Observable - ensure that 1 selection happens for a given iterable group of event. Events will be dispatched once and preselected consumers will be invoked. Add Composable.buffer to expose batchNotify (grouping events for a single dispatching) Rename Composable split() to batch() and update ForEachAction to use batchNotify Minor improvements over ArgumentConsumer that only takes 1 argument Minor improvements over ActionUtils to browse a buffered stream Use a Stream subclass when pre-filled values or batchSize set and use an internal BufferAction to  batchNotify() operations Added a buffered test in ComposableThroughputTests Only invoke CompleteConsumer once. Remove flush selector and update flush methods to work as expected (BufferStream will batchNotify and Promise will run asynchronously the supplier)
+6a20bf1 Add batchNotify on Observable - ensure that 1 selection happens for a given iterable group of event. Events will be dispatched once and preselected consumers will be invoked. Add Composable.buffer to expose batchNotify (grouping events for a single dispatching) Rename Composable split() to batch() and update ForEachAction to use batchNotify Minor improvements over ArgumentConsumer that only takes 1 argument Minor improvements over ActionUtils to browse a buffered stream Use a Stream subclass when pre-filled values or capacity set and use an internal BufferAction to  batchNotify() operations Added a buffered test in ComposableThroughputTests Only invoke CompleteConsumer once. Remove flush selector and update flush methods to work as expected (BufferStream will batchNotify and Promise will run asynchronously the supplier)
 7b61078 Merge pull request #230 from reactor/optimized-registry
 f8604d8 Anonymous Selector doesn't need tuple2 Remove Selector anonymous constructor (prefer $()) Micro fixes
 5a24b07 minor fix
@@ -277,7 +277,7 @@ e9d5970 remove unused batch(), fix issue with negative backlog in SingleThreadDi
 9a46bf1 Comment ThreadPool test and minor import fix
 e2f3a4b Fix Recursive Dispatching by lazy executing any notify in context. Context is defined per BaseDispatcher with its unique ClassLoader assigned to the consumer thread. In others terms, ring buffer and event loop now implement tail recursion. Synchronous Dispatcher is still blocking on notify. ThreadPoolExecutorDispatcher needs rework. Performances are nearly on par with the previous version and the new design solves dead lock issues. The stack now remains constant (Lazy execution at the dispatcher root). ActorDispatcher is a new Dispatcher type that allows concurrent recursive notification by assigning a unique Dispatcher per Event Key. Combined with EventLoop pool from environment, we act like multi-actor systems.
 95542ff Fix Recursive dispatching, tail recurse any notify within context Add a new dispatcher type "ActorDispatcher"
-f932d29 first and last can accept explicit batchSize
+f932d29 first and last can accept explicit capacity
 691c6fd Change Composable Spec to accept observable, add Streams.on
 d80ffda Add optional OSGi dependencies for reactor-core (fix reactor/reactor#219) & add slf4j-api 1.5.4 compatibility (fix reactor/reactor#220).
 6d70713 Remove interface, rename operation to Action
