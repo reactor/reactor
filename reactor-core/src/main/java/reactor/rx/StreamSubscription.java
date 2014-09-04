@@ -60,8 +60,6 @@ public class StreamSubscription<O> implements Subscription {
 			return;
 		}
 
-		checkRequestSize(elements);
-
 		int i = 0;
 		O element;
 		bufferLock.lock();
@@ -170,12 +168,6 @@ public class StreamSubscription<O> implements Subscription {
 				"capacity=" + capacity +
 				", waiting=" + buffer.size() +
 				'}';
-	}
-
-	protected void checkRequestSize(long elements) {
-		if (elements <= 0l) {
-			throw new IllegalArgumentException("Cannot request a non strictly positive number: " + elements);
-		}
 	}
 
 	StreamSubscription<O> wrap(CompletableQueue<O> queue) {

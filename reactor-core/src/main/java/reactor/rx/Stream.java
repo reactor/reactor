@@ -36,6 +36,7 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
+import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
@@ -1373,8 +1374,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		if (this.downstreamSubscription == null) {
 			this.downstreamSubscription = subscription;
 			return true;
+		} else if(this.downstreamSubscription.equals(subscription)){
+			throw SpecificationExceptions.spec_2_12_exception();
 		} else if (FanOutSubscription.class.isAssignableFrom(this.downstreamSubscription.getClass())) {
-			return ((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().add(subscription);
+			if(((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().contains(subscription)){
+				throw SpecificationExceptions.spec_2_12_exception();
+			} else {
+				return ((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().add(subscription);
+			}
 		} else {
 			this.downstreamSubscription = new FanOutSubscription<O>(this, this.downstreamSubscription, subscription);
 			return true;

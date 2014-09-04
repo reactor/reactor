@@ -25,6 +25,7 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
+import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,7 +85,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Long n) {
 			try {
 				if (subscription == null) {
-					if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
+					if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
 					return;
 				}
 
@@ -95,7 +96,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				}
 
 				long previous = pendingNextSignals;
-				if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
+				if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
 
 				if (previous < capacity) {
 					long toRequest = n + previous;
@@ -222,25 +223,26 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (this.subscription == null) {
-			this.subscription = subscription;
-			this.state = State.READY;
-			this.firehose = StreamSubscription.Firehose.class.isAssignableFrom(subscription.getClass());
-
-
-			dispatch(subscription, new Consumer<Subscription>() {
-				@Override
-				public void accept(Subscription subscription) {
-					try {
-						doSubscribe(subscription);
-					} catch (Throwable t) {
-						doError(t);
-					}
-				}
-			});
-		} else {
-			throw new IllegalStateException("Already subscribed");
+		if (this.subscription != null) {
+			subscription.cancel();
+			return;
 		}
+
+		this.subscription = subscription;
+		this.state = State.READY;
+		this.firehose = StreamSubscription.Firehose.class.isAssignableFrom(subscription.getClass());
+
+
+		dispatch(subscription, new Consumer<Subscription>() {
+			@Override
+			public void accept(Subscription subscription) {
+				try {
+					doSubscribe(subscription);
+				} catch (Throwable t) {
+					doError(t);
+				}
+			}
+		});
 	}
 
 	@Override
@@ -380,7 +382,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@Override
 	protected void removeSubscription(StreamSubscription<O> sub) {
 		super.removeSubscription(sub);
-		if (getState() == State.SHUTDOWN && subscription != null) {
+		if (subscription != null) {
 			subscription.cancel();
 		}
 	}
@@ -425,6 +427,10 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void onRequest(final long n) {
+		if (n <= 0l) {
+			throw SpecificationExceptions.spec_3_09_exception(n);
+		}
+
 		trySyncDispatch(n, requestConsumer);
 	}
 

@@ -447,7 +447,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip ({ it.sum() }, source1, source2)
+			def zippedStream = Streams.zip({ it.sum() }, source1, source2)
 			def tap = zippedStream.tap()
 
 		when:
@@ -1262,7 +1262,7 @@ class StreamsSpec extends Specification {
 			def parallels = Streams.<Integer> parallel(environment)
 
 			head.parallel().consume {
-				s -> s.map { it } .consume{ parallels.onNext(it) }
+				s -> s.map { it }.consume { parallels.onNext(it) }
 			}
 
 			parallels.consume { s ->
@@ -1408,7 +1408,7 @@ class StreamsSpec extends Specification {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry(2).observe{ println it }.count().tap().get()
+			}.retry(2).observe { println it }.count().tap().get()
 
 			println stream.debug()
 
@@ -1430,10 +1430,12 @@ class StreamsSpec extends Specification {
 			stream.broadcastNext('test3')
 			stream.broadcastComplete()
 			println stream.debug()
+			def res = value2.tap().get()
+			println stream.debug()
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
-			value2.tap().get() == 1
+			res == 1
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
@@ -1586,7 +1588,7 @@ class StreamsSpec extends Specification {
 		int id
 		String title
 
-		int hashcode(){ id }
+		int hashcode() { id }
 	}
 
 	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {

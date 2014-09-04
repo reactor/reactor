@@ -160,6 +160,18 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 	@Test
+	public void testMerge() throws InterruptedException {
+		Stream<String> stream1 = Streams.defer("1", "2");
+		Stream<String> stream2 = Streams.defer( "3", "4", "5");
+		Stream<Integer> s =
+				Streams.merge(env, stream1, stream2)
+						.capacity(5)
+						.map(STRING_2_INTEGER)
+						.reduce(r -> r.getT1() * r.getT2(), 1);
+		await(1, s, is(120));
+	}
+
+	@Test
 	public void testFirstAndLast() throws InterruptedException {
 		Stream<Integer> s = Streams.defer(Arrays.asList(1, 2, 3, 4, 5));
 
@@ -448,12 +460,12 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		/*parallelTest("sync", 1_000_000);
+		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
 		parallelMapManyTest("ringBuffer", 100_000);
 		parallelTest("partitioned", 1_000_000);
-		parallelMapManyTest("partitioned", 1_000_000);*/
+		parallelMapManyTest("partitioned", 1_000_000);
 		parallelBufferedTimeoutTest(1_000_000, false);
 	}
 

@@ -62,7 +62,7 @@ public class RetryAction<T> extends Action<T, T> {
 								(Action)rootAction.downstreamSubscription().getSubscriber() :
 								null;
 
-						if(secondAction != null){
+						if(rootAction.subscription == null && secondAction != null){
 							secondAction.cancel();
 							rootAction.subscribe(secondAction);
 						}

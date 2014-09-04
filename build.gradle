@@ -136,7 +136,7 @@ configure(allprojects) { project ->
 	repositories {
 		mavenLocal()
 		mavenCentral()
-		maven { url 'https://oss.sonatype.org/content/repositories/releases' }
+		maven { url 'http://repo.akka.io/snapshots/' }
 		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
 
@@ -259,6 +259,7 @@ project('reactor-core') {
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
+		testCompile "org.reactivestreams:reactive-streams-tck:0.4.0.M2-20140904-132904-SNAPSHOT"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

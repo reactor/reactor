@@ -27,6 +27,7 @@ import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author Stephane Maldini
@@ -36,6 +37,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
+	private final ReentrantLock lock = new ReentrantLock();
 
 	private volatile int roundRobinIndex = 0;
 
@@ -179,7 +181,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	protected void doError(Throwable throwable) {
 		super.doError(throwable);
-		if(consumerRegistration != null) consumerRegistration.cancel();
+		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelStream parallelStream : publishers) {
 			parallelStream.broadcastError(throwable);
 		}
@@ -189,7 +191,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if(consumerRegistration != null) consumerRegistration.cancel();
+		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelStream parallelStream : publishers) {
 			parallelStream.broadcastComplete();
 		}
@@ -237,7 +239,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 							}
 						}
 
-						if(fasterParallelIndex == -1) return;
+						if (fasterParallelIndex == -1) return;
 
 						roundRobinIndex = fasterParallelIndex;
 					}
@@ -294,13 +296,14 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				public void request(long elements) {
 					super.request(elements);
 					lastRequestedTime = System.currentTimeMillis();
-					parallelAction.trySyncDispatch(elements, new Consumer<Long>() {
-						@Override
-						public void accept(Long elem) {
-							parallelAction.roundRobinIndex = index;
-							parallelAction.requestConsumer.accept(elem);
-						}
-					});
+
+					parallelAction.lock.lock();
+					try {
+						parallelAction.roundRobinIndex = index;
+						parallelAction.requestConsumer.accept(elements);
+					}finally {
+						parallelAction.lock.unlock();
+					}
 				}
 
 				@Override

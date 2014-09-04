@@ -282,7 +282,7 @@ public final class Streams {
 	 * @param broadcastSelector the {@link Selector}/{@literal Object} tuple to listen to
 	 * @param <T>               the type of values passing through the {@literal Stream}
 	 * @return a new {@link Stream}
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector broadcastSelector) {
 		Dispatcher dispatcher = Reactor.class.isAssignableFrom(observable.getClass()) ?
@@ -301,7 +301,7 @@ public final class Streams {
 	 * @param value The value to {@code broadcast()}
 	 * @param <T>   type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> SupplierAction<Void, T> generate(Supplier<T> value) {
 		return generate(null, SynchronousDispatcher.INSTANCE, value);
@@ -315,7 +315,7 @@ public final class Streams {
 	 * @param env   The assigned environment
 	 * @param <T>   type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> SupplierAction<Void, T> generate(Environment env, Supplier<T> value) {
 		return generate(env, env.getDefaultDispatcher(), value);
@@ -331,7 +331,7 @@ public final class Streams {
 	 * @param env        The assigned environment
 	 * @param <T>        type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> SupplierAction<Void, T> generate(Environment env, Dispatcher dispatcher, Supplier<T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
@@ -443,7 +443,7 @@ public final class Streams {
 	 * @param mergedPublishers The upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> MergeAction<T> merge(Publisher<T>... mergedPublishers) {
 		return merge(null, SynchronousDispatcher.INSTANCE, mergedPublishers);
@@ -459,7 +459,7 @@ public final class Streams {
 	 * .core.Environment#getDefaultDispatcher()}
 	 * @param <T>              type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 1.1
+	 * @since 2.0
 	 */
 	public static <T> MergeAction<T> merge(Environment env, Publisher<T>... mergedPublishers) {
 		return merge(env, env.getDefaultDispatcher(), mergedPublishers);

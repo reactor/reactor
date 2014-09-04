@@ -77,6 +77,17 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 	}
 
 	@Override
+	public void cancel() {
+		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+			@Override
+			public void safeValue(StreamSubscription<O> subscription) throws Exception {
+				subscription.cancel();
+			}
+		});
+		super.cancel();
+	}
+
+	@Override
 	public void onError(final Throwable ev) {
 		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
 			@Override

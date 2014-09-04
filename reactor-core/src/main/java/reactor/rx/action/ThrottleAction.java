@@ -19,6 +19,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -32,7 +33,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 
 	private final Timer timer;
 	private final long  period;
-	private final   Consumer<Long>    periodTask        = new Consumer<Long>() {
+	private final   Consumer<Long> periodTask        = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			dispatch(periodRequest);
@@ -41,7 +42,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
 		@Override
 		public void accept(Long n) {
-			if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
+			if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
 		}
 	};
 

@@ -17,28 +17,41 @@ package reactor.reactivestreams.tck;
 
 import org.junit.Test;
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.AbstractReactorTest;
+import org.reactivestreams.tck.TestEnvironment;
+import reactor.core.Environment;
 import reactor.rx.Stream;
 import reactor.rx.spec.Streams;
 import reactor.util.Assert;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
  */
-public class StreamIdentityProcessorTests extends AbstractReactorTest {
+@org.testng.annotations.Test
+public class StreamIdentityProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Integer> {
 
+
+	private final Environment env = new Environment();
+
+	public StreamIdentityProcessorTests() {
+		super(new TestEnvironment(2500), 3500);
+	}
+
+	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
-						.parallel()
-						.map(stream -> stream
-										.overflow()
+						/*.parallel()
+						.map(stream -> stream*/
 										.map(integer -> integer)
 										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())
@@ -47,18 +60,40 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 										.last()
 										.<Integer>split()
 
-						)
+					/*	)
 						.<Integer>merge()
-
-						.combine();
+*/
+						.combine()
+				;
 	}
 
+	@Override
+	public Publisher<Integer> createHelperPublisher(long elements) {
+		if (elements != Long.MAX_VALUE && elements > 0) {
+			List<Integer> list = new ArrayList<Integer>();
+			for (int i = 1; i <= elements; i++) {
+				list.add(i);
+			}
 
-	//@Test
-	public void testIdentityProcessorConsistently() throws InterruptedException {
-		for(int i = 0; i<15; i++){
-			testIdentityProcessor();
+			return Streams
+					.defer(env, list)
+					.filter(integer -> true)
+					.map(integer -> integer);
+
+		} else {
+			final Random random = new Random();
+
+			return Streams
+					.generate(env, random::nextInt)
+					.map(Math::abs);
 		}
+	}
+
+	@Override
+	public Publisher<Integer> createErrorStatePublisher() {
+		Stream<Integer> stream = Streams.defer(env);
+		stream.broadcastError(new Exception("oops"));
+		return stream;
 	}
 
 	@Test
@@ -95,6 +130,8 @@ public class StreamIdentityProcessorTests extends AbstractReactorTest {
 				latch.countDown();
 			}
 		});
+
+		System.out.println(stream.debug());
 
 		for (int i = 0; i < elements; i++) {
 			stream.broadcastNext(i);
