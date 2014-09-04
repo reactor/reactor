@@ -42,7 +42,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	private final Environment env = new Environment();
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2500), 3500);
+		super(new TestEnvironment(2500, true), 3500);
 	}
 
 	@Override

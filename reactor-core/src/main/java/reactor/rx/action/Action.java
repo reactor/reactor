@@ -85,7 +85,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Long n) {
 			try {
 				if (subscription == null) {
-					if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
+					if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 					return;
 				}
 
@@ -96,7 +96,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				}
 
 				long previous = pendingNextSignals;
-				if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
+				if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 
 				if (previous < capacity) {
 					long toRequest = n + previous;

@@ -19,7 +19,6 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -42,7 +41,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
 		@Override
 		public void accept(Long n) {
-			if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception());
+			if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
 		}
 	};
 

@@ -1375,10 +1375,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 			this.downstreamSubscription = subscription;
 			return true;
 		} else if(this.downstreamSubscription.equals(subscription)){
-			throw SpecificationExceptions.spec_2_12_exception();
+			subscription.onError(SpecificationExceptions.spec_2_12_exception());
+			return false;
 		} else if (FanOutSubscription.class.isAssignableFrom(this.downstreamSubscription.getClass())) {
 			if(((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().contains(subscription)){
-				throw SpecificationExceptions.spec_2_12_exception();
+				subscription.onError(SpecificationExceptions.spec_2_12_exception());
+				return false;
 			} else {
 				return ((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().add(subscription);
 			}
