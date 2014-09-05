@@ -402,7 +402,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Action<O, O> overflow() {
+	public FlowControlAction<O> overflow() {
 		return overflow(null);
 	}
 
@@ -416,7 +416,15 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public FlowControlAction<O> overflow(CompletableQueue<O> queue) {
-		return connect(new FlowControlAction<O>(dispatcher, queue));
+		FlowControlAction<O> stream = new FlowControlAction<O>(dispatcher);
+		if(queue != null){
+			stream.capacity(capacity).env(environment);
+			stream.setKeepAlive(keepAlive);
+			checkAndSubscribe(stream, createSubscription(stream).wrap(queue) );
+		}else{
+			connect(stream);
+		}
+		return stream;
 	}
 
 	/**

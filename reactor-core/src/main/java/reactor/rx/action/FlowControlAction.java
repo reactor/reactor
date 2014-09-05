@@ -17,8 +17,6 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.queue.CompletableLinkedQueue;
-import reactor.queue.CompletableQueue;
 import reactor.rx.StreamSubscription;
 
 /**
@@ -27,11 +25,8 @@ import reactor.rx.StreamSubscription;
  */
 public class FlowControlAction<O> extends Action<O, O> {
 
-	private final CompletableQueue<O> completableQueue;
-
-	public FlowControlAction(Dispatcher dispatcher, CompletableQueue<O> completableQueue) {
+	public FlowControlAction(Dispatcher dispatcher) {
 		super(dispatcher);
-		this.completableQueue = completableQueue;
 	}
 
 	@Override
@@ -41,10 +36,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 
 	@Override
 	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber) {
-		return new StreamSubscription<O>(this, subscriber,
-				completableQueue == null ?
-				new CompletableLinkedQueue<O>() :
-				completableQueue) {
+		return new StreamSubscription<O>(this, subscriber) {
 			@Override
 			public void request(long elements) {
 				super.request(elements);
