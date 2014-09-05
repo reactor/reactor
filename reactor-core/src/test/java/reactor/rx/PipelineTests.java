@@ -309,7 +309,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> tasks = d.parallel(8)
 				.map(stream -> stream.map(str -> {
 							try {
-								Thread.sleep(random.nextInt(50));
+								Thread.sleep(random.nextInt(10));
 							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}

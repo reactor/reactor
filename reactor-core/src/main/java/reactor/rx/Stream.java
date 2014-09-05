@@ -36,6 +36,7 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
+import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple;
@@ -208,7 +209,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
-	public <E extends Throwable> Stream<E> recover(@Nonnull final Class<E> exceptionType) {
+	public <E extends Throwable> RecoverAction<O, E> recover(@Nonnull final Class<E> exceptionType) {
 		RecoverAction<O, E> recoverAction = new RecoverAction<O, E>(dispatcher, Selectors.T(exceptionType));
 		return connect(recoverAction);
 	}
@@ -415,7 +416,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public Action<O, O> overflow(CompletableQueue<O> queue) {
-		Action<O, O> stream = Action.<O>passthrough(dispatcher);
+		Action<O, O> stream = new FlowControlAction<O>(dispatcher);
 		stream.capacity(capacity).env(environment);
 		stream.setKeepAlive(keepAlive);
 		checkAndSubscribe(stream, queue != null ?
@@ -750,8 +751,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this buffer
 	 * @since 2.0
 	 */
-	public Stream<List<O>> movingBuffer(int backlog) {
-		final Action<O, List<O>> d = new MovingBufferAction<O>(dispatcher, backlog);
+	public MovingBufferAction<O> movingBuffer(int backlog) {
+		final MovingBufferAction<O> d = new MovingBufferAction<O>(dispatcher, backlog);
 		d.capacity(backlog+1).env(environment).setKeepAlive(keepAlive);
 		subscribe(d);
 		return d;
@@ -825,7 +826,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public Stream<Stream<O>> window() {
+	public WindowAction<O> window() {
 		return window(capacity);
 	}
 
@@ -837,7 +838,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public Stream<Stream<O>> window(long backlog) {
+	public WindowAction<O> window(long backlog) {
 		return connect(new WindowAction<O>(dispatcher, backlog));
 	}
 
@@ -983,39 +984,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public CountAction<O> count(long i) {
 		return connect(new CountAction<O>(dispatcher, i));
-	}
-
-	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return this {@link Stream}
-	 * @since 1.1
-	 */
-	public Action<O, O> timeout(long timeout) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
-	 * @return this {@link Stream}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public Action<O, O> timeout(long timeout, Timer timer) {
-		final TimeoutAction<O> d = new TimeoutAction<O>(
-				dispatcher,
-				timer,
-				timeout
-		);
-		return connect(d);
 	}
 
 	/**
@@ -1245,7 +1213,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
-		checkAndSubscribe(subscriber, createSubscription(subscriber));
+			checkAndSubscribe(subscriber, createSubscription(subscriber));
 	}
 
 	public <A, S extends Stream<A>> void subscribe(final CombineAction<O, A, S> subscriber) {
@@ -1327,9 +1295,18 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		state = State.COMPLETE;
 	}
 
-	protected void checkAndSubscribe(Subscriber<? super O> subscriber, StreamSubscription<O> subscription) {
+	protected void checkAndSubscribe(final Subscriber<? super O> subscriber, final StreamSubscription<O> subscription) {
 		if (checkState() && addSubscription(subscription)) {
-			subscriber.onSubscribe(subscription);
+			if(NonBlocking.class.isAssignableFrom(subscriber.getClass())){
+				subscriber.onSubscribe(subscription);
+			}else {
+				dispatch(new Consumer<Void>() {
+					@Override
+					public void accept(Void aVoid) {
+						subscriber.onSubscribe(subscription);
+					}
+				});
+			}
 		} else if (state == State.COMPLETE) {
 			subscriber.onComplete();
 		} else if (state == State.SHUTDOWN) {
@@ -1398,11 +1375,15 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 			if (!keepAlive) {
 				state = State.SHUTDOWN;
 			}
-		} else if (FanOutSubscription.class.isAssignableFrom(this.downstreamSubscription.getClass())) {
-			((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().remove(subscription);
+		} else {
+			StreamSubscription<O> dsub = this.downstreamSubscription;
+			if (FanOutSubscription.class.isAssignableFrom(dsub.getClass())) {
+				FanOutSubscription<O> fsub =
+						((FanOutSubscription<O>) this.downstreamSubscription);
 
-			if (((FanOutSubscription<O>) subscription).getSubscriptions().isEmpty() && !keepAlive) {
-				state = State.SHUTDOWN;
+				if (fsub.getSubscriptions().remove(subscription) && fsub.getSubscriptions().isEmpty() && !keepAlive) {
+					state = State.SHUTDOWN;
+				}
 			}
 		}
 
@@ -1463,4 +1444,5 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public Environment getEnvironment() {
 		return environment;
 	}
+
 }

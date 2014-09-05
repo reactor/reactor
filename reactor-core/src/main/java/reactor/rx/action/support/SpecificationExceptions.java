@@ -30,11 +30,8 @@ public class SpecificationExceptions {
 		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
 	}
 
-	public static IllegalStateException spec_3_17_exception() {
-		return new IllegalStateException("Spec. Rule 3.17 - A Subscription MUST support an unbounded number of calls to" +
-				" request and MUST support a pending request count up to 2^63-1 (java.lang.Long.MAX_VALUE). A pending request" +
-				" " +
-				"count of exactly 2^63-1 (java.lang.Long.MAX_VALUE) MAY be considered by the Publisher as effectively " +
-				"unbounded");
+	public static IllegalStateException spec_3_17_exception(long currentPending, long elements) {
+		return new IllegalStateException("Spec. Rule 3.17 - Cannot support current pending " + currentPending + " elements " +
+				"including requested " + elements + " elements, which is more than Long.MAX_VALUE pending elements");
 	}
 }

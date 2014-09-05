@@ -50,8 +50,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
-						/*.parallel()
-						.map(stream -> stream*/
+						//.parallel()
+						//.map(stream -> stream
 										.map(integer -> integer)
 										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())
@@ -60,9 +60,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.last()
 										.<Integer>split()
 
-					/*	)
-						.<Integer>merge()
-*/
+						//)
+						//.<Integer>merge()
+						.overflow()
 						.combine()
 				;
 	}
@@ -106,7 +106,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<Integer> stream = Streams.defer(env);
 
+
+
 		stream.subscribe(processor);
+		System.out.println(stream.debug());
+		Thread.sleep(2000);
 
 		processor.subscribe(new Subscriber<Integer>() {
 			@Override

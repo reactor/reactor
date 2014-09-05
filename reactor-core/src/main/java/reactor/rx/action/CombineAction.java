@@ -118,6 +118,11 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 		return publisher.debug();
 	}
 
+	@Override
+	public Action<E, O> cancel() {
+		publisher.cancel();
+		return super.cancel();
+	}
 
 	@Override
 	public String toString() {

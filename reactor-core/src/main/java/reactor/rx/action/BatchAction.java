@@ -76,6 +76,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
+	public BatchAction<T,V> resume() {
+		dispatch(flushConsumer);
+		return (BatchAction<T,V>)super.resume();
+	}
+
+	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(flushConsumer);
 		if(elements > this.capacity) {

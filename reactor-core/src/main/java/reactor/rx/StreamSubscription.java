@@ -19,6 +19,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
+import reactor.rx.action.Action;
+import reactor.rx.action.support.NonBlocking;
+import reactor.rx.action.support.SpecificationExceptions;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,6 +40,7 @@ public class StreamSubscription<O> implements Subscription {
 	protected final AtomicLong            capacity;
 	protected final ReentrantLock         bufferLock;
 	protected final CompletableQueue<O>   buffer;
+	protected final boolean               asyncManaged;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this(publisher, subscriber, new CompletableLinkedQueue<O>());
@@ -46,6 +50,7 @@ public class StreamSubscription<O> implements Subscription {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
 		this.capacity = new AtomicLong();
+		this.asyncManaged = subscriber != null && NonBlocking.class.isAssignableFrom(subscriber.getClass());
 		this.buffer = buffer;
 		if (buffer != null) {
 			bufferLock = new ReentrantLock();
@@ -60,6 +65,8 @@ public class StreamSubscription<O> implements Subscription {
 			return;
 		}
 
+		Action.checkRequest(elements);
+
 		int i = 0;
 		O element;
 		bufferLock.lock();
@@ -73,8 +80,8 @@ public class StreamSubscription<O> implements Subscription {
 				onComplete();
 			}
 
-			if (i < elements) {
-				capacity.getAndAdd(elements - i);
+			if (i < elements && capacity.addAndGet(elements - i) < 0 ) {
+				onError(SpecificationExceptions.spec_3_17_exception(capacity.get(), elements));
 			}
 		} finally {
 			bufferLock.unlock();
@@ -83,9 +90,13 @@ public class StreamSubscription<O> implements Subscription {
 
 	@Override
 	public void cancel() {
-		publisher.removeSubscription(this);
-		buffer.clear();
-		buffer.complete();
+		if (publisher != null) {
+			publisher.removeSubscription(this);
+		}
+		if (buffer != null) {
+			buffer.clear();
+			buffer.complete();
+		}
 	}
 
 	public void onNext(O ev) {
@@ -170,9 +181,18 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
+	public boolean asyncManaged() {
+		return asyncManaged;
+	}
+
 	StreamSubscription<O> wrap(CompletableQueue<O> queue) {
 		final StreamSubscription<O> thiz = this;
 		return new WrappedStreamSubscription<O>(thiz, queue);
+	}
+
+	StreamSubscription<O> wrap() {
+		final StreamSubscription<O> thiz = this;
+		return new WrappedStreamSubscription<O>(thiz, new CompletableLinkedQueue<O>());
 	}
 
 	public static class Firehose<O> extends StreamSubscription<O> {

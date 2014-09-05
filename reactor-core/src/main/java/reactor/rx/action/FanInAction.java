@@ -23,6 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
+import reactor.rx.action.support.NonBlocking;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,14 +100,24 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 
 	protected FanInSubscription<I> createFanInSubscription(){
 		return new FanInSubscription<I>(this,
-				MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8));
+				MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8)){
+			@Override
+			public void cancel() {
+				super.cancel();
+				if(masterAction != null) {
+					Action<?,?> master = masterAction;
+					masterAction = null;
+					master.cancel();
+				}
+			}
+		};
 	}
 
 	protected InnerSubscriber<I, O> createSubscriber() {
 		return new InnerSubscriber<I, O>(this);
 	}
 
-	protected static class InnerSubscriber<I, O> implements Subscriber<I> {
+	protected static class InnerSubscriber<I, O> implements Subscriber<I> , NonBlocking{
 		final FanInAction<I, O> outerAction;
 		FanInSubscription.InnerSubscription s;
 

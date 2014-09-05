@@ -27,6 +27,7 @@ import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -37,7 +38,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	private final ParallelStream[] publishers;
 	private final int              poolSize;
-	private final ReentrantLock lock = new ReentrantLock();
+	private final ReentrantLock lock   = new ReentrantLock();
+	private final AtomicInteger active = new AtomicInteger();
 
 	private volatile int roundRobinIndex = 0;
 
@@ -115,6 +117,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 				while (i < elements && i < poolSize) {
 					cursor++;
+					active.incrementAndGet();
 					onNext(publishers[i]);
 					i++;
 				}
@@ -310,6 +313,10 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				public void cancel() {
 					super.cancel();
 					parallelAction.publishers[index] = null;
+
+					if(parallelAction.active.decrementAndGet() <= 0){
+						parallelAction.cancel();
+					}
 				}
 
 			};

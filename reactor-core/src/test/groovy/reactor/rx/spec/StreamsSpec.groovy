@@ -1086,7 +1086,7 @@ class StreamsSpec extends Specification {
 	def 'Collect with Timeout will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> config().synchronousDispatcher().env(environment).get()
+			def source = Streams.<Integer> config().env(environment).get()
 			Stream reduced = source.buffer(5).timeout(600)
 			def value = reduced.tap()
 			println reduced.debug()
@@ -1098,6 +1098,8 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(1)
 			source.broadcastNext(1)
 			source.broadcastNext(1)
+			println reduced.debug()
+			sleep(2000)
 			println reduced.debug()
 
 		then:

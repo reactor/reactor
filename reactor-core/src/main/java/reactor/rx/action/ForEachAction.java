@@ -17,7 +17,9 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.rx.StreamSubscription;
+import reactor.rx.action.support.NonBlocking;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -49,13 +51,22 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 	@Override
-	protected void checkAndSubscribe(Subscriber<? super T> subscriber, StreamSubscription<T> subscription) {
+	protected void checkAndSubscribe(final Subscriber<? super T> subscriber, final StreamSubscription<T> subscription) {
 		if (state == State.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
 		} else if (state == State.ERROR) {
 			subscriber.onError(error);
 		} else if (addSubscription(subscription)) {
-			subscriber.onSubscribe(subscription);
+			if(NonBlocking.class.isAssignableFrom(subscriber.getClass())){
+				subscriber.onSubscribe(subscription);
+			}else {
+				dispatch(new Consumer<Void>() {
+					@Override
+					public void accept(Void aVoid) {
+						subscriber.onSubscribe(subscription);
+					}
+				});
+			}
 		}
 	}
 

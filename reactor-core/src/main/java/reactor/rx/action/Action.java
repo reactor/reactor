@@ -25,8 +25,10 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.StreamUtils;
+import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
+import reactor.util.Assert;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -64,7 +66,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 1.1, 2.0
  */
-public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I> {
+public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, NonBlocking {
 
 	//private static final Logger log = LoggerFactory.getLogger(Action.class);
 
@@ -85,7 +87,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		public void accept(Long n) {
 			try {
 				if (subscription == null) {
-					if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
+					if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
 					return;
 				}
 
@@ -96,7 +98,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				}
 
 				long previous = pendingNextSignals;
-				if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
+				pendingNextSignals += n;
 
 				if (previous < capacity) {
 					long toRequest = n + previous;
@@ -111,6 +113,12 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			}
 		}
 	};
+
+	public static void checkRequest(long n){
+		if (n <= 0l) {
+			throw SpecificationExceptions.spec_3_09_exception(n);
+		}
+	}
 
 	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
 		return new Action<O, O>(dispatcher) {
@@ -139,37 +147,39 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		}
 	}
 
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		if (subscription != null && !terminated) {
-			long currentCapacity = capacity.get();
-			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
-			if (!pause && (currentCapacity > 0)) {
-				final long remaining = currentCapacity > elements ? elements : currentCapacity;
-				onRequest(remaining);
-			}
-		}
+	/**
+	 * Request the parent stream when the last notification occurred after {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	public TimeoutAction<O> timeout(long timeout) {
+		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return timeout(timeout, getEnvironment().getRootTimer());
 	}
 
-	@Override
-	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber) {
-		if (subscription == null) {
-			return new StreamSubscription<O>(this, subscriber) {
-				@Override
-				public void request(long elements) {
-					super.request(elements);
-					requestUpstream(capacity, buffer.isComplete(), elements);
-				}
-			};
-		} else {
-			return new StreamSubscription.Firehose<O>(this, subscriber) {
-				@Override
-				public void request(long elements) {
-					requestUpstream(capacity, isComplete(), elements);
-				}
-			};
-		}
+	/**
+	 * Request the parent stream when the last notification occurred after {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 *
+	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timer   the reactor timer to run the timeout on
+	 * @return this {@link reactor.rx.Stream}
+	 * @since 1.1
+	 */
+	@SuppressWarnings("unchecked")
+	public TimeoutAction<O> timeout(long timeout, Timer timer) {
+		final TimeoutAction<O> d = new TimeoutAction<O>(
+				dispatcher,
+				this,
+				timer,
+				timeout
+		);
+		return connect(d);
 	}
-
 
 	@Override
 	public void accept(I i) {
@@ -183,6 +193,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			doError(cause);
 		}
 	}
+
 
 	@Override
 	public void onNext(I ev) {
@@ -266,7 +277,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		super.resume();
 		if (subscription != null) {
 
-			dispatch(new Consumer<Void>() {
+			trySyncDispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void integer) {
 					long toRequest = generateDemandFromPendingRequests();
@@ -333,6 +344,37 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	@SuppressWarnings("unchecked")
 	public Action<I, O> ignoreErrors(boolean ignore) {
 		return (Action<I, O>) super.ignoreErrors(ignore);
+	}
+
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+		if (subscription != null && !terminated) {
+			long currentCapacity = capacity.get();
+			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
+			if (!pause && (currentCapacity > 0)) {
+				final long remaining = currentCapacity > elements ? elements : currentCapacity;
+				onRequest(remaining);
+			}
+		}
+	}
+
+	@Override
+	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber) {
+		if (subscription == null) {
+			return new StreamSubscription<O>(this, subscriber) {
+				@Override
+				public void request(long elements) {
+					super.request(elements);
+					requestUpstream(capacity, buffer.isComplete(), elements);
+				}
+			};
+		} else {
+			return new StreamSubscription.Firehose<O>(this, subscriber) {
+				@Override
+				public void request(long elements) {
+					requestUpstream(capacity, isComplete(), elements);
+				}
+			};
+		}
 	}
 
 	public Subscription getSubscription() {
@@ -419,7 +461,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if (firehose) {
+		if (firehose && downstreamSubscription() != null && downstreamSubscription().asyncManaged()) {
 			action.accept(data);
 		} else {
 			dispatch(data, action);
@@ -427,10 +469,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected void onRequest(final long n) {
-		if (n <= 0l) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
-		}
-
+		checkRequest(n);
 		trySyncDispatch(n, requestConsumer);
 	}
 

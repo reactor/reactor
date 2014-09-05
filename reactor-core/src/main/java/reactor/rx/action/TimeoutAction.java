@@ -23,6 +23,7 @@ import reactor.timer.Timer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author Stephane Maldini
@@ -30,8 +31,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class TimeoutAction<T> extends Action<T, T> {
 
-	private final Timer timer;
-	private final long  timeout;
+	private final Timer        timer;
+	private final long         timeout;
+	private final Action<?, T> parentAction;
 	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
@@ -42,16 +44,15 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			long toRequest = generateDemandFromPendingRequests();
-			if (0 < toRequest && !firehose) {
-				pendingNextSignals -= toRequest;
-				numbTimeout++;
-				getSubscription().request(toRequest);
+			if (parentAction != null) {
+				long toRequest = generateDemandFromPendingRequests();
+				if (0 < toRequest) {
+					parentAction.resume();
+					numbTimeout++;
+				}
 				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-			} else if (firehose) {
-				getSubscription().request(toRequest);
-				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-				numbTimeout++;
+			} else {
+				doError(new TimeoutException("No data signaled for " + timeout + "ms"));
 			}
 		}
 	};
@@ -62,6 +63,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 			timeoutRegistration.cancel();
 			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 			requestConsumer.accept(integer);
+			if(integer == Long.MAX_VALUE) pendingNextSignals = 1;
 		}
 	};
 
@@ -70,11 +72,12 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	@SuppressWarnings("unchecked")
 	public TimeoutAction(Dispatcher dispatcher,
-	                     Timer timer, long timeout) {
+	                     Action<?, T> parentAction, Timer timer, long timeout) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.timeout = timeout;
+		this.parentAction = parentAction;
 	}
 
 	@Override

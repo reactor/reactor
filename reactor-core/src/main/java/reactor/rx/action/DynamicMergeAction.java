@@ -80,7 +80,7 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	@Override
 	public void setKeepAlive(boolean keepAlive) {
 		fanInAction.setKeepAlive(keepAlive);
-		super.setKeepAlive(keepAlive);
+		super.setKeepAlive(false);
 	}
 
 	@Override
@@ -101,6 +101,11 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 		return super.pause();
 	}
 
+	@Override
+	public Action<I, O> cancel() {
+		fanInAction.cancel();
+		return super.cancel();
+	}
 
 	public FanInAction<E,O> mergedStream() {
 		return fanInAction;

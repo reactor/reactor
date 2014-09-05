@@ -259,7 +259,7 @@ project('reactor-core') {
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
-		testCompile "org.reactivestreams:reactive-streams-tck:0.4.0.M2-20140904-132904-SNAPSHOT"
+		testCompile "org.reactivestreams:reactive-streams-tck:0.4.0.M2-20140904-173944-SNAPSHOT"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",
@@ -274,6 +274,12 @@ project('reactor-core') {
 						 "com.google.protobuf:protobuf-java:$protobufVersion",
 						 "org.xerial.snappy:snappy-java:$snappyVersion"
 	}
+
+	task testNG(type: Test) {
+		useTestNG()
+	}
+
+	test.dependsOn testNG
 
 	jar {
 		manifest {
