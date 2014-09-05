@@ -415,14 +415,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Action<O, O> overflow(CompletableQueue<O> queue) {
-		Action<O, O> stream = new FlowControlAction<O>(dispatcher);
-		stream.capacity(capacity).env(environment);
-		stream.setKeepAlive(keepAlive);
-		checkAndSubscribe(stream, queue != null ?
-				createSubscription(stream).wrap(queue) :
-				createSubscription(stream));
-		return stream;
+	public FlowControlAction<O> overflow(CompletableQueue<O> queue) {
+		return connect(new FlowControlAction<O>(dispatcher, queue));
 	}
 
 	/**

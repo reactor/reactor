@@ -50,8 +50,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
-						//.parallel()
-						//.map(stream -> stream
+						.parallel()
+						.map(stream -> stream
 										.map(integer -> integer)
 										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())
@@ -60,8 +60,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.last()
 										.<Integer>split()
 
-						//)
-						//.<Integer>merge()
+						)
+						.<Integer>merge()
 						.overflow()
 						.combine()
 				;
