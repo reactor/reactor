@@ -1,9 +1,9 @@
 package reactor.alloc;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
 import reactor.function.Supplier;
+import reactor.jarjar.com.lmax.disruptor.*;
+import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.support.Identifiable;
 import reactor.support.NamedDaemonThreadFactory;
 

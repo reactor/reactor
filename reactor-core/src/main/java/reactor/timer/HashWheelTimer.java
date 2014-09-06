@@ -1,11 +1,11 @@
 package reactor.timer;
 
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.RingBuffer;
 import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
+import reactor.jarjar.com.lmax.disruptor.EventFactory;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 

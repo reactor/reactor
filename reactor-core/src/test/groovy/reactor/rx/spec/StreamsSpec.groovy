@@ -1005,8 +1005,6 @@ class StreamsSpec extends Specification {
 			v == 'ok'
 
 
-		cleanup:
-			environment.shutdown()
 	}
 
 	def 'Creating Stream from observable'() {
@@ -1053,10 +1051,6 @@ class StreamsSpec extends Specification {
 		then:
 			'the collected list contains the first and second elements'
 			value.get() == [3, 4]
-
-		cleanup:
-			environment.shutdown()
-
 	}
 
 	def 'Throttle will generate demand every specified period'() {
@@ -1117,9 +1111,6 @@ class StreamsSpec extends Specification {
 			'the collected list contains the first and second elements'
 			value.get() == [2, 2]
 
-		cleanup:
-			environment.shutdown()
-
 	}
 
 	def 'A Stream can be throttled'() {
@@ -1153,8 +1144,37 @@ class StreamsSpec extends Specification {
 			'the average elapsed time between 2 signals is greater than throttled time'
 			value.get() >= nanotime * 0.6
 
-		cleanup:
-			environment.shutdown()
+	}
+
+	def 'time-slices of average'() {
+		given:
+			'a source and a throttled stream'
+			def source = Streams.<Integer>defer(environment)
+			def latch = new CountDownLatch(1)
+			long avgTime = 150l
+
+			def reduced = source
+					.buffer()
+					.throttle(avgTime)
+					.map { timeWindow ->  timeWindow.size() }
+					.finallyDo { latch.countDown() }
+
+			def value = reduced.tap()
+			println source.debug()
+
+		when:
+			'the first values are accepted on the source'
+			for (int i = 0; i < 1000000; i++) {
+				source.broadcastNext(1)
+			}
+			source.broadcastComplete()
+			latch.await(10, TimeUnit.SECONDS)
+			println value.get()
+			println source.debug()
+
+		then:
+			'the average elapsed time between 2 signals is greater than throttled time'
+			value.get() > 1
 
 	}
 
@@ -1196,8 +1216,6 @@ class StreamsSpec extends Specification {
 			'it outputs received values'
 			value.get() == [2, 3, 4, 5, 6]
 
-		cleanup:
-			environment.shutdown()
 	}
 
 	def 'Moving Buffer will drop overflown items'() {
@@ -1220,8 +1238,6 @@ class StreamsSpec extends Specification {
 			'it outputs values dismissing outdated ones'
 			value.get() == [2, 3, 4, 5, 6]
 
-		cleanup:
-			environment.shutdown()
 	}
 
 	def 'Collect will accumulate values from multiple threads'() {

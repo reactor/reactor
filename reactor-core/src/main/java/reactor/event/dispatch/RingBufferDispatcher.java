@@ -16,13 +16,13 @@
 
 package reactor.event.dispatch;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.dispatch.wait.WaitingMood;
 import reactor.function.Consumer;
+import reactor.jarjar.com.lmax.disruptor.*;
+import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;

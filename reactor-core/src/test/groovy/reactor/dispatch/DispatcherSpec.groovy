@@ -17,8 +17,6 @@
 
 package reactor.dispatch
 
-import com.lmax.disruptor.BlockingWaitStrategy
-import com.lmax.disruptor.dsl.ProducerType
 import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.core.spec.Reactors
@@ -32,6 +30,8 @@ import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
 import reactor.rx.spec.Streams
 import spock.lang.Shared
 import spock.lang.Specification

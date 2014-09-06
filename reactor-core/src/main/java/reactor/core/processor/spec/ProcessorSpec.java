@@ -16,13 +16,13 @@
 
 package reactor.core.processor.spec;
 
-import com.lmax.disruptor.*;
 import reactor.core.processor.Processor;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registry;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
+import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.util.Assert;
 
 /**

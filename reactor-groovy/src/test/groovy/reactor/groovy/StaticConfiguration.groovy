@@ -106,16 +106,20 @@ class StaticConfiguration {
 				dispatcher 'testDispatcher', new SynchronousDispatcher()
 			}
 
-			reactor('test1') {
-				processor matchAll(), Streams.<Event<?>> defer().
-						map { Event<?> ev ->
-							ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
-						}
+			def stream = Streams.<Event> defer().
+			 map { Event ev ->
+						ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
+					}
 
-				processor object('test'), Streams.<Event<?>> defer().
-						map { Event<?> ev ->
-							ev.copy("$ev.data twice")
-						}
+			def stream2 = Streams.<Event> defer().
+					map { Event ev ->
+						ev.copy("$ev.data twice")
+					}
+
+			reactor('test1') {
+				processor matchAll(), stream
+				processor object('test'), stream2
+
 
 				on('test') {
 					reply it

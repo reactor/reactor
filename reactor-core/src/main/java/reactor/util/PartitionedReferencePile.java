@@ -4,7 +4,6 @@ import com.gs.collections.api.block.function.Function0;
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.block.procedure.Procedure2;
 import com.gs.collections.api.map.MutableMap;
-import com.gs.collections.api.multimap.MutableMultimap;
 import com.gs.collections.api.set.ImmutableSet;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;

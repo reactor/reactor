@@ -16,14 +16,14 @@
 
 package reactor.core.processor;
 
-import com.lmax.disruptor.*;
-import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.dsl.ProducerType;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.function.batch.BatchConsumer;
+import reactor.jarjar.com.lmax.disruptor.*;
+import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 

@@ -1,7 +1,7 @@
 package reactor.alloc;
 
-import jsr166e.ConcurrentHashMapV8;
 import reactor.function.Supplier;
+import reactor.jarjar.jsr166e.ConcurrentHashMapV8;
 
 import java.util.List;
 

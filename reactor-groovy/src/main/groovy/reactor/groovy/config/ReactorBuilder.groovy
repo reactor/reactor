@@ -188,12 +188,12 @@ class ReactorBuilder implements Supplier<Reactor> {
 		processor selector, newTail
 	}
 
-	void processor(String selector, Processor<Event, Event> _processor) {
+	void processor(String selector, Processor<?, Event> _processor) {
 		processor Selectors.object(selector), _processor
 	}
 
-	void processor(Selector selector, Processor<Event, Event> processor) {
-		processors.add(new SelectorProcessor(processor, selector ?: Selectors.matchAll()))
+	void processor(Selector selector, Processor<?, Event> _processor) {
+		processors.add(new SelectorProcessor((Processor<Event<?>,Event<?>>)_processor, selector ?: Selectors.matchAll()))
 	}
 
 	@Override

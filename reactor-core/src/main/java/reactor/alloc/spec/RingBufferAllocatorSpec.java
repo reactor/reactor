@@ -1,15 +1,15 @@
 package reactor.alloc.spec;
 
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
 import reactor.alloc.Recyclable;
 import reactor.alloc.Reference;
 import reactor.alloc.RingBufferAllocator;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.EventHandler;
+import reactor.jarjar.com.lmax.disruptor.ExceptionHandler;
+import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.util.Assert;
 
 import java.util.concurrent.ExecutorService;

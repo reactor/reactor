@@ -16,8 +16,6 @@
 
 package reactor.core;
 
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.dsl.ProducerType;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
 import reactor.event.dispatch.*;
@@ -26,6 +24,8 @@ import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
+import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.timer.SimpleHashWheelTimer;
 import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;

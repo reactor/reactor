@@ -1,10 +1,10 @@
 package reactor;
 
-import jsr166e.LongAdder;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
+import reactor.jarjar.jsr166e.LongAdder;
 
 import java.util.Timer;
 import java.util.TimerTask;

@@ -22,7 +22,7 @@ ext {
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
-	groovyVersion = '2.3.2'
+	groovyVersion = '2.3.6'
 
 	// Logging
 	slf4jVersion = '1.7.7'
@@ -65,7 +65,7 @@ buildscript {
 	dependencies {
 		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.6',
 							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
-							'com.github.jengelman.gradle.plugins:shadow:0.8'
+							'com.github.jengelman.gradle.plugins:shadow:1.1.1'
 	}
 }
 apply from: "$gradleScriptDir/setup.gradle"
@@ -249,13 +249,60 @@ project('reactor-core') {
 			'*'
 	]
 
+	configurations {
+		jsr166e
+		disruptor
+		jarjar
+	}
+
+	task jsr166eRepackJar(type: Jar) { repackJar ->
+		repackJar.baseName = "reactor-jsr166e-repack"
+		repackJar.version = '1.0'
+
+		doLast() {
+			project.ant {
+				taskdef name: "jarjar", classname: "com.tonicsystems.jarjar.JarJarTask",
+						classpath: configurations.jarjar.asPath
+				jarjar(destfile: repackJar.archivePath) {
+					configurations.jsr166e.each { originalJar ->
+						zipfileset(src: originalJar)
+					}
+					rule(pattern: "jsr166e.**", result: "reactor.jarjar.jsr166e.@1")
+				}
+			}
+		}
+	}
+
+	task disruptorRepackJar(type: Jar) { repackJar ->
+		repackJar.baseName = "reactor-disruptor-repack"
+		repackJar.version = disruptorVersion
+
+		doLast() {
+			project.ant {
+				taskdef name: "jarjar", classname: "com.tonicsystems.jarjar.JarJarTask",
+						classpath: configurations.jarjar.asPath
+				jarjar(destfile: repackJar.archivePath) {
+					configurations.disruptor.each { originalJar ->
+						zipfileset(src: originalJar)
+					}
+					rule(pattern: "com.lmax.disruptor.**", result: "reactor.jarjar.com.lmax.disruptor.@1")
+				}
+			}
+		}
+	}
+
 	dependencies {
+		jarjar("com.googlecode.jarjar:jarjar:1.3")
+
 		// High-speed Dispatching
-		compile "com.lmax:disruptor:$disruptorVersion"
+		disruptor "com.lmax:disruptor:$disruptorVersion@jar"
+		compile(files(disruptorRepackJar))
+
+		jsr166e "io.gatling:jsr166e:1.0@jar"
+		compile(files(jsr166eRepackJar))
 
 		// Rich Collections
-		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion",
-						"io.gatling:jsr166e:1.0"
+		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
@@ -279,13 +326,30 @@ project('reactor-core') {
 		useTestNG()
 	}
 
-	test.dependsOn testNG
+	test {
+		dependsOn jar
+		classpath = project.sourceSets.test.runtimeClasspath +
+				files(jsr166eRepackJar) +
+		    files(disruptorRepackJar)
+		dependsOn testNG
+	}
 
 	jar {
 		manifest {
 			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
+		dependsOn jsr166eRepackJar
+		from(zipTree(jsr166eRepackJar.archivePath)) {
+			include "jsr166e/**"
+		}
+
+		dependsOn disruptorRepackJar
+		from(zipTree(disruptorRepackJar.archivePath)) {
+			include "com/lmax/disruptor/**"
+		}
+
 	}
+
 }
 
 project('reactor-groovy-extensions') {
@@ -302,7 +366,7 @@ project('reactor-groovy-extensions') {
 
 	dependencies {
 		compile project(':reactor-core'),
-						"org.codehaus.groovy:groovy-all:$groovyVersion"
+						"org.codehaus.groovy:groovy:$groovyVersion"
 	}
 }
 
@@ -319,9 +383,11 @@ project('reactor-groovy') {
 	}
 
 	dependencies {
+		compile(files(project(":reactor-core").disruptorRepackJar))
+		compile(files(project(":reactor-core").jsr166eRepackJar))
 		compile project(':reactor-core'),
 						project(':reactor-groovy-extensions'),
-						"org.codehaus.groovy:groovy-all:$groovyVersion"
+						"org.codehaus.groovy:groovy:$groovyVersion"
 	}
 }
 
@@ -329,25 +395,24 @@ project('reactor-logback') {
 	description = 'Async Logback appender implementation'
 
 	apply plugin: 'application'
-	apply plugin: 'shadow'
+	apply plugin: 'com.github.johnrengelman.shadow'
 
 	mainClassName = "reactor.logback.DurableLogUtility"
 	ext.baseName = "${archivesBaseName}-${version}"
 
 	dependencies {
+		compile(files(project(":reactor-core").disruptorRepackJar))
 		compile project(':reactor-core'),
 						"ch.qos.logback:logback-classic:$logbackVersion",
 						"net.openhft:chronicle:$openHftChronicleVersion",
 						"commons-cli:commons-cli:1.2"
 	}
 
-	shadow {
-		artifactSet {
-			exclude 'ch.qos.logback'
-			exclude 'org.slf4j'
-			exclude 'org.intellij'
-			exclude 'org.jetbrains'
-			exclude 'META-INF/maven/org.slf4j'
+	shadowJar {
+		dependencies {
+			include(dependency("net.openhft:chronicle:$openHftChronicleVersion"))
+			include(dependency("commons-cli:commons-cli:1.2"))
+			//include(project(":reactor-core"))
 		}
 	}
 }
@@ -367,6 +432,7 @@ project('reactor-net') {
 
 	dependencies {
 		compile project(':reactor-core')
+		compile(files(project(":reactor-core").disruptorRepackJar))
 
 		compile "io.netty:netty-all:$nettyVersion"
 

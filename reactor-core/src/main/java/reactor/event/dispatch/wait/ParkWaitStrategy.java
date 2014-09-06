@@ -1,6 +1,6 @@
 package reactor.event.dispatch.wait;
 
-import com.lmax.disruptor.*;
+import reactor.jarjar.com.lmax.disruptor.*;
 
 import java.util.concurrent.locks.LockSupport;
 

@@ -15,7 +15,7 @@
  */
 package reactor.event.dispatch.wait;
 
-import com.lmax.disruptor.*;
+import reactor.jarjar.com.lmax.disruptor.*;
 
 /**
  * A pair of slow and fast wait strategies to dynamically adapt to a given application load

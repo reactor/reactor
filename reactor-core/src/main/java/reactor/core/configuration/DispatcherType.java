@@ -16,8 +16,8 @@
 
 package reactor.core.configuration;
 
-import com.lmax.disruptor.RingBuffer;
 import reactor.core.dynamic.annotation.Dispatcher;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
