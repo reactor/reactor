@@ -29,7 +29,7 @@ ext {
 	logbackVersion = '1.1.2'
 
 	// Libraries
-	disruptorVersion = '3.2.1'
+	disruptorVersion = '3.3.0'
 	gsCollectionsVersion = '5.1.0'
 	nettyVersion = '4.0.20.Final'
 	jeromqVersion = '0.3.4'
