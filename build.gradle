@@ -326,14 +326,6 @@ project('reactor-core') {
 		useTestNG()
 	}
 
-	test {
-		dependsOn jar
-		classpath = project.sourceSets.test.runtimeClasspath +
-				files(jsr166eRepackJar) +
-		    files(disruptorRepackJar)
-		dependsOn testNG
-	}
-
 	jar {
 		manifest {
 			instruction 'Import-Package', bundleImportPackages.join(',')
