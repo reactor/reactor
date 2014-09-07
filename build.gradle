@@ -332,12 +332,12 @@ project('reactor-core') {
 		}
 		dependsOn jsr166eRepackJar
 		from(zipTree(jsr166eRepackJar.archivePath)) {
-			include "jsr166e/**"
+			include "reactor/jarjar/jsr166e/**"
 		}
 
 		dependsOn disruptorRepackJar
 		from(zipTree(disruptorRepackJar.archivePath)) {
-			include "com/lmax/disruptor/**"
+			include "reactor/jarjar/com/lmax/disruptor/**"
 		}
 
 	}
