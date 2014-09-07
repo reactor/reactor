@@ -15,32 +15,29 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.api.block.function.Function;
-import com.gs.collections.api.block.predicate.Predicate;
-import com.gs.collections.api.block.procedure.Procedure;
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
-import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.function.Consumer;
 import reactor.rx.StreamSubscription;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
 public class FanInSubscription<O> extends StreamSubscription<O> {
-	final MultiReaderFastList<InnerSubscription> subscriptions;
 
-	protected final Function<InnerSubscription, InnerSubscription> cleanFuntion = new CleanFunction();
-	protected final Procedure<InnerSubscription> subRemoveProcedure = new SubRemoveProcedure();
 
-	public FanInSubscription(Subscriber<O> subscriber) {
-		this(subscriber, MultiReaderFastList.<InnerSubscription>newList(8));
-	}
+	final List<InnerSubscription> subscriptions;
+
+	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
 
 	public FanInSubscription(Subscriber<O> subscriber,
-	                         MultiReaderFastList<InnerSubscription> subs) {
+	                         List<InnerSubscription> subs) {
 		super(null, subscriber);
 		this.subscriptions = subs;
 	}
@@ -52,67 +49,90 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	}
 
 	protected void parallelRequest(long elements) {
-		final int parallel = subscriptions.size();
+		lock.readLock().lock();
+		try {
+			final int parallel = subscriptions.size();
 
-		if (parallel > 0) {
-			final long batchSize = elements / parallel;
-			final long remaining = (elements % parallel > 0 ? elements : 0);
-			if (batchSize == 0 && elements == 0) return;
+			if (parallel > 0) {
+				final long batchSize = elements / parallel;
+				final long remaining = (elements % parallel > 0 ? elements : 0);
+				if (batchSize == 0 && elements == 0) return;
 
-			MutableList<InnerSubscription> toRemove = subscriptions.collectIf(new Predicate<InnerSubscription>() {
-				@Override
-				public boolean accept(InnerSubscription subscription) {
+				Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
+				InnerSubscription subscription;
+				while (subscriptionIterator.hasNext()) {
+					subscription = subscriptionIterator.next();
 					subscription.request(batchSize + remaining);
-					return subscription.toRemove;
+					lock.readLock().unlock();
+					try{
+						pruneObsoleteSub(subscriptionIterator, subscription.toRemove);
+					}finally {
+						lock.readLock().lock();
+					}
 				}
-			}, cleanFuntion);
-
-			pruneObsoleteSubs(toRemove);
-
+			}
+		} finally {
+			lock.readLock().unlock();
 		}
 	}
 
-	protected void pruneObsoleteSubs(final MutableList<InnerSubscription> toRemove){
-		if(toRemove != null && !toRemove.isEmpty()){
-			subscriptions.withWriteLockAndDelegate(new Procedure<MutableList<InnerSubscription>>() {
-				@Override
-				public void value(MutableList<InnerSubscription> each) {
-					toRemove.forEach(subRemoveProcedure);
-				}
-			});
+	public void forEach(Consumer<InnerSubscription> consumer){
+		lock.readLock().lock();
+		try{
+			for(InnerSubscription innerSubscription : subscriptions){
+				consumer.accept(innerSubscription);
+			}
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	protected void pruneObsoleteSub(Iterator<InnerSubscription> subscriptionIterator, boolean toRemove){
+		if (toRemove) {
+			lock.writeLock().lock();
+			try {
+				subscriptionIterator.remove();
+			} finally {
+				lock.writeLock().unlock();
+			}
 		}
 	}
 
 	@Override
 	public void cancel() {
-		subscriptions.forEach(new CheckedProcedure<Subscription>() {
-			@Override
-			public void safeValue(Subscription subscription) throws Exception {
+		lock.writeLock().lock();
+		try{
+			for(Subscription subscription : subscriptions){
 				subscription.cancel();
 			}
-		});
+			subscriptions.clear();
+		} finally {
+			lock.writeLock().unlock();
+		}
 		subscriptions.clear();
 		super.cancel();
 	}
 
+	void removeSubscription(final InnerSubscription s) {
+		lock.writeLock().lock();
+		try{
+			subscriptions.remove(s);
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
 	void addSubscription(final InnerSubscription s) {
-		subscriptions.
-				withWriteLockAndDelegate(new CheckedProcedure<MutableList<FanInSubscription.InnerSubscription>>() {
-					@Override
-					public void safeValue(MutableList<FanInSubscription.InnerSubscription> streamSubscriptions)
-							throws Exception {
-
-						streamSubscriptions.collectIf(new Predicate<InnerSubscription>() {
-							@Override
-							public boolean accept(InnerSubscription subscription) {
-								return subscription.toRemove;
-							}
-						}, cleanFuntion).forEach(subRemoveProcedure);
-
-						streamSubscriptions.add(s);
-					}
-				});
-
+		lock.writeLock().lock();
+		try{
+			Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
+			while (subscriptionIterator.hasNext()) {
+				pruneObsoleteSub(subscriptionIterator, subscriptionIterator.next().toRemove);
+			}
+			subscriptions.add(s);
+		} finally {
+			lock.writeLock().unlock();
+		}
 	}
 
 
@@ -140,17 +160,4 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	private static class CleanFunction implements Function<InnerSubscription, InnerSubscription> {
-		@Override
-		public InnerSubscription valueOf(InnerSubscription innerSubscription) {
-			return innerSubscription;
-		}
-	}
-
-	private class SubRemoveProcedure implements Procedure<InnerSubscription> {
-		@Override
-		public void value(InnerSubscription innerSubscription) {
-			subscriptions.remove(innerSubscription);
-		}
-	}
 }

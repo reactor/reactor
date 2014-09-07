@@ -15,9 +15,6 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.api.block.procedure.Procedure;
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -25,6 +22,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.rx.action.support.NonBlocking;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -77,12 +75,12 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		super.requestUpstream(capacity, terminated, elements);
-		if(masterAction != null && masterAction.getState() == State.READY){
+		if (masterAction != null && masterAction.getState() == State.READY) {
 			masterAction.requestUpstream(capacity, terminated, elements);
 		}
 	}
 
-	public MultiReaderFastList<FanInSubscription.InnerSubscription> getInnerSubscriptions() {
+	public List<FanInSubscription.InnerSubscription> getInnerSubscriptions() {
 		return innerSubscriptions.subscriptions;
 	}
 
@@ -98,14 +96,14 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 				'}';
 	}
 
-	protected FanInSubscription<I> createFanInSubscription(){
+	protected FanInSubscription<I> createFanInSubscription() {
 		return new FanInSubscription<I>(this,
-				MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8)){
+				new ArrayList<FanInSubscription.InnerSubscription>(8)) {
 			@Override
 			public void cancel() {
 				super.cancel();
-				if(masterAction != null) {
-					Action<?,?> master = masterAction;
+				if (masterAction != null) {
+					Action<?, ?> master = masterAction;
 					masterAction = null;
 					master.cancel();
 				}
@@ -117,7 +115,7 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 		return new InnerSubscriber<I, O>(this);
 	}
 
-	protected static class InnerSubscriber<I, O> implements Subscriber<I> , NonBlocking{
+	protected static class InnerSubscriber<I, O> implements Subscriber<I>, NonBlocking {
 		final FanInAction<I, O> outerAction;
 		FanInSubscription.InnerSubscription s;
 
@@ -152,17 +150,10 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 
 		@Override
 		public void onComplete() {
-			if(outerAction.dispatcher.inContext()){
+			if (outerAction.dispatcher.inContext()) {
 				s.toRemove = true;
-			}else {
-				outerAction.innerSubscriptions.subscriptions.withWriteLockAndDelegate(
-						new Procedure<MutableList<FanInSubscription.InnerSubscription>>() {
-
-							@Override
-							public void value(MutableList<FanInSubscription.InnerSubscription> innerSubscriptions) {
-								innerSubscriptions.remove(s);
-							}
-						});
+			} else {
+				outerAction.innerSubscriptions.removeSubscription(s);
 			}
 			if (outerAction.runningComposables.decrementAndGet() == 0) {
 				outerAction.innerSubscriptions.onComplete();

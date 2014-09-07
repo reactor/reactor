@@ -15,8 +15,6 @@
  */
 package reactor.rx;
 
-import com.gs.collections.api.block.procedure.Procedure;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -165,9 +163,9 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <E extends Subscription> void loopSubscriptions(E operation, final List<Object> streamTree) {
 			if (operation == null) return;
-			Procedure<E> procedure = new CheckedProcedure<E>() {
+			Consumer<E> procedure = new Consumer<E>() {
 				@Override
-				public void safeValue(E registration) throws Exception {
+				public void accept(E registration){
 					if (StreamSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((StreamSubscription<?>) registration).getSubscriber();
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
@@ -195,9 +193,9 @@ public abstract class StreamUtils {
 			};
 
 			if (FanOutSubscription.class.isAssignableFrom(operation.getClass())) {
-				((FanOutSubscription) operation).getSubscriptions().forEach(procedure);
+				((FanOutSubscription) operation).forEach(procedure);
 			} else {
-				procedure.value(operation);
+				procedure.accept(operation);
 			}
 		}
 
@@ -282,12 +280,14 @@ public abstract class StreamUtils {
 		private <O> boolean renderMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (FanInAction.class.isAssignableFrom(consumer.getClass())) {
 				FanInAction<?, O> operation = (FanInAction<?, O>) consumer;
-				operation.getInnerSubscriptions().forEach(new Procedure<FanInSubscription.InnerSubscription>() {
+				operation.getSubscription().forEach(new Consumer<FanInSubscription.InnerSubscription>() {
+					Subscription delegateSubscription;
+
 					@Override
-					public void value(FanInSubscription.InnerSubscription innerSubscription) {
-						Subscription subscription = innerSubscription.getDelegate();
-						if (StreamSubscription.class.isAssignableFrom(subscription.getClass())) {
-							Publisher<?> publisher = ((StreamSubscription<?>) subscription).getPublisher();
+					public void accept(FanInSubscription.InnerSubscription subscription) {
+						delegateSubscription = subscription.getDelegate();
+						if (StreamSubscription.class.isAssignableFrom(delegateSubscription.getClass())) {
+							Publisher<?> publisher = ((StreamSubscription) delegateSubscription).getPublisher();
 							if (references.contains(publisher)) return;
 							if (Action.class.isAssignableFrom(publisher.getClass())) {
 								parseComposable(((Action<?, ?>) publisher).findOldestAction(false), streamTree);

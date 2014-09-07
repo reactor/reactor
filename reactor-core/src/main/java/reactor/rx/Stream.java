@@ -1357,11 +1357,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 			subscription.onError(SpecificationExceptions.spec_2_12_exception());
 			return false;
 		} else if (FanOutSubscription.class.isAssignableFrom(this.downstreamSubscription.getClass())) {
-			if(((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().contains(subscription)){
+			if(((FanOutSubscription<O>) this.downstreamSubscription).contains(subscription)){
 				subscription.onError(SpecificationExceptions.spec_2_12_exception());
 				return false;
 			} else {
-				return ((FanOutSubscription<O>) this.downstreamSubscription).getSubscriptions().add(subscription);
+				return ((FanOutSubscription<O>) this.downstreamSubscription).add(subscription);
 			}
 		} else {
 			this.downstreamSubscription = new FanOutSubscription<O>(this, this.downstreamSubscription, subscription);
@@ -1383,7 +1383,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 				FanOutSubscription<O> fsub =
 						((FanOutSubscription<O>) this.downstreamSubscription);
 
-				if (fsub.getSubscriptions().remove(subscription) && fsub.getSubscriptions().isEmpty() && !keepAlive) {
+				if (fsub.remove(subscription) && fsub.isEmpty() && !keepAlive) {
 					state = State.SHUTDOWN;
 				}
 			}

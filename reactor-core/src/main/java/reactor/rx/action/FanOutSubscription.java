@@ -15,13 +15,16 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.api.block.predicate.Predicate;
-import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
-import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author Stephane Maldini
@@ -31,7 +34,8 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	static final Logger log = LoggerFactory.getLogger(FanOutSubscription.class);
 
-	private final MultiReaderFastList<StreamSubscription<O>> subscriptions = MultiReaderFastList.newList(2);
+	private final List<StreamSubscription<O>> subscriptions = new ArrayList<StreamSubscription<O>>(2);
+	private final ReentrantReadWriteLock      lock          = new ReentrantReadWriteLock();
 
 	public FanOutSubscription(Stream<O> publisher, StreamSubscription<O> streamSubscriptionA,
 	                          StreamSubscription<O> streamSubscriptionB) {
@@ -42,9 +46,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void onComplete() {
-		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+		forEach(new Consumer<StreamSubscription<O>>() {
 			@Override
-			public void safeValue(StreamSubscription<O> subscription) throws Exception {
+			public void accept(StreamSubscription<O> subscription) {
 				try {
 					subscription.onComplete();
 				} catch (Throwable throwable) {
@@ -56,9 +60,10 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void onNext(final O ev) {
-		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+
+		forEach(new Consumer<StreamSubscription<O>>() {
 			@Override
-			public void safeValue(StreamSubscription<O> subscription) throws Exception {
+			public void accept(StreamSubscription<O> subscription) {
 				try {
 					if (subscription.isComplete()) {
 						if (log.isDebugEnabled()) {
@@ -78,10 +83,10 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void cancel() {
-		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+		forEach(new Consumer<StreamSubscription<O>>() {
 			@Override
-			public void safeValue(StreamSubscription<O> subscription) throws Exception {
-				subscription.cancel();
+			public void accept(StreamSubscription<O> oStreamSubscription) {
+				oStreamSubscription.cancel();
 			}
 		});
 		super.cancel();
@@ -89,25 +94,78 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void onError(final Throwable ev) {
-		subscriptions.forEach(new CheckedProcedure<StreamSubscription<O>>() {
+		forEach(new Consumer<StreamSubscription<O>>() {
 			@Override
-			public void safeValue(StreamSubscription<O> subscription) throws Exception {
-				subscription.onError(ev);
+			public void accept(StreamSubscription<O> oStreamSubscription) {
+				oStreamSubscription.onError(ev);
 			}
 		});
 	}
 
-	public MultiReaderFastList<StreamSubscription<O>> getSubscriptions() {
-		return subscriptions;
-	}
-
 	@Override
 	public boolean isComplete() {
-		return subscriptions.select(new Predicate<StreamSubscription<O>>() {
-			@Override
-			public boolean accept(StreamSubscription<O> subscription)  {
-				return !subscription.isComplete();
+		lock.readLock().lock();
+		try {
+			boolean isComplete = false;
+			for(StreamSubscription<O> subscription : subscriptions){
+				isComplete = subscription.isComplete();
+				if(!isComplete) break;
 			}
-		}).isEmpty();
+			return isComplete;
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	public void forEach(Consumer<StreamSubscription<O>> consumer) {
+		lock.readLock().lock();
+		try {
+			for(StreamSubscription<O> subscription : subscriptions){
+				consumer.accept(subscription);
+			}
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	public List<StreamSubscription<O>> getSubscriptions() {
+		return Collections.unmodifiableList(subscriptions);
+	}
+
+	public boolean isEmpty(){
+		lock.readLock().lock();
+		try{
+			return subscriptions.isEmpty();
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	public boolean remove(StreamSubscription<O> subscription) {
+		lock.writeLock().lock();
+		try {
+			return subscriptions.remove(subscription);
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+
+	public boolean add(StreamSubscription<O> subscription) {
+		lock.writeLock().lock();
+		try {
+			return subscriptions.add(subscription);
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	public boolean contains(StreamSubscription<O> subscription) {
+		lock.readLock().lock();
+		try{
+			return subscriptions.contains(subscription);
+		} finally {
+			lock.readLock().unlock();
+		}
 	}
 }

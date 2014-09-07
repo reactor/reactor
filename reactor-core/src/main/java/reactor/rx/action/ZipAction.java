@@ -15,8 +15,6 @@
  */
 package reactor.rx.action;
 
-import com.gs.collections.api.block.predicate.Predicate;
-import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -60,7 +58,7 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 
 	@Override
 	protected FanInSubscription<O> createFanInSubscription() {
-		return new ZipSubscription<O>(this, MultiReaderFastList.<FanInSubscription.InnerSubscription>newList(8));
+		return new ZipSubscription<O>(this, new ArrayList<FanInSubscription.InnerSubscription>(8));
 	}
 
 	@Override
@@ -120,24 +118,13 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 	}
 
 	private static class ZipSubscription<O> extends FanInSubscription<O> {
-		public ZipSubscription(Subscriber<O> subscriber, MultiReaderFastList<InnerSubscription> subs) {
+		public ZipSubscription(Subscriber<O> subscriber, List<InnerSubscription> subs) {
 			super(subscriber, subs);
 		}
 
 		@Override
 		protected void parallelRequest(final long elements) {
-			final int parallel = subscriptions.size();
-			if (parallel > 0) {
-				pruneObsoleteSubs(
-						subscriptions.collectIf(new Predicate<InnerSubscription>() {
-							@Override
-							public boolean accept(InnerSubscription subscription) {
-								subscription.request(1);
-								return subscription.toRemove;
-							}
-						}, cleanFuntion)
-				);
-			}
+			super.parallelRequest(1);
 		}
 	}
 }
