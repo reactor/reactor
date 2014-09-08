@@ -140,7 +140,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public <A, E extends Action<O, A>> E connect(@Nonnull final E stream) {
 		stream.capacity(capacity).env(environment);
-		stream.setKeepAlive(keepAlive);
+		stream.keepAlive(keepAlive);
 		this.subscribe(stream);
 		return stream;
 	}
@@ -193,6 +193,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	public Stream<O> env(Environment environment) {
 		this.environment = environment;
+		return this;
+	}
+
+
+	public Stream<O> keepAlive(boolean keepAlive) {
+		this.keepAlive = keepAlive;
 		return this;
 	}
 
@@ -419,7 +425,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		FlowControlAction<O> stream = new FlowControlAction<O>(dispatcher);
 		if(queue != null){
 			stream.capacity(capacity).env(environment);
-			stream.setKeepAlive(keepAlive);
+			stream.keepAlive(keepAlive);
 			checkAndSubscribe(stream, createSubscription(stream).wrap(queue) );
 		}else{
 			connect(stream);
@@ -637,7 +643,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public FirstAction<O> first(long batchSize) {
 		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
-		d.env(environment).setKeepAlive(keepAlive);
+		d.env(environment).keepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -660,7 +666,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public LastAction<O> every(long batchSize) {
 		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
-		d.env(environment).setKeepAlive(keepAlive);
+		d.env(environment).keepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -701,7 +707,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public <V> ForEachAction<V> split(long batchSize) {
 		final ForEachAction<V> d = new ForEachAction<V>(dispatcher);
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
-		d.capacity(batchSize).env(environment).setKeepAlive(keepAlive);
+		d.capacity(batchSize).env(environment).keepAlive(keepAlive);
 		iterableStream.subscribe(d);
 		return d;
 	}
@@ -740,7 +746,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public BufferAction<O> buffer(long batchSize) {
 		final BufferAction<O> d = new BufferAction<O>(batchSize, dispatcher);
-		d.env(environment).setKeepAlive(keepAlive);
+		d.env(environment).keepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -755,7 +761,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public MovingBufferAction<O> movingBuffer(int backlog) {
 		final MovingBufferAction<O> d = new MovingBufferAction<O>(dispatcher, backlog);
-		d.capacity(backlog+1).env(environment).setKeepAlive(keepAlive);
+		d.capacity(backlog+1).env(environment).keepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -816,7 +822,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public SortAction<O> sort(int maxCapacity, Comparator<O> comparator) {
 		final SortAction<O> d = new SortAction<O>(maxCapacity, dispatcher, comparator);
-		d.env(environment).setKeepAlive(keepAlive);
+		d.env(environment).keepAlive(keepAlive);
 		subscribe(d);
 		return d;
 	}
@@ -910,7 +916,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 				fn,
 				dispatcher
 		);
-		stream.env(environment).setKeepAlive(keepAlive);
+		stream.env(environment).keepAlive(keepAlive);
 		subscribe(stream);
 		return stream;
 	}
@@ -1033,7 +1039,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 				period,
 				delay
 		);
-		d.env(environment).capacity(1).setKeepAlive(keepAlive);
+		d.env(environment).capacity(1).keepAlive(keepAlive);
 		subscribe(d);
 
 		return d;
@@ -1204,6 +1210,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return this;
 	}
 
+
 	@Override
 	public void recycle() {
 		downstreamSubscription = null;
@@ -1324,10 +1331,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	public StreamSubscription<O> downstreamSubscription() {
 		return downstreamSubscription;
-	}
-
-	public void setKeepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
 	}
 
 	public State getState() {

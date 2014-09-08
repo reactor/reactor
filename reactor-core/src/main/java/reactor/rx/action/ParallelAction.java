@@ -95,11 +95,12 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	}
 
 	@Override
-	public void setKeepAlive(boolean keepAlive) {
-		super.setKeepAlive(keepAlive);
+	public Action<O, Stream<O>> keepAlive(boolean keepAlive) {
+		super.keepAlive(keepAlive);
 		for (ParallelStream p : publishers) {
-			p.setKeepAlive(keepAlive);
+			p.keepAlive(keepAlive);
 		}
+		return this;
 	}
 
 	@Override

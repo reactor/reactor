@@ -78,9 +78,10 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	}
 
 	@Override
-	public void setKeepAlive(boolean keepAlive) {
-		fanInAction.setKeepAlive(keepAlive);
-		super.setKeepAlive(false);
+	public Action<I, O> keepAlive(boolean keepAlive) {
+		fanInAction.keepAlive(keepAlive);
+		super.keepAlive(false);
+		return this;
 	}
 
 	@Override

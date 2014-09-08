@@ -80,10 +80,6 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 		}
 	}
 
-	public List<FanInSubscription.InnerSubscription> getInnerSubscriptions() {
-		return innerSubscriptions.subscriptions;
-	}
-
 	@Override
 	public FanInSubscription<I> getSubscription() {
 		return innerSubscriptions;

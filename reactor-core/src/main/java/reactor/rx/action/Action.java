@@ -299,7 +299,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 				period,
 				delay
 		);
-		d.env(environment).capacity(capacity).setKeepAlive(keepAlive);
+		d.env(environment).capacity(capacity).keepAlive(keepAlive);
 		checkAndSubscribe(d, new StreamSubscription<O>(this, d) {
 			@Override
 			public void request(long elements) {

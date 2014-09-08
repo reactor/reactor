@@ -46,7 +46,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 			if (Collection.class.isAssignableFrom(defaultValues.getClass())) {
 				capacity(((Collection<T>) defaultValues).size());
 			}
-			setKeepAlive(true);
+			keepAlive(true);
 		}
 	}
 

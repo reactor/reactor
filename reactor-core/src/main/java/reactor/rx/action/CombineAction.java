@@ -109,8 +109,9 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 	}
 
 	@Override
-	public void setKeepAlive(boolean keepAlive) {
-		publisher.setKeepAlive(keepAlive);
+	public Stream<O> keepAlive(boolean keepAlive) {
+		publisher.keepAlive(keepAlive);
+		return publisher;
 	}
 
 	@Override

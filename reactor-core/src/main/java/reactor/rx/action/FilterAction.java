@@ -93,7 +93,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 	public E otherwise() {
 		if (elseComposable == null) {
 			Action<T, T> passthrough = Action.<T>passthrough(dispatcher);
-			passthrough.capacity(capacity).setKeepAlive(keepAlive);
+			passthrough.capacity(capacity).keepAlive(keepAlive);
 			elseComposable = (E) passthrough;
 		}
 		return elseComposable;

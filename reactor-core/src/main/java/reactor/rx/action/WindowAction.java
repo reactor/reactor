@@ -40,7 +40,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	protected void createWindowStream() {
 		currentWindow = new Stream<T>(dispatcher, capacity).env(environment).capacity(capacity);
-		currentWindow.setKeepAlive(false);
+		currentWindow.keepAlive(false);
 	}
 
 	@Override

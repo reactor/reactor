@@ -337,7 +337,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
 					outboundStream = new ForEachAction<O>(Arrays.asList(value), dispatcher).env(environment);
 				} else {
 					outboundStream = new Stream<O>(dispatcher, environment, 1);
-					outboundStream.setKeepAlive(false);
+					outboundStream.keepAlive(false);
 					if (isError()) {
 						outboundStream.broadcastError(error);
 					}
