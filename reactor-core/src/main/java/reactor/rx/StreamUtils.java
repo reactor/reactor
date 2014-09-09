@@ -176,12 +176,13 @@ public abstract class StreamUtils {
 								debugVisitor.newLine(debugVisitor.d);
 								debugVisitor.appender.append(subscriber).append(registration);
 							}
-							wrappedSubscriber.put("info", subscriber);
 							if (Promise.class.isAssignableFrom(subscriber.getClass())) {
 								List<Object> wrappedStream = new ArrayList<Object>();
-								wrappedSubscriber.put("info", subscriber);
+								wrappedSubscriber.put("info", subscriber.toString());
 								wrappedSubscriber.put("state", ((Promise<?>) subscriber).state);
 								parseComposable(((Promise<?>) subscriber).outboundStream, wrappedStream);
+							} else {
+								wrappedSubscriber.put("info", subscriber.toString());
 							}
 							streamTree.add(wrappedSubscriber);
 							if (debugVisitor != null) {
