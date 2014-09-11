@@ -121,7 +121,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 		lock.readLock().lock();
 		try {
 			for(StreamSubscription<O> subscription : subscriptions){
-				consumer.accept(subscription);
+				if(subscription != null){
+					consumer.accept(subscription);
+				}
 			}
 		} finally {
 			lock.readLock().unlock();
