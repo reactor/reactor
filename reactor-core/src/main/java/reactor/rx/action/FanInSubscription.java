@@ -55,14 +55,14 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 			if (parallel > 0) {
 				final long batchSize = elements / parallel;
-				final long remaining = (elements % parallel > 0 ? elements : 0);
+				final long remaining = (elements % parallel > 0 ? elements : 0) + batchSize;
 				if (batchSize == 0 && elements == 0) return;
 
 				Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
 				InnerSubscription subscription;
 				while (subscriptionIterator.hasNext()) {
 					subscription = subscriptionIterator.next();
-					subscription.request(batchSize + remaining);
+					subscription.request(remaining);
 					lock.readLock().unlock();
 					try{
 						pruneObsoleteSub(subscriptionIterator, subscription.toRemove);

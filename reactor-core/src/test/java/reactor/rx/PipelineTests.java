@@ -18,6 +18,8 @@ package reactor.rx;
 
 import org.hamcrest.Matcher;
 import org.junit.Test;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
@@ -162,7 +164,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void testMerge() throws InterruptedException {
 		Stream<String> stream1 = Streams.defer("1", "2");
-		Stream<String> stream2 = Streams.defer( "3", "4", "5");
+		Stream<String> stream2 = Streams.defer("3", "4", "5");
 		Stream<Integer> s =
 				Streams.merge(env, stream1, stream2)
 						.capacity(5)
@@ -482,7 +484,7 @@ public class PipelineTests extends AbstractReactorTest {
 				.monitorLatency(100)
 				.consume(stream -> (filter ? (stream
 								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
-								.buffer(1000/8)
+								.buffer(1000 / 8)
 								.timeout(1000)
 								.consume(batch -> {
 									for (String i : batch) latch.countDown();
@@ -702,6 +704,65 @@ public class PipelineTests extends AbstractReactorTest {
 		assertTrue("Less than 90% (" + NUM_MESSAGES / BATCH_SIZE * TOLERANCE +
 						") of the batches are matching the buffer() size: " + batchesDistribution.get(BATCH_SIZE),
 				NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);
+	}
+
+
+	@Test
+	public void shouldCorrectlyDispatchComplexFlow() throws InterruptedException {
+		Stream<Integer> globalFeed = Streams.defer(env);
+
+		CountDownLatch afterSubscribe = new CountDownLatch(1);
+		CountDownLatch latch = new CountDownLatch(4);
+
+		Stream<Integer> s = Streams.defer("2222")
+				.map(Integer::parseInt)
+				.flatMap(l ->
+								Streams.merge(
+										env,
+										globalFeed,
+										Streams.defer(1111, l, 3333, 4444, 5555, 6666)
+								)
+										.observe(x -> afterSubscribe.countDown())
+										.filter(nearbyLoc -> 3333 >= nearbyLoc)
+										.filter(nearbyLoc -> 2222 <= nearbyLoc)
+				);
+
+		s.subscribe(new Subscriber<Integer>() {
+			Subscription s;
+
+			@Override
+			public void onSubscribe(Subscription s) {
+				this.s = s;
+				s.request(1);
+			}
+
+			@Override
+			public void onNext(Integer integer) {
+				latch.countDown();
+				System.out.println(integer);
+				s.request(1);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				t.printStackTrace();
+			}
+
+			@Override
+			public void onComplete() {
+
+			}
+		});
+
+		afterSubscribe.await(5, TimeUnit.SECONDS);
+
+		globalFeed.broadcastNext(2223);
+		globalFeed.broadcastNext(2224);
+
+		latch.await(5, TimeUnit.SECONDS);
+		System.out.println(s.debug());
+		assertEquals("Must have counted 4 elements", 0, latch.getCount());
+
 	}
 
 
