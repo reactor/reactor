@@ -50,19 +50,16 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
-						.parallel()
-						.map(stream -> stream
+						//.parallel()
+						//.map(stream -> stream
 										.map(integer -> integer)
-										.distinctUntilChanged()
 										.<Integer>scan(tuple -> tuple.getT1())
 										.filter(integer -> integer >= 0)
 										.buffer(1)
 										.last()
 										.<Integer>split()
-
-						)
-						.<Integer>merge()
-						.overflow()
+						//).<Integer>merge()
+						//.observe(i -> System.out.println(Thread.currentThread()+" "+i))
 						.combine()
 				;
 	}
@@ -99,8 +96,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 
-		final int elements = 1_00_000;
-		CountDownLatch latch = new CountDownLatch(elements + 1);
+		final int elements = 100_000;
+		CountDownLatch latch = new CountDownLatch(elements);
 
 		Processor<Integer, Integer> processor = createIdentityProcessor(1000);
 
@@ -140,9 +137,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		for (int i = 0; i < elements; i++) {
 			stream.broadcastNext(i);
 		}
-		stream.broadcastComplete();
+		//stream.broadcastComplete();
 
-		latch.await(10,TimeUnit.SECONDS);
+		latch.await(30,TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		long count = latch.getCount();

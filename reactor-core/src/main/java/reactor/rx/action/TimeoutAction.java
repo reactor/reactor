@@ -45,11 +45,8 @@ public class TimeoutAction<T> extends Action<T, T> {
 		@Override
 		public void accept(Void aVoid) {
 			if (parentAction != null) {
-				long toRequest = generateDemandFromPendingRequests();
-				if (0 < toRequest) {
 					parentAction.resume();
 					numbTimeout++;
-				}
 				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 			} else {
 				doError(new TimeoutException("No data signaled for " + timeout + "ms"));

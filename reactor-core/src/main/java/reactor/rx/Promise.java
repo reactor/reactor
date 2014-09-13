@@ -27,6 +27,7 @@ import reactor.function.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.action.FinallyAction;
 import reactor.rx.action.ForEachAction;
+import reactor.rx.action.support.NonBlocking;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -50,7 +51,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O> {
+public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, NonBlocking {
 
 	private final ReentrantLock lock = new ReentrantLock();
 

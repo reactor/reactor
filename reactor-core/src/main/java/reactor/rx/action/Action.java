@@ -102,7 +102,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 				if (previous < capacity) {
 					long toRequest = n + previous;
-					toRequest = toRequest > capacity ? capacity : toRequest;
+					toRequest = Math.min(toRequest, capacity);
 					pendingNextSignals -= toRequest;
 					currentNextSignals = 0;
 					subscription.request(toRequest);
@@ -351,7 +351,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 			long currentCapacity = capacity.get();
 			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
 			if (!pause && (currentCapacity > 0)) {
-				final long remaining = currentCapacity > elements ? elements : currentCapacity;
+				final long remaining = Math.min(currentCapacity, elements);
 				onRequest(remaining);
 			}
 		}
@@ -359,7 +359,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 
 	@Override
 	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber) {
-		if (subscription == null) {
+		if (subscription == null || !NonBlocking.class.isAssignableFrom(subscriber.getClass())) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {
@@ -434,7 +434,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	protected long generateDemandFromPendingRequests() {
-		return pendingNextSignals > capacity ? capacity : pendingNextSignals;
+		return Math.min(pendingNextSignals, capacity);
 	}
 
 	protected void doComplete() {
