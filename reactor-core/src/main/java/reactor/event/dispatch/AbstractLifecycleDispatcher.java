@@ -82,7 +82,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	 * @return boolean true if the programs is already run by this dispatcher
 	 */
 	@Override
-	public final boolean inContext() {
+	public boolean inContext() {
 		return context == Thread.currentThread().getContextClassLoader();
 	}
 
@@ -115,7 +115,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                         Registry<Consumer<?>> consumerRegistry,
 	                         Consumer<Throwable> errorConsumer,
 	                         Router router,
-	                         Consumer<E> completionConsumer, boolean isInContext) {
+	                         Consumer<E> completionConsumer,
+	                         boolean isInContext) {
 		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
 
 		try {

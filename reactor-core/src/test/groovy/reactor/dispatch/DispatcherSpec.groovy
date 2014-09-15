@@ -21,10 +21,7 @@ import reactor.core.Environment
 import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.Event
-import reactor.event.dispatch.RingBufferDispatcher
-import reactor.event.dispatch.SynchronousDispatcher
-import reactor.event.dispatch.ThreadPoolExecutorDispatcher
-import reactor.event.dispatch.WorkQueueDispatcher
+import reactor.event.dispatch.*
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerFilteringRouter
@@ -40,6 +37,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 import static reactor.GroovyTestUtils.$
+import static reactor.GroovyTestUtils.consumer
 import static reactor.event.selector.Selectors.T
 
 /**
@@ -51,11 +49,11 @@ class DispatcherSpec extends Specification {
 	@Shared
 	Environment env
 
-	void setup() {
+	def setup() {
 		env = new Environment()
 	}
 
-	def cleanup(){
+	def cleanup() {
 		env.shutdown()
 	}
 
@@ -204,6 +202,46 @@ class DispatcherSpec extends Specification {
 
 		then:
 			t1 != t2
+
+	}
+
+	def "MultiThreadDispatchers support ping pong dispatching"(Dispatcher d) {
+
+		given:
+			def r = Reactors.reactor(env, d)
+			def latch = new CountDownLatch(4)
+			def main = Thread.currentThread()
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			r.on($("ping"), consumer {
+				if (latch.count > 0) {
+					t1 = Thread.currentThread()
+					r.notify("pong")
+					latch.countDown()
+				}
+			})
+			r.on($("pong"), {
+				if (latch.count > 0) {
+					t2 = Thread.currentThread()
+					r.notify("ping")
+					latch.countDown()
+				}
+			})
+			r.notify("ping")
+
+		then:
+			latch.await(1, TimeUnit.SECONDS)
+			main != t1
+			main != t2
+			t1 != t2
+
+		where:
+			d << [
+					new ThreadPoolExecutorDispatcher(4, 1024),
+					new WorkQueueDispatcher("ping-pong", 4, 1024, null)
+			]
 
 	}
 

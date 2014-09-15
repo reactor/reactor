@@ -83,6 +83,12 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		return vals.toImmutable();
 	}
 
+	public boolean isEmpty() {
+		Long threadId = Thread.currentThread().getId();
+		FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
+		return !vals.isEmpty();
+	}
+
 	@Override
 	public Iterator<T> iterator() {
 		return iteratorFor(Thread.currentThread().getId());

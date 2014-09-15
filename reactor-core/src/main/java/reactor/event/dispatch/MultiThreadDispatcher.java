@@ -2,7 +2,6 @@ package reactor.event.dispatch;
 
 import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
-import reactor.util.PartitionedReferencePile;
 
 /**
  * Base implementation for multi-threaded dispatchers
@@ -13,10 +12,9 @@ import reactor.util.PartitionedReferencePile;
  */
 public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher {
 
-	private final int                                       backlog;
-	private final int                                       numberThreads;
-	private final PartitionedReferencePile<MultiThreadTask> tailRecursionPile;
-	private final BatchFactorySupplier<MultiThreadTask>     taskFactory;
+	private final int                                   backlog;
+	private final int                                   numberThreads;
+	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
 	protected MultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -29,10 +27,6 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 						return new MultiThreadTask();
 					}
 				}
-		);
-		this.tailRecursionPile = new PartitionedReferencePile<MultiThreadTask>(
-				numberThreads,
-				taskFactory
 		);
 	}
 
@@ -49,24 +43,25 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	public int poolSize() {
 		return numberThreads;
 	}
-	
+
 	@Override
 	protected Task allocateRecursiveTask() {
-		return tailRecursionPile.get();
+		throw new IllegalStateException("MultiThreadDispatchers cannot allocate recursively");
 	}
 
 	protected Task allocateTask() {
 		return taskFactory.get();
 	}
 
+	@Override
+	public boolean inContext() {
+		return false;
+	}
+
 	protected class MultiThreadTask extends Task {
 		@Override
 		public void run() {
 			route(this);
-
-			for (MultiThreadTask t : tailRecursionPile) {
-				route(t);
-			}
 		}
 	}
 
