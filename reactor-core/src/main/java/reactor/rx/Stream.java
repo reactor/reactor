@@ -36,7 +36,6 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
-import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple;
@@ -1099,7 +1098,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public Promise<O> next() {
-		final Promise<O> d = new Promise<O>(
+		Promise<O> d = new Promise<O>(
 				dispatcher,
 				environment
 		);
@@ -1231,14 +1230,17 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Send an element of parameterized type {link O} to all the attached {@link Subscriber}.
+	 * A Stream must be in READY state to dispatch signals and will fail fast otherwise (IllegalStateException).
 	 *
 	 * @param ev the data to forward
 	 * @since 2.0
 	 */
 	public void broadcastNext(final O ev) {
-		if (!checkState() || downstreamSubscription == null) {
+		checkState();
+
+		if(downstreamSubscription == null) {
 			if (log.isDebugEnabled()) {
-				log.debug("event dropped " + ev);
+				log.debug("event [" + ev+ "] dropped by: "+getClass().getSimpleName()+":"+this);
 			}
 			return;
 		}
@@ -1256,17 +1258,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Send an error to all the attached {@link Subscriber}.
+	 * A Stream must be in READY state to dispatch signals and will fail fast otherwise (IllegalStateException).
 	 *
 	 * @param throwable the error to forward
 	 * @since 2.0
 	 */
 	public void broadcastError(final Throwable throwable) {
-		if (!checkState()) {
-			if (log.isDebugEnabled()) {
-				log.debug("error dropped", throwable);
-			}
-			return;
-		}
+		checkState();
 
 		if(!ignoreErrors) {
 			state = State.ERROR;
@@ -1283,12 +1281,18 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Send a complete event to all the attached {@link Subscriber}.
+	 * Send a complete event to all the attached {@link Subscriber} ONLY IF the underlying state is READY.
+	 * Unlike {@link #broadcastNext(Object)} and {@link #broadcastError(Throwable)} it will simply ignore the signal.
 	 *
 	 * @since 2.0
 	 */
 	public void broadcastComplete() {
-		if (!checkState()) return;
+		if(state != State.READY){
+			if (log.isDebugEnabled()) {
+				log.debug("Complete signal dropped by: "+getClass().getSimpleName()+":"+this);
+			}
+			return;
+		}
 
 		if (downstreamSubscription == null) {
 			state = State.COMPLETE;
@@ -1305,8 +1309,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	protected void checkAndSubscribe(final Subscriber<? super O> subscriber, final StreamSubscription<O> subscription) {
-		if (checkState() && addSubscription(subscription)) {
-			if(NonBlocking.class.isAssignableFrom(subscriber.getClass())){
+		if (state == State.READY && addSubscription(subscription)) {
+			if(subscription.asyncManaged()){
 				subscriber.onSubscribe(subscription);
 			}else {
 				dispatch(new Consumer<Void>() {
@@ -1402,9 +1406,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		subscription.onError(cause);
 	}
 
-	protected boolean checkState() {
-		return state != State.ERROR && state != State.COMPLETE && state != State.SHUTDOWN;
-
+	final void checkState() {
+		if(state == State.ERROR){
+			throw new IllegalStateException("Stream in error state", error);
+		}else if(state == State.COMPLETE || state == State.SHUTDOWN){
+			throw new IllegalStateException("Stream is "+state);
+		}
 	}
 
 	public static enum State {

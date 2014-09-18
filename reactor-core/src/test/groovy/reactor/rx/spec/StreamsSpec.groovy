@@ -265,6 +265,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A RuntimeException is accepted'
+			composable = Streams.<Integer> defer()
 			composable.broadcastError(new IllegalArgumentException())
 
 		then:
@@ -1551,6 +1552,7 @@ class StreamsSpec extends Specification {
 		and:
 			'sorted operation is added for up to 3 elements ordered at once and the stream is retrieved'
 			value = stream.sort(3).buffer(6).tap().get()
+		println stream.debug()
 
 		then:
 			'it is available'

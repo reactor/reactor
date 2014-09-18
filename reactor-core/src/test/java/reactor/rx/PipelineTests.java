@@ -17,6 +17,7 @@
 package reactor.rx;
 
 import org.hamcrest.Matcher;
+import org.junit.Assert;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -43,6 +44,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -763,6 +766,98 @@ public class PipelineTests extends AbstractReactorTest {
 		System.out.println(s.debug());
 		assertEquals("Must have counted 4 elements", 0, latch.getCount());
 
+	}
+
+
+	@Test
+	public void testConsistentParallelWithJava8StreamsInput() throws InterruptedException {
+		for (int i = 0; i < 10000; i++)
+			testParallelWithJava8StreamsInput();
+	}
+
+
+	/**
+	 * https://gist.github.com/nithril/444d8373ce67f0a8b853
+	 * Contribution by Nicolas Labrot
+	 */
+	@Test
+	public void testParallelWithJava8StreamsInput() throws InterruptedException {
+		//System.out.println("Java "+ ManagementFactory.getRuntimeMXBean().getVmVersion());
+		List<Integer> tasks =
+				IntStream.range(0, ThreadLocalRandom.current().nextInt(100,300))
+				.boxed()
+						.collect(Collectors.toList());
+
+		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
+
+		Stream<Integer> worker = Streams.defer(env, env.getDefaultDispatcherFactory().get(), tasks);
+
+		worker.parallel(4).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		countDownLatch.await(5, TimeUnit.SECONDS);
+
+		Assert.assertEquals(0, countDownLatch.getCount());
+	}
+
+	//@Test
+	public void testBeyondLongMaxStream() throws InterruptedException {
+		int iterations = 2;
+		final CountDownLatch countDownLatch = new CountDownLatch(iterations);
+		final long progress = 1_000_000;
+
+		System.out.println("Will count "+iterations+" times Long.MAX and yield every "+progress+" elements");
+
+		Stream<Integer> worker = Streams.defer(env);
+
+		worker.map(v -> v).consume(new Consumer<Integer>() {
+
+			long counter = 0;
+
+			@Override
+			public void accept(Integer integer) {
+				counter++;
+				if(counter % progress == 0){
+					System.out.println("Progress: "+ (short)(counter / progress)*100 +"%");
+				}
+				if(counter == Long.MAX_VALUE){
+					countDownLatch.countDown();
+					System.out.format("Long.MAX reached {} time{}\n",
+							countDownLatch.getCount(),
+							countDownLatch.getCount() > 1 ? "s" : ""
+					);
+					counter = 0;
+				}
+			}
+		});
+
+		long iterator = 0;
+		Integer payload = 1;
+		long idx = 0;
+
+		while(iterator < iterations){
+			worker.broadcastNext(payload);
+			idx++;
+			if(idx == Long.MAX_VALUE){
+				idx = 0;
+				iterator++;
+			}
+		}
+
+		countDownLatch.await(5, TimeUnit.SECONDS);
+		Assert.assertEquals(0, countDownLatch.getCount());
+	}
+
+	@Test
+	public void testBeyondLongMaxMicroBatching() throws InterruptedException {
+		List<Integer> tasks = IntStream.range(0, 1500).boxed().collect(Collectors.toList());
+
+		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
+
+		Stream<Integer> worker = Streams.defer(env, env.getDefaultDispatcherFactory().get(), tasks);
+
+		worker.parallel(4).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		countDownLatch.await(5, TimeUnit.SECONDS);
+
+		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
 

@@ -144,7 +144,7 @@ class GroovyPromisesSpec extends Specification {
 
 		when: "p1 is consumed by p2"
 			def s = p.stream().map() { Integer.parseInt it }.
-					when(NumberFormatException, { latch.countDown() }).
+					when(NumberFormatException, { latch.countDown(); println 'test'; }).
 					map { println('not in log'); true }
 
 		and: "setting a value"
@@ -153,7 +153,7 @@ class GroovyPromisesSpec extends Specification {
 
 		then: 'No value'
 			thrown(NumberFormatException)
-			latch.count == 0
+			latch.await(2, TimeUnit.SECONDS) && latch.count == 0
 	}
 
 	def "Promise compose after set"() {

@@ -29,7 +29,8 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean next;
 	final boolean flush;
 	final boolean first;
-	final Consumer<Void> flushConsumer = new FlushConsumer();
+	final Consumer<T> flushConsumer = new FlushConsumer();
+	long count = 0;
 
 	public BatchAction(long batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
@@ -50,7 +51,8 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		if (first && currentNextSignals == 1) {
+		count++;
+		if (first && count == 1) {
 			firstCallback(value);
 		}
 
@@ -58,48 +60,54 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && currentNextSignals % capacity == 0) {
-			flushCallback(value);
+		if (flush && count % capacity == 0) {
+			flushConsumer.accept(value);
 		}
 	}
 
 	@Override
 	protected void doComplete() {
-		flushCallback(null);
+		trySyncDispatch(null, flushConsumer);
 		super.doComplete();
 	}
 
 	@Override
 	public void available() {
-		dispatch(flushConsumer);
+		dispatch(null, flushConsumer);
 		super.available();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public BatchAction<T,V> resume() {
-		dispatch(flushConsumer);
+		dispatch(null, flushConsumer);
 		return (BatchAction<T,V>)super.resume();
 	}
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		dispatch(flushConsumer);
+		dispatch(null, flushConsumer);
 		if(elements > this.capacity) {
 			super.requestUpstream(capacity,
 					terminated, elements);
 		}else{
 			super.requestUpstream(capacity,
 					terminated, this.capacity - currentNextSignals > 0 ?
-							this.capacity - currentNextSignals :
+							this.capacity  :
 							this.capacity);
 		}
 	}
 
-	private class FlushConsumer implements Consumer<Void> {
+	final private class FlushConsumer implements Consumer<T> {
 		@Override
-		public void accept(Void n) {
-			flushCallback(null);
+		public void accept(T n) {
+			flushCallback(n);
+			count = 0;
 		}
+	}
+
+	@Override
+	public String toString() {
+		return super.toString()+"{batch: "+(count/capacity*100)+"% ("+count+")";
 	}
 }
