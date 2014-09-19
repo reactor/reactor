@@ -266,7 +266,7 @@ public abstract class StreamUtils {
 		private <O> boolean renderGroupBy(Stream<O> consumer, final List<Object> streamTree) {
 			if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
 				GroupByAction<O, ?> operation = (GroupByAction<O, ?>) consumer;
-				for (GroupedByStream<?, O> s : operation.groupByMap().values()) {
+				for (Stream<O> s : operation.groupByMap().values()) {
 					parseComposable(s, streamTree);
 					if (debugVisitor != null) {
 						debugVisitor.newLine(debugVisitor.d, false);

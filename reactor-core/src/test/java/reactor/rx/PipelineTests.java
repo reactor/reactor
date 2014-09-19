@@ -22,15 +22,19 @@ import org.junit.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
+import reactor.core.Environment;
 import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.support.Tap;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.ParallelAction;
 import reactor.rx.spec.Promises;
 import reactor.rx.spec.Streams;
@@ -771,6 +775,9 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testConsistentParallelWithJava8StreamsInput() throws InterruptedException {
+		env.addDispatcherFactory("test-p",
+				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
+
 		for (int i = 0; i < 10000; i++)
 			testParallelWithJava8StreamsInput();
 	}
@@ -790,59 +797,11 @@ public class PipelineTests extends AbstractReactorTest {
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
 
-		Stream<Integer> worker = Streams.defer(env, env.getDefaultDispatcherFactory().get(), tasks);
+		Stream<Integer> worker = Streams.defer(env, env.getDispatcherFactory("test-p").get(), tasks);
 
-		worker.parallel(4).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		worker.parallel(4, env.getDispatcherFactory("test-p")).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
 
-		Assert.assertEquals(0, countDownLatch.getCount());
-	}
-
-	//@Test
-	public void testBeyondLongMaxStream() throws InterruptedException {
-		int iterations = 2;
-		final CountDownLatch countDownLatch = new CountDownLatch(iterations);
-		final long progress = 1_000_000;
-
-		System.out.println("Will count "+iterations+" times Long.MAX and yield every "+progress+" elements");
-
-		Stream<Integer> worker = Streams.defer(env);
-
-		worker.map(v -> v).consume(new Consumer<Integer>() {
-
-			long counter = 0;
-
-			@Override
-			public void accept(Integer integer) {
-				counter++;
-				if(counter % progress == 0){
-					System.out.println("Progress: "+ (short)(counter / progress)*100 +"%");
-				}
-				if(counter == Long.MAX_VALUE){
-					countDownLatch.countDown();
-					System.out.format("Long.MAX reached {} time{}\n",
-							countDownLatch.getCount(),
-							countDownLatch.getCount() > 1 ? "s" : ""
-					);
-					counter = 0;
-				}
-			}
-		});
-
-		long iterator = 0;
-		Integer payload = 1;
-		long idx = 0;
-
-		while(iterator < iterations){
-			worker.broadcastNext(payload);
-			idx++;
-			if(idx == Long.MAX_VALUE){
-				idx = 0;
-				iterator++;
-			}
-		}
-
-		countDownLatch.await(5, TimeUnit.SECONDS);
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
@@ -860,6 +819,26 @@ public class PipelineTests extends AbstractReactorTest {
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
+	@Test
+	public void shouldWindowCorrectly() throws InterruptedException{
+		Stream<Integer> sensorDataStream = Streams.defer(env, SynchronousDispatcher.INSTANCE, createTestDataset(1000));
+		CountDownLatch endLatch = new CountDownLatch(1000/100);
+
+		sensorDataStream
+				/*     step 2  */.window(100)
+				///*     step 3  */.timeout(1000)
+				/*     step 4  */.consume(batchedStream -> {
+			System.out.println("New window starting");
+			batchedStream
+						/*   step 4.1  */.reduce(tuple -> Math.min(tuple.getT1(), tuple.getT2()), Integer.MAX_VALUE)
+						/* final step  */.consume(i -> System.out.println("Minimum " + i))
+						/* ad-hoc step */.finallyDo(o -> endLatch.countDown());
+		});
+
+		endLatch.await(10, TimeUnit.SECONDS);
+
+		Assert.assertEquals(0, endLatch.getCount());
+	}
 
 	@Test
 	public void shouldCorrectlyDispatchBatchedTimeout() throws InterruptedException {
@@ -903,4 +882,6 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 		return list;
 	}
+
+
 }

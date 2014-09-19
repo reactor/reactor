@@ -53,4 +53,9 @@ public class NestAction<T, E extends Stream<T>, K> extends Action<T, E> {
 		}
 		return streamSubscription;
 	}
+
+	@Override
+	protected void doNext(Object ev) {
+		//ignore
+	}
 }

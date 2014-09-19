@@ -25,7 +25,7 @@ import reactor.util.Assert;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
+public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 
 	private final Function<T, K> fn;
 	private final Map<K, GroupedByStream<K, T>> groupByMap = new HashMap<K, GroupedByStream<K, T>>();
@@ -36,11 +36,11 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 		this.fn = fn;
 	}
 
-	public Map<K, GroupedByStream<K, T>> groupByMap() {
+	public Map<K, ? extends Stream<T>> groupByMap() {
 		return groupByMap;
 	}
 
-	public Action<T, GroupedByStream<K, T>> cancel(K key) {
+	public Action<T, Stream<T>> cancel(K key) {
 		dispatch(key, new Consumer<K>() {
 			@Override
 			public void accept(K k) {
@@ -53,7 +53,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 		return this;
 	}
 
-	public Action<T, GroupedByStream<K, T>> complete(K key) {
+	public Action<T, Stream<T>> complete(K key) {
 		dispatch(key, new Consumer<K>() {
 			@Override
 			public void accept(K k) {
@@ -74,7 +74,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 			stream = new GroupedByStream<K, T>(key, dispatcher);
 			stream.capacity(capacity).env(environment).keepAlive(false);
 			groupByMap.put(key, stream);
-			broadcastNext(stream);
+			broadcastNext(stream.overflow());
 		}
 		stream.broadcastNext(value);
 	}

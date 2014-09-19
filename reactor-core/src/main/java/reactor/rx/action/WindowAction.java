@@ -50,9 +50,15 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	@Override
+	protected void doComplete() {
+		super.doComplete();
+		currentWindow.broadcastComplete();
+	}
+
+	@Override
 	protected void firstCallback(T event) {
 		createWindowStream();
-		broadcastNext(currentWindow);
+		broadcastNext(currentWindow.overflow());
 	}
 
 	@Override
@@ -66,4 +72,6 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 			currentWindow.broadcastComplete();
 		}
 	}
+
+
 }

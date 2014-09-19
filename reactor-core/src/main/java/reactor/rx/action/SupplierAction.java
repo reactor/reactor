@@ -40,6 +40,11 @@ public class SupplierAction<T, V> extends Action<T, V> {
 		super.requestUpstream(capacity, terminated, elements);
 	}
 
+	@Override
+	protected void doNext(Object ev) {
+		//ignore
+	}
+
 	private class SupplierConsumer implements Consumer<Void> {
 		@Override
 		public void accept(Void aVoid) {

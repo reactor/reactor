@@ -65,6 +65,11 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 	}
 
 	@Override
+	protected void doNext(Object ev) {
+		//ignore
+	}
+
+	@Override
 	public String toString() {
 		return super.toString() + "{" +
 				"catch-type=" + selector.getObject() + ", " +

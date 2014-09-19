@@ -40,6 +40,11 @@ final public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void doNext(Object ev) {
+		//ignore
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
 		if (selector.matches(cause.getClass())) {

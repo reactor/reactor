@@ -130,4 +130,9 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 		return "input=" + (subscriber.getClass().getSimpleName().isEmpty() ? subscriber : subscriber.getClass().getSimpleName().replaceAll("Action","")) +
 				", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass().getSimpleName().replaceAll("Action",""));
 	}
+
+	@Override
+	protected void doNext(E ev) {
+		//ignore
+	}
 }

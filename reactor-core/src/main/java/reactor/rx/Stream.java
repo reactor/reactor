@@ -138,7 +138,10 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public <A, E extends Action<O, A>> E connect(@Nonnull final E stream) {
-		stream.capacity(capacity).env(environment);
+		if (stream.capacity == Long.MAX_VALUE && capacity != Long.MAX_VALUE) {
+			stream.capacity(capacity);
+		}
+		stream.env(environment);
 		stream.keepAlive(keepAlive);
 		this.subscribe(stream);
 		return stream;
@@ -181,7 +184,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public Stream<O> capacity(long elements) {
 		this.capacity = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
-		if(capacity != elements){
+		if (capacity != elements) {
 			log.warn("The Stream altered the requested maximum capacity {} to not overrun its Dispatcher which supports " +
 							"up to {} slots for next signals, minus {} slots for others signals amid error," +
 							" complete, subscribe and upstream request. The assigned capacity is now {}",
@@ -380,7 +383,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public final ParallelAction<O> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaultDispatcherFactory() :
-				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize,"parallel-stream"));
+				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"));
 	}
 
 	/**
@@ -393,10 +396,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final ParallelAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
-		final ParallelAction<O> parallelAction = new ParallelAction<O>(
+		return connect(new ParallelAction<O>(
 				this.dispatcher, dispatcherSupplier, poolsize
-		);
-		return connect(parallelAction);
+		));
 	}
 
 	/**
@@ -422,11 +424,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public FlowControlAction<O> overflow(CompletableQueue<O> queue) {
 		FlowControlAction<O> stream = new FlowControlAction<O>(dispatcher);
-		if(queue != null){
+		if (queue != null) {
 			stream.capacity(capacity).env(environment);
 			stream.keepAlive(keepAlive);
-			checkAndSubscribe(stream, createSubscription(stream).wrap(queue) );
-		}else{
+			checkAndSubscribe(stream, createSubscription(stream).wrap(queue));
+		} else {
 			connect(stream);
 		}
 		return stream;
@@ -456,19 +458,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public FilterAction<Boolean, Stream<Boolean>> filter() {
 		return ((Stream<Boolean>) this).filter(FilterAction.simplePredicate);
-	}
-
-	/**
-	 * Create a new {@code Stream} whose values will be generated from {@param supplier}.
-	 * Every time flush is triggered, {@param supplier} is called.
-	 *
-	 * @param supplier the supplier to drain
-	 * @return a new {@code Stream} whose values are generated on each request signal
-	 * @since 1.1, 2.0
-	 */
-	public <E> SupplierAction<O, E> propagate(final Supplier<E> supplier) {
-		final SupplierAction<O, E> d = new SupplierAction<O, E>(dispatcher, supplier);
-		return connect(d);
 	}
 
 	/**
@@ -641,10 +630,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the first value of each batch)
 	 */
 	public FirstAction<O> first(long batchSize) {
-		final FirstAction<O> d = new FirstAction<O>(batchSize, dispatcher);
-		d.env(environment).keepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(new FirstAction<O>(batchSize, dispatcher));
 	}
 
 	/**
@@ -664,10 +650,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are the last value of each batch
 	 */
 	public LastAction<O> every(long batchSize) {
-		final LastAction<O> d = new LastAction<O>(batchSize, dispatcher);
-		d.env(environment).keepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(new LastAction<O>(batchSize, dispatcher));
 	}
 
 
@@ -744,10 +727,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@code Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public BufferAction<O> buffer(long batchSize) {
-		final BufferAction<O> d = new BufferAction<O>(batchSize, dispatcher);
-		d.env(environment).keepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(new BufferAction<O>(batchSize, dispatcher));
 	}
 
 	/**
@@ -759,10 +739,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public MovingBufferAction<O> movingBuffer(int backlog) {
-		final MovingBufferAction<O> d = new MovingBufferAction<O>(dispatcher, backlog);
-		d.capacity(backlog+1).env(environment).keepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(new MovingBufferAction<O>(dispatcher, backlog, 1));
 	}
 
 	/**
@@ -805,7 +782,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public SortAction<O> sort(Comparator<O> comparator) {
-		return sort((int)capacity, comparator);
+		return sort((int) capacity, comparator);
 	}
 
 	/**
@@ -820,10 +797,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public SortAction<O> sort(int maxCapacity, Comparator<O> comparator) {
-		final SortAction<O> d = new SortAction<O>(maxCapacity, dispatcher, comparator);
-		d.env(environment).keepAlive(keepAlive);
-		subscribe(d);
-		return d;
+		return connect(new SortAction<O>(maxCapacity, dispatcher, comparator));
 	}
 
 	/**
@@ -860,6 +834,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public <K> GroupByAction<O, K> groupBy(Function<O, K> keyMapper) {
 		return connect(new GroupByAction<O, K>(keyMapper, dispatcher));
 	}
+
 	/**
 	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
 	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning
@@ -909,15 +884,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
 	                               final long batchSize
 	) {
-		final Action<O, A> stream = new ReduceAction<O, A>(
+
+		return connect(new ReduceAction<O, A>(
 				batchSize,
 				accumulators,
 				fn,
 				dispatcher
-		);
-		stream.env(environment).keepAlive(keepAlive);
-		subscribe(stream);
-		return stream;
+		));
 	}
 
 	/**
@@ -1032,16 +1005,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public Action<O, O> throttle(long period, long delay, Timer timer) {
-		final ThrottleAction<O> d = new ThrottleAction<O>(
+		return connect(new ThrottleAction<O>(
 				dispatcher,
 				timer,
 				period,
 				delay
-		);
-		d.env(environment).capacity(1).keepAlive(keepAlive);
-		subscribe(d);
-
-		return d;
+		));
 	}
 
 	/**
@@ -1221,7 +1190,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
-			checkAndSubscribe(subscriber, createSubscription(subscriber));
+		checkAndSubscribe(subscriber, createSubscription(subscriber));
 	}
 
 	public <A, S extends Stream<A>> void subscribe(final CombineAction<O, A, S> subscriber) {
@@ -1238,9 +1207,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public void broadcastNext(final O ev) {
 		checkState();
 
-		if(downstreamSubscription == null) {
+		if (downstreamSubscription == null) {
 			if (log.isDebugEnabled()) {
-				log.debug("event [" + ev+ "] dropped by: "+getClass().getSimpleName()+":"+this);
+				log.debug("event [" + ev + "] dropped by: " + getClass().getSimpleName() + ":" + this);
 			}
 			return;
 		}
@@ -1266,7 +1235,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public void broadcastError(final Throwable throwable) {
 		checkState();
 
-		if(!ignoreErrors) {
+		if (!ignoreErrors) {
 			state = State.ERROR;
 			error = throwable;
 		}
@@ -1287,9 +1256,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public void broadcastComplete() {
-		if(state != State.READY){
+		if (state != State.READY) {
 			if (log.isDebugEnabled()) {
-				log.debug("Complete signal dropped by: "+getClass().getSimpleName()+":"+this);
+				log.debug("Complete signal dropped by: " + getClass().getSimpleName() + ":" + this);
 			}
 			return;
 		}
@@ -1310,9 +1279,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	protected void checkAndSubscribe(final Subscriber<? super O> subscriber, final StreamSubscription<O> subscription) {
 		if (state == State.READY && addSubscription(subscription)) {
-			if(subscription.asyncManaged()){
+			if (subscription.asyncManaged()) {
 				subscriber.onSubscribe(subscription);
-			}else {
+			} else {
 				dispatch(new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
@@ -1360,11 +1329,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		if (this.downstreamSubscription == null) {
 			this.downstreamSubscription = subscription;
 			return true;
-		} else if(this.downstreamSubscription.equals(subscription)){
+		} else if (this.downstreamSubscription.equals(subscription)) {
 			subscription.onError(SpecificationExceptions.spec_2_12_exception());
 			return false;
 		} else if (FanOutSubscription.class.isAssignableFrom(this.downstreamSubscription.getClass())) {
-			if(((FanOutSubscription<O>) this.downstreamSubscription).contains(subscription)){
+			if (((FanOutSubscription<O>) this.downstreamSubscription).contains(subscription)) {
 				subscription.onError(SpecificationExceptions.spec_2_12_exception());
 				return false;
 			} else {
@@ -1407,10 +1376,10 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	final void checkState() {
-		if(state == State.ERROR){
+		if (state == State.ERROR) {
 			throw new IllegalStateException("Stream in error state", error);
-		}else if(state == State.COMPLETE || state == State.SHUTDOWN){
-			throw new IllegalStateException("Stream is "+state);
+		} else if (state == State.COMPLETE || state == State.SHUTDOWN) {
+			throw new IllegalStateException("Stream is " + state);
 		}
 	}
 

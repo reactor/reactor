@@ -66,7 +66,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 1.1, 2.0
  */
-public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, NonBlocking {
+public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer<I>, NonBlocking {
 
 	//private static final Logger log = LoggerFactory.getLogger(Action.class);
 
@@ -292,27 +292,6 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 	}
 
 	@Override
-	public Action<O, O> throttle(long period, long delay, Timer timer) {
-		final ThrottleAction<O> d = new ThrottleAction<O>(
-				getDispatcher(),
-				timer,
-				period,
-				delay
-		);
-		d.env(environment).capacity(capacity).keepAlive(keepAlive);
-		checkAndSubscribe(d, new StreamSubscription<O>(this, d) {
-			@Override
-			public void request(long elements) {
-				if (capacity.get() == 0l) {
-					super.request(1l);
-				}
-				requestUpstream(new AtomicLong(elements), buffer.isComplete(), elements);
-			}
-		});
-		return d;
-	}
-
-	@Override
 	public StreamUtils.StreamVisitor debug() {
 		return StreamUtils.browse(findOldestAction(false));
 	}
@@ -441,8 +420,7 @@ public class Action<I, O> extends Stream<O> implements Processor<I, O>, Consumer
 		broadcastComplete();
 	}
 
-	protected void doNext(I ev) {
-	}
+	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
 		if (!ignoreErrors) {

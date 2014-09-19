@@ -57,9 +57,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.filter(integer -> integer >= 0)
 										.buffer(1)
 										.last()
-										.<Integer>split()
+										.flatMap(buffer -> Streams.<Integer>defer(env, buffer))
+										.window(1)
+										.map(Stream::split)
+										.<Integer>merge()
 						).<Integer>merge()
-						.observe(i -> System.out.println(Thread.currentThread()+" "+i))
+						.observe(i -> System.out.println(Thread.currentThread() + " " + i))
 						.combine();
 	}
 

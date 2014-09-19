@@ -34,9 +34,9 @@ public class MovingBufferAction<T> extends BatchAction<T, List<T>> {
 	private int pointer = 0;
 
 	@SuppressWarnings("unchecked")
-	public MovingBufferAction(Dispatcher dispatcher, int backlog
+	public MovingBufferAction(Dispatcher dispatcher, int backlog, int shift
 	) {
-		super(backlog, dispatcher, true, false, true);
+		super(backlog+shift, dispatcher, true, false, true);
 		this.collectedWindow = (T[]) new Object[backlog];
 	}
 

@@ -67,7 +67,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doComplete() {
-		trySyncDispatch(null, flushConsumer);
+		flushConsumer.accept(null);
 		super.doComplete();
 	}
 

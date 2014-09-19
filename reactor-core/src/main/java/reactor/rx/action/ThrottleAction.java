@@ -62,7 +62,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	public ThrottleAction(Dispatcher dispatcher,
 	                      Timer timer, long period, long delay) {
-		super(dispatcher);
+		super(dispatcher, 1);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.period = period;

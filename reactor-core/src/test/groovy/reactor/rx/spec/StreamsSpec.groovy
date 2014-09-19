@@ -955,9 +955,9 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[0].id == "1"
 			result.to[0].boundTo[1].id == "2"
 			result.to[0].boundTo[2].id == "3"
-			result.to[0].boundTo[0].to[0].id == "Callback"
-			result.to[0].boundTo[1].to[0].id == "Callback"
-			result.to[0].boundTo[2].to[0].id == "Callback"
+			result.to[0].boundTo[0].to[0].id == "FlowControl"
+			result.to[0].boundTo[1].to[0].id == "FlowControl"
+			result.to[0].boundTo[2].to[0].id == "FlowControl"
 	}
 
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
@@ -1125,8 +1125,8 @@ class StreamsSpec extends Specification {
 					.throttle(avgTime)
 					.elapsed()
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
-			}
+						acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+					}
 
 			def value = reduced.tap()
 			println source.debug()
@@ -1136,8 +1136,8 @@ class StreamsSpec extends Specification {
 			for (int i = 0; i < 1000000; i++) {
 				source.broadcastNext(1)
 			}
-			source.broadcastComplete()
 			sleep(1500)
+			reduced.resume()
 			println source.debug()
 			println(((long) (value.get() / 1_000_000)) + " milliseconds on average")
 
