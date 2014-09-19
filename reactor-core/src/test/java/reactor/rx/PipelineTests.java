@@ -773,22 +773,15 @@ public class PipelineTests extends AbstractReactorTest {
 	}
 
 
-	@Test
-	public void testConsistentParallelWithJava8StreamsInput() throws InterruptedException {
-		env.addDispatcherFactory("test-p",
-				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
-
-		for (int i = 0; i < 10000; i++)
-			testParallelWithJava8StreamsInput();
-	}
-
-
 	/**
 	 * https://gist.github.com/nithril/444d8373ce67f0a8b853
 	 * Contribution by Nicolas Labrot
 	 */
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
+		env.addDispatcherFactory("test-p",
+				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
+
 		//System.out.println("Java "+ ManagementFactory.getRuntimeMXBean().getVmVersion());
 		List<Integer> tasks =
 				IntStream.range(0, ThreadLocalRandom.current().nextInt(100,300))
