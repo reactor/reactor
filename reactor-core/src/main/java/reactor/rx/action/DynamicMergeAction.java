@@ -24,20 +24,20 @@ import reactor.event.dispatch.Dispatcher;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class DynamicMergeAction<I, O, E> extends Action<I, O> {
+public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 
 	private final FanInAction<E, O> fanInAction;
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher
-	){
-		this(dispatcher, (FanInAction<E,O>)new MergeAction<O>(dispatcher));
+	) {
+		this(dispatcher, (FanInAction<E, O>) new MergeAction<O>(dispatcher));
 	}
 
 	public DynamicMergeAction(
 			Dispatcher dispatcher,
-	    FanInAction<E,O> fanInAction
+			FanInAction<E, O> fanInAction
 	) {
 		super(dispatcher);
 		this.fanInAction = fanInAction;
@@ -51,9 +51,8 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected void doNext(I value) {
-		fanInAction.addPublisher((Publisher<E>) value);
+	protected void doNext(Publisher<E> value) {
+		fanInAction.addPublisher(value);
 	}
 
 	@Override
@@ -72,43 +71,42 @@ public class DynamicMergeAction<I, O, E> extends Action<I, O> {
 	}
 
 	@Override
-	public Action<I, O> capacity(long elements) {
+	public Action<Publisher<E>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
 	}
 
 	@Override
-	public Action<I, O> keepAlive(boolean keepAlive) {
+	public Action<Publisher<E>, O> keepAlive(boolean keepAlive) {
 		fanInAction.keepAlive(keepAlive);
-		super.keepAlive(false);
-		return this;
+		return super.keepAlive(false);
 	}
 
 	@Override
-	public Action<I, O> env(Environment environment) {
+	public Action<Publisher<E>, O> env(Environment environment) {
 		fanInAction.env(environment);
 		return super.env(environment);
 	}
 
 	@Override
-	public Action<I, O> resume() {
+	public Action<Publisher<E>, O> resume() {
 		fanInAction.resume();
 		return super.resume();
 	}
 
 	@Override
-	public Action<I, O> pause() {
+	public Action<Publisher<E>, O> pause() {
 		fanInAction.pause();
 		return super.pause();
 	}
 
 	@Override
-	public Action<I, O> cancel() {
+	public Action<Publisher<E>, O> cancel() {
 		fanInAction.cancel();
 		return super.cancel();
 	}
 
-	public FanInAction<E,O> mergedStream() {
+	public FanInAction<E, O> mergedStream() {
 		return fanInAction;
 	}
 

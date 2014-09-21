@@ -20,6 +20,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.rx.Stream;
+import reactor.rx.spec.Streams;
 
 /**
  * @author Stephane Maldini
@@ -34,16 +35,16 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 		}
 	};
 
-	private final Predicate<T> p;
+	private final Predicate<? super T> p;
 
 	private volatile E elseComposable;
 
 	@SuppressWarnings("unchecked")
-	public FilterAction(Predicate<T> p, Dispatcher dispatcher) {
+	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher) {
 		this(p, dispatcher, null);
 	}
 
-	public FilterAction(final Function<T, Boolean> p, Dispatcher dispatcher) {
+	public FilterAction(final Function<? super T, Boolean> p, Dispatcher dispatcher) {
 		this(new Predicate<T>() {
 			@Override
 			public boolean test(T t) {
@@ -52,7 +53,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 		}, dispatcher);
 	}
 
-	public FilterAction(Predicate<T> p, Dispatcher dispatcher, E pipeline) {
+	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher, E pipeline) {
 		super(dispatcher);
 		this.p = p;
 		this.elseComposable = pipeline;
@@ -92,7 +93,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	public E otherwise() {
 		if (elseComposable == null) {
-			Action<T, T> passthrough = Action.<T>passthrough(dispatcher);
+			Stream<T> passthrough = Streams.defer(environment, dispatcher);
 			passthrough.capacity(capacity).keepAlive(keepAlive);
 			elseComposable = (E) passthrough;
 		}

@@ -370,32 +370,6 @@ public final class Promises {
 	}
 
 	/**
-	 * Merge given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal
-	 * Promise
-	 * Promises} have been fulfilled.
-	 *
-	 * @param p1,                             p2, p3, p4, p5, p6, p7, p8, pRest
-	 *                                        The promises to use.
-	 * @param <T1,T2,T3,T4,T5,T6,T7,T8,TRest> The type of the function Tuple result.
-	 * @return a {@link Promise}.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> Promise<TupleN<T1, T2, T3, T4, T5, T6, T7, T8,
-			TRest>> when(Promise<T1> p1, Promise<T2> p2, Promise<T3> p3, Promise<T4> p4, Promise<T5> p5, Promise<T6> p6,
-	                 Promise<T7> p7, Promise<T8> p8, Promise<TRest> pRest) {
-		return multiWhen(new Promise[]{p1, p2, p3, p4, p5, p6, p7, p8, pRest}).stream().map(new Function<List<Object>,
-				TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest>>() {
-			@Override
-			public TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest> apply(List<Object> objects) {
-				return Tuple.of((T1) objects.get(0), (T2) objects.get(1), (T3) objects.get(2), (T4) objects.get(3),
-						(T5) objects.get(4), (T6) objects.get(5), (T7) objects.get(6), (T8) objects.get(7),
-						(TRest) objects.get(8));
-			}
-		}).next();
-	}
-
-
-	/**
 	 * Aggregate given promises into a new a {@literal Promise} that will be fulfilled when all of the given {@literal
 	 * Promise Promises} have been fulfilled.
 	 *

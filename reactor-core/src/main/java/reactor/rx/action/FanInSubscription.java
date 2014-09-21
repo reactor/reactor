@@ -64,9 +64,9 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 					subscription = subscriptionIterator.next();
 					subscription.request(remaining);
 					lock.readLock().unlock();
-					try{
+					try {
 						pruneObsoleteSub(subscriptionIterator, subscription.toRemove);
-					}finally {
+					} finally {
 						lock.readLock().lock();
 					}
 				}
@@ -76,10 +76,10 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	public void forEach(Consumer<InnerSubscription> consumer){
+	public void forEach(Consumer<InnerSubscription> consumer) {
 		lock.readLock().lock();
-		try{
-			for(InnerSubscription innerSubscription : subscriptions){
+		try {
+			for (InnerSubscription innerSubscription : subscriptions) {
 				consumer.accept(innerSubscription);
 			}
 		} finally {
@@ -87,7 +87,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	protected void pruneObsoleteSub(Iterator<InnerSubscription> subscriptionIterator, boolean toRemove){
+	protected void pruneObsoleteSub(Iterator<InnerSubscription> subscriptionIterator, boolean toRemove) {
 		if (toRemove) {
 			lock.writeLock().lock();
 			try {
@@ -101,8 +101,8 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	@Override
 	public void cancel() {
 		lock.writeLock().lock();
-		try{
-			for(Subscription subscription : subscriptions){
+		try {
+			for (Subscription subscription : subscriptions) {
 				subscription.cancel();
 			}
 			subscriptions.clear();
@@ -115,7 +115,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 	void removeSubscription(final InnerSubscription s) {
 		lock.writeLock().lock();
-		try{
+		try {
 			subscriptions.remove(s);
 		} finally {
 			lock.writeLock().unlock();
@@ -124,7 +124,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 
 	void addSubscription(final InnerSubscription s) {
 		lock.writeLock().lock();
-		try{
+		try {
 			Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
 			while (subscriptionIterator.hasNext()) {
 				pruneObsoleteSub(subscriptionIterator, subscriptionIterator.next().toRemove);
@@ -134,8 +134,6 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 			lock.writeLock().unlock();
 		}
 	}
-
-
 	public static class InnerSubscription implements Subscription {
 
 		final Subscription wrapped;

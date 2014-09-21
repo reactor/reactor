@@ -147,7 +147,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				lastExistingPublisher = currentRoundRobIndex;
 
 				hasCapacity = publisher.downstreamSubscription() != null &&
-						publisher.downstreamSubscription().getCapacity().get() > publisher.getMaxCapacity() * 0.15;
+						publisher.downstreamSubscription().getCapacity().get() > publisher.getCapacity() * 0.15;
 
 				if (hasCapacity) {
 					try {

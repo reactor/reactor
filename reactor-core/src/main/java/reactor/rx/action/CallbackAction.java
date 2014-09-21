@@ -15,7 +15,6 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 
@@ -24,48 +23,16 @@ import reactor.function.Consumer;
  */
 public class CallbackAction<T> extends Action<T, T> {
 
-	private final Consumer<T> consumer;
-	private final boolean     prefetch;
+	private final Consumer<? super T> consumer;
 
-	public CallbackAction(Dispatcher dispatcher, Consumer<T> consumer, boolean prefetch) {
+	public CallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer) {
 		super(dispatcher);
 		this.consumer = consumer;
-		this.prefetch = prefetch;
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription) {
-		if (prefetch) {
-			capacity = firehose ? Long.MAX_VALUE : capacity;
-			requestConsumer.accept(capacity);
-		} else {
-			super.doSubscribe(subscription);
-		}
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-		if(prefetch){
-			if (pendingNextSignals == 0 && currentNextSignals >= capacity) {
-				requestConsumer.accept(currentNextSignals);
-			}
-		}else{
-			broadcastNext(ev);
-		}
-	}
-
-	@Override
-	protected void doPendingRequest() {
-		if(!prefetch){
-			super.doPendingRequest();
-		}
-	}
-
-	@Override
-	public String toString() {
-		return super.toString()+(!prefetch ? "{" +
-				"observing"+
-				'}' : "");
+		broadcastNext(ev);
 	}
 }

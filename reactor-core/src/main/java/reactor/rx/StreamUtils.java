@@ -230,7 +230,7 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderCombine(Stream<O> consumer, final List<Object> streamTree) {
 			if (CombineAction.class.isAssignableFrom(consumer.getClass())) {
-				CombineAction<O, ?, ?> operation = (CombineAction<O, ?, ?>) consumer;
+				CombineAction<O, ?> operation = (CombineAction<O, ?>) consumer;
 				parseComposable(operation.input(), streamTree);
 				return true;
 			}
@@ -240,7 +240,7 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderDynamicMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
-				DynamicMergeAction<?, O, Publisher<?>> operation = (DynamicMergeAction<?, O, Publisher<?>>) consumer;
+				DynamicMergeAction<?, O> operation = (DynamicMergeAction<?, O>) consumer;
 				parseComposable(operation.mergedStream(), streamTree);
 				return true;
 			}

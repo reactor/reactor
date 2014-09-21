@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * A {@literal Tuple} is an immutable {@link Collection} of objects, each of which can be of an arbitrary type.
@@ -55,6 +56,17 @@ public class Tuple implements Iterable, Serializable {
 	 */
 	public static Tuple empty() {
 		return empty;
+	}
+
+	/**
+	 * Create a {@link TupleN} with the given object.
+	 *
+	 * @param list   Build an unbounded tuple
+	 * @return The new {@link TupleN}.
+	 */
+	@SuppressWarnings("rawtypes")
+	public static TupleN of(List<?> list) {
+		return new TupleN(list.toArray());
 	}
 
 	/**
@@ -202,33 +214,6 @@ public class Tuple implements Iterable, Serializable {
 	                                                                                         T5 t5, T6 t6, T7 t7,
 	                                                                                         T8 t8) {
 		return new Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>(8, t1, t2, t3, t4, t5, t6, t7, t8);
-	}
-
-	/**
-	 * Create a {@link TupleN} with the given objects.
-	 *
-	 * @param t1      The first value in the tuple.
-	 * @param t2      The second value in the tuple.
-	 * @param t3      The third value in the tuple.
-	 * @param t4      The fourth value in the tuple.
-	 * @param t5      The fifth value in the tuple.
-	 * @param t6      The sixth value in the tuple.
-	 * @param t7      The seventh value in the tuple.
-	 * @param t8      The eighth value in the tuple.
-	 * @param tRest   The rest of the values.
-	 * @param <T1>    The type of the first value.
-	 * @param <T2>    The type of the second value.
-	 * @param <T3>    The type of the third value.
-	 * @param <T4>    The type of the fourth value.
-	 * @param <T5>    The type of the fifth value.
-	 * @param <T6>    The type of the sixth value.
-	 * @param <T7>    The type of the seventh value.
-	 * @param <TRest> The type of the last tuple.
-	 * @return The new {@link Tuple8}.
-	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> TupleN<T1, T2, T3, T4, T5, T6, T7, T8,
-			TRest> of(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8, Object... tRest) {
-		return new TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest>(t1, t2, t3, t4, t5, t6, t7, t8, new TupleN(tRest));
 	}
 
 	/**

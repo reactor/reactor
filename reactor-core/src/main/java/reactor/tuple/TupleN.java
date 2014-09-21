@@ -26,20 +26,10 @@ import java.util.Iterator;
 /**
  * A tuple that holds 9 or more values
  *
- * @param <T1>    The type of the first value held by this tuple
- * @param <T2>    The type of the second value held by this tuple
- * @param <T3>    The type of the third value held by this tuple
- * @param <T4>    The type of the fourth value held by this tuple
- * @param <T5>    The type of the fifth value held by this tuple
- * @param <T6>    The type of the sixth value held by this tuple
- * @param <T7>    The type of the seventh value held by this tuple
- * @param <T8>    The type of the eighth value held by this tuple
- * @param <TRest> The type of the tuple that holds the remaining values
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> extends Tuple8<T1, T2, T3, T4, T5, T6, T7,
-		T8> {
+public class TupleN extends Tuple8 {
 
 	private static final long serialVersionUID = 666954435584703227L;
 
@@ -47,18 +37,8 @@ public class TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> extends
 
 	@SuppressWarnings("unchecked")
 	TupleN(Object... values) {
-		super(9, null,null,null,null,null,null,null,null);
+		super(values.length, null,null,null,null,null,null,null,null);
 		this.entries = Arrays.copyOf(values, values.length);;
-	}
-
-	/**
-	 * Type-safe way to get the remaining objects of this {@link Tuple}.
-	 *
-	 * @return The remaining objects, as a Tuple.
-	 */
-	@SuppressWarnings("unchecked")
-	public TRest getTRest() {
-		return (TRest) entries[8];
 	}
 
 	@Nullable
@@ -70,6 +50,46 @@ public class TupleN<T1, T2, T3, T4, T5, T6, T7, T8, TRest extends Tuple> extends
 	@Override
 	public Object[] toArray() {
 		return entries;
+	}
+
+	@Override
+	public Object getT8() {
+		return get(7);
+	}
+
+	@Override
+	public Object getT7() {
+		return get(6);
+	}
+
+	@Override
+	public Object getT6() {
+		return get(5);
+	}
+
+	@Override
+	public Object getT5() {
+		return get(4);
+	}
+
+	@Override
+	public Object getT4() {
+		return get(3);
+	}
+
+	@Override
+	public Object getT3() {
+		return get(2);
+	}
+
+	@Override
+	public Object getT2() {
+		return get(1);
+	}
+
+	@Override
+	public Object getT1() {
+		return get(0);
 	}
 
 	@Nonnull

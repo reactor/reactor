@@ -24,12 +24,12 @@ import reactor.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ReduceAction<T, A> extends BatchAction<T,A> {
-	private final    Supplier<A>               accumulators;
-	private final    Function<Tuple2<T, A>, A> fn;
-	private A                         acc;
+public class ReduceAction<T, A> extends BatchAction<T, A> {
+	private final Supplier<? extends A>               accumulators;
+	private final Function<Tuple2<T, A>, ? extends A> fn;
+	private       A                                   acc;
 
-	public ReduceAction(long batchSize, Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn,
+	public ReduceAction(long batchSize, Supplier<? extends A> accumulators, Function<Tuple2<T, A>, ? extends A> fn,
 	                    Dispatcher dispatcher) {
 		super(batchSize, dispatcher, true, false, true);
 		this.accumulators = accumulators;
@@ -54,6 +54,6 @@ public class ReduceAction<T, A> extends BatchAction<T,A> {
 
 	@Override
 	public String toString() {
-		return super.toString()+(acc != null ? "{current-reduced="+acc+"}" : "");
+		return super.toString() + (acc != null ? "{current-reduced=" + acc + "}" : "");
 	}
 }

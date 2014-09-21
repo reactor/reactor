@@ -30,7 +30,7 @@ final public class MergeAction<O> extends FanInAction<O, O> {
 		super(dispatcher);
 	}
 
-	public MergeAction(Dispatcher dispatcher, List<? extends Publisher<O>> composables) {
+	public MergeAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> composables) {
 		super(dispatcher, composables);
 	}
 

@@ -150,7 +150,7 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 
 		@Override
 		public void onSubscribe(Subscription subscription) {
-			subscription.request(stream.getMaxCapacity());
+			subscription.request(stream.getCapacity());
 		}
 
 		@Override

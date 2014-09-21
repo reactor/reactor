@@ -25,9 +25,9 @@ import reactor.util.Assert;
  */
 public class MapAction<T, V> extends Action<T, V> {
 
-	private final Function<T, V> fn;
+	private final Function<? super T, ? extends V> fn;
 
-	public MapAction(Function<T, V> fn, Dispatcher dispatcher) {
+	public MapAction(Function<? super T, ? extends V> fn, Dispatcher dispatcher) {
 		super(dispatcher);
 		Assert.notNull(fn, "Map function cannot be null.");
 		this.fn = fn;

@@ -27,12 +27,12 @@ import reactor.tuple.Tuple2;
  */
 public class ScanAction<T, A> extends Action<T,A> {
 
-	private final    Supplier<A>               accumulators;
-	private final    Function<Tuple2<T, A>, A> fn;
+	private final    Supplier<? extends A>               accumulators;
+	private final    Function<Tuple2<T, A>, ? extends A> fn;
 	private A                         acc;
 
 
-	public ScanAction(Supplier<A> accumulators, Function<Tuple2<T, A>, A> fn, Dispatcher dispatcher) {
+	public ScanAction(Supplier<? extends A> accumulators, Function<Tuple2<T, A>, ? extends A> fn, Dispatcher dispatcher) {
 		super(dispatcher);
 		this.accumulators = accumulators;
 		this.fn = fn;

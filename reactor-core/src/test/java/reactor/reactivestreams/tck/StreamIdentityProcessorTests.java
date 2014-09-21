@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import reactor.core.Environment;
 import reactor.rx.Stream;
+import reactor.rx.action.CombineAction;
 import reactor.rx.spec.Streams;
 import reactor.util.Assert;
 
@@ -46,7 +47,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	}
 
 	@Override
-	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
+	public CombineAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
+
+		Stream<String> otherStream = Streams.defer(env, "test", "test2", "test3");
+
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
@@ -57,12 +61,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.filter(integer -> integer >= 0)
 										.buffer(1)
 										.last()
-										.flatMap(buffer -> Streams.<Integer>defer(env, buffer))
-										.window(1)
-										.map(Stream::split)
-										.<Integer>merge()
+
 						).<Integer>merge()
-						.observe(i -> System.out.println(Thread.currentThread() + " " + i))
+						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 	}
 
@@ -105,8 +106,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<Integer> stream = Streams.defer(env);
 
-
-
 		stream.subscribe(processor);
 		System.out.println(stream.debug());
 		Thread.sleep(2000);
@@ -141,7 +140,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 		//stream.broadcastComplete();
 
-		latch.await(30,TimeUnit.SECONDS);
+		latch.await(30, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		long count = latch.getCount();

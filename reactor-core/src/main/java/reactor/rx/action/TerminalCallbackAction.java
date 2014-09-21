@@ -15,31 +15,37 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Function;
-import reactor.util.Assert;
+import reactor.function.Consumer;
 
 /**
  * @author Stephane Maldini
- * @author Jon Brisbin
- * @since 1.1
  */
-public class MapManyAction<I, V, E extends Publisher<V>> extends DynamicMergeAction<I, V, V> {
+public class TerminalCallbackAction<T> extends Action<T, Void> {
 
-	private final Function<I, E> fn;
+	private final Consumer<? super T> consumer;
 
-	public MapManyAction(Function<I, E> fn,
-	                     Dispatcher dispatcher
-	) {
+	public TerminalCallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer) {
 		super(dispatcher);
-		Assert.notNull(fn, "FlatMap function cannot be null.");
-		this.fn = fn;
+		this.consumer = consumer;
 	}
 
 	@Override
-	protected void doNext(I value) {
-		mergedStream().addPublisher(fn.apply(value));
+	protected void doSubscribe(Subscription subscription) {
+			capacity = firehose ? Long.MAX_VALUE : capacity;
+			requestConsumer.accept(capacity);
 	}
 
+	@Override
+	protected void doNext(T ev) {
+		consumer.accept(ev);
+			if (pendingNextSignals == 0 && currentNextSignals >= capacity) {
+				requestConsumer.accept(currentNextSignals);
+			}
+	}
+
+	@Override
+	protected void doPendingRequest() {
+	}
 }

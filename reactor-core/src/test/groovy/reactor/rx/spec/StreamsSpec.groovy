@@ -406,7 +406,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == [3, 6]
+			tap.get() == [6, 3]
 	}
 
 	def "Inline Stream's values can be zipped"() {
@@ -415,7 +415,7 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
-			def tap = source1.zip { it.sum() }.tap()
+			def tap = source1.zip { it.t1 + it.t2 }.tap()
 
 		when:
 			'the sources accept a value'
@@ -448,7 +448,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip({ it.sum() }, source1, source2)
+			def zippedStream = Streams.zip(source1, source2){ it.t1 + it.t2 }
 			def tap = zippedStream.tap()
 
 		when:
@@ -951,7 +951,7 @@ class StreamsSpec extends Specification {
 		then:
 			'the result should contain all stream titles by id'
 			result.to[0].id == "GroupBy"
-			result.to[0].to[0].id == "Callback"
+			result.to[0].to[0].id == "TerminalCallback"
 			result.to[0].boundTo[0].id == "1"
 			result.to[0].boundTo[1].id == "2"
 			result.to[0].boundTo[2].id == "3"
@@ -1411,7 +1411,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'Stream has been updated'
-			stream.maxCapacity == 100
+			stream.capacity == 100
 	}
 
 

@@ -66,7 +66,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 *
 	 * @see Runtime#availableProcessors()
 	 */
-	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors();
+	public static final int PROCESSORS = Runtime.getRuntime().availableProcessors() > 1 ?
+			Runtime.getRuntime().availableProcessors() :
+			2;
 
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 	private static final String SYNC_DISPATCHER_NAME    = "sync";

@@ -28,7 +28,6 @@ import reactor.rx.StreamUtils;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
-import reactor.util.Assert;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -87,7 +86,8 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		public void accept(Long n) {
 			try {
 				if (subscription == null) {
-					if ((pendingNextSignals += n) < 0) doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
+					if ((pendingNextSignals += n) < 0)
+						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
 					return;
 				}
 
@@ -114,12 +114,18 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		}
 	};
 
-	public static void checkRequest(long n){
+	public static void checkRequest(long n) {
 		if (n <= 0l) {
 			throw SpecificationExceptions.spec_3_09_exception(n);
 		}
 	}
 
+	/**
+	 * A simple NOOP action that can be used to isolate Stream properties such as dispatcher or capacity.
+	 * @param dispatcher
+	 * @param <O>
+	 * @return a new Action subscribed to this one
+	 */
 	public static <O> Action<O, O> passthrough(Dispatcher dispatcher) {
 		return new Action<O, O>(dispatcher) {
 			@Override
@@ -145,40 +151,6 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		if (subscription != null && !pause) {
 			dispatch(capacity, requestConsumer);
 		}
-	}
-
-	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	public TimeoutAction<O> timeout(long timeout) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
-	}
-
-	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
-	 * @return this {@link reactor.rx.Stream}
-	 * @since 1.1
-	 */
-	@SuppressWarnings("unchecked")
-	public TimeoutAction<O> timeout(long timeout, Timer timer) {
-		final TimeoutAction<O> d = new TimeoutAction<O>(
-				dispatcher,
-				this,
-				timer,
-				timeout
-		);
-		return connect(d);
 	}
 
 	@Override
@@ -296,15 +268,34 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		return StreamUtils.browse(findOldestAction(false));
 	}
 
-	public <E> CombineAction<E, O, Action<I, O>> combine() {
+	/**
+	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component and
+	 * the current action to act as the {@link org.reactivestreams.Publisher}.
+	 *
+	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
+	 *
+	 * @param <E>
+	 * @return new Action
+	 */
+	public <E> CombineAction<E, O> combine() {
 		return combine(false);
 	}
 
+	/**
+	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component and
+	 * the current action to act as the {@link org.reactivestreams.Publisher}.
+	 *
+	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
+	 *
+	 * @param reuse Reset to READY state the upstream chain while searching for the most ancient Action
+	 * @param <E>
+	 * @return new Action
+	 */
 	@SuppressWarnings("unchecked")
-	public <E> CombineAction<E, O, Action<I, O>> combine(boolean reuse) {
+	public <E> CombineAction<E, O> combine(boolean reuse) {
 		final Action<E, O> subscriber = (Action<E, O>) findOldestAction(reuse);
 		subscriber.subscription = null;
-		return new CombineAction<E, O, Action<I, O>>(this, subscriber);
+		return new CombineAction<E, O>(this, subscriber);
 	}
 
 	@Override
@@ -321,8 +312,24 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	@Override
 	@SuppressWarnings("unchecked")
+	public Action<I, O> keepAlive(boolean keepAlive) {
+		return (Action<I, O>) super.keepAlive(keepAlive);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
 	public Action<I, O> ignoreErrors(boolean ignore) {
 		return (Action<I, O>) super.ignoreErrors(ignore);
+	}
+
+	@Override
+	public TimeoutAction<O> timeout(long timeout, Timer timer) {
+		return connect(new TimeoutAction<O>(
+				dispatcher,
+				this,
+				timer,
+				timeout
+		));
 	}
 
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
@@ -368,7 +375,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
 						"")) +
 				", state=" + getState() +
-				", max-capacity=" + getMaxCapacity() +
+				", max-capacity=" + getCapacity() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
 						", subscription=" + subscription +
@@ -378,6 +385,13 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 				) + '}';
 	}
 
+	/**
+	 * Utility to find the most ancient subscribed Action with an option to reset its state (e.g. in a case of retry()).
+	 * Also used by debug() operation to render the complete flow from upstream.
+	 *
+	 * @param resetState
+	 * @return
+	 */
 	public Action<?, ?> findOldestAction(boolean resetState) {
 		Action<?, ?> that = this;
 
@@ -392,8 +406,14 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 
-			if (resetState) {
-				resetState(that);
+			if(that != null) {
+				if (resetState) {
+					resetState(that);
+				}
+
+				if (FanInAction.class.isAssignableFrom(that.getClass())) {
+					that = ((FanInAction<?,?>)that).masterAction != null ? ((FanInAction<?,?>)that).masterAction : that;
+				}
 			}
 
 		}

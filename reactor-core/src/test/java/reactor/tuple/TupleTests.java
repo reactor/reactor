@@ -18,6 +18,8 @@ package reactor.tuple;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
@@ -55,10 +57,9 @@ public class TupleTests {
 	@Test
 	@SuppressWarnings({"rawtypes"})
 	public void tupleProvidesVirtuallyUnlimitedSize() {
-		TupleN tn = Tuple.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+		TupleN tn = Tuple.of(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15));
 
-		assertThat("remaining values are in a Tuple", Tuple.class.isInstance(tn.getTRest()));
-		assertThat("last value in TRest is 15", (Integer) tn.getTRest().get(6), is(15));
+		assertThat("last value in TRest is 15", (Integer) tn.get(14), is(15));
 	}
 
     @Test

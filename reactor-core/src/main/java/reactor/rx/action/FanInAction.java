@@ -20,10 +20,10 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
+import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,8 +33,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 abstract public class FanInAction<I, O> extends Action<I, O> {
 
-	final FanInSubscription<I> innerSubscriptions;
-	final AtomicInteger        runningComposables;
+	final FanInSubscription<I>                       innerSubscriptions;
+	final AtomicInteger                              runningComposables;
+	final Iterable<? extends Publisher<? extends I>> composables;
+
+	boolean started = false;
 
 	Action<?, ?> masterAction = null;
 
@@ -44,32 +47,49 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 	}
 
 	public FanInAction(Dispatcher dispatcher,
-	                   List<? extends Publisher<I>> composables) {
+	                   Iterable<? extends Publisher<? extends I>> composables) {
 		super(dispatcher);
 
-		int length = composables != null ? composables.size() : 0;
+		this.composables = composables;
 		this.runningComposables = new AtomicInteger(0);
-
-		if (length > 0) {
-			this.innerSubscriptions = createFanInSubscription();
-
-			onSubscribe(this.innerSubscriptions);
-
-			for (Publisher<I> composable : composables) {
-				addPublisher(composable);
-			}
-		} else {
-			this.innerSubscriptions = createFanInSubscription();
-
-			onSubscribe(this.innerSubscriptions);
-		}
-
+		this.innerSubscriptions = createFanInSubscription();
 	}
 
-	public void addPublisher(Publisher<I> publisher) {
+	@Override
+	public void subscribe(Subscriber<? super O> subscriber) {
+		if(!started){
+			started = true;
+			onSubscribe(this.innerSubscriptions);
+		}
+		super.subscribe(subscriber);
+	}
+
+	public void addPublisher(Publisher<? extends I> publisher) {
 		runningComposables.incrementAndGet();
 		Subscriber<I> inlineMerge = createSubscriber();
 		publisher.subscribe(inlineMerge);
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		if (composables != null) {
+			if (innerSubscriptions.subscriptions.size() > 0) {
+				innerSubscriptions.cancel();
+			}
+			capacity(initUpstreamPublisherAndCapacity());
+		}
+		super.doSubscribe(subscription);
+	}
+
+	protected long initUpstreamPublisherAndCapacity(){
+		long maxCapacity = capacity;
+		for (Publisher<? extends I> composable : composables) {
+			if (Stream.class.isAssignableFrom(composable.getClass())) {
+				maxCapacity = Math.min(maxCapacity, ((Stream<?>) composable).getCapacity());
+			}
+			addPublisher(composable);
+		}
+		return maxCapacity;
 	}
 
 	@Override

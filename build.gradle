@@ -136,7 +136,6 @@ configure(allprojects) { project ->
 	repositories {
 		mavenLocal()
 		mavenCentral()
-		maven { url 'http://repo.akka.io/snapshots/' }
 		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
 
@@ -305,8 +304,8 @@ project('reactor-core') {
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
 		// Reactive Streams
-		compile "org.reactivestreams:reactive-streams:0.4.0.M2"
-		testCompile "org.reactivestreams:reactive-streams-tck:0.4.0.M2-20140904-173944-SNAPSHOT"
+		compile "org.reactivestreams:reactive-streams:0.4.0"
+		testCompile "org.reactivestreams:reactive-streams-tck:0.4.0"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",

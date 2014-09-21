@@ -23,7 +23,7 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  * @since 1.1
  */
-final public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
+final public class ErrorAction<T, E extends Throwable> extends Action<T, T> {
 
 	private final Consumer<E>   consumer;
 	private final ClassSelector selector;
@@ -35,13 +35,8 @@ final public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 	}
 
 	@Override
-	public void onNext(Object ev) {
-		//IGNORE
-	}
-
-	@Override
-	protected void doNext(Object ev) {
-		//ignore
+	protected void doNext(T ev) {
+		broadcastNext(ev);
 	}
 
 	@Override
@@ -50,11 +45,7 @@ final public class ErrorAction<T, E extends Throwable> extends Action<T, Void> {
 		if (selector.matches(cause.getClass())) {
 			consumer.accept((E) cause);
 		}
-	}
-
-	@Override
-	public void onComplete() {
-		//IGNORE
+		super.doError(cause);
 	}
 
 	@Override

@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.tuple.Tuple;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,19 +30,18 @@ import java.util.List;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class ZipAction<O, V> extends FanInAction<O, V> {
+public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V> {
 
-	final Function<List<O>, V> accumulator;
-	final List<O>              buffer;
+	final Function<TUPLE, ? extends V> accumulator;
+	final ArrayList<O>                 buffer;
+
+	int index = 0;
 
 	final Consumer<Long> upstreamConsumer = new Consumer<Long>() {
 		@Override
 		public void accept(Long integer) {
 			try {
-				if (!buffer.isEmpty()) {
-					broadcastNext(accumulator.apply(buffer));
-					buffer.clear();
-				}
+				tryBroadcastTuple();
 				requestConsumer.accept(integer);
 			} catch (Throwable e) {
 				doError(e);
@@ -49,11 +49,29 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 		}
 	};
 
+	@SuppressWarnings("unchecked")
+	private void tryBroadcastTuple() {
+		if (currentNextSignals == capacity) {
+			broadcastNext(accumulator.apply((TUPLE) Tuple.of(buffer)));
+			buffer.clear();
+			ensureCapacity();
+		}
+	}
+
 	public ZipAction(Dispatcher dispatcher,
-	                 Function<List<O>, V> accumulator, List<? extends Publisher<O>> composables) {
+	                 Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
+			composables) {
 		super(dispatcher, composables);
-		this.buffer = new ArrayList<O>(composables != null ? composables.size() : 8);
 		this.accumulator = accumulator;
+		this.buffer = new ArrayList<>(8);
+	}
+
+	private void ensureCapacity() {
+		int size = innerSubscriptions.subscriptions.size();
+		buffer.ensureCapacity(size);
+		while (buffer.size() < size) {
+			buffer.add(null);
+		}
 	}
 
 	@Override
@@ -62,20 +80,25 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected void doNext(O ev) {
-		buffer.add(ev);
-		if (currentNextSignals == capacity) {
-			broadcastNext(accumulator.apply(new ArrayList<O>(buffer)));
-			buffer.clear();
-		}
+		tryBroadcastTuple();
 	}
 
 	@Override
 	protected FanInAction.InnerSubscriber<O, V> createSubscriber() {
 		capacity = innerSubscriptions.subscriptions.size() + 1;
-		return new ZipAction.InnerSubscriber<O, V>(this);
+		return new ZipAction.InnerSubscriber<>(this, index++);
 	}
 
+
+	@Override
+	protected long initUpstreamPublisherAndCapacity() {
+		for (Publisher<? extends O> composable : composables) {
+			addPublisher(composable);
+		}
+		return innerSubscriptions.subscriptions.size();
+	}
 
 	@Override
 	protected void onRequest(long n) {
@@ -90,9 +113,14 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 				'}';
 	}
 
-	private static class InnerSubscriber<O, V> extends FanInAction.InnerSubscriber<O, V> {
-		InnerSubscriber(ZipAction<O, V> outerAction) {
+	private static class InnerSubscriber<O, V, TUPLE extends Tuple> extends FanInAction.InnerSubscriber<O, V> {
+		private final int                    index;
+		final         ZipAction<O, V, TUPLE> outerAction;
+
+		InnerSubscriber(ZipAction<O, V, TUPLE> outerAction, int index) {
 			super(outerAction);
+			this.outerAction = outerAction;
+			this.index = index;
 		}
 
 		@Override
@@ -103,6 +131,9 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 			outerAction.dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
+					if (outerAction.index != outerAction.buffer.size()) {
+						outerAction.ensureCapacity();
+					}
 					if (outerAction.innerSubscriptions.getCapacity().get() > 0) {
 						s.request(1);
 					}
@@ -111,9 +142,29 @@ public class ZipAction<O, V> extends FanInAction<O, V> {
 		}
 
 		@Override
+		public void onNext(final O ev) {
+			outerAction.dispatch(new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					if (null != outerAction.buffer.set(index, ev)) {
+						outerAction.doError(new IllegalStateException("previous value still present while consuming a new signal" +
+								" " +
+								"from this stream :" + this.toString()));
+					} else {
+						outerAction.innerSubscriptions.onNext(ev);
+					}
+				}
+			});
+		}
+
+		@Override
 		public void onComplete() {
-			outerAction.capacity(outerAction.getMaxCapacity() - 1);
-			super.onComplete();
+			if (outerAction.getDispatcher().inContext()) {
+				s.toRemove = true;
+			} else {
+				outerAction.innerSubscriptions.removeSubscription(s);
+			}
+			outerAction.innerSubscriptions.onComplete();
 		}
 	}
 

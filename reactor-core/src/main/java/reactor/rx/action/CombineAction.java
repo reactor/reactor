@@ -29,21 +29,21 @@ import reactor.rx.StreamUtils;
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O> {
-	private final S            publisher;
+final public class CombineAction<E, O> extends Action<E, O> {
+	private final Stream<O>            publisher;
 	private final Action<E, O> subscriber;
 
-	public CombineAction(S publisher, Action<E, O> subscriber) {
-		super(subscriber.getDispatcher(), subscriber.getMaxCapacity());
+	public CombineAction(Stream<O> publisher, Action<E, O> subscriber) {
+		super(subscriber.getDispatcher(), subscriber.getCapacity());
 		this.publisher = publisher;
 		this.subscriber = subscriber;
 	}
 
-	public S output() {
+	public Stream<O> output() {
 		return publisher;
 	}
 
-	public Action<E, O> input() {
+	public Action<E, O>  input() {
 		return subscriber;
 	}
 
@@ -109,19 +109,56 @@ final public class CombineAction<E, O, S extends Stream<O>> extends Action<E, O>
 	}
 
 	@Override
-	public Stream<O> keepAlive(boolean keepAlive) {
-		publisher.keepAlive(keepAlive);
-		return publisher;
-	}
-
-	@Override
 	public StreamUtils.StreamVisitor debug() {
 		return publisher.debug();
 	}
 
 	@Override
+	public Action<E, O> keepAlive(boolean keepAlive) {
+		publisher.keepAlive(keepAlive);
+		subscriber.keepAlive(keepAlive);
+		return super.keepAlive(keepAlive);
+	}
+
+	@Override
+	public Action<E, O> capacity(long elements) {
+		publisher.capacity(elements);
+		subscriber.capacity(elements);
+		return super.capacity(elements);
+	}
+
+	@Override
+	public Action<E, O> ignoreErrors(boolean ignore) {
+		publisher.ignoreErrors(ignore);
+		subscriber.ignoreErrors(ignore);
+		return super.ignoreErrors(ignore);
+	}
+
+	@Override
+	public Action<E, O> env(Environment environment) {
+		publisher.env(environment);
+		subscriber.env(environment);
+		return super.env(environment);
+	}
+
+	@Override
+	public Action<E, O> pause() {
+		publisher.pause();
+		subscriber.pause();
+		return super.pause();
+	}
+
+	@Override
+	public Action<E, O> resume() {
+		publisher.resume();
+		subscriber.resume();
+		return super.resume();
+	}
+
+	@Override
 	public Action<E, O> cancel() {
 		publisher.cancel();
+		subscriber.cancel();
 		return super.cancel();
 	}
 

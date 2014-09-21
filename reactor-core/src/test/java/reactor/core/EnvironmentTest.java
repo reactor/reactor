@@ -32,14 +32,11 @@ public class EnvironmentTest extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(3);
 
-		reactor.on(Selectors.$("worker"), new Consumer() {
-			@Override
-			public void accept(Object o) {
+		reactor.on(Selectors.$("worker"), o -> {
 				System.out.println(Thread.currentThread().getName() + " worker " + o);
 				reactor.notify("orchestrator", Event.wrap(1000));
 				latch.countDown();
 				System.out.println(Thread.currentThread().getName() + " ok");
-			}
 		});
 
 		reactor.on(Selectors.$("orchestrator"), new Consumer<Event<Integer>>() {

@@ -108,6 +108,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString()+"{batch: "+(count/capacity*100)+"% ("+count+")";
+		return super.toString()+"{"+(count/capacity*100)+"%("+count+")";
 	}
 }

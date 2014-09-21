@@ -30,14 +30,14 @@ import java.util.Iterator;
  */
 public class ForEachAction<T> extends Action<Iterable<T>, T> {
 
-	final private Iterable<T> defaultValues;
+	final private Iterable<? extends T> defaultValues;
 
 	public ForEachAction(Dispatcher dispatcher) {
 		this(null, dispatcher);
 	}
 
 
-	public ForEachAction(Iterable<T> defaultValues,
+	public ForEachAction(Iterable<? extends T> defaultValues,
 	                     Dispatcher dispatcher) {
 		super(dispatcher);
 		this.defaultValues = defaultValues;
@@ -74,7 +74,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber) {
 		if (defaultValues != null) {
 			return new StreamSubscription<T>(this, subscriber) {
-				Iterator<T> iterator = defaultValues.iterator();
+				Iterator<? extends T> iterator = defaultValues.iterator();
 
 				@Override
 				public void request(long elements) {

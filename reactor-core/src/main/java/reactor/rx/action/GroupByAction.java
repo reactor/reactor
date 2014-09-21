@@ -25,12 +25,20 @@ import reactor.util.Assert;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key
+ * will result in a new stream to be signaled
+ *
+ * @param <T>
+ * @param <K>
+ * @since 2.0
+ */
 public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 
-	private final Function<T, K> fn;
+	private final Function<? super T, ? extends K> fn;
 	private final Map<K, GroupedByStream<K, T>> groupByMap = new HashMap<K, GroupedByStream<K, T>>();
 
-	public GroupByAction(Function<T, K> fn, Dispatcher dispatcher) {
+	public GroupByAction(Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
 		super(dispatcher);
 		Assert.notNull(fn, "Key mapping function cannot be null.");
 		this.fn = fn;
@@ -45,7 +53,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 			@Override
 			public void accept(K k) {
 				Stream<T> s = groupByMap.remove(k);
-				if(s != null){
+				if (s != null) {
 					s.cancel();
 				}
 			}
@@ -58,7 +66,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 			@Override
 			public void accept(K k) {
 				Stream<T> s = groupByMap.remove(k);
-				if(s != null){
+				if (s != null) {
 					s.broadcastComplete();
 				}
 			}

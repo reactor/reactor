@@ -26,10 +26,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class SupplierAction<T, V> extends Action<T, V> {
 
-	private final Supplier<V> supplier;
+	private final Supplier<? extends V> supplier;
 	private final Consumer<Void> supplierConsumer = new SupplierConsumer();
 
-	public SupplierAction(Dispatcher dispatcher, Supplier<V> supplier) {
+	public SupplierAction(Dispatcher dispatcher, Supplier<? extends V> supplier) {
 		super(dispatcher);
 		this.supplier = supplier;
 	}
