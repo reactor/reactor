@@ -23,6 +23,7 @@ import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
+import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -44,6 +45,54 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	private volatile int roundRobinIndex = 0;
 
 	private Registration<? extends Consumer<Long>> consumerRegistration;
+
+	protected final Consumer<Long> requestConsumer = new Consumer<Long>() {
+		@Override
+		public void accept(Long n) {
+			lock.lock();
+			try {
+				if (subscription == null) {
+
+					if ((pendingNextSignals += n) < 0) {
+						lock.unlock();
+						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
+					} else{
+						lock.unlock();
+					}
+					return;
+				}
+
+				if (firehose) {
+					currentNextSignals = 0;
+					lock.unlock();
+					subscription.request(n);
+					return;
+				}
+
+				long previous = pendingNextSignals;
+				pendingNextSignals += n;
+
+				if (previous < capacity) {
+					long toRequest = n + previous;
+					toRequest = Math.min(toRequest, capacity);
+					pendingNextSignals -= toRequest;
+					currentNextSignals = 0;
+					lock.unlock();
+					subscription.request(toRequest);
+					return;
+				}
+
+				lock.unlock();
+
+			} catch (Throwable t) {
+
+				if(lock.isHeldByCurrentThread())
+					lock.unlock();
+
+				doError(t);
+			}
+		}
+	};
 
 	@SuppressWarnings("unchecked")
 	public ParallelAction(Dispatcher parentDispatcher,
@@ -261,7 +310,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		return publishers;
 	}
 
-	static private class ParallelStream<O> extends Stream<O> {
+	static public class ParallelStream<O> extends Stream<O> {
 		final ParallelAction<O> parallelAction;
 		final int               index;
 
@@ -300,14 +349,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				public void request(long elements) {
 					super.request(elements);
 					lastRequestedTime = System.currentTimeMillis();
-
-					parallelAction.lock.lock();
-					try {
-						parallelAction.roundRobinIndex = index;
 						parallelAction.requestConsumer.accept(elements);
-					}finally {
-						parallelAction.lock.unlock();
-					}
 				}
 
 				@Override

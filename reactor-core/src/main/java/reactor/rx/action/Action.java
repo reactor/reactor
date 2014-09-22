@@ -412,7 +412,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 				}
 
 				if (FanInAction.class.isAssignableFrom(that.getClass())) {
-					that = ((FanInAction<?,?>)that).masterAction != null ? ((FanInAction<?,?>)that).masterAction : that;
+					that = ((FanInAction<?,?,?>)that).dynamicMergeAction != null ? ((FanInAction<?,?,?>)that).dynamicMergeAction : that;
 				}
 			}
 

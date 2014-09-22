@@ -65,6 +65,17 @@ public class Tuple implements Iterable, Serializable {
 	 * @return The new {@link TupleN}.
 	 */
 	@SuppressWarnings("rawtypes")
+	public static TupleN of(Object[] list) {
+		return new TupleN(list);
+	}
+
+	/**
+	 * Create a {@link TupleN} with the given object.
+	 *
+	 * @param list   Build an unbounded tuple
+	 * @return The new {@link TupleN}.
+	 */
+	@SuppressWarnings("rawtypes")
 	public static TupleN of(List<?> list) {
 		return new TupleN(list.toArray());
 	}

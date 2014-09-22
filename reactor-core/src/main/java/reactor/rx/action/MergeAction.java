@@ -24,7 +24,7 @@ import java.util.List;
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class MergeAction<O> extends FanInAction<O, O> {
+final public class MergeAction<O> extends FanInAction<O, O, FanInAction.InnerSubscriber<O, O>> {
 
 	public MergeAction(Dispatcher dispatcher) {
 		super(dispatcher);

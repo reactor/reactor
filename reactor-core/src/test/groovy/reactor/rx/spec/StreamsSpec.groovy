@@ -1208,7 +1208,7 @@ class StreamsSpec extends Specification {
 			value.get() == [1, 2, 3, 4]
 
 		when:
-			'the starts dropping items on overflow'
+			'the starts dropping items on onOverflowBuffer'
 			source.broadcastNext(5)
 			source.broadcastNext(6)
 			sleep(1200)

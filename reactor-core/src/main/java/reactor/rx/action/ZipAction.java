@@ -30,10 +30,9 @@ import java.util.List;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V> {
+public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipAction.InnerSubscriber<O, V>> {
 
 	final Function<TUPLE, ? extends V> accumulator;
-	final ArrayList<O>                 buffer;
 
 	int index = 0;
 
@@ -49,34 +48,40 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V> {
 		}
 	};
 
-	@SuppressWarnings("unchecked")
-	private void tryBroadcastTuple() {
-		if (currentNextSignals == capacity) {
-			broadcastNext(accumulator.apply((TUPLE) Tuple.of(buffer)));
-			buffer.clear();
-			ensureCapacity();
-		}
-	}
-
 	public ZipAction(Dispatcher dispatcher,
 	                 Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
 			composables) {
 		super(dispatcher, composables);
 		this.accumulator = accumulator;
-		this.buffer = new ArrayList<>(8);
 	}
 
-	private void ensureCapacity() {
-		int size = innerSubscriptions.subscriptions.size();
-		buffer.ensureCapacity(size);
-		while (buffer.size() < size) {
-			buffer.add(null);
+	@SuppressWarnings("unchecked")
+	private void tryBroadcastTuple() {
+		if (currentNextSignals == capacity) {
+			final Object[] result = new Object[innerSubscriptions.subscriptions.size()];
+
+			innerSubscriptions.forEach(
+					new Consumer<FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>>>() {
+						@Override
+						public void accept(FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>> subscription) {
+							result[subscription.subscriber.index] = subscription.subscriber.lastItem;
+						}
+					});
+
+			downstreamSubscription().onNext(accumulator.apply((TUPLE) Tuple.of((Object[]) result)));
+
+			if (innerSubscriptions.getBuffer().isComplete()) {
+				innerSubscriptions.cancel();
+				broadcastComplete();
+			}
 		}
 	}
 
+
 	@Override
-	protected FanInSubscription<O> createFanInSubscription() {
-		return new ZipSubscription<O>(this, new ArrayList<FanInSubscription.InnerSubscription>(8));
+	protected FanInSubscription<O, InnerSubscriber<O, V>> createFanInSubscription() {
+		return new ZipSubscription<O, V>(this,
+				new ArrayList<FanInSubscription.InnerSubscription<O, ? extends ZipAction.InnerSubscriber<O, V>>>(8));
 	}
 
 	@Override
@@ -85,8 +90,9 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V> {
 		tryBroadcastTuple();
 	}
 
+
 	@Override
-	protected FanInAction.InnerSubscriber<O, V> createSubscriber() {
+	protected InnerSubscriber<O, V> createSubscriber() {
 		capacity = innerSubscriptions.subscriptions.size() + 1;
 		return new ZipAction.InnerSubscriber<>(this, index++);
 	}
@@ -105,71 +111,52 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V> {
 		dispatch(n, upstreamConsumer);
 	}
 
+	public static class InnerSubscriber<O, V> extends FanInAction.InnerSubscriber<O, V> {
+		final FanInAction<O, V, InnerSubscriber<O, V>> outerAction;
+		final int                                      index;
 
-	@Override
-	public String toString() {
-		return super.toString() +
-				"{staged=" + buffer.size() +
-				'}';
-	}
+		O lastItem;
 
-	private static class InnerSubscriber<O, V, TUPLE extends Tuple> extends FanInAction.InnerSubscriber<O, V> {
-		private final int                    index;
-		final         ZipAction<O, V, TUPLE> outerAction;
-
-		InnerSubscriber(ZipAction<O, V, TUPLE> outerAction, int index) {
+		InnerSubscriber(FanInAction<O, V, InnerSubscriber<O, V>> outerAction, int index) {
 			super(outerAction);
-			this.outerAction = outerAction;
 			this.index = index;
+			this.outerAction = outerAction;
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		public void onSubscribe(Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription(subscription);
+			setSubscription(new FanInSubscription.InnerSubscription<O, InnerSubscriber<O, V>>(subscription, this));
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			outerAction.dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					if (outerAction.index != outerAction.buffer.size()) {
-						outerAction.ensureCapacity();
-					}
-					if (outerAction.innerSubscriptions.getCapacity().get() > 0) {
-						s.request(1);
-					}
-				}
-			});
+			if (outerAction.innerSubscriptions.getCapacity().get() > 0) {
+				s.request(1);
+			}
 		}
 
 		@Override
-		public void onNext(final O ev) {
-			outerAction.dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					if (null != outerAction.buffer.set(index, ev)) {
-						outerAction.doError(new IllegalStateException("previous value still present while consuming a new signal" +
-								" " +
-								"from this stream :" + this.toString()));
-					} else {
-						outerAction.innerSubscriptions.onNext(ev);
-					}
-				}
-			});
+		public void onNext(O ev) {
+			lastItem = ev;
+			super.onNext(ev);
 		}
 
 		@Override
 		public void onComplete() {
-			if (outerAction.getDispatcher().inContext()) {
-				s.toRemove = true;
-			} else {
-				outerAction.innerSubscriptions.removeSubscription(s);
+			//Action.log.debug("event [complete] by: " + this);
+			if (checkDynamicMerge()) {
+				outerAction.innerSubscriptions.getBuffer().complete();
 			}
-			outerAction.innerSubscriptions.onComplete();
+		}
+
+		@Override
+		public String toString() {
+			return "ZipAction.InnerSubscriber";
 		}
 	}
 
-	private static class ZipSubscription<O> extends FanInSubscription<O> {
-		public ZipSubscription(Subscriber<O> subscriber, List<InnerSubscription> subs) {
+	private static class ZipSubscription<O, V> extends FanInSubscription<O, ZipAction.InnerSubscriber<O, V>> {
+		public ZipSubscription(Subscriber<O> subscriber,
+		                       List<InnerSubscription<O, ? extends ZipAction.InnerSubscriber<O, V>>> subs) {
 			super(subscriber, subs);
 		}
 

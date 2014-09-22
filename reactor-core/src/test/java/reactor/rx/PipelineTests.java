@@ -571,7 +571,7 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(15, TimeUnit.SECONDS)) {
-			throw new RuntimeException(deferred.debug().toString());
+			throw new RuntimeException("Count:"+(iterations - latch.getCount())+" "+deferred.debug().toString());
 		}
 
 		long stop = System.currentTimeMillis() - start;
@@ -780,7 +780,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
 		env.addDispatcherFactory("test-p",
-				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
+				Environment.createDispatcherFactory("test-p", 5, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
 
 		//System.out.println("Java "+ ManagementFactory.getRuntimeMXBean().getVmVersion());
 		List<Integer> tasks =
@@ -794,7 +794,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		worker.parallel(4, env.getDispatcherFactory("test-p")).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
-
+		System.out.println(worker.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 

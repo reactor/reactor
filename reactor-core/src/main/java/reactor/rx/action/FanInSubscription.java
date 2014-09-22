@@ -29,15 +29,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class FanInSubscription<O> extends StreamSubscription<O> {
+public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber<O, ?>> extends StreamSubscription<O> {
 
 
-	final List<InnerSubscription> subscriptions;
+	final List<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptions;
 
 	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
 
 	public FanInSubscription(Subscriber<O> subscriber,
-	                         List<InnerSubscription> subs) {
+	                         List<InnerSubscription<O, ? extends SUBSCRIBER>> subs) {
 		super(null, subscriber);
 		this.subscriptions = subs;
 	}
@@ -49,7 +49,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 	}
 
 	protected void parallelRequest(long elements) {
-		lock.readLock().lock();
+		lock.writeLock().lock();
 		try {
 			final int parallel = subscriptions.size();
 
@@ -58,28 +58,25 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 				final long remaining = (elements % parallel > 0 ? elements : 0) + batchSize;
 				if (batchSize == 0 && elements == 0) return;
 
-				Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
-				InnerSubscription subscription;
+				Iterator<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptionIterator = subscriptions.iterator();
+				InnerSubscription<O, ? extends SUBSCRIBER> subscription;
 				while (subscriptionIterator.hasNext()) {
 					subscription = subscriptionIterator.next();
-					subscription.request(remaining);
-					lock.readLock().unlock();
-					try {
-						pruneObsoleteSub(subscriptionIterator, subscription.toRemove);
-					} finally {
-						lock.readLock().lock();
+					if (!subscription.toRemove) {
+						subscription.request(remaining);
 					}
+					pruneObsoleteSub(subscriptionIterator, subscription.toRemove);
 				}
 			}
 		} finally {
-			lock.readLock().unlock();
+			lock.writeLock().unlock();
 		}
 	}
 
-	public void forEach(Consumer<InnerSubscription> consumer) {
+	public void forEach(Consumer<InnerSubscription<O, ? extends SUBSCRIBER>> consumer) {
 		lock.readLock().lock();
 		try {
-			for (InnerSubscription innerSubscription : subscriptions) {
+			for (InnerSubscription<O, ? extends SUBSCRIBER> innerSubscription : subscriptions) {
 				consumer.accept(innerSubscription);
 			}
 		} finally {
@@ -87,7 +84,8 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	protected void pruneObsoleteSub(Iterator<InnerSubscription> subscriptionIterator, boolean toRemove) {
+	protected void pruneObsoleteSub(Iterator<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptionIterator,
+	                                boolean toRemove) {
 		if (toRemove) {
 			lock.writeLock().lock();
 			try {
@@ -113,7 +111,7 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		super.cancel();
 	}
 
-	void removeSubscription(final InnerSubscription s) {
+	void removeSubscription(final InnerSubscription<O, ? super SUBSCRIBER> s) {
 		lock.writeLock().lock();
 		try {
 			subscriptions.remove(s);
@@ -122,25 +120,30 @@ public class FanInSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	void addSubscription(final InnerSubscription s) {
+	@SuppressWarnings("unchecked")
+	void addSubscription(final InnerSubscription<O, ? super SUBSCRIBER> s) {
 		lock.writeLock().lock();
 		try {
-			Iterator<InnerSubscription> subscriptionIterator = subscriptions.iterator();
+			Iterator<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptionIterator = subscriptions.iterator();
 			while (subscriptionIterator.hasNext()) {
 				pruneObsoleteSub(subscriptionIterator, subscriptionIterator.next().toRemove);
 			}
-			subscriptions.add(s);
+			subscriptions.add((InnerSubscription<O, ? extends SUBSCRIBER>) s);
 		} finally {
 			lock.writeLock().unlock();
 		}
 	}
-	public static class InnerSubscription implements Subscription {
 
+	public static class InnerSubscription<O, SUBSCRIBER
+			extends FanInAction.InnerSubscriber<O, ?>> implements Subscription {
+
+		final SUBSCRIBER   subscriber;
 		final Subscription wrapped;
 		boolean toRemove = false;
 
-		public InnerSubscription(Subscription wrapped) {
+		public InnerSubscription(Subscription wrapped, SUBSCRIBER subscriber) {
 			this.wrapped = wrapped;
+			this.subscriber = subscriber;
 		}
 
 		@Override

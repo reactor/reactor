@@ -61,6 +61,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.filter(integer -> integer >= 0)
 										.buffer(1)
 										.last()
+										.<Integer>split()
+										.flatMap(i ->
+												Streams.<Integer, String, Integer>zip(env, Streams.defer(env, i), otherStream,
+														tuple -> tuple.getT1()))
 
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
@@ -98,7 +102,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
-
 		final int elements = 100_000;
 		CountDownLatch latch = new CountDownLatch(elements);
 

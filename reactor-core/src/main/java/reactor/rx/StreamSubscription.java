@@ -70,22 +70,28 @@ public class StreamSubscription<O> implements Subscription {
 		int i = 0;
 		O element;
 		bufferLock.lock();
-		try {
-			while (i < elements && (element = buffer.poll()) != null) {
-				subscriber.onNext(element);
-				i++;
-			}
 
-			if (buffer.isComplete()) {
-				onComplete();
-			}
-
-			if (i < elements && capacity.addAndGet(elements - i) < 0 ) {
-				onError(SpecificationExceptions.spec_3_17_exception(capacity.get(), elements));
-			}
-		} finally {
+		while (i < elements && (element = buffer.poll()) != null) {
 			bufferLock.unlock();
+			subscriber.onNext(element);
+			bufferLock.lock();
+			i++;
 		}
+
+		if (buffer.isComplete()) {
+			bufferLock.unlock();
+			onComplete();
+			return;
+		}
+
+		if (i < elements && capacity.addAndGet(elements - i) < 0) {
+			bufferLock.unlock();
+			onError(SpecificationExceptions.spec_3_17_exception(capacity.get(), elements));
+			return;
+		}
+
+		bufferLock.unlock();
+
 	}
 
 	@Override
@@ -104,15 +110,20 @@ public class StreamSubscription<O> implements Subscription {
 			subscriber.onNext(ev);
 		} else {
 			bufferLock.lock();
+			boolean retry = false;
 			try {
 				// we just decremented below 0 so increment back one
 				if (capacity.incrementAndGet() > 0) {
-					onNext(ev);
+					retry = true;
 				} else {
 					buffer.add(ev);
 				}
 			} finally {
 				bufferLock.unlock();
+			}
+
+			if (retry) {
+				onNext(ev);
 			}
 
 		}
@@ -188,11 +199,6 @@ public class StreamSubscription<O> implements Subscription {
 	StreamSubscription<O> wrap(CompletableQueue<O> queue) {
 		final StreamSubscription<O> thiz = this;
 		return new WrappedStreamSubscription<O>(thiz, queue);
-	}
-
-	StreamSubscription<O> wrap() {
-		final StreamSubscription<O> thiz = this;
-		return new WrappedStreamSubscription<O>(thiz, new CompletableLinkedQueue<O>());
 	}
 
 	public static class Firehose<O> extends StreamSubscription<O> {

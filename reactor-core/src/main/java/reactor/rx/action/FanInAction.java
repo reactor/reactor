@@ -24,6 +24,7 @@ import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -31,15 +32,15 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 2.0
  */
-abstract public class FanInAction<I, O> extends Action<I, O> {
+abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubscriber<I, O>> extends Action<I, O> {
 
-	final FanInSubscription<I>                       innerSubscriptions;
+	final FanInSubscription<I, SUBSCRIBER>           innerSubscriptions;
 	final AtomicInteger                              runningComposables;
 	final Iterable<? extends Publisher<? extends I>> composables;
 
-	boolean started = false;
+	final AtomicBoolean started = new AtomicBoolean(false);
 
-	Action<?, ?> masterAction = null;
+	Action<?, ?> dynamicMergeAction = null;
 
 	@SuppressWarnings("unchecked")
 	public FanInAction(Dispatcher dispatcher) {
@@ -57,9 +58,8 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if(!started){
-			started = true;
-			onSubscribe(this.innerSubscriptions);
+		if (started.compareAndSet(false, true)) {
+			doSubscribe(this.innerSubscriptions);
 		}
 		super.subscribe(subscriber);
 	}
@@ -72,6 +72,7 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
+		this.subscription = subscription;
 		if (composables != null) {
 			if (innerSubscriptions.subscriptions.size() > 0) {
 				innerSubscriptions.cancel();
@@ -81,7 +82,7 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 		super.doSubscribe(subscription);
 	}
 
-	protected long initUpstreamPublisherAndCapacity(){
+	protected long initUpstreamPublisherAndCapacity() {
 		long maxCapacity = capacity;
 		for (Publisher<? extends I> composable : composables) {
 			if (Stream.class.isAssignableFrom(composable.getClass())) {
@@ -95,13 +96,13 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		super.requestUpstream(capacity, terminated, elements);
-		if (masterAction != null && masterAction.getState() == State.READY) {
-			masterAction.requestUpstream(capacity, terminated, elements);
+		if (dynamicMergeAction != null && dynamicMergeAction.getState() == State.READY) {
+			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
 	}
 
 	@Override
-	public FanInSubscription<I> getSubscription() {
+	public FanInSubscription<I, SUBSCRIBER> getSubscription() {
 		return innerSubscriptions;
 	}
 
@@ -112,15 +113,15 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 				'}';
 	}
 
-	protected FanInSubscription<I> createFanInSubscription() {
-		return new FanInSubscription<I>(this,
-				new ArrayList<FanInSubscription.InnerSubscription>(8)) {
+	protected FanInSubscription<I, SUBSCRIBER> createFanInSubscription() {
+		return new FanInSubscription<I, SUBSCRIBER>(this,
+				new ArrayList<FanInSubscription.InnerSubscription<I, ? extends SUBSCRIBER>>(8)) {
 			@Override
 			public void cancel() {
 				super.cancel();
-				if (masterAction != null) {
-					Action<?, ?> master = masterAction;
-					masterAction = null;
+				if (dynamicMergeAction != null) {
+					Action<?, ?> master = dynamicMergeAction;
+					dynamicMergeAction = null;
 					master.cancel();
 				}
 			}
@@ -131,49 +132,63 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 		return new InnerSubscriber<I, O>(this);
 	}
 
-	protected static class InnerSubscriber<I, O> implements Subscriber<I>, NonBlocking {
-		final FanInAction<I, O> outerAction;
-		FanInSubscription.InnerSubscription s;
+	public static class InnerSubscriber<I, O> implements Subscriber<I>, NonBlocking {
+		final FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction;
+		FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>> s;
 
-		InnerSubscriber(FanInAction<I, O> outerAction) {
+		InnerSubscriber(FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction) {
 			this.outerAction = outerAction;
+		}
+
+		@SuppressWarnings("unchecked")
+		void setSubscription(FanInSubscription.InnerSubscription s) {
+			this.s = s;
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription(subscription);
+			this.s = new FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			outerAction.dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					long currentCapacity = outerAction.innerSubscriptions.getCapacity().get();
-					if (currentCapacity > 0) {
-						int size = outerAction.innerSubscriptions.subscriptions.size();
-						if (size == 0) return;
+			long currentCapacity = outerAction.innerSubscriptions.getCapacity().get();
+			if (currentCapacity > 0) {
+				int size = outerAction.innerSubscriptions.subscriptions.size();
+				if (size == 0) return;
 
-						long batchSize = outerAction.capacity / size;
-						long toRequest = outerAction.capacity % size + batchSize;
-						toRequest = toRequest > currentCapacity ? toRequest : currentCapacity;
-						s.request(toRequest);
-					}
-				}
-			});
+				long batchSize = outerAction.capacity / size;
+				long toRequest = outerAction.capacity % size + batchSize;
+				toRequest = toRequest > currentCapacity ? toRequest : currentCapacity;
+				s.request(toRequest);
+			}
+		}
 
-
+		@Override
+		public void onNext(I ev) {
+			//Action.log.debug("event [" + ev + "] by: " + this);
+			outerAction.innerSubscriptions.onNext(ev);
 		}
 
 		@Override
 		public void onComplete() {
+			//Action.log.debug("event [complete] by: " + this);
+			Consumer<Void> completeConsumer = new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					if (outerAction.runningComposables.decrementAndGet() == 0 && checkDynamicMerge()) {
+						outerAction.innerSubscriptions.onComplete();
+					}
+				}
+			};
+
 			if (outerAction.dispatcher.inContext()) {
 				s.toRemove = true;
+				completeConsumer.accept(null);
 			} else {
 				outerAction.innerSubscriptions.removeSubscription(s);
+				outerAction.dispatch(completeConsumer);
 			}
-			if (outerAction.runningComposables.decrementAndGet() == 0) {
-				outerAction.innerSubscriptions.onComplete();
-			}
+
 		}
 
 		@Override
@@ -182,14 +197,14 @@ abstract public class FanInAction<I, O> extends Action<I, O> {
 			outerAction.innerSubscriptions.onError(t);
 		}
 
-		@Override
-		public void onNext(I ev) {
-			outerAction.innerSubscriptions.onNext(ev);
+		protected boolean checkDynamicMerge() {
+			return outerAction.composables != null ||
+					outerAction.dynamicMergeAction != null && !outerAction.dynamicMergeAction.checkState();
 		}
 
 		@Override
 		public String toString() {
-			return "InnerSubscriber";
+			return "FanInAction.InnerSubscriber";
 		}
 	}
 

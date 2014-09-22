@@ -26,23 +26,22 @@ import reactor.event.dispatch.Dispatcher;
  */
 public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 
-	private final FanInAction<E, O> fanInAction;
+	private final FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>> fanInAction;
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher
 	) {
-		this(dispatcher, (FanInAction<E, O>) new MergeAction<O>(dispatcher));
+		this(dispatcher, (FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>>) new MergeAction<O>(dispatcher));
 	}
 
 	public DynamicMergeAction(
 			Dispatcher dispatcher,
-			FanInAction<E, O> fanInAction
+			FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>> fanInAction
 	) {
 		super(dispatcher);
 		this.fanInAction = fanInAction;
-		fanInAction.runningComposables.incrementAndGet();
-		fanInAction.masterAction = this;
+		fanInAction.dynamicMergeAction = this;
 	}
 
 	@Override
@@ -58,15 +57,14 @@ public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if (fanInAction.runningComposables.decrementAndGet() == 0) {
-			fanInAction.doComplete();
+		if (fanInAction.runningComposables.get() == 0) {
+			fanInAction.innerSubscriptions.onComplete();
 		}
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		fanInAction.runningComposables.decrementAndGet();
 		fanInAction.doError(ev);
 	}
 
@@ -106,7 +104,7 @@ public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 		return super.cancel();
 	}
 
-	public FanInAction<E, O> mergedStream() {
+	public FanInAction<E, O, ?> mergedStream() {
 		return fanInAction;
 	}
 

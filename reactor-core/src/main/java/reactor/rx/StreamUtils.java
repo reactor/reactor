@@ -103,7 +103,7 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> void parseComposable(Stream<O> composable, final List<Object> streamTree) {
-			if(composable == null) return;
+			if (composable == null) return;
 
 			Map<Object, Object> freshNestedStreams = new HashMap<Object, Object>();
 			freshNestedStreams.put("id", new StreamKey(composable).toString());
@@ -165,7 +165,7 @@ public abstract class StreamUtils {
 			if (operation == null) return;
 			Consumer<E> procedure = new Consumer<E>() {
 				@Override
-				public void accept(E registration){
+				public void accept(E registration) {
 					if (StreamSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((StreamSubscription<?>) registration).getSubscriber();
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
@@ -280,8 +280,9 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderMerge(Stream<O> consumer, final List<Object> streamTree) {
 			if (FanInAction.class.isAssignableFrom(consumer.getClass())) {
-				FanInAction<?, O> operation = (FanInAction<?, O>) consumer;
-				operation.getSubscription().forEach(new Consumer<FanInSubscription.InnerSubscription>() {
+				FanInAction operation = (FanInAction) consumer;
+				operation.getSubscription().forEach(
+						new Consumer<FanInSubscription.InnerSubscription>() {
 					Subscription delegateSubscription;
 
 					@Override

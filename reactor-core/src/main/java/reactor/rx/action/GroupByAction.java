@@ -82,7 +82,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 			stream = new GroupedByStream<K, T>(key, dispatcher);
 			stream.capacity(capacity).env(environment).keepAlive(false);
 			groupByMap.put(key, stream);
-			broadcastNext(stream.overflow());
+			broadcastNext(stream.onOverflowBuffer());
 		}
 		stream.broadcastNext(value);
 	}

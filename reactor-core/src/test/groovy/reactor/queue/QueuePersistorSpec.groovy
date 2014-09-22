@@ -105,7 +105,7 @@ class QueuePersistorSpec extends Specification {
 			def stream = Streams.<String> defer()
 			def result = null
 
-			def bufferedStream = stream.overflow(persistentQueue).observe{
+			def bufferedStream = stream.onOverflowBuffer(persistentQueue).observe{
 				result = it
 			}
 

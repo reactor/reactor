@@ -58,7 +58,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	@Override
 	protected void firstCallback(T event) {
 		createWindowStream();
-		broadcastNext(currentWindow.overflow());
+		broadcastNext(currentWindow.onOverflowBuffer());
 	}
 
 	@Override

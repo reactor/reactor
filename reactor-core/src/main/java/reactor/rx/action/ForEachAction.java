@@ -109,4 +109,8 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return super.toString()+defaultValues;
+	}
 }
