@@ -153,12 +153,13 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			outerAction.innerSubscriptions.addSubscription(s);
 			long currentCapacity = outerAction.innerSubscriptions.getCapacity().get();
 			if (currentCapacity > 0) {
+
 				int size = outerAction.innerSubscriptions.subscriptions.size();
 				if (size == 0) return;
 
 				long batchSize = outerAction.capacity / size;
 				long toRequest = outerAction.capacity % size + batchSize;
-				toRequest = toRequest > currentCapacity ? toRequest : currentCapacity;
+				toRequest = Math.max(toRequest, currentCapacity);
 				s.request(toRequest);
 			}
 		}
@@ -175,6 +176,9 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			Consumer<Void> completeConsumer = new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
+					if(!s.toRemove){
+						outerAction.innerSubscriptions.removeSubscription(s);
+					}
 					if (outerAction.runningComposables.decrementAndGet() == 0 && checkDynamicMerge()) {
 						outerAction.innerSubscriptions.onComplete();
 					}
@@ -185,7 +189,6 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 				s.toRemove = true;
 				completeConsumer.accept(null);
 			} else {
-				outerAction.innerSubscriptions.removeSubscription(s);
 				outerAction.dispatch(completeConsumer);
 			}
 

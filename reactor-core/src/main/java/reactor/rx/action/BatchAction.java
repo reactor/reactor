@@ -30,14 +30,17 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean flush;
 	final boolean first;
 	final Consumer<T> flushConsumer = new FlushConsumer();
+	final long batchSize;
 	long count = 0;
+
 
 	public BatchAction(long batchSize,
 	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
-		super(dispatcher, batchSize);
+		super(dispatcher);
 		this.first = first;
 		this.flush = flush;
 		this.next = next;
+		this.batchSize = batchSize;
 	}
 
 	protected void nextCallback(T event) {
@@ -60,7 +63,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && count % capacity == 0) {
+		if (flush && count % batchSize == 0) {
 			flushConsumer.accept(value);
 		}
 	}
@@ -79,22 +82,20 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public BatchAction<T,V> resume() {
+	public BatchAction<T, V> resume() {
 		dispatch(null, flushConsumer);
-		return (BatchAction<T,V>)super.resume();
+		return (BatchAction<T, V>) super.resume();
 	}
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(null, flushConsumer);
-		if(elements > this.capacity) {
+		if (elements > this.batchSize) {
 			super.requestUpstream(capacity,
 					terminated, elements);
-		}else{
+		} else {
 			super.requestUpstream(capacity,
-					terminated, this.capacity - currentNextSignals > 0 ?
-							this.capacity  :
-							this.capacity);
+					terminated, this.batchSize);
 		}
 	}
 
@@ -108,6 +109,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString()+"{"+(count/capacity*100)+"%("+count+")";
+		return super.toString() + "{" + (count / capacity * 100) + "%(" + count + ")";
 	}
 }

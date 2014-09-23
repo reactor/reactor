@@ -16,7 +16,6 @@
 package reactor.reactivestreams.tck;
 
 import org.junit.Test;
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -56,16 +55,18 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 						.capacity(bufferSize)
 						.parallel()
 						.map(stream -> stream
-										.map(integer -> integer)
-										.<Integer>scan(tuple -> tuple.getT1())
+										.scan(tuple -> tuple.getT1(), 0)
 										.filter(integer -> integer >= 0)
-										.buffer(1)
+										.reduce(tuple -> -tuple.getT1(), (() -> 0), 1)
+										.map(integer -> -integer)
+										.capacity(1)
 										.last()
+										.buffer(1)
+												//.throttle(100)
 										.<Integer>split()
 										.flatMap(i ->
 												Streams.<Integer, String, Integer>zip(env, Streams.defer(env, i), otherStream,
 														tuple -> tuple.getT1()))
-
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
@@ -105,7 +106,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		final int elements = 100_000;
 		CountDownLatch latch = new CountDownLatch(elements);
 
-		Processor<Integer, Integer> processor = createIdentityProcessor(1000);
+		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
 		Stream<Integer> stream = Streams.defer(env);
 
@@ -143,9 +144,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 		//stream.broadcastComplete();
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(20, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
+		if(processor.getError() != null){
+			System.out.println(processor.getError());
+			processor.getError().printStackTrace();
+		}
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count);
 
