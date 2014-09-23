@@ -75,7 +75,7 @@ final public class CombineAction<E, O> extends Action<E, O> {
 
 	@Override
 	public void broadcastNext(O ev) {
-		publisher.broadcastNext(ev);
+		subscriber.broadcastNext(ev);
 	}
 
 	@Override

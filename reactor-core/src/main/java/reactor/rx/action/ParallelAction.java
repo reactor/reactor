@@ -56,7 +56,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 					if ((pendingNextSignals += n) < 0) {
 						lock.unlock();
 						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
-					} else{
+					} else {
 						lock.unlock();
 					}
 					return;
@@ -86,7 +86,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 			} catch (Throwable t) {
 
-				if(lock.isHeldByCurrentThread())
+				if (lock.isHeldByCurrentThread())
 					lock.unlock();
 
 				doError(t);
@@ -133,6 +133,12 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			p.capacity(size);
 		}
 		return this;
+	}
+
+	@Override
+	protected void onRequest(long n) {
+		checkRequest(n);
+		trySyncDispatch(n, requestConsumer);
 	}
 
 	@Override
@@ -349,7 +355,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				public void request(long elements) {
 					super.request(elements);
 					lastRequestedTime = System.currentTimeMillis();
-						parallelAction.requestConsumer.accept(elements);
+					parallelAction.roundRobinIndex = index;
+					parallelAction.onRequest(elements);
 				}
 
 				@Override
@@ -357,7 +364,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 					super.cancel();
 					parallelAction.publishers[index] = null;
 
-					if(parallelAction.active.decrementAndGet() <= 0){
+					if (parallelAction.active.decrementAndGet() <= 0) {
 						parallelAction.cancel();
 					}
 				}

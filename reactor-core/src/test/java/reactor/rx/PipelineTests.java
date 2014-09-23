@@ -534,7 +534,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
-				ParallelAction<Integer> parallelStream = Streams.<Integer>parallel(env);
+				ParallelAction<Integer> parallelStream = Streams.<Integer>parallel(2, env);
 				parallelStream
 						.consume(stream -> stream
 										.map(i -> i)
@@ -780,7 +780,7 @@ public class PipelineTests extends AbstractReactorTest {
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
 		env.addDispatcherFactory("test-p",
-				Environment.createDispatcherFactory("test-p", 5, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
+				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
 
 		//System.out.println("Java "+ ManagementFactory.getRuntimeMXBean().getVmVersion());
 		List<Integer> tasks =
@@ -792,7 +792,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		Stream<Integer> worker = Streams.defer(env, env.getDispatcherFactory("test-p").get(), tasks);
 
-		worker.parallel(4, env.getDispatcherFactory("test-p")).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		worker.parallel(2, env.getDispatcherFactory("test-p")).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
 		System.out.println(worker.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -806,7 +806,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		Stream<Integer> worker = Streams.defer(env, env.getDefaultDispatcherFactory().get(), tasks);
 
-		worker.parallel(4).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		worker.parallel(2).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
 
 		Assert.assertEquals(0, countDownLatch.getCount());

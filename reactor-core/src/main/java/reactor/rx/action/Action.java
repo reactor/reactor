@@ -459,7 +459,8 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	}
 
 	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if (firehose && downstreamSubscription() != null && downstreamSubscription().asyncManaged()) {
+		if (firehose &&
+				(downstreamSubscription() != null && downstreamSubscription().asyncManaged())) {
 			action.accept(data);
 		} else {
 			dispatch(data, action);

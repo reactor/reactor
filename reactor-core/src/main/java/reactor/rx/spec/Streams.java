@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A public factory to build {@link Stream}.
@@ -201,23 +200,7 @@ public final class Streams {
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
 	public static <T> ParallelAction<T> parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers) {
-		ParallelAction<T> parallelAction = new ParallelAction<T>(SynchronousDispatcher.INSTANCE, dispatchers, poolSize) {
-			ReentrantLock lock = new ReentrantLock();
-
-			@Override
-			protected void onRequest(long n) {
-				if (subscription != null) {
-					subscription.request(n);
-				} else {
-					lock.lock();
-					try {
-						requestConsumer.accept(n);
-					} finally {
-						lock.unlock();
-					}
-				}
-			}
-		};
+		ParallelAction<T> parallelAction = new ParallelAction<T>(SynchronousDispatcher.INSTANCE, dispatchers, poolSize);
 		parallelAction.env(env);
 		return parallelAction;
 	}
@@ -335,7 +318,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> generate(Environment env, Dispatcher dispatcher,
-	                                                   Supplier<? extends T> value) {
+	                                     Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
 		SupplierAction<Void, T> action = new SupplierAction<Void, T>(dispatcher, value);
 		action.capacity(1).env(env);
@@ -463,7 +446,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T>  Stream<T> merge(Environment env, Publisher<? extends T>... mergedPublishers) {
+	public static <T> Stream<T> merge(Environment env, Publisher<? extends T>... mergedPublishers) {
 		return merge(env, env.getDefaultDispatcher(), mergedPublishers);
 	}
 
@@ -481,10 +464,10 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	@SafeVarargs
-	public static <T>  Stream<T> merge(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T>... mergedPublishers) {
+	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher,
+	                                  Publisher<? extends T>... mergedPublishers) {
 		final List<Publisher<? extends T>> publishers = new ArrayList<>();
-		for(Publisher<? extends T> mergedPublisher : mergedPublishers){
+		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
 		}
 		final MergeAction<T> mergeAction = new MergeAction<T>(dispatcher, publishers);
@@ -562,7 +545,8 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3, ? extends T4>,
+	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3,
+			                                                ? extends T4>,
 			                                                V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, zipper);
 	}
@@ -592,7 +576,8 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3, ? extends T4,
+	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3,
+			                                                    ? extends T4,
 			                                                    ? extends T5>,
 			                                                    V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, zipper);
@@ -666,7 +651,8 @@ public final class Streams {
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
 	                                                            Function<Tuple7<? extends T1, ? extends T2, ? extends T3,
-			                                                            ? extends T4, ? extends T5, ? extends T6, ? extends T7>,
+			                                                            ? extends T4, ? extends T5, ? extends T6,
+			                                                            ? extends T7>,
 			                                                            V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
 				zipper);
@@ -707,8 +693,10 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<? extends T1, ? extends T2, ? extends T3,
-			                                                                ? extends T4, ? extends T5, ? extends T6, ? extends T7,
+	                                                                Function<Tuple8<? extends T1, ? extends T2,
+			                                                                ? extends T3,
+			                                                                ? extends T4, ? extends T5, ? extends T6,
+			                                                                ? extends T7,
 			                                                                ? extends T8>, ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
 				source8, zipper);
@@ -727,7 +715,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <V, TUPLE extends Tuple> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
-	                                Function<TUPLE, ? extends V> zipper) {
+	                                                     Function<TUPLE, ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, sources, zipper);
 	}
 
@@ -745,7 +733,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <E, V, TUPLE extends Tuple> Stream<V> zip(Publisher<? extends Publisher<E>> sources,
-	                                   Function<TUPLE, ? extends V> zipper) {
+	                                                        Function<TUPLE, ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, sources, zipper);
 	}
 
@@ -822,7 +810,8 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3, ? extends T4>,
+	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3,
+			                                                ? extends T4>,
 			                                                V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, zipper);
 	}
@@ -855,7 +844,8 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3, ? extends T4,
+	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3,
+			                                                    ? extends T4,
 			                                                    ? extends T5>,
 			                                                    V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, zipper);
@@ -933,7 +923,8 @@ public final class Streams {
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
 	                                                            Function<Tuple7<? extends T1, ? extends T2, ? extends T3,
-			                                                            ? extends T4, ? extends T5, ? extends T6, ? extends T7>,
+			                                                            ? extends T4, ? extends T5, ? extends T6,
+			                                                            ? extends T7>,
 			                                                            V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
 				zipper);
@@ -976,8 +967,10 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<? extends T1, ? extends T2, ? extends T3,
-			                                                                ? extends T4, ? extends T5, ? extends T6, ? extends T7,
+	                                                                Function<Tuple8<? extends T1, ? extends T2,
+			                                                                ? extends T3,
+			                                                                ? extends T4, ? extends T5, ? extends T6,
+			                                                                ? extends T7,
 			                                                                ? extends T8>, ? extends V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
 				source8, zipper);
@@ -997,8 +990,8 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <V, TUPLE extends Tuple> Stream<V> zip(Environment env,
-	                                Iterable<? extends Publisher<?>> publishers,
-	                                Function<TUPLE, ? extends V> zipper) {
+	                                                     Iterable<? extends Publisher<?>> publishers,
+	                                                     Function<TUPLE, ? extends V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), publishers, zipper);
 	}
 
@@ -1017,8 +1010,8 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <E, V, TUPLE extends Tuple> Stream<V> zip(Environment env,
-	                                   Publisher<? extends Publisher<E>> publishers,
-	                                   Function<TUPLE, ? extends V> zipper) {
+	                                                        Publisher<? extends Publisher<E>> publishers,
+	                                                        Function<TUPLE, ? extends V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), publishers, zipper);
 	}
 
@@ -1104,7 +1097,8 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3, ? extends T4>,
+	                                                Function<Tuple4<? extends T1, ? extends T2, ? extends T3,
+			                                                ? extends T4>,
 			                                                V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4), zipper);
 	}
@@ -1140,7 +1134,8 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3, ? extends T4,
+	                                                    Function<Tuple5<? extends T1, ? extends T2, ? extends T3,
+			                                                    ? extends T4,
 			                                                    ? extends T5>,
 			                                                    V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5), zipper);
@@ -1224,7 +1219,8 @@ public final class Streams {
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
 	                                                            Function<Tuple7<? extends T1, ? extends T2, ? extends T3,
-			                                                            ? extends T4, ? extends T5, ? extends T6, ? extends T7>,
+			                                                            ? extends T4, ? extends T5, ? extends T6,
+			                                                            ? extends T7>,
 			                                                            V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
 				zipper);
@@ -1270,8 +1266,10 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<? extends T1, ? extends T2, ? extends T3,
-			                                                                ? extends T4, ? extends T5, ? extends T6, ? extends T7,
+	                                                                Function<Tuple8<? extends T1, ? extends T2,
+			                                                                ? extends T3,
+			                                                                ? extends T4, ? extends T5, ? extends T6,
+			                                                                ? extends T7,
 			                                                                ? extends T8>, ? extends V> zipper) {
 		return zip(env, dispatcher,
 				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8),
@@ -1294,9 +1292,9 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <V, TUPLE extends Tuple> Stream<V> zip(Environment env,
-	                                Dispatcher dispatcher,
-	                                Iterable<? extends Publisher<?>> mergedPublishers,
-	                                Function<TUPLE, ? extends V> zipper) {
+	                                                     Dispatcher dispatcher,
+	                                                     Iterable<? extends Publisher<?>> mergedPublishers,
+	                                                     Function<TUPLE, ? extends V> zipper) {
 
 		return new ZipAction<>(dispatcher, zipper, mergedPublishers).env(env);
 	}
@@ -1951,7 +1949,7 @@ public final class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
 	                                       Iterable<? extends Publisher<? extends T>> sources) {
-		return zip(env, dispatcher, sources,  Streams.<T, TupleN>joinFunction());
+		return zip(env, dispatcher, sources, Streams.<T, TupleN>joinFunction());
 	}
 
 	/**
