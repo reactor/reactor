@@ -17,7 +17,6 @@ package reactor.rx.spec;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.Event;
@@ -26,10 +25,12 @@ import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
+import reactor.rx.action.Action;
 import reactor.rx.action.ForEachAction;
 import reactor.rx.action.SupplierAction;
 import reactor.util.Assert;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 
 /**
@@ -118,9 +119,11 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 		}else if(values != null){
 			return new ForEachAction<T>(values, dispatcher).env(env).capacity(batchSize);
 		}else{
-			Stream<T> stream = new Stream<T>(dispatcher, env, batchSize).capacity(batchSize);
+			Stream<T> stream;
 			if (source != null) {
-				source.subscribe(new StreamSubscriber<T>(stream));
+				stream = new StreamWithDelegatePublisher<T>(dispatcher, source).env(env).capacity(batchSize).share();
+			} else{
+				stream = new Stream<T>(dispatcher, env, batchSize).capacity(batchSize);
 			}
 			return stream;
 		}
@@ -141,31 +144,45 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 	}
 
 
-	static class StreamSubscriber<T> implements org.reactivestreams.Subscriber<T>{
-		private final Stream<T> stream;
+	static class StreamWithDelegatePublisher<T> extends Stream<T>{
+		private final Publisher<? extends T>           publisher;
 
-		public StreamSubscriber(Stream<T> stream) {
-			this.stream = stream;
+		public StreamWithDelegatePublisher(@Nonnull Dispatcher dispatcher, Publisher<? extends T> publisher) {
+			super(dispatcher);
+			this.publisher = publisher;
 		}
 
 		@Override
-		public void onSubscribe(Subscription subscription) {
-			subscription.request(stream.getCapacity());
+		@SuppressWarnings("unchecked")
+		public StreamWithDelegatePublisher<T> env(Environment environment) {
+			return (StreamWithDelegatePublisher<T>) super.env(environment);
 		}
 
 		@Override
-		public void onNext(T element) {
-			stream.broadcastNext(element);
+		@SuppressWarnings("unchecked")
+		public StreamWithDelegatePublisher<T> capacity(long elements) {
+			return (StreamWithDelegatePublisher<T>) super.capacity(elements);
+		}
+
+		public Action<T, T> share(){
+
+			return new Action<T, T>() {
+				@Override
+				protected void doNext(T ev) {
+					broadcastNext(ev);
+				}
+
+				@Override
+				public void subscribe(Subscriber<? super T> subscriber) {
+					super.subscribe(subscriber);
+					publisher.subscribe(this);
+				}
+			};
 		}
 
 		@Override
-		public void onComplete() {
-			stream.broadcastComplete();
-		}
-
-		@Override
-		public void onError(Throwable cause) {
-			stream.broadcastError(cause);
+		public void subscribe(Subscriber<? super T> subscriber) {
+			publisher.subscribe(subscriber);
 		}
 	}
 }

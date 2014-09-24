@@ -93,4 +93,13 @@ public class Tuple3<T1, T2, T3> extends Tuple2<T1, T2> {
 		result = 31 * result + (t3 != null ? t3.hashCode() : 0);
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "Tuple3{" +
+				"t1=" + t1 + ", " +
+				"t2=" + t2 + ", " +
+				"t3=" + t3 +
+				'}';
+	}
 }

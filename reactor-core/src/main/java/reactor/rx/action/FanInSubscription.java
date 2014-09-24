@@ -63,7 +63,7 @@ public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber
 				while (subscriptionIterator.hasNext()) {
 					subscription = subscriptionIterator.next();
 					if (!subscription.toRemove) {
-						subscription.request(remaining);
+						subscription.subscriber.request(remaining);
 					}else{
 						pruneObsoleteSub(subscriptionIterator, true);
 					}

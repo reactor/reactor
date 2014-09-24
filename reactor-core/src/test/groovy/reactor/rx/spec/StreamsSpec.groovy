@@ -448,7 +448,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip(source1, source2){ it.t1 + it.t2 }
+			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }
 			def tap = zippedStream.tap()
 
 		when:
@@ -474,6 +474,25 @@ class StreamsSpec extends Specification {
 		then:
 			'the values are all collected from source1 stream'
 			tap.get() == 9
+	}
+
+	def "Multiple iterable Stream's values can be zipped"() {
+		given:
+			'source composables to zip, buffer and tap'
+			def odds = Streams.defer(1, 3, 5, 7, 9)
+			def even = Streams.defer(2, 4, 6)
+
+		when:
+			'the sources are zipped'
+			def zippedStream = Streams.zip(environment, odds, even) { [it.t1, it.t2] }
+			def tap = zippedStream.toList().await()
+
+			println zippedStream.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap == [[1, 2], [3, 4], [5, 6]]
+
 	}
 
 	def "Stream can be counted"() {
@@ -1004,8 +1023,6 @@ class StreamsSpec extends Specification {
 			'dispatching works'
 			latch.await(1000, TimeUnit.MILLISECONDS)
 			v == 'ok'
-
-
 	}
 
 	def 'Creating Stream from observable'() {
@@ -1023,6 +1040,25 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			event == 1
+	}
+
+	def 'Creating Stream from publisher'() {
+		given:
+			'a source stream with a given publisher'
+			def s = Streams.<String> create {
+				it.onNext('test1')
+				it.onNext('test2')
+				it.onNext('test3')
+				it.onComplete()
+			}
+
+		when:
+			'accept a value'
+			def result = s.toList().await()
+
+		then:
+			'dispatching works'
+			result == ['test1', 'test2', 'test3']
 	}
 
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
@@ -1125,8 +1161,8 @@ class StreamsSpec extends Specification {
 					.throttle(avgTime)
 					.elapsed()
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-						acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
-					}
+				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+			}
 
 			def value = reduced.tap()
 			println source.debug()
@@ -1150,14 +1186,14 @@ class StreamsSpec extends Specification {
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'
-			def source = Streams.<Integer>defer(environment)
+			def source = Streams.<Integer> defer(environment)
 			def latch = new CountDownLatch(1)
 			long avgTime = 150l
 
 			def reduced = source
 					.buffer()
 					.throttle(avgTime)
-					.map { timeWindow ->  timeWindow.size() }
+					.map { timeWindow -> timeWindow.size() }
 					.finallyDo { latch.countDown() }
 
 			def value = reduced.tap()
@@ -1552,7 +1588,7 @@ class StreamsSpec extends Specification {
 		and:
 			'sorted operation is added for up to 3 elements ordered at once and the stream is retrieved'
 			value = stream.sort(3).buffer(6).tap().get()
-		println stream.debug()
+			println stream.debug()
 
 		then:
 			'it is available'

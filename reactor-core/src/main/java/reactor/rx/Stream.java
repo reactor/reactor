@@ -148,10 +148,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		this.capacity = elements > (dispatcher.backlogSize() - Action.RESERVED_SLOTS) ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
 		if (capacity != elements) {
-			log.warn("The Stream altered the requested maximum capacity {} to not overrun its Dispatcher which supports " +
-							"up to {} slots for next signals, minus {} slots for others signals amid error," +
-							" complete, subscribe and upstream request. The assigned capacity is now {}",
-					elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, capacity);
+			log.warn(" The assigned capacity is now {}. The Stream altered the requested maximum capacity {} to not " +
+							"overrun" +
+							" " +
+							"its Dispatcher which supports " +
+							"up to {} slots for next signals, minus {} slots error|" +
+							"complete|subscribe|request.",
+					capacity, elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS);
 		}
 		return this;
 	}
@@ -298,7 +301,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Action<O, O> when(@Nonnull final Class<E> exceptionType,
-	                                            @Nonnull final Consumer<E> onError) {
+	                                               @Nonnull final Consumer<E> onError) {
 		return connect(new ErrorAction<O, E>(dispatcher, Selectors.T(exceptionType), onError));
 	}
 
@@ -407,7 +410,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream}
 	 *
 	 * @return the merged stream
 	 * @since 2.0
@@ -419,23 +422,46 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values from this current upstream and from the
+	 * passed publisher.
 	 *
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
-	public final <V> Action<O, List<V>> join() {
-		return zip(new Function<TupleN, List<V>>() {
-			@Override
-			public List<V> apply(TupleN ts) {
-				return Arrays.asList((V[]) ts.toArray());
-			}
-		});
+	public final Action<O, O> mergeWith(Publisher<? extends O> publisher) {
+		return new MergeAction<O>(dispatcher, Arrays.<Publisher<? extends O>>asList(this, publisher))
+				.env(environment).keepAlive(keepAlive);
 	}
 
 	/**
-	 * {@link this#connect(Action)} all the flowing {@link Stream} values to a new {@link Stream}
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced with a list of each upstream most recent emitted data.
+	 *
+	 * @return the zipped and joined stream
+	 * @since 2.0
+	 */
+	public final <V> Action<O, List<V>> join() {
+		return zip(ZipAction.joinZipper());
+	}
+
+
+	/**
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced with a list of each upstream most recent emitted data.
+	 *
+	 * @return the zipped and joined stream
+	 * @since 2.0
+	 */
+	public final Action<?, List<O>> joinWith(Publisher<O> publisher) {
+		return zipWith(publisher, ZipAction.<Tuple2<O,O>, O>joinZipper());
+	}
+
+	/**
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
 	 * @return the merged stream
 	 * @since 2.0
@@ -448,13 +474,41 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
+	 * {@link this#connect(Action)} with the passed {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T2, V> Action<?, V> zipWith(Publisher<? extends T2> publisher,
+	                                          @Nonnull Function<Tuple2<O, T2>, ? extends V> zipper) {
+		return new ZipAction<>(dispatcher, zipper, Arrays.asList(this, publisher)).env(environment);
+	}
+
+	/**
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T2, V> Action<?, V> zipWith(Iterable<? extends T2> iterable,
+	                                          @Nonnull Function<Tuple2<O, T2>, ? extends V> zipper) {
+		return zipWith(new ForEachAction<T2>(iterable, dispatcher).env(environment).keepAlive(keepAlive), zipper);
+	}
+
+	/**
 	 * Partition the stream output into N number of CPU cores sub-streams. Each partition will run on an exclusive
 	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
 	 *
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final  ParallelAction<O> parallel() {
+	public final ParallelAction<O> parallel() {
 		return parallel(Environment.PROCESSORS);
 	}
 
@@ -466,7 +520,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final  ParallelAction<O> parallel(final Integer poolsize) {
+	public final ParallelAction<O> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaultDispatcherFactory() :
 				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"));
@@ -1310,7 +1364,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public void broadcastError(final Throwable throwable) {
 		//log.debug("event [" + throwable + "] by: " + getClass().getSimpleName());
-		if(!checkState()){
+		if (!checkState()) {
 			if (log.isDebugEnabled()) {
 				log.debug("error dropped by: " + getClass().getSimpleName() + ":" + this, throwable);
 			}

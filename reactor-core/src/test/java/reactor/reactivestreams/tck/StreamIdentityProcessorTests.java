@@ -61,12 +61,14 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.map(integer -> -integer)
 										.capacity(1)
 										.last()
-										.buffer(1)
-												//.throttle(100)
+										.buffer(1024)
+										.timeout(200)
 										.<Integer>split()
 										.flatMap(i ->
-												Streams.<Integer, String, Integer>zip(env, Streams.defer(env, i), otherStream,
-														tuple -> tuple.getT1()))
+												Streams.zip(env,
+														Streams.<Integer>defer(env, i), otherStream,
+														tuple -> tuple.getT1())
+										)
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
@@ -103,7 +105,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
-		final int elements = 100_000;
+		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
@@ -144,7 +146,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 		//stream.broadcastComplete();
 
-		latch.await(20, TimeUnit.SECONDS);
+		latch.await(8, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		if(processor.getError() != null){

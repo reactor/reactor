@@ -24,7 +24,10 @@ import reactor.function.Function;
 import reactor.tuple.Tuple;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -48,6 +51,16 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 		}
 	};
 
+	@SuppressWarnings("unchecked")
+	public static <TUPLE extends Tuple, V> Function<TUPLE, List<V>> joinZipper(){
+		return new Function<TUPLE, List<V>>() {
+			@Override
+			public List<V> apply(TUPLE ts) {
+				return Arrays.asList((V[]) ts.toArray());
+			}
+		};
+	}
+
 	public ZipAction(Dispatcher dispatcher,
 	                 Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
 			composables) {
@@ -59,16 +72,24 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 	private void tryBroadcastTuple() {
 		if (currentNextSignals == capacity) {
 			final Object[] result = new Object[innerSubscriptions.subscriptions.size()];
+			final AtomicInteger counter = new AtomicInteger(0);
 
 			innerSubscriptions.forEach(
 					new Consumer<FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>>>() {
 						@Override
 						public void accept(FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>> subscription) {
+							if (subscription.subscriber.lastItem == null) {
+								return;
+							}
 							result[subscription.subscriber.index] = subscription.subscriber.lastItem;
+							subscription.subscriber.lastItem = null;
+							counter.incrementAndGet();
 						}
 					});
 
-			downstreamSubscription().onNext(accumulator.apply((TUPLE) Tuple.of((Object[]) result)));
+			if (counter.get() == result.length) {
+				downstreamSubscription().onNext(accumulator.apply((TUPLE) Tuple.of(result)));
+			}
 
 			if (innerSubscriptions.getBuffer().isComplete()) {
 				innerSubscriptions.cancel();
@@ -90,6 +111,20 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 		tryBroadcastTuple();
 	}
 
+	@Override
+	protected void doComplete() {
+		if (currentNextSignals == capacity) {
+			tryBroadcastTuple();
+		}else{
+			innerSubscriptions.cancel();
+			broadcastComplete();
+		}
+	}
+
+	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+		super.requestUpstream(capacity, terminated, Math.max(elements, runningComposables.get()));
+	}
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
@@ -129,15 +164,22 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 			setSubscription(new FanInSubscription.InnerSubscription<O, InnerSubscriber<O, V>>(subscription, this));
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			if (outerAction.innerSubscriptions.getCapacity().get() > 0) {
-				s.request(1);
+			if(outerAction.innerSubscriptions.getCapacity().get() > 0){
+				request(1);
 			}
 		}
 
 		@Override
+		public void request(long n) {
+			pendingRequests += n;
+			super.request(1);
+		}
+
+		@Override
 		public void onNext(O ev) {
+			//Action.log.debug("event ["+ev+"] by: " + this);
 			lastItem = ev;
-			super.onNext(ev);
+			outerAction.innerSubscriptions.onNext(ev);
 		}
 
 		@Override
@@ -150,7 +192,8 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 
 		@Override
 		public String toString() {
-			return "ZipAction.InnerSubscriber";
+			return "ZipAction.InnerSubscriber{lastItem=" + lastItem + ", index=" + index + ", " +
+					"pending=" + pendingRequests + "}";
 		}
 	}
 

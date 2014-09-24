@@ -95,4 +95,14 @@ public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 		result = 31 * result + (t4 != null ? t4.hashCode() : 0);
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "Tuple4{" +
+				"t1=" + t1 + ", " +
+				"t2=" + t2 + ", " +
+				"t3=" + t3 + ", " +
+				"t4=" + t4 +
+				'}';
+	}
 }

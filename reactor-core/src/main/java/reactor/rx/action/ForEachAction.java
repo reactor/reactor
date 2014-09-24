@@ -37,6 +37,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 
+	@SuppressWarnings("unchecked")
 	public ForEachAction(Iterable<? extends T> defaultValues,
 	                     Dispatcher dispatcher) {
 		super(dispatcher);

@@ -95,6 +95,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+
 		super.requestUpstream(capacity, terminated, elements);
 		if (dynamicMergeAction != null && dynamicMergeAction.getState() == State.READY) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
@@ -136,6 +137,8 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		final FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction;
 		FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>> s;
 
+		long pendingRequests = 0;
+
 		InnerSubscriber(FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction) {
 			this.outerAction = outerAction;
 		}
@@ -151,15 +154,20 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			this.s = new FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			long currentCapacity = outerAction.innerSubscriptions.getCapacity().get();
-			if (currentCapacity > 0) {
+			request(outerAction.innerSubscriptions.getCapacity().get());
+		}
 
-				int size = outerAction.innerSubscriptions.subscriptions.size();
-				if (size == 0) return;
+		public void request(long n) {
+			if (n == 0) return;
 
-				long batchSize = outerAction.capacity / size;
-				long toRequest = outerAction.capacity % size + batchSize;
-				toRequest = Math.max(toRequest, currentCapacity);
+			int size = outerAction.runningComposables.get();
+			if (size == 0) return;
+
+			long batchSize = outerAction.capacity / size;
+			long toRequest = outerAction.capacity % size + batchSize;
+			toRequest = Math.min(toRequest, n);
+			if (toRequest > 0) {
+				pendingRequests += n - toRequest;
 				s.request(toRequest);
 			}
 		}
@@ -176,7 +184,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			Consumer<Void> completeConsumer = new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					if(!s.toRemove){
+					if (!s.toRemove) {
 						outerAction.innerSubscriptions.removeSubscription(s);
 					}
 					if (outerAction.runningComposables.decrementAndGet() == 0 && checkDynamicMerge()) {
@@ -207,7 +215,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 
 		@Override
 		public String toString() {
-			return "FanInAction.InnerSubscriber";
+			return "FanInAction.InnerSubscriber{pending=" + pendingRequests + "}";
 		}
 	}
 

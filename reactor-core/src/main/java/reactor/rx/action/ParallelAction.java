@@ -111,13 +111,12 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 	public Action<O, Stream<O>> capacity(long elements) {
 		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS;
 		if (elements < cumulatedReservedSlots) {
-			log.warn("So, because we try to book some {} slots on the parallel master action and " +
-							"we need at least {} slots to never overrun the underlying dispatchers, we decided to" +
-							" leave the parallel master action capacity to {}", elements,
-					cumulatedReservedSlots, elements);
 			super.capacity(elements);
 		} else {
-			super.capacity(elements - cumulatedReservedSlots + RESERVED_SLOTS);
+			long newCapacity = elements - cumulatedReservedSlots + RESERVED_SLOTS;
+			log.warn("ParallelAction capacity has been altered to {}. Trying to book {} slots on ParallelAction but " +
+							"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity, cumulatedReservedSlots + RESERVED_SLOTS);
+			super.capacity(newCapacity);
 		}
 		long size = capacity / poolSize;
 
@@ -214,7 +213,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				}
 			}
 
-			if (++currentRoundRobIndex == poolSize) {
+			if (++currentRoundRobIndex >= active.get()) {
 				currentRoundRobIndex = 0;
 			}
 

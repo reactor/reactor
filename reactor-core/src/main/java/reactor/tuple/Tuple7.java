@@ -108,4 +108,17 @@ public class Tuple7<T1, T2, T3, T4, T5, T6, T7> extends Tuple6<T1, T2, T3, T4, T
 		result = 31 * result + (t7 != null ? t7.hashCode() : 0);
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		return "Tuple7{" +
+				"t1=" + t1 + ", " +
+				"t2=" + t2 + ", " +
+				"t3=" + t3 + ", " +
+				"t4=" + t4 + ", " +
+				"t5=" + t5 + ", " +
+				"t6=" + t6 + ", " +
+				"t7=" + t7 +
+				'}';
+	}
 }

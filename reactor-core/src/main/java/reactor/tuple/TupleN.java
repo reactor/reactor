@@ -131,4 +131,14 @@ public class TupleN extends Tuple8 {
 
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		String formatted = "TupleN{";
+		for(int i = 0; i < size; i++){
+			formatted += "t"+(i+1)+"="+entries[i]+",";
+		}
+
+		return formatted.substring(0, formatted.length()-1) +"}";
+	}
 }
