@@ -53,7 +53,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return
 				Streams.<Integer>defer(env)
 						.capacity(bufferSize)
-						.parallel()
+						.parallel(2)
 						.map(stream -> stream
 										.scan(tuple -> tuple.getT1(), 0)
 										.filter(integer -> integer >= 0)
@@ -61,13 +61,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.map(integer -> -integer)
 										.capacity(1)
 										.last()
-										.buffer(1024)
-										.timeout(200)
+										.buffer(1)
+										//.timeout(200)
 										.<Integer>split()
 										.flatMap(i ->
-												Streams.zip(env,
-														Streams.<Integer>defer(env, i), otherStream,
-														tuple -> tuple.getT1())
+														Streams.zip(env,
+																Streams.<Integer>defer(env, i), otherStream,
+																tuple -> tuple.getT1())
 										)
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
@@ -146,7 +146,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 		//stream.broadcastComplete();
 
-		latch.await(20, TimeUnit.SECONDS);
+		latch.await(8, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		if(processor.getError() != null){

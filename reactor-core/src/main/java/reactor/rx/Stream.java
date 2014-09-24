@@ -442,7 +442,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final <V> Action<O, List<V>> join() {
-		return zip(ZipAction.<TupleN,V>joinZipper());
+		return zip(ZipAction.<TupleN, V>joinZipper());
 	}
 
 
@@ -455,7 +455,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final Action<?, List<O>> joinWith(Publisher<O> publisher) {
-		return zipWith(publisher, ZipAction.<Tuple2<O,O>, O>joinZipper());
+		return zipWith(publisher, ZipAction.<Tuple2<O, O>, O>joinZipper());
 	}
 
 	/**
@@ -1324,6 +1324,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		checkAndSubscribe(subscriber, createSubscription(subscriber));
 	}
 
+
+	/**
+	 * Subscribe the {@link reactor.rx.action.CombineAction#input()} to this Stream. Combining action through {@link
+	 * reactor.rx.action.Action#combine()} allows for easy distribution of a full flow.
+	 *
+	 * @param subscriber the combined actions to subscribe
+	 * @since 2.0
+	 */
 	public <A> void subscribe(final CombineAction<O, A> subscriber) {
 		subscribe(subscriber.input());
 	}
