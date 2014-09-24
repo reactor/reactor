@@ -442,7 +442,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final <V> Action<O, List<V>> join() {
-		return zip(ZipAction.joinZipper());
+		return zip(ZipAction.<TupleN,V>joinZipper());
 	}
 
 
