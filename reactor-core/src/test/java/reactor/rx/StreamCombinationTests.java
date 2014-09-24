@@ -85,18 +85,12 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements);
 
 		Stream<Void> tail = sensorOdd().mergeWith(sensorEven())
-				//.observe(loggingConsumer())
+				.observe(loggingConsumer())
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
 
-		try {
-			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
-					"Never completed: "
-							+ tail.debug());
-		} finally {
-			tail.cancel();
-		}
+		awaitLatch(tail, latch);
 	}
 
 	@Test
@@ -105,18 +99,12 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Stream<Void> tail = sensorOdd().zipWith(sensorEven(), this::computeMin)
-				//.observe(loggingConsumer())
+				.observe(loggingConsumer())
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
 
-		try {
-			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
-					"Never completed: "
-							+ tail.debug());
-		} finally {
-			tail.cancel();
-		}
+		awaitLatch(tail, latch);
 	}
 
 
@@ -135,13 +123,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		try {
-			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
-					"Never completed: "+ latch.getCount() +" lefts "
-							+ tail.debug());
-		} finally {
-			tail.cancel();
-		}
+		awaitLatch(tail, latch);
 	}
 
 	@Test
@@ -155,13 +137,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		try {
-			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
-					"Never completed: "
-							+ tail.debug());
-		} finally {
-			tail.cancel();
-		}
+		awaitLatch(tail, latch);
 	}
 
 	@Test
@@ -175,9 +151,17 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
-				"Never completed: "
-						+tail.debug());
+		awaitLatch(tail, latch);
+	}
+
+	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws InterruptedException {
+		try {
+			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
+					"Never completed: "
+							+ tail.debug());
+		} finally {
+			tail.cancel();
+		}
 	}
 
 	private void generateData(int elements) {

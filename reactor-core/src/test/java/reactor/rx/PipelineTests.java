@@ -724,7 +724,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> s = Streams.defer("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
-								Streams.merge(
+								Streams.<Integer>merge(
 										env,
 										globalFeed,
 										Streams.defer(1111, l, 3333, 4444, 5555, 6666)

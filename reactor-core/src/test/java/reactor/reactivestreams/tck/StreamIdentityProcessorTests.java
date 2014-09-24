@@ -146,7 +146,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 		//stream.broadcastComplete();
 
-		latch.await(8, TimeUnit.SECONDS);
+		latch.await(20, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
 		if(processor.getError() != null){
