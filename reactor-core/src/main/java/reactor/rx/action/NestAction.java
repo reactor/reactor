@@ -45,8 +45,8 @@ public class NestAction<T, E extends Stream<T>, K> extends Action<T, E> {
 	}
 
 	@Override
-	protected StreamSubscription<E> createSubscription(Subscriber<? super E> subscriber) {
-		StreamSubscription<E> streamSubscription = super.createSubscription(subscriber);
+	protected StreamSubscription<E> createSubscription(Subscriber<? super E> subscriber, boolean reactivePull) {
+		StreamSubscription<E> streamSubscription = super.createSubscription(subscriber, reactivePull);
 		if (controller == null) {
 			streamSubscription.onNext(stream);
 			streamSubscription.onComplete();

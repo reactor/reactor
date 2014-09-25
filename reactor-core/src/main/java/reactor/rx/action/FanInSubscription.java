@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.StreamSubscription;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -35,6 +36,7 @@ public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber
 	final List<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptions;
 
 	protected final ReadWriteLock lock = new ReentrantReadWriteLock();
+	protected volatile boolean terminated = false;
 
 	public FanInSubscription(Subscriber<O> subscriber,
 	                         List<InnerSubscription<O, ? extends SUBSCRIBER>> subs) {
@@ -67,11 +69,22 @@ public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber
 					}else{
 						pruneObsoleteSub(subscriptionIterator, true);
 					}
+					if(terminated){
+						break;
+					}
 				}
+			}
+
+			if(terminated){
+				buffer.complete();
 			}
 		} finally {
 			lock.writeLock().unlock();
 		}
+	}
+
+	public void scheduleTermination(){
+		terminated = true;
 	}
 
 	public void forEach(Consumer<InnerSubscription<O, ? extends SUBSCRIBER>> consumer) {
@@ -95,6 +108,11 @@ public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber
 				lock.writeLock().unlock();
 			}
 		}
+	}
+
+
+	public List<InnerSubscription<O, ? extends SUBSCRIBER>> unsafeImmutableSubscriptions(){
+		return Collections.unmodifiableList(subscriptions);
 	}
 
 	@Override

@@ -114,8 +114,11 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			super.capacity(elements);
 		} else {
 			long newCapacity = elements - cumulatedReservedSlots + RESERVED_SLOTS;
-			log.warn("ParallelAction capacity has been altered to {}. Trying to book {} slots on ParallelAction but " +
-							"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity, cumulatedReservedSlots + RESERVED_SLOTS);
+			if(log.isTraceEnabled()) {
+				log.trace("ParallelAction capacity has been altered to {}. Trying to book {} slots on ParallelAction but " +
+						"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity, cumulatedReservedSlots + RESERVED_SLOTS);
+
+			}
 			super.capacity(newCapacity);
 		}
 		long size = capacity / poolSize;
@@ -159,7 +162,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber) {
+	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber, boolean reactivePull) {
 		return new StreamSubscription.Firehose<Stream<O>>(this, subscriber) {
 			long cursor = 0l;
 
@@ -229,8 +232,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 				publisher.broadcastError(e);
 			}
 		} else {
-			if (log.isDebugEnabled()) {
-				log.debug("event dropped " + ev + " as downstream publisher is shutdown");
+			if (log.isTraceEnabled()) {
+				log.trace("event dropped " + ev + " as downstream publisher is shutdown");
 			}
 		}
 
@@ -348,7 +351,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		}
 
 		@Override
-		protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber) {
+		protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {

@@ -169,13 +169,13 @@ public class HashWheelTimer implements Timer {
 	                                                          TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		return schedule(ms, ms, consumer).cancelAfterUse();
+		return (TimerRegistration<? extends Consumer<Long>>)schedule(ms, ms, consumer).cancelAfterUse();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
-		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
+		return (TimerRegistration<? extends Consumer<Long>>)submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
@@ -183,7 +183,7 @@ public class HashWheelTimer implements Timer {
 	public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit) {
-		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
+		return (TimerRegistration<? extends Consumer<Long>>)schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
 	}
 
 	@SuppressWarnings("unchecked")

@@ -37,6 +37,25 @@ import java.util.List;
 
 /**
  * A public factory to build {@link Stream}.
+ * <p>
+ * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
+ * <p>
+ * Streams.defer(1,2,3).map(i -> i*2) //...
+ * <p>
+ * Stream<String> stream = Streams.defer().map(i -> i*2).consume(System.out::println);
+ * stream.broadcastNext("hello");
+ * <p>
+ * Stream.create( subscriber -> {
+ * subscriber.onNext(1);
+ * subscriber.onNext(2);
+ * subscriber.onNext(3);
+ * subscriber.onComplete();
+ * }).consume(System.out::println);
+ * <p>
+ * <p>
+ * Stream<Integer> inputStream1 = Streams.defer(env);
+ * Stream<Integer> inputStream2 = Streams.defer(env);
+ * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -66,7 +85,8 @@ public final class Streams {
 
 
 	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values.
+	 * Build a deferred {@literal Stream}, ready to broadcast values with {@link Stream#broadcastNext(Object)},
+	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}, .
 	 *
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
@@ -85,23 +105,156 @@ public final class Streams {
 
 	/**
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
-	 * be set to the Collection's {@link Collection#size()}.
+	 * request. After all data is being dispatched, a complete signal will be emitted.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 1.
 	 *
-	 * @param values The values to {@code broadcastNext()}
+	 * @param value1 The only value to {@code broadcastNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	@SafeVarargs
-	public static <T> Stream<T> defer(T... values) {
-		return defer(Arrays.asList(values));
+	public static <T> Stream<T> defer(T value1) {
+		return defer(Arrays.asList(value1));
 	}
+
 
 	/**
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 2.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2) {
+		return defer(Arrays.asList(value1, value2));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 3.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3) {
+		return defer(Arrays.asList(value1, value2, value3));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 4.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4) {
+		return defer(Arrays.asList(value1, value2, value3, value4));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 5.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5) {
+		return defer(Arrays.asList(value1, value2, value3, value4, value5));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 6.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6) {
+		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 7.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param value7 The seventh value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
+		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 8.
+	 *
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param value7 The seventh value to {@code broadcastNext()}
+	 * @param value8 The eigth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
+		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request.
+	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} value will
 	 * be set to the Collection's {@link Collection#size()}.
 	 *
 	 * @param values The values to {@code broadcastNext()}
@@ -112,25 +265,182 @@ public final class Streams {
 		return defer(null, SynchronousDispatcher.INSTANCE, values);
 	}
 
+
 	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
-	 * be set to the Collection's {@link Collection#size()}.
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 1.
 	 *
-	 * @param values The values to {@code broadcast()}
 	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	@SafeVarargs
-	public static <T> Stream<T> defer(Environment env, T... values) {
-		return defer(env, Arrays.asList(values));
+	public static <T> Stream<T> defer(Environment env, T value1) {
+		return defer(env, Arrays.asList(value1));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 2.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2) {
+		return defer(env, Arrays.asList(value1, value2));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 3.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3) {
+		return defer(env, Arrays.asList(value1, value2, value3));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 4.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4) {
+		return defer(env, Arrays.asList(value1, value2, value3, value4));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 5.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5) {
+		return defer(env, Arrays.asList(value1, value2, value3, value4, value5));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 6.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6) {
+		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6));
+	}
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 7.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param value7 The seventh value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6,
+	                                  T value7) {
+		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
+	}
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
+	 * .RingBufferDispatcher}.
+	 * The processing will in that case happen asynchronously.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 8.
+	 *
+	 * @param env    The assigned environment
+	 * @param value1 The first value to {@code broadcastNext()}
+	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param value7 The seventh value to {@code broadcastNext()}
+	 * @param value8 The eigth value to {@code broadcastNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6,
+	                                  T value7, T value8) {
+		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
+	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} value will
 	 * be set to the Collection's {@link Collection#size()}.
 	 *
 	 * @param values The values to {@code broadcast()}
@@ -142,26 +452,188 @@ public final class Streams {
 		return defer(env, env.getDefaultDispatcher(), values);
 	}
 
+
 	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
-	 * be set to the Collection's {@link Collection#size()}.
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 1.
 	 *
-	 * @param values     The values to {@code broadcast()}
 	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the flush
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The only value to {@code broadcastNext()}
 	 * @param <T>        type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	@SafeVarargs
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T... values) {
-		return defer(env, dispatcher, Arrays.asList(values));
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1) {
+		return defer(env, dispatcher, Arrays.asList(value1));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 2.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 3.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 4.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param value4     The fourth value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 5.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param value4     The fourth value to {@code broadcastNext()}
+	 * @param value5     The fifth value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
+	                                  T value5) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 6.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param value4     The fourth value to {@code broadcastNext()}
+	 * @param value5     The fifth value to {@code broadcastNext()}
+	 * @param value6     The sixth value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
+	                                  T value5, T value6) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6));
+	}
+
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 7.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param value4     The fourth value to {@code broadcastNext()}
+	 * @param value5     The fifth value to {@code broadcastNext()}
+	 * @param value6     The sixth value to {@code broadcastNext()}
+	 * @param value7     The seventh value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
+	                                  T value5, T value6, T value7) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
+	}
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * request. It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
+	 * <p>
+	 * The Stream's {@link Stream#capacity(long)} will be 8.
+	 *
+	 * @param env        The assigned environment
+	 * @param dispatcher The dispatcher to schedule the signals
+	 * @param value1     The first value to {@code broadcastNext()}
+	 * @param value2     The second value to {@code broadcastNext()}
+	 * @param value3     The third value to {@code broadcastNext()}
+	 * @param value4     The fourth value to {@code broadcastNext()}
+	 * @param value5     The fifth value to {@code broadcastNext()}
+	 * @param value6     The sixth value to {@code broadcastNext()}
+	 * @param value7     The seventh value to {@code broadcastNext()}
+	 * @param value8     The eigth value to {@code broadcastNext()}
+	 * @param <T>        type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
+	                                  T value5, T value6, T value7, T value8) {
+		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's batch size will
+	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} will
 	 * be set to the Collection's {@link Collection#size()}.
+	 * <p>
+	 * It will use the passed dispatcher to emit signals.
+	 * Depending on the dispatcher, it might be asynchronous or synchronous.
 	 *
 	 * @param values     The values to {@code broadcast()}
 	 * @param env        The assigned environment
@@ -614,7 +1086,7 @@ public final class Streams {
 	 * eventual {@link Stream} publisher type.
 	 *
 	 * @param env              The assigned environment, The assigned environment, will derive the dispatcher to run on
-	 *                          from its {@link reactor
+	 *                         from its {@link reactor
 	 *                         .core.Environment#getDefaultDispatcher()}
 	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -632,7 +1104,7 @@ public final class Streams {
 	 * eventual {@link Stream} publisher type.
 	 *
 	 * @param env              The assigned environment, The assigned environment, will derive the dispatcher to run on
-	 *                          from its {@link reactor
+	 *                         from its {@link reactor
 	 *                         .core.Environment#getDefaultDispatcher()}
 	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -640,7 +1112,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Environment env,
-	                                  Publisher<? extends Publisher<E>> mergedPublishers) {
+	                                               Publisher<? extends Publisher<E>> mergedPublishers) {
 		return merge(env, env.getDefaultDispatcher(), mergedPublishers);
 	}
 
@@ -1013,15 +1485,14 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Environment env, Dispatcher dispatcher,
-	                                  Publisher<? extends Publisher<E>> mergedPublishers) {
+	                                               Publisher<? extends Publisher<E>> mergedPublishers) {
 
-		final Action<Publisher<E>, E> mergeAction =
+		final Action<Publisher<? extends E>, E> mergeAction =
 				new DynamicMergeAction<E, E>(dispatcher, new MergeAction<E>(dispatcher, null)).env(env);
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
 	}
-
 
 
 	/**
@@ -1065,7 +1536,7 @@ public final class Streams {
 	 */
 	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1,T2>, ? extends V> zipper) {
+	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, zipper);
 	}
 
@@ -1089,7 +1560,7 @@ public final class Streams {
 	public static <T1, T2, T3, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                            Publisher<? extends T2> source2,
 	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1,T2,T3>,
+	                                            Function<Tuple3<T1, T2, T3>,
 			                                            ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, zipper);
 	}
@@ -1117,7 +1588,7 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1,T2,T3,T4>,
+	                                                Function<Tuple4<T1, T2, T3, T4>,
 			                                                V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, zipper);
 	}
@@ -1147,7 +1618,7 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1,T2,T3,T4,T5>,
+	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
 			                                                    V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, zipper);
 	}
@@ -1181,7 +1652,7 @@ public final class Streams {
 	                                                        Publisher<? extends T4> source4,
 	                                                        Publisher<? extends T5> source5,
 	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1,T2,T3,T4,T5,T6>,
+	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
 			                                                        V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, zipper);
 	}
@@ -1218,7 +1689,7 @@ public final class Streams {
 	                                                            Publisher<? extends T5> source5,
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1,T2,T3,T4,T5,T6,T7>,
+	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
 			                                                            V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
 				zipper);
@@ -1259,7 +1730,8 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1,T2,T3,T4,T5,T6,T7,T8>, ? extends V> zipper) {
+	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
+			                                                                ? extends V> zipper) {
 		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
 				source8, zipper);
 	}
@@ -1343,7 +1815,7 @@ public final class Streams {
 	public static <T1, T2, T3, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
 	                                            Publisher<? extends T2> source2,
 	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1,T2,T3>,
+	                                            Function<Tuple3<T1, T2, T3>,
 			                                            ? extends V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, zipper);
 	}
@@ -1373,7 +1845,7 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1,T2,T3,T4>,
+	                                                Function<Tuple4<T1, T2, T3, T4>,
 			                                                V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, zipper);
 	}
@@ -1406,7 +1878,7 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1,T2,T3,T4,T5>,
+	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
 			                                                    V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, zipper);
 	}
@@ -1442,7 +1914,7 @@ public final class Streams {
 	                                                        Publisher<? extends T4> source4,
 	                                                        Publisher<? extends T5> source5,
 	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1,T2,T3,T4,T5,T6>,
+	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
 			                                                        V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, zipper);
 	}
@@ -1481,7 +1953,7 @@ public final class Streams {
 	                                                            Publisher<? extends T5> source5,
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1,T2,T3,T4,T5,T6,T7>,
+	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
 			                                                            V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
 				zipper);
@@ -1524,7 +1996,8 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1,T2,T3,T4,T5,T6,T7,T8>, ? extends V> zipper) {
+	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
+			                                                                ? extends V> zipper) {
 		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
 				source8, zipper);
 	}
@@ -1589,7 +2062,7 @@ public final class Streams {
 	                                        Dispatcher dispatcher,
 	                                        Publisher<? extends T1> source1,
 	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1,T2>, ? extends V> zipper) {
+	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2), zipper);
 	}
 
@@ -1617,7 +2090,7 @@ public final class Streams {
 	                                            Publisher<? extends T1> source1,
 	                                            Publisher<? extends T2> source2,
 	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1,T2,T3>,
+	                                            Function<Tuple3<T1, T2, T3>,
 			                                            ? extends V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3), zipper);
 	}
@@ -1650,7 +2123,7 @@ public final class Streams {
 	                                                Publisher<? extends T2> source2,
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1,T2,T3,T4>,
+	                                                Function<Tuple4<T1, T2, T3, T4>,
 			                                                V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4), zipper);
 	}
@@ -1686,7 +2159,7 @@ public final class Streams {
 	                                                    Publisher<? extends T3> source3,
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1,T2,T3,T4,T5>,
+	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
 			                                                    V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5), zipper);
 	}
@@ -1725,7 +2198,7 @@ public final class Streams {
 	                                                        Publisher<? extends T4> source4,
 	                                                        Publisher<? extends T5> source5,
 	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1,T2,T3,T4,T5,T6>,
+	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
 			                                                        V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5, source6), zipper);
 	}
@@ -1767,7 +2240,7 @@ public final class Streams {
 	                                                            Publisher<? extends T5> source5,
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1,T2,T3,T4,T5,T6,T7>,
+	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
 			                                                            V> zipper) {
 		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
 				zipper);
@@ -1813,7 +2286,8 @@ public final class Streams {
 	                                                                Publisher<? extends T6> source6,
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1,T2,T3,T4,T5,T6,T7,T8>, ? extends V> zipper) {
+	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
+			                                                                ? extends V> zipper) {
 		return zip(env, dispatcher,
 				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8),
 				zipper);
@@ -1862,7 +2336,7 @@ public final class Streams {
 	                                                        Publisher<? extends Publisher<E>> source,
 	                                                        Function<TUPLE, ? extends V> zipper) {
 
-		final Action<Publisher<E>, V> mergeAction =
+		final Action<Publisher<? extends E>, V> mergeAction =
 				new DynamicMergeAction<E, V>(dispatcher, new ZipAction<E, V, TUPLE>(dispatcher, zipper, null));
 
 		source.subscribe(mergeAction);

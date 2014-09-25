@@ -28,9 +28,12 @@ import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -39,7 +42,8 @@ import java.util.concurrent.TimeUnit;
 public class StreamIdentityProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Integer> {
 
 
-	private final Environment env = new Environment();
+	private final Environment             env      = new Environment();
+	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	public StreamIdentityProcessorTests() {
 		super(new TestEnvironment(2500, true), 3500);
@@ -55,14 +59,22 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 						.capacity(bufferSize)
 						.parallel(2)
 						.map(stream -> stream
+										.observe(i -> {
+											AtomicLong counter = counters.get(Thread.currentThread());
+											if (counter == null) {
+												counter = new AtomicLong();
+												counters.put(Thread.currentThread(), counter);
+											}
+											counter.incrementAndGet();
+										})
 										.scan(tuple -> tuple.getT1(), 0)
 										.filter(integer -> integer >= 0)
-										.reduce(tuple -> -tuple.getT1(), (() -> 0), 1)
+										.reduce((() -> 0), 1, tuple -> -tuple.getT1())
 										.map(integer -> -integer)
 										.capacity(1)
 										.last()
-										.buffer(1)
-										//.timeout(200)
+										.buffer(1024)
+										.timeout(200)
 										.<Integer>split()
 										.flatMap(i ->
 														Streams.zip(env,
@@ -149,12 +161,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		latch.await(8, TimeUnit.SECONDS);
 
 		System.out.println(stream.debug());
+		System.out.println(counters);
 		if(processor.getError() != null){
 			System.out.println(processor.getError());
 			processor.getError().printStackTrace();
 		}
 		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count);
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count+ " , Running on "+Environment.PROCESSORS+" CPU");
 
 	}
 }

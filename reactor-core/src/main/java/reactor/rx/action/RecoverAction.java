@@ -35,7 +35,7 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 	}
 
 	@Override
-	protected StreamSubscription<E> createSubscription(final Subscriber<? super E> subscriber) {
+	protected StreamSubscription<E> createSubscription(final Subscriber<? super E> subscriber, boolean reactivePull) {
 		if (lastError != null) {
 			return new StreamSubscription<E>(this, subscriber) {
 				@Override
@@ -44,7 +44,7 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 				}
 			};
 		} else {
-			return super.createSubscription(subscriber);
+			return super.createSubscription(subscriber, reactivePull);
 		}
 	}
 

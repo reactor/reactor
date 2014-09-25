@@ -35,7 +35,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber) {
+	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		return new StreamSubscription<O>(this, subscriber) {
 			@Override
 			public void request(long elements) {

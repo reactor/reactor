@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * The best moment of my life so far, not.
+ *
  * @author Stephane Maldini
  * @since 2.0
  */
@@ -95,7 +97,6 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-
 		super.requestUpstream(capacity, terminated, elements);
 		if (dynamicMergeAction != null && dynamicMergeAction.getState() == State.READY) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
@@ -138,6 +139,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>> s;
 
 		long pendingRequests = 0;
+		long emittedSignals = 0;
 
 		InnerSubscriber(FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction) {
 			this.outerAction = outerAction;
@@ -158,7 +160,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 
 		public void request(long n) {
-			if (n == 0) return;
+			if (n <= 0) return;
 
 			int size = outerAction.runningComposables.get();
 			if (size == 0) return;
@@ -168,6 +170,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			toRequest = Math.min(toRequest, n);
 			if (toRequest > 0) {
 				pendingRequests += n - toRequest;
+				emittedSignals = 0;
 				s.request(toRequest);
 			}
 		}
@@ -175,7 +178,13 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		@Override
 		public void onNext(I ev) {
 			//Action.log.debug("event [" + ev + "] by: " + this);
+			emittedSignals++;
 			outerAction.innerSubscriptions.onNext(ev);
+			int size = outerAction.runningComposables.get();
+			long batchSize = outerAction.capacity / size;
+			if(emittedSignals >= batchSize){
+				request(emittedSignals++);
+			}
 		}
 
 		@Override
@@ -215,7 +224,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 
 		@Override
 		public String toString() {
-			return "FanInAction.InnerSubscriber{pending=" + pendingRequests + "}";
+			return "FanInAction.InnerSubscriber{pending=" + pendingRequests + ", emitted="+emittedSignals+"}";
 		}
 	}
 

@@ -122,6 +122,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	/**
 	 * A simple NOOP action that can be used to isolate Stream properties such as dispatcher or capacity.
+	 *
 	 * @param dispatcher
 	 * @param <O>
 	 * @return a new Action subscribed to this one
@@ -151,6 +152,13 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		if (subscription != null && !pause) {
 			dispatch(capacity, requestConsumer);
 		}
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super O> subscriber) {
+		checkAndSubscribe(subscriber, createSubscription(subscriber,
+				subscription == null || !NonBlocking.class.isAssignableFrom(subscriber.getClass()))
+		);
 	}
 
 	@Override
@@ -271,7 +279,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	/**
 	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component and
 	 * the current action to act as the {@link org.reactivestreams.Publisher}.
-	 *
+	 * <p>
 	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
 	 *
 	 * @param <E>
@@ -284,7 +292,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	/**
 	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component and
 	 * the current action to act as the {@link org.reactivestreams.Publisher}.
-	 *
+	 * <p>
 	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
 	 *
 	 * @param reuse Reset to READY state the upstream chain while searching for the most ancient Action
@@ -332,6 +340,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 		));
 	}
 
+
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		if (subscription != null && !terminated) {
 			long currentCapacity = capacity.get();
@@ -344,8 +353,8 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	}
 
 	@Override
-	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber) {
-		if (subscription == null || !NonBlocking.class.isAssignableFrom(subscriber.getClass())) {
+	protected StreamSubscription<O> createSubscription(final Subscriber<? super O> subscriber, boolean reactivePull) {
+		if (reactivePull) {
 			return new StreamSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {
@@ -365,24 +374,6 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	public Subscription getSubscription() {
 		return subscription;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public String toString() {
-		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
-				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
-						"")) +
-				", state=" + getState() +
-				", max-capacity=" + getCapacity() +
-				(subscription != null &&
-						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
-						", subscription=" + subscription +
-								", pending=" + pendingNextSignals +
-								", currentNextSignals=" + currentNextSignals
-						: (subscription != null ? ", subscription=" + subscription : "")
-				) + '}';
 	}
 
 	/**
@@ -406,13 +397,14 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 
-			if(that != null) {
+			if (that != null) {
 				if (resetState) {
 					resetState(that);
 				}
 
 				if (FanInAction.class.isAssignableFrom(that.getClass())) {
-					that = ((FanInAction<?,?,?>)that).dynamicMergeAction != null ? ((FanInAction<?,?,?>)that).dynamicMergeAction : that;
+					that = ((FanInAction<?, ?, ?>) that).dynamicMergeAction != null ? ((FanInAction<?, ?,
+							?>) that).dynamicMergeAction : that;
 				}
 			}
 
@@ -460,7 +452,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	protected <E> void trySyncDispatch(E data, Consumer<E> action) {
 		if (firehose &&
-				(downstreamSubscription() != null && downstreamSubscription().asyncManaged())) {
+				(downstreamSubscription() != null && dispatcher.inContext())) {
 			action.accept(data);
 		} else {
 			dispatch(data, action);
@@ -475,6 +467,24 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	protected void resetState(Action<?, ?> action) {
 		action.state = State.READY;
 		action.error = null;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public String toString() {
+		return "{" +
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
+						"")) +
+				", state=" + getState() +
+				", max-capacity=" + getCapacity() +
+				(subscription != null &&
+						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?
+						", subscription=" + subscription +
+								", pending=" + pendingNextSignals +
+								", currentNextSignals=" + currentNextSignals
+						: (subscription != null ? ", subscription=" + subscription : "")
+				) + '}';
 	}
 
 }

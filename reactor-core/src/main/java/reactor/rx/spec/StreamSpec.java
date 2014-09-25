@@ -173,9 +173,16 @@ public final class StreamSpec<T> extends PipelineSpec<StreamSpec<T>, Stream<T>> 
 				}
 
 				@Override
-				public void subscribe(Subscriber<? super T> subscriber) {
-					super.subscribe(subscriber);
-					publisher.subscribe(this);
+				public void subscribe(final Subscriber<? super T> subscriber) {
+					final Action<T, T> thiz = this;
+
+					dispatch(new Consumer<Void>() {
+						@Override
+						public void accept(Void aVoid) {
+							thiz.subscribe(subscriber);
+							publisher.subscribe(thiz);
+						}
+					});
 				}
 			};
 		}

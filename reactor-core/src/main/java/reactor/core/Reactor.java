@@ -357,19 +357,6 @@ public class Reactor implements Observable {
 		};
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
-			return true;
-		}
-		if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
-
-		return hashCode() == o.hashCode();
-
-	}
-
 	/**
 	 * Schedule an arbitrary {@link reactor.function.Consumer} to be executed on the current Reactor  {@link
 	 * reactor.event.dispatch.Dispatcher}, passing the given {@param data}.

@@ -24,25 +24,46 @@ import reactor.function.Consumer;
  */
 public class TerminalCallbackAction<T> extends Action<T, Void> {
 
-	private final Consumer<? super T> consumer;
+	private final Consumer<? super T>         consumer;
+	private final Consumer<? super Throwable> errorConsumer;
+	private final Consumer<Void>              completeConsumer;
 
-	public TerminalCallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer) {
+	public TerminalCallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer,
+	                              Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		super(dispatcher);
 		this.consumer = consumer;
+		this.errorConsumer = errorConsumer;
+		this.completeConsumer = completeConsumer;
 	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-			capacity = firehose ? Long.MAX_VALUE : capacity;
-			requestConsumer.accept(capacity);
+		capacity = firehose ? Long.MAX_VALUE : capacity;
+		requestConsumer.accept(capacity);
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		consumer.accept(ev);
-			if (pendingNextSignals == 0 && currentNextSignals >= capacity) {
-				requestConsumer.accept(currentNextSignals);
-			}
+		if (pendingNextSignals == 0 && currentNextSignals >= capacity) {
+			requestConsumer.accept(currentNextSignals);
+		}
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		if(errorConsumer != null){
+			errorConsumer.accept(ev);
+		}
+		super.doError(ev);
+	}
+
+	@Override
+	protected void doComplete() {
+		if(completeConsumer != null){
+			completeConsumer.accept(null);
+		}
+		super.doComplete();
 	}
 
 	@Override

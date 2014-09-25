@@ -29,7 +29,8 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final boolean next;
 	final boolean flush;
 	final boolean first;
-	final Consumer<T> flushConsumer = new FlushConsumer();
+	final Consumer<T>    flushConsumer        = new FlushConsumer();
+	final Consumer<Long> requestBatchConsumer = new RequestConsumer();
 	final long batchSize;
 	long count = 0;
 
@@ -89,14 +90,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		dispatch(null, flushConsumer);
-		if (elements > this.batchSize) {
-			super.requestUpstream(capacity,
-					terminated, elements);
-		} else {
-			super.requestUpstream(capacity,
-					terminated, this.batchSize);
-		}
+		dispatch(elements, requestBatchConsumer);
 	}
 
 	final private class FlushConsumer implements Consumer<T> {
@@ -107,8 +101,17 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 	}
 
+	final private class RequestConsumer implements Consumer<Long> {
+		@Override
+		public void accept(Long n) {
+			flushConsumer.accept(null);
+			long toRequest = Math.max(n, batchSize);
+			requestConsumer.accept(toRequest);
+		}
+	}
+
 	@Override
 	public String toString() {
-		return super.toString() + "{batchSize=" +batchSize+", "+ ((count / batchSize) * 100) + "%(" + count + ")";
+		return super.toString() + "{batchSize=" + batchSize + ", " + ((count / batchSize) * 100) + "%(" + count + ")";
 	}
 }

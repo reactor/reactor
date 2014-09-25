@@ -24,24 +24,29 @@ import reactor.event.dispatch.Dispatcher;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
+public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
-	private final FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>> fanInAction;
+	private final FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> fanInAction;
 
-	@SuppressWarnings("unchecked")
+
 	public DynamicMergeAction(
 			Dispatcher dispatcher
 	) {
-		this(dispatcher, (FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>>) new MergeAction<O>(dispatcher));
+		this(dispatcher, null);
 	}
 
+	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher,
-			FanInAction<E, O, ? extends FanInAction.InnerSubscriber<E, O>> fanInAction
+			FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> fanInAction
 	) {
 		super(dispatcher);
-		this.fanInAction = fanInAction;
-		fanInAction.dynamicMergeAction = this;
+		this.fanInAction = fanInAction == null ?
+				(FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>>) new MergeAction<O>
+						(dispatcher) :
+				fanInAction;
+
+		this.fanInAction.dynamicMergeAction = this;
 	}
 
 	@Override
@@ -50,14 +55,14 @@ public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 	}
 
 	@Override
-	protected void doNext(Publisher<E> value) {
+	protected void doNext(Publisher<? extends I> value) {
 		fanInAction.addPublisher(value);
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if (fanInAction.runningComposables.get() == 0) {
+		if (fanInAction.started.get() && fanInAction.runningComposables.get() == 0) {
 			fanInAction.innerSubscriptions.onComplete();
 		}
 	}
@@ -69,42 +74,42 @@ public class DynamicMergeAction<E, O> extends Action<Publisher<E>, O> {
 	}
 
 	@Override
-	public Action<Publisher<E>, O> capacity(long elements) {
+	public Action<Publisher<? extends I>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
 	}
 
 	@Override
-	public Action<Publisher<E>, O> keepAlive(boolean keepAlive) {
+	public Action<Publisher<? extends I>, O> keepAlive(boolean keepAlive) {
 		fanInAction.keepAlive(keepAlive);
 		return super.keepAlive(false);
 	}
 
 	@Override
-	public Action<Publisher<E>, O> env(Environment environment) {
+	public Action<Publisher<? extends I>, O> env(Environment environment) {
 		fanInAction.env(environment);
 		return super.env(environment);
 	}
 
 	@Override
-	public Action<Publisher<E>, O> resume() {
+	public Action<Publisher<? extends I>, O> resume() {
 		fanInAction.resume();
 		return super.resume();
 	}
 
 	@Override
-	public Action<Publisher<E>, O> pause() {
+	public Action<Publisher<? extends I>, O> pause() {
 		fanInAction.pause();
 		return super.pause();
 	}
 
 	@Override
-	public Action<Publisher<E>, O> cancel() {
+	public Action<Publisher<? extends I>, O> cancel() {
 		fanInAction.cancel();
 		return super.cancel();
 	}
 
-	public FanInAction<E, O, ?> mergedStream() {
+	public FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> mergedStream() {
 		return fanInAction;
 	}
 

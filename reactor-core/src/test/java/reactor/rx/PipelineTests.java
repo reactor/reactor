@@ -164,7 +164,7 @@ public class PipelineTests extends AbstractReactorTest {
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.reduce(r -> r.getT1() * r.getT2(), 1);
+						.reduce(1, r -> r.getT1() * r.getT2());
 		await(1, s, is(120));
 	}
 
@@ -176,7 +176,7 @@ public class PipelineTests extends AbstractReactorTest {
 				Streams.merge(env, stream1, stream2)
 						.capacity(5)
 						.map(STRING_2_INTEGER)
-						.reduce(r -> r.getT1() * r.getT2(), 1);
+						.reduce( 1, r -> r.getT1() * r.getT2());
 		await(1, s, is(120));
 	}
 
@@ -823,7 +823,7 @@ public class PipelineTests extends AbstractReactorTest {
 				/*     step 4  */.consume(batchedStream -> {
 			System.out.println("New window starting");
 			batchedStream
-						/*   step 4.1  */.reduce(tuple -> Math.min(tuple.getT1(), tuple.getT2()), Integer.MAX_VALUE)
+						/*   step 4.1  */.reduce(Integer.MAX_VALUE, tuple -> Math.min(tuple.getT1(), tuple.getT2()))
 						/* final step  */.consume(i -> System.out.println("Minimum " + i))
 						/* ad-hoc step */.finallyDo(o -> endLatch.countDown());
 		});

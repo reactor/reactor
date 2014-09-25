@@ -28,7 +28,7 @@ import java.util.Iterator;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class ForEachAction<T> extends Action<Iterable<T>, T> {
+public class ForEachAction<T> extends Action<Iterable<? extends T>, T> {
 
 	final private Iterable<? extends T> defaultValues;
 
@@ -72,7 +72,7 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 	}
 
 	@Override
-	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber) {
+	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber, boolean reactivePull) {
 		if (defaultValues != null) {
 			return new StreamSubscription<T>(this, subscriber) {
 				Iterator<? extends T> iterator = defaultValues.iterator();
@@ -95,12 +95,12 @@ public class ForEachAction<T> extends Action<Iterable<T>, T> {
 				}
 			};
 		} else {
-			return super.createSubscription(subscriber);
+			return super.createSubscription(subscriber, reactivePull);
 		}
 	}
 
 	@Override
-	protected void doNext(Iterable<T> values) {
+	protected void doNext(Iterable<? extends T> values) {
 		if (values == null) {
 			broadcastNext(null);
 			return;

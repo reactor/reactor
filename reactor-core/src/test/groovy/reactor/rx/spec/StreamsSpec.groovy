@@ -415,7 +415,7 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
-			def tap = source1.zip { it.t1 + it.t2 }.tap()
+			def tap = source1.observe{println it}.zip { it.t1 + it.t2 }.tap()
 
 		when:
 			'the sources accept a value'
@@ -484,14 +484,40 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(environment, odds, even) { [it.t1, it.t2] }
-			def tap = zippedStream.toList().await()
+			def zippedStream = Streams.zip(odds, even) { [it.t1, it.t2] }
+			def tap = zippedStream.observe{println it}.toList().await(3, TimeUnit.SECONDS)
 
 			println zippedStream.debug()
 
 		then:
 			'the values are all collected from source1 stream'
 			tap == [[1, 2], [3, 4], [5, 6]]
+
+	}
+
+
+
+	def "A different way of consuming"() {
+		given:
+			'source composables to zip, buffer and tap'
+			def odds = Streams.defer(1, 3, 5, 7, 9)
+			def even = Streams.defer(2, 4, 6)
+
+		when:
+			'the sources are zipped'
+			def mergedStream = Streams.merge(odds, even)
+			def res = []
+			mergedStream.consume(
+					{ res << it; println it },
+					{ println 'error'},
+					{ res.sort(); res << 'done'; println 'completed!'}
+			)
+
+			println mergedStream.debug()
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == [1, 2, 3, 4, 5, 6, 7, 9 , 'done']
 
 	}
 
@@ -620,7 +646,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'use an initial value'
-			value = source.reduce(new Reduction(), 2).tap()
+			value = source.reduce(2, new Reduction()).tap()
 			println source.debug()
 
 		then:
@@ -736,7 +762,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'use an initial value'
-			reduced = source.reduce(new Reduction(), 2)
+			reduced = source.reduce(2, new Reduction())
 			value = reduced.tap()
 			source.broadcastNext(1)
 			reduced.available()
