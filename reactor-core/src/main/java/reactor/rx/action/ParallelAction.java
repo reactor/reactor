@@ -24,6 +24,7 @@ import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 import reactor.rx.action.support.SpecificationExceptions;
+import reactor.rx.stream.ParallelStream;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -37,10 +38,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ParallelAction<O> extends Action<O, Stream<O>> {
 
-	private final ParallelStream[] publishers;
-	private final int              poolSize;
+	private final int poolSize;
 	private final ReentrantLock lock   = new ReentrantLock();
 	private final AtomicInteger active = new AtomicInteger();
+	private final ParallelStream[] publishers;
 
 	private volatile int roundRobinIndex = 0;
 
@@ -114,9 +115,10 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			super.capacity(elements);
 		} else {
 			long newCapacity = elements - cumulatedReservedSlots + RESERVED_SLOTS;
-			if(log.isTraceEnabled()) {
+			if (log.isTraceEnabled()) {
 				log.trace("ParallelAction capacity has been altered to {}. Trying to book {} slots on ParallelAction but " +
-						"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity, cumulatedReservedSlots + RESERVED_SLOTS);
+								"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity,
+						cumulatedReservedSlots + RESERVED_SLOTS);
 
 			}
 			super.capacity(newCapacity);
@@ -135,6 +137,19 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			p.capacity(size);
 		}
 		return this;
+	}
+
+	public void clean(int index) {
+		publishers[index] = null;
+
+		if (active.decrementAndGet() <= 0) {
+			cancel();
+		}
+	}
+
+	public void parallelRequest(long elements, int index) {
+		roundRobinIndex = index;
+		onRequest(elements);
 	}
 
 	@Override
@@ -283,7 +298,7 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 					public void accept(Long aLong) {
 
 						try {
-							if (aLong - publishers[roundRobinIndex].lastRequestedTime < latencyInMs) return;
+							if (aLong - publishers[roundRobinIndex].getLastRequestedTime() < latencyInMs) return;
 						} catch (NullPointerException npe) {
 							//ignore
 						}
@@ -291,8 +306,8 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 						int fasterParallelIndex = -1;
 						for (ParallelStream parallelStream : publishers) {
 							try {
-								if (aLong - parallelStream.lastRequestedTime < latencyInMs) {
-									fasterParallelIndex = parallelStream.index;
+								if (aLong - parallelStream.getLastRequestedTime() < latencyInMs) {
+									fasterParallelIndex = parallelStream.getIndex();
 									break;
 								}
 							} catch (NullPointerException npe) {
@@ -318,65 +333,4 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 		return publishers;
 	}
 
-	static public class ParallelStream<O> extends Stream<O> {
-		final ParallelAction<O> parallelAction;
-		final int               index;
-
-		volatile long lastRequestedTime = -1l;
-
-		private ParallelStream(ParallelAction<O> parallelAction, Dispatcher dispatcher, int index) {
-			super(dispatcher);
-			this.parallelAction = parallelAction;
-			this.index = index;
-		}
-
-		@Override
-		public void broadcastComplete() {
-			dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					ParallelStream.super.broadcastComplete();
-				}
-			});
-		}
-
-		@Override
-		public void broadcastError(Throwable throwable) {
-			dispatch(throwable, new Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					ParallelStream.super.broadcastError(throwable);
-				}
-			});
-		}
-
-		@Override
-		protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-			return new StreamSubscription<O>(this, subscriber) {
-				@Override
-				public void request(long elements) {
-					super.request(elements);
-					lastRequestedTime = System.currentTimeMillis();
-					parallelAction.roundRobinIndex = index;
-					parallelAction.onRequest(elements);
-				}
-
-				@Override
-				public void cancel() {
-					super.cancel();
-					parallelAction.publishers[index] = null;
-
-					if (parallelAction.active.decrementAndGet() <= 0) {
-						parallelAction.cancel();
-					}
-				}
-
-			};
-		}
-
-		@Override
-		public String toString() {
-			return super.toString() + "{" + (index + 1) + "/" + parallelAction.poolSize + "}";
-		}
-	}
 }

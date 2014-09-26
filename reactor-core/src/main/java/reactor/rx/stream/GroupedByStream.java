@@ -13,14 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action.support;
+package reactor.rx.stream;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 
 /**
+ * An {@link java.lang.Iterable} wrapper that takes care of lazy subscribing.
+ * The Stream will complete or fail whever the parent groupBy action terminates itself or when broadcastXXX is called.
+ *
+ * Create such stream with the provided factory, E.g.:
+ * {@code
+ * stream.groupBy(data -> data.id).consume(partitionedStream -> partitionedStream.consume())
+ * }
+ *
  * @author Stephane Maldini
- * @since 2.0
  */
 public class GroupedByStream<K, T> extends Stream<T> {
 	private final K key;

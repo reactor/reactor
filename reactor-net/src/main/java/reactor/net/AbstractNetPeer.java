@@ -13,7 +13,7 @@ import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
+import reactor.rx.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.rx.spec;
+package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import reactor.core.Environment;
@@ -25,8 +25,8 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Function;
 import reactor.function.Supplier;
-import reactor.rx.Stream;
 import reactor.rx.action.*;
+import reactor.rx.stream.*;
 import reactor.tuple.*;
 import reactor.util.Assert;
 
@@ -39,23 +39,24 @@ import java.util.List;
  * A public factory to build {@link Stream}.
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
- * <p>
- * Streams.defer(1,2,3).map(i -> i*2) //...
+ * {@code
+ * Streams.defer(1, 2, 3).map(i -> i*2) //...
  * <p>
  * Stream<String> stream = Streams.defer().map(i -> i*2).consume(System.out::println);
  * stream.broadcastNext("hello");
  * <p>
  * Stream.create( subscriber -> {
- * subscriber.onNext(1);
- * subscriber.onNext(2);
- * subscriber.onNext(3);
- * subscriber.onComplete();
+ *  subscriber.onNext(1);
+ *  subscriber.onNext(2);
+ *  subscriber.onNext(3);
+ *  subscriber.onComplete();
  * }).consume(System.out::println);
- * <p>
  * <p>
  * Stream<Integer> inputStream1 = Streams.defer(env);
  * Stream<Integer> inputStream2 = Streams.defer(env);
  * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
+ * <p>
+ * }
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -63,7 +64,9 @@ import java.util.List;
 public final class Streams {
 
 	/**
-	 * Build a deferred synchronous {@literal Stream}, ready to broadcast values.
+	 * Build a deferred synchronous {@literal Stream}, ready to broadcast values with {@link Stream#broadcastNext
+	 * (Object)},
+	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
 	 *
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link Stream}
@@ -73,7 +76,9 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values.
+	 * Build a deferred {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
+	 * Stream#broadcastNext(Object)},
+	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
 	 *
 	 * @param env the Reactor {@link reactor.core.Environment} to use
 	 * @param <T> the type of values passing through the {@literal Stream}
@@ -86,7 +91,7 @@ public final class Streams {
 
 	/**
 	 * Build a deferred {@literal Stream}, ready to broadcast values with {@link Stream#broadcastNext(Object)},
-	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}, .
+	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
 	 *
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
@@ -101,6 +106,71 @@ public final class Streams {
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
 				Long.MAX_VALUE);
+	}
+
+
+	/**
+	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
+	 *
+	 * @return a new {@link Stream}
+	 */
+	public static Stream<?> empty() {
+		return empty(null, SynchronousDispatcher.INSTANCE);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit a complete signal to any new subscriber.
+	 *
+	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<?> empty(Environment env) {
+		return empty(env, env.getDefaultDispatcher());
+	}
+
+
+	/**
+	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
+	 *
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<?> empty(Environment env, Dispatcher dispatcher) {
+		return defer(env, dispatcher, null);
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
+	 *
+	 * @return a new {@link Stream}
+	 */
+	public static Stream<Integer> range(int start, int end) {
+		return range(null, SynchronousDispatcher.INSTANCE, start, end);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
+	 *
+	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Integer> range(Environment env, int start, int end) {
+		return range(env, env.getDefaultDispatcher(), start, end);
+	}
+
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
+	 *
+	 * @param start the inclusive starting value to be emitted
+	 * @param end   the inclusive closing value to be emitted
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Integer> range(Environment env, Dispatcher dispatcher, int start, int end) {
+		return new RangeStream(start, end, dispatcher).env(env);
 	}
 
 	/**
@@ -644,9 +714,8 @@ public final class Streams {
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Iterable<? extends T> values) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
 				"MultiThreadDispatcher, refer to #parallel() method. ");
-		ForEachAction<T> forEachAction = new ForEachAction<T>(values, dispatcher);
-		forEachAction.env(env);
-		return forEachAction;
+		IterableStream<T> iterableStream = new IterableStream<T>(values, dispatcher);
+		return iterableStream.env(env);
 	}
 
 	/**
@@ -809,18 +878,7 @@ public final class Streams {
 	public static <T> Stream<T> create(Environment env, Dispatcher dispatcher, Publisher<? extends T> publisher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
 				"MultiThreadDispatcher, refer to #parallel() method. ");
-		return new StreamSpec.StreamWithDelegatePublisher<T>(dispatcher, publisher).env(env).share();
-	}
-
-
-	/**
-	 * Return a Specification component to tune the stream properties.
-	 *
-	 * @param <T> the type of values passing through the {@literal Stream}
-	 * @return a new {@link PipelineSpec}
-	 */
-	public static <T> StreamSpec<T> config() {
-		return new StreamSpec<T>();
+		return new PublisherStream<T>(dispatcher, publisher).env(env).defer();
 	}
 
 	/**
@@ -837,7 +895,7 @@ public final class Streams {
 				((Reactor) observable).getDispatcher() :
 				SynchronousDispatcher.INSTANCE;
 
-		return create(null, dispatcher, StreamSpec.<T>publisherFrom(observable, broadcastSelector));
+		return new ObservableStream<T>(dispatcher, observable, broadcastSelector).defer();
 	}
 
 	/**
@@ -883,9 +941,9 @@ public final class Streams {
 	public static <T> Stream<T> generate(Environment env, Dispatcher dispatcher,
 	                                     Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		SupplierAction<Void, T> action = new SupplierAction<Void, T>(dispatcher, value);
-		action.capacity(1).env(env);
-		return action;
+		SupplierStream<T> supplierStream = new SupplierStream<T>(dispatcher, value);
+		supplierStream.capacity(1).env(env);
+		return supplierStream;
 	}
 
 	/**

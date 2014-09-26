@@ -26,7 +26,7 @@ import reactor.net.tcp.spec.TcpServerSpec;
 import reactor.net.zmq.ZeroMQClientSocketOptions;
 import reactor.net.zmq.ZeroMQServerSocketOptions;
 import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
+import reactor.rx.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.Assert;
 

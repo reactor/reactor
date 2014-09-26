@@ -22,8 +22,8 @@ import reactor.function.Consumer
 import reactor.function.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.rx.Stream
+import reactor.rx.Streams
 import reactor.rx.action.Action
-import reactor.rx.spec.Streams
 
 /**
  * @author Stephane Maldini

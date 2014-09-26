@@ -19,7 +19,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.rx.Stream;
-import reactor.rx.action.support.GroupedByStream;
+import reactor.rx.stream.GroupedByStream;
 import reactor.util.Assert;
 
 import java.util.HashMap;

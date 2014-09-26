@@ -24,8 +24,7 @@ import reactor.function.Functions
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 import reactor.rx.Promise
-import reactor.rx.spec.PromiseSpec
-import reactor.rx.spec.Promises
+import reactor.rx.Promises
 
 /**
  * Static extensions for reactor-core classes, main purpose is to bind closure when required
@@ -42,8 +41,8 @@ class ReactorStaticExtensions {
 		reactor.schedule new ClosureConsumer(closure), value
 	}
 
-	static <T> PromiseSpec<T> from(final Promise<T> selfType, Closure<T> callback) {
-		Promises.config().supply(new ClosureSupplier<T>(callback))
+	static <T> Promise<T> from(final Promise<T> selfType, Closure<T> callback) {
+		Promises.syncTask(new ClosureSupplier<T>(callback))
 	}
 
 }

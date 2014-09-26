@@ -40,9 +40,9 @@ import reactor.net.netty.*;
 import reactor.net.tcp.TcpClient;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
-import reactor.rx.spec.Streams;
+import reactor.rx.Streams;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tuple.Tuple2;
 

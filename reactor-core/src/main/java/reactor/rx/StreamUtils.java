@@ -20,7 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.action.*;
-import reactor.rx.action.support.GroupedByStream;
+import reactor.rx.stream.GroupedByStream;
 
 import java.io.Serializable;
 import java.util.*;
@@ -292,7 +292,7 @@ public abstract class StreamUtils {
 							Publisher<?> publisher = ((StreamSubscription) delegateSubscription).getPublisher();
 							if (references.contains(publisher)) return;
 							if (Action.class.isAssignableFrom(publisher.getClass())) {
-								parseComposable(((Action<?, ?>) publisher).findOldestAction(false), streamTree);
+								parseComposable(((Action<?, ?>) publisher).findOldestUpstream(Stream.class, false), streamTree);
 							} else if (Stream.class.isAssignableFrom(publisher.getClass())) {
 								parseComposable((Stream<?>) publisher, streamTree);
 							}

@@ -27,7 +27,7 @@ import reactor.net.NetServer;
 import reactor.net.config.ServerSocketOptions;
 import reactor.net.config.SslOptions;
 import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
+import reactor.rx.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;

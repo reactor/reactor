@@ -45,7 +45,6 @@ import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -59,8 +58,8 @@ import java.util.List;
  * eventually produce a result {@param <O>} and will offer cascading over its own subscribers.
  * <p>
  * *
- * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
- * create a {@link reactor.rx.spec.Streams} and configure it with the appropriate {@link Environment},
+ * Typically, new {@code Stream} aren't created directly. To create a {@code Stream},
+ * create a {@link Streams} and configure it with the appropriate {@link Environment},
  * {@link Dispatcher}, and other settings.
  *
  * @param <O> The type of the output values
@@ -477,8 +476,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	public final Action<O, O> mergeWith(Publisher<? extends O> publisher) {
-		return new MergeAction<O>(dispatcher, Arrays.<Publisher<? extends O>>asList(this, publisher))
+	public final Stream<O> mergeWith(Publisher<? extends O> publisher) {
+		return Streams.merge(environment, dispatcher, this, publisher)
 				.env(environment).keepAlive(keepAlive);
 	}
 
@@ -503,7 +502,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
-	public final <V> Action<?, List<V>> joinWith(Publisher<? extends V> publisher) {
+	public final <V> Stream<List<V>> joinWith(Publisher<? extends V> publisher) {
 		return zipWith(publisher, ZipAction.<Tuple2<O, V>, V>joinZipper());
 	}
 
@@ -527,9 +526,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return the zipped stream
 	 * @since 2.0
 	 */
-	public final <T2, V> Action<?, V> zipWith(Publisher<? extends T2> publisher,
+	public final <T2, V> Stream<V> zipWith(Publisher<? extends T2> publisher,
 	                                          @Nonnull Function<Tuple2<O, T2>, V> zipper) {
-		return new ZipAction<>(dispatcher, zipper, Arrays.asList(this, publisher)).env(environment);
+		return Streams.zip(environment, dispatcher, this, publisher, zipper);
 	}
 
 	/**
@@ -541,9 +540,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <T2, V> Action<?, V> zipWith(Iterable<? extends T2> iterable,
+	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
 	                                          @Nonnull Function<Tuple2<O, T2>, V> zipper) {
-		return zipWith(new ForEachAction<T2>(iterable, dispatcher).env(environment).keepAlive(keepAlive), zipper);
+		return zipWith(Streams.defer(environment, dispatcher, iterable).keepAlive(keepAlive), zipper);
 	}
 
 	/**
@@ -687,8 +686,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @return a new {@link Action} whose only value will be the materialized current {@link Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> nest() {
-		return connect(new NestAction<O, Stream<O>, Object>(dispatcher, this));
+	public final Stream<Stream<O>> nest() {
+		return Streams.defer(this);
 	}
 
 	/**
@@ -886,7 +885,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public final <V> Action<Iterable<? extends V>, V> split(final long batchSize) {
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
-		return iterableStream.connect(new ForEachAction<V>(null, dispatcher).capacity(batchSize));
+		return iterableStream.connect(new SplitAction<V>(dispatcher).capacity(batchSize));
 	}
 
 	/**

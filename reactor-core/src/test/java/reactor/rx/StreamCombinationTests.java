@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.function.Consumer;
-import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -107,7 +106,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		awaitLatch(tail, latch);
 	}
 
-
 	@Test
 	public void zipWithIterableTest() throws Exception {
 		int elements = 31;
@@ -117,8 +115,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				.boxed()
 				.collect(Collectors.toList());
 
-		Stream<Void> tail = sensorOdd().zipWith(list, (tuple) -> (tuple.getT1().toString()+" -- "+tuple.getT2()))
-				//.observe(loggingConsumer())
+		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString()+" -- "+tuple.getT2()))
+				.observe(loggingConsumer())
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
@@ -156,7 +154,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws InterruptedException {
 		try {
-			Assert.isTrue(latch.await(5, TimeUnit.SECONDS),
+			Assert.isTrue(latch.await(500, TimeUnit.SECONDS),
 					"Never completed: "
 							+ tail.debug());
 		} finally {

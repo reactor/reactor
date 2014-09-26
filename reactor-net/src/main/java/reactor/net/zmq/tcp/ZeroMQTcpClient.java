@@ -22,8 +22,8 @@ import reactor.net.zmq.ZeroMQClientSocketOptions;
 import reactor.net.zmq.ZeroMQNetChannel;
 import reactor.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.util.UUIDUtils;
 

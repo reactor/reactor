@@ -84,7 +84,7 @@ public class StreamSubscription<O> implements Subscription {
 			return;
 		}
 
-		if (i < elements &&( capacity.addAndGet(elements - i) < 0)) {
+		if (i < elements && (capacity.addAndGet(elements - i) < 0)) {
 			bufferLock.unlock();
 			onError(SpecificationExceptions.spec_3_17_exception(capacity.get(), elements));
 			return;
@@ -100,8 +100,14 @@ public class StreamSubscription<O> implements Subscription {
 			publisher.removeSubscription(this);
 		}
 		if (buffer != null) {
-			buffer.clear();
-			buffer.complete();
+			bufferLock.lock();
+			try {
+				buffer.clear();
+				buffer.complete();
+			} finally {
+				bufferLock.unlock();
+			}
+
 		}
 	}
 

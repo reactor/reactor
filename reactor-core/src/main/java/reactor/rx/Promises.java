@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package reactor.rx.spec;
+package reactor.rx;
 
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
-import reactor.rx.Promise;
 import reactor.rx.action.MergeAction;
-import reactor.rx.action.SupplierAction;
+import reactor.rx.stream.SupplierStream;
 import reactor.tuple.*;
 import reactor.util.Assert;
 
@@ -38,15 +37,14 @@ import java.util.List;
  */
 public final class Promises {
 
-
 	/**
-	 * Return a Specification component to tune the stream properties.
+	 * Create a synchronous {@link Promise}.
 	 *
-	 * @param <T> the type of values passing through the {@literal Stream}
-	 * @return a new {@link PipelineSpec}
+	 * @param <T> type of the expected value
+	 * @return A {@link Promise}.
 	 */
-	public static <T> PromiseSpec<T> config() {
-		return new PromiseSpec<T>();
+	public static <T> Promise<T> defer() {
+		return defer(null, SynchronousDispatcher.INSTANCE);
 	}
 
 	/**
@@ -70,16 +68,6 @@ public final class Promises {
 	 */
 	public static <T> Promise<T> defer(Environment env, Dispatcher dispatcher) {
 		return new Promise<T>(dispatcher, env);
-	}
-
-	/**
-	 * Create a synchronous {@link Promise}.
-	 *
-	 * @param <T> type of the expected value
-	 * @return A {@link Promise}.
-	 */
-	public static <T> Promise<T> defer() {
-		return defer(null, SynchronousDispatcher.INSTANCE);
 	}
 
 	/**
@@ -118,9 +106,9 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, Supplier<T> supplier) {
-		SupplierAction<Void, T> supplierAction = new SupplierAction<Void, T>(dispatcher, supplier);
+		SupplierStream<T> supplierStream = new SupplierStream<T>(dispatcher, supplier);
 		Promise<T> promise = new Promise<T>(dispatcher, env);
-		supplierAction.subscribe(promise);
+		supplierStream.subscribe(promise);
 		return promise;
 	}
 

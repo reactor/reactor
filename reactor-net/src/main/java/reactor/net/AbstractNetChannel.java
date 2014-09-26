@@ -18,9 +18,9 @@ import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.queue.BlockingQueueFactory;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
-import reactor.rx.spec.Streams;
+import reactor.rx.Streams;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;

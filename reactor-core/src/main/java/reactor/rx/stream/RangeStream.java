@@ -1,0 +1,110 @@
+/*
+ * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package reactor.rx.stream;
+
+import org.reactivestreams.Subscriber;
+import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
+import reactor.rx.Stream;
+import reactor.rx.StreamSubscription;
+
+/**
+ * A Stream that emits N {@link java.lang.Integer} from the inclusive start value defined to the inclusive end and then complete.
+ * <p>
+ * Since the stream retains the boundaries in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * will replay all the range. This is a "Cold" stream.
+ * <p>
+ * Create such stream with the provided factory, E.g.:
+ * {@code
+ * Streams.range(1, 10000).consume(
+ *    log::info,
+ *    log::error,
+ *    (-> log.info("complete"))
+ * )
+ * }
+ * <p>
+ * Will log:
+ * 1
+ * 2
+ * 3
+ * 4
+ * complete
+ *
+ * @author Stephane Maldini
+ */
+public class RangeStream extends Stream<Integer> {
+
+	private final int start;
+	private final int end;
+
+	public RangeStream(int start, int end,
+	                   Dispatcher dispatcher) {
+		super(dispatcher);
+
+		this.state = State.COMPLETE;
+		this.start = start;
+		this.end = end;
+
+		capacity(end - start + 1);
+
+		keepAlive(true);
+	}
+
+	@Override
+	public void checkAndSubscribe(final Subscriber<? super Integer> subscriber, final StreamSubscription<Integer> streamSubscription) {
+			if (addSubscription(streamSubscription)) {
+				if (streamSubscription.asyncManaged()) {
+					subscriber.onSubscribe(streamSubscription);
+				} else {
+					dispatch(new Consumer<Void>() {
+						@Override
+						public void accept(Void aVoid) {
+							subscriber.onSubscribe(streamSubscription);
+						}
+					});
+				}
+			}
+	}
+
+	@Override
+	protected StreamSubscription<Integer> createSubscription(Subscriber<? super Integer> subscriber, boolean reactivePull) {
+			return new StreamSubscription<Integer>(this, subscriber) {
+				int cursor = start;
+
+				@Override
+				public void request(long elements) {
+					super.request(elements);
+
+					if (buffer.isComplete()) return;
+
+					long i = 0;
+					while (i < elements && cursor <= end) {
+						onNext(cursor++);
+						i++;
+					}
+
+					if (cursor >= end && !buffer.isComplete()) {
+						onComplete();
+					}
+				}
+			};
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + " [" + start + " to "+end+"]" ;
+	}
+}

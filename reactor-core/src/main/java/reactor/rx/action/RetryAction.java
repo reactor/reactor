@@ -18,6 +18,7 @@ package reactor.rx.action;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
+import reactor.rx.Stream;
 
 /**
  * @author Stephane Maldini
@@ -57,12 +58,13 @@ public class RetryAction<T> extends Action<T, T> {
 					currentNumRetries = 0;
 				} else {
 					if (subscription != null) {
-						Action<?,?> rootAction = findOldestAction(true);
+						Stream<?> rootAction = findOldestUpstream(Stream.class, true);
 						Action secondAction = rootAction.downstreamSubscription() != null ?
 								(Action)rootAction.downstreamSubscription().getSubscriber() :
 								null;
 
-						if(rootAction.subscription == null && secondAction != null){
+						//Test if deferred stream (hot stream)
+						if(!rootAction.getClass().equals(Stream.class) && secondAction != null){
 							secondAction.cancel();
 							rootAction.subscribe(secondAction);
 						}

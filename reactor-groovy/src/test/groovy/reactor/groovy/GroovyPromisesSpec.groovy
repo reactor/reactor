@@ -19,7 +19,7 @@ package reactor.groovy
 
 import reactor.core.Environment
 import reactor.rx.Promise
-import reactor.rx.spec.Promises
+import reactor.rx.Promises
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -55,7 +55,7 @@ class GroovyPromisesSpec extends Specification {
 			p.await() == "Hello World!"
 
 		when: "a deferred Promise"
-			p = Promise.<String> from { "Hello World!" }.get()
+			p = Promise.<String> from { "Hello World!" }
 
 		then: 'Promise contains value'
 			p.await() == "Hello World!"
@@ -64,7 +64,7 @@ class GroovyPromisesSpec extends Specification {
 	def "Compose from Closure"() {
 		when:
 			'Defer a composition'
-			def c = Promises.<Integer>config().env(testEnv).supply{ sleep 500; 1 }.get()
+			def c = Promises.<Integer>task(testEnv){ sleep 500; 1 }
 
 		and:
 			'apply a transformation'
@@ -139,7 +139,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-			def p = Promises.<String> config().env(testEnv).get()
+			def p = Promises.<String> defer(testEnv)
 			final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

@@ -76,7 +76,7 @@ public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber
 			}
 
 			if(terminated){
-				buffer.complete();
+				cancel();
 			}
 		} finally {
 			lock.writeLock().unlock();

@@ -20,7 +20,7 @@ import reactor.core.configuration.DispatcherType
 import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
-import reactor.rx.spec.Streams
+import reactor.rx.Streams
 
 import static reactor.event.selector.Selectors.matchAll
 import static reactor.event.selector.Selectors.object

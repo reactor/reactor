@@ -20,7 +20,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
 import reactor.rx.Stream;
-import reactor.rx.spec.Streams;
+import reactor.rx.Streams;
 
 /**
  * @author Stephane Maldini

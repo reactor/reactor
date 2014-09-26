@@ -18,7 +18,7 @@ package reactor.queue
 
 import net.openhft.chronicle.ChronicleConfig
 import reactor.io.encoding.StandardCodecs
-import reactor.rx.spec.Streams
+import reactor.rx.Streams
 import spock.lang.Specification
 
 /**

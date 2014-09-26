@@ -18,9 +18,9 @@ package reactor.core.spec
 import reactor.event.dispatch.TraceableDelegatingDispatcher
 import reactor.function.support.Tap
 import reactor.rx.Promise
+import reactor.rx.Promises
 import reactor.rx.Stream
-import reactor.rx.spec.Promises
-import reactor.rx.spec.Streams
+import reactor.rx.Streams
 import spock.lang.Specification
 
 /**
@@ -53,7 +53,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Composable"
-			Stream composable = Streams.<String>config().synchronousDispatcher().get()
+			Stream composable = Streams.<String>defer()
 			Tap<String> tap = composable.tap()
 			composable.broadcastNext('test')
 
@@ -67,7 +67,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Promise"
-			Promise promise = Promises.<String>config().success('test').synchronousDispatcher().get()
+			Promise promise = Promises.<String>success('test')
 
 		then:
 			Promise.isAssignableFrom(promise.class)

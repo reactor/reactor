@@ -11,8 +11,8 @@ import reactor.net.NetChannel;
 import reactor.net.NetServer;
 import reactor.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;

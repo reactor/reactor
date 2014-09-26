@@ -16,6 +16,7 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Environment;
@@ -272,8 +273,9 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(findOldestAction(false));
+		return StreamUtils.browse(findOldestUpstream(Stream.class, false));
 	}
 
 	/**
@@ -301,9 +303,9 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	 */
 	@SuppressWarnings("unchecked")
 	public <E> CombineAction<E, O> combine(boolean reuse) {
-		final Action<E, O> subscriber = (Action<E, O>) findOldestAction(reuse);
+		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class, reuse);
 		subscriber.subscription = null;
-		return new CombineAction<E, O>(this, subscriber);
+		return new CombineAction<E, O>(subscriber, this);
 	}
 
 	@Override
@@ -383,17 +385,15 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 	 * @param resetState
 	 * @return
 	 */
-	public Action<?, ?> findOldestAction(boolean resetState) {
+	@SuppressWarnings("unchecked")
+	public <P extends Publisher<?>> P findOldestUpstream(Class<P> clazz, boolean resetState) {
 		Action<?, ?> that = this;
 
 		if (resetState) {
 			resetState(that);
 		}
-		while (that.subscription != null
-				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
-				&& ((StreamSubscription<?>) that.subscription).getPublisher() != null
-				&& Action.class.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass())
-				) {
+
+		while (inspectPublisher(that, Action.class)) {
 
 			that = (Action<?, ?>) ((StreamSubscription<?>) that.subscription).getPublisher();
 
@@ -407,9 +407,20 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 							?>) that).dynamicMergeAction : that;
 				}
 			}
-
 		}
-		return that;
+
+		if(inspectPublisher(that, clazz)) {
+			return (P)((StreamSubscription<?>) that.subscription).getPublisher();
+		}else {
+			return (P)that;
+		}
+	}
+
+	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass){
+		return that.subscription != null
+				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
+				&& ((StreamSubscription<?>) that.subscription).getPublisher() != null
+				&& actionClass.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass());
 	}
 
 	@Override

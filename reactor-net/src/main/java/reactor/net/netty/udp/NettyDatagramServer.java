@@ -26,8 +26,8 @@ import reactor.net.netty.NettyNetChannelInboundHandler;
 import reactor.net.netty.NettyServerSocketOptions;
 import reactor.net.udp.DatagramServer;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.spec.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 
 import javax.annotation.Nonnull;

@@ -26,12 +26,10 @@ import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.action.FinallyAction;
-import reactor.rx.action.ForEachAction;
 import reactor.rx.action.support.NonBlocking;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -57,9 +55,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 
 	private final long        defaultTimeout;
 	private final Condition   pendingCondition;
-	private final Environment environment;
 	private final Dispatcher  dispatcher;
-
+	private final Environment environment;
 	Stream<O> outboundStream;
 
 	Stream.State state = Stream.State.READY;
@@ -335,9 +332,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (outboundStream == null) {
 				if (isSuccess()) {
-					outboundStream = new ForEachAction<O>(Arrays.asList(value), dispatcher).env(environment);
+					outboundStream = Streams.defer(environment, dispatcher, value);
 				} else {
-					outboundStream = new Stream<O>(dispatcher, environment, 1);
+					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1);
 					outboundStream.keepAlive(false);
 					if (isError()) {
 						outboundStream.broadcastError(error);

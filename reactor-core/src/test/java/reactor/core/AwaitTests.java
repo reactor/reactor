@@ -22,7 +22,7 @@ import reactor.core.spec.Reactors;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
+import reactor.rx.Promises;
 
 import java.util.concurrent.TimeUnit;
 
@@ -42,9 +42,7 @@ public class AwaitTests extends AbstractReactorTest {
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 10000; i++) {
-			final Promise<String> deferred = Promises.<String>config()
-					.env(env)
-					.get();
+			final Promise<String> deferred = Promises.<String>defer(env);
 
 			innerReactor.schedule(new Consumer() {
 

@@ -13,27 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.spec;
+package reactor.rx.action;
 
-import reactor.core.Environment;
-import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
 
 /**
- * A helper class for specifying a bounded {@link reactor.rx.Stream}.
- *
- * @param <SPEC>   The ComposableSpec subclass
- * @param <TARGET> The type that this spec will create
  * @author Stephane Maldini
+ * @since 1.1
  */
-public abstract class PipelineSpec<SPEC extends PipelineSpec<SPEC, TARGET>, TARGET> extends DispatcherComponentSpec<SPEC,
-		TARGET> {
+public class SplitAction<T> extends Action<Iterable<? extends T>, T> {
 
-	@Override
-	protected TARGET configure(final Dispatcher dispatcher, Environment env) {
-		return createPipeline(env, dispatcher);
+	public SplitAction(Dispatcher dispatcher) {
+		super(dispatcher);
 	}
 
-	protected abstract TARGET createPipeline(Environment env, Dispatcher dispatcher);
-
+	@Override
+	protected void doNext(Iterable<? extends T> values) {
+		if (values == null) {
+			broadcastNext(null);
+			return;
+		}
+		for (T it : values) {
+			broadcastNext(it);
+		}
+	}
 }

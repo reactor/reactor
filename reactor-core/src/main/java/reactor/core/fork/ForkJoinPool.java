@@ -8,7 +8,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
-import reactor.rx.spec.Streams;
+import reactor.rx.Streams;
 
 import java.util.Arrays;
 import java.util.Collection;

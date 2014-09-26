@@ -22,8 +22,8 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import reactor.core.Environment;
 import reactor.rx.Stream;
+import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
-import reactor.rx.spec.Streams;
 import reactor.util.Assert;
 
 import java.util.ArrayList;
@@ -125,7 +125,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		Stream<Integer> stream = Streams.defer(env);
 
 		stream.subscribe(processor);
-		System.out.println(stream.debug());
+		System.out.println(processor.debug());
 		Thread.sleep(2000);
 
 		processor.subscribe(new Subscriber<Integer>() {

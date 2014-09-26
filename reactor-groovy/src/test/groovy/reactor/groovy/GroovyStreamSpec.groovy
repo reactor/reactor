@@ -19,7 +19,7 @@ import reactor.core.Environment
 import reactor.core.spec.Reactors
 import reactor.function.support.Tap
 import reactor.rx.Stream
-import reactor.rx.spec.Streams
+import reactor.rx.Streams
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification

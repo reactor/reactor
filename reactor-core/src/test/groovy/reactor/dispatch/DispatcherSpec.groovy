@@ -29,7 +29,7 @@ import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
-import reactor.rx.spec.Streams
+import reactor.rx.Streams
 import spock.lang.Shared
 import spock.lang.Specification
 

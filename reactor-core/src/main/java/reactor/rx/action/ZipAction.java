@@ -26,6 +26,7 @@ import reactor.tuple.Tuple;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -38,6 +39,8 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 	final Function<TUPLE, ? extends V> accumulator;
 
 	int index = 0;
+
+	AtomicBoolean completing = new AtomicBoolean();
 
 	final Consumer<Long> upstreamConsumer = new Consumer<Long>() {
 		@Override
@@ -90,7 +93,7 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 				});
 
 		if (force || counter.get() == result.length) {
-			downstreamSubscription().onNext(accumulator.apply((TUPLE) Tuple.of(result)));
+			broadcastNext(accumulator.apply((TUPLE) Tuple.of(result)));
 		}
 	}
 
@@ -112,8 +115,8 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 	@Override
 	protected void doComplete() {
 		//can receive multiple queued complete signals
-		if (state == State.READY) {
-			innerSubscriptions.cancel();
+		if (state == State.READY && runningComposables.get() == 0) {
+			innerSubscriptions.scheduleTermination();
 			broadcastComplete();
 		}
 	}
@@ -177,20 +180,24 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 			//Action.log.debug("event ["+ev+"] by: " + this);
 			lastItem = ev;
 			outerAction.innerSubscriptions.onNext(ev);
+
+				if(outerAction.completing.get()){
+				outerAction.runningComposables.decrementAndGet();
+				outerAction.innerSubscriptions.onComplete();
+			}
 		}
 
 		@Override
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
 			if (checkDynamicMerge()) {
+				s.cancel();
 
 				outerAction.trySyncDispatch(null, new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
-						if(lastItem != null) {
-							outerAction.broadcastTuple(true);
-						}
-						outerAction.innerSubscriptions.onComplete();
+						outerAction.runningComposables.decrementAndGet();
+						outerAction.completing.set(true);
 					}
 				});
 			}
@@ -199,7 +206,7 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 		@Override
 		public String toString() {
 			return "ZipAction.InnerSubscriber{lastItem=" + lastItem + ", index=" + index + ", " +
-					"pending=" + pendingRequests + ", emitted="+emittedSignals+"}";
+					"pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
 		}
 	}
 

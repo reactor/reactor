@@ -40,7 +40,7 @@ import reactor.net.netty.*;
 import reactor.net.tcp.TcpServer;
 import reactor.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
-import reactor.rx.spec.Promises;
+import reactor.rx.Promises;
 import reactor.support.NamedDaemonThreadFactory;
 
 import javax.annotation.Nonnull;

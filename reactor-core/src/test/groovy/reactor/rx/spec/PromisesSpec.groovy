@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.spec
+package reactor.rx
 
 import reactor.core.Environment
 import reactor.core.Observable
-import reactor.rx.Promise
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -364,7 +363,7 @@ class PromisesSpec extends Specification {
 	def "An onError consumer registered via then is called when the promise is rejected"() {
 		given:
 			"A promise with an onError consumer registered using then"
-			Promise<String> promise = Promises.<String> config().synchronousDispatcher().get()
+			Promise<String> promise = Promises.<String> defer()
 			def value
 			promise.onSuccess {}.onError { value = it }
 
@@ -720,9 +719,7 @@ class PromisesSpec extends Specification {
 	def "Errors stop compositions"() {
 		given:
 			"a promise"
-			def p1 = Promises.<String> config()
-					.env(environment)
-					.get()
+			def p1 = Promises.<String> defer(environment)
 
 			final latch = new CountDownLatch(1)
 

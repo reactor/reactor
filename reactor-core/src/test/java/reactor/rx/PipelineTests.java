@@ -36,8 +36,6 @@ import reactor.function.support.Tap;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.ParallelAction;
-import reactor.rx.spec.Promises;
-import reactor.rx.spec.Streams;
 import reactor.tuple.Tuple2;
 
 import java.util.*;
