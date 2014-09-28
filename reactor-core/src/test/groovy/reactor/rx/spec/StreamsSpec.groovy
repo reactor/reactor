@@ -28,8 +28,7 @@ import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
 
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 class StreamsSpec extends Specification {
@@ -69,6 +68,7 @@ class StreamsSpec extends Specification {
 			def value = null
 
 			stream.finallyDo {
+				println 'test'
 				value = it
 			}.tap()
 
@@ -77,7 +77,6 @@ class StreamsSpec extends Specification {
 		then:
 			'it is available'
 			value == stream
-			value.state == Stream.State.COMPLETE
 	}
 
 	def 'A deferred Stream can be run on various dispatchers'() {
@@ -1096,7 +1095,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'dispatching works'
-			result == [1, 2, 3, 4, 5, 6, 7, 8 ,9, 10]
+			result == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 	}
 
 	def 'Creating Empty Streams from publisher'() {
@@ -1121,6 +1120,62 @@ class StreamsSpec extends Specification {
 			latch.await(2, TimeUnit.SECONDS)
 			!nexts
 			!errors
+	}
+
+	def 'Creating Streams from future'() {
+		given:
+			'a source stream pre-completed'
+			def executorService = Executors.newSingleThreadExecutor()
+
+			def future = executorService.submit({
+				'hello future'
+			} as Callable<String>)
+
+			def s = Streams.defer(future)
+
+		when:
+			'consume it'
+			def latch = new CountDownLatch(1)
+			def nexts = []
+			def errors = []
+
+			s.consume(
+					{ nexts << it },
+					{ errors << 'never ever' },
+					{ latch.countDown() }
+			)
+
+		then:
+			'dispatching works'
+			latch.await(2, TimeUnit.SECONDS)
+			!errors
+			nexts[0] == 'hello future'
+
+		when: 'timeout'
+			latch = new CountDownLatch(1)
+
+			future = executorService.submit({
+				sleep(1500)
+				'hello future too long'
+			} as Callable<String>)
+
+		  s = Streams.defer(environment, future, 100, TimeUnit.MILLISECONDS)
+			nexts = []
+			errors = []
+
+			s.consume(
+					{ nexts << 'never ever' },
+					{ errors << it; latch.countDown() }
+			)
+
+		then:
+			'error dispatching works'
+			latch.await(2, TimeUnit.SECONDS)
+			errors[0] in TimeoutException
+			!nexts
+
+		cleanup:
+			executorService.shutdown()
 	}
 
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {

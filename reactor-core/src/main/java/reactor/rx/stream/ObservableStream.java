@@ -26,9 +26,11 @@ import reactor.function.Consumer;
 import javax.annotation.Nonnull;
 
 /**
- * Emit signals whenever an Event arrives from the {@link reactor.event.selector.Selector} topic from the {@link reactor.core.Observable}.
- * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()} signal until {@link this#broadcastComplete()} is called.
- *
+ * Emit signals whenever an Event arrives from the {@link reactor.event.selector.Selector} topic from the {@link
+ * reactor.core.Observable}.
+ * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()} signal until {@link
+ * this#broadcastComplete()} is called.
+ * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
  * Streams.on(reactor, $("topic")).consume(System.out::println)
@@ -41,6 +43,7 @@ public class ObservableStream<T> extends PublisherStream<T> {
 	public ObservableStream(@Nonnull Dispatcher dispatcher,
 	                        final @Nonnull Observable observable,
 	                        final @Nonnull Selector selector) {
+
 		super(dispatcher, new Publisher<T>() {
 			@Override
 			public void subscribe(final Subscriber<? super T> subscriber) {

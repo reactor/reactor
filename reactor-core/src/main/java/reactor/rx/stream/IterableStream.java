@@ -17,7 +17,6 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 
@@ -58,28 +57,18 @@ public class IterableStream<T> extends Stream<T> {
 		super(dispatcher);
 
 		this.defaultValues = defaultValues;
-		state = State.COMPLETE;
+
 		if (null != defaultValues && Collection.class.isAssignableFrom(defaultValues.getClass())) {
 			capacity(((Collection<T>) defaultValues).size());
 		}
+
 		keepAlive(true);
 	}
 
 	@Override
 	public void checkAndSubscribe(final Subscriber<? super T> subscriber, final StreamSubscription<T> streamSubscription) {
 		if (defaultValues != null) {
-			if (addSubscription(streamSubscription)) {
-				if (streamSubscription.asyncManaged()) {
-					subscriber.onSubscribe(streamSubscription);
-				} else {
-					dispatch(new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							subscriber.onSubscribe(streamSubscription);
-						}
-					});
-				}
-			}
+			super.checkAndSubscribe(subscriber, streamSubscription);
 		} else {
 			subscriber.onComplete();
 		}

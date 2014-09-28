@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A public factory to build {@link Stream}.
@@ -96,6 +98,7 @@ public final class Streams {
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
+	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
@@ -114,7 +117,7 @@ public final class Streams {
 	 *
 	 * @return a new {@link Stream}
 	 */
-	public static Stream<?> empty() {
+	public static Stream<Void> empty() {
 		return empty(null, SynchronousDispatcher.INSTANCE);
 	}
 
@@ -122,9 +125,10 @@ public final class Streams {
 	 * Build a deferred {@literal Stream} that will only emit a complete signal to any new subscriber.
 	 *
 	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static Stream<?> empty(Environment env) {
+	public static Stream<Void> empty(Environment env) {
 		return empty(env, env.getDefaultDispatcher());
 	}
 
@@ -134,14 +138,18 @@ public final class Streams {
 	 *
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static Stream<?> empty(Environment env, Dispatcher dispatcher) {
-		return defer(env, dispatcher, null);
+	public static Stream<Void> empty(Environment env, Dispatcher dispatcher) {
+		return new IterableStream<Void>(null, dispatcher).env(env);
 	}
 
 	/**
 	 * Build a synchronous {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
+	 *
+	 * @param start the inclusive starting value to be emitted
+	 * @param end   the inclusive closing value to be emitted
 	 *
 	 * @return a new {@link Stream}
 	 */
@@ -152,8 +160,11 @@ public final class Streams {
 	/**
 	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
 	 *
+	 * @param start the inclusive starting value to be emitted
+	 * @param end   the inclusive closing value to be emitted
 	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 * @return a new {@link reactor.rx.Stream}
+	 *
+	 *             @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Integer> range(Environment env, int start, int end) {
 		return range(env, env.getDefaultDispatcher(), start, end);
@@ -167,10 +178,90 @@ public final class Streams {
 	 * @param end   the inclusive closing value to be emitted
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Integer> range(Environment env, Dispatcher dispatcher, int start, int end) {
 		return new RangeStream(start, end, dispatcher).env(env);
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link Stream}
+	 */
+	public static <T> Stream<T> defer(Future<? extends T> future) {
+		return defer(null, SynchronousDispatcher.INSTANCE, future);
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link Stream}
+	 */
+	public static <T> Stream<T> defer(Future<? extends T> future, long time, TimeUnit unit) {
+		return defer(null, SynchronousDispatcher.INSTANCE, future, time, unit);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Environment env, Future<? extends T> future) {
+		return defer(env, env.getDefaultDispatcher(), future);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Environment env, Future<? extends T> future, long time, TimeUnit unit) {
+		return defer(env, env.getDefaultDispatcher(), future, time, unit);
+	}
+
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Future<? extends T> future) {
+		return new FutureStream<T>(future, dispatcher).env(env);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param future   the future to poll value from
+	 *
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Future<? extends T> future, long time, TimeUnit unit) {
+		return new FutureStream<T>(future, time, unit, dispatcher).env(env);
 	}
 
 	/**
@@ -181,6 +272,7 @@ public final class Streams {
 	 *
 	 * @param value1 The only value to {@code broadcastNext()}
 	 * @param <T>    type of the values
+	 *
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> defer(T value1) {

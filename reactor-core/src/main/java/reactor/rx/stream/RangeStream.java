@@ -17,7 +17,6 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 
@@ -53,30 +52,12 @@ public class RangeStream extends Stream<Integer> {
 	public RangeStream(int start, int end,
 	                   Dispatcher dispatcher) {
 		super(dispatcher);
-
-		this.state = State.COMPLETE;
 		this.start = start;
 		this.end = end;
 
 		capacity(end - start + 1);
 
 		keepAlive(true);
-	}
-
-	@Override
-	public void checkAndSubscribe(final Subscriber<? super Integer> subscriber, final StreamSubscription<Integer> streamSubscription) {
-			if (addSubscription(streamSubscription)) {
-				if (streamSubscription.asyncManaged()) {
-					subscriber.onSubscribe(streamSubscription);
-				} else {
-					dispatch(new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							subscriber.onSubscribe(streamSubscription);
-						}
-					});
-				}
-			}
 	}
 
 	@Override
