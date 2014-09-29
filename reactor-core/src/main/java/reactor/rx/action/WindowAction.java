@@ -53,6 +53,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	protected void doComplete() {
 		super.doComplete();
 		currentWindow.broadcastComplete();
+		currentWindow = null;
 	}
 
 	@Override

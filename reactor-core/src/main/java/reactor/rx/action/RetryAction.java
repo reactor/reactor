@@ -26,9 +26,9 @@ import reactor.rx.Stream;
  */
 public class RetryAction<T> extends Action<T, T> {
 
-	private final int          numRetries;
+	private final long          numRetries;
 	private final Predicate<Throwable> retryMatcher;
-	private int currentNumRetries = 0;
+	private long currentNumRetries = 0;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries) {
 		this(dispatcher, numRetries, null);
@@ -68,7 +68,7 @@ public class RetryAction<T> extends Action<T, T> {
 							secondAction.cancel();
 							rootAction.subscribe(secondAction);
 						}
-						requestConsumer.accept(1l);
+						requestConsumer.accept(capacity);
 					}
 				}
 

@@ -24,16 +24,25 @@ import reactor.util.Assert;
  */
 public class LastAction<T> extends BatchAction<T, T> {
 
+	private T last;
+
 	public LastAction(long batchSize, Dispatcher dispatcher) {
-		super(batchSize, dispatcher, false, false, true);
+		super(batchSize, dispatcher, true, false, true);
 
 		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
 	}
 
 	@Override
+	protected void nextCallback(T event) {
+		last = event;
+	}
+
+	@Override
 	protected void flushCallback(T event) {
-		if(event != null){
-			broadcastNext(event);
+		if(last != null){
+			T _last = last;
+			last = null;
+			broadcastNext(_last);
 		}
 	}
 }

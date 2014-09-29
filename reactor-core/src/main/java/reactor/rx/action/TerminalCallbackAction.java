@@ -22,7 +22,7 @@ import reactor.function.Consumer;
 /**
  * @author Stephane Maldini
  */
-public class TerminalCallbackAction<T> extends Action<T, Void> {
+public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;

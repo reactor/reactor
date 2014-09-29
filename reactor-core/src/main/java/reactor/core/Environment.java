@@ -114,8 +114,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		this.dispatchers = new LinkedMultiValueMap<String, Dispatcher>(dispatchers);
 
 		configuration = configurationReader.read();
-		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
+		defaultDispatcher = configuration.getDefaultDispatcherName() != null ?
+				configuration.getDefaultDispatcherName() :
 				DEFAULT_DISPATCHER_NAME;
+
 		env = configuration.getAdditionalProperties();
 
 		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);

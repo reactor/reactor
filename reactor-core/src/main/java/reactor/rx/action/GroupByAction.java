@@ -101,6 +101,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 		for (Stream<T> stream : groupByMap.values()) {
 			stream.broadcastComplete();
 		}
+		groupByMap.clear();
 	}
 
 }

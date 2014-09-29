@@ -20,7 +20,6 @@ import org.reactivestreams.Subscription;
 import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,7 +39,6 @@ public class StreamSubscription<O> implements Subscription {
 	protected final AtomicLong            capacity;
 	protected final ReentrantLock         bufferLock;
 	protected final CompletableQueue<O>   buffer;
-	protected final boolean               asyncManaged;
 
 	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this(publisher, subscriber, new CompletableLinkedQueue<O>());
@@ -50,7 +48,6 @@ public class StreamSubscription<O> implements Subscription {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
 		this.capacity = new AtomicLong();
-		this.asyncManaged = subscriber != null && NonBlocking.class.isAssignableFrom(subscriber.getClass());
 		this.buffer = buffer;
 		if (buffer != null) {
 			bufferLock = new ReentrantLock();
@@ -196,10 +193,6 @@ public class StreamSubscription<O> implements Subscription {
 				"capacity=" + capacity +
 				", waiting=" + buffer.size() +
 				'}';
-	}
-
-	public boolean asyncManaged() {
-		return asyncManaged;
 	}
 
 	StreamSubscription<O> wrap(CompletableQueue<O> queue) {

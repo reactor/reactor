@@ -38,7 +38,7 @@ import javax.annotation.Nonnull;
  *
  * @author Stephane Maldini
  */
-public class ObservableStream<T> extends PublisherStream<T> {
+public final class ObservableStream<T> extends PublisherStream<T> {
 
 	public ObservableStream(@Nonnull Dispatcher dispatcher,
 	                        final @Nonnull Observable observable,

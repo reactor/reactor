@@ -36,6 +36,7 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
+import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple;
@@ -195,7 +196,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	@Override
 	public Stream<O> cancel() {
-		state = State.SHUTDOWN;
+		//Force state shutdown
+		this.state = State.SHUTDOWN;
 		return this;
 	}
 
@@ -276,8 +278,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		action.env(environment).keepAlive(keepAlive);
 
 		if (action.dispatcher != this.dispatcher) {
-			this.checkAndSubscribe(action, createSubscription(action, true));
-		} else {
+			this.subscribeWithSubscription(action, createSubscription(action, true));
+		}else{
 			this.subscribe(action);
 		}
 		return action;
@@ -578,7 +580,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		innerMerge.capacity(capacity).env(environment);
 		innerMerge.keepAlive(keepAlive);
 
-		thiz.checkAndSubscribe(innerMerge, thiz.createSubscription(innerMerge, true));
+		thiz.subscribeWithSubscription(innerMerge, thiz.createSubscription(innerMerge, true));
 		//thiz.connect(innerMerge);
 		return innerMerge;
 	}
@@ -618,7 +620,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * @since 2.0
 	 */
 	public final ParallelAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
-		return connect(new ParallelAction<O>(
+		return connect( new ParallelAction<O>(
 				this.dispatcher, dispatcherSupplier, poolsize
 		));
 	}
@@ -649,7 +651,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		if (queue != null) {
 			stream.capacity(capacity).env(environment);
 			stream.keepAlive(keepAlive);
-			checkAndSubscribe(stream, createSubscription(stream, true).wrap(queue));
+			subscribeWithSubscription(stream, createSubscription(stream, true).wrap(queue));
 		} else {
 			connect(stream);
 		}
@@ -1404,7 +1406,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
-		checkAndSubscribe(subscriber, createSubscription(subscriber, true));
+		subscribeWithSubscription(subscriber, createSubscription(subscriber, true));
 	}
 
 	/**
@@ -1503,9 +1505,20 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		state = State.COMPLETE;
 	}
 
-	protected void checkAndSubscribe(final Subscriber<? super O> subscriber, final StreamSubscription<O> subscription) {
+	/**
+	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
+	 * automatically.
+	 *
+	 * This is mainly useful for libraries implementors, usually {@link this#connect(reactor.rx.action.Action)} and
+	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
+	 *
+	 * @param subscriber
+	 * @param subscription
+	 */
+	protected void subscribeWithSubscription(final Subscriber<? super O> subscriber, final StreamSubscription<O>
+			subscription) {
 		if (state == State.READY && addSubscription(subscription)) {
-			if (subscription.asyncManaged()) {
+			if (NonBlocking.class.isAssignableFrom(subscriber.getClass())) {
 				subscriber.onSubscribe(subscription);
 			} else {
 				dispatch(new Consumer<Void>() {
@@ -1582,7 +1595,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		if (subscription == this.downstreamSubscription) {
 			this.downstreamSubscription = null;
 			if (!keepAlive) {
-				state = State.SHUTDOWN;
+				onShutdown();
 			}
 		} else {
 			StreamSubscription<O> dsub = this.downstreamSubscription;
@@ -1591,11 +1604,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 						((FanOutSubscription<O>) this.downstreamSubscription);
 
 				if (fsub.remove(subscription) && fsub.isEmpty() && !keepAlive) {
-					state = State.SHUTDOWN;
+					onShutdown();
 				}
 			}
 		}
+	}
 
+	protected void onShutdown(){
+		state = State.SHUTDOWN;
 	}
 
 	protected void setState(State state) {
@@ -1629,6 +1645,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	public String toString() {
 		return "Stream{" +
 				"state=" + state +
+				", dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
+						"")) +
 				", keepAlive=" + keepAlive +
 				", ignoreErrors=" + ignoreErrors +
 				'}';

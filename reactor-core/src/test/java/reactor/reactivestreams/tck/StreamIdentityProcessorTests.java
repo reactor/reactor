@@ -56,6 +56,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		return
 				Streams.<Integer>defer(env)
+						.keepAlive(false)
 						.capacity(bufferSize)
 						.parallel(2)
 						.map(stream -> stream

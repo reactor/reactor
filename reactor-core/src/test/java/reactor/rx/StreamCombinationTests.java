@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.function.Consumer;
 import reactor.tuple.Tuple2;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,6 +78,27 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	}
 
 	@Test
+	public void testMerge1ToN() throws Exception {
+		final int n = 1000;
+
+		Stream<Integer> stream = Streams.merge(
+				Streams.defer(1)
+						.map(i -> Streams.range(0, n))
+		);
+
+
+		final CountDownLatch latch = new CountDownLatch(n);
+		stream.consume(new Consumer<Integer>() {
+			@Override
+			public void accept(Integer integer) {
+				latch.countDown();
+			}
+		});
+
+		awaitLatch(stream, latch);
+	}
+
+	@Test
 	public void sampleMergeWithTest() throws Exception {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements);
@@ -111,11 +131,13 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 31;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		List<Integer> list = IntStream.range(0, elements/2)
+		List<Integer> list = IntStream.range(0, elements / 2)
 				.boxed()
 				.collect(Collectors.toList());
 
-		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString()+" -- "+tuple.getT2()))
+		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString() + "" +
+				" " +
+				"-- " + tuple.getT2()))
 				.observe(loggingConsumer())
 				.consume(i -> latch.countDown());
 
@@ -127,7 +149,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@Test
 	public void joinWithTest() throws Exception {
 		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements/2);
+		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Stream<Void> tail = sensorOdd().joinWith(sensorEven())
 				.observe(loggingConsumer())
@@ -152,11 +174,12 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		awaitLatch(tail, latch);
 	}
 
-	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws InterruptedException {
+	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws Exception {
 		try {
-			Assert.isTrue(latch.await(500, TimeUnit.SECONDS),
-					"Never completed: "
-							+ tail.debug());
+			if (!latch.await(5, TimeUnit.SECONDS)) {
+				throw new Exception("Never completed: (" + latch.getCount() + ") "
+						+ tail.debug());
+			}
 		} finally {
 			tail.cancel();
 		}

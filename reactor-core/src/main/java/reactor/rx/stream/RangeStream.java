@@ -44,7 +44,7 @@ import reactor.rx.StreamSubscription;
  *
  * @author Stephane Maldini
  */
-public class RangeStream extends Stream<Integer> {
+public final class RangeStream extends Stream<Integer> {
 
 	private final int start;
 	private final int end;
@@ -54,30 +54,32 @@ public class RangeStream extends Stream<Integer> {
 		super(dispatcher);
 		this.start = start;
 		this.end = end;
+		this.keepAlive = false;
 
 		capacity(end - start + 1);
 
-		keepAlive(true);
+	}
+
+	@Override
+	protected void onShutdown() {
+		//IGNORE
 	}
 
 	@Override
 	protected StreamSubscription<Integer> createSubscription(Subscriber<? super Integer> subscriber, boolean reactivePull) {
-			return new StreamSubscription<Integer>(this, subscriber) {
+			return new StreamSubscription.Firehose<Integer>(this, subscriber) {
 				int cursor = start;
 
 				@Override
 				public void request(long elements) {
-					super.request(elements);
 
-					if (buffer.isComplete()) return;
-
-					long i = 0;
+						long i = 0;
 					while (i < elements && cursor <= end) {
 						onNext(cursor++);
 						i++;
 					}
 
-					if (cursor >= end && !buffer.isComplete()) {
+					if (cursor >= end) {
 						onComplete();
 					}
 				}

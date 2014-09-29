@@ -139,14 +139,17 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	public Action() {
 		super();
+		this.keepAlive = false;
 	}
 
 	public Action(Dispatcher dispatcher) {
 		super(dispatcher);
+		this.keepAlive = false;
 	}
 
 	public Action(Dispatcher dispatcher, long batchSize) {
 		super(dispatcher, batchSize);
+		this.keepAlive = false;
 	}
 
 	public void available() {
@@ -157,8 +160,8 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		checkAndSubscribe(subscriber, createSubscription(subscriber,
-				subscription == null || !NonBlocking.class.isAssignableFrom(subscriber.getClass()))
+		subscribeWithSubscription(subscriber, createSubscription(subscriber,
+						subscription == null || !NonBlocking.class.isAssignableFrom(subscriber.getClass()))
 		);
 	}
 
@@ -188,15 +191,18 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 			public void accept(Void any) {
 				try {
 					doComplete();
-					/*if(!keepAlive){
+					if (!keepAlive) {
 						cancel();
-					}*/
+					}
 				} catch (Throwable t) {
 					doError(t);
 				}
 			}
 		});
+	}
 
+	protected void onShutdown() {
+		cancel();
 	}
 
 	@Override
@@ -409,26 +415,18 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 			}
 		}
 
-		if(inspectPublisher(that, clazz)) {
-			return (P)((StreamSubscription<?>) that.subscription).getPublisher();
-		}else {
-			return (P)that;
+		if (inspectPublisher(that, clazz)) {
+			return (P) ((StreamSubscription<?>) that.subscription).getPublisher();
+		} else {
+			return (P) that;
 		}
 	}
 
-	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass){
+	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {
 		return that.subscription != null
 				&& StreamSubscription.class.isAssignableFrom(that.subscription.getClass())
 				&& ((StreamSubscription<?>) that.subscription).getPublisher() != null
 				&& actionClass.isAssignableFrom(((StreamSubscription<?>) that.subscription).getPublisher().getClass());
-	}
-
-	@Override
-	protected void removeSubscription(StreamSubscription<O> sub) {
-		super.removeSubscription(sub);
-		if (subscription != null) {
-			subscription.cancel();
-		}
 	}
 
 	protected void doSubscribe(Subscription subscription) {
@@ -488,6 +486,7 @@ public abstract class Action<I, O> extends Stream<O> implements Processor<I, O>,
 				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
 						"")) +
 				", state=" + getState() +
+				", ka=" + keepAlive +
 				", max-capacity=" + getCapacity() +
 				(subscription != null &&
 						StreamSubscription.class.isAssignableFrom(subscription.getClass()) ?

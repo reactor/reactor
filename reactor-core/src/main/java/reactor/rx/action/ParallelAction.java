@@ -254,6 +254,17 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 
 	}
 
+	protected void onShutdown() {
+		dispatch(new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				if(active.get() == 0){
+					cancel();
+				}
+			}
+		});
+	}
+
 	@Override
 	protected void doError(Throwable throwable) {
 		super.doError(throwable);
@@ -262,7 +273,6 @@ public class ParallelAction<O> extends Action<O, Stream<O>> {
 			parallelStream.broadcastError(throwable);
 		}
 	}
-
 
 	@Override
 	protected void doComplete() {

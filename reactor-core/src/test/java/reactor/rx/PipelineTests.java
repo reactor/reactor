@@ -335,7 +335,7 @@ public class PipelineTests extends AbstractReactorTest {
 		}
 		latch.await(15, TimeUnit.SECONDS);
 		System.out.println(tasks.debug());
-		assertTrue(latch.getCount() + " of " + items + " items were counted down", latch.getCount() == 0);
+		assertTrue(latch.getCount() + " of " + items + " items were not counted down", latch.getCount() == 0);
 	}
 
 	@Test

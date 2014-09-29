@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
+import reactor.rx.StreamSubscription;
 import reactor.rx.action.support.NonBlocking;
 
 import java.util.ArrayList;
@@ -82,6 +83,11 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 			capacity(initUpstreamPublisherAndCapacity());
 		}
 		super.doSubscribe(subscription);
+	}
+
+	@Override
+	public void subscribeWithSubscription(Subscriber<? super O> subscriber, StreamSubscription<O> subscription) {
+		super.subscribeWithSubscription(subscriber, subscription);
 	}
 
 	protected long initUpstreamPublisherAndCapacity() {

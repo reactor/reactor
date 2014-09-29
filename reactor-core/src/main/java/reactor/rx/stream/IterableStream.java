@@ -20,7 +20,6 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.StreamSubscription;
 
-import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -47,7 +46,7 @@ import java.util.Iterator;
  *
  * @author Stephane Maldini
  */
-public class IterableStream<T> extends Stream<T> {
+public final class IterableStream<T> extends Stream<T> {
 
 	final private Iterable<? extends T> defaultValues;
 
@@ -57,18 +56,19 @@ public class IterableStream<T> extends Stream<T> {
 		super(dispatcher);
 
 		this.defaultValues = defaultValues;
-
-		if (null != defaultValues && Collection.class.isAssignableFrom(defaultValues.getClass())) {
-			capacity(((Collection<T>) defaultValues).size());
-		}
-
-		keepAlive(true);
+		this.keepAlive = false;
 	}
 
 	@Override
-	public void checkAndSubscribe(final Subscriber<? super T> subscriber, final StreamSubscription<T> streamSubscription) {
+	protected void onShutdown() {
+		//IGNORE
+	}
+
+	@Override
+	protected void subscribeWithSubscription(final Subscriber<? super T> subscriber, final StreamSubscription<T>
+			streamSubscription) {
 		if (defaultValues != null) {
-			super.checkAndSubscribe(subscriber, streamSubscription);
+			super.subscribeWithSubscription(subscriber, streamSubscription);
 		} else {
 			subscriber.onComplete();
 		}
@@ -77,22 +77,18 @@ public class IterableStream<T> extends Stream<T> {
 	@Override
 	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber, boolean reactivePull) {
 		if(defaultValues != null) {
-			return new StreamSubscription<T>(this, subscriber) {
+			return new StreamSubscription.Firehose<T>(this, subscriber) {
 				Iterator<? extends T> iterator = defaultValues.iterator();
 
 				@Override
 				public void request(long elements) {
-					super.request(elements);
-
-					if (buffer.isComplete()) return;
-
 					long i = 0;
 					while (i < elements && iterator.hasNext()) {
 						onNext(iterator.next());
 						i++;
 					}
 
-					if (!iterator.hasNext() && !buffer.isComplete()) {
+					if (!iterator.hasNext()) {
 						onComplete();
 					}
 				}

@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.rx.StreamSubscription;
 
 /**
  * @author Stephane Maldini
@@ -27,13 +28,6 @@ import reactor.event.dispatch.Dispatcher;
 public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
 	private final FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> fanInAction;
-
-
-	public DynamicMergeAction(
-			Dispatcher dispatcher
-	) {
-		this(dispatcher, null);
-	}
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
@@ -52,6 +46,16 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
 		fanInAction.subscribe(subscriber);
+	}
+
+	@Override
+	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		return fanInAction.createSubscription(subscriber, reactivePull);
+	}
+
+	@Override
+	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, StreamSubscription<O> subscription) {
+		fanInAction.subscribeWithSubscription(subscriber, subscription);
 	}
 
 	@Override
@@ -82,7 +86,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	public Action<Publisher<? extends I>, O> keepAlive(boolean keepAlive) {
 		fanInAction.keepAlive(keepAlive);
-		return super.keepAlive(false);
+		return super.keepAlive(keepAlive);
 	}
 
 	@Override
@@ -105,7 +109,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	public Action<Publisher<? extends I>, O> cancel() {
-		fanInAction.cancel();
+		//fanInAction.cancel();
 		return super.cancel();
 	}
 

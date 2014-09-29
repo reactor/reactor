@@ -24,7 +24,7 @@
 		</encoder>
 	</appender>
 
-	<logger name="reactor" level="trace"/>
+	<logger name="reactor" level="debug"/>
 
 	<root level="info">
 		<appender-ref ref="stdout"/>

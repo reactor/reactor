@@ -39,7 +39,7 @@ import reactor.rx.StreamSubscription;
  *
  * @author Stephane Maldini
  */
-public class SupplierStream<T> extends Stream<T> {
+public final class SupplierStream<T> extends Stream<T> {
 
 	private final Supplier<? extends T> supplier;
 	private final Consumer<Void> supplierConsumer = new SupplierConsumer();
@@ -47,14 +47,19 @@ public class SupplierStream<T> extends Stream<T> {
 	public SupplierStream(Dispatcher dispatcher, Supplier<? extends T> supplier) {
 		super(dispatcher);
 		this.supplier = supplier;
+		this.keepAlive = false;
 	}
 
+	@Override
+	protected void onShutdown() {
+		//IGNORE
+	}
 
 	@Override
-	public void checkAndSubscribe(final Subscriber<? super T> subscriber,
-	                              final StreamSubscription<T> streamSubscription) {
+	protected void subscribeWithSubscription(final Subscriber<? super T> subscriber,
+	                                      final StreamSubscription<T> streamSubscription) {
 		if (supplier != null) {
-			super.checkAndSubscribe(subscriber, streamSubscription);
+			super.subscribeWithSubscription(subscriber, streamSubscription);
 		} else {
 			subscriber.onComplete();
 		}

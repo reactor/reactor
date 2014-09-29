@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public class FutureStream<T> extends Stream<T> {
+public final class FutureStream<T> extends Stream<T> {
 
 	private final Future<? extends T> future;
 	private final long                time;
@@ -70,8 +70,11 @@ public class FutureStream<T> extends Stream<T> {
 		this.unit = unit;
 
 		capacity(1);
+	}
 
-		keepAlive(true);
+	@Override
+	protected void onShutdown() {
+		//IGNORE
 	}
 
 	@Override

@@ -35,7 +35,7 @@ import reactor.rx.action.ParallelAction;
  *
  * @author Stephane Maldini
 */
-public class ParallelStream<O> extends Stream<O> {
+public final class ParallelStream<O> extends Stream<O> {
 	private final ParallelAction<O> parallelAction;
 	private final int               index;
 

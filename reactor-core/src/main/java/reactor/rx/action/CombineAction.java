@@ -114,10 +114,11 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	}
 
 	@Override
-	public Action<E, O> keepAlive(boolean keepAlive) {
+	public CombineAction<E, O> keepAlive(boolean keepAlive) {
 		publisher.keepAlive(keepAlive);
 		subscriber.keepAlive(keepAlive);
-		return super.keepAlive(keepAlive);
+		super.keepAlive(keepAlive);
+		return this;
 	}
 
 	@Override

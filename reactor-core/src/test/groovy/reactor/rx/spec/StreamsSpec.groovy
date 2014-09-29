@@ -986,8 +986,9 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
 			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
-			source.broadcastComplete()
+			println source.debug()
 			def result = source.debug().toMap()
+
 
 		then:
 			'the result should contain all stream titles by id'
@@ -999,6 +1000,16 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[0].to[0].id == "FlowControl"
 			result.to[0].boundTo[1].to[0].id == "FlowControl"
 			result.to[0].boundTo[2].to[0].id == "FlowControl"
+
+		when: "complete will cancel non kept-alive actions"
+		source.broadcastComplete()
+			result = source.debug().toMap()
+
+		then:
+			'the result should contain all stream titles by id'
+			result.to[0].id == "GroupBy"
+			result.to[0].to[0].id == "TerminalCallback"
+			!result.to[0].boundTo
 	}
 
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
@@ -1159,7 +1170,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-		  s = Streams.defer(environment, future, 100, TimeUnit.MILLISECONDS)
+			s = Streams.defer(environment, future, 100, TimeUnit.MILLISECONDS)
 			nexts = []
 			errors = []
 
@@ -1270,7 +1281,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer(environment)
 			long avgTime = 150l
 			long nanotime = avgTime * 1_000_000
 
@@ -1278,6 +1289,7 @@ class StreamsSpec extends Specification {
 					.throttle(avgTime)
 					.elapsed()
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
+				println acc
 				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
 			}
 
@@ -1576,11 +1588,14 @@ class StreamsSpec extends Specification {
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
-			def value = stream.observe {
+			stream = stream.observe {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry(2).observe { println it }.count().tap().get()
+			}.retry(2).observe { println it }.count()
+			println stream.debug()
+
+			def value = stream.tap().get()
 
 			println stream.debug()
 

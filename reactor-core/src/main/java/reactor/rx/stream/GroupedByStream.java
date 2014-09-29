@@ -29,7 +29,7 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public class GroupedByStream<K, T> extends Stream<T> {
+public final class GroupedByStream<K, T> extends Stream<T> {
 	private final K key;
 
 	public GroupedByStream(K key, Dispatcher dispatcher) {
