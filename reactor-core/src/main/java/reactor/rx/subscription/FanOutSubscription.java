@@ -94,6 +94,21 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 		});
 	}
 
+	@Override
+	public boolean isComplete() {
+		lock.readLock().lock();
+		try {
+			boolean isComplete = false;
+			for (PushSubscription<O> subscription : subscriptions) {
+				isComplete = subscription.isComplete();
+				if (!isComplete) break;
+			}
+			return isComplete;
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
 	public void forEach(Consumer<PushSubscription<O>> consumer) {
 		lock.readLock().lock();
 		try {

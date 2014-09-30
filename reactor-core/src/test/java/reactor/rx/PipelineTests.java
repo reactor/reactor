@@ -786,7 +786,7 @@ public class PipelineTests extends AbstractReactorTest {
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max+1);
 
-		Stream<Integer> worker = Streams.range(0, max);
+		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
 		Stream<Void> tail =
 				worker.parallel(2, env.getDispatcherFactory("test-p")).keepAlive(true)

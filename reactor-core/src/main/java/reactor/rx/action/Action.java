@@ -438,6 +438,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	public void broadcastNext(final O ev) {
 		//log.debug("event [" + ev + "] by: " + getClass().getSimpleName());
+		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (!isRunning() || downstreamSubscription == null) {
 			/*if (log.isTraceEnabled()) {
 				log.trace("event [" + ev + "] dropped by: " + getClass().getSimpleName() + ":" + this);
@@ -931,7 +932,7 @@ public abstract class Action<I, O> extends Stream<O>
 			return new PushSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {
-					requestUpstream(null, false, elements);
+					requestUpstream(null, terminated, elements);
 				}
 			};
 		}

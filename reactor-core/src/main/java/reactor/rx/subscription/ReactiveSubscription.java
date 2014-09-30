@@ -158,6 +158,11 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
+	public boolean isComplete() {
+		return buffer.isComplete();
+	}
+
+	@Override
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +

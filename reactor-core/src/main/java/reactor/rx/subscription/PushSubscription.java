@@ -74,6 +74,10 @@ public class PushSubscription<O> implements Subscription {
 		return subscriber;
 	}
 
+	public boolean isComplete() {
+		return terminated;
+	}
+
 	@Override
 	public int hashCode() {
 		int result = subscriber.hashCode();
