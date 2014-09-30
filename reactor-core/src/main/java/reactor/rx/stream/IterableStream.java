@@ -57,7 +57,7 @@ public final class IterableStream<T> extends Stream<T> {
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		if (defaultValues != null) {
 			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-				Iterator<? extends T> iterator = defaultValues.iterator();
+				final Iterator<? extends T> iterator = defaultValues.iterator();
 
 				@Override
 				public void request(long elements) {

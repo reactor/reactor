@@ -16,7 +16,6 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
@@ -159,70 +158,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public boolean isComplete() {
-		return buffer.isComplete();
-	}
-
-	@Override
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
 				", waiting=" + buffer.size() +
 				'}';
-	}
-
-	ReactiveSubscription<O> wrap(CompletableQueue<O> queue) {
-		final ReactiveSubscription<O> thiz = this;
-		return new WrappedReactiveSubscription<O>(thiz, queue);
-	}
-
-	static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
-		final ReactiveSubscription<O> thiz;
-
-		public WrappedReactiveSubscription(final ReactiveSubscription<O> thiz, CompletableQueue<O> queue) {
-			super(thiz.publisher, new Subscriber<O>() {
-				@Override
-				public void onSubscribe(Subscription s) {
-				}
-
-				@Override
-				public void onNext(O o) {
-					thiz.onNext(o);
-				}
-
-				@Override
-				public void onError(Throwable t) {
-					thiz.onError(t);
-				}
-
-				@Override
-				public void onComplete() {
-					thiz.onComplete();
-				}
-			}, queue);
-			this.thiz = thiz;
-		}
-
-		@Override
-		public void request(long elements) {
-			super.request(elements);
-			thiz.request(elements);
-		}
-
-		@Override
-		public void cancel() {
-			super.cancel();
-			thiz.cancel();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
-		}
-
-		@Override
-		public int hashCode() {
-			return thiz.hashCode();
-		}
 	}
 }

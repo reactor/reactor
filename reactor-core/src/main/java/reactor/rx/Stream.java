@@ -72,44 +72,27 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @since 2.0
 	 */
 	@SuppressWarnings({"unchecked", "unused"})
-	public <E> Stream<E> cast(@Nonnull final Class<E> stream) {
+	public final <E> Stream<E> cast(@Nonnull final Class<E> stream) {
 		return (Stream<E>) this;
 	}
 
 	/**
 	 * Subscribe an {@link Action} to the actual pipeline.
-	 * Additionally to producing events (error,complete,next and eventually flush), it will take care of setting the
-	 * environment if available.
-	 * It will also give an initial getCapacity() size used for {@link org.reactivestreams.Subscription#request(long)}
-	 * ONLY
-	 * IF the passed action getCapacity() is not the default Long.MAX_VALUE ({@see this#getCapacity()(elements)}.
-	 * Current KeepAlive value is also assigned
-	 * <p>
+	 * Additionally to producing events (error,complete,next and eventually flush)
+	 *
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 * The operation is returned for functional-style chaining.
-	 * <p>
-	 * If the new action getDispatcher() is different, the new action will take
-	 * care of buffering incoming data into a StreamSubscription. Otherwise default behavior is picked:
-	 * FireHose synchronous subscription is the parent stream != null
 	 *
 	 * @param action the processor to subscribe.
-	 * @param <E>    the {@link Action} output type
-	 * @return the current {link Stream} instance
+	 * @param <E>    the {@link Action} type
+	 * @param <A>    the {@link Action} output type
+	 *
+	 * @return the passed action
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
 	 */
 	public <A, E extends Action<? super O, ? extends A>> E connect(@Nonnull final E action) {
-		/*if ((action.getCapacity() == Long.MAX_VALUE && getCapacity() != Long.MAX_VALUE) ||
-				action.getCapacity() == action.getDispatcher().backlogSize() - Action.RESERVED_SLOTS) {
-			action.capacity(getCapacity());
-		}
-
-		if(action.getEnvironment() == null){
-			action.env(getEnvironment());
-		}*/
-
 		this.subscribe(action);
-
 		return action;
 	}
 
@@ -261,7 +244,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. It will pass
 	 * the
-	 * newly created {@link Stream} to the consumer for state introspection, e.g. {@link Action#getState()}
+	 * newly created {@link Stream} to the consumer for state introspection, e.g. {@link Action#getFinalState()}
 	 * Stream}.
 	 *
 	 * @param consumer the consumer to invoke on terminal signal
@@ -487,7 +470,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public final FlowControlAction<O> onOverflowBuffer() {
+	public final Action<O, O> onOverflowBuffer() {
 		return onOverflowBuffer(null);
 	}
 
@@ -500,16 +483,8 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public final FlowControlAction<O> onOverflowBuffer(CompletableQueue<O> queue) {
-		FlowControlAction<O> stream = new FlowControlAction<O>(getDispatcher());
-		if (queue != null) {
-			stream.capacity(getCapacity()).env(getEnvironment());
-			//stream.keepAlive(keepAlive);
-			//subscribeWithSubscription(stream, createSubscription(stream, true).wrap(queue));
-		} else {
-			connect(stream);
-		}
-		return stream;
+	public Action<O, O> onOverflowBuffer(CompletableQueue<O> queue) {
+		return dispatchOn(getEnvironment(), getDispatcher()).onOverflowBuffer(queue);
 	}
 
 	/**
@@ -630,7 +605,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final LimitAction<O> limit(long max, Predicate<O> limitMatcher) {
+	public final Action<O, O> limit(long max, Predicate<O> limitMatcher) {
 		return connect(new LimitAction<O>(getDispatcher(), limitMatcher, max));
 	}
 

@@ -115,7 +115,7 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 	@Override
 	protected void doComplete() {
 		//can receive multiple queued complete signals
-		if (state == State.READY && runningComposables.get() == 0) {
+		if (finalState == null && runningComposables.get() == 0) {
 			innerSubscriptions.scheduleTermination();
 			broadcastComplete();
 		}

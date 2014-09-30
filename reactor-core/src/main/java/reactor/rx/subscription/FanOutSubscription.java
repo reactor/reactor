@@ -15,8 +15,6 @@
  */
 package reactor.rx.subscription;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
 
@@ -34,8 +32,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @since 2.0
  */
 public class FanOutSubscription<O> extends PushSubscription<O> {
-
-	static final Logger log = LoggerFactory.getLogger(FanOutSubscription.class);
 
 	private final List<PushSubscription<O>> subscriptions = new ArrayList<PushSubscription<O>>(2);
 	private final ReentrantReadWriteLock    lock          = new ReentrantReadWriteLock();
@@ -68,13 +64,6 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 			@Override
 			public void accept(PushSubscription<O> subscription) {
 				try {
-					if (subscription.isComplete()) {
-						if (log.isDebugEnabled()) {
-							log.debug("event ignored [" + ev + "] as downstream subscription is complete");
-						}
-						return;
-					}
-
 					subscription.onNext(ev);
 
 				} catch (Throwable throwable) {
@@ -103,21 +92,6 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 				oPushSubscription.onError(ev);
 			}
 		});
-	}
-
-	@Override
-	public boolean isComplete() {
-		lock.readLock().lock();
-		try {
-			boolean isComplete = false;
-			for (PushSubscription<O> subscription : subscriptions) {
-				isComplete = subscription.isComplete();
-				if (!isComplete) break;
-			}
-			return isComplete;
-		} finally {
-			lock.readLock().unlock();
-		}
 	}
 
 	public void forEach(Consumer<PushSubscription<O>> consumer) {

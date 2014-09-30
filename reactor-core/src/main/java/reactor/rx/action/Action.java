@@ -19,8 +19,6 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.alloc.Recyclable;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
@@ -31,6 +29,7 @@ import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.Router;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
+import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.support.NonBlocking;
@@ -85,14 +84,13 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class Action<I, O> extends Stream<O>
 		implements Processor<I, O>, Consumer<I>, NonBlocking, Pausable, Recyclable {
 
-	protected static final Logger log = LoggerFactory.getLogger(Action.class);
+	//protected static final Logger log = LoggerFactory.getLogger(Action.class);
 
 	public static final Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
 
-	public static enum State {
-		READY,
+	public static enum FinalState {
 		ERROR,
 		COMPLETE,
 		SHUTDOWN
@@ -106,19 +104,21 @@ public abstract class Action<I, O> extends Stream<O>
 	public static final int RESERVED_SLOTS = 4;
 
 
-	protected long      pendingNextSignals = 0;
-	protected long      currentNextSignals = 0;
-	protected boolean   firehose           = false;
-	protected Throwable error              = null;
-	protected PushSubscription<O> downstreamSubscription;
+	protected long    pendingNextSignals = 0;
+	protected long    currentNextSignals = 0;
+	protected boolean firehose           = false;
 	protected boolean pause = false;
-	protected State   state = State.READY;
+	protected Throwable           error;
+
+	protected PushSubscription<O> downstreamSubscription;
+
+	protected FinalState finalState;
 
 	protected Subscription subscription;
 	protected Dispatcher   dispatcher;
 
 	protected long capacity;
-	protected Boolean keepAlive    = false;
+	protected boolean keepAlive    = false;
 	protected boolean ignoreErrors = false;
 	protected Environment environment;
 
@@ -227,7 +227,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 
 		this.subscription = subscription;
-		this.state = State.READY;
+		this.finalState = null;
 		this.firehose = !ReactiveSubscription.class.isAssignableFrom(subscription.getClass());
 
 
@@ -408,7 +408,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * automatically on complete. Shutdown state is observed when the last subscriber is cancelled.
 	 *
 	 * @param keepAlive to either automatically shutdown and {@link this#cancel()} any upstream subscription when no
-	 *                   downstream is consuming anymore.
+	 *                  downstream is consuming anymore.
 	 * @return {@literal this}
 	 */
 	public Action<I, O> keepAlive(boolean keepAlive) {
@@ -448,7 +448,7 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			downstreamSubscription.onNext(ev);
 
-			if (state == State.COMPLETE || (downstreamSubscription != null && downstreamSubscription.isComplete())) {
+			if (finalState == FinalState.COMPLETE) {
 				downstreamSubscription.onComplete();
 			}
 		} catch (Throwable throwable) {
@@ -472,13 +472,13 @@ public abstract class Action<I, O> extends Stream<O>
 		}*/
 
 		if (!ignoreErrors) {
-			state = State.ERROR;
+			finalState = FinalState.ERROR;
 			error = throwable;
 		}
 
 		if (downstreamSubscription == null) {
-			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(),
-					throwable));
+			/*log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(),
+					throwable)); */
 			return;
 		}
 
@@ -493,7 +493,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	public void broadcastComplete() {
 		//log.debug("event [complete] by: " + getClass().getSimpleName());
-		if (state != State.READY) {
+		if (finalState != null) {
 			/*if (log.isTraceEnabled()) {
 				log.trace("Complete signal dropped by: " + getClass().getSimpleName() + ":" + this);
 			}*/
@@ -501,7 +501,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 
 		if (downstreamSubscription == null) {
-			state = State.COMPLETE;
+			finalState = FinalState.COMPLETE;
 			return;
 		}
 
@@ -511,7 +511,7 @@ public abstract class Action<I, O> extends Stream<O>
 			callError(downstreamSubscription, throwable);
 		}
 
-		state = State.COMPLETE;
+		finalState = FinalState.COMPLETE;
 	}
 
 
@@ -523,7 +523,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 
 		//Force state shutdown
-		this.state = State.SHUTDOWN;
+		this.finalState = FinalState.SHUTDOWN;
 		return this;
 	}
 
@@ -551,6 +551,30 @@ public abstract class Action<I, O> extends Stream<O>
 	 * --------------------------------------------------------------------------------------------------------
 	 */
 
+	/**
+	 * Subscribe an {@link Action} to the actual pipeline.
+	 * <p>
+	 * Additionally to producing events (error,complete,next and eventually flush), it will take care of setting the
+	 * environment if available.
+	 * It will also give an initial capacity size used for {@link org.reactivestreams.Subscription#request(long)}
+	 * ONLY
+	 * IF the passed action capacity is not the default Long.MAX_VALUE ({@see this#getCapacity()(elements)}.
+	 * Current KeepAlive value is also assigned
+	 * <p>
+	 * Reactive Extensions patterns also dubs this operation "lift".
+	 * The operation is returned for functional-style chaining.
+	 * <p>
+	 * If the new action dispatcher is different, the new action will take
+	 * care of buffering incoming data into a StreamSubscription. Otherwise default behavior is picked:
+	 * Push synchronous subscription is the parent stream != null.
+	 *
+	 * @param action the processor to subscribe.
+	 * @param <E>    the {@link Action} type
+	 * @param <A>    the {@link Action} output type
+	 * @return the passed action
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
+	 * @since 2.0
+	 */
 	@Override
 	public final <A, E extends Action<? super O, ? extends A>> E connect(@Nonnull final E action) {
 		if ((action.capacity == Long.MAX_VALUE && getCapacity() != Long.MAX_VALUE) ||
@@ -586,7 +610,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return the current {@link Stream} instance
 	 * @since 2.0
 	 */
-	public <E> Action<I, O> control(Stream<E> controlStream, final Consumer<Tuple2<Action<I, O>,
+	public final  <E> Action<I, O> control(Stream<E> controlStream, final Consumer<Tuple2<Action<I, O>,
 			? super E>> controller) {
 		final Action<I, O> thiz = this;
 		controlStream.consume(new Consumer<E>() {
@@ -599,8 +623,21 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
+	public final Action<O, O> onOverflowBuffer(CompletableQueue<O> queue) {
+		FlowControlAction<O> stream = new FlowControlAction<O>(getDispatcher());
+		if (queue != null) {
+			stream.capacity(capacity).env(environment);
+			stream.keepAlive(keepAlive);
+			subscribeWithSubscription(stream, createSubscription(stream, true).toReactiveSubscription(queue));
+		} else {
+			connect(stream);
+		}
+		return stream;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
-	public <T, V> Action<Publisher<? extends T>, V> fanIn(FanInAction<T, V, ? extends FanInAction.InnerSubscriber<T,
+	public final  <T, V> Action<Publisher<? extends T>, V> fanIn(FanInAction<T, V, ? extends FanInAction.InnerSubscriber<T,
 			V>> fanInAction) {
 		Action<?, Publisher<T>> thiz = (Action<?, Publisher<T>>) this;
 
@@ -617,10 +654,10 @@ public abstract class Action<I, O> extends Stream<O>
 	 * <p>
 	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
 	 *
-	 * @param <E>
+	 * @param <E> the type of the most ancien action input.
 	 * @return new Action
 	 */
-	public <E> CombineAction<E, O> combine() {
+	public final <E> CombineAction<E, O> combine() {
 		return combine(false);
 	}
 
@@ -631,11 +668,11 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle
 	 *
 	 * @param reuse Reset to READY state the upstream chain while searching for the most ancient Action
-	 * @param <E>
+	 * @param <E> the type of the most ancien action input.
 	 * @return new Action
 	 */
 	@SuppressWarnings("unchecked")
-	public <E> CombineAction<E, O> combine(boolean reuse) {
+	public final  <E> CombineAction<E, O> combine(boolean reuse) {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class, reuse);
 		subscriber.subscription = null;
 		return new CombineAction<E, O>(subscriber, this);
@@ -701,7 +738,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Utility to find the most ancient subscribed Action with an option to reset its state (e.g. in a case of retry()).
 	 * Also used by debug() operation to render the complete flow from upstream.
 	 *
-	 * @param resetState Will reset any action state to {@link reactor.rx.action.Action.State#READY}
+	 * @param resetState Will reset any action terminal state
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -769,10 +806,10 @@ public abstract class Action<I, O> extends Stream<O>
 	/**
 	 * Get the current action state.
 	 *
-	 * @return current {@link reactor.rx.action.Action.State}
+	 * @return current {@link reactor.rx.action.Action.FinalState}
 	 */
-	public final State getState() {
-		return state;
+	public final FinalState getFinalState() {
+		return finalState;
 	}
 
 	/**
@@ -809,7 +846,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return true if signals can be dispatched
 	 */
 	public final boolean isRunning() {
-		return state == State.READY;
+		return finalState == null;
 	}
 
 
@@ -847,7 +884,7 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void recycle() {
 		downstreamSubscription = null;
-		state = State.READY;
+		finalState = null;
 		environment = null;
 		firehose = false;
 		dispatcher = SynchronousDispatcher.INSTANCE;
@@ -868,7 +905,7 @@ public abstract class Action<I, O> extends Stream<O>
 				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
 				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
 						"")) +
-				", state=" + getState() +
+				(getFinalState() != null ? ", state=" + getFinalState() : "") +
 				", ka=" + keepAlive +
 				", max-capacity=" + getCapacity() +
 				(subscription != null &&
@@ -894,7 +931,7 @@ public abstract class Action<I, O> extends Stream<O>
 			return new PushSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {
-					requestUpstream(null, isComplete(), elements);
+					requestUpstream(null, false, elements);
 				}
 			};
 		}
@@ -986,7 +1023,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	protected void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
 			subscription) {
-		if (state == State.READY && addSubscription(subscription)) {
+		if (finalState == null && addSubscription(subscription)) {
 			if (NonBlocking.class.isAssignableFrom(subscriber.getClass())) {
 				subscriber.onSubscribe(subscription);
 			} else {
@@ -997,11 +1034,11 @@ public abstract class Action<I, O> extends Stream<O>
 					}
 				});
 			}
-		} else if (state == State.COMPLETE) {
+		} else if (finalState == FinalState.COMPLETE) {
 			subscriber.onComplete();
-		} else if (state == State.SHUTDOWN) {
+		} else if (finalState == FinalState.SHUTDOWN) {
 			subscriber.onError(new IllegalStateException("Publisher has shutdown"));
-		} else if (state == State.ERROR) {
+		} else if (finalState == FinalState.ERROR) {
 			subscriber.onError(error);
 		}
 	}
@@ -1033,7 +1070,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected void resetState(Action<?, ?> action) {
-		action.state = State.READY;
+		action.finalState = null;
 		action.error = null;
 	}
 
@@ -1044,8 +1081,8 @@ public abstract class Action<I, O> extends Stream<O>
 				&& actionClass.isAssignableFrom(((PushSubscription<?>) that.subscription).getPublisher().getClass());
 	}
 
-	protected void setState(State state) {
-		this.state = state;
+	protected void setFinalState(FinalState finalState) {
+		this.finalState = finalState;
 	}
 
 	private void callError(PushSubscription<O> subscription, Throwable cause) {

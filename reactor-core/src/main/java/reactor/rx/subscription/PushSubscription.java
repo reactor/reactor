@@ -17,6 +17,7 @@ package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 
 /**
@@ -25,11 +26,10 @@ import reactor.rx.Stream;
  * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
  *
  * @author Stephane Maldini
-
  */
 public class PushSubscription<O> implements Subscription {
-	final           Subscriber<? super O> subscriber;
-	final           Stream<O>             publisher;
+	final Subscriber<? super O> subscriber;
+	final Stream<O>             publisher;
 
 	protected volatile boolean terminated = false;
 
@@ -52,8 +52,8 @@ public class PushSubscription<O> implements Subscription {
 	public void onComplete() {
 		if (!terminated) {
 			subscriber.onComplete();
+			terminated = true;
 		}
-		terminated = true;
 	}
 
 	public void onNext(O ev) {
@@ -72,10 +72,6 @@ public class PushSubscription<O> implements Subscription {
 
 	public Subscriber<? super O> getSubscriber() {
 		return subscriber;
-	}
-
-	public boolean isComplete() {
-		return terminated;
 	}
 
 	@Override
@@ -100,8 +96,68 @@ public class PushSubscription<O> implements Subscription {
 
 	@Override
 	public String toString() {
-		return "{" +
-				"push!" +
-				'}';
+		return "{push!}";
+	}
+
+	/**
+	 * Wrap the subscription behind a reactive subscription using the passed queue to buffer otherwise to drop rejected
+	 * data.
+	 *
+	 * @param queue the optional queue to buffer overflow
+	 * @return the new ReactiveSubscription
+	 */
+	public ReactiveSubscription<O> toReactiveSubscription(CompletableQueue<O> queue) {
+		final PushSubscription<O> thiz = this;
+		return new WrappedReactiveSubscription<O>(thiz, queue);
+	}
+
+	static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
+		final PushSubscription<O> thiz;
+
+		public WrappedReactiveSubscription(final PushSubscription<O> thiz, CompletableQueue<O> queue) {
+			super(thiz.publisher, new Subscriber<O>() {
+				@Override
+				public void onSubscribe(Subscription s) {
+				}
+
+				@Override
+				public void onNext(O o) {
+					thiz.onNext(o);
+				}
+
+				@Override
+				public void onError(Throwable t) {
+					thiz.onError(t);
+				}
+
+				@Override
+				public void onComplete() {
+					thiz.onComplete();
+				}
+			}, queue);
+			this.thiz = thiz;
+		}
+
+		@Override
+		public void request(long elements) {
+			super.request(elements);
+			thiz.request(elements);
+		}
+
+		@Override
+		public void cancel() {
+			super.cancel();
+			thiz.cancel();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
+		}
+
+		@Override
+		public int hashCode() {
+			return thiz.hashCode();
+		}
 	}
 }

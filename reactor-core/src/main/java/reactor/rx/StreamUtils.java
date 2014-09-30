@@ -198,7 +198,10 @@ public abstract class StreamUtils {
 							if (Promise.class.isAssignableFrom(subscriber.getClass())) {
 								List<Object> wrappedStream = new ArrayList<Object>();
 								wrappedSubscriber.put("info", subscriber.toString());
-								wrappedSubscriber.put("state", ((Promise<?>) subscriber).state);
+
+								if(((Promise<?>) subscriber).finalState != null)
+									wrappedSubscriber.put("state", ((Promise<?>) subscriber).finalState);
+
 								parseComposable(((Promise<?>) subscriber).outboundStream, wrappedStream);
 							} else {
 								wrappedSubscriber.put("info", subscriber.toString());

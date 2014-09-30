@@ -313,11 +313,11 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 			} catch (Throwable e) {
 				publisher.broadcastError(e);
 			}
-		} else {
+		} /*else {
 			if (log.isTraceEnabled()) {
 				log.trace("event dropped " + ev + " as downstream publisher is shutdown");
 			}
-		}
+		}*/
 
 	}
 

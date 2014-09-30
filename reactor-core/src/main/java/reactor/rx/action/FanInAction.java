@@ -98,7 +98,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		super.requestUpstream(capacity, terminated, elements);
-		if (dynamicMergeAction != null && dynamicMergeAction.getState() == State.READY) {
+		if (dynamicMergeAction != null && dynamicMergeAction.getFinalState() == null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
 	}
@@ -190,6 +190,8 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		@Override
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
+			s.cancel();
+
 			Consumer<Void> completeConsumer = new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {

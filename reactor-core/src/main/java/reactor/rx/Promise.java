@@ -60,7 +60,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	private final Environment environment;
 	Action<O, O> outboundStream;
 
-	Action.State state = Action.State.READY;
+	Action.FinalState finalState = null;
 	private O         value;
 	private Throwable error;
 	private boolean hasBlockers = false;
@@ -111,7 +111,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(O value, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		state = Action.State.COMPLETE;
+		finalState = Action.FinalState.COMPLETE;
 		this.value = value;
 	}
 
@@ -129,7 +129,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(Throwable error, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		state = Action.State.ERROR;
+		finalState = Action.FinalState.ERROR;
 		this.error = error;
 	}
 
@@ -179,7 +179,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isComplete() {
 		lock.lock();
 		try {
-			return state != Action.State.READY;
+			return finalState != null;
 		} finally {
 			lock.unlock();
 		}
@@ -194,7 +194,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isPending() {
 		lock.lock();
 		try {
-			return state == Action.State.READY;
+			return finalState == null;
 		} finally {
 			lock.unlock();
 		}
@@ -208,7 +208,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isSuccess() {
 		lock.lock();
 		try {
-			return state == Action.State.COMPLETE;
+			return finalState == Action.FinalState.COMPLETE;
 		} finally {
 			lock.unlock();
 		}
@@ -222,7 +222,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isError() {
 		lock.lock();
 		try {
-			return state == Action.State.ERROR;
+			return finalState == Action.FinalState.ERROR;
 		} finally {
 			lock.unlock();
 		}
@@ -267,11 +267,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			if (timeout >= 0) {
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
-				while (state == Action.State.READY && (System.currentTimeMillis()) < endTime) {
+				while (finalState == null && (System.currentTimeMillis()) < endTime) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			} else {
-				while (state == Action.State.READY) {
+				while (finalState == null) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			}
@@ -294,9 +294,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public O get() {
 		lock.lock();
 		try {
-			if (state == Action.State.COMPLETE) {
+			if (finalState == Action.FinalState.COMPLETE) {
 				return value;
-			} else if (state == Action.State.ERROR) {
+			} else if (finalState == Action.FinalState.ERROR) {
 				if (RuntimeException.class.isInstance(error)) {
 					throw (RuntimeException) error;
 				} else {
@@ -416,7 +416,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (!isPending()) throw new IllegalStateException();
 			this.error = error;
-			this.state = Action.State.ERROR;
+			this.finalState = Action.FinalState.ERROR;
 
 			if (outboundStream != null) {
 				outboundStream.broadcastError(error);
@@ -438,7 +438,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 				throw new IllegalStateException();
 			}
 			this.value = value;
-			this.state = Action.State.COMPLETE;
+			this.finalState = Action.FinalState.COMPLETE;
 
 			if (outboundStream != null) {
 				outboundStream.broadcastNext(value);
@@ -473,7 +473,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			return "Promise{" +
 					"value=" + value +
-					", state=" + state +
+					(finalState != null ? ", state=" + finalState : "") +
 					", error=" + error +
 					'}';
 		} finally {
