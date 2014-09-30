@@ -16,331 +16,79 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
-import reactor.event.registry.Registration;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
-import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
-import reactor.rx.action.support.SpecificationExceptions;
-import reactor.rx.stream.ParallelStream;
-import reactor.timer.Timer;
-import reactor.util.Assert;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
+ * A stream emitted from the {@link reactor.rx.Stream#parallel()} action that tracks its position in the hosting
+ * {@link reactor.rx.action.ConcurrentAction}. It also retains the last time it requested anything for
+ * latency monitoring {@link reactor.rx.action.ConcurrentAction#monitorLatency(long)}.
+ * The Stream will complete or fail whever the parent parallel action terminates itself or when broadcastXXX is called.
+ * <p>
+ * Create such stream with the provided factory, E.g.:
+ * {@code
+ * Streams.parallel(8).consume(parallelStream -> parallelStream.consume())
+ * }
+ *
  * @author Stephane Maldini
- * @since 2.0
  */
-public class ParallelAction<O> extends Action<O, Stream<O>> {
+public final class ParallelAction<O> extends Action<O, O> {
+	private final ConcurrentAction<O> parallelAction;
+	private final int                 index;
 
-	private final int poolSize;
-	private final ReentrantLock lock   = new ReentrantLock();
-	private final AtomicInteger active = new AtomicInteger();
-	private final ParallelStream[] publishers;
+	private volatile long lastRequestedTime = -1l;
+	private ReactiveSubscription<O> reactiveSubscription;
 
-	private volatile int roundRobinIndex = 0;
+	public ParallelAction(ConcurrentAction<O> parallelAction, Dispatcher dispatcher, int index) {
+		super(dispatcher);
+		this.dispatcher = dispatcher;
+		this.parallelAction = parallelAction;
+		this.index = index;
+	}
 
-	private Registration<? extends Consumer<Long>> consumerRegistration;
-
-	protected final Consumer<Long> requestConsumer = new Consumer<Long>() {
-		@Override
-		public void accept(Long n) {
-			lock.lock();
-			try {
-				if (subscription == null) {
-
-					if ((pendingNextSignals += n) < 0) {
-						lock.unlock();
-						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
-					} else {
-						lock.unlock();
-					}
-					return;
-				}
-
-				if (firehose) {
-					currentNextSignals = 0;
-					lock.unlock();
-					subscription.request(n);
-					return;
-				}
-
-				long previous = pendingNextSignals;
-				pendingNextSignals += n;
-
-				if (previous < capacity) {
-					long toRequest = n + previous;
-					toRequest = Math.min(toRequest, capacity);
-					pendingNextSignals -= toRequest;
-					currentNextSignals = 0;
-					lock.unlock();
-					subscription.request(toRequest);
-					return;
-				}
-
-				lock.unlock();
-
-			} catch (Throwable t) {
-
-				if (lock.isHeldByCurrentThread())
-					lock.unlock();
-
-				doError(t);
-			}
-		}
-	};
-
-	@SuppressWarnings("unchecked")
-	public ParallelAction(Dispatcher parentDispatcher,
-	                      Supplier<Dispatcher> multiDispatcher,
-	                      Integer poolSize) {
-		super(parentDispatcher);
-		Assert.state(poolSize > 0, "Must provide a strictly positive number of concurrent sub-streams (poolSize)");
-		this.poolSize = poolSize;
-		this.publishers = new ParallelStream[poolSize];
-		for (int i = 0; i < poolSize; i++) {
-			this.publishers[i] = new ParallelStream<O>(ParallelAction.this, multiDispatcher.get(), i);
+	public long getCurrentCapacity() {
+		if(reactiveSubscription == null){
+			return 0;
+		}else{
+			return reactiveSubscription.getCapacity().get();
 		}
 	}
 
 	@Override
-	public Action<O, Stream<O>> capacity(long elements) {
-		int cumulatedReservedSlots = poolSize * RESERVED_SLOTS;
-		if (elements < cumulatedReservedSlots) {
-			super.capacity(elements);
-		} else {
-			long newCapacity = elements - cumulatedReservedSlots + RESERVED_SLOTS;
-			if (log.isTraceEnabled()) {
-				log.trace("ParallelAction capacity has been altered to {}. Trying to book {} slots on ParallelAction but " +
-								"we are capped {} slots to never overrun the underlying dispatchers. ", newCapacity,
-						cumulatedReservedSlots + RESERVED_SLOTS);
-
-			}
-			super.capacity(newCapacity);
-		}
-		long size = capacity / poolSize;
-
-		if (size == 0) {
-			log.warn("Of course there are {} parallel streams and there can only be {} max items available at any given " +
-							"time, " +
-							"we baselined all parallel streams capacity to {}",
-					poolSize, elements, elements);
-			size = elements;
-		}
-
-		for (ParallelStream p : publishers) {
-			p.capacity(size);
-		}
-		return this;
+	protected void doNext(O ev) {
+		broadcastNext(ev);
 	}
 
-	public void clean(int index) {
-		publishers[index] = null;
-
-		if (active.decrementAndGet() <= 0) {
-			cancel();
-		}
+	public long getLastRequestedTime() {
+		return lastRequestedTime;
 	}
 
-	public void parallelRequest(long elements, int index) {
-		roundRobinIndex = index;
-		onRequest(elements);
+	public int getIndex() {
+		return index;
 	}
 
 	@Override
-	protected void onRequest(long n) {
-		checkRequest(n);
-		trySyncDispatch(n, requestConsumer);
-	}
-
-	@Override
-	public Action<O, Stream<O>> env(Environment environment) {
-		for (ParallelStream p : publishers) {
-			p.env(environment);
-		}
-		return super.env(environment);
-	}
-
-	@Override
-	public Action<O, Stream<O>> keepAlive(boolean keepAlive) {
-		super.keepAlive(keepAlive);
-		for (ParallelStream p : publishers) {
-			p.keepAlive(keepAlive);
-		}
-		return this;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	protected StreamSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber, boolean reactivePull) {
-		return new StreamSubscription.Firehose<Stream<O>>(this, subscriber) {
-			long cursor = 0l;
-
+	protected ReactiveSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		reactiveSubscription = new ReactiveSubscription<O>(this, subscriber) {
 			@Override
 			public void request(long elements) {
-				int i = 0;
-				while (i < poolSize && i < cursor) {
-					i++;
-				}
-
-				while (i < elements && i < poolSize) {
-					cursor++;
-					active.incrementAndGet();
-					onNext(publishers[i]);
-					i++;
-				}
-
-				if (i == poolSize) {
-					onComplete();
-				}
+				super.request(elements);
+				lastRequestedTime = System.currentTimeMillis();
+				parallelAction.parallelRequest(elements, index);
 			}
+
+			@Override
+			public void cancel() {
+				super.cancel();
+				parallelAction.clean(index);
+			}
+
 		};
+		return reactiveSubscription;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected void doNext(final O ev) {
-
-		ParallelStream<O> publisher;
-		boolean hasCapacity;
-		int tries = 0;
-		int lastExistingPublisher = -1;
-		int currentRoundRobIndex = roundRobinIndex;
-
-		while (tries < poolSize) {
-			publisher = publishers[currentRoundRobIndex];
-
-			if (publisher != null) {
-				lastExistingPublisher = currentRoundRobIndex;
-
-				hasCapacity = publisher.downstreamSubscription() != null &&
-						publisher.downstreamSubscription().getCapacity().get() > publisher.getCapacity() * 0.15;
-
-				if (hasCapacity) {
-					try {
-						publisher.broadcastNext(ev);
-					} catch (Throwable e) {
-						publisher.broadcastError(e);
-					}
-					return;
-				}
-			}
-
-			if (++currentRoundRobIndex >= active.get()) {
-				currentRoundRobIndex = 0;
-			}
-
-			tries++;
-		}
-
-		if (lastExistingPublisher != -1) {
-			roundRobinIndex = lastExistingPublisher;
-			publisher = publishers[lastExistingPublisher];
-			try {
-				publisher.broadcastNext(ev);
-			} catch (Throwable e) {
-				publisher.broadcastError(e);
-			}
-		} else {
-			if (log.isTraceEnabled()) {
-				log.trace("event dropped " + ev + " as downstream publisher is shutdown");
-			}
-		}
-
+	public String toString() {
+		return super.toString() + "{" + (index + 1) + "/" + parallelAction.getPoolSize() + "}";
 	}
-
-	protected void onShutdown() {
-		dispatch(new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				if(active.get() == 0){
-					cancel();
-				}
-			}
-		});
-	}
-
-	@Override
-	protected void doError(Throwable throwable) {
-		super.doError(throwable);
-		if (consumerRegistration != null) consumerRegistration.cancel();
-		for (ParallelStream parallelStream : publishers) {
-			parallelStream.broadcastError(throwable);
-		}
-	}
-
-	@Override
-	protected void doComplete() {
-		super.doComplete();
-		if (consumerRegistration != null) consumerRegistration.cancel();
-		for (ParallelStream parallelStream : publishers) {
-			parallelStream.broadcastComplete();
-		}
-	}
-
-	/**
-	 * Monitor all sub-streams latency to hint the next elements to dispatch to the fastest sub-streams in priority.
-	 *
-	 * @param latencyInMs a period in milliseconds to tolerate before assigning a new sub-stream
-	 */
-	public ParallelAction<O> monitorLatency(long latencyInMs) {
-		Assert.isTrue(environment != null, "Require an environment to retrieve the default timer");
-		return monitorLatency(latencyInMs, environment.getRootTimer());
-	}
-
-	/**
-	 * Monitor all sub-streams latency to hint the next elements to dispatch to the fastest sub-streams in priority.
-	 *
-	 * @param latencyInMs a period in milliseconds to tolerate before assigning a new sub-stream
-	 * @param timer       a timer to run on periodically
-	 */
-	public ParallelAction<O> monitorLatency(final long latencyInMs, Timer timer) {
-		consumerRegistration = timer.schedule(new Consumer<Long>() {
-			@Override
-			public void accept(Long aLong) {
-				trySyncDispatch(aLong, new Consumer<Long>() {
-					@Override
-					public void accept(Long aLong) {
-
-						try {
-							if (aLong - publishers[roundRobinIndex].getLastRequestedTime() < latencyInMs) return;
-						} catch (NullPointerException npe) {
-							//ignore
-						}
-
-						int fasterParallelIndex = -1;
-						for (ParallelStream parallelStream : publishers) {
-							try {
-								if (aLong - parallelStream.getLastRequestedTime() < latencyInMs) {
-									fasterParallelIndex = parallelStream.getIndex();
-									break;
-								}
-							} catch (NullPointerException npe) {
-								//ignore
-							}
-						}
-
-						if (fasterParallelIndex == -1) return;
-
-						roundRobinIndex = fasterParallelIndex;
-					}
-				});
-			}
-		}, latencyInMs, TimeUnit.MILLISECONDS, latencyInMs);
-		return this;
-	}
-
-	public int getPoolSize() {
-		return poolSize;
-	}
-
-	public ParallelStream[] getPublishers() {
-		return publishers;
-	}
-
 }

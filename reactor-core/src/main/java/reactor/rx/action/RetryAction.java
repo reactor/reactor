@@ -19,6 +19,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
 import reactor.rx.Stream;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -26,7 +27,7 @@ import reactor.rx.Stream;
  */
 public class RetryAction<T> extends Action<T, T> {
 
-	private final long          numRetries;
+	private final long                 numRetries;
 	private final Predicate<Throwable> retryMatcher;
 	private long currentNumRetries = 0;
 
@@ -58,15 +59,15 @@ public class RetryAction<T> extends Action<T, T> {
 					currentNumRetries = 0;
 				} else {
 					if (subscription != null) {
-						Stream<?> rootAction = findOldestUpstream(Stream.class, true);
-						Action secondAction = rootAction.downstreamSubscription() != null ?
-								(Action)rootAction.downstreamSubscription().getSubscriber() :
-								null;
+						Action<?, ?> rootAction = findOldestUpstream(Action.class, true);
 
-						//Test if deferred stream (hot stream)
-						if(!rootAction.getClass().equals(Stream.class) && secondAction != null){
-							secondAction.cancel();
-							rootAction.subscribe(secondAction);
+						if (rootAction.subscription != null
+								&& PushSubscription.class.isAssignableFrom(rootAction.subscription.getClass())) {
+
+							Stream originalStream = ((PushSubscription<?>) rootAction.subscription).getPublisher();
+							rootAction.cancel();
+							originalStream.subscribe(rootAction);
+
 						}
 						requestConsumer.accept(capacity);
 					}

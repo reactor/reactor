@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package reactor.rx.stream;
+
+import org.reactivestreams.Subscriber;
+import reactor.rx.Stream;
+
+/**
+ * A Stream that emits a sigle error signal.
+ * <p>
+ * Since the stream retains the error in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * will replay the error. This is a "Cold" stream.
+ * <p>
+ * Create such stream with the provided factory, E.g.:
+ * {@code
+ * Streams.errpr(error).when(Throwable.class, log::error)
+ * }
+ * <p>
+ * Will log:
+ * 1
+ * 2
+ * 3
+ * 4
+ * complete
+ *
+ * @author Stephane Maldini
+ */
+public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
+
+	final private T error;
+
+	public ErrorStream(T value) {
+		this.error = value;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + " " + error;
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super O> s) {
+		s.onError(error);
+	}
+}

@@ -16,58 +16,63 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.function.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * A Stream that returns the result from {@link reactor.function.Supplier#get()} everytime it is requested via
- * {@link org.reactivestreams.Subscription#request(long)}.
+ * A Stream that emits only one value and then complete.
  * <p>
- * The Stream will end when the result is null or {@link reactor.rx.action.Action#broadcastComplete()} is called.
+ * Since the stream retains the value in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * will replay the value. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
- * Streams.generate(env, (-> randomNumber()))
- *    .throttle(200)
- *    .consume(System.out::println)
+ * Streams.just(1).consume(
+ *    log::info,
+ *    log::error,
+ *    (-> log.info("complete"))
+ * )
  * }
  * <p>
- * This example will generate a random number every 200ms
+ * Will log:
+ * 1
+ * 2
+ * 3
+ * 4
+ * complete
  *
  * @author Stephane Maldini
  */
-public final class SupplierStream<T> extends Stream<T> {
+public final class SingleValueStream<T> extends Stream<T> {
 
-	private final Supplier<? extends T> supplier;
+	final private T value;
 
-	public SupplierStream(Supplier<? extends T> supplier) {
-		this.supplier = supplier;
+	@SuppressWarnings("unchecked")
+	public SingleValueStream(T value) {
+		this.value = value;
 	}
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		if (supplier != null) {
+		if (value != null) {
 			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-
+				boolean terminado = false;
 				@Override
 				public void request(long elements) {
-					try {
-						T supplied = supplier.get();
-						if (supplied != null) {
-							subscriber.onNext(supplied);
-						} else {
-							subscriber.onComplete();
-						}
-					} catch (Throwable throwable) {
-						subscriber.onError(throwable);
-					}
+					if(terminado)return;
+
+					terminado = true;
+					onNext(value);
+					onComplete();
 				}
 			});
-
 		} else {
 			subscriber.onComplete();
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "singleValue=" + value;
+	}
 }

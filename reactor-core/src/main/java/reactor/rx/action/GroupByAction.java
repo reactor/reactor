@@ -19,7 +19,6 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.rx.Stream;
-import reactor.rx.stream.GroupedByStream;
 import reactor.util.Assert;
 
 import java.util.HashMap;
@@ -36,7 +35,7 @@ import java.util.Map;
 public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 
 	private final Function<? super T, ? extends K> fn;
-	private final Map<K, GroupedByStream<K, T>> groupByMap = new HashMap<K, GroupedByStream<K, T>>();
+	private final Map<K, GroupedByAction<K, T>> groupByMap = new HashMap<K, GroupedByAction<K, T>>();
 
 	public GroupByAction(Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
 		super(dispatcher);
@@ -52,7 +51,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 		dispatch(key, new Consumer<K>() {
 			@Override
 			public void accept(K k) {
-				Stream<T> s = groupByMap.remove(k);
+				Action<T, T> s = groupByMap.remove(k);
 				if (s != null) {
 					s.cancel();
 				}
@@ -65,7 +64,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 		dispatch(key, new Consumer<K>() {
 			@Override
 			public void accept(K k) {
-				Stream<T> s = groupByMap.remove(k);
+				Action<T, T> s = groupByMap.remove(k);
 				if (s != null) {
 					s.broadcastComplete();
 				}
@@ -77,9 +76,9 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 	@Override
 	protected void doNext(T value) {
 		final K key = fn.apply(value);
-		GroupedByStream<K, T> stream = groupByMap.get(key);
+		GroupedByAction<K, T> stream = groupByMap.get(key);
 		if (stream == null) {
-			stream = new GroupedByStream<K, T>(key, dispatcher);
+			stream = new GroupedByAction<K, T>(key, dispatcher);
 			stream.capacity(capacity).env(environment).keepAlive(false);
 			groupByMap.put(key, stream);
 			broadcastNext(stream.onOverflowBuffer());
@@ -90,7 +89,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		for (Stream<T> stream : groupByMap.values()) {
+		for (Action<T, T> stream : groupByMap.values()) {
 			stream.broadcastError(ev);
 		}
 	}
@@ -98,7 +97,7 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		for (Stream<T> stream : groupByMap.values()) {
+		for (Action<T, T> stream : groupByMap.values()) {
 			stream.broadcastComplete();
 		}
 		groupByMap.clear();

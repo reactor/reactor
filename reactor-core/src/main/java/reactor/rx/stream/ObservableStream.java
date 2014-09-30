@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Observable;
 import reactor.event.Event;
-import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
@@ -28,8 +27,7 @@ import javax.annotation.Nonnull;
 /**
  * Emit signals whenever an Event arrives from the {@link reactor.event.selector.Selector} topic from the {@link
  * reactor.core.Observable}.
- * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()} signal until {@link
- * this#broadcastComplete()} is called.
+ * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()}.
  * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
@@ -40,11 +38,10 @@ import javax.annotation.Nonnull;
  */
 public final class ObservableStream<T> extends PublisherStream<T> {
 
-	public ObservableStream(@Nonnull Dispatcher dispatcher,
-	                        final @Nonnull Observable observable,
+	public ObservableStream(final @Nonnull Observable observable,
 	                        final @Nonnull Selector selector) {
 
-		super(dispatcher, new Publisher<T>() {
+		super(new Publisher<T>() {
 			@Override
 			public void subscribe(final Subscriber<? super T> subscriber) {
 				observable.on(selector, new Consumer<Event<T>>() {

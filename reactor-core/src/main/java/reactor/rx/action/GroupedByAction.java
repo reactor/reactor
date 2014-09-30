@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.stream;
+package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.Stream;
 
 /**
  * An {@link java.lang.Iterable} wrapper that takes care of lazy subscribing.
@@ -29,16 +28,21 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public final class GroupedByStream<K, T> extends Stream<T> {
+public final class GroupedByAction<K, T> extends Action<T, T> {
 	private final K key;
 
-	public GroupedByStream(K key, Dispatcher dispatcher) {
+	public GroupedByAction(K key, Dispatcher dispatcher) {
 		super(dispatcher);
 		this.key = key;
 	}
 
 	public K key() {
 		return key;
+	}
+
+	@Override
+	protected void doNext(T ev) {
+		broadcastNext(ev);
 	}
 
 	@Override

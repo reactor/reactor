@@ -27,19 +27,19 @@ import reactor.rx.Stream;
  */
 public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
-	private Stream<T> currentWindow;
+	private Action<T, T> currentWindow;
 
 	@SuppressWarnings("unchecked")
 	public WindowAction(Dispatcher dispatcher, long backlog) {
 		super(backlog, dispatcher, true, true, true);
 	}
 
-	public Stream<T> currentWindow() {
+	public Action<T, T> currentWindow() {
 		return currentWindow;
 	}
 
 	protected void createWindowStream() {
-		currentWindow = new Stream<T>(dispatcher, capacity).env(environment).capacity(capacity);
+		currentWindow = Action.<T>passthrough(dispatcher, capacity).env(environment);
 		currentWindow.keepAlive(false);
 	}
 

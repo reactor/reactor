@@ -21,6 +21,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import reactor.rx.stream.HotStream;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -103,7 +104,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Stream<IN> in() {
-		final Stream<IN> d = Streams.<IN>defer(env, eventsReactor.getDispatcher());
+		final HotStream<IN> d = Streams.<IN>defer(env, eventsReactor.getDispatcher());
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {

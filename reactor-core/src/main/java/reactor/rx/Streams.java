@@ -19,7 +19,6 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import reactor.core.Environment;
 import reactor.core.Observable;
-import reactor.core.Reactor;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
@@ -32,7 +31,6 @@ import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -42,16 +40,16 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
  * {@code
- * Streams.defer(1, 2, 3).map(i -> i*2) //...
+ * Streams.just(1, 2, 3).map(i -> i*2) //...
  * <p>
  * Stream<String> stream = Streams.defer().map(i -> i*2).consume(System.out::println);
  * stream.broadcastNext("hello");
  * <p>
  * Stream.create( subscriber -> {
- *  subscriber.onNext(1);
- *  subscriber.onNext(2);
- *  subscriber.onNext(3);
- *  subscriber.onComplete();
+ * subscriber.onNext(1);
+ * subscriber.onNext(2);
+ * subscriber.onNext(3);
+ * subscriber.onComplete();
  * }).consume(System.out::println);
  * <p>
  * Stream<Integer> inputStream1 = Streams.defer(env);
@@ -66,217 +64,134 @@ import java.util.concurrent.TimeUnit;
 public final class Streams {
 
 	/**
-	 * Build a deferred synchronous {@literal Stream}, ready to broadcast values with {@link Stream#broadcastNext
-	 * (Object)},
-	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
+	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
 	 *
-	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link Stream}
 	 */
-	public static <T> Stream<T> defer() {
-		return new Stream<T>();
+	public static Stream<?> empty() {
+		return new SingleValueStream<Void>(null);
 	}
 
 	/**
+	 * Build a deferred synchronous {@literal Stream} that will only emit an error signal to any new subscriber.
+	 *
+	 * @return a new {@link Stream}
+	 */
+	public static <O, T extends Throwable> Stream<O> fail(T throwable) {
+		return new ErrorStream<O, T>(throwable);
+	}
+
+
+	/**
+	 * Build a deferred synchronous {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
+	 * .Action#broadcastNext
+	 * (Object)},
+	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
+	 *
+	 * @param <T> the type of values passing through the {@literal action}
+	 * @return a new {@link Action}
+	 */
+	public static <T> HotStream<T> defer() {
+		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive(true);
+	}
+
+
+	/**
 	 * Build a deferred {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
-	 * Stream#broadcastNext(Object)},
-	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
+	 * reactor.rx.action.Action#broadcastNext(Object)},
+	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
 	 * @param env the Reactor {@link reactor.core.Environment} to use
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> defer(Environment env) {
+	public static <T> HotStream<T> defer(Environment env) {
 		return defer(env, env.getDefaultDispatcher());
 	}
 
 
 	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values with {@link Stream#broadcastNext(Object)},
-	 * {@link Stream#broadcastError(Throwable)}, {@link reactor.rx.Stream#broadcastComplete()}.
+	 * Build a deferred {@literal Stream}, ready to broadcast values with {@link reactor.rx.action.Action#broadcastNext
+	 * (Object)},
+	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
-	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher) {
+	public static <T> HotStream<T> defer(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" Refer to #parallel() method. ");
-		return new Stream<T>(dispatcher, env, dispatcher.backlogSize() > 0 ?
+		HotStream<T> hotStream = Action.<T>passthrough(dispatcher);
+		hotStream.env(env).capacity(dispatcher.backlogSize() > 0 ?
 				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
 				Long.MAX_VALUE);
-	}
-
-
-	/**
-	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
-	 *
-	 * @return a new {@link Stream}
-	 */
-	public static Stream<Void> empty() {
-		return empty(null, SynchronousDispatcher.INSTANCE);
+		return hotStream.keepAlive(true);
 	}
 
 	/**
-	 * Build a deferred {@literal Stream} that will only emit a complete signal to any new subscriber.
-	 *
-	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static Stream<Void> empty(Environment env) {
-		return empty(env, env.getDefaultDispatcher());
-	}
-
-
-	/**
-	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
-	 *
-	 * @param env        the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static Stream<Void> empty(Environment env, Dispatcher dispatcher) {
-		return new IterableStream<Void>(null, dispatcher).env(env);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
-	 *
-	 * @param start the inclusive starting value to be emitted
-	 * @param end   the inclusive closing value to be emitted
-	 *
-	 * @return a new {@link Stream}
-	 */
-	public static Stream<Integer> range(int start, int end) {
-		return range(null, SynchronousDispatcher.INSTANCE, start, end);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
-	 *
-	 * @param start the inclusive starting value to be emitted
-	 * @param end   the inclusive closing value to be emitted
-	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 *
-	 *             @return a new {@link reactor.rx.Stream}
-	 */
-	public static Stream<Integer> range(Environment env, int start, int end) {
-		return range(env, env.getDefaultDispatcher(), start, end);
-	}
-
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then complete.
-	 *
-	 * @param start the inclusive starting value to be emitted
-	 * @param end   the inclusive closing value to be emitted
-	 * @param env        the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static Stream<Integer> range(Environment env, Dispatcher dispatcher, int start, int end) {
-		return new RangeStream(start, end, dispatcher).env(env);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link Stream}
-	 */
-	public static <T> Stream<T> defer(Future<? extends T> future) {
-		return defer(null, SynchronousDispatcher.INSTANCE, future);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link Stream}
-	 */
-	public static <T> Stream<T> defer(Future<? extends T> future, long time, TimeUnit unit) {
-		return defer(null, SynchronousDispatcher.INSTANCE, future, time, unit);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> defer(Environment env, Future<? extends T> future) {
-		return defer(env, env.getDefaultDispatcher(), future);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> defer(Environment env, Future<? extends T> future, long time, TimeUnit unit) {
-		return defer(env, env.getDefaultDispatcher(), future, time, unit);
-	}
-
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param env        the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Future<? extends T> future) {
-		return new FutureStream<T>(future, dispatcher).env(env);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
-	 * The future will be polled for an unbounded amount of time.
-	 *
-	 * @param env        the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
-	 * @param future   the future to poll value from
-	 *
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Future<? extends T> future, long time, TimeUnit unit) {
-		return new FutureStream<T>(future, time, unit, dispatcher).env(env);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. After all data is being dispatched, a complete signal will be emitted.
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 1.
+	 * It will use the passed dispatcher to emit signals.
 	 *
-	 * @param value1 The only value to {@code broadcastNext()}
+	 * @param values The values to {@code on()}
 	 * @param <T>    type of the values
-	 *
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1) {
-		return defer(Arrays.asList(value1));
+	public static <T> Stream<T> defer(Iterable<? extends T> values) {
+		return new IterableStream<T>(values);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param future the future to poll value from
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Future<? extends T> future) {
+		return new FutureStream<T>(future);
+	}
+
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * The future will be polled for an unbounded amount of time.
+	 *
+	 * @param future the future to poll value from
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Future<? extends T> future, long time, TimeUnit unit) {
+		return new FutureStream<T>(future, time, unit);
+	}
+
+	/**
+	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then
+	 * complete.
+	 *
+	 * @param start the inclusive starting value to be emitted
+	 * @param end   the inclusive closing value to be emitted
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Integer> range(int start, int end) {
+		return new RangeStream(start, end);
+	}
+
+
+	/**
+	 * Build a synchronous {@literal Stream} whom data is sourced by the passed element on subscription
+	 * request. After all data is being dispatched, a complete signal will be emitted.
+	 * <p>
+	 *
+	 * @param value1 The only value to {@code onNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> just(T value1) {
+		return new SingleValueStream<T>(value1);
 	}
 
 
@@ -284,14 +199,13 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 2.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2) {
+	public static <T> Stream<T> just(T value1, T value2) {
 		return defer(Arrays.asList(value1, value2));
 	}
 
@@ -300,15 +214,14 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 3.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3) {
+	public static <T> Stream<T> just(T value1, T value2, T value3) {
 		return defer(Arrays.asList(value1, value2, value3));
 	}
 
@@ -317,16 +230,15 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 4.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
+	 * @param value4 The fourth value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4) {
+	public static <T> Stream<T> just(T value1, T value2, T value3, T value4) {
 		return defer(Arrays.asList(value1, value2, value3, value4));
 	}
 
@@ -335,17 +247,16 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 5.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
+	 * @param value4 The fourth value to {@code onNext()}
+	 * @param value5 The fifth value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5) {
+	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
 		return defer(Arrays.asList(value1, value2, value3, value4, value5));
 	}
 
@@ -354,18 +265,17 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 6.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
+	 * @param value4 The fourth value to {@code onNext()}
+	 * @param value5 The fifth value to {@code onNext()}
+	 * @param value6 The sixth value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6) {
+	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6) {
 		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6));
 	}
 
@@ -374,19 +284,18 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 7.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
-	 * @param value7 The seventh value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
+	 * @param value4 The fourth value to {@code onNext()}
+	 * @param value5 The fifth value to {@code onNext()}
+	 * @param value6 The sixth value to {@code onNext()}
+	 * @param value7 The seventh value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
+	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
 		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
 	}
 
@@ -395,423 +304,26 @@ public final class Streams {
 	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 8.
 	 *
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
-	 * @param value7 The seventh value to {@code broadcastNext()}
-	 * @param value8 The eigth value to {@code broadcastNext()}
+	 * @param value1 The first value to {@code onNext()}
+	 * @param value2 The second value to {@code onNext()}
+	 * @param value3 The third value to {@code onNext()}
+	 * @param value4 The fourth value to {@code onNext()}
+	 * @param value5 The fifth value to {@code onNext()}
+	 * @param value6 The sixth value to {@code onNext()}
+	 * @param value7 The seventh value to {@code onNext()}
+	 * @param value8 The eigth value to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
+	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
 		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
-
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} value will
-	 * be set to the Collection's {@link Collection#size()}.
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
+	 * generated sub-streams.
 	 *
-	 * @param values The values to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Iterable<? extends T> values) {
-		return defer(null, SynchronousDispatcher.INSTANCE, values);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 1.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1) {
-		return defer(env, Arrays.asList(value1));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 2.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2) {
-		return defer(env, Arrays.asList(value1, value2));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 3.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3) {
-		return defer(env, Arrays.asList(value1, value2, value3));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 4.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4) {
-		return defer(env, Arrays.asList(value1, value2, value3, value4));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 5.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5) {
-		return defer(env, Arrays.asList(value1, value2, value3, value4, value5));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 6.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6) {
-		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 7.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
-	 * @param value7 The seventh value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6,
-	                                  T value7) {
-		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the {@link Environment} default dispatcher, usually {@link reactor.event.dispatch
-	 * .RingBufferDispatcher}.
-	 * The processing will in that case happen asynchronously.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 8.
-	 *
-	 * @param env    The assigned environment
-	 * @param value1 The first value to {@code broadcastNext()}
-	 * @param value2 The second value to {@code broadcastNext()}
-	 * @param value3 The third value to {@code broadcastNext()}
-	 * @param value4 The fourth value to {@code broadcastNext()}
-	 * @param value5 The fifth value to {@code broadcastNext()}
-	 * @param value6 The sixth value to {@code broadcastNext()}
-	 * @param value7 The seventh value to {@code broadcastNext()}
-	 * @param value8 The eigth value to {@code broadcastNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, T value1, T value2, T value3, T value4, T value5, T value6,
-	                                  T value7, T value8) {
-		return defer(env, Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} value will
-	 * be set to the Collection's {@link Collection#size()}.
-	 *
-	 * @param values The values to {@code broadcast()}
-	 * @param env    The assigned environment
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Iterable<? extends T> values) {
-		return defer(env, env.getDefaultDispatcher(), values);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 1.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The only value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1) {
-		return defer(env, dispatcher, Arrays.asList(value1));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 2.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 3.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 4.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param value4     The fourth value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 5.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param value4     The fourth value to {@code broadcastNext()}
-	 * @param value5     The fifth value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
-	                                  T value5) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 6.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param value4     The fourth value to {@code broadcastNext()}
-	 * @param value5     The fifth value to {@code broadcastNext()}
-	 * @param value6     The sixth value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
-	                                  T value5, T value6) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 7.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param value4     The fourth value to {@code broadcastNext()}
-	 * @param value5     The fifth value to {@code broadcastNext()}
-	 * @param value6     The sixth value to {@code broadcastNext()}
-	 * @param value7     The seventh value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
-	                                  T value5, T value6, T value7) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 * <p>
-	 * The Stream's {@link Stream#capacity(long)} will be 8.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the signals
-	 * @param value1     The first value to {@code broadcastNext()}
-	 * @param value2     The second value to {@code broadcastNext()}
-	 * @param value3     The third value to {@code broadcastNext()}
-	 * @param value4     The fourth value to {@code broadcastNext()}
-	 * @param value5     The fifth value to {@code broadcastNext()}
-	 * @param value6     The sixth value to {@code broadcastNext()}
-	 * @param value7     The seventh value to {@code broadcastNext()}
-	 * @param value8     The eigth value to {@code broadcastNext()}
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, T value1, T value2, T value3, T value4,
-	                                  T value5, T value6, T value7, T value8) {
-		return defer(env, dispatcher, Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
-	 * If the {@code values} are a {@code Collection} the Stream's {@link Stream#capacity(long)} will
-	 * be set to the Collection's {@link Collection#size()}.
-	 * <p>
-	 * It will use the passed dispatcher to emit signals.
-	 * Depending on the dispatcher, it might be asynchronous or synchronous.
-	 *
-	 * @param values     The values to {@code broadcast()}
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the flush
-	 * @param <T>        type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> defer(Environment env, Dispatcher dispatcher, Iterable<? extends T> values) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
-				"MultiThreadDispatcher, refer to #parallel() method. ");
-		IterableStream<T> iterableStream = new IterableStream<T>(values, dispatcher);
-		return iterableStream.env(env);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link ParallelAction}, ready to broadcast values to the generated sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
 	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
@@ -825,12 +337,13 @@ public final class Streams {
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel() {
+	public static <T> ConcurrentAction<T> parallel() {
 		return parallel(Environment.PROCESSORS);
 	}
 
 	/**
-	 * Build a deferred concurrent {@link ParallelAction}, ready to broadcast values to the generated sub-streams.
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
+	 * generated sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
 	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
@@ -845,12 +358,13 @@ public final class Streams {
 	 * @param poolSize the number of maximum parallel sub-streams consuming the broadcasted values.
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel(int poolSize) {
+	public static <T> ConcurrentAction<T> parallel(int poolSize) {
 		return parallel(poolSize, null, Environment.newDispatcherFactory(poolSize));
 	}
 
 	/**
-	 * Build a deferred concurrent {@link ParallelAction}, ready to broadcast values to the generated sub-streams.
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
+	 * generated sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
 	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
@@ -865,12 +379,13 @@ public final class Streams {
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel(Environment env) {
+	public static <T> ConcurrentAction<T> parallel(Environment env) {
 		return parallel(Environment.PROCESSORS, env, env.getDefaultDispatcherFactory());
 	}
 
 	/**
-	 * Build a deferred concurrent {@link ParallelAction}, ready to broadcast values to the generated sub-streams.
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
+	 * generated sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
 	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
@@ -885,12 +400,13 @@ public final class Streams {
 	 * @param <T>      the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel(int poolSize, Environment env) {
+	public static <T> ConcurrentAction<T> parallel(int poolSize, Environment env) {
 		return parallel(poolSize, env, env.getDefaultDispatcherFactory());
 	}
 
 	/**
-	 * Build a deferred concurrent {@link ParallelAction}, accepting data signals to broadcast to a selected generated
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, accepting data signals to broadcast to a
+	 * selected generated
 	 * sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
@@ -907,12 +423,13 @@ public final class Streams {
 	 * @param <T>         the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel(Environment env, Supplier<Dispatcher> dispatchers) {
+	public static <T> ConcurrentAction<T> parallel(Environment env, Supplier<Dispatcher> dispatchers) {
 		return parallel(Environment.PROCESSORS, env, dispatchers);
 	}
 
 	/**
-	 * Build a deferred concurrent {@link ParallelAction}, ready to broadcast values to the generated sub-streams.
+	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
+	 * generated sub-streams.
 	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
 	 * is no
 	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
@@ -926,8 +443,9 @@ public final class Streams {
 	 * @param <T>         the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ParallelAction<T> parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers) {
-		ParallelAction<T> parallelAction = new ParallelAction<T>(SynchronousDispatcher.INSTANCE, dispatchers, poolSize);
+	public static <T> ConcurrentAction<T> parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers) {
+		ConcurrentAction<T> parallelAction = new ConcurrentAction<T>(SynchronousDispatcher.INSTANCE, dispatchers,
+				poolSize);
 		parallelAction.env(env);
 		return parallelAction;
 	}
@@ -941,36 +459,7 @@ public final class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> create(Publisher<? extends T> publisher) {
-		return create(null, SynchronousDispatcher.INSTANCE, publisher);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values from the given publisher. A publisher will start
-	 * producing next elements until onComplete is called.
-	 *
-	 * @param publisher the publisher to broadcast the Stream subscriber
-	 * @param env       The assigned environment
-	 * @param <T>       the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> create(Environment env, Publisher<? extends T> publisher) {
-		return create(env, env.getDefaultDispatcher(), publisher);
-	}
-
-	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values from the given publisher. A publisher will start
-	 * producing next elements until onComplete is called.
-	 *
-	 * @param publisher  the publisher to broSadcast the Stream subscriber
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to to assign to downstream subscribers
-	 * @param <T>        the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> create(Environment env, Dispatcher dispatcher, Publisher<? extends T> publisher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. To use " +
-				"MultiThreadDispatcher, refer to #parallel() method. ");
-		return new PublisherStream<T>(dispatcher, publisher).env(env).defer();
+		return new PublisherStream<T>(publisher).defer();
 	}
 
 	/**
@@ -983,60 +472,23 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector broadcastSelector) {
-		Dispatcher dispatcher = Reactor.class.isAssignableFrom(observable.getClass()) ?
-				((Reactor) observable).getDispatcher() :
-				SynchronousDispatcher.INSTANCE;
-
-		return new ObservableStream<T>(dispatcher, observable, broadcastSelector).defer();
+		return new ObservableStream<T>(observable, broadcastSelector).defer();
 	}
 
 	/**
 	 * Build a synchronous {@literal Stream} whose data is generated by the passed supplier on subscription request.
 	 * The Stream's batch size will be set to 1.
 	 *
-	 * @param value The value to {@code broadcast()}
+	 * @param value The value to {@code on()}
 	 * @param <T>   type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
-		return generate(null, SynchronousDispatcher.INSTANCE, value);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data is generated by the passed supplier on subscription request.
-	 * The Stream's batch size will be set to 1.
-	 *
-	 * @param value The value to {@code broadcast()}
-	 * @param env   The assigned environment
-	 * @param <T>   type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> generate(Environment env, Supplier<? extends T> value) {
-		return generate(env, env.getDefaultDispatcher(), value);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data is generated by the passed supplier on subscription request.
-	 * The Stream's batch size will be set to 1.
-	 *
-	 * @param value      The value to {@code broadcast()}
-	 * @param dispatcher The dispatcher to schedule the flush
-	 * @param env        The assigned environment
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> generate(Environment env, Dispatcher dispatcher,
-	                                     Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		SupplierStream<T> supplierStream = new SupplierStream<T>(dispatcher, value);
-		supplierStream.capacity(1).env(env);
-		return supplierStream;
+		return new SupplierStream<T>(value);
 	}
+
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
@@ -1048,8 +500,12 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return merge(null, SynchronousDispatcher.INSTANCE, mergedPublishers);
+	public static <T> Action<T, T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
+		final List<Publisher<? extends T>> publishers = new ArrayList<>();
+		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
+			publishers.add(mergedPublisher);
+		}
+		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
 	}
 
 	/**
@@ -1063,610 +519,175 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		return merge(null, SynchronousDispatcher.INSTANCE, mergedPublishers);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7,
-	                                  Publisher<? extends T> source8
-	) {
-		return merge(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env              The assigned environment, The assigned environment, will derive the dispatcher to run on
-	 *                         from its {@link reactor
-	 *                         .core.Environment#getDefaultDispatcher()}
-	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>              type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env,
-	                                  Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return merge(env, env.getDefaultDispatcher(), mergedPublishers);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env              The assigned environment, The assigned environment, will derive the dispatcher to run on
-	 *                         from its {@link reactor
-	 *                         .core.Environment#getDefaultDispatcher()}
-	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>              type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T, E extends T> Stream<E> merge(Environment env,
-	                                               Publisher<? extends Publisher<E>> mergedPublishers) {
-		return merge(env, env.getDefaultDispatcher(), mergedPublishers);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7,
-	                                  Publisher<? extends T> source8
-	) {
-		return merge(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                .core.Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
-	}
-
-	/**
-	 * Build {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8    The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher, Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7,
-	                                  Publisher<? extends T> source8
-	) {
-		return merge(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param dispatcher       The dispatcher to run on
-	 * @param env              The assigned environment
-	 * @param <T>              type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T, E extends T> Stream<E> merge(Environment env, Dispatcher dispatcher,
-	                                               Publisher<? extends Publisher<E>> mergedPublishers) {
-
-		final Action<Publisher<? extends E>, E> mergeAction =
-				new DynamicMergeAction<E, E>(dispatcher, new MergeAction<E>(dispatcher, null)).env(env);
+		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<E, E>(SynchronousDispatcher.INSTANCE,
+				new MergeAction<E>(SynchronousDispatcher.INSTANCE, null)
+		);
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
 	}
 
-
 	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param dispatcher       The dispatcher to run on
-	 * @param env              The assigned environment
-	 * @param <T>              type of the value
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> merge(Environment env, Dispatcher dispatcher,
-	                                  Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		final List<Publisher<? extends T>> publishers = new ArrayList<>();
-		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
-			publishers.add(mergedPublisher);
-		}
-		final MergeAction<T> mergeAction = new MergeAction<T>(dispatcher, publishers);
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2
+	) {
+		return merge(Arrays.asList(source1, source2));
+	}
 
-		mergeAction.env(env);
-		return mergeAction;
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3
+	) {
+		return merge(Arrays.asList(source1, source2, source3));
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3,
+	                                     Publisher<? extends T> source4
+	) {
+		return merge(Arrays.asList(source1, source2, source3, source4));
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3,
+	                                     Publisher<? extends T> source4,
+	                                     Publisher<? extends T> source5
+	) {
+		return merge(Arrays.asList(source1, source2, source3, source4, source5));
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3,
+	                                     Publisher<? extends T> source4,
+	                                     Publisher<? extends T> source5,
+	                                     Publisher<? extends T> source6
+	) {
+		return merge(Arrays.asList(source1, source2, source3, source4, source5,
+				source6));
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3,
+	                                     Publisher<? extends T> source4,
+	                                     Publisher<? extends T> source5,
+	                                     Publisher<? extends T> source6,
+	                                     Publisher<? extends T> source7
+	) {
+		return merge(Arrays.asList(source1, source2, source3, source4, source5,
+				source6, source7));
+	}
+
+	/**
+	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
+	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>     type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	                                     Publisher<? extends T> source2,
+	                                     Publisher<? extends T> source3,
+	                                     Publisher<? extends T> source4,
+	                                     Publisher<? extends T> source5,
+	                                     Publisher<? extends T> source6,
+	                                     Publisher<? extends T> source7,
+	                                     Publisher<? extends T> source8
+	) {
+		return merge(Arrays.asList(source1, source2, source3, source4, source5,
+				source6, source7, source8));
 	}
 
 	/**
@@ -1684,10 +705,10 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, zipper);
+	public static <T1, T2, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                           Publisher<? extends T2> source2,
+	                                           Function<Tuple2<T1, T2>, ? extends V> zipper) {
+		return zip(Arrays.asList(source1, source2), zipper);
 	}
 
 	/**
@@ -1707,12 +728,12 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                            Publisher<? extends T2> source2,
-	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1, T2, T3>,
-			                                            ? extends V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, zipper);
+	public static <T1, T2, T3, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                               Publisher<? extends T2> source2,
+	                                               Publisher<? extends T3> source3,
+	                                               Function<Tuple3<T1, T2, T3>,
+			                                               ? extends V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3), zipper);
 	}
 
 	/**
@@ -1734,13 +755,13 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                Publisher<? extends T2> source2,
-	                                                Publisher<? extends T3> source3,
-	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1, T2, T3, T4>,
-			                                                V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, zipper);
+	public static <T1, T2, T3, T4, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                                   Publisher<? extends T2> source2,
+	                                                   Publisher<? extends T3> source3,
+	                                                   Publisher<? extends T4> source4,
+	                                                   Function<Tuple4<T1, T2, T3, T4>,
+			                                                   V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3, source4), zipper);
 	}
 
 	/**
@@ -1763,14 +784,14 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                    Publisher<? extends T2> source2,
-	                                                    Publisher<? extends T3> source3,
-	                                                    Publisher<? extends T4> source4,
-	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                    V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, zipper);
+	public static <T1, T2, T3, T4, T5, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                                       Publisher<? extends T2> source2,
+	                                                       Publisher<? extends T3> source3,
+	                                                       Publisher<? extends T4> source4,
+	                                                       Publisher<? extends T5> source5,
+	                                                       Function<Tuple5<T1, T2, T3, T4, T5>,
+			                                                       V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3, source4, source5), zipper);
 	}
 
 	/**
@@ -1796,15 +817,15 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                        Publisher<? extends T2> source2,
-	                                                        Publisher<? extends T3> source3,
-	                                                        Publisher<? extends T4> source4,
-	                                                        Publisher<? extends T5> source5,
-	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                        V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, zipper);
+	public static <T1, T2, T3, T4, T5, T6, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                                           Publisher<? extends T2> source2,
+	                                                           Publisher<? extends T3> source3,
+	                                                           Publisher<? extends T4> source4,
+	                                                           Publisher<? extends T5> source5,
+	                                                           Publisher<? extends T6> source6,
+	                                                           Function<Tuple6<T1, T2, T3, T4, T5, T6>,
+			                                                           V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6), zipper);
 	}
 
 	/**
@@ -1832,16 +853,16 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                            Publisher<? extends T2> source2,
-	                                                            Publisher<? extends T3> source3,
-	                                                            Publisher<? extends T4> source4,
-	                                                            Publisher<? extends T5> source5,
-	                                                            Publisher<? extends T6> source6,
-	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                            V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
+	public static <T1, T2, T3, T4, T5, T6, T7, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                                               Publisher<? extends T2> source2,
+	                                                               Publisher<? extends T3> source3,
+	                                                               Publisher<? extends T4> source4,
+	                                                               Publisher<? extends T5> source5,
+	                                                               Publisher<? extends T6> source6,
+	                                                               Publisher<? extends T7> source7,
+	                                                               Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
+			                                                               V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
 				zipper);
 	}
 
@@ -1872,18 +893,17 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                                Publisher<? extends T2> source2,
-	                                                                Publisher<? extends T3> source3,
-	                                                                Publisher<? extends T4> source4,
-	                                                                Publisher<? extends T5> source5,
-	                                                                Publisher<? extends T6> source6,
-	                                                                Publisher<? extends T7> source7,
-	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                ? extends V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, source1, source2, source3, source4, source5, source6, source7,
-				source8, zipper);
+	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	                                                                   Publisher<? extends T2> source2,
+	                                                                   Publisher<? extends T3> source3,
+	                                                                   Publisher<? extends T4> source4,
+	                                                                   Publisher<? extends T5> source5,
+	                                                                   Publisher<? extends T6> source6,
+	                                                                   Publisher<? extends T7> source7,
+	                                                                   Publisher<? extends T8> source8,
+	                                                                   Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
+			                                                                   ? extends V> zipper) {
+		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8), zipper);
 	}
 
 	/**
@@ -1899,9 +919,9 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <TUPLE extends Tuple, V> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
-	                                                     Function<TUPLE, ? extends V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, sources, zipper);
+	public static <TUPLE extends Tuple, V> Action<?, V> zip(Iterable<? extends Publisher<?>> sources,
+	                                                        Function<TUPLE, ? extends V> zipper) {
+		return new ZipAction<>(SynchronousDispatcher.INSTANCE, zipper, sources);
 	}
 
 	/**
@@ -1917,581 +937,17 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <E, TUPLE extends Tuple, V> Stream<V> zip(Publisher<? extends Publisher<E>> sources,
-	                                                        Function<TUPLE, ? extends V> zipper) {
-		return zip(null, SynchronousDispatcher.INSTANCE, sources, zipper);
-	}
+	public static <E, TUPLE extends Tuple, V> Action<Publisher<? extends E>, V> zip(
+			Publisher<? extends Publisher<E>> sources,
+			Function<TUPLE, ? extends V> zipper)
+	{
+		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher.INSTANCE,
+				new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, zipper, null)
+		);
 
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, V> Stream<V> zip(Environment env,
-	                                        Publisher<? extends T1> source1,
-	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, zipper);
-	}
+		sources.subscribe(mergeAction);
 
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                            Publisher<? extends T2> source2,
-	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1, T2, T3>,
-			                                            ? extends V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, zipper);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                                Publisher<? extends T2> source2,
-	                                                Publisher<? extends T3> source3,
-	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1, T2, T3, T4>,
-			                                                V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                                    Publisher<? extends T2> source2,
-	                                                    Publisher<? extends T3> source3,
-	                                                    Publisher<? extends T4> source4,
-	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                    V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                                        Publisher<? extends T2> source2,
-	                                                        Publisher<? extends T3> source3,
-	                                                        Publisher<? extends T4> source4,
-	                                                        Publisher<? extends T5> source5,
-	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                        V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param <T1>    type of the value from source1
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                                            Publisher<? extends T2> source2,
-	                                                            Publisher<? extends T3> source3,
-	                                                            Publisher<? extends T4> source4,
-	                                                            Publisher<? extends T5> source5,
-	                                                            Publisher<? extends T6> source6,
-	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                            V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
-				zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param <T8>    type of the value from source8
-	 * @param <V>     The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> zip(Environment env, Publisher<? extends T1> source1,
-	                                                                Publisher<? extends T2> source2,
-	                                                                Publisher<? extends T3> source3,
-	                                                                Publisher<? extends T4> source4,
-	                                                                Publisher<? extends T5> source5,
-	                                                                Publisher<? extends T6> source6,
-	                                                                Publisher<? extends T7> source7,
-	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                ? extends V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), source1, source2, source3, source4, source5, source6, source7,
-				source8, zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param publishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <TUPLE extends Tuple, V> Stream<V> zip(Environment env,
-	                                                     Iterable<? extends Publisher<?>> publishers,
-	                                                     Function<TUPLE, ? extends V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), publishers, zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param publishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <E>        The inner type of {@param source}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <E, TUPLE extends Tuple, V> Stream<V> zip(Environment env,
-	                                                        Publisher<? extends Publisher<E>> publishers,
-	                                                        Function<TUPLE, ? extends V> zipper) {
-		return zip(env, env.getDefaultDispatcher(), publishers, zipper);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, V> Stream<V> zip(Environment env,
-	                                        Dispatcher dispatcher,
-	                                        Publisher<? extends T1> source1,
-	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2), zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, V> Stream<V> zip(Environment env,
-	                                            Dispatcher dispatcher,
-	                                            Publisher<? extends T1> source1,
-	                                            Publisher<? extends T2> source2,
-	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1, T2, T3>,
-			                                            ? extends V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2, source3), zipper);
-	}
-
-	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @param <T4>       type of the value from source4
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, V> Stream<V> zip(Environment env,
-	                                                Dispatcher dispatcher,
-	                                                Publisher<? extends T1> source1,
-	                                                Publisher<? extends T2> source2,
-	                                                Publisher<? extends T3> source3,
-	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1, T2, T3, T4>,
-			                                                V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4), zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @param <T4>       type of the value from source4
-	 * @param <T5>       type of the value from source5
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, V> Stream<V> zip(Environment env,
-	                                                    Dispatcher dispatcher,
-	                                                    Publisher<? extends T1> source1,
-	                                                    Publisher<? extends T2> source2,
-	                                                    Publisher<? extends T3> source3,
-	                                                    Publisher<? extends T4> source4,
-	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                    V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5), zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @param <T4>       type of the value from source4
-	 * @param <T5>       type of the value from source5
-	 * @param <T6>       type of the value from source6
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> zip(Environment env,
-	                                                        Dispatcher dispatcher,
-	                                                        Publisher<? extends T1> source1,
-	                                                        Publisher<? extends T2> source2,
-	                                                        Publisher<? extends T3> source3,
-	                                                        Publisher<? extends T4> source4,
-	                                                        Publisher<? extends T5> source5,
-	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                        V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5, source6), zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @param <T4>       type of the value from source4
-	 * @param <T5>       type of the value from source5
-	 * @param <T6>       type of the value from source6
-	 * @param <T7>       type of the value from source7
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> zip(Environment env,
-	                                                            Dispatcher dispatcher,
-	                                                            Publisher<? extends T1> source1,
-	                                                            Publisher<? extends T2> source2,
-	                                                            Publisher<? extends T3> source3,
-	                                                            Publisher<? extends T4> source4,
-	                                                            Publisher<? extends T5> source5,
-	                                                            Publisher<? extends T6> source6,
-	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                            V> zipper) {
-		return zip(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
-				zipper);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor
-	 *                   .core.Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8    The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
-	 * @param <T3>       type of the value from source3
-	 * @param <T4>       type of the value from source4
-	 * @param <T5>       type of the value from source5
-	 * @param <T6>       type of the value from source6
-	 * @param <T7>       type of the value from source7
-	 * @param <T8>       type of the value from source8
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> zip(Environment env,
-	                                                                Dispatcher dispatcher,
-	                                                                Publisher<? extends T1> source1,
-	                                                                Publisher<? extends T2> source2,
-	                                                                Publisher<? extends T3> source3,
-	                                                                Publisher<? extends T4> source4,
-	                                                                Publisher<? extends T5> source5,
-	                                                                Publisher<? extends T6> source6,
-	                                                                Publisher<? extends T7> source7,
-	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                ? extends V> zipper) {
-		return zip(env, dispatcher,
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8),
-				zipper);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param env              The assigned environment
-	 * @param dispatcher       The dispatcher to run on
-	 * @param zipper           The aggregate function that will receive a unique value from each upstream and return the
-	 *                         value to signal downstream
-	 * @param <V>              The produced output after transformation by {@param zipper}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <TUPLE extends Tuple, V> Stream<V> zip(Environment env,
-	                                                     Dispatcher dispatcher,
-	                                                     Iterable<? extends Publisher<?>> mergedPublishers,
-	                                                     Function<TUPLE, ? extends V> zipper) {
-
-		return new ZipAction<>(dispatcher, zipper, mergedPublishers).env(env);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source     The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to run on
-	 * @param zipper     The aggregate function that will receive a unique value from each upstream and return the
-	 *                   value to signal downstream
-	 * @param <V>        The produced output after transformation by {@param zipper}
-	 * @param <E>        The inner type of {@param source}
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <E, TUPLE extends Tuple, V> Stream<V> zip(Environment env,
-	                                                        Dispatcher dispatcher,
-	                                                        Publisher<? extends Publisher<E>> source,
-	                                                        Function<TUPLE, ? extends V> zipper) {
-
-		final Action<Publisher<? extends E>, V> mergeAction =
-				new DynamicMergeAction<E, V>(dispatcher, new ZipAction<E, V, TUPLE>(dispatcher, zipper, null));
-
-		source.subscribe(mergeAction);
-
-		return mergeAction.env(env);
+		return mergeAction;
 	}
 
 	/**
@@ -2506,9 +962,9 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2) {
-		return join(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2));
+		return join(Arrays.asList(source1, source2));
 	}
 
 
@@ -2525,10 +981,10 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3) {
-		return join(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3));
+		return join(Arrays.asList(source1, source2, source3));
 	}
 
 	/**
@@ -2545,11 +1001,11 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4) {
-		return join(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4));
+		return join(Arrays.asList(source1, source2, source3, source4));
 	}
 
 	/**
@@ -2567,12 +1023,12 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
 	                                       Publisher<? extends T> source5) {
-		return join(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5));
+		return join(Arrays.asList(source1, source2, source3, source4, source5));
 	}
 
 	/**
@@ -2591,13 +1047,13 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
 	                                       Publisher<? extends T> source5,
 	                                       Publisher<? extends T> source6) {
-		return join(null, SynchronousDispatcher.INSTANCE, Arrays.asList(source1, source2, source3, source4, source5,
+		return join(Arrays.asList(source1, source2, source3, source4, source5,
 				source6));
 	}
 
@@ -2617,15 +1073,14 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
 	                                       Publisher<? extends T> source5,
 	                                       Publisher<? extends T> source6,
 	                                       Publisher<? extends T> source7) {
-		return join(null, SynchronousDispatcher.INSTANCE,
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
+		return join(Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
 	}
 
 	/**
@@ -2646,7 +1101,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
+	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
@@ -2654,8 +1109,7 @@ public final class Streams {
 	                                       Publisher<? extends T> source6,
 	                                       Publisher<? extends T> source7,
 	                                       Publisher<? extends T> source8) {
-		return join(null, SynchronousDispatcher.INSTANCE,
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8));
+		return join(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8));
 	}
 
 	/**
@@ -2666,476 +1120,27 @@ public final class Streams {
 	 *
 	 * @param sources The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
-		return join(null, SynchronousDispatcher.INSTANCE, sources);
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>    type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends Publisher<T>> source) {
-		return join(null, SynchronousDispatcher.INSTANCE, source);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2) {
-		return join(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3) {
-		return join(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4) {
-		return join(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5) {
-		return join(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6) {
-		return join(env, env.getDefaultDispatcher(), Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7) {
-		return join(env, env.getDefaultDispatcher(),
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7,
-	                                       Publisher<? extends T> source8) {
-		return join(env, env.getDefaultDispatcher(),
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env     The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                .Environment#getDefaultDispatcher()}
-	 * @param sources The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Iterable<? extends Publisher<? extends T>> sources) {
-		return join(env, env.getDefaultDispatcher(), sources);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env    The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *               .Environment#getDefaultDispatcher()}
-	 * @param source The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>    type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Publisher<? extends Publisher<T>> source) {
-		return join(env, env.getDefaultDispatcher(), source);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2) {
-		return join(env, dispatcher, Arrays.asList(source1, source2));
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3) {
-		return join(env, dispatcher, Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4) {
-		return join(env, dispatcher, Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5) {
-		return join(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6) {
-		return join(env, dispatcher, Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7) {
-		return join(env, dispatcher,
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8    The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7,
-	                                       Publisher<? extends T> source8) {
-		return join(env, dispatcher,
-				Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<List<T>> join(Environment env, Dispatcher dispatcher,
-	                                       Iterable<? extends Publisher<? extends T>> sources) {
-		return zip(env, dispatcher, sources, ZipAction.<TupleN, T>joinZipper());
+	public static <T> Action<T, List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
+		return (Action<T, List<T>>)zip(sources, ZipAction.<TupleN, T>joinZipper());
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are aggregated from the passed publishers
+	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
 	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param env        The assigned environment, will derive the dispatcher to run on from its {@link reactor.core
-	 *                   .Environment#getDefaultDispatcher()}
-	 * @param dispatcher The dispatcher to run on
-	 * @param source     The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>        type of the value
+	 * @param source The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T>    type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Environment env,
-	                                       Dispatcher dispatcher,
-	                                       Publisher<? extends Publisher<T>> source) {
-		return zip(env, dispatcher, source, ZipAction.<TupleN, T>joinZipper());
+	public static <T> Action<Publisher<? extends T>, List<T>> join(Publisher<? extends Publisher<T>> source) {
+		return zip(source, ZipAction.<TupleN, T>joinZipper());
 	}
+
 }

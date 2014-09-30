@@ -19,14 +19,12 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
-import reactor.rx.Stream;
-import reactor.rx.Streams;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
+public class FilterAction<T> extends Action<T, T> {
 
 	public static final Predicate<Boolean> simplePredicate = new Predicate<Boolean>() {
 		@Override
@@ -37,7 +35,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 
 	private final Predicate<? super T> p;
 
-	private volatile E elseComposable;
+	private volatile Action<T, T> elseComposable;
 
 	@SuppressWarnings("unchecked")
 	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher) {
@@ -53,7 +51,7 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 		}, dispatcher);
 	}
 
-	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher, E pipeline) {
+	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher, Action<T, T> pipeline) {
 		super(dispatcher);
 		this.p = p;
 		this.elseComposable = pipeline;
@@ -90,22 +88,18 @@ public class FilterAction<T, E extends Stream<T>> extends Action<T, T> {
 		super.doComplete();
 	}
 
-	@SuppressWarnings("unchecked")
-	public E otherwise() {
+	public Action<T, T> otherwise() {
 		if (elseComposable == null) {
-			Stream<T> passthrough = Streams.defer(environment, dispatcher);
-			passthrough.capacity(capacity).keepAlive(keepAlive);
-			elseComposable = (E) passthrough;
+			elseComposable = Action.<T>passthrough(dispatcher, capacity).keepAlive(keepAlive);;
 		}
 		return elseComposable;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		if (elseComposable != null && Action.class.isAssignableFrom(elseComposable.getClass())) {
-			((Action<T, E>) elseComposable).capacity(capacity).onSubscribe(subscription);
+		if (elseComposable != null) {
+			elseComposable.capacity(capacity).onSubscribe(subscription);
 		}
 	}
 }

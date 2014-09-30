@@ -47,7 +47,7 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 		public void accept(Long integer) {
 			try {
 				if (currentNextSignals == capacity) {
-					broadcastTuple(true);
+					broadcastTuple(false);
 				}
 
 				requestConsumer.accept(integer);

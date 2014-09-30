@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx;
+package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
+import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.SpecificationExceptions;
 
@@ -28,25 +29,29 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
  * <p>
- * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
+ * A Reactive Subscription using a pattern called "reactive-pull" to dynamically adapt to the downstream subscriber
+ * capacity:
+ * - If no capacity (no previous request or capacity drained), queue data into the buffer {@link CompletableQueue}
+ * - If capacity (previous request and capacity remaining), call subscriber onNext
+ * <p>
+ * Queued data will be polled when the next request(n) signal is received. If there is remaining requested volume,
+ * it will be added to the current capacity and therefore will let the next signals to be directly pushed.
+ * Each next signal will decrement the capacity by 1.
  *
  * @author Stephane Maldini
  * @since 2.0
  */
-public class StreamSubscription<O> implements Subscription {
-	final           Subscriber<? super O> subscriber;
-	final           Stream<O>             publisher;
-	protected final AtomicLong            capacity;
-	protected final ReentrantLock         bufferLock;
-	protected final CompletableQueue<O>   buffer;
+public class ReactiveSubscription<O> extends PushSubscription<O> {
+	protected final AtomicLong          capacity;
+	protected final ReentrantLock       bufferLock;
+	protected final CompletableQueue<O> buffer;
 
-	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
+	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this(publisher, subscriber, new CompletableLinkedQueue<O>());
 	}
 
-	public StreamSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
-		this.subscriber = subscriber;
-		this.publisher = publisher;
+	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
+		super(publisher, subscriber);
 		this.capacity = new AtomicLong();
 		this.buffer = buffer;
 		if (buffer != null) {
@@ -94,7 +99,7 @@ public class StreamSubscription<O> implements Subscription {
 	@Override
 	public void cancel() {
 		if (publisher != null) {
-			publisher.removeSubscription(this);
+			publisher.cleanSubscriptionReference(this);
 		}
 		if (buffer != null) {
 			bufferLock.lock();
@@ -108,6 +113,7 @@ public class StreamSubscription<O> implements Subscription {
 		}
 	}
 
+	@Override
 	public void onNext(O ev) {
 		if (capacity.getAndDecrement() > 0) {
 			subscriber.onNext(ev);
@@ -132,23 +138,12 @@ public class StreamSubscription<O> implements Subscription {
 		}
 	}
 
+	@Override
 	public void onComplete() {
 		if (buffer.isEmpty()) {
 			subscriber.onComplete();
 		}
 		buffer.complete();
-	}
-
-	public void onError(Throwable throwable) {
-		subscriber.onError(throwable);
-	}
-
-	public Stream<?> getPublisher() {
-		return publisher;
-	}
-
-	public Subscriber<? super O> getSubscriber() {
-		return subscriber;
 	}
 
 	public long getBufferSize() {
@@ -163,28 +158,9 @@ public class StreamSubscription<O> implements Subscription {
 		return buffer;
 	}
 
+	@Override
 	public boolean isComplete() {
 		return buffer.isComplete();
-	}
-
-	@Override
-	public int hashCode() {
-		int result = subscriber.hashCode();
-		result = 31 * result + publisher.hashCode();
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		StreamSubscription that = (StreamSubscription) o;
-
-		if (publisher.hashCode() != that.publisher.hashCode()) return false;
-		if (!subscriber.equals(that.subscriber)) return false;
-
-		return true;
 	}
 
 	@Override
@@ -195,61 +171,15 @@ public class StreamSubscription<O> implements Subscription {
 				'}';
 	}
 
-	StreamSubscription<O> wrap(CompletableQueue<O> queue) {
-		final StreamSubscription<O> thiz = this;
-		return new WrappedStreamSubscription<O>(thiz, queue);
+	ReactiveSubscription<O> wrap(CompletableQueue<O> queue) {
+		final ReactiveSubscription<O> thiz = this;
+		return new WrappedReactiveSubscription<O>(thiz, queue);
 	}
 
-	public static class Firehose<O> extends StreamSubscription<O> {
-		protected volatile boolean terminated = false;
+	static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
+		final ReactiveSubscription<O> thiz;
 
-		public Firehose(Stream<O> publisher, Subscriber<? super O> subscriber) {
-			super(publisher, subscriber, null);
-			capacity.set(Long.MAX_VALUE);
-		}
-
-		@Override
-		public void request(long elements) {
-		}
-
-		@Override
-		public void cancel() {
-			publisher.removeSubscription(this);
-			terminated = true;
-		}
-
-		@Override
-		public void onComplete() {
-			if (!terminated) {
-				subscriber.onComplete();
-			}
-			terminated = true;
-		}
-
-		@Override
-		public void onNext(O ev) {
-			if (!terminated) {
-				subscriber.onNext(ev);
-			}
-		}
-
-		@Override
-		public boolean isComplete() {
-			return terminated;
-		}
-
-		@Override
-		public String toString() {
-			return "{" +
-					"firehose!" +
-					'}';
-		}
-	}
-
-	static class WrappedStreamSubscription<O> extends StreamSubscription<O> {
-		final StreamSubscription<O> thiz;
-
-		public WrappedStreamSubscription(final StreamSubscription<O> thiz, CompletableQueue<O> queue) {
+		public WrappedReactiveSubscription(final ReactiveSubscription<O> thiz, CompletableQueue<O> queue) {
 			super(thiz.publisher, new Subscriber<O>() {
 				@Override
 				public void onSubscribe(Subscription s) {

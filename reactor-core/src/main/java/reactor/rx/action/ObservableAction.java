@@ -38,14 +38,14 @@ public class ObservableAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		available();
+		drain();
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		observable.notify(key, Event.wrap(ev));
 		if(count++ >= capacity){
-			available();
+			drain();
 		}
 	}
 

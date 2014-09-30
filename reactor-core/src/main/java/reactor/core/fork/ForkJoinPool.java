@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
-import reactor.rx.Stream;
 import reactor.rx.Streams;
+import reactor.rx.stream.HotStream;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,7 +55,7 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> join(final Function<?, V>... tasks) {
+	public <V> ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> join(final Function<?, V>... tasks) {
 		return join(Arrays.asList(tasks));
 	}
 
@@ -71,11 +71,11 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
-		final Stream<ImmutableList<V>> d
+	public <V> ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
+		final HotStream<ImmutableList<V>> d
 				= Streams.defer(env, dispatcher);
-		final ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>> t
-				= new ForkJoinTask<ImmutableList<V>, Stream<ImmutableList<V>>>(executor, d);
+		final ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> t
+				= new ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>>(executor, d);
 
 		final AtomicInteger count = new AtomicInteger(tasks.size());
 		final FastList<V> results = FastList.newList();
@@ -113,9 +113,9 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<V, Stream<V>> fork() {
-		Stream<V> d = Streams.defer(env, dispatcher);
-		return new ForkJoinTask<V, Stream<V>>(executor, d);
+	public <V> ForkJoinTask<V, HotStream<V>> fork() {
+		HotStream<V> d = Streams.defer(env, dispatcher);
+		return new ForkJoinTask<V, HotStream<V>>(executor, d);
 	}
 
 }

@@ -17,19 +17,15 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
-import javax.annotation.Nonnull;
-
 /**
  * A {@link org.reactivestreams.Publisher} wrapper that takes care of lazy subscribing.
- *
+ * <p>
  * The stream will directly forward all the signals passed to the subscribers and complete when onComplete is called.
- *
+ * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
  * Streams.create(sub -> sub.onNext(1))
@@ -41,21 +37,8 @@ public class PublisherStream<T> extends Stream<T> {
 
 	private final Publisher<? extends T> publisher;
 
-	public PublisherStream(@Nonnull Dispatcher dispatcher, Publisher<? extends T> publisher) {
-		super(dispatcher);
+	public PublisherStream(Publisher<? extends T> publisher) {
 		this.publisher = publisher;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public PublisherStream<T> env(Environment environment) {
-		return (PublisherStream<T>) super.env(environment);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public PublisherStream<T> capacity(long elements) {
-		return (PublisherStream<T>) super.capacity(elements);
 	}
 
 	/**

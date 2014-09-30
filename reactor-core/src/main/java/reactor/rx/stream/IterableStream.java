@@ -16,9 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.PushSubscription;
 
 import java.util.Iterator;
 
@@ -30,7 +29,7 @@ import java.util.Iterator;
  * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
- * Streams.defer(1,2,3,4).consume(
+ * Streams.just(1,2,3,4).consume(
  *    log::info,
  *    log::error,
  *    (-> log.info("complete"))
@@ -50,34 +49,14 @@ public final class IterableStream<T> extends Stream<T> {
 
 	final private Iterable<? extends T> defaultValues;
 
-	@SuppressWarnings("unchecked")
-	public IterableStream(Iterable<? extends T> defaultValues,
-	                      Dispatcher dispatcher) {
-		super(dispatcher);
-
+	public IterableStream(Iterable<? extends T> defaultValues) {
 		this.defaultValues = defaultValues;
-		this.keepAlive = false;
 	}
 
 	@Override
-	protected void onShutdown() {
-		//IGNORE
-	}
-
-	@Override
-	protected void subscribeWithSubscription(final Subscriber<? super T> subscriber, final StreamSubscription<T>
-			streamSubscription) {
+	public void subscribe(final Subscriber<? super T> subscriber) {
 		if (defaultValues != null) {
-			super.subscribeWithSubscription(subscriber, streamSubscription);
-		} else {
-			subscriber.onComplete();
-		}
-	}
-
-	@Override
-	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber, boolean reactivePull) {
-		if(defaultValues != null) {
-			return new StreamSubscription.Firehose<T>(this, subscriber) {
+			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
 				Iterator<? extends T> iterator = defaultValues.iterator();
 
 				@Override
@@ -92,14 +71,14 @@ public final class IterableStream<T> extends Stream<T> {
 						onComplete();
 					}
 				}
-			};
-		}else{
-			return null;
+			});
+		} else {
+			subscriber.onComplete();
 		}
 	}
 
 	@Override
 	public String toString() {
-		return super.toString() + " " + defaultValues;
+		return "iterable=" + defaultValues;
 	}
 }

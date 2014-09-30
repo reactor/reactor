@@ -35,7 +35,9 @@ import reactor.function.Function;
 import reactor.function.support.Tap;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
-import reactor.rx.action.ParallelAction;
+import reactor.rx.action.Action;
+import reactor.rx.action.ConcurrentAction;
+import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple2;
 
 import java.util.*;
@@ -64,7 +66,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
-		Stream<String> stream = Streams.defer("Hello World!");
+		Stream<String> stream = Streams.just("Hello World!");
 		Stream<String> s =
 				stream
 						.map(s1 -> "Goodbye then!");
@@ -74,7 +76,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
-		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -92,7 +94,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
-		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -103,7 +105,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWithMultipleValues() throws InterruptedException {
-		Stream<String> stream = Streams.defer(env, "1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -130,7 +132,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWitIgnoreErrors() throws InterruptedException {
-		Stream<String> stream = Streams.defer(env, "1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just( "1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -158,7 +160,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testReduce() throws InterruptedException {
-		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -168,10 +170,11 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testMerge() throws InterruptedException {
-		Stream<String> stream1 = Streams.defer("1", "2");
-		Stream<String> stream2 = Streams.defer("3", "4", "5");
+		Stream<String> stream1 = Streams.just("1", "2");
+		Stream<String> stream2 = Streams.just("3", "4", "5");
 		Stream<Integer> s =
-				Streams.merge(env, stream1, stream2)
+				Streams.merge(stream1, stream2)
+						.dispatchOn(env)
 						.capacity(5)
 						.map(STRING_2_INTEGER)
 						.reduce( 1, r -> r.getT1() * r.getT2());
@@ -205,7 +208,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		r.on(key, tap);
 
-		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<Void> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -219,7 +222,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testStreamBatchesResults() {
-		Stream<String> stream = Streams.defer("1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<List<Integer>> s =
 				stream
 						.map(STRING_2_INTEGER)
@@ -240,7 +243,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void testHandlersErrorsDownstream() throws InterruptedException {
-		Stream<String> stream = Streams.defer("1", "2", "a", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "a", "4", "5");
 		final CountDownLatch latch = new CountDownLatch(1);
 		Stream<Integer> s =
 				stream
@@ -312,7 +315,7 @@ public class PipelineTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
-		Stream<String> d = Streams.<String>defer(env).capacity(128);
+		HotStream<String> d = Streams.<String>defer(env).capacity(128);
 		Stream<Integer> tasks = d.parallel(8)
 				.map(stream -> stream.map(str -> {
 							try {
@@ -416,7 +419,7 @@ public class PipelineTests extends AbstractReactorTest {
 		final ConcurrentHashMap<Object, Long> seenInternal = new ConcurrentHashMap<>();
 		final ConcurrentHashMap<Object, Long> seenConsumer = new ConcurrentHashMap<>();
 
-		Stream<Integer> d = Streams.defer(env);
+		HotStream<Integer> d = Streams.defer(env);
 
 		d.parallel().consume(stream -> stream.map(o -> {
 			synchronized (internalLock) {
@@ -483,7 +486,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(iterations);
 
-		Stream<String> deferred = Streams.<String>defer(env);
+		HotStream<String> deferred = Streams.<String>defer(env);
 		deferred
 				.parallel(8)
 				.monitorLatency(100)
@@ -529,10 +532,10 @@ public class PipelineTests extends AbstractReactorTest {
 
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
-		Stream<Integer> deferred;
+		Action<Integer, Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
-				ParallelAction<Integer> parallelStream = Streams.<Integer>parallel(2, env);
+				ConcurrentAction<Integer> parallelStream = Streams.<Integer>parallel(2, env);
 				parallelStream
 						.consume(stream -> stream
 										.map(i -> i)
@@ -591,7 +594,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
-		Stream<Integer> mapManydeferred;
+		Action<Integer, Integer> mapManydeferred;
 		switch (dispatcher) {
 			case "partitioned":
 				mapManydeferred = Streams.<Integer>defer(env);
@@ -605,7 +608,7 @@ public class PipelineTests extends AbstractReactorTest {
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Streams.<Integer>defer(env, dispatcher1);
 				mapManydeferred
-						.flatMap(i -> Streams.defer(env, dispatcher1, i))
+						.flatMap(i -> Streams.just(env, dispatcher1, i))
 						.consume(i -> latch.countDown());
 		}
 
@@ -670,7 +673,7 @@ public class PipelineTests extends AbstractReactorTest {
 		final double TOLERANCE = 0.9;
 
 
-		Stream<Integer> batchingStreamDef = Streams.defer(env);
+		HotStream<Integer> batchingStreamDef = Streams.defer(env);
 
 		List<Integer> testDataset = createTestDataset(NUM_MESSAGES);
 
@@ -714,19 +717,19 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void shouldCorrectlyDispatchComplexFlow() throws InterruptedException {
-		Stream<Integer> globalFeed = Streams.defer(env);
+		HotStream<Integer> globalFeed = Streams.defer(env);
 
 		CountDownLatch afterSubscribe = new CountDownLatch(1);
 		CountDownLatch latch = new CountDownLatch(4);
 
-		Stream<Integer> s = Streams.defer("2222")
+		Stream<Integer> s = Streams.just("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
 								Streams.<Integer>merge(
-										env,
 										globalFeed,
-										Streams.defer(1111, l, 3333, 4444, 5555, 6666)
+										Streams.just(1111, l, 3333, 4444, 5555, 6666)
 								)
+										.dispatchOn(env)
 										.observe(x -> afterSubscribe.countDown())
 										.filter(nearbyLoc -> 3333 >= nearbyLoc)
 										.filter(nearbyLoc -> 2222 <= nearbyLoc)
@@ -780,19 +783,19 @@ public class PipelineTests extends AbstractReactorTest {
 		env.addDispatcherFactory("test-p",
 				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
 
-		//System.out.println("Java "+ ManagementFactory.getRuntimeMXBean().getVmVersion());
-		List<Integer> tasks =
-				IntStream.range(0, ThreadLocalRandom.current().nextInt(100,300))
-				.boxed()
-						.collect(Collectors.toList());
+		int max = ThreadLocalRandom.current().nextInt(100, 300);
+		CountDownLatch countDownLatch = new CountDownLatch(max+1);
 
-		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
+		Stream<Integer> worker = Streams.range(0, max);
 
-		Stream<Integer> worker = Streams.defer(env, env.getDispatcherFactory("test-p").get(), tasks);
+		Stream<Void> tail =
+				worker.parallel(2, env.getDispatcherFactory("test-p")).keepAlive(true)
+						.consume(s ->
+										s.map(v -> v).consume(v -> countDownLatch.countDown())
+						);
 
-		worker.parallel(2, env.getDispatcherFactory("test-p")).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
-		System.out.println(worker.debug());
+		System.out.println(tail.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
@@ -802,9 +805,11 @@ public class PipelineTests extends AbstractReactorTest {
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
 
-		Stream<Integer> worker = Streams.defer(env, env.getDefaultDispatcherFactory().get(), tasks);
+		Stream<Integer> worker = Streams.defer(tasks);
 
-		worker.parallel(2).consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+		worker.parallel(2)
+				.dispatchOn(env.getDefaultDispatcherFactory().get())
+				.consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
 		countDownLatch.await(5, TimeUnit.SECONDS);
 
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -812,7 +817,10 @@ public class PipelineTests extends AbstractReactorTest {
 
 	@Test
 	public void shouldWindowCorrectly() throws InterruptedException{
-		Stream<Integer> sensorDataStream = Streams.defer(env, SynchronousDispatcher.INSTANCE, createTestDataset(1000));
+		Stream<Integer> sensorDataStream =
+				Streams.defer(createTestDataset(1000))
+				.dispatchOn(env, SynchronousDispatcher.INSTANCE);
+
 		CountDownLatch endLatch = new CountDownLatch(1000/100);
 
 		sensorDataStream
@@ -839,7 +847,7 @@ public class PipelineTests extends AbstractReactorTest {
 		int parallelStreams = 16;
 		CountDownLatch latch = new CountDownLatch(1);
 
-		final Stream<Integer> streamBatcher = Streams.<Integer>defer(env);
+		final HotStream<Integer> streamBatcher = Streams.<Integer>defer(env);
 		streamBatcher
 				.buffer(batchsize)
 				.timeout(timeout)
@@ -865,6 +873,26 @@ public class PipelineTests extends AbstractReactorTest {
 			assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
 		}
 	}
+
+	private final Stream<Integer> streamRange = Streams.range(0, 1000);
+
+
+	@Test
+	public void mapLotsOfSubAndCancel() throws InterruptedException {
+		for(long i = 0; i<199; i++)
+			mapPassThru();
+	}
+
+		public void mapPassThru() throws InterruptedException {
+		Streams.just(1).map(IDENTITY_FUNCTION);
+	}
+
+	private static final Function<Integer, Integer> IDENTITY_FUNCTION = new Function<Integer, Integer>() {
+		@Override
+		public Integer apply(Integer value) {
+			return value;
+		}
+	};
 
 	private List<Integer> createTestDataset(int i) {
 		List<Integer> list = new ArrayList<>(i);

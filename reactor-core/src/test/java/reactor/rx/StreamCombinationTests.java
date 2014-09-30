@@ -20,6 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.function.Consumer;
+import reactor.function.Function;
+import reactor.rx.action.Action;
+import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple2;
 
 import java.util.ArrayList;
@@ -38,8 +41,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
 
 	private ArrayList<Stream<SensorData>> allSensors;
-	private Stream<SensorData>            sensorEven;
-	private Stream<SensorData>            sensorOdd;
+	private HotStream<SensorData>         sensorEven;
+	private HotStream<SensorData>         sensorOdd;
 
 
 	public Consumer<Object> loggingConsumer() {
@@ -53,7 +56,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return allSensors;
 	}
 
-	public Stream<SensorData> sensorOdd() {
+	public HotStream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
 			this.sensorOdd = Streams.<SensorData>defer(env, env.getDefaultDispatcherFactory().get());
@@ -65,7 +68,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return sensorOdd;
 	}
 
-	public Stream<SensorData> sensorEven() {
+	public HotStream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
 			this.sensorEven = Streams.<SensorData>defer(env, env.getDefaultDispatcherFactory().get());
@@ -81,8 +84,16 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
 
+		LOG.info(Streams.just(1).map(new Function<Integer, Object>() {
+			@Override
+			public Object apply(Integer integer) {
+				return integer;
+			}
+		}).debug().toString());
+
+
 		Stream<Integer> stream = Streams.merge(
-				Streams.defer(1)
+				Streams.just(1)
 						.map(i -> Streams.range(0, n))
 		);
 
@@ -135,7 +146,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				.boxed()
 				.collect(Collectors.toList());
 
-		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString() + "" +
+		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString() +
+				"" +
 				" " +
 				"-- " + tuple.getT2()))
 				.observe(loggingConsumer())
@@ -165,7 +177,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Stream<Void> tail = Streams.zip(env, sensorEven(), sensorOdd(), this::computeMin)
+		Stream<Void> tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
+				.dispatchOn(env)
 				.observe(loggingConsumer())
 				.consume(x -> latch.countDown());
 
@@ -174,6 +187,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		awaitLatch(tail, latch);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws Exception {
 		try {
 			if (!latch.await(5, TimeUnit.SECONDS)) {
@@ -181,14 +195,17 @@ public class StreamCombinationTests extends AbstractReactorTest {
 						+ tail.debug());
 			}
 		} finally {
-			tail.cancel();
+			//Clean action references between tests
+			if (Action.class.isAssignableFrom(tail.getClass())) {
+				((Action) tail).cancel();
+			}
 		}
 	}
 
 	private void generateData(int elements) {
 		Random random = new Random();
 		SensorData data;
-		Stream<SensorData> upstream;
+		HotStream<SensorData> upstream;
 
 		for (long i = 0; i < elements; i++) {
 			data = new SensorData(i, random.nextFloat() * 100);

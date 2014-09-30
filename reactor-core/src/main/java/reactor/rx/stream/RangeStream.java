@@ -16,9 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * A Stream that emits N {@link java.lang.Integer} from the inclusive start value defined to the inclusive end and then complete.
@@ -49,31 +48,21 @@ public final class RangeStream extends Stream<Integer> {
 	private final int start;
 	private final int end;
 
-	public RangeStream(int start, int end,
-	                   Dispatcher dispatcher) {
-		super(dispatcher);
+	public RangeStream(int start, int end) {
 		this.start = start;
 		this.end = end;
-		this.keepAlive = false;
-
-		capacity(end - start + 1);
-
 	}
 
 	@Override
-	protected void onShutdown() {
-		//IGNORE
-	}
-
-	@Override
-	protected StreamSubscription<Integer> createSubscription(Subscriber<? super Integer> subscriber, boolean reactivePull) {
-			return new StreamSubscription.Firehose<Integer>(this, subscriber) {
+	public void subscribe(Subscriber<? super Integer> subscriber) {
+		if (start <= end) {
+			subscriber.onSubscribe(new PushSubscription<Integer>(this, subscriber) {
 				int cursor = start;
 
 				@Override
 				public void request(long elements) {
 
-						long i = 0;
+					long i = 0;
 					while (i < elements && cursor <= end) {
 						onNext(cursor++);
 						i++;
@@ -83,7 +72,11 @@ public final class RangeStream extends Stream<Integer> {
 						onComplete();
 					}
 				}
-			};
+
+			});
+		} else {
+			subscriber.onComplete();
+		}
 	}
 
 	@Override

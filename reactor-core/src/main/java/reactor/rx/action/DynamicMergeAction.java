@@ -19,7 +19,10 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.PushSubscription;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * @author Stephane Maldini
@@ -49,12 +52,12 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		return fanInAction.createSubscription(subscriber, reactivePull);
 	}
 
 	@Override
-	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, StreamSubscription<O> subscription) {
+	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
 		fanInAction.subscribeWithSubscription(subscriber, subscription);
 	}
 
@@ -105,6 +108,12 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	public Action<Publisher<? extends I>, O> pause() {
 		fanInAction.pause();
 		return super.pause();
+	}
+
+	@Override
+	public Action<Publisher<? extends I>, O> dispatchOn(@Nullable Environment environment, @Nonnull final Dispatcher dispatcher) {
+		fanInAction.dispatchOn(environment, dispatcher);
+		return dispatchOn(environment, dispatcher);
 	}
 
 	@Override

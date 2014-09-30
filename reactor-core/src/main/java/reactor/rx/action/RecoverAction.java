@@ -18,7 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.ClassSelector;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -35,9 +35,9 @@ public class RecoverAction<T, E extends Throwable> extends Action<T, E> {
 	}
 
 	@Override
-	protected StreamSubscription<E> createSubscription(final Subscriber<? super E> subscriber, boolean reactivePull) {
+	protected PushSubscription<E> createSubscription(final Subscriber<? super E> subscriber, boolean reactivePull) {
 		if (lastError != null) {
-			return new StreamSubscription<E>(this, subscriber) {
+			return new PushSubscription<E>(this, subscriber) {
 				@Override
 				public void request(long elements) {
 					subscriber.onNext(lastError);

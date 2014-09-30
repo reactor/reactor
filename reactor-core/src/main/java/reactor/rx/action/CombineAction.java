@@ -18,7 +18,6 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 
@@ -30,10 +29,10 @@ import reactor.rx.StreamUtils;
  * @since 2.0
  */
 final public class CombineAction<E, O> extends Action<E, O> {
-	private final Stream<O>    publisher;
+	private final Action<?, O> publisher;
 	private final Action<E, ?> subscriber;
 
-	public CombineAction(Action<E, ?> head, Stream<O> tail) {
+	public CombineAction(Action<E, ?> head, Action<?, O> tail) {
 		super(head.getDispatcher(), head.getCapacity());
 		this.publisher = tail;
 		this.subscriber = head;
@@ -86,26 +85,6 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	@Override
 	public void broadcastComplete() {
 		publisher.broadcastComplete();
-	}
-
-	@Override
-	public State getState() {
-		return publisher.getState();
-	}
-
-	@Override
-	public Throwable getError() {
-		return publisher.getError();
-	}
-
-	@Override
-	public Dispatcher getDispatcher() {
-		return publisher.getDispatcher();
-	}
-
-	@Override
-	public Environment getEnvironment() {
-		return publisher.getEnvironment();
 	}
 
 	@Override

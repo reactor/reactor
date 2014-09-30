@@ -5,7 +5,7 @@ import com.gs.collections.impl.block.procedure.checked.CheckedProcedure;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.rx.Stream;
+import reactor.rx.action.Action;
 
 import java.util.concurrent.Executor;
 
@@ -15,7 +15,7 @@ import java.util.concurrent.Executor;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ForkJoinTask<T, C extends Stream<T>> implements Consumer<Object> {
+public class ForkJoinTask<T, C extends Action<T,T>> implements Consumer<Object> {
 
 	private final MultiReaderFastList<Function<?, ?>> tasks = MultiReaderFastList.newList();
 

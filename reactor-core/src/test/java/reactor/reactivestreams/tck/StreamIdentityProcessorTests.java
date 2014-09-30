@@ -23,6 +23,7 @@ import org.reactivestreams.tck.TestEnvironment;
 import reactor.core.Environment;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import reactor.rx.action.Action;
 import reactor.rx.action.CombineAction;
 import reactor.util.Assert;
 
@@ -52,7 +53,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Override
 	public CombineAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
 
-		Stream<String> otherStream = Streams.defer(env, "test", "test2", "test3");
+		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 
 		return
 				Streams.<Integer>defer(env)
@@ -68,7 +69,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 											}
 											counter.incrementAndGet();
 										})
-										.scan(tuple -> tuple.getT1(), 0)
+										.scan(0, tuple -> tuple.getT1())
 										.filter(integer -> integer >= 0)
 										.reduce((() -> 0), 1, tuple -> -tuple.getT1())
 										.map(integer -> -integer)
@@ -78,9 +79,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.timeout(200)
 										.<Integer>split()
 										.flatMap(i ->
-														Streams.zip(env,
-																Streams.<Integer>defer(env, i), otherStream,
+														Streams.zip(
+																Streams.<Integer>just(i), otherStream,
 																tuple -> tuple.getT1())
+																.dispatchOn(env)
 										)
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
@@ -96,24 +98,23 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 			}
 
 			return Streams
-					.defer(env, list)
+					.defer(list)
 					.filter(integer -> true)
-					.map(integer -> integer);
+					.map(integer -> integer)
+					.dispatchOn(env);
 
 		} else {
 			final Random random = new Random();
 
 			return Streams
-					.generate(env, random::nextInt)
+					.generate(random::nextInt)
 					.map(Math::abs);
 		}
 	}
 
 	@Override
 	public Publisher<Integer> createErrorStatePublisher() {
-		Stream<Integer> stream = Streams.defer(env);
-		stream.broadcastError(new Exception("oops"));
-		return stream;
+		return Streams.fail(new Exception("oops")).cast(Integer.class);
 	}
 
 	@Test
@@ -123,7 +124,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
-		Stream<Integer> stream = Streams.defer(env);
+		Action<Integer, Integer> stream = Streams.defer(env);
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());

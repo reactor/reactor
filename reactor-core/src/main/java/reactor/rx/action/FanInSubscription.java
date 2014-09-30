@@ -18,7 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -30,7 +30,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber<O, ?>> extends StreamSubscription<O> {
+public class FanInSubscription<O, SUBSCRIBER extends FanInAction.InnerSubscriber<O, ?>> extends ReactiveSubscription<O> {
 
 
 	final List<InnerSubscription<O, ? extends SUBSCRIBER>> subscriptions;

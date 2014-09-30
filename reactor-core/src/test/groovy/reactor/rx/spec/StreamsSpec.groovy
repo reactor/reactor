@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx
+package reactor.rx.spec
+
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
@@ -24,6 +25,8 @@ import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
+import reactor.rx.Stream
+import reactor.rx.Streams
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
@@ -47,7 +50,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream with an initial value makes that value available immediately'() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.defer('test')
+			Stream stream = Streams.just('test')
 
 		when:
 			'the value is retrieved'
@@ -61,7 +64,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can listen for terminal states'() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.defer('test')
+			Stream stream = Streams.just('test')
 
 		when:
 			'the complete signal is observed and stream is retrieved'
@@ -84,11 +87,12 @@ class StreamsSpec extends Specification {
 			'a composable with an initial value'
 			def dispatcher1 = new SynchronousDispatcher()
 			def dispatcher2 = new SynchronousDispatcher()
-			def stream = Streams.defer(null, dispatcher1, 'test', 'test2', 'test3')
+			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(dispatcher1)
+			def tail = stream.observe{}
 
 		when:
 			'the stream is retrieved'
-			def tail = stream.dispatchOn(dispatcher2)
+			tail.dispatchOn(dispatcher2)
 
 		then:
 			'it is available'
@@ -99,7 +103,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a list'() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.defer('test', 'test2', 'test3')
+			Stream stream = Streams.just('test', 'test2', 'test3')
 
 		when:
 			'the stream is retrieved'
@@ -115,7 +119,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.defer(environment, 'test', 'test2', 'test3')
+			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(environment)
 
 		when:
 			'the stream is retrieved'
@@ -338,7 +342,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Streams.<Integer> defer()
 			Stream<Integer> mapped = source.
-					flatMap { Integer v -> println v; Streams.<Integer> defer(v * 2) }
+					flatMap { Integer v -> println v; Streams.<Integer> just(v * 2) }
 
 		when:
 			'the source accepts a value'
@@ -379,7 +383,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
-			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
+			def source1 = Streams.<Stream<Integer>> just(source2, source3)
 			def tap = source1.join().tap()
 
 		when:
@@ -412,7 +416,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
-			def source1 = Streams.<Stream<Integer>> defer(source2, source3)
+			def source1 = Streams.<Stream<Integer>> just(source2, source3)
 			def tap = source1.observe { println it }.zip { it.t1 + it.t2 }.tap()
 
 		when:
@@ -477,8 +481,8 @@ class StreamsSpec extends Specification {
 	def "Multiple iterable Stream's values can be zipped"() {
 		given:
 			'source composables to zip, buffer and tap'
-			def odds = Streams.defer(1, 3, 5, 7, 9)
-			def even = Streams.defer(2, 4, 6)
+			def odds = Streams.just(1, 3, 5, 7, 9)
+			def even = Streams.just(2, 4, 6)
 
 		when:
 			'the sources are zipped'
@@ -498,8 +502,8 @@ class StreamsSpec extends Specification {
 	def "A different way of consuming"() {
 		given:
 			'source composables to zip, buffer and tap'
-			def odds = Streams.defer(1, 3, 5, 7, 9)
-			def even = Streams.defer(2, 4, 6)
+			def odds = Streams.just(1, 3, 5, 7, 9)
+			def even = Streams.just(2, 4, 6)
 
 		when:
 			'the sources are zipped'
@@ -598,7 +602,7 @@ class StreamsSpec extends Specification {
 			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
 			mapped.when(Exception) { errors++ }
-			mapped.available()
+			mapped.drain()
 
 		when:
 			'the source accepts a value'
@@ -617,7 +621,7 @@ class StreamsSpec extends Specification {
 			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
 			filtered.when(Exception) { errors++ }
-			filtered.available()
+			filtered.drain()
 
 		when:
 			'the source accepts a value'
@@ -655,7 +659,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known set of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known set of values and a reduce function'
-			def reduced = Streams.<Integer> defer(1, 2, 3, 4, 5)
+			def reduced = Streams.<Integer> just(1, 2, 3, 4, 5)
 					.reduce(new Reduction())
 
 		when:
@@ -750,7 +754,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted and flushed'
 			source.broadcastNext(2)
-			reduced.available()
+			reduced.drain()
 
 		then:
 			'the updated reduction is available'
@@ -761,7 +765,7 @@ class StreamsSpec extends Specification {
 			reduced = source.reduce(2, new Reduction())
 			value = reduced.tap()
 			source.broadcastNext(1)
-			reduced.available()
+			reduced.drain()
 
 		then:
 			'the updated reduction is available'
@@ -793,7 +797,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'use an initial value'
-			value = source.scan(new Reduction(), 4).tap()
+			value = source.scan(4, new Reduction()).tap()
 			source.broadcastNext(1)
 
 		then:
@@ -1004,6 +1008,7 @@ class StreamsSpec extends Specification {
 		when: "complete will cancel non kept-alive actions"
 		source.broadcastComplete()
 			result = source.debug().toMap()
+		println source.debug()
 
 		then:
 			'the result should contain all stream titles by id'
@@ -1030,7 +1035,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted'
 			source.broadcastNext(2)
-			reduced.available()
+			reduced.drain()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -1170,7 +1175,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-			s = Streams.defer(environment, future, 100, TimeUnit.MILLISECONDS)
+			s = Streams.defer(future, 100, TimeUnit.MILLISECONDS).dispatchOn(environment)
 			nexts = []
 			errors = []
 
@@ -1222,9 +1227,9 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def random = new Random()
-			def source = Streams.generate(environment) {
+			def source = Streams.generate {
 				random.nextInt()
-			}
+			}.dispatchOn(environment)
 
 			def values = []
 
@@ -1330,7 +1335,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			for (int i = 0; i < 1000000; i++) {
+			for (int i = 0; i < 100000; i++) {
 				source.broadcastNext(1)
 			}
 			source.broadcastComplete()
@@ -1504,7 +1509,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be materialized for recursive signal or introspection'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.defer('test')
+			def stream = Streams.just('test')
 
 		when:
 			'the stream is retrieved and a consumer is dynamically added'
@@ -1583,7 +1588,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can re-subscribe its oldest parent on error signals'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.defer(['test', 'test2', 'test3']).capacity(3)
+			def stream = Streams.defer(['test', 'test2', 'test3'])
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
@@ -1612,14 +1617,16 @@ class StreamsSpec extends Specification {
 					throw new RuntimeException()
 				}
 			}.retry().count()
+
+			println stream.debug()
 			println stream.debug()
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
 			stream.broadcastComplete()
+			def tap = value2.tap()
 			println stream.debug()
-			def res = value2.tap().get()
-			println stream.debug()
+			def res = tap.get()
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
@@ -1628,7 +1635,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
-			stream = Streams.defer(['test', 'test2', 'test3']).capacity(3)
+			stream = Streams.defer(['test', 'test2', 'test3'])
 			value = stream.observe {
 				if (i++ < 2) {
 					throw new RuntimeException()
@@ -1668,7 +1675,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be timestamped'() {
 		given:
 			'a composable with an initial value and a relative time'
-			def stream = Streams.defer('test')
+			def stream = Streams.just('test')
 			def timestamp = System.nanoTime()
 
 		when:
@@ -1684,7 +1691,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be benchmarked'() {
 		given:
 			'a composable with an initial value and a relative time'
-			def stream = Streams.defer('test')
+			def stream = Streams.just('test')
 			long timestamp = System.nanoTime()
 
 		when:

@@ -82,7 +82,7 @@ class ComposableExtensions {
 	}
 
 	//Consuming
-	static <T> Stream<T> leftShift(final Stream<T> selfType, final T value) {
+	static <T> Action<?, T> leftShift(final Action<?, T> selfType, final T value) {
 		selfType.broadcastNext(value)
 	}
 

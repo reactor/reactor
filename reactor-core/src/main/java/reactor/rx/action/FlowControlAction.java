@@ -17,7 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * @author Stephane Maldini
@@ -35,8 +35,8 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected StreamSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		return new StreamSubscription<O>(this, subscriber) {
+	protected ReactiveSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		return new ReactiveSubscription<O>(this, subscriber) {
 			@Override
 			public void request(long elements) {
 				super.request(elements);

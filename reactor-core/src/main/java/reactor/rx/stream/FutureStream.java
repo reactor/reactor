@@ -16,9 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -26,13 +25,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * A Stream that emits a result of a {@link java.util.concurrent.Future} and then complete.
  * <p>
- * Since the stream retains the future reference in a final field, any {@link this#subscribe(org.reactivestreams
- * .Subscriber)}
+ * Since the stream retains the future reference in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
  * will replay the {@link java.util.concurrent.Future#get()}
  * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
- * Streams.defer(someFuture).consume(
+ * Streams.just(someFuture).consume(
  *log::info,
  *log::error,
  * (-> log.info("complete"))
@@ -54,33 +52,21 @@ public final class FutureStream<T> extends Stream<T> {
 	private final long                time;
 	private final TimeUnit            unit;
 
-	public FutureStream(Future<? extends T> future,
-	                    Dispatcher dispatcher) {
-		this(future, 0, TimeUnit.SECONDS, dispatcher);
+	public FutureStream(Future<? extends T> future) {
+		this(future, 0, TimeUnit.SECONDS);
 	}
 
 	public FutureStream(Future<? extends T> future,
 	                    long time,
-	                    TimeUnit unit,
-	                    Dispatcher dispatcher) {
-		super(dispatcher);
-
+	                    TimeUnit unit) {
 		this.future = future;
 		this.time = time;
 		this.unit = unit;
-
-		capacity(1);
 	}
 
 	@Override
-	protected void onShutdown() {
-		//IGNORE
-	}
-
-	@Override
-	protected StreamSubscription<T> createSubscription(Subscriber<? super T> subscriber,
-	                                                   boolean reactivePull) {
-		return new StreamSubscription<T>(this, subscriber) {
+	public void subscribe(Subscriber<? super T> subscriber) {
+		subscriber.onSubscribe(new ReactiveSubscription<T>(this, subscriber) {
 
 			@Override
 			public void request(long elements) {
@@ -98,10 +84,8 @@ public final class FutureStream<T> extends Stream<T> {
 
 				} catch (Throwable e) {
 					onError(e);
-					state = State.ERROR;
-					error = e;
 				}
 			}
-		};
+		});
 	}
 }

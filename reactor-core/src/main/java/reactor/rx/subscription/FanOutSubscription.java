@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action;
+package reactor.rx.subscription;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
-import reactor.rx.StreamSubscription;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,28 +26,32 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
+ * A composite subscription used to achieve pub/sub pattern. When more than 1 subscriber is attached to a Stream,
+ * in particular an Action, the previous subscription is replaced by a composite fanOutSubscription delegating to
+ * both the previous and the new subscriptions.
+ *
  * @author Stephane Maldini
  * @since 2.0
  */
-public class FanOutSubscription<O> extends StreamSubscription<O> {
+public class FanOutSubscription<O> extends PushSubscription<O> {
 
 	static final Logger log = LoggerFactory.getLogger(FanOutSubscription.class);
 
-	private final List<StreamSubscription<O>> subscriptions = new ArrayList<StreamSubscription<O>>(2);
-	private final ReentrantReadWriteLock      lock          = new ReentrantReadWriteLock();
+	private final List<PushSubscription<O>> subscriptions = new ArrayList<PushSubscription<O>>(2);
+	private final ReentrantReadWriteLock    lock          = new ReentrantReadWriteLock();
 
-	public FanOutSubscription(Stream<O> publisher, StreamSubscription<O> streamSubscriptionA,
-	                          StreamSubscription<O> streamSubscriptionB) {
-		super(publisher, null, null);
-		subscriptions.add(streamSubscriptionA);
-		subscriptions.add(streamSubscriptionB);
+	public FanOutSubscription(Stream<O> publisher, PushSubscription<O> reactiveSubscriptionA,
+	                          PushSubscription<O> reactiveSubscriptionB) {
+		super(publisher, null);
+		subscriptions.add(reactiveSubscriptionA);
+		subscriptions.add(reactiveSubscriptionB);
 	}
 
 	@Override
 	public void onComplete() {
-		forEach(new Consumer<StreamSubscription<O>>() {
+		forEach(new Consumer<PushSubscription<O>>() {
 			@Override
-			public void accept(StreamSubscription<O> subscription) {
+			public void accept(PushSubscription<O> subscription) {
 				try {
 					subscription.onComplete();
 				} catch (Throwable throwable) {
@@ -61,9 +64,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 	@Override
 	public void onNext(final O ev) {
 
-		forEach(new Consumer<StreamSubscription<O>>() {
+		forEach(new Consumer<PushSubscription<O>>() {
 			@Override
-			public void accept(StreamSubscription<O> subscription) {
+			public void accept(PushSubscription<O> subscription) {
 				try {
 					if (subscription.isComplete()) {
 						if (log.isDebugEnabled()) {
@@ -83,10 +86,10 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void cancel() {
-		forEach(new Consumer<StreamSubscription<O>>() {
+		forEach(new Consumer<PushSubscription<O>>() {
 			@Override
-			public void accept(StreamSubscription<O> oStreamSubscription) {
-				oStreamSubscription.cancel();
+			public void accept(PushSubscription<O> oPushSubscription) {
+				oPushSubscription.cancel();
 			}
 		});
 		super.cancel();
@@ -94,10 +97,10 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 
 	@Override
 	public void onError(final Throwable ev) {
-		forEach(new Consumer<StreamSubscription<O>>() {
+		forEach(new Consumer<PushSubscription<O>>() {
 			@Override
-			public void accept(StreamSubscription<O> oStreamSubscription) {
-				oStreamSubscription.onError(ev);
+			public void accept(PushSubscription<O> oPushSubscription) {
+				oPushSubscription.onError(ev);
 			}
 		});
 	}
@@ -107,9 +110,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 		lock.readLock().lock();
 		try {
 			boolean isComplete = false;
-			for(StreamSubscription<O> subscription : subscriptions){
+			for (PushSubscription<O> subscription : subscriptions) {
 				isComplete = subscription.isComplete();
-				if(!isComplete) break;
+				if (!isComplete) break;
 			}
 			return isComplete;
 		} finally {
@@ -117,11 +120,11 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	public void forEach(Consumer<StreamSubscription<O>> consumer) {
+	public void forEach(Consumer<PushSubscription<O>> consumer) {
 		lock.readLock().lock();
 		try {
-			for(StreamSubscription<O> subscription : subscriptions){
-				if(subscription != null){
+			for (PushSubscription<O> subscription : subscriptions) {
+				if (subscription != null) {
 					consumer.accept(subscription);
 				}
 			}
@@ -130,20 +133,20 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	public List<StreamSubscription<O>> getSubscriptions() {
+	public List<PushSubscription<O>> getSubscriptions() {
 		return Collections.unmodifiableList(subscriptions);
 	}
 
-	public boolean isEmpty(){
+	public boolean isEmpty() {
 		lock.readLock().lock();
-		try{
+		try {
 			return subscriptions.isEmpty();
 		} finally {
 			lock.readLock().unlock();
 		}
 	}
 
-	public boolean remove(StreamSubscription<O> subscription) {
+	public boolean remove(PushSubscription<O> subscription) {
 		lock.writeLock().lock();
 		try {
 			return subscriptions.remove(subscription);
@@ -153,7 +156,7 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 	}
 
 
-	public boolean add(StreamSubscription<O> subscription) {
+	public boolean add(PushSubscription<O> subscription) {
 		lock.writeLock().lock();
 		try {
 			return subscriptions.add(subscription);
@@ -162,9 +165,9 @@ public class FanOutSubscription<O> extends StreamSubscription<O> {
 		}
 	}
 
-	public boolean contains(StreamSubscription<O> subscription) {
+	public boolean contains(PushSubscription<O> subscription) {
 		lock.readLock().lock();
-		try{
+		try {
 			return subscriptions.contains(subscription);
 		} finally {
 			lock.readLock().unlock();

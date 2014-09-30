@@ -27,6 +27,7 @@ import reactor.function.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.action.FinallyAction;
 import reactor.rx.action.support.NonBlocking;
+import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -57,11 +58,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	private final Condition   pendingCondition;
 	private final Dispatcher  dispatcher;
 	private final Environment environment;
-	Stream<O> outboundStream;
+	Action<O, O> outboundStream;
 
-	Stream.State state = Stream.State.READY;
-	private O            value;
-	private Throwable    error;
+	Action.State state = Action.State.READY;
+	private O         value;
+	private Throwable error;
 	private boolean hasBlockers = false;
 
 	protected Subscription subscription;
@@ -73,7 +74,6 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * called. The given {@code env} is used to determine the default await timeout. The
 	 * default await timeout will be 30 seconds. This Promise will consumer errors from its {@code parent} such that if
 	 * the parent completes in error then so too will this Promise.
-	 *
 	 */
 	public Promise() {
 		this(SynchronousDispatcher.INSTANCE, null);
@@ -111,7 +111,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(O value, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		state = Stream.State.COMPLETE;
+		state = Action.State.COMPLETE;
 		this.value = value;
 	}
 
@@ -129,7 +129,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(Throwable error, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		state = Stream.State.ERROR;
+		state = Action.State.ERROR;
 		this.error = error;
 	}
 
@@ -179,7 +179,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isComplete() {
 		lock.lock();
 		try {
-			return state != Stream.State.READY;
+			return state != Action.State.READY;
 		} finally {
 			lock.unlock();
 		}
@@ -194,7 +194,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isPending() {
 		lock.lock();
 		try {
-			return state == Stream.State.READY;
+			return state == Action.State.READY;
 		} finally {
 			lock.unlock();
 		}
@@ -208,7 +208,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isSuccess() {
 		lock.lock();
 		try {
-			return state == Stream.State.COMPLETE;
+			return state == Action.State.COMPLETE;
 		} finally {
 			lock.unlock();
 		}
@@ -222,7 +222,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isError() {
 		lock.lock();
 		try {
-			return state == Stream.State.ERROR;
+			return state == Action.State.ERROR;
 		} finally {
 			lock.unlock();
 		}
@@ -267,11 +267,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			if (timeout >= 0) {
 				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
 				long endTime = System.currentTimeMillis() + msTimeout;
-				while (state == Stream.State.READY && (System.currentTimeMillis()) < endTime) {
+				while (state == Action.State.READY && (System.currentTimeMillis()) < endTime) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			} else {
-				while (state == Stream.State.READY) {
+				while (state == Action.State.READY) {
 					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
 				}
 			}
@@ -294,9 +294,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public O get() {
 		lock.lock();
 		try {
-			if (state == Stream.State.COMPLETE) {
+			if (state == Action.State.COMPLETE) {
 				return value;
-			} else if (state == Stream.State.ERROR) {
+			} else if (state == Action.State.ERROR) {
 				if (RuntimeException.class.isInstance(error)) {
 					throw (RuntimeException) error;
 				} else {
@@ -332,13 +332,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (outboundStream == null) {
 				if (isSuccess()) {
-					outboundStream = Streams.defer(environment, dispatcher, value);
+					outboundStream =  Streams.just(value).connect(Action.<O>passthrough(dispatcher).env(environment));
+				} else if (isError()) {
+					outboundStream = Streams.<O, Throwable>fail(error).connect(Action.<O>passthrough(dispatcher).env(environment));
 				} else {
-					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1);
-					outboundStream.keepAlive(false);
-					if (isError()) {
-						outboundStream.broadcastError(error);
-					}
+					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1).keepAlive(false);
 				}
 			}
 
@@ -393,20 +391,20 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	@SuppressWarnings("unchecked")
 	public Stream<?> findOldestStream() {
 
-		if(subscription == null){
+		if (subscription == null) {
 			return outboundStream;
 		}
 
 		Subscription sub = subscription;
-		Action<?,?> that = null;
+		Action<?, ?> that = null;
 
 		while (sub != null
-				&& StreamSubscription.class.isAssignableFrom(sub.getClass())
-				&& ((StreamSubscription<?>) sub).getPublisher() != null
-				&& Action.class.isAssignableFrom(((StreamSubscription<?>) sub).getPublisher().getClass())
+				&& PushSubscription.class.isAssignableFrom(sub.getClass())
+				&& ((PushSubscription<?>) sub).getPublisher() != null
+				&& Action.class.isAssignableFrom(((PushSubscription<?>) sub).getPublisher().getClass())
 				) {
 
-			that =  (Action<?,?>)((StreamSubscription<?>) sub).getPublisher();
+			that = (Action<?, ?>) ((PushSubscription<?>) sub).getPublisher();
 			sub = that.getSubscription();
 		}
 		return that;
@@ -418,7 +416,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (!isPending()) throw new IllegalStateException();
 			this.error = error;
-			this.state = Stream.State.ERROR;
+			this.state = Action.State.ERROR;
 
 			if (outboundStream != null) {
 				outboundStream.broadcastError(error);
@@ -440,7 +438,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 				throw new IllegalStateException();
 			}
 			this.value = value;
-			this.state = Stream.State.COMPLETE;
+			this.state = Action.State.COMPLETE;
 
 			if (outboundStream != null) {
 				outboundStream.broadcastNext(value);
