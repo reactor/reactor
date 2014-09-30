@@ -98,19 +98,25 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	@Override
 	public Action<T, T> cancel() {
-		timeoutRegistration.cancel();
+		if(timeoutRegistration != null){
+			timeoutRegistration.cancel();
+		}
 		return super.cancel();
 	}
 
 	@Override
 	public Action<T, T> pause() {
-		timeoutRegistration.pause();
+		if(timeoutRegistration != null){
+			timeoutRegistration.pause();
+		}
 		return super.pause();
 	}
 
 	@Override
 	public Action<T, T> resume() {
-		timeoutRegistration.resume();
+		if(timeoutRegistration != null){
+			timeoutRegistration.resume();
+		}
 		return super.resume();
 	}
 
