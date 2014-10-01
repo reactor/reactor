@@ -1171,7 +1171,7 @@ class StreamsSpec extends Specification {
 			latch = new CountDownLatch(1)
 
 			future = executorService.submit({
-				sleep(1500)
+				sleep(2000)
 				'hello future too long'
 			} as Callable<String>)
 
