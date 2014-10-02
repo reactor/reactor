@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2011-2014 Pivotal Software, Inc.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package reactor.net.zmq.tcp;
 
 import com.gs.collections.api.list.MutableList;
@@ -123,7 +139,7 @@ public class ZeroMQ<T> {
 		return createServer(addrs, ZMQ.ROUTER);
 	}
 
-	private Promise<NetChannel<T, T>> createClient(String addrs, int socketType) {
+	public Promise<NetChannel<T, T>> createClient(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = new TcpClientSpec<T, T>(ZeroMQTcpClient.class)
