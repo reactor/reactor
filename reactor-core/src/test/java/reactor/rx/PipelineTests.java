@@ -608,7 +608,7 @@ public class PipelineTests extends AbstractReactorTest {
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Streams.<Integer>defer(env, dispatcher1);
 				mapManydeferred
-						.flatMap(i -> Streams.just(env, dispatcher1, i))
+						.flatMap(i -> Streams.just(i).dispatchOn(dispatcher1))
 						.consume(i -> latch.countDown());
 		}
 
@@ -854,7 +854,6 @@ public class PipelineTests extends AbstractReactorTest {
 				.parallel(parallelStreams)
 				.consume(innerStream ->
 								innerStream
-										.observe(System.out::println)
 										.consume(i -> latch.countDown())
 										.when(Exception.class, Throwable::printStackTrace)
 				);
