@@ -36,7 +36,6 @@ import reactor.function.support.Tap;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
-import reactor.rx.action.ConcurrentAction;
 import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple2;
 
@@ -535,29 +534,21 @@ public class PipelineTests extends AbstractReactorTest {
 		Action<Integer, Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
-				ConcurrentAction<Integer> parallelStream = Streams.<Integer>parallel(2, env);
-				parallelStream
+				deferred = Streams.defer(env);
+				deferred.parallel(2)
 						.consume(stream -> stream
 										.map(i -> i)
-										.scan((Tuple2<Integer, Integer> tup) -> {
-											int last = (null != tup.getT2() ? tup.getT2() : 1);
-											return last + tup.getT1();
-										})
+										.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
 										.consume(i -> latch.countDown())
 						);
 
-				deferred = Streams.defer(env);
-				deferred.connect(parallelStream);
 				break;
 
 			default:
 				deferred = Streams.<Integer>defer(env, env.getDispatcher(dispatcher));
 				deferred
 						.map(i -> i)
-						.scan((Tuple2<Integer, Integer> tup) -> {
-							int last = (null != tup.getT2() ? tup.getT2() : 1);
-							return last + tup.getT1();
-						})
+						.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
 						.consume(i -> latch.countDown());
 		}
 

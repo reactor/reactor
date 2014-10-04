@@ -28,8 +28,8 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  */
 public class PushSubscription<O> implements Subscription {
-	final Subscriber<? super O> subscriber;
-	final Stream<O>             publisher;
+	protected final Subscriber<? super O> subscriber;
+	final           Stream<O>             publisher;
 
 	protected volatile boolean terminated = false;
 

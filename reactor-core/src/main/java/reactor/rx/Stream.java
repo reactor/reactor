@@ -458,7 +458,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 */
 	public final ConcurrentAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		return connect(new ConcurrentAction<O>(
-				this.getDispatcher(), dispatcherSupplier, poolsize
+				getDispatcher(), dispatcherSupplier, poolsize
 		));
 	}
 

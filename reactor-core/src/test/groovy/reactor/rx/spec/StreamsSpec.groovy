@@ -88,7 +88,7 @@ class StreamsSpec extends Specification {
 			def dispatcher1 = new SynchronousDispatcher()
 			def dispatcher2 = new SynchronousDispatcher()
 			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(dispatcher1)
-			def tail = stream.observe{}
+			def tail = stream.observe {}
 
 		when:
 			'the stream is retrieved'
@@ -1006,9 +1006,9 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[2].to[0].id == "FlowControl"
 
 		when: "complete will cancel non kept-alive actions"
-		source.broadcastComplete()
+			source.broadcastComplete()
 			result = source.debug().toMap()
-		println source.debug()
+			println source.debug()
 
 		then:
 			'the result should contain all stream titles by id'
@@ -1097,6 +1097,38 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			result == ['test1', 'test2', 'test3']
+	}
+
+	def 'Creating Stream from Timer'() {
+		given:
+			'a source stream with a given timer'
+
+			def res = 0l
+			def c = Streams.timer(environment.rootTimer, 1)
+			def timeStart = System.currentTimeMillis()
+
+		when:
+			'consuming'
+			c.consume {
+				res = System.currentTimeMillis() - timeStart
+			}
+			sleep(2500)
+
+		then:
+			'ready'
+			res > 1000
+
+		when:
+			'consuming periodic'
+			def i = []
+			Streams.period(environment.rootTimer, 0, 1).consume {
+				i << it
+			}
+			sleep(2500)
+
+		then:
+			'ready'
+			i.containsAll([0l, 1l])
 	}
 
 

@@ -26,6 +26,7 @@ import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.rx.action.*;
 import reactor.rx.stream.*;
+import reactor.timer.Timer;
 import reactor.tuple.*;
 import reactor.util.Assert;
 
@@ -179,6 +180,61 @@ public final class Streams {
 	public static Stream<Integer> range(int start, int end) {
 		return new RangeStream(start, end);
 	}
+
+
+	/**
+	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
+	 *
+	 * @param timer the timer to run on
+	 * @param delay the timespan in SECONDS to wait before emitting 0l and complete signals
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> timer(Timer timer, long delay) {
+		return timer(timer, delay, TimeUnit.SECONDS);
+	}
+
+
+	/**
+	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
+	 *
+	 * @param timer the timer to run on
+	 * @param delay the timespan in [unit] to wait before emitting 0l and complete signals
+	 * @param unit  the time unit
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> timer(Timer timer, long delay, TimeUnit unit) {
+		return new SingleTimerStream(delay, unit, timer);
+	}
+
+	/**
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
+	 * It will never complete until cancelled.
+	 *
+	 * @param timer the timer to run on
+	 * @param delay the timespan in SECONDS to wait before emitting 0l
+	 * @param period the period in SECONDS before each following increment
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> period(Timer timer, long delay, long period) {
+		return period(timer, delay, period, TimeUnit.SECONDS);
+	}
+
+
+
+	/**
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
+	 * It will never complete until cancelled.
+	 *
+	 * @param timer the timer to run on
+	 * @param delay the timespan in [unit] to wait before emitting 0l
+	 * @param period the period in [unit] before each following increment
+	 * @param unit  the time unit
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> period(Timer timer, long delay, long period, TimeUnit unit) {
+		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
+	}
+
 
 
 	/**
