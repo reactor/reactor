@@ -66,7 +66,7 @@ public class PushSubscription<O> implements Subscription {
 		subscriber.onError(throwable);
 	}
 
-	public Stream<?> getPublisher() {
+	public Stream<O> getPublisher() {
 		return publisher;
 	}
 

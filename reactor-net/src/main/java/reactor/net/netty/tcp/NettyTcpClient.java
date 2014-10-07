@@ -363,7 +363,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
 			}
 
-			getEnvironment().getRootTimer()
+			getEnvironment().getTimer()
 					.submit(
 							new Consumer<Long>() {
 								@Override

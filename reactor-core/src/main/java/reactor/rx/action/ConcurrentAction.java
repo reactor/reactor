@@ -145,7 +145,7 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 	 */
 	public ConcurrentAction<O> monitorLatency(long latencyInMs) {
 		Assert.isTrue(environment != null, "Require an environment to retrieve the default timer");
-		return monitorLatency(latencyInMs, environment.getRootTimer());
+		return monitorLatency(latencyInMs, environment.getTimer());
 	}
 
 	/**

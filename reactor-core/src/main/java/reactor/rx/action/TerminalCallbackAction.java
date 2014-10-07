@@ -37,6 +37,11 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	public void onSubscribe(Subscription subscription) {
+		super.onSubscribe(subscription);
+	}
+
+	@Override
 	protected void doSubscribe(Subscription subscription) {
 		capacity = firehose ? Long.MAX_VALUE : capacity;
 		requestConsumer.accept(capacity);

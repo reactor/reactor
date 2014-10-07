@@ -17,7 +17,11 @@ package reactor.rx.stream;
 
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.rx.action.Action;
+import reactor.rx.action.support.SpecificationExceptions;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
 * @author Stephane Maldini
@@ -48,6 +52,22 @@ public class HotStream<O> extends Action<O, O> {
 	public HotStream<O> keepAlive(boolean keepAlive) {
 		super.keepAlive(keepAlive);
 		return this;
+	}
+
+	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, final long elements) {
+		if(subscription == null){
+			trySyncDispatch(null, new Consumer<Void>(){
+				@Override
+				public void accept(Void aVoid) {
+					if((pendingNextSignals += elements) < 0) {
+						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, elements));
+					}
+				}
+			});
+		}else{
+			super.requestUpstream(capacity, terminated, elements);
+		}
 	}
 
 	@Override

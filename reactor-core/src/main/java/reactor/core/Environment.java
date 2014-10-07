@@ -357,7 +357,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 *
 	 * @return the timer.
 	 */
-	public Timer getRootTimer() {
+	public Timer getTimer() {
 		if (null == timer.get()) {
 			synchronized (timer) {
 				Timer t = new HashWheelTimer();

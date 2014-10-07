@@ -18,6 +18,7 @@ package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.event.dispatch.Dispatcher;
@@ -28,6 +29,7 @@ import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
+import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.subscription.PushSubscription;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
@@ -77,8 +79,22 @@ public abstract class Stream<O> implements Publisher<O> {
 	}
 
 	/**
+	 * Subscribe an {@link Action} to the actual pipeline to produce events to (subscribe,error,complete,next)
+	 *
+	 * @param action the processor to subscribe.
+	 *
+	 * @return the current stream
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
+	 * @since 2.0
+	 */
+	public final Stream<O> connectAnd(@Nonnull final Action<? super O, ?> action) {
+		this.connect(action);
+		return this;
+	}
+
+	/**
 	 * Subscribe an {@link Action} to the actual pipeline.
-	 * Additionally to producing events (error,complete,next and eventually flush)
+	 * Additionally to producing events (subscribe,error,complete,next)
 	 *
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 * The operation is returned for functional-style chaining.
@@ -101,15 +117,29 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * subscribe),
 	 * Reactive Extensions patterns also dubs this operation "lift".
 	 *
-	 * @param stream the processor to subscribe.
+	 * @param subscriber the processor to subscribe.
 	 * @param <E>    the {@link Subscriber} output type
+	 * @return the passed subscriber
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
+	 * @since 2.0
+	 */
+	public final <E extends Subscriber<? super O>> E connect(@Nonnull final E subscriber) {
+		this.subscribe(subscriber);
+		return subscriber;
+	}
+
+	/**
+	 * Subscribe an {@link Subscriber} to the actual pipeline. Additionally to producing events (error,complete,next,
+	 * subscribe),
+	 *
+	 * @param subscriber the processor to subscribe.
 	 * @return the current {link Stream} instance
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
 	 */
-	public final <E extends Subscriber<? super O>> E connect(@Nonnull final E stream) {
-		this.subscribe(stream);
-		return stream;
+	public final Stream<O> subscribeAnd(@Nonnull final Subscriber<? super O> subscriber) {
+		this.subscribe(subscriber);
+		return this;
 	}
 
 	/**
@@ -137,6 +167,31 @@ public abstract class Stream<O> implements Publisher<O> {
 	public final <E extends Throwable> Action<O, E> recover(@Nonnull final Class<E> exceptionType) {
 		RecoverAction<O, E> recoverAction = new RecoverAction<O, E>(getDispatcher(), Selectors.T(exceptionType));
 		return connect(recoverAction);
+	}
+
+	/**
+	 * Instruct the action to request upstream subscription if any for {@link this#capacity} elements. If the dispatcher
+	 * is asynchronous (RingBufferDispatcher for instance), it will proceed the request asynchronously as well.
+	 *
+	 * @return the consuming action
+	 */
+	public Action<O, Void> drain() {
+		return consume(null);
+	}
+
+	/**
+	 * Instruct the action to request upstream subscription if any for N elements.
+	 *
+	 * @return the current stream
+	 */
+	public Stream<O> drain(final long n) {
+		this.subscribe(new DefaultSubscriber<O>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(n);
+			}
+		});
+		return this;
 	}
 
 	/**
@@ -1024,7 +1079,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	public final Action<O, O> throttle(long period, long delay) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return throttle(period, delay, getEnvironment().getRootTimer());
+		return throttle(period, delay, getEnvironment().getTimer());
 	}
 
 	/**
@@ -1057,7 +1112,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	public final TimeoutAction<O> timeout(long timeout) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return timeout(timeout, getEnvironment().getRootTimer());
+		return timeout(timeout, getEnvironment().getTimer());
 	}
 
 	/**

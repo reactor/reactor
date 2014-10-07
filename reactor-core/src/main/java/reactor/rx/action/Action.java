@@ -372,26 +372,6 @@ public abstract class Action<I, O> extends Stream<O>
 		return this;
 	}
 
-
-	/**
-	 * Instruct the action to request upstream subscription if any for {@link this#capacity} elements. If the dispatcher
-	 * is asynchronous (RingBufferDispatcher for instance), it will proceed the request asynchronously as well.
-	 */
-	public void drain() {
-		drain(capacity);
-	}
-
-	/**
-	 * Instruct the action to request upstream subscription if any for N elements.
-	 *
-	 * @param n the number of elements to request
-	 */
-	public void drain(long n) {
-		if (subscription != null && !pause) {
-			dispatch(n, requestConsumer);
-		}
-	}
-
 	/**
 	 * Update the environment used by this {@link Stream}
 	 *

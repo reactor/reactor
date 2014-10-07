@@ -76,9 +76,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public void drain() {
+	public Action<V, Void> drain() {
 		dispatch(null, flushConsumer);
-		super.drain();
+		return super.drain();
 	}
 
 	@Override

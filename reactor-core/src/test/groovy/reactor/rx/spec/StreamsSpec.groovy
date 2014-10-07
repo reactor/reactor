@@ -61,6 +61,36 @@ class StreamsSpec extends Specification {
 			value.get() == 'test'
 	}
 
+
+	def 'A deferred Stream with an initial value makes that value available immediately in multicast'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.just('test')
+
+			def stream1 = Streams.defer()
+			def stream2 = Streams.defer()
+			def stream3 = Streams.defer()
+			def res = []
+
+			stream1.consume {
+				res << 1
+			}
+			stream2.consume {
+				res << 2
+			}
+			stream3.consume {
+				res << 3
+			}
+
+		when:
+			'the value is retrieved'
+			stream.connectAnd(stream1).connectAnd(stream2).connectAnd(stream3)
+
+		then:
+			'it is available'
+			res == [1, 2, 3]
+	}
+
 	def 'A deferred Stream can listen for terminal states'() {
 		given:
 			'a composable with an initial value'
@@ -1104,8 +1134,8 @@ class StreamsSpec extends Specification {
 			'a source stream with a given timer'
 
 			def res = 0l
+			def c = Streams.timer(environment.timer, 1)
 			def timeStart = System.currentTimeMillis()
-			def c = Streams.timer(environment.rootTimer, 1)
 
 		when:
 			'consuming'
@@ -1116,12 +1146,12 @@ class StreamsSpec extends Specification {
 
 		then:
 			'ready'
-			res > 1000
+			res > 950
 
 		when:
 			'consuming periodic'
 			def i = []
-			Streams.period(environment.rootTimer, 0, 1).consume {
+			Streams.period(environment.timer, 0, 1).consume {
 				i << it
 			}
 			sleep(2500)
