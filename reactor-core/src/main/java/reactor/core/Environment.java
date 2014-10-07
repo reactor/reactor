@@ -26,6 +26,7 @@ import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
+import reactor.timer.HashWheelTimer;
 import reactor.timer.SimpleHashWheelTimer;
 import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;
@@ -359,7 +360,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public Timer getRootTimer() {
 		if (null == timer.get()) {
 			synchronized (timer) {
-				SimpleHashWheelTimer t = new SimpleHashWheelTimer();
+				Timer t = new HashWheelTimer();
 				if (!timer.compareAndSet(null, t)) {
 					t.cancel();
 				}
