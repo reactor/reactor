@@ -1104,8 +1104,8 @@ class StreamsSpec extends Specification {
 			'a source stream with a given timer'
 
 			def res = 0l
-			def c = Streams.timer(environment.rootTimer, 1)
 			def timeStart = System.currentTimeMillis()
+			def c = Streams.timer(environment.rootTimer, 1)
 
 		when:
 			'consuming'
