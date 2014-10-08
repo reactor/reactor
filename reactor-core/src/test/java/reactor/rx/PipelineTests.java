@@ -672,8 +672,7 @@ public class PipelineTests extends AbstractReactorTest {
 		batchingStreamDef.parallel(PARALLEL_STREAMS)
 				.consume(substream ->
 								substream
-										.buffer(BATCH_SIZE, TimeUnit.MILLISECONDS)
-										.timeout(TIMEOUT)
+										.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 										.consume(items -> {
 											batchesDistribution.compute(items.size(),
 													(key,

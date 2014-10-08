@@ -219,13 +219,16 @@ class StreamsSpec extends Specification {
 	}
 	def 'A Stream can sample values over time'() {
 		given:
-			'a composable with values 1 to 100 inclusive'
+			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
 					.dispatchOn(environment)
+					.capacity(1000)
 
 		when:
 			'the most recent value is retrieved'
-			def last = s.sample(2l, TimeUnit.SECONDS).dispatchOn(environment.defaultDispatcherFactory.get()).next()
+			def last = s
+					.sample(2l, TimeUnit.SECONDS)
+					.next()
 
 		then:
 			last.await(3, TimeUnit.SECONDS) > 100_000
@@ -1410,7 +1413,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a timeout'
 			def source = Streams.<Integer> defer().env(environment)
-			def reduced = source.timeout(1, TimeUnit.SECONDS)
+			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS)
 			def error = null
 			def value = reduced.when(TimeoutException) {
 				error = it
@@ -1428,11 +1431,12 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(5)
 			sleep(2000)
 			source.broadcastNext(6)
+			println error
 
 		then:
 			'last value known is 5 and stream is in error state'
-			value.get() == 5
 			error in TimeoutException
+			value.get() == 5
 	}
 
 	def 'onOverflowDrop will miss events non requested'() {
