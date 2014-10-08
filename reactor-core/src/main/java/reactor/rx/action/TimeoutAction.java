@@ -33,7 +33,6 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	private final Timer        timer;
 	private final long         timeout;
-	private final Action<?, T> parentAction;
 	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
@@ -44,37 +43,17 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			if (parentAction != null) {
-					parentAction.resume();
-					numbTimeout++;
-				timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-			} else {
-				doError(new TimeoutException("No data signaled for " + timeout + "ms"));
-			}
-		}
-	};
-
-	private final Consumer<Long> upstreamRequest = new Consumer<Long>() {
-		@Override
-		public void accept(Long integer) {
-			timeoutRegistration.cancel();
-			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-			requestConsumer.accept(integer);
-			if(integer == Long.MAX_VALUE) pendingNextSignals = 1;
+			doError(new TimeoutException("No data signaled for " + timeout + "ms"));
 		}
 	};
 
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
-	private long numbTimeout = 0;
 
-	@SuppressWarnings("unchecked")
-	public TimeoutAction(Dispatcher dispatcher,
-	                     Action<?, T> parentAction, Timer timer, long timeout) {
+	public TimeoutAction(Dispatcher dispatcher, Timer timer, long timeout) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.timeout = timeout;
-		this.parentAction = parentAction;
 	}
 
 	@Override
@@ -86,19 +65,13 @@ public class TimeoutAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		timeoutRegistration.cancel();
-		numbTimeout = 0;
 		broadcastNext(ev);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
-	protected void onRequest(long n) {
-		dispatch(n, upstreamRequest);
-	}
-
-	@Override
 	public Action<T, T> cancel() {
-		if(timeoutRegistration != null){
+		if (timeoutRegistration != null) {
 			timeoutRegistration.cancel();
 		}
 		return super.cancel();
@@ -106,7 +79,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	@Override
 	public Action<T, T> pause() {
-		if(timeoutRegistration != null){
+		if (timeoutRegistration != null) {
 			timeoutRegistration.pause();
 		}
 		return super.pause();
@@ -114,26 +87,17 @@ public class TimeoutAction<T> extends Action<T, T> {
 
 	@Override
 	public Action<T, T> resume() {
-		if(timeoutRegistration != null){
+		if (timeoutRegistration != null) {
 			timeoutRegistration.resume();
 		}
 		return super.resume();
 	}
 
-	public long numberTimeouts() {
-		return numbTimeout;
-	}
-
 	@Override
 	public void doComplete() {
-		timeoutRegistration.cancel();
+		if (timeoutRegistration != null) {
+			timeoutRegistration.cancel();
+		}
 		super.doComplete();
-	}
-
-	@Override
-	public String toString() {
-		return super.toString() + "{"
-				+ "timeouts-since-data=" + numbTimeout
-				+ "}";
 	}
 }

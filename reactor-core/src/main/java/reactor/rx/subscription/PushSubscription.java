@@ -114,31 +114,83 @@ public class PushSubscription<O> implements Subscription {
 		final PushSubscription<O> thiz = this;
 		return new WrappedReactiveSubscription<O>(thiz, queue);
 	}
+	/**
+	 * Wrap the subscription behind a dropping subscription.
+	 *
+	 * @return the new DropSubscription
+	 */
+	public DropSubscription<O> toDropSubscription() {
+		final PushSubscription<O> thiz = this;
+		return new WrappedDropSubscription<>(thiz);
+	}
 
-	static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
+	public final static class SubscriberToPushSubscription<O> implements Subscriber<O>{
+		final PushSubscription<O> thiz;
+
+		SubscriberToPushSubscription(PushSubscription<O> thiz) {
+			this.thiz = thiz;
+		}
+
+		public PushSubscription<O> delegate() {
+			return thiz;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+		}
+
+		@Override
+		public void onNext(O o) {
+			thiz.onNext(o);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			thiz.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			thiz.onComplete();
+		}
+	}
+
+	final static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
 		final PushSubscription<O> thiz;
 
 		public WrappedReactiveSubscription(final PushSubscription<O> thiz, CompletableQueue<O> queue) {
-			super(thiz.publisher, new Subscriber<O>() {
-				@Override
-				public void onSubscribe(Subscription s) {
-				}
+			super(thiz.publisher, new SubscriberToPushSubscription<O>(thiz), queue);
+			this.thiz = thiz;
+		}
 
-				@Override
-				public void onNext(O o) {
-					thiz.onNext(o);
-				}
+		@Override
+		public void request(long elements) {
+			super.request(elements);
+			thiz.request(elements);
+		}
 
-				@Override
-				public void onError(Throwable t) {
-					thiz.onError(t);
-				}
+		@Override
+		public void cancel() {
+			super.cancel();
+			thiz.cancel();
+		}
 
-				@Override
-				public void onComplete() {
-					thiz.onComplete();
-				}
-			}, queue);
+		@Override
+		public boolean equals(Object o) {
+			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
+		}
+
+		@Override
+		public int hashCode() {
+			return thiz.hashCode();
+		}
+	}
+
+	final static class WrappedDropSubscription<O> extends DropSubscription<O> {
+		final PushSubscription<O> thiz;
+
+		public WrappedDropSubscription(final PushSubscription<O> thiz) {
+			super(thiz.publisher, new SubscriberToPushSubscription<O>(thiz));
 			this.thiz = thiz;
 		}
 

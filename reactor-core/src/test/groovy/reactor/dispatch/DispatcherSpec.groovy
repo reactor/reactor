@@ -156,7 +156,7 @@ class DispatcherSpec extends Specification {
 
 		when:
 			def stream = Streams.<Throwable> defer()
-			def promise = stream.limit(16).count().toList()
+			def promise = stream.take(16).count().toList()
 			r.on(T(Throwable), stream.toBroadcastNextConsumer())
 			r.on($("test"), { ev ->
 				sleep(100)

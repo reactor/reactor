@@ -187,6 +187,9 @@ public abstract class StreamUtils {
 				public void accept(E registration) {
 					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((PushSubscription<?>) registration).getSubscriber();
+						if (PushSubscription.SubscriberToPushSubscription.class.isAssignableFrom(subscriber.getClass())) {
+							subscriber = ((PushSubscription.SubscriberToPushSubscription<?>)subscriber).delegate().getSubscriber();
+						}
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
 							parseComposable((Stream<?>) subscriber, streamTree);
 						} else {

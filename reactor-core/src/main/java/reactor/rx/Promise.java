@@ -459,9 +459,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (isPending()) {
 				valueAccepted(null);
-			} /*else if (subscription != null) {
-				//this.subscription.cancel();
-			}*/
+			} else if (subscription != null) {
+				this.subscription.cancel();
+			}
 		} finally {
 			lock.unlock();
 		}

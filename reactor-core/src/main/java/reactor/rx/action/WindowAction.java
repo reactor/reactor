@@ -17,6 +17,9 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
+import reactor.timer.Timer;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * WindowAction is forwarding events on a steam until {@param backlog} is reached,
@@ -29,9 +32,12 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	private Action<T, T> currentWindow;
 
-	@SuppressWarnings("unchecked")
-	public WindowAction(Dispatcher dispatcher, long backlog) {
-		super(backlog, dispatcher, true, true, true);
+	public WindowAction(Dispatcher dispatcher, int backlog) {
+		super(dispatcher, backlog, true, true, true);
+	}
+
+	public WindowAction(Dispatcher dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
+		super(dispatcher, backlog, true, true, true, timespan, unit, timer);
 	}
 
 	public Action<T, T> currentWindow() {
@@ -46,19 +52,23 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		currentWindow.broadcastError(ev);
+		if(currentWindow != null)
+			currentWindow.broadcastError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		currentWindow.broadcastComplete();
-		currentWindow = null;
+		if(currentWindow != null) {
+			currentWindow.broadcastComplete();
+			currentWindow = null;
+		}
 	}
 
 	@Override
 	protected void firstCallback(T event) {
 		createWindowStream();
+		//avoid that the next signal are dropped
 		broadcastNext(currentWindow.onOverflowBuffer());
 	}
 
@@ -71,6 +81,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	protected void flushCallback(T event) {
 		if(currentWindow != null){
 			currentWindow.broadcastComplete();
+			currentWindow = null;
 		}
 	}
 

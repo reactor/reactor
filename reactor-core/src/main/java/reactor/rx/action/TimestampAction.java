@@ -31,6 +31,6 @@ public class TimestampAction<T> extends Action<T, Tuple2<Long, T>> {
 
 	@Override
 	protected void doNext(T ev) {
-		broadcastNext(Tuple.of(System.nanoTime(), ev));
+		broadcastNext(Tuple.of(System.currentTimeMillis(), ev));
 	}
 }

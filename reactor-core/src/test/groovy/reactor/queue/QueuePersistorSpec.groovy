@@ -106,12 +106,15 @@ class QueuePersistorSpec extends Specification {
 			def result = null
 
 			def bufferedStream = stream.onOverflowBuffer(persistentQueue).observe{
+				println it
 				result = it
 			}
+		println stream.debug()
 
 		when:
 			"an object is persisted"
 			stream.broadcastNext("test!")
+			println stream.debug()
 
 		then:
 			"the object was persisted"
@@ -120,6 +123,7 @@ class QueuePersistorSpec extends Specification {
 		when:
 			"the object is read"
 			bufferedStream.tap()
+			println stream.debug()
 
 		then:
 			"the object was removed"

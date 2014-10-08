@@ -55,8 +55,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 
-		return
-				Streams.<Integer>defer(env)
+		CombineAction<Integer,Integer> processor = Streams.<Integer>defer(env)
 						.keepAlive(false)
 						.capacity(bufferSize)
 						.parallel(2)
@@ -74,9 +73,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.reduce((() -> 0), 1, tuple -> -tuple.getT1())
 										.map(integer -> -integer)
 										.capacity(1)
-										.last()
-										.buffer(1024)
-										.timeout(200)
+										.sample()
+										.buffer(1024, 200, TimeUnit.MILLISECONDS)
 										.<Integer>split()
 										.flatMap(i ->
 														Streams.zip(
@@ -87,6 +85,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
+
+		return processor;
 	}
 
 	@Override

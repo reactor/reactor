@@ -184,8 +184,8 @@ public class PipelineTests extends AbstractReactorTest {
 	public void testFirstAndLast() throws InterruptedException {
 		Stream<Integer> s = Streams.defer(Arrays.asList(1, 2, 3, 4, 5));
 
-		Stream<Integer> first = s.first();
-		Stream<Integer> last = s.last();
+		Stream<Integer> first = s.sampleFirst();
+		Stream<Integer> last = s.sample();
 
 		assertThat("First is 1", first.tap().get(), is(1));
 		assertThat("Last is 5", last.tap().get(), is(5));
@@ -491,8 +491,7 @@ public class PipelineTests extends AbstractReactorTest {
 				.monitorLatency(100)
 				.consume(stream -> (filter ? (stream
 								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
-								.buffer(1000 / 8)
-								.timeout(1000)
+								.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
 								.consume(batch -> {
 									for (String i : batch) latch.countDown();
 								})
@@ -673,8 +672,7 @@ public class PipelineTests extends AbstractReactorTest {
 		batchingStreamDef.parallel(PARALLEL_STREAMS)
 				.consume(substream ->
 								substream
-										.buffer(BATCH_SIZE)
-										.timeout(TIMEOUT)
+										.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 										.consume(items -> {
 											batchesDistribution.compute(items.size(),
 													(key,
@@ -840,8 +838,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		final HotStream<Integer> streamBatcher = Streams.<Integer>defer(env);
 		streamBatcher
-				.buffer(batchsize)
-				.timeout(timeout)
+				.buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
 				.parallel(parallelStreams)
 				.consume(innerStream ->
 								innerStream

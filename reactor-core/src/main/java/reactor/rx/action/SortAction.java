@@ -28,8 +28,8 @@ public class SortAction<T> extends BatchAction<T, T>{
 
 	private final PriorityQueue<T> values;
 
-	public SortAction(int batchsize, Dispatcher dispatcher, Comparator<? super T> comparator) {
-		super(batchsize, dispatcher, true, false, batchsize > 0);
+	public SortAction(Dispatcher dispatcher, int batchsize, Comparator<? super T> comparator) {
+		super(dispatcher, batchsize, true, false, batchsize > 0);
 		if(comparator == null){
 			values = new PriorityQueue<T>();
 		}else{

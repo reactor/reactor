@@ -388,7 +388,7 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public Object getObject() {
-			return null;
+			return delegate;
 		}
 
 		/**

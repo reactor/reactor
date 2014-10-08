@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -56,10 +57,20 @@ public class PublisherStream<T> extends Stream<T> {
 	}
 
 	private class DeferredSubscribeAction extends Action<T, T> {
+
+		public DeferredSubscribeAction() {
+			super(SynchronousDispatcher.INSTANCE);
+		}
+
 		@Override
 		protected void doNext(T ev) {
 			broadcastNext(ev);
 		}
+
+		/*@Override
+		protected PushSubscription<T> createSubscription(Subscriber<? super T> subscriber, boolean reactivePull) {
+			return new PushSubscription<>(this, subscriber);
+		}*/
 
 		@Override
 		public void subscribe(final Subscriber<? super T> subscriber) {

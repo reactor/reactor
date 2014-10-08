@@ -16,21 +16,26 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
+import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class BufferAction<T> extends BatchAction<T, List<T>>{
+public class BufferAction<T> extends BatchAction<T, List<T>> {
 
-	private final List<T> values;
+	private final List<T> values = new ArrayList<T>();
 
-	public BufferAction(long batchsize, Dispatcher dispatcher) {
-		super(batchsize, dispatcher, true, false, batchsize > 0);
-		values = new ArrayList<T>();
+	public BufferAction(Dispatcher dispatcher, int batchsize) {
+		super(dispatcher, batchsize, true, false, true);
+	}
+
+	public BufferAction(Dispatcher dispatcher, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+		super(dispatcher, maxSize, true, false, true, timespan, unit, timer);
 	}
 
 	@Override
@@ -49,6 +54,6 @@ public class BufferAction<T> extends BatchAction<T, List<T>>{
 
 	@Override
 	public String toString() {
-		return super.toString() +"{collected="+values.size()+"}";
+		return super.toString() + "{collected=" + values.size() + "}";
 	}
 }

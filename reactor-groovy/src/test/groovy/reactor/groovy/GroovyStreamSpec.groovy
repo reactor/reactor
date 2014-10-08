@@ -113,8 +113,8 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'reference first and last'
-			def first = d.first()
-			def last = d.last()
+			def first = d.sampleFirst()
+			def last = d.sample()
 
 		then:
 			first.tap().get() == 1
@@ -223,7 +223,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'set a batch size to tap value after 5 iterations'
-			def t = d.every(5).tap()
+			def t = d.sample(5).tap()
 
 		then:
 			t.get()

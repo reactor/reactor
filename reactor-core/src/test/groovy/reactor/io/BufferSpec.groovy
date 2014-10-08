@@ -163,10 +163,10 @@ class BufferSpec extends Specification {
 		given: "a full Buffer"
 		def buff = Buffer.wrap("Hello World!")
 
-		when: "limit is checked"
+		when: "take is checked"
 		def limit = buff.limit()
 
-		then: "a limit is provided"
+		then: "a take is provided"
 		limit == 12
 
 		when: "capacity is checked"

@@ -25,6 +25,7 @@ import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
+import reactor.rx.Promises
 import reactor.rx.Stream
 import reactor.rx.Streams
 import reactor.tuple.Tuple2
@@ -205,16 +206,32 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is retrieved'
-			def first = s.first().tap()
+			def first = s.sampleFirst().tap()
 
 		and:
 			'the last value is retrieved'
-			def last = s.last().tap()
+			def last = s.sample().tap()
 
 		then:
 			'first and last'
 			first.get() == 1
 			last.get() == 5
+	}
+	def 'A Stream can sample values over time'() {
+		given:
+			'a composable with values 1 to 100 inclusive'
+			def s = Streams.range(1, Integer.MAX_VALUE)
+					.dispatchOn(environment)
+
+		when:
+			'the most recent value is retrieved'
+			def last = s.sample(1l, TimeUnit.SECONDS).dispatchOn(environment.defaultDispatcherFactory.get()).next()
+
+		then:
+			last.await(2, TimeUnit.SECONDS) > 100_000
+
+		cleanup:
+			println s.debug()
 	}
 
 	def 'A Stream can be enforced to dispatch distinct values'() {
@@ -330,7 +347,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the expected accept count is set and that number of values is accepted'
-			def tap = composable.last().tap()
+			def tap = composable.sample().tap()
 			d.broadcastNext(1)
 			d.broadcastNext(2)
 			d.broadcastNext(3)
@@ -341,7 +358,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the expected accept count is set and that number of values is accepted'
-			tap = composable.every(3).tap()
+			tap = composable.sample(3).tap()
 			d.broadcastNext(1)
 			d.broadcastNext(2)
 			d.broadcastNext(3)
@@ -717,7 +734,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(3)
 			source.broadcastNext(4)
 			source.broadcastNext(5)
-
+			println source.debug()
 		then:
 			'the consumer only receives the final value'
 			values == [120]
@@ -918,6 +935,48 @@ class StreamsSpec extends Specification {
 			value.get() == [3, 4]
 	}
 
+	def 'Window will re-route N elements over time to a fresh nested stream'() {
+		given:
+			'a source and a collected window stream'
+			def source = Streams.<Integer> defer(environment)
+			def promise = Promises.defer()
+
+			source.window(1l, TimeUnit.SECONDS).consume {
+				it.buffer(2).consume{ promise.accept(it) }
+			}
+
+
+		when:
+			'the first value is accepted on the source'
+			source.broadcastNext(1)
+
+		then:
+			'the collected list is not yet available'
+			promise.get() == null
+
+		when:
+			'the second value is accepted'
+			source.broadcastNext(2)
+			println source.debug()
+
+		then:
+			'the collected list contains the first and second elements'
+			promise.await() == [1, 2]
+
+		when:
+			'2 more values are accepted'
+			promise = Promises.defer()
+
+			sleep(2000)
+			source.broadcastNext(3)
+			source.broadcastNext(4)
+			println source.debug()
+
+		then:
+			'the collected list contains the first and second elements'
+			promise.await() == [3, 4]
+	}
+
 	def 'GroupBy will re-route N elements to a nested stream based on the mapped key'() {
 		given:
 			'a source and a grouped by ID stream'
@@ -1099,11 +1158,13 @@ class StreamsSpec extends Specification {
 			def r = Reactors.reactor().get()
 			def selector = Selectors.anonymous()
 			int event = 0
-			Streams.<Integer> on(r, selector).consume { event = it }
+			def s = Streams.<Integer> on(r, selector).consume { event = it }
+			println s.debug()
 
 		when:
 			'accept a value'
 			r.notify(selector.object, Event.wrap(1))
+			println s.debug()
 
 		then:
 			'dispatching works'
@@ -1313,7 +1374,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Streams.<Integer> defer().env(environment)
-			Stream reduced = source.buffer(5).timeout(600)
+			def reduced = source.buffer(5, 600, TimeUnit.MILLISECONDS)
 			def value = reduced.tap()
 			println reduced.debug()
 
@@ -1345,37 +1406,92 @@ class StreamsSpec extends Specification {
 
 	}
 
+	def 'Timeout can be bound to a stream'() {
+		given:
+			'a source and a timeout'
+			def source = Streams.<Integer> defer().env(environment)
+			def reduced = source.timeout(1, TimeUnit.SECONDS)
+			def error = null
+			def value = reduced.when(TimeoutException) {
+				error = it
+			}.tap()
+			println reduced.debug()
+
+		when:
+			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			source.broadcastNext(1)
+			sleep(500)
+			source.broadcastNext(2)
+			source.broadcastNext(3)
+			source.broadcastNext(4)
+			sleep(500)
+			source.broadcastNext(5)
+			sleep(2000)
+			source.broadcastNext(6)
+
+		then:
+			'last value known is 5 and stream is in error state'
+			value.get() == 5
+			error in TimeoutException
+	}
+
+	def 'onOverflowDrop will miss events non requested'() {
+		given:
+			'a source and a timeout'
+			def source = Streams.<Integer> defer()
+
+			def value = null
+			def tail = source.onOverflowDrop().observe{value = it}
+			tail.drain(5)
+			println source.debug()
+
+		when:
+			'the first values are accepted on the source, but we only have 5 requested elements out of 6 6'
+			source.broadcastNext(1)
+			source.broadcastNext(2)
+			source.broadcastNext(3)
+			source.broadcastNext(4)
+			source.broadcastNext(5)
+			source.broadcastNext(6)
+
+		and:
+			'we try to drain the tail to check if 6 has been buffered'
+			tail.drain(1)
+
+		then:
+			'last value known is 5'
+			value == 5
+	}
+
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
 			def source = Streams.<Integer> defer(environment)
 			long avgTime = 150l
-			long nanotime = avgTime * 1_000_000
 
 			def reduced = source
 					.throttle(avgTime)
 					.elapsed()
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-				println acc
 				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
 			}
 
-			def value = reduced.tap()
+			def value = reduced.next()
 			println source.debug()
 
 		when:
 			'the first values are accepted on the source'
 			for (int i = 0; i < 10000; i++) {
-				source.broadcastNext(1)
+				source.onNext(1)
 			}
 			sleep(1500)
 			reduced.resume()
 			println source.debug()
-			println(((long) (value.get() / 1_000_000)) + " milliseconds on average")
+			println(((long) (value.await())) + " milliseconds on average")
 
 		then:
 			'the average elapsed time between 2 signals is greater than throttled time'
-			value.get() >= nanotime * 0.6
+			value.get() >= avgTime * 0.6
 
 	}
 
@@ -1738,7 +1854,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial value and a relative time'
 			def stream = Streams.just('test')
-			def timestamp = System.nanoTime()
+			def timestamp = System.currentTimeMillis()
 
 		when:
 			'timestamp operation is added and the stream is retrieved'
@@ -1754,7 +1870,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial value and a relative time'
 			def stream = Streams.just('test')
-			long timestamp = System.nanoTime()
+			long timestamp = System.currentTimeMillis()
 
 		when:
 			'elapsed operation is added and the stream is retrieved'
@@ -1762,11 +1878,11 @@ class StreamsSpec extends Specification {
 				sleep(1000)
 			}.elapsed().tap().get()
 
-			long totalElapsed = System.nanoTime() - timestamp
+			long totalElapsed = System.currentTimeMillis() - timestamp
 
 		then:
 			'it is available'
-			value.t1 < totalElapsed
+			value.t1 <= totalElapsed
 			value.t2 == 'test'
 	}
 
@@ -1819,17 +1935,17 @@ class StreamsSpec extends Specification {
 			def stream = Streams.defer(['test', 'test2', 'test3'])
 
 		when:
-			'limit to the first 2 elements'
-			def value = stream.limit(2).tap().get()
+			'take to the first 2 elements'
+			def value = stream.take(2).tap().get()
 
 		then:
 			'the second is the last available'
 			value == 'test2'
 
 		when:
-			'limit until test2 is seen'
+			'take until test2 is seen'
 			stream = Streams.defer()
-			def value2 = stream.limit {
+			def value2 = stream.takeUntil {
 				'test2' == it
 			}.tap()
 

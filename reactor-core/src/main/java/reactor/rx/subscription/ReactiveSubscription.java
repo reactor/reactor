@@ -166,7 +166,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
-				", waiting=" + buffer.size() +
+				(buffer != null ? ", waiting=" + buffer.size() : "" )+
 				'}';
 	}
 }

@@ -16,33 +16,53 @@
 package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
-import reactor.util.Assert;
+import reactor.timer.Timer;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
-public class LastAction<T> extends BatchAction<T, T> {
+public class SampleAction<T> extends BatchAction<T, T> {
 
-	private T last;
+	private T sample;
 
-	public LastAction(long batchSize, Dispatcher dispatcher) {
-		super(batchSize, dispatcher, true, false, true);
+	public SampleAction(Dispatcher dispatcher, int maxSize) {
+		this(dispatcher, maxSize, false);
+	}
 
-		Assert.state(batchSize > 0, "Cannot last() an unbounded Stream. Try extracting a batch first.");
+	public SampleAction(Dispatcher dispatcher, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+		super(dispatcher, maxSize, !first, first, true, timespan, unit, timer);
+	}
+
+
+	public SampleAction(Dispatcher dispatcher, int maxSize, boolean first) {
+		super(dispatcher, maxSize, !first, first, true);
 	}
 
 	@Override
+	protected void firstCallback(T event) {
+		sample = event;
+	}
+
+
+	@Override
 	protected void nextCallback(T event) {
-		last = event;
+		sample = event;
 	}
 
 	@Override
 	protected void flushCallback(T event) {
-		if(last != null){
-			T _last = last;
-			last = null;
+		if(sample != null){
+			T _last = sample;
+			sample = null;
 			broadcastNext(_last);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return super.toString()+" sample="+sample;
 	}
 }

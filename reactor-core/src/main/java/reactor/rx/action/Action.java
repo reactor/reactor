@@ -38,7 +38,6 @@ import reactor.rx.stream.HotStream;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-import reactor.timer.Timer;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -309,7 +308,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * A stream capacity can't be superior to the underlying dispatcher capacity: if the {@param elements} overflow the
 	 * dispatcher backlog size, the capacity will be aligned automatically to fit it. A warning message should signal
 	 * such behavior.
-	 * RingBufferDispatcher will for instance limit to a power of 2 size up to {@literal Integer.MAX_VALUE},
+	 * RingBufferDispatcher will for instance take to a power of 2 size up to {@literal Integer.MAX_VALUE},
 	 * where a Stream can be sized up to {@literal Long.MAX_VALUE} in flight data.
 	 * <p>
 	 * <p>
@@ -558,8 +557,8 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	@Override
 	public final <A, E extends Action<? super O, ? extends A>> E connect(@Nonnull final E action) {
-		if ((action.capacity == Long.MAX_VALUE && getCapacity() != Long.MAX_VALUE) ||
-				action.capacity == action.dispatcher.backlogSize() - Action.RESERVED_SLOTS) {
+		if ((action.capacity == Long.MAX_VALUE && capacity != Long.MAX_VALUE) ||
+				capacity == action.dispatcher.backlogSize() - Action.RESERVED_SLOTS) {
 			action.capacity(capacity);
 		}
 
@@ -571,7 +570,7 @@ public abstract class Action<I, O> extends Stream<O>
 			action.keepAlive(keepAlive);
 		}
 
-		if (action.dispatcher != this.dispatcher) {
+		if (action.dispatcher != this.dispatcher || action.capacity < capacity) {
 			this.subscribeWithSubscription(action, createSubscription(action, true));
 		} else {
 			this.subscribe(action);
@@ -609,10 +608,19 @@ public abstract class Action<I, O> extends Stream<O>
 		if (queue != null) {
 			stream.capacity(capacity).env(environment);
 			stream.keepAlive(keepAlive);
-			subscribeWithSubscription(stream, createSubscription(stream, true).toReactiveSubscription(queue));
+			subscribeWithSubscription(stream, createSubscription(stream, false).toReactiveSubscription(queue));
 		} else {
 			connect(stream);
 		}
+		return stream;
+	}
+
+	@Override
+	public final Action<O, O> onOverflowDrop() {
+		HotStream<O> stream = new HotStream<O>(getDispatcher(), Long.MAX_VALUE);
+			stream.capacity(capacity).env(environment);
+			stream.keepAlive(keepAlive);
+			subscribeWithSubscription(stream, createSubscription(stream, false).toDropSubscription());
 		return stream;
 	}
 
@@ -657,16 +665,6 @@ public abstract class Action<I, O> extends Stream<O>
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class, reuse);
 		subscriber.subscription = null;
 		return new CombineAction<E, O>(subscriber, this);
-	}
-
-	@Override
-	public TimeoutAction<O> timeout(long timeout, Timer timer) {
-		return connect(new TimeoutAction<O>(
-				dispatcher,
-				this,
-				timer,
-				timeout
-		));
 	}
 
 	/**

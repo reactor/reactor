@@ -48,7 +48,7 @@ public class LimitAction<T> extends Action<T, T> {
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"limit=" + limit + (endPredicate == null ?
+				"take=" + limit + (endPredicate == null ?
 				", with-end-predicate" : "") +
 				'}';
 	}

@@ -36,7 +36,7 @@ public class MovingBufferAction<T> extends BatchAction<T, List<T>> {
 	@SuppressWarnings("unchecked")
 	public MovingBufferAction(Dispatcher dispatcher, int backlog, int shift
 	) {
-		super(backlog+shift, dispatcher, true, false, true);
+		super(dispatcher, backlog+shift, true, false, true);
 		this.collectedWindow = (T[]) new Object[backlog];
 	}
 

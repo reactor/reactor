@@ -82,7 +82,7 @@ class StandardCodecsSpec extends Specification {
 		def decoder = codec.decoder({} as Consumer<String>)
 		decoder.apply(data)
 
-		then: "the buffer's limit and position are at the end of the buffer"
+		then: "the buffer's take and position are at the end of the buffer"
 		data.limit() == string.length()
 		data.position() == string.length()
 	}
@@ -97,7 +97,7 @@ class StandardCodecsSpec extends Specification {
 		def decoder = codec.decoder({} as Consumer<String>)
 		decoder.apply(data)
 
-		then: "the buffer's limit and position are at the end of the buffer"
+		then: "the buffer's take and position are at the end of the buffer"
 		data.limit() == string.length()
 		data.position() == string.length()
 	}

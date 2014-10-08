@@ -29,9 +29,8 @@ public class ReduceAction<T, A> extends BatchAction<T, A> {
 	private final Function<Tuple2<T, A>, ? extends A> fn;
 	private       A                                   acc;
 
-	public ReduceAction(long batchSize, Supplier<? extends A> accumulators, Function<Tuple2<T, A>, ? extends A> fn,
-	                    Dispatcher dispatcher) {
-		super(batchSize, dispatcher, true, false, true);
+	public ReduceAction(Dispatcher dispatcher, int batchSize, Supplier<? extends A> accumulators, Function<Tuple2<T, A>, ? extends A> fn) {
+		super(dispatcher, batchSize, true, false, true);
 		this.accumulators = accumulators;
 		this.fn = fn;
 	}

@@ -35,13 +35,13 @@ public class ElapsedAction<T> extends Action<T, Tuple2<Long, T>> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		lastTime = System.nanoTime();
+		lastTime = System.currentTimeMillis();
 	}
 
 	@Override
 	protected void doNext(T ev) {
 		long previousTime = lastTime;
-		lastTime = System.nanoTime();
+		lastTime = System.currentTimeMillis();
 
 		broadcastNext(Tuple.of(lastTime - previousTime, ev));
 	}

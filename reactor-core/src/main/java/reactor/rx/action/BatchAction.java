@@ -15,9 +15,13 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.timer.Timer;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -26,22 +30,49 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class BatchAction<T, V> extends Action<T, V> {
 
-	final boolean next;
-	final boolean flush;
-	final boolean first;
-	final Consumer<T>    flushConsumer        = new FlushConsumer();
-	final Consumer<Long> requestBatchConsumer = new RequestConsumer();
-	final long batchSize;
-	long count = 0;
+	protected final boolean                                next;
+	protected final boolean                                flush;
+	protected final boolean                                first;
+	protected final int                                    batchSize;
+	protected final Consumer<Long>                         timeoutTask;
+	protected final Registration<? extends Consumer<Long>> timespanRegistration;
+	protected final Consumer<T>    flushConsumer        = new FlushConsumer();
+	protected final Consumer<Long> requestBatchConsumer = new RequestConsumer();
 
+	protected int count = 0;
 
-	public BatchAction(long batchSize,
-	                   Dispatcher dispatcher, boolean next, boolean first, boolean flush) {
+	public BatchAction(
+			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
+		this(dispatcher, batchSize, next, first, flush, -1l, null, null);
+	}
+
+	public BatchAction(Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush,
+	                   long timespan, TimeUnit unit, Timer timer) {
 		super(dispatcher);
+
+		if (timespan > 0) {
+			this.timeoutTask = new Consumer<Long>() {
+				@Override
+				public void accept(Long aLong) {
+					dispatch(null, flushConsumer);
+				}
+			};
+			timespanRegistration = timer.schedule(timeoutTask, timespan, unit != null ? unit : TimeUnit.SECONDS);
+			timespanRegistration.pause();
+		} else {
+			this.timeoutTask = null;
+			this.timespanRegistration = null;
+		}
 		this.first = first;
 		this.flush = flush;
 		this.next = next;
 		this.batchSize = batchSize;
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		super.doSubscribe(subscription);
+		if (timespanRegistration != null) timespanRegistration.resume();
 	}
 
 	protected void nextCallback(T event) {
@@ -89,6 +120,18 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
+	public Action<T, V> cancel() {
+		if (timespanRegistration != null) timespanRegistration.cancel();
+		return super.cancel();
+	}
+
+	@Override
+	public Action<T, V> pause() {
+		if (timespanRegistration != null) timespanRegistration.pause();
+		return super.pause();
+	}
+
+	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(elements, requestBatchConsumer);
 	}
@@ -112,6 +155,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString() + "{batchSize=" + batchSize + ", " + ((count / batchSize) * 100) + "%(" + count + ")";
+		return super.toString() + "{"+(timespanRegistration != null ? "timed!" : "")+" batchSize=" + batchSize + ", " + ((count / batchSize) * 100) + "%(" + count + ")";
 	}
 }
