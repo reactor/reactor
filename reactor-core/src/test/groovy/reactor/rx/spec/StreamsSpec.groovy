@@ -225,10 +225,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the most recent value is retrieved'
-			def last = s.sample(1l, TimeUnit.SECONDS).dispatchOn(environment.defaultDispatcherFactory.get()).next()
+			def last = s.sample(2l, TimeUnit.SECONDS).dispatchOn(environment.defaultDispatcherFactory.get()).next()
 
 		then:
-			last.await(2, TimeUnit.SECONDS) > 100_000
+			last.await(3, TimeUnit.SECONDS) > 100_000
 
 		cleanup:
 			println s.debug()
