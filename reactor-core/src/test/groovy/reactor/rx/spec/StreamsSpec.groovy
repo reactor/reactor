@@ -222,16 +222,16 @@ class StreamsSpec extends Specification {
 			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
 					.dispatchOn(environment)
-					.capacity(1000)
 
 		when:
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
+					.dispatchOn(environment.defaultDispatcherFactory.get())
 					.next()
 
 		then:
-			last.await(3, TimeUnit.SECONDS) > 100_000
+			last.await() > 100_000
 
 		cleanup:
 			println s.debug()
@@ -392,7 +392,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Streams.<Integer> defer()
 			Stream<Integer> mapped = source.
-					flatMap { Integer v -> println v; Streams.<Integer> just(v * 2) }
+					flatMap { v -> Streams.just(v * 2) }
 
 		when:
 			'the source accepts a value'
