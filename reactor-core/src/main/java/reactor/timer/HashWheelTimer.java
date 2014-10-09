@@ -367,7 +367,7 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public Registration resume() {
-			this.status.set(STATUS_READY);
+			reset();
 			return this;
 		}
 
