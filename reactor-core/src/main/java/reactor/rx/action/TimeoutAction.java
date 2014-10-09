@@ -43,7 +43,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			if(finalState != null)
+			if(finalState == null)
 				doError(new TimeoutException("No data signaled for " + timeout + "ms"));
 		}
 	};
