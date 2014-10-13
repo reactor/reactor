@@ -15,6 +15,8 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -31,6 +33,26 @@ public class CountAction<T> extends Action<T, Long> {
 	public CountAction(Dispatcher dispatcher, long i) {
 		super(dispatcher);
 		this.i = i;
+	}
+
+	@Override
+	public void subscribe(final Subscriber<? super Long> subscriber) {
+		if(upstreamSubscription != null && upstreamSubscription.isComplete()){
+			subscriber.onSubscribe(new Subscription() {
+				@Override
+				public void request(long n) {
+					subscriber.onNext(counter.get());
+					subscriber.onComplete();
+				}
+
+				@Override
+				public void cancel() {
+				}
+			});
+		}else{
+			super.subscribe(subscriber);
+
+		}
 	}
 
 	@Override

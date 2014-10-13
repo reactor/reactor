@@ -53,8 +53,4 @@ public class SortAction<T> extends BatchAction<T, T>{
 		}
 	}
 
-	@Override
-	public String toString() {
-		return super.toString() + "{collected=" + values.size() + "}";
-	}
 }

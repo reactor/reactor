@@ -142,7 +142,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	}
 
 	/**
-	 * Assign an error handler to exceptions of the given type.
+	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use retry, ignoreError or recover to actively deal with the exception
 	 *
 	 * @param exceptionType the type of exceptions to handle
 	 * @param onError       the error handler for each exception
@@ -150,7 +150,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
-	public final <E extends Throwable> Action<O, O> when(@Nonnull final Class<E> exceptionType,
+	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 	                                                     @Nonnull final Consumer<E> onError) {
 		return connect(new ErrorAction<O, E>(getDispatcher(), Selectors.T(exceptionType), onError));
 	}
@@ -163,7 +163,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
-	public final <E extends Throwable> Action<O, E> recover(@Nonnull final Class<E> exceptionType) {
+	public final <E extends Throwable> Stream<E> recover(@Nonnull final Class<E> exceptionType) {
 		RecoverAction<O, E> recoverAction = new RecoverAction<O, E>(getDispatcher(), Selectors.T(exceptionType));
 		return connect(recoverAction);
 	}
@@ -174,7 +174,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @return the consuming action
 	 */
-	public Action<O, Void> drain() {
+	public Stream<Void> drain() {
 		return consume(null);
 	}
 
@@ -203,7 +203,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param consumer the consumer to invoke on each value
 	 * @return {@literal this}
 	 */
-	public final Action<O, Void> consume(final Consumer<? super O> consumer) {
+	public final Stream<Void> consume(final Consumer<? super O> consumer) {
 		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, null, null));
 	}
 
@@ -219,7 +219,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param consumer the consumer to invoke on each error signal
 	 * @return {@literal this}
 	 */
-	public final Action<O, Void> consume(final Consumer<? super O> consumer,
+	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer) {
 		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, errorConsumer, null));
 	}
@@ -235,7 +235,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param consumer the consumer to invoke on each value
 	 * @return {@literal this}
 	 */
-	public final Action<O, Void> consume(final Consumer<? super O> consumer,
+	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer,
 	                                     Consumer<Void> completeConsumer) {
 		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, errorConsumer, completeConsumer));
@@ -248,9 +248,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * FireHose synchronous subscription is the parent stream != null
 	 *
 	 * @param environment the environment to get dispatcher from {@link reactor.core.Environment#getDefaultDispatcher()}
-	 * @return a new {@link Action} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
-	public Action<?, O> dispatchOn(@Nonnull final Environment environment) {
+	public Stream<O> dispatchOn(@Nonnull final Environment environment) {
 		return dispatchOn(environment, environment.getDefaultDispatcher());
 	}
 
@@ -260,9 +260,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * FireHose synchronous subscription is the parent stream != null
 	 *
 	 * @param dispatcher the new dispatcher
-	 * @return a new {@link Action} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
-	public Action<?, O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
+	public Stream<O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
 		return dispatchOn(null, dispatcher);
 	}
 
@@ -274,9 +274,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param dispatcher  the new dispatcher
 	 * @param environment the environment
-	 * @return a new {@link Action} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
-	public Action<?, O> dispatchOn(final Environment environment, @Nonnull Dispatcher dispatcher) {
+	public Stream<O> dispatchOn(final Environment environment, @Nonnull Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" Refer to #parallel() method. ");
 		return connect(Action.<O>passthrough(dispatcher, getCapacity()).env(environment));
@@ -291,22 +291,50 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
-	public final Action<O, O> observe(@Nonnull final Consumer<? super O> consumer) {
-		return connect(new CallbackAction<O>(getDispatcher(), consumer));
+	public final Stream<O> observe(@Nonnull final Consumer<? super O> consumer) {
+		return connect(new CallbackAction<O>(getDispatcher(), consumer, null));
+	}
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
+	 *
+	 * @param consumer the consumer to invoke on complete
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
+		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
+	}
+
+	/**
+	 * Connect an error-proof action that will ignore any error to the downstream consumers.
+	 *
+	 * @return a new fail-proof {@link Stream}
+	 */
+	public Stream<O> ignoreErrors() {
+		return ignoreErrors(Predicates.always());
+	}
+
+	/**
+	 * Connect an error-proof action based on the given predicate matching the current error.
+	 *
+	 * @param ignorePredicate a predicate to test if an error should be ignored and not passed to the consumers.
+	 * @return a new fail-proof {@link Stream}
+	 */
+	public <E> Stream<O> ignoreErrors(Predicate<? super Throwable> ignorePredicate) {
+		return connect(new IgnoreErrorAction<O>(getDispatcher(), ignorePredicate));
 	}
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. It will pass
-	 * the
-	 * newly created {@link Stream} to the consumer for state introspection, e.g. {@link Action#getFinalState()}
-	 * Stream}.
+	 * the current {@link Action} for introspection/utility.
 	 *
 	 * @param consumer the consumer to invoke on terminal signal
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <E> Action<O, O> finallyDo(Consumer<E> consumer) {
+	public final <E extends Stream<O>> Stream<O> finallyDo(Consumer<? super E> consumer) {
 		return connect(new FinallyAction<O, E>(getDispatcher(), (E) this, consumer));
 	}
 
@@ -318,7 +346,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return {@literal this}
 	 * @since 1.1, 2.0
 	 */
-	public final Action<O, Void> notify(@Nonnull final Object key, @Nonnull final Observable observable) {
+	public final Stream<Void> notify(@Nonnull final Object key, @Nonnull final Observable observable) {
 		return connect(new ObservableAction<O>(getDispatcher(), observable, key));
 	}
 
@@ -328,9 +356,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param fn  the transformation function
 	 * @param <V> the type of the return value of the transformation function
-	 * @return a new {@link Action} containing the transformed values
+	 * @return a new {@link Stream} containing the transformed values
 	 */
-	public final <V> Action<O, V> map(@Nonnull final Function<? super O, ? extends V> fn) {
+	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
 		return connect(new MapAction<O, V>(fn, getDispatcher()));
 	}
 
@@ -340,10 +368,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param fn  the transformation function
 	 * @param <V> the type of the return value of the transformation function
-	 * @return a new {@link Action} containing the transformed values
+	 * @return a new {@link Stream} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Action<Publisher<? extends V>, V> flatMap(@Nonnull final Function<? super O,
+	public final <V> Stream<V> flatMap(@Nonnull final Function<? super O,
 			? extends Publisher<? extends V>> fn) {
 		return map(fn).merge();
 	}
@@ -360,7 +388,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <V> Action<Publisher<? extends V>, V> merge() {
+	public final <V> Stream<V> merge() {
 		return fanIn(null);
 	}
 
@@ -383,7 +411,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
-	public final <V> Action<Publisher<?>, List<V>> join() {
+	public final <V> Stream<List<V>> join() {
 		return zip(ZipAction.<TupleN, V>joinZipper());
 	}
 
@@ -408,7 +436,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	public final <V> Action<Publisher<?>, V> zip(@Nonnull Function<TupleN, ? extends V> zipper) {
+	public final <V> Stream<V> zip(@Nonnull Function<TupleN, ? extends V> zipper) {
 		return fanIn(new ZipAction<Object, V, TupleN>(getDispatcher(), zipper, null));
 	}
 
@@ -463,8 +491,8 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public <T, V> Action<Publisher<? extends T>, V> fanIn(
-			FanInAction<T, V, ? extends FanInAction.InnerSubscriber<T, V>> fanInAction
+	public <T, V> Stream<V> fanIn(
+			FanInAction<T, ?, V, ? extends FanInAction.InnerSubscriber<T, ?, V>> fanInAction
 	) {
 		Stream<Publisher<T>> thiz = (Stream<Publisher<T>>) this;
 
@@ -510,10 +538,43 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return A Stream of {@link Action}
 	 * @since 2.0
 	 */
-	public final ConcurrentAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
+	public ConcurrentAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
 		return connect(new ConcurrentAction<O>(
 				getDispatcher(), dispatcherSupplier, poolsize
 		));
+	}
+
+	/**
+	 * Bind the stream to a given {@param elements} volume of in-flight data:
+	 * - An {@link Action} will request up to the defined volume upstream.
+	 * - An {@link Action} will track the pending requests and fire up to {@param elements} when the previous volume has
+	 * been processed.
+	 * - A {@link BatchAction} and any other size-bound action will be limited to the defined volume.
+	 * <p>
+	 * <p>
+	 * A stream capacity can't be superior to the underlying dispatcher capacity: if the {@param elements} overflow the
+	 * dispatcher backlog size, the capacity will be aligned automatically to fit it.
+	 * RingBufferDispatcher will for instance take to a power of 2 size up to {@literal Integer.MAX_VALUE},
+	 * where a Stream can be sized up to {@literal Long.MAX_VALUE} in flight data.
+	 * <p>
+	 * <p>
+	 * When the stream receives more elements than requested, incoming data is eventually staged in a {@link
+	 * org.reactivestreams.Subscription}.
+	 * The subscription can react differently according to the implementation in-use,
+	 * the default strategy is as following:
+	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link reactor.queue
+	 * .CompletableQueue},
+	 * ready to be polled when the action fire the pending requests.
+	 * - The following pairs of Action->Action will synchronously pass data
+	 * - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair rule.
+	 * - {@link this#onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.queue
+	 * .PersistentQueue}
+	 *
+	 * @param elements maximum number of in-flight data
+	 * @return a backpressure capable stream
+	 */
+	public Stream<O> capacity(long elements) {
+		return onOverflowBuffer().capacity(elements);
 	}
 
 	/**
@@ -524,7 +585,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public final Action<O, O> onOverflowBuffer() {
+	public final Stream<O> onOverflowBuffer() {
 		return onOverflowBuffer(null);
 	}
 
@@ -537,7 +598,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Action<O, O> onOverflowBuffer(CompletableQueue<O> queue) {
+	public Stream<O> onOverflowBuffer(CompletableQueue<O> queue) {
 		return dispatchOn(getEnvironment(), getDispatcher()).onOverflowBuffer(queue);
 	}
 
@@ -549,7 +610,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a dropping stream
 	 * @since 2.0
 	 */
-	public Action<O, O> onOverflowDrop() {
+	public Stream<O> onOverflowDrop() {
 		return dispatchOn(getEnvironment(), getDispatcher()).onOverflowDrop();
 	}
 
@@ -559,7 +620,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * reactor.rx.action.FilterAction#otherwise()} composable .
 	 *
 	 * @param p the {@link Predicate} to test values against
-	 * @return a new {@link Action} containing only values that pass the predicate test
+	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 */
 	public final FilterAction<O> filter(final Predicate<? super O> p) {
 		return connect(new FilterAction<O>(p, getDispatcher()));
@@ -569,7 +630,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is
 	 * passed into the new {@code Stream}. If the predicate test fails, the value is ignored.
 	 *
-	 * @return a new {@link Action} containing only values that pass the predicate test
+	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -580,7 +641,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	/**
 	 * Create a new {@code Stream} whose only value will be the current instance of the {@link Stream}.
 	 *
-	 * @return a new {@link Action} whose only value will be the materialized current {@link Stream}
+	 * @return a new {@link Stream} whose only value will be the materialized current {@link Stream}
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> nest() {
@@ -594,7 +655,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final RetryAction<O> retry() {
+	public final Stream<O> retry() {
 		return retry(Integer.MAX_VALUE);
 	}
 
@@ -607,7 +668,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final RetryAction<O> retry(int numRetries) {
+	public final Stream<O> retry(int numRetries) {
 		return retry(numRetries, null);
 	}
 
@@ -620,7 +681,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final RetryAction<O> retry(Predicate<Throwable> retryMatcher) {
+	public final Stream<O> retry(Predicate<Throwable> retryMatcher) {
 		return retry(Integer.MAX_VALUE, retryMatcher);
 	}
 
@@ -636,7 +697,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final RetryAction<O> retry(int numRetries, Predicate<Throwable> retryMatcher) {
+	public final Stream<O> retry(int numRetries, Predicate<Throwable> retryMatcher) {
 		return connect(new RetryAction<O>(getDispatcher(), numRetries, retryMatcher));
 	}
 
@@ -647,7 +708,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> take(long max) {
+	public final Stream<O> take(long max) {
 		return takeUntil(max, null);
 	}
 
@@ -658,7 +719,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> takeUntil(Predicate<O> limitMatcher) {
+	public final Stream<O> takeUntil(Predicate<O> limitMatcher) {
 		return takeUntil(Long.MAX_VALUE, limitMatcher);
 	}
 
@@ -671,7 +732,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> takeUntil(long max, Predicate<O> limitMatcher) {
+	public final Stream<O> takeUntil(long max, Predicate<O> limitMatcher) {
 		return connect(new LimitAction<O>(getDispatcher(), limitMatcher, max));
 	}
 
@@ -680,10 +741,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * <T>}
 	 * associated data
 	 *
-	 * @return a new {@link Action} that emits tuples of nano time and matching data
+	 * @return a new {@link Stream} that emits tuples of nano time and matching data
 	 * @since 2.0
 	 */
-	public final Action<O, Tuple2<Long, O>> timestamp() {
+	public final Stream<Tuple2<Long,O>> timestamp() {
 		return connect(new TimestampAction<O>(getDispatcher()));
 	}
 
@@ -694,10 +755,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * signals OR
 	 * between two next signals.
 	 *
-	 * @return a new {@link Action} that emits tuples of nano time and matching data
+	 * @return a new {@link Stream} that emits tuples of nano time and matching data
 	 * @since 2.0
 	 */
-	public final Action<O, Tuple2<Long, O>> elapsed() {
+	public final Stream<Tuple2<Long,O>> elapsed() {
 		return connect(new ElapsedAction<O>(getDispatcher()));
 	}
 
@@ -707,9 +768,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @return a new {@link Action} whose values are the first value of each batch
+	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Action<O, O> sampleFirst() {
+	public final Stream<O> sampleFirst() {
 		return sampleFirst((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
@@ -722,9 +783,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
-	 * @return a new {@link Action} whose values are the first value of each batch)
+	 * @return a new {@link Stream} whose values are the first value of each batch)
 	 */
-	public final Action<O, O> sampleFirst(int batchSize) {
+	public final Stream<O> sampleFirst(int batchSize) {
 		return connect(new SampleAction<O>(getDispatcher(), batchSize, true));
 	}
 
@@ -734,9 +795,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are the first value of each batch
+	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Action<O, O> sampleFirst(long timespan, TimeUnit unit) {
+	public final Stream<O> sampleFirst(long timespan, TimeUnit unit) {
 		return sampleFirst(timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -747,9 +808,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are the first value of each batch
+	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Action<O, O> sampleFirst(long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<O> sampleFirst(long timespan, TimeUnit unit, Timer timer) {
 		return sampleFirst(Integer.MAX_VALUE, timespan, unit, timer);
 	}
 
@@ -760,9 +821,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param maxSize  the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are the first value of each batch
+	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Action<O, O> sampleFirst(int maxSize, long timespan, TimeUnit unit) {
+	public final Stream<O> sampleFirst(int maxSize, long timespan, TimeUnit unit) {
 		return sampleFirst(maxSize, timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -774,9 +835,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are the first value of each batch
+	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Action<O, O> sampleFirst(int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<O> sampleFirst(int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		return connect(new SampleAction<O>(getDispatcher(), true, maxSize, timespan, unit, timer));
 	}
 
@@ -784,9 +845,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code
 	 * getCapacity()}
 	 *
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample() {
+	public final Stream<O> sample() {
 		return sample((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
@@ -796,9 +857,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * getCapacity()}
 	 *
 	 * @param batchSize the batch size to use
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample(int batchSize) {
+	public final Stream<O> sample(int batchSize) {
 		return connect(new SampleAction<O>(getDispatcher(), batchSize));
 	}
 
@@ -808,9 +869,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample(long timespan, TimeUnit unit) {
+	public final Stream<O> sample(long timespan, TimeUnit unit) {
 		return sample(timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -821,9 +882,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample(long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<O> sample(long timespan, TimeUnit unit, Timer timer) {
 		return sample(Integer.MAX_VALUE, timespan, unit, timer);
 	}
 
@@ -834,9 +895,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param maxSize  the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample(int maxSize, long timespan, TimeUnit unit) {
+	public final Stream<O> sample(int maxSize, long timespan, TimeUnit unit) {
 		return sample(maxSize, timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -848,19 +909,19 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Action<O, O> sample(int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<O> sample(int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		return connect(new SampleAction<O>(getDispatcher(), false, maxSize, timespan, unit, timer));
 	}
 
 	/**
 	 * Create a new {@code Stream} that filters out consecutive equals values.
 	 *
-	 * @return a new {@link Action} whose values are the last value of each batch
+	 * @return a new {@link Stream} whose values are the last value of each batch
 	 * @since 2.0
 	 */
-	public final Action<O, O> distinctUntilChanged() {
+	public final Stream<O> distinctUntilChanged() {
 		final DistinctUntilChangedAction<O> d = new DistinctUntilChangedAction<O>(getDispatcher());
 		return connect(d);
 	}
@@ -869,7 +930,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @return a new {@link Action} whose values result from the iterable input
+	 * @return a new {@link Stream} whose values result from the iterable input
 	 * @since 1.1, 2.0
 	 */
 	public final <V> Action<Iterable<? extends V>, V> split() {
@@ -882,7 +943,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @param batchSize the batch size to use
-	 * @return a new {@link Action} whose values result from the iterable input
+	 * @return a new {@link Stream} whose values result from the iterable input
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -910,9 +971,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * time {@code
 	 * getCapacity()} or flush is triggered has been reached.
 	 *
-	 * @return a new {@link Action} whose values are a {@link java.util.List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer() {
+	public final Stream<List<O>> buffer() {
 		return buffer((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
@@ -921,9 +982,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * getCapacity()} has been reached.
 	 *
 	 * @param maxSize the collected size
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer(int maxSize) {
+	public final Stream<List<O>> buffer(int maxSize) {
 		return connect(new BufferAction<O>(getDispatcher(), maxSize));
 	}
 
@@ -933,9 +994,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer(long timespan, TimeUnit unit) {
+	public final Stream<List<O>> buffer(long timespan, TimeUnit unit) {
 		return buffer(timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -947,9 +1008,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer(long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<List<O>> buffer(long timespan, TimeUnit unit, Timer timer) {
 		return buffer(Integer.MAX_VALUE, timespan, unit, timer);
 	}
 
@@ -961,9 +1022,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param maxSize  the max collected size
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer(int maxSize, long timespan, TimeUnit unit) {
+	public final Stream<List<O>> buffer(int maxSize, long timespan, TimeUnit unit) {
 		return buffer(maxSize, timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -976,9 +1037,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Action<O, List<O>> buffer(int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<List<O>> buffer(int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		return connect(new BufferAction<O>(getDispatcher(), maxSize, timespan, unit, timer));
 	}
 
@@ -988,10 +1049,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * {@code Stream}. The buffer will retain up to the last {@param backlog} elements in memory.
 	 *
 	 * @param backlog maximum amount of items to keep
-	 * @return a new {@link Action} whose values are a {@link List} of all values in this buffer
+	 * @return a new {@link Stream} whose values are a {@link List} of all values in this buffer
 	 * @since 2.0
 	 */
-	public final Action<O, List<O>> movingBuffer(int backlog) {
+	public final Stream<List<O>> movingBuffer(int backlog) {
 		return connect(new MovingBufferAction<O>(getDispatcher(), backlog, 1));
 	}
 
@@ -1002,10 +1063,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
-	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
+	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
-	public final Action<O, O> sort() {
+	public final Stream<O> sort() {
 		return sort(null);
 	}
 
@@ -1016,10 +1077,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
-	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
+	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
-	public final Action<O, O> sort(int maxCapacity) {
+	public final Stream<O> sort(int maxCapacity) {
 		return sort(maxCapacity, null);
 	}
 
@@ -1031,10 +1092,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
-	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
+	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
-	public final Action<O, O> sort(Comparator<? super O> comparator) {
+	public final Stream<O> sort(Comparator<? super O> comparator) {
 		return sort((int) Math.min(Integer.MAX_VALUE, getCapacity()), comparator);
 	}
 
@@ -1046,10 +1107,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
 	 * @param comparator  A {@link Comparator<O>} to evaluate incoming data
-	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
+	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
-	public final Action<O, O> sort(int maxCapacity, Comparator<? super O> comparator) {
+	public final Stream<O> sort(int maxCapacity, Comparator<? super O> comparator) {
 		return connect(new SortAction<O>(getDispatcher(), maxCapacity, comparator));
 	}
 
@@ -1057,10 +1118,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link this#getCapacity()}
 	 * times. The nested streams will be pushed into the returned {@code Stream}.
 	 *
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window() {
+	public final Stream<Stream<O>> window() {
 		return window((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
@@ -1069,10 +1130,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * The nested streams will be pushed into the returned {@code Stream}.
 	 *
 	 * @param backlog the time period when each window close and flush the attached consumer
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window(int backlog) {
+	public final Stream<Stream<O>> window(int backlog) {
 		return connect(new WindowAction<O>(getDispatcher(), backlog));
 	}
 
@@ -1083,10 +1144,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param timespan the period in unit to use to release a new window as a Stream
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window(long timespan, TimeUnit unit) {
+	public final Stream<Stream<O>> window(long timespan, TimeUnit unit) {
 		return window(timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -1098,10 +1159,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window(long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<Stream<O>> window(long timespan, TimeUnit unit, Timer timer) {
 		return window(Integer.MAX_VALUE, timespan, unit, timer);
 	}
 
@@ -1113,10 +1174,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param maxSize  the max collected size
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window(int maxSize, long timespan, TimeUnit unit) {
+	public final Stream<Stream<O>> window(int maxSize, long timespan, TimeUnit unit) {
 		return window(maxSize, timespan, unit, getEnvironment().getTimer());
 	}
 
@@ -1128,10 +1189,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timespan the period in unit to use to release a buffered list
 	 * @param unit     the time unit
 	 * @param timer    the Timer to run on
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Action<O, Stream<O>> window(int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public final Stream<Stream<O>> window(int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		return connect(new WindowAction<O>(getDispatcher(), maxSize, timespan, unit, timer));
 	}
 
@@ -1140,7 +1201,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * {param keyMapper}.
 	 *
 	 * @param keyMapper the key mapping function that evaluates an incoming data and returns a key.
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
 	public final <K> GroupByAction<O, K> groupBy(Function<? super O, ? extends K> keyMapper) {
@@ -1151,7 +1212,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
 	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning
 	 *
-	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
 	public final GroupByAction<O, Integer> partition() {
@@ -1170,9 +1231,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param fn      the reduce function
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param <A>     the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
-	public final <A> Action<O, A> reduce(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
+	public final <A> Stream<A> reduce(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
 		return reduce(Functions.supplier(initial), (int) Math.min(Integer.MAX_VALUE, getCapacity()), fn);
 	}
 
@@ -1193,9 +1254,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param accumulators the {@link Supplier} that will provide accumulators
 	 * @param batchSize    the batch size to use
 	 * @param <A>          the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
-	public final <A> Action<O, A> reduce(@Nullable final Supplier<A> accumulators,
+	public final <A> Stream<A> reduce(@Nullable final Supplier<A> accumulators,
 	                                     final int batchSize,
 	                                     @Nonnull final Function<Tuple2<O, A>, A> fn
 	) {
@@ -1213,9 +1274,9 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param fn  the reduce function
 	 * @param <A> the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
-	public final <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public final <A> Stream<A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return reduce(null, (int) Math.min(Integer.MAX_VALUE, getCapacity()), fn);
 	}
 
@@ -1227,10 +1288,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param fn      the scan function
 	 * @param <A>     the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
-	public final <A> Action<O, A> scan(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
+	public final <A> Stream<A> scan(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
 		return scan(Functions.supplier(initial), fn);
 	}
 
@@ -1239,10 +1300,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param fn  the reduce function
 	 * @param <A> the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
-	public final <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public final <A> Stream<A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return scan((Supplier<A>) null, fn);
 	}
 
@@ -1259,10 +1320,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param accumulators the {@link Supplier} that will provide accumulators
 	 * @param fn           the scan function
 	 * @param <A>          the type of the reduced object
-	 * @return a new {@link Action} whose values contain only the reduced objects
+	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
-	public final <A> Action<O, A> scan(@Nullable final Supplier<A> accumulators,
+	public final <A> Stream<A> scan(@Nullable final Supplier<A> accumulators,
 	                                   @Nonnull final Function<Tuple2<O, A>, A> fn) {
 		return connect(new ScanAction<O, A>(accumulators,
 				fn,
@@ -1272,16 +1333,16 @@ public abstract class Stream<O> implements Publisher<O> {
 	/**
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
-	public final Action<O, Long> count() {
+	public final Stream<Long> count() {
 		return count(getCapacity());
 	}
 
 	/**
 	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
 	 *
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 */
-	public final Action<O, Long> count(long i) {
+	public final Stream<Long> count(long i) {
 		return connect(new CountAction<O>(getDispatcher(), i));
 	}
 
@@ -1289,13 +1350,13 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * Request the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
 	 *
 	 * @param period the period in milliseconds between two notifications on this stream
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> throttle(long period) {
+	public final Stream<O> throttle(long period) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return throttle(period, 0l).capacity(1);
+		return throttle(period, 0l);
 	}
 
 	/**
@@ -1304,10 +1365,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param delay  the timeout in milliseconds before starting consuming
 	 * @param period the period in milliseconds between two notifications on this stream
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> throttle(long period, long delay) {
+	public final Stream<O> throttle(long period, long delay) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return throttle(period, delay, getEnvironment().getTimer());
@@ -1320,10 +1381,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param period the timeout in milliseconds between two notifications on this stream
 	 * @param delay  the timeout in milliseconds before starting consuming
 	 * @param timer  the reactor timer to run the timeout on
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Action<O, O> throttle(long period, long delay, Timer timer) {
+	public final Stream<O> throttle(long period, long delay, Timer timer) {
 		return connect(new ThrottleAction<O>(
 				getDispatcher(),
 				timer,
@@ -1339,10 +1400,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
 	 *
 	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final TimeoutAction<O> timeout(long timeout) {
+	public final Stream<O> timeout(long timeout) {
 		return timeout(timeout, null);
 	}
 
@@ -1354,10 +1415,10 @@ public abstract class Stream<O> implements Publisher<O> {
 	 *
 	 * @param timeout the timeout in unit between two notifications on this composable
 	 * @param unit    the time unit
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final TimeoutAction<O> timeout(long timeout, TimeUnit unit) {
+	public final Stream<O> timeout(long timeout, TimeUnit unit) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return timeout(timeout, unit, getEnvironment().getTimer());
@@ -1372,15 +1433,32 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @param timeout the timeout in milliseconds between two notifications on this composable
 	 * @param unit    the time unit
 	 * @param timer   the reactor timer to run the timeout on
-	 * @return a new {@link Action}
+	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final TimeoutAction<O> timeout(long timeout, TimeUnit unit, Timer timer) {
+	public final Stream<O> timeout(long timeout, TimeUnit unit, Timer timer) {
 		return connect(new TimeoutAction<O>(
 				getDispatcher(),
 				timer,
 				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout
 		));
+	}
+
+	/**
+	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component and
+	 * the current stream to act as the {@link org.reactivestreams.Publisher}.
+	 * <p>
+	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle.
+	 *
+	 * Default behavior, e.g. a single stream, will raise an {@link java.lang.IllegalStateException} as there would not
+	 * be any Subscriber (Input) side to combine. {@link reactor.rx.action.Action#combine()} is the usual reference
+	 * implementation used.
+	 *
+	 * @param <E> the type of the most ancien action input.
+	 * @return new Combined Action
+	 */
+	public <E> CombineAction<E, O> combine() {
+		throw new IllegalStateException("Cannot combine a single Stream");
 	}
 
 	/**

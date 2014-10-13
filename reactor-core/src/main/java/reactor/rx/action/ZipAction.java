@@ -21,41 +21,30 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
+import reactor.rx.subscription.PushSubscription;
 import reactor.tuple.Tuple;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
-public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipAction.InnerSubscriber<O, V>> {
+public final class ZipAction<O, V, TUPLE extends Tuple>
+		extends FanInAction<O, ZipAction.Zippable<O>, V, ZipAction.InnerSubscriber<O, V>> {
 
 	final Function<TUPLE, ? extends V> accumulator;
 
 	int index = 0;
+	int count = 0;
+
+	Object[] toZip = new Object[2];
 
 	AtomicBoolean completing = new AtomicBoolean();
-
-	final Consumer<Long> upstreamConsumer = new Consumer<Long>() {
-		@Override
-		public void accept(Long integer) {
-			try {
-				if (currentNextSignals == capacity) {
-					broadcastTuple(false);
-				}
-
-				requestConsumer.accept(integer);
-			} catch (Throwable e) {
-				doError(e);
-			}
-		}
-	};
 
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, V> Function<TUPLE, List<V>> joinZipper() {
@@ -76,46 +65,49 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 
 	@SuppressWarnings("unchecked")
 	protected void broadcastTuple(final boolean force) {
-		final Object[] result = new Object[innerSubscriptions.subscriptions.size()];
-		final AtomicInteger counter = new AtomicInteger(0);
-
-		innerSubscriptions.forEach(
-				new Consumer<FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>>>() {
-					@Override
-					public void accept(FanInSubscription.InnerSubscription<O, ? extends InnerSubscriber<O, V>> subscription) {
-						if (subscription.subscriber.lastItem == null) {
-							return;
-						}
-						result[subscription.subscriber.index] = subscription.subscriber.lastItem;
-						subscription.subscriber.lastItem = null;
-						counter.incrementAndGet();
-					}
-				});
-
-		if (force || counter.get() == result.length) {
-			broadcastNext(accumulator.apply((TUPLE) Tuple.of(result)));
+		if (count == capacity || force) {
+			count = 0;
+			Object[] _toZip = toZip;
+			toZip = new Object[toZip.length];
+			broadcastNext(accumulator.apply((TUPLE) Tuple.of(_toZip)));
 		}
 	}
 
 
 	@Override
-	protected FanInSubscription<O, InnerSubscriber<O, V>> createFanInSubscription() {
-		return new ZipSubscription<O, V>(this,
-				new ArrayList<FanInSubscription.InnerSubscription<O, ? extends ZipAction.InnerSubscriber<O, V>>>(8));
+	protected FanInSubscription<O, Zippable<O>, InnerSubscriber<O, V>> createFanInSubscription() {
+		return new ZipSubscription(this,
+				new ArrayList<FanInSubscription.InnerSubscription<O, Zippable<O>, ? extends InnerSubscriber<O, V>>>(8));
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected void doNext(O ev) {
-		if (currentNextSignals == capacity) {
+	protected PushSubscription<Zippable<O>> createTrackingSubscription(Subscription subscription) {
+		return innerSubscriptions;
+	}
+
+	@Override
+	protected void doNext(Zippable<O> ev) {
+		boolean isFinishing = completing.get();
+		if (toZip[ev.index] == null) {
+			count++;
+		}
+
+		toZip[ev.index] = ev.data;
+
+		if(isFinishing && count == toZip.length) {
+			innerSubscriptions.onComplete();
+		}else{
 			broadcastTuple(false);
 		}
+
+
 	}
 
 	@Override
 	protected void doComplete() {
+		broadcastTuple(true);
 		//can receive multiple queued complete signals
-		if (finalState == null && runningComposables.get() == 0) {
+		if (upstreamSubscription != null && runningComposables.get() == 0) {
 			innerSubscriptions.scheduleTermination();
 			broadcastComplete();
 		}
@@ -128,7 +120,15 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
-		capacity = innerSubscriptions.subscriptions.size() + 1;
+		int newSize = innerSubscriptions.subscriptions.size() + 1;
+		capacity(newSize);
+
+		if (newSize != toZip.length) {
+			Object[] previousZip = toZip;
+			toZip = new Object[newSize];
+			System.arraycopy(previousZip, 0, toZip, 0, newSize - 1);
+		}
+
 		return new ZipAction.InnerSubscriber<>(this, index++);
 	}
 
@@ -142,15 +142,20 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 	}
 
 	@Override
-	protected void onRequest(long n) {
-		dispatch(n, upstreamConsumer);
+	public String toString() {
+		String formatted = super.toString();
+		for (int i = 0; i < toZip.length; i++) {
+			if (toZip[i] != null)
+				formatted += "(" + (i) + "):" + toZip[i] + ",";
+		}
+		return formatted.substring(0, toZip.length > 0 ? formatted.length() -1 : formatted.length());
 	}
 
-	public static class InnerSubscriber<O, V> extends FanInAction.InnerSubscriber<O, V> {
+//Handling each new Publisher to zip
+
+	public static final class InnerSubscriber<O, V> extends FanInAction.InnerSubscriber<O, Zippable<O>, V> {
 		final ZipAction<O, V, ?> outerAction;
 		final int                index;
-
-		O lastItem;
 
 		InnerSubscriber(ZipAction<O, V, ?> outerAction, int index) {
 			super(outerAction);
@@ -161,10 +166,11 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(Subscription subscription) {
-			setSubscription(new FanInSubscription.InnerSubscription<O, InnerSubscriber<O, V>>(subscription, this));
+			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
+					this));
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			if (outerAction.innerSubscriptions.getCapacity().get() > 0) {
+			if (outerAction.innerSubscriptions.capacity().get() > 0) {
 				request(1);
 			}
 		}
@@ -177,51 +183,80 @@ public class ZipAction<O, V, TUPLE extends Tuple> extends FanInAction<O, V, ZipA
 
 		@Override
 		public void onNext(O ev) {
-			//Action.log.debug("event ["+ev+"] by: " + this);
-			lastItem = ev;
-			outerAction.innerSubscriptions.onNext(ev);
-
-				if(outerAction.completing.get()){
-				outerAction.runningComposables.decrementAndGet();
-				outerAction.innerSubscriptions.onComplete();
-			}
+			outerAction.innerSubscriptions.onNext(new Zippable<O>(index, ev));
 		}
 
 		@Override
 		public void onComplete() {
-			//Action.log.debug("event [complete] by: " + this);
-			if (checkDynamicMerge()) {
-				s.cancel();
+			s.cancel();
 
-				outerAction.trySyncDispatch(null, new Consumer<Void>() {
-					@Override
-					public void accept(Void aVoid) {
-						outerAction.runningComposables.decrementAndGet();
+			outerAction.trySyncDispatch(null, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					outerAction.capacity(outerAction.runningComposables.decrementAndGet());
+					if (outerAction.capacity > 0) {
 						outerAction.completing.set(true);
+					} else {
+						outerAction.onComplete();
 					}
-				});
-			}
+				}
+			});
 		}
 
 		@Override
 		public String toString() {
-			return "ZipAction.InnerSubscriber{lastItem=" + lastItem + ", index=" + index + ", " +
+			return "Zip.InnerSubscriber{index=" + index + ", " +
 					"pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
 		}
 	}
 
-	private static class ZipSubscription<O, V> extends FanInSubscription<O, ZipAction.InnerSubscriber<O, V>> {
-		public ZipSubscription(Subscriber<O> subscriber,
-		                       List<InnerSubscription<O, ? extends ZipAction.InnerSubscriber<O, V>>> subs) {
+	private final class ZipSubscription extends FanInSubscription<O, Zippable<O>, ZipAction.InnerSubscriber<O, V>> {
+
+		public ZipSubscription(Subscriber<? super Zippable<O>> subscriber,
+		                       List<InnerSubscription<O, Zippable<O>, ? extends ZipAction.InnerSubscriber<O, V>>> subs) {
 			super(subscriber, subs);
 		}
 
 		@Override
-		protected void parallelRequest(final long elements) {
+		public boolean shouldRequestPendingSignals() {
+			return count == 0;
+		}
+
+		@Override
+		public void doPendingRequest() {
+			if (maxCapacity > 0) {
+				request(maxCapacity);
+			}
+		}
+
+		@Override
+		protected void onRequest(long integer) {
+			try {
+				broadcastTuple(false);
+
+				super.onRequest(integer);
+			} catch (Throwable e) {
+				doError(e);
+			}
+		}
+
+		@Override
+		protected void parallelRequest(long elements) {
 			super.parallelRequest(1);
 			if (buffer.isComplete()) {
 				scheduleTermination();
 			}
 		}
 	}
+
+	public static final class Zippable<O> {
+		final int index;
+		final O   data;
+
+		public Zippable(int index, O data) {
+			this.index = index;
+			this.data = data;
+		}
+	}
+
 }

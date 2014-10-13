@@ -15,10 +15,14 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.rx.Stream;
+import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -37,7 +41,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final Consumer<Long>                         timeoutTask;
 	protected final Registration<? extends Consumer<Long>> timespanRegistration;
 	protected final Consumer<T>    flushConsumer        = new FlushConsumer();
-	protected final Consumer<Long> requestBatchConsumer = new RequestConsumer();
 
 	protected int count = 0;
 
@@ -67,6 +70,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		this.flush = flush;
 		this.next = next;
 		this.batchSize = batchSize;
+	}
+
+	@Override
+	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
+		return new RequestConsumer<T>(subscription, this, flushConsumer, batchSize);
 	}
 
 	@Override
@@ -107,7 +115,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public Action<V, Void> drain() {
+	public final Stream<Void> drain() {
 		dispatch(null, flushConsumer);
 		return super.drain();
 	}
@@ -117,6 +125,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	public BatchAction<T, V> resume() {
 		dispatch(null, flushConsumer);
 		return (BatchAction<T, V>) super.resume();
+	}
+
+	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+		dispatch(elements, upstreamSubscription);
 	}
 
 	@Override
@@ -131,11 +144,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		return super.pause();
 	}
 
-	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		dispatch(elements, requestBatchConsumer);
-	}
-
 	final private class FlushConsumer implements Consumer<T> {
 		@Override
 		public void accept(T n) {
@@ -144,17 +152,36 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 	}
 
-	final private class RequestConsumer implements Consumer<Long> {
+	final private static class RequestConsumer<T> extends WrappedSubscription<T> {
+
+		final Consumer<T> flushConsumer;
+		final int batchSize;
+
+
+		public RequestConsumer(Subscription subscription, Subscriber<T> subscriber, Consumer<T> flushConsumer, int batchSize) {
+			super(subscription, subscriber);
+			this.flushConsumer = flushConsumer;
+			this.batchSize = batchSize;
+		}
+
 		@Override
-		public void accept(Long n) {
+		public void request(long n) {
 			flushConsumer.accept(null);
-			long toRequest = Math.max(n, batchSize);
-			requestConsumer.accept(toRequest);
+			super.request(Math.max(n, batchSize));
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public void maxCapacity(long n) {
+			//If a reactor push subscription, assign batch size to max capacity
+			if (PushSubscription.class.isAssignableFrom(subscription.getClass())) {
+				((PushSubscription<T>) subscription).maxCapacity(batchSize);
+			}
 		}
 	}
 
 	@Override
 	public String toString() {
-		return super.toString() + "{"+(timespanRegistration != null ? "timed!" : "")+" batchSize=" + batchSize + ", " + ((count / batchSize) * 100) + "%(" + count + ")";
+		return super.toString() + "{"+(timespanRegistration != null ? "timed!" : "")+" batchSize=" + count+ "/" + batchSize + " [" + (int)((((float)count) / ((float)batchSize)) * 100) + "%]";
 	}
 }

@@ -49,12 +49,12 @@ class ComposableExtensions {
 	 * Operator overloading
 	 */
 
-	static <T, V> Action<T,V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
+	static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
 		selfType.reduce other
 	}
 
 	//Mapping
-	static <T, V> Action<T,V> or(final Stream<T> selfType, final Function<T, V> other) {
+	static <T, V> Stream<V> or(final Stream<T> selfType, final Function<T, V> other) {
 		selfType.map other
 	}
 

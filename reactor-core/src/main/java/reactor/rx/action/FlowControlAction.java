@@ -38,8 +38,8 @@ public class FlowControlAction<O> extends Action<O, O> {
 	protected ReactiveSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		return new ReactiveSubscription<O>(this, subscriber) {
 			@Override
-			public void request(long elements) {
-				super.request(elements);
+			public void onRequest(long elements) {
+				super.onRequest(elements);
 				requestUpstream(capacity, buffer.isComplete(), elements);
 			}
 		};

@@ -52,8 +52,4 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 		values.clear();
 	}
 
-	@Override
-	public String toString() {
-		return super.toString() + "{collected=" + values.size() + "}";
-	}
 }

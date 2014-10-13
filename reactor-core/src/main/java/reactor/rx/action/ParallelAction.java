@@ -50,7 +50,7 @@ public final class ParallelAction<O> extends Action<O, O> {
 		if(reactiveSubscription == null){
 			return 0;
 		}else{
-			return reactiveSubscription.getCapacity().get();
+			return reactiveSubscription.capacity().get();
 		}
 	}
 

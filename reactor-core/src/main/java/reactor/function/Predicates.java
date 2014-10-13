@@ -20,10 +20,41 @@ import reactor.util.Assert;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class Predicates {
 
 	protected Predicates() {
+	}
+
+	/**
+	 * Returns a {@literal Predicate} which always evaluates to false.
+	 *
+	 * @param <T> the type handled by the predicate
+	 * @return the never predicate
+	 */
+	public static <T> Predicate<T> never(){
+		return new Predicate<T>() {
+			@Override
+			public boolean test(T o) {
+				return false;
+			}
+		};
+	}
+
+	/**
+	 * Returns a {@literal Predicate} which always evaluates to true.
+	 *
+	 * @param <T> the type handled by the predicate
+	 * @return the always predicate
+	 */
+	public static <T> Predicate<T> always(){
+		return new Predicate<T>() {
+			@Override
+			public boolean test(T o) {
+				return true;
+			}
+		};
 	}
 
 	/**
@@ -42,8 +73,8 @@ public abstract class Predicates {
 		return new Predicate<T>() {
 			@Override
 			public boolean test(T t) {
-				for(Predicate<? super T> p : predicates) {
-					if(!p.test(t)) {
+				for (Predicate<? super T> p : predicates) {
+					if (!p.test(t)) {
 						return false;
 					}
 				}

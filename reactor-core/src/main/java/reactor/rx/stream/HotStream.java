@@ -15,18 +15,25 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.SpecificationExceptions;
-
-import java.util.concurrent.atomic.AtomicLong;
+import reactor.rx.subscription.PushSubscription;
 
 /**
-* @author Stephane Maldini
-*/
+ * @author Stephane Maldini
+ */
 public class HotStream<O> extends Action<O, O> {
+
+	public static enum FinalState {
+		ERROR,
+		COMPLETE
+	}
+
+	private FinalState finalState = null;
+	private Throwable error;
+
 	public HotStream(Dispatcher dispatcher, long capacity) {
 		super(dispatcher, capacity);
 	}
@@ -34,6 +41,33 @@ public class HotStream<O> extends Action<O, O> {
 	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
+	}
+
+	@Override
+	public void broadcastError(Throwable ev) {
+		this.error = ev;
+		this.finalState = FinalState.ERROR;
+		super.broadcastError(ev);
+	}
+
+	@Override
+	public void broadcastComplete() {
+		this.finalState = FinalState.COMPLETE;
+		super.broadcastComplete();
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super O> subscriber) {
+		if(finalState == null){
+			if (upstreamSubscription == null){
+				this.upstreamSubscription = new PushSubscription<>(null, this);
+			}
+			super.subscribe(subscriber);
+		}else if (isComplete()){
+			subscriber.onComplete();
+		}else if (hasFailed()){
+			subscriber.onError(error);
+		}
 	}
 
 	@Override
@@ -55,22 +89,6 @@ public class HotStream<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, final long elements) {
-		if(subscription == null){
-			trySyncDispatch(null, new Consumer<Void>(){
-				@Override
-				public void accept(Void aVoid) {
-					if((pendingNextSignals += elements) < 0) {
-						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, elements));
-					}
-				}
-			});
-		}else{
-			super.requestUpstream(capacity, terminated, elements);
-		}
-	}
-
-	@Override
 	public HotStream<O> cancel() {
 		super.cancel();
 		return this;
@@ -86,5 +104,18 @@ public class HotStream<O> extends Action<O, O> {
 	public HotStream<O> resume() {
 		super.resume();
 		return this;
+	}
+
+	public boolean isComplete(){
+		return finalState == FinalState.COMPLETE;
+	}
+
+	public boolean hasFailed(){
+		return finalState == FinalState.ERROR;
+	}
+
+
+	public Throwable error(){
+		return error;
 	}
 }

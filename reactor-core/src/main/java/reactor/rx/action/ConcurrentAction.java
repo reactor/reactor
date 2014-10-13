@@ -16,14 +16,15 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.Stream;
-import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -38,61 +39,12 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 
 	private final int poolSize;
-	private final ReentrantLock lock   = new ReentrantLock();
 	private final AtomicInteger active = new AtomicInteger();
 	private final ParallelAction[] publishers;
 
 	private volatile int roundRobinIndex = 0;
 
 	private Registration<? extends Consumer<Long>> consumerRegistration;
-
-	protected final Consumer<Long> requestConsumer = new Consumer<Long>() {
-		@Override
-		public void accept(Long n) {
-			lock.lock();
-			try {
-				if (subscription == null) {
-
-					if ((pendingNextSignals += n) < 0) {
-						lock.unlock();
-						doError(SpecificationExceptions.spec_3_17_exception(pendingNextSignals, n));
-					} else {
-						lock.unlock();
-					}
-					return;
-				}
-
-				if (firehose) {
-					currentNextSignals = 0;
-					lock.unlock();
-					subscription.request(n);
-					return;
-				}
-
-				long previous = pendingNextSignals;
-				pendingNextSignals += n;
-
-				if (previous < capacity) {
-					long toRequest = n + previous;
-					toRequest = Math.min(toRequest, capacity);
-					pendingNextSignals -= toRequest;
-					currentNextSignals = 0;
-					lock.unlock();
-					subscription.request(toRequest);
-					return;
-				}
-
-				lock.unlock();
-
-			} catch (Throwable t) {
-
-				if (lock.isHeldByCurrentThread())
-					lock.unlock();
-
-				doError(t);
-			}
-		}
-	};
 
 	@SuppressWarnings("unchecked")
 	public ConcurrentAction(Dispatcher parentDispatcher,
@@ -199,12 +151,6 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 	}
 
 	@Override
-	protected void onRequest(long n) {
-		checkRequest(n);
-		trySyncDispatch(n, requestConsumer);
-	}
-
-	@Override
 	public Action<O, Stream<O>> env(Environment environment) {
 		for (ParallelAction p : publishers) {
 			p.env(environment);
@@ -222,12 +168,11 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 	}
 
 	@Override
-	public Action<O, Stream<O>> ignoreErrors(boolean ignoreError) {
-		super.ignoreErrors(ignoreError);
-		for (ParallelAction p : publishers) {
-			p.ignoreErrors(ignoreError);
+	public void subscribe(Subscriber<? super Stream<O>> subscriber) {
+		if (upstreamSubscription == null) {
+			upstreamSubscription = new PushSubscription<>(null, this);
 		}
-		return this;
+		super.subscribe(subscriber);
 	}
 
 	void clean(int index) {
@@ -238,6 +183,8 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 		}
 	}
 
+
+
 	void parallelRequest(long elements, int index) {
 		roundRobinIndex = index;
 		onRequest(elements);
@@ -245,7 +192,8 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected PushSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber, boolean reactivePull) {
+	protected PushSubscription<Stream<O>> createSubscription(final Subscriber<? super Stream<O>> subscriber,
+	                                                         boolean reactivePull) {
 		return new PushSubscription<Stream<O>>(this, subscriber) {
 			long cursor = 0l;
 
@@ -268,6 +216,11 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 				}
 			}
 		};
+	}
+
+	@Override
+	protected PushSubscription<O> createTrackingSubscription(Subscription subscription) {
+		return new ConcurrentSubscription<>(subscription, this);
 	}
 
 	@Override
@@ -337,7 +290,7 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 		super.doError(throwable);
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			parallelStream.broadcastError(throwable);
+			if(parallelStream != null) parallelStream.broadcastError(throwable);
 		}
 	}
 
@@ -346,8 +299,26 @@ public class ConcurrentAction<O> extends Action<O, Stream<O>> {
 		super.doComplete();
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			parallelStream.broadcastComplete();
+			if(parallelStream != null) parallelStream.broadcastComplete();
 		}
 	}
 
+	static class ConcurrentSubscription<O> extends WrappedSubscription<O> {
+
+		private final ReentrantLock lock = new ReentrantLock();
+
+		public ConcurrentSubscription(Subscription subscription, Subscriber<O> subscriber) {
+			super(subscription, subscriber);
+		}
+
+		@Override
+		public void request(long n) {
+			try {
+				lock.lock();
+				super.request(n);
+			} finally {
+				lock.unlock();
+			}
+		}
+	}
 }

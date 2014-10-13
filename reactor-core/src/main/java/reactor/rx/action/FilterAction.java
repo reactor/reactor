@@ -62,7 +62,7 @@ public class FilterAction<T> extends Action<T, T> {
 		if (p.test(value)) {
 			broadcastNext(value);
 		} else {
-			subscription.request(1);
+			onRequest(1);
 			if (elseComposable != null) {
 				elseComposable.broadcastNext(value);
 			}

@@ -18,6 +18,8 @@ package reactor.rx.action;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
+import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.support.WrappedSubscription;
 
 /**
  * @author Stephane Maldini
@@ -34,25 +36,45 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 		this.consumer = consumer;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
-	}
-
-	@Override
-	public void onSubscribe(Subscription subscription) {
-		super.onSubscribe(subscription);
+		this.capacity = Long.MAX_VALUE;
 	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		capacity = firehose ? Long.MAX_VALUE : capacity;
-		requestConsumer.accept(capacity);
+		subscription.request(capacity);
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		consumer.accept(ev);
-		if (pendingNextSignals == 0 && currentNextSignals >= capacity) {
-			requestConsumer.accept(currentNextSignals);
+		if(consumer != null){
+			consumer.accept(ev);
 		}
+	}
+
+	@Override
+	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
+		return new WrappedSubscription<T>(subscription, this){
+
+			@Override
+			public void incrementCurrentNextSignals() {
+				pendingRequestSignals--;
+			}
+
+			@Override
+			public void doPendingRequest() {
+				request(capacity);
+			}
+
+			@Override
+			public boolean shouldRequestPendingSignals() {
+				return pendingRequestSignals == 0;
+			}
+
+			@Override
+			public String toString() {
+				return super.toString()+" pending="+pendingRequestSignals;
+			}
+		};
 	}
 
 	@Override
@@ -61,6 +83,7 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 			errorConsumer.accept(ev);
 		}
 		super.doError(ev);
+		cancel();
 	}
 
 	@Override
@@ -69,9 +92,7 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 			completeConsumer.accept(null);
 		}
 		super.doComplete();
+		cancel();
 	}
 
-	@Override
-	protected void doPendingRequest() {
-	}
 }

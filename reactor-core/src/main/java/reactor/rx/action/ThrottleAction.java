@@ -15,10 +15,13 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -32,29 +35,22 @@ public class ThrottleAction<T> extends Action<T, T> {
 
 	private final Timer timer;
 	private final long  period;
-	private final   Consumer<Long> periodTask        = new Consumer<Long>() {
+	private final Consumer<Long> periodTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
-			dispatch(periodRequest);
-		}
-	};
-	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
-		@Override
-		public void accept(Long n) {
-			if ((pendingNextSignals += n) < 0) pendingNextSignals = Long.MAX_VALUE;
-		}
-	};
-
-	private final Consumer<Void> periodRequest = new Consumer<Void>() {
-		@Override
-		public void accept(Void aVoid) {
-			long toRequest = generateDemandFromPendingRequests();
-			if (toRequest > 0) {
-				--pendingNextSignals;
-				subscription.request(toRequest);
+			if (upstreamSubscription != null) {
+				dispatch(-1l, upstreamSubscription);
 			}
 		}
 	};
+
+	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
+		@Override
+		public void accept(Long n) {
+			upstreamSubscription.updatePendingRequests(n);
+		}
+	};
+
 	private final long delay;
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
@@ -67,6 +63,12 @@ public class ThrottleAction<T> extends Action<T, T> {
 		this.timer = timer;
 		this.period = period;
 		this.delay = delay;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
+		return new TimeoutTracker<>(subscription, this);
 	}
 
 	@Override
@@ -83,13 +85,6 @@ public class ThrottleAction<T> extends Action<T, T> {
 	@Override
 	protected void onRequest(long n) {
 		trySyncDispatch(n, throttledConsumer);
-	}
-
-	@Override
-	protected void doPendingRequest() {
-		if (currentNextSignals == capacity) {
-			currentNextSignals = 0; //reset currentNextSignals only
-		}
 	}
 
 	@Override
@@ -116,4 +111,24 @@ public class ThrottleAction<T> extends Action<T, T> {
 		super.doComplete();
 	}
 
+	static class TimeoutTracker<T> extends WrappedSubscription<T> {
+
+		public TimeoutTracker(Subscription subscription, Subscriber<T> subscriber) {
+			super(subscription, subscriber);
+		}
+
+		@Override
+		public void request(long n) {
+			if(n == -1){
+				super.request(1l);
+			} else {
+				super.request(n);
+			}
+		}
+
+		@Override
+		public void doPendingRequest() {
+			//IGNORE
+		}
+	}
 }

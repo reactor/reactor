@@ -77,10 +77,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.buffer(1024, 200, TimeUnit.MILLISECONDS)
 										.<Integer>split()
 										.flatMap(i ->
-														Streams.zip(
-																Streams.<Integer>just(i), otherStream,
-																tuple -> tuple.getT1())
-																.dispatchOn(env)
+														Streams.<Integer>just(i)
+												/*Streams.zip(
+														Streams.<Integer>just(i), otherStream,
+														tuple -> tuple.getT1())*/
+														.dispatchOn(env)
 										)
 						).<Integer>merge()
 						.when(Throwable.class, Throwable::printStackTrace)
@@ -164,10 +165,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		System.out.println(stream.debug());
 		System.out.println(counters);
-		if(processor.getError() != null){
-			System.out.println(processor.getError());
-			processor.getError().printStackTrace();
-		}
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count+ " , Running on "+Environment.PROCESSORS+" CPU");
 

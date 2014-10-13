@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.rx.action.Action;
 import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple2;
 
@@ -89,6 +88,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			public Object apply(Integer integer) {
 				return integer;
 			}
+		}).consume(new Consumer<Object>() {
+			@Override
+			public void accept(Object o) {
+
+			}
 		}).debug().toString());
 
 
@@ -146,6 +150,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				.boxed()
 				.collect(Collectors.toList());
 
+		LOG.info("range from 0 to " + list.size());
 		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString() +
 				"" +
 				" " +
@@ -189,16 +194,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws Exception {
-		try {
-			if (!latch.await(5, TimeUnit.SECONDS)) {
-				throw new Exception("Never completed: (" + latch.getCount() + ") "
-						+ tail.debug());
-			}
-		} finally {
-			//Clean action references between tests
-			if (Action.class.isAssignableFrom(tail.getClass())) {
-				((Action) tail).cancel();
-			}
+		if (!latch.await(5, TimeUnit.SECONDS)) {
+			throw new Exception("Never completed: (" + latch.getCount() + ") "
+					+ tail.debug());
 		}
 	}
 
@@ -225,7 +223,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return (null != sd2 ? (sd2.getValue() < sd1.getValue() ? sd2 : sd1) : sd1);
 	}
 
-	class SensorData implements Comparable<SensorData> {
+	public class SensorData implements Comparable<SensorData> {
 
 		private final Long  id;
 		private final Float value;

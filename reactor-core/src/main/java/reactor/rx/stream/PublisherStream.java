@@ -77,7 +77,7 @@ public class PublisherStream<T> extends Stream<T> {
 			dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					DeferredSubscribeAction.super.subscribe(subscriber);
+					subscribeWithSubscription(subscriber, createSubscription(subscriber, true));
 					publisher.subscribe(DeferredSubscribeAction.this);
 				}
 			});

@@ -16,6 +16,8 @@
 
 package reactor.event.selector;
 
+import reactor.function.Predicate;
+
 /**
  * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)}
  * methods of the internal object to determine a match.
@@ -27,7 +29,7 @@ package reactor.event.selector;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ObjectSelector<T> implements Selector {
+public class ObjectSelector<T> implements Selector, Predicate<T> {
 
 	private final Object monitor = new Object();
 	private final T object;
@@ -69,6 +71,11 @@ public class ObjectSelector<T> implements Selector {
 	@Override
 	public HeaderResolver getHeaderResolver() {
 		return null;
+	}
+
+	@Override
+	public boolean test(T t) {
+		return matches(t);
 	}
 
 	@Override

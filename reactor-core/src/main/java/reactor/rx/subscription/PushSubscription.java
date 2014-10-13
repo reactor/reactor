@@ -17,35 +17,91 @@ package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.function.Consumer;
 import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
+import reactor.rx.action.support.SpecificationExceptions;
+import reactor.rx.subscription.support.WrappedDropSubscription;
+import reactor.rx.subscription.support.WrappedPushToReactiveSubscription;
+import reactor.rx.subscription.support.WrappedSubscription;
 
 /**
- * Relationship between a Stream (Publisher) and a Subscriber.
+ * Relationship between a Stream (Publisher) and a Subscriber. A PushSubscription offers common facilities to track
+ * downstream demand. Subclasses such as ReactiveSubscription implement these mechanisms to prevent Subscriber overrun.
  * <p>
  * In Reactor, a subscriber can be an Action which is both a Stream (Publisher) and a Subscriber.
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription {
+public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 	protected final Subscriber<? super O> subscriber;
-	final           Stream<O>             publisher;
+	protected final           Stream<O>             publisher;
 
 	protected volatile boolean terminated = false;
+
+	protected long pendingRequestSignals = 0l;
+
+	/**
+	 * Wrap the subscription behind a push subscription to start tracking its requests
+	 *
+	 * @param subscription the subscription to wrap
+	 * @return the new ReactiveSubscription
+	 */
+	public final static <O> PushSubscription<O> wrap(Subscription subscription, Subscriber<? super O> errorSubscriber) {
+		return new WrappedSubscription<O>(subscription, errorSubscriber);
+	}
 
 	public PushSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
 	}
 
+	/**
+	 * Wrap the subscription behind a reactive subscription using the passed queue to buffer otherwise to drop rejected
+	 * data.
+	 *
+	 * @param queue the optional queue to buffer overflow
+	 * @return the new ReactiveSubscription
+	 */
+	public ReactiveSubscription<O> toReactiveSubscription(CompletableQueue<O> queue) {
+		return new WrappedPushToReactiveSubscription<O>(this, queue);
+	}
+
+	/**
+	 * Wrap the subscription behind a dropping subscription.
+	 *
+	 * @return the new DropSubscription
+	 */
+	public DropSubscription<O> toDropSubscription() {
+		final PushSubscription<O> thiz = this;
+		return new WrappedDropSubscription<>(thiz);
+	}
+
 	@Override
-	public void request(long elements) {
-		//IGNORE, full push
+	public void accept(Long n) {
+		request(n);
+	}
+
+	@Override
+	public void request(long n) {
+		try {
+			if(publisher == null) {
+				if (pendingRequestSignals != Long.MAX_VALUE && (pendingRequestSignals += n) < 0)
+					subscriber.onError(SpecificationExceptions.spec_3_17_exception(pendingRequestSignals, n));
+			}
+			onRequest(n);
+		} catch (Throwable t) {
+			subscriber.onError(t);
+		}
+
 	}
 
 	@Override
 	public void cancel() {
-		publisher.cleanSubscriptionReference(this);
+		if(publisher != null){
+			publisher.cleanSubscriptionReference(this);
+		}
+
 		terminated = true;
 	}
 
@@ -70,12 +126,54 @@ public class PushSubscription<O> implements Subscription {
 		return publisher;
 	}
 
-	public Subscriber<? super O> getSubscriber() {
+	public boolean hasPublisher() {
+		return publisher != null;
+	}
+
+	public void updatePendingRequests(long n) {
+		if ((pendingRequestSignals += n) < 0) pendingRequestSignals = Long.MAX_VALUE;
+	}
+
+
+	public void doPendingRequest() {
+		/*
+		If we have to iterate over batch of requests, what to do on each flush happens here
+		 */
+	}
+
+	protected void onRequest(long n){
+		//IGNORE, full push
+	}
+
+	public final Subscriber<? super O> getSubscriber() {
 		return subscriber;
 	}
 
 	public boolean isComplete() {
 		return terminated;
+	}
+
+	public final long pendingRequestSignals() {
+		return pendingRequestSignals;
+	}
+
+	public void incrementCurrentNextSignals(){
+		/*
+		Count operation for each data signal
+		 */
+	}
+
+	public void maxCapacity(long n){
+		/*
+		Adjust capacity (usually the number of elements to be requested at most)
+		 */
+	}
+
+	public boolean shouldRequestPendingSignals(){
+		/*
+		Should request the next batch of pending signals. Usually when current next signals reaches some limit like the maxCapacity.
+		 */
+		return false;
 	}
 
 	@Override
@@ -103,117 +201,5 @@ public class PushSubscription<O> implements Subscription {
 		return "{push!}";
 	}
 
-	/**
-	 * Wrap the subscription behind a reactive subscription using the passed queue to buffer otherwise to drop rejected
-	 * data.
-	 *
-	 * @param queue the optional queue to buffer overflow
-	 * @return the new ReactiveSubscription
-	 */
-	public ReactiveSubscription<O> toReactiveSubscription(CompletableQueue<O> queue) {
-		final PushSubscription<O> thiz = this;
-		return new WrappedReactiveSubscription<O>(thiz, queue);
-	}
-	/**
-	 * Wrap the subscription behind a dropping subscription.
-	 *
-	 * @return the new DropSubscription
-	 */
-	public DropSubscription<O> toDropSubscription() {
-		final PushSubscription<O> thiz = this;
-		return new WrappedDropSubscription<>(thiz);
-	}
 
-	public final static class SubscriberToPushSubscription<O> implements Subscriber<O>{
-		final PushSubscription<O> thiz;
-
-		SubscriberToPushSubscription(PushSubscription<O> thiz) {
-			this.thiz = thiz;
-		}
-
-		public PushSubscription<O> delegate() {
-			return thiz;
-		}
-
-		@Override
-		public void onSubscribe(Subscription s) {
-		}
-
-		@Override
-		public void onNext(O o) {
-			thiz.onNext(o);
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			thiz.onError(t);
-		}
-
-		@Override
-		public void onComplete() {
-			thiz.onComplete();
-		}
-	}
-
-	final static class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
-		final PushSubscription<O> thiz;
-
-		public WrappedReactiveSubscription(final PushSubscription<O> thiz, CompletableQueue<O> queue) {
-			super(thiz.publisher, new SubscriberToPushSubscription<O>(thiz), queue);
-			this.thiz = thiz;
-		}
-
-		@Override
-		public void request(long elements) {
-			super.request(elements);
-			thiz.request(elements);
-		}
-
-		@Override
-		public void cancel() {
-			super.cancel();
-			thiz.cancel();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
-		}
-
-		@Override
-		public int hashCode() {
-			return thiz.hashCode();
-		}
-	}
-
-	final static class WrappedDropSubscription<O> extends DropSubscription<O> {
-		final PushSubscription<O> thiz;
-
-		public WrappedDropSubscription(final PushSubscription<O> thiz) {
-			super(thiz.publisher, new SubscriberToPushSubscription<O>(thiz));
-			this.thiz = thiz;
-		}
-
-		@Override
-		public void request(long elements) {
-			super.request(elements);
-			thiz.request(elements);
-		}
-
-		@Override
-		public void cancel() {
-			super.cancel();
-			thiz.cancel();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			return !(o == null || thiz.getClass() != o.getClass()) && thiz.equals(o);
-		}
-
-		@Override
-		public int hashCode() {
-			return thiz.hashCode();
-		}
-	}
 }

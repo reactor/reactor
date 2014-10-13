@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 
@@ -34,9 +33,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 2.0
  */
-abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubscriber<I, O>> extends Action<I, O> {
+abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerSubscriber<I, E, O>> extends Action<E, O> {
 
-	final FanInSubscription<I, SUBSCRIBER>           innerSubscriptions;
+	final FanInSubscription<I, E, SUBSCRIBER>           innerSubscriptions;
 	final AtomicInteger                              runningComposables;
 	final Iterable<? extends Publisher<? extends I>> composables;
 
@@ -61,7 +60,7 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
 		if (started.compareAndSet(false, true)) {
-			doSubscribe(this.innerSubscriptions);
+			onSubscribe(this.innerSubscriptions);
 		}
 		super.subscribe(subscriber);
 	}
@@ -74,7 +73,6 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
-		this.subscription = subscription;
 		if (composables != null) {
 			if (innerSubscriptions.subscriptions.size() > 0) {
 				innerSubscriptions.cancel();
@@ -98,26 +96,20 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		super.requestUpstream(capacity, terminated, elements);
-		if (dynamicMergeAction != null && dynamicMergeAction.getFinalState() == null) {
+		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
 	}
 
 	@Override
-	public FanInSubscription<I, SUBSCRIBER> getSubscription() {
-		return innerSubscriptions;
-	}
-
-	@Override
 	public String toString() {
 		return super.toString() +
-				"{runningComposables=" + runningComposables +
-				'}';
+				"{runningComposables=" + runningComposables + '}';
 	}
 
-	protected FanInSubscription<I, SUBSCRIBER> createFanInSubscription() {
-		return new FanInSubscription<I, SUBSCRIBER>(this,
-				new ArrayList<FanInSubscription.InnerSubscription<I, ? extends SUBSCRIBER>>(8)) {
+	protected FanInSubscription<I, E, SUBSCRIBER> createFanInSubscription(){
+		return new FanInSubscription<I, E, SUBSCRIBER>(this,
+				new ArrayList<FanInSubscription.InnerSubscription<I, E, ? extends SUBSCRIBER>>(8)) {
 			@Override
 			public void cancel() {
 				super.cancel();
@@ -130,33 +122,27 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		};
 	}
 
-	protected InnerSubscriber<I, O> createSubscriber() {
-		return new InnerSubscriber<I, O>(this);
+	@Override
+	public  FanInSubscription<I, E, SUBSCRIBER>  getSubscription() {
+		return innerSubscriptions;
 	}
 
-	public static class InnerSubscriber<I, O> implements Subscriber<I>, NonBlocking {
-		final FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction;
-		FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>> s;
+	protected abstract InnerSubscriber<I, E, O> createSubscriber();
+
+	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, NonBlocking {
+		final FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction;
+		FanInSubscription.InnerSubscription<I, E, InnerSubscriber<I, E, O>> s;
 
 		long pendingRequests = 0;
-		long emittedSignals = 0;
+		long emittedSignals  = 0;
 
-		InnerSubscriber(FanInAction<I, O, ? extends InnerSubscriber<I, O>> outerAction) {
+		InnerSubscriber(FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction) {
 			this.outerAction = outerAction;
 		}
 
 		@SuppressWarnings("unchecked")
 		void setSubscription(FanInSubscription.InnerSubscription s) {
 			this.s = s;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription<I, InnerSubscriber<I, O>>(subscription, this);
-
-			outerAction.innerSubscriptions.addSubscription(s);
-			request(outerAction.innerSubscriptions.getCapacity().get());
 		}
 
 		public void request(long n) {
@@ -176,57 +162,18 @@ abstract public class FanInAction<I, O, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 
 		@Override
-		public void onNext(I ev) {
-			//Action.log.debug("event [" + ev + "] by: " + this);
-			emittedSignals++;
-			outerAction.innerSubscriptions.onNext(ev);
-			int size = outerAction.runningComposables.get();
-			long batchSize = outerAction.capacity / size;
-			if(emittedSignals >= batchSize){
-				request(emittedSignals++);
-			}
-		}
-
-		@Override
-		public void onComplete() {
-			//Action.log.debug("event [complete] by: " + this);
-			s.cancel();
-
-			Consumer<Void> completeConsumer = new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					if (!s.toRemove) {
-						outerAction.innerSubscriptions.removeSubscription(s);
-					}
-					if (outerAction.runningComposables.decrementAndGet() == 0 && checkDynamicMerge()) {
-						outerAction.innerSubscriptions.onComplete();
-					}
-				}
-			};
-
-			if (outerAction.dispatcher.inContext()) {
-				s.toRemove = true;
-				completeConsumer.accept(null);
-			} else {
-				outerAction.dispatch(completeConsumer);
-			}
-
-		}
-
-		@Override
 		public void onError(Throwable t) {
 			outerAction.runningComposables.decrementAndGet();
 			outerAction.innerSubscriptions.onError(t);
 		}
 
 		protected boolean checkDynamicMerge() {
-			return outerAction.composables != null ||
-					outerAction.dynamicMergeAction != null && !outerAction.dynamicMergeAction.isRunning();
+			return outerAction.dynamicMergeAction != null && outerAction.dynamicMergeAction.upstreamSubscription != null;
 		}
 
 		@Override
 		public String toString() {
-			return "FanInAction.InnerSubscriber{pending=" + pendingRequests + ", emitted="+emittedSignals+"}";
+			return "FanInAction.InnerSubscriber{pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
 		}
 	}
 

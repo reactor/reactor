@@ -58,18 +58,20 @@ public class RetryAction<T> extends Action<T, T> {
 					doError(throwable);
 					currentNumRetries = 0;
 				} else {
-					if (subscription != null) {
-						Action<?, ?> rootAction = findOldestUpstream(Action.class, true);
+					if (getSubscription() != null) {
+						Action<?, ?> rootAction = findOldestUpstream(Action.class);
 
-						if (rootAction.subscription != null
-								&& PushSubscription.class.isAssignableFrom(rootAction.subscription.getClass())) {
+						if (rootAction.getSubscription() != null
+								&& PushSubscription.class.isAssignableFrom(rootAction.getSubscription().getClass())) {
 
-							Stream originalStream = ((PushSubscription<?>) rootAction.subscription).getPublisher();
-							rootAction.cancel();
-							originalStream.subscribe(rootAction);
+							Stream originalStream = ((PushSubscription<?>) rootAction.getSubscription()).getPublisher();
+							if(originalStream != null){
+								rootAction.cancel();
+								originalStream.subscribe(rootAction);
+							}
 
 						}
-						requestConsumer.accept(capacity);
+						upstreamSubscription.request(capacity);
 					}
 				}
 

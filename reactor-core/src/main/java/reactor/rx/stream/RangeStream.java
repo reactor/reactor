@@ -64,6 +64,7 @@ public final class RangeStream extends Stream<Integer> {
 
 					long i = 0;
 					while (i < elements && cursor <= end) {
+						if(terminated) return;
 						onNext(cursor++);
 						i++;
 					}

@@ -51,7 +51,8 @@ public class ClassSelector extends ObjectSelector<Class<?>> {
 
 	@Override
 	public boolean matches(Object key) {
-		return Class.class.isInstance(key) && getObject().isAssignableFrom((Class<?>) key);
+		return (Class.class.isInstance(key) && getObject().isAssignableFrom((Class<?>) key)) ||
+				getObject().isAssignableFrom(key.getClass());
 	}
 
 }

@@ -30,16 +30,16 @@ import javax.annotation.Nullable;
  */
 public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
-	private final FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> fanInAction;
+	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher,
-			FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> fanInAction
+			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I,?, O>> fanInAction
 	) {
 		super(dispatcher);
 		this.fanInAction = fanInAction == null ?
-				(FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>>) new MergeAction<O>
+				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
 						(dispatcher) :
 				fanInAction;
 
@@ -54,11 +54,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		return fanInAction.createSubscription(subscriber, reactivePull);
-	}
-
-	@Override
-	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
-		fanInAction.subscribeWithSubscription(subscriber, subscription);
 	}
 
 	@Override
@@ -116,13 +111,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		return dispatchOn(environment, dispatcher);
 	}
 
-	@Override
-	public Action<Publisher<? extends I>, O> cancel() {
-		//fanInAction.cancel();
-		return super.cancel();
-	}
-
-	public FanInAction<I, O, ? extends FanInAction.InnerSubscriber<I, O>> mergedStream() {
+	public FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> mergedStream() {
 		return fanInAction;
 	}
 

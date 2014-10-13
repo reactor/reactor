@@ -24,10 +24,10 @@ import reactor.function.Consumer;
  */
 public class FinallyAction<T, C> extends Action<T, T> {
 
-	private final Consumer<C> consumer;
+	private final Consumer<? super C> consumer;
 	private final C           input;
 
-	public FinallyAction(Dispatcher dispatcher, C input, Consumer<C> consumer) {
+	public FinallyAction(Dispatcher dispatcher, C input, Consumer<? super C> consumer) {
 		super(dispatcher);
 		this.consumer = consumer;
 		this.input = input;

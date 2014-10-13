@@ -61,7 +61,7 @@ public final class SingleTimerStream extends Stream<Long> {
 		subscriber.onSubscribe(new TimerSubscription(this, subscriber));
 	}
 
-	private class TimerSubscription extends PushSubscription<Long> implements Consumer<Long>{
+	private class TimerSubscription extends PushSubscription<Long>{
 
 		final Registration<? extends Consumer<Long>> registration = timer.submit(this, delay, unit);
 

@@ -22,6 +22,7 @@ import reactor.function.Consumer;
 import reactor.rx.action.*;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.support.SubscriberToPushSubscription;
 
 import java.io.Serializable;
 import java.util.*;
@@ -63,10 +64,6 @@ public abstract class StreamUtils {
 
 			if (Action.class.isAssignableFrom(composable.getClass())) {
 				Action<?, ?> action = (Action<?, ?>) composable;
-				if (action.getError() != null) {
-					errors.add(action.getError());
-					appender.append(" /!\\ - ").append(action.getError());
-				}
 				if (action.isPaused()) {
 					appender.append(" (!) - Paused");
 				}
@@ -77,6 +74,12 @@ public abstract class StreamUtils {
 		@Override
 		public String toString() {
 			return appender.toString();
+		}
+
+		public void newMulticastLine(int d) {
+			appender.append("\n");
+			for (int i = 0; i < d+1; i++)
+				appender.append("|   ");
 		}
 
 		private void newLine(int d) {
@@ -182,14 +185,22 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <E extends Subscription> void loopSubscriptions(E operation, final List<Object> streamTree) {
 			if (operation == null) return;
+
+			final boolean multicast = FanOutSubscription.class.isAssignableFrom(operation.getClass());
+
 			Consumer<E> procedure = new Consumer<E>() {
 				@Override
 				public void accept(E registration) {
 					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((PushSubscription<?>) registration).getSubscriber();
-						if (PushSubscription.SubscriberToPushSubscription.class.isAssignableFrom(subscriber.getClass())) {
-							subscriber = ((PushSubscription.SubscriberToPushSubscription<?>)subscriber).delegate().getSubscriber();
+						if (SubscriberToPushSubscription.class.isAssignableFrom(subscriber.getClass())) {
+							subscriber = ((SubscriberToPushSubscription<?>)subscriber).delegate().getSubscriber();
 						}
+						if (debugVisitor != null && multicast) {
+							debugVisitor.d ++;
+							debugVisitor.newMulticastLine(debugVisitor.d);
+						}
+
 						if (Stream.class.isAssignableFrom(subscriber.getClass())) {
 							parseComposable((Stream<?>) subscriber, streamTree);
 						} else {
@@ -210,15 +221,16 @@ public abstract class StreamUtils {
 								wrappedSubscriber.put("info", subscriber.toString());
 							}
 							streamTree.add(wrappedSubscriber);
-							if (debugVisitor != null) {
-								debugVisitor.newLine(debugVisitor.d, false);
-							}
+						}
+						if (debugVisitor != null && multicast) {
+							debugVisitor.d--;
+							debugVisitor.newLine(debugVisitor.d, false);
 						}
 					}
 				}
 			};
 
-			if (FanOutSubscription.class.isAssignableFrom(operation.getClass())) {
+			if (multicast) {
 				((FanOutSubscription) operation).forEach(procedure);
 			} else {
 				procedure.accept(operation);
@@ -315,9 +327,9 @@ public abstract class StreamUtils {
 								delegateSubscription = subscription.getDelegate();
 								if (PushSubscription.class.isAssignableFrom(delegateSubscription.getClass())) {
 									Publisher<?> publisher = ((PushSubscription) delegateSubscription).getPublisher();
-									if (references.contains(publisher)) return;
+									if (publisher == null || references.contains(publisher)) return;
 									if (Action.class.isAssignableFrom(publisher.getClass())) {
-										parseComposable(((Action<?, ?>) publisher).findOldestUpstream(Stream.class, false), streamTree);
+										parseComposable(((Action<?, ?>) publisher).findOldestUpstream(Stream.class), streamTree);
 									} else if (Stream.class.isAssignableFrom(publisher.getClass())) {
 										parseComposable((Stream<?>) publisher, streamTree);
 									}

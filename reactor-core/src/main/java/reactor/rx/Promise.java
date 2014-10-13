@@ -17,6 +17,7 @@
 package reactor.rx;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Environment;
@@ -34,6 +35,8 @@ import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static reactor.rx.stream.HotStream.FinalState;
 
 /**
  * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #get()
@@ -60,7 +63,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	private final Environment environment;
 	Action<O, O> outboundStream;
 
-	Action.FinalState finalState = null;
+	FinalState finalState = null;
 	private O         value;
 	private Throwable error;
 	private boolean hasBlockers = false;
@@ -111,7 +114,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(O value, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		finalState = Action.FinalState.COMPLETE;
+		finalState = FinalState.COMPLETE;
 		this.value = value;
 	}
 
@@ -129,7 +132,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(Throwable error, Dispatcher dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
-		finalState = Action.FinalState.ERROR;
+		finalState = FinalState.ERROR;
 		this.error = error;
 	}
 
@@ -142,7 +145,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		return stream().connect(new FinallyAction<O, Promise<O>>(dispatcher, this, onComplete)).next();
+		return stream().connect(new FinallyAction<O, Promise<O>>(dispatcher, this, onComplete)).keepAlive(true).next();
 	}
 
 	/**
@@ -208,7 +211,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isSuccess() {
 		lock.lock();
 		try {
-			return finalState == Action.FinalState.COMPLETE;
+			return finalState == FinalState.COMPLETE;
 		} finally {
 			lock.unlock();
 		}
@@ -222,7 +225,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public boolean isError() {
 		lock.lock();
 		try {
-			return finalState == Action.FinalState.ERROR;
+			return finalState == FinalState.ERROR;
 		} finally {
 			lock.unlock();
 		}
@@ -294,9 +297,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public O get() {
 		lock.lock();
 		try {
-			if (finalState == Action.FinalState.COMPLETE) {
+			if (finalState == FinalState.COMPLETE) {
 				return value;
-			} else if (finalState == Action.FinalState.ERROR) {
+			} else if (finalState == FinalState.ERROR) {
 				if (RuntimeException.class.isInstance(error)) {
 					throw (RuntimeException) error;
 				} else {
@@ -332,9 +335,19 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (outboundStream == null) {
 				if (isSuccess()) {
-					outboundStream =  Streams.just(value).connect(Action.<O>passthrough(dispatcher).env(environment));
+					return Streams.just(value);
 				} else if (isError()) {
-					outboundStream = Streams.<O, Throwable>fail(error).connect(Action.<O>passthrough(dispatcher).env(environment));
+					return Streams.create(new Publisher<O>() {
+						@Override
+						public void subscribe(Subscriber<? super O> s) {
+							s.onSubscribe(new PushSubscription<O>(null, s){
+								@Override
+								public void request(long n) {
+									subscriber.onError(error);
+								}
+							});
+						}
+					}).dispatchOn(environment, dispatcher);
 				} else {
 					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1).keepAlive(false);
 				}
@@ -416,7 +429,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (!isPending()) throw new IllegalStateException();
 			this.error = error;
-			this.finalState = Action.FinalState.ERROR;
+			this.finalState = FinalState.ERROR;
+
+			if(subscription != null){
+				subscription.cancel();
+			}
 
 			if (outboundStream != null) {
 				outboundStream.broadcastError(error);
@@ -438,7 +455,12 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 				throw new IllegalStateException();
 			}
 			this.value = value;
-			this.finalState = Action.FinalState.COMPLETE;
+			this.finalState = FinalState.COMPLETE;
+
+
+			if(subscription != null){
+				subscription.cancel();
+			}
 
 			if (outboundStream != null) {
 				outboundStream.broadcastNext(value);
@@ -459,8 +481,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (isPending()) {
 				valueAccepted(null);
-			} else if (subscription != null) {
-				this.subscription.cancel();
+			}
+
+			if (subscription != null) {
+				subscription.cancel();
+				subscription = null;
 			}
 		} finally {
 			lock.unlock();

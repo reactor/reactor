@@ -25,10 +25,10 @@ import reactor.function.Consumer;
  */
 final public class ErrorAction<T, E extends Throwable> extends Action<T, T> {
 
-	private final Consumer<E>   consumer;
+	private final Consumer<? super E>   consumer;
 	private final ClassSelector selector;
 
-	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<E> consumer) {
+	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<? super E> consumer) {
 		super(dispatcher);
 		this.consumer = consumer;
 		this.selector = selector;

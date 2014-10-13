@@ -108,13 +108,6 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	}
 
 	@Override
-	public Action<E, O> ignoreErrors(boolean ignore) {
-		publisher.ignoreErrors(ignore);
-		subscriber.ignoreErrors(ignore);
-		return super.ignoreErrors(ignore);
-	}
-
-	@Override
 	public Action<E, O> env(Environment environment) {
 		publisher.env(environment);
 		subscriber.env(environment);

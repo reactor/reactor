@@ -556,7 +556,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
+	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
 		final List<Publisher<? extends T>> publishers = new ArrayList<>();
 		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
@@ -594,7 +594,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2
 	) {
 		return merge(Arrays.asList(source1, source2));
@@ -612,7 +612,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3
 	) {
@@ -632,7 +632,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3,
 	                                     Publisher<? extends T> source4
@@ -653,7 +653,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3,
 	                                     Publisher<? extends T> source4,
@@ -677,7 +677,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3,
 	                                     Publisher<? extends T> source4,
@@ -704,7 +704,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3,
 	                                     Publisher<? extends T> source4,
@@ -733,7 +733,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, T> merge(Publisher<? extends T> source1,
+	public static <T> Stream<T> merge(Publisher<? extends T> source1,
 	                                     Publisher<? extends T> source2,
 	                                     Publisher<? extends T> source3,
 	                                     Publisher<? extends T> source4,
@@ -761,7 +761,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                           Publisher<? extends T2> source2,
 	                                           Function<Tuple2<T1, T2>, ? extends V> zipper) {
 		return zip(Arrays.asList(source1, source2), zipper);
@@ -784,7 +784,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                               Publisher<? extends T2> source2,
 	                                               Publisher<? extends T3> source3,
 	                                               Function<Tuple3<T1, T2, T3>,
@@ -811,7 +811,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, T4, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                                   Publisher<? extends T2> source2,
 	                                                   Publisher<? extends T3> source3,
 	                                                   Publisher<? extends T4> source4,
@@ -840,7 +840,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, T4, T5, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                                       Publisher<? extends T2> source2,
 	                                                       Publisher<? extends T3> source3,
 	                                                       Publisher<? extends T4> source4,
@@ -873,7 +873,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                                           Publisher<? extends T2> source2,
 	                                                           Publisher<? extends T3> source3,
 	                                                           Publisher<? extends T4> source4,
@@ -909,7 +909,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                                               Publisher<? extends T2> source2,
 	                                                               Publisher<? extends T3> source3,
 	                                                               Publisher<? extends T4> source4,
@@ -949,7 +949,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Action<?, V> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                                                   Publisher<? extends T2> source2,
 	                                                                   Publisher<? extends T3> source3,
 	                                                                   Publisher<? extends T4> source4,
@@ -975,7 +975,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <TUPLE extends Tuple, V> Action<?, V> zip(Iterable<? extends Publisher<?>> sources,
+	public static <TUPLE extends Tuple, V> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
 	                                                        Function<TUPLE, ? extends V> zipper) {
 		return new ZipAction<>(SynchronousDispatcher.INSTANCE, zipper, sources);
 	}
@@ -993,11 +993,11 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <E, TUPLE extends Tuple, V> Action<Publisher<? extends E>, V> zip(
+	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
 			Publisher<? extends Publisher<E>> sources,
 			Function<TUPLE, ? extends V> zipper)
 	{
-		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher.INSTANCE,
+		final  Action<Publisher<? extends E>, V>  mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher.INSTANCE,
 				new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, zipper, null)
 		);
 
@@ -1018,7 +1018,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2) {
 		return join(Arrays.asList(source1, source2));
 	}
@@ -1037,7 +1037,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3) {
 		return join(Arrays.asList(source1, source2, source3));
@@ -1057,7 +1057,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4) {
@@ -1079,7 +1079,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
@@ -1103,7 +1103,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
@@ -1129,7 +1129,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
@@ -1157,7 +1157,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<T, List<T>> join(Publisher<? extends T> source1,
+	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
 	                                       Publisher<? extends T> source2,
 	                                       Publisher<? extends T> source3,
 	                                       Publisher<? extends T> source4,
@@ -1180,7 +1180,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Action<T, List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
+	public static <T> Stream<List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
 		return (Action<T, List<T>>)zip(sources, ZipAction.<TupleN, T>joinZipper());
 	}
 
@@ -1195,7 +1195,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<Publisher<? extends T>, List<T>> join(Publisher<? extends Publisher<T>> source) {
+	public static <T> Stream<List<T>> join(Publisher<? extends Publisher<T>> source) {
 		return zip(source, ZipAction.<TupleN, T>joinZipper());
 	}
 

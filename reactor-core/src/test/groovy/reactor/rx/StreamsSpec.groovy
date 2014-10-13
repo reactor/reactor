@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.spec
-
+package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
@@ -25,9 +24,6 @@ import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
-import reactor.rx.Promises
-import reactor.rx.Stream
-import reactor.rx.Streams
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
@@ -217,6 +213,7 @@ class StreamsSpec extends Specification {
 			first.get() == 1
 			last.get() == 5
 	}
+
 	def 'A Stream can sample values over time'() {
 		given:
 			'a composable with values 1 to INT_MAX inclusive'
@@ -390,20 +387,22 @@ class StreamsSpec extends Specification {
 	def "Stream's values can be exploded"() {
 		given:
 			'a source composable with a mapMany function'
-			def source = Streams.<Integer> defer()
+			def source = Streams.<Integer> defer(environment)
 			Stream<Integer> mapped = source.
-					flatMap { v -> Streams.just(v * 2) }
+					flatMap { v -> Streams.just(v * 2) }.
+					when(Throwable) { it.printStackTrace() }
+
 
 		when:
 			'the source accepts a value'
-			def value = mapped.tap()
+			def value = mapped.next()
 			println source.debug()
 			source.broadcastNext(1)
 			println source.debug()
 
 		then:
 			'the value is mapped'
-			value.get() == 2
+			value.await() == 2
 	}
 
 	def "Multiple Stream's values can be merged"() {
@@ -434,16 +433,21 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> just(source2, source3)
-			def tap = source1.join().tap()
+			def tail = source1.join()
+			def tap = tail.tap()
+
+			println tail.debug()
 
 		when:
 			'the sources accept a value'
 			source2.broadcastNext(1)
+
+			println tail.debug()
 			source3.broadcastNext(2)
 			source3.broadcastNext(3)
 			source3.broadcastNext(4)
 
-			println source1.debug()
+			println tail.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -454,11 +458,11 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(5)
 			source2.broadcastNext(6)
 
-			println source1.debug()
+			println tail.debug()
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == [6, 3]
+			tap.get() == [6, 5]
 	}
 
 	def "Inline Stream's values can be zipped"() {
@@ -467,7 +471,13 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> just(source2, source3)
-			def tap = source1.observe { println it }.zip { it.t1 + it.t2 }.tap()
+			println source1.debug()
+			println source2.debug()
+			println source3.debug()
+			def tail = source1.observe { println it }.zip { it.t1 + it.t2 }.when(Throwable) { it.printStackTrace() }
+
+			def tap = tail.tap()
+			println tail.debug()
 
 		when:
 			'the sources accept a value'
@@ -476,7 +486,7 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(3)
 			source3.broadcastNext(4)
 
-			println source1.debug()
+			println tail.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -487,11 +497,11 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(5)
 			source2.broadcastNext(6)
 
-			println source1.debug()
+			println tail.debug()
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == 9
+			tap.get() == 11
 	}
 
 
@@ -525,7 +535,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == 9
+			tap.get() == 11
 	}
 
 	def "Multiple iterable Stream's values can be zipped"() {
@@ -561,7 +571,7 @@ class StreamsSpec extends Specification {
 			def res = []
 			mergedStream.consume(
 					{ res << it; println it },
-					{ println 'error' },
+					{ it.printStackTrace() },
 					{ res.sort(); res << 'done'; println 'completed!' }
 			)
 
@@ -790,7 +800,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with a reduce function'
 			def source = Streams.<Integer> defer()
-			Stream reduced = source.reduce(new Reduction())
+			def reduced = source.reduce(new Reduction())
 			def value = reduced.tap()
 
 		when:
@@ -813,9 +823,13 @@ class StreamsSpec extends Specification {
 		when:
 			'use an initial value'
 			reduced = source.reduce(2, new Reduction())
+			println source.debug()
 			value = reduced.tap()
+			println source.debug()
 			source.broadcastNext(1)
+			println source.debug()
 			reduced.drain()
+			println source.debug()
 
 		then:
 			'the updated reduction is available'
@@ -945,7 +959,7 @@ class StreamsSpec extends Specification {
 			def promise = Promises.defer()
 
 			source.window(1l, TimeUnit.SECONDS).consume {
-				it.buffer(2).consume{ promise.accept(it) }
+				it.buffer(2).consume { promise.accept(it) }
 			}
 
 
@@ -1103,10 +1117,8 @@ class StreamsSpec extends Specification {
 			println source.debug()
 
 		then:
-			'the result should contain all stream titles by id'
-			result.to[0].id == "GroupBy"
-			result.to[0].to[0].id == "TerminalCallback"
-			!result.to[0].boundTo
+			'the result should contain zero stream'
+			!result.to
 	}
 
 	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
@@ -1445,7 +1457,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer()
 
 			def value = null
-			def tail = source.onOverflowDrop().observe{value = it}
+			def tail = source.onOverflowDrop().observe { value = it }
 			tail.drain(5)
 			println source.debug()
 
@@ -1619,7 +1631,7 @@ class StreamsSpec extends Specification {
 		then:
 			'results contains the expected values'
 			println head.debug()
-			sum.get() == 999
+			sum.get() == length - 1
 	}
 
 	def 'Collect will accumulate values from multiple threads in MP MC scenario'() {
@@ -1805,8 +1817,8 @@ class StreamsSpec extends Specification {
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
-			stream.broadcastComplete()
 			def tap = value2.tap()
+			stream.broadcastComplete()
 			println stream.debug()
 			def res = tap.get()
 
@@ -1845,12 +1857,13 @@ class StreamsSpec extends Specification {
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
+			tap = value2.tap()
 			stream.broadcastComplete()
 			println stream.debug()
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
-			value2.tap().get() == 1
+			tap.get() == 1
 	}
 
 

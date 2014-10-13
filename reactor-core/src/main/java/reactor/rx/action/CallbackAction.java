@@ -24,15 +24,27 @@ import reactor.function.Consumer;
 public class CallbackAction<T> extends Action<T, T> {
 
 	private final Consumer<? super T> consumer;
+	private final Consumer<Void> completeConsumer;
 
-	public CallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer) {
+	public CallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
 		super(dispatcher);
 		this.consumer = consumer;
+		this.completeConsumer = completeConsumer;
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		consumer.accept(ev);
+		if(consumer != null){
+			consumer.accept(ev);
+		}
 		broadcastNext(ev);
+	}
+
+	@Override
+	protected void doComplete() {
+		if(completeConsumer != null){
+			completeConsumer.accept(null);
+		}
+		broadcastComplete();
 	}
 }

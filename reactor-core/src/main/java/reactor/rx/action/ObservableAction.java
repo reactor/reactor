@@ -49,4 +49,15 @@ public class ObservableAction<T> extends Action<T, Void> {
 		}
 	}
 
+	@Override
+	protected void doComplete() {
+		cancel();
+		super.doComplete();
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		cancel();
+		super.doError(ev);
+	}
 }

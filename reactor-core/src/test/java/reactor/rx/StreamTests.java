@@ -59,7 +59,7 @@ import static org.junit.Assert.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class PipelineTests extends AbstractReactorTest {
+public class StreamTests extends AbstractReactorTest {
 
 	static final String2Integer STRING_2_INTEGER = new String2Integer();
 
@@ -141,7 +141,7 @@ public class PipelineTests extends AbstractReactorTest {
 							if (i == 3)
 								throw new IllegalArgumentException();
 						})
-						.ignoreErrors(true)
+						.ignoreErrors()
 						.map(new Function<Integer, Integer>() {
 							int sum = 0;
 
@@ -316,7 +316,7 @@ public class PipelineTests extends AbstractReactorTest {
 
 		HotStream<String> d = Streams.<String>defer(env).capacity(128);
 		Stream<Integer> tasks = d.parallel(8)
-				.map(stream -> stream.map(str -> {
+				.map(stream -> stream.map((String str) -> {
 							try {
 								Thread.sleep(random.nextInt(10));
 							} catch (InterruptedException e) {
@@ -326,7 +326,7 @@ public class PipelineTests extends AbstractReactorTest {
 						})
 				).merge();
 
-		tasks.consume(i -> {
+		Stream<Void> tail = tasks.consume(i -> {
 			latch.countDown();
 		});
 
@@ -472,7 +472,7 @@ public class PipelineTests extends AbstractReactorTest {
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("ringBuffer", 100_000);
+		parallelMapManyTest("ringBuffer", 1_000_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
 		parallelBufferedTimeoutTest(1_000_000, false);
@@ -598,7 +598,7 @@ public class PipelineTests extends AbstractReactorTest {
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Streams.<Integer>defer(env, dispatcher1);
 				mapManydeferred
-						.flatMap(i -> Streams.just(i).dispatchOn(dispatcher1))
+						.flatMap(Streams::just)
 						.consume(i -> latch.countDown());
 		}
 
@@ -683,8 +683,8 @@ public class PipelineTests extends AbstractReactorTest {
 				);
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
-		if (!latch.await(30, TimeUnit.SECONDS)) {
-			throw new RuntimeException(batchingStreamDef.debug().toString());
+		if (!latch.await(10, TimeUnit.SECONDS)) {
+			throw new RuntimeException(latch.getCount()+" "+batchingStreamDef.debug().toString());
 
 		}
 
@@ -794,11 +794,14 @@ public class PipelineTests extends AbstractReactorTest {
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
 
+
 		Stream<Integer> worker = Streams.defer(tasks);
 
 		worker.parallel(2)
 				.dispatchOn(env.getDefaultDispatcherFactory().get())
-				.consume(s -> s.map(v -> v).consume(v -> countDownLatch.countDown()));
+				.consume(s ->
+								s.map(v -> v).consume(v -> countDownLatch.countDown(), Throwable::printStackTrace),
+						Throwable::printStackTrace);
 		countDownLatch.await(5, TimeUnit.SECONDS);
 
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -824,6 +827,7 @@ public class PipelineTests extends AbstractReactorTest {
 		});
 
 		endLatch.await(10, TimeUnit.SECONDS);
+		System.out.println(sensorDataStream.debug());
 
 		Assert.assertEquals(0, endLatch.getCount());
 	}
