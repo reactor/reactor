@@ -65,6 +65,7 @@ public class DropSubscription<O> extends PushSubscription<O> {
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
+				(capacity.get() <= 0 ? "[dropping]" : "") +
 				'}';
 	}
 }

@@ -141,7 +141,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					}
 					toRequest = Math.min(pendingRequestSignals, maxCapacity);
 				} while (pendingRequestSignals > 0 && shouldRequestPendingSignals() && !buffer.isEmpty());
-
 				bufferLock.unlock();
 			} catch (Exception e) {
 				if(bufferLock.isHeldByCurrentThread()){
@@ -202,7 +201,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void doPendingRequest() {
-		//IGNORE, already managed by request loop
+		long toRequest = pendingRequestSignals;
+		pendingRequestSignals = 0;
+		request(toRequest);
 	}
 
 	@Override
@@ -220,7 +221,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return currentNextSignals == 0 && pendingRequestSignals > 0;
+		return Long.MAX_VALUE != pendingRequestSignals && pendingRequestSignals > 0 &&
+				(currentNextSignals == maxCapacity);
 	}
 
 	public final long maxCapacity() {

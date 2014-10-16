@@ -46,7 +46,6 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	protected void createWindowStream() {
 		currentWindow = Action.<T>passthrough(dispatcher, capacity).env(environment);
-		currentWindow.keepAlive(false);
 	}
 
 	@Override

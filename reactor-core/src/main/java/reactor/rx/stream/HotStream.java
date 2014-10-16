@@ -33,6 +33,7 @@ public class HotStream<O> extends Action<O, O> {
 
 	private FinalState finalState = null;
 	private Throwable error;
+	private boolean keepAlive    = false;
 
 	public HotStream(Dispatcher dispatcher, long capacity) {
 		super(dispatcher, capacity);
@@ -82,9 +83,14 @@ public class HotStream<O> extends Action<O, O> {
 		return this;
 	}
 
-	@Override
 	public HotStream<O> keepAlive(boolean keepAlive) {
-		super.keepAlive(keepAlive);
+		this.keepAlive = keepAlive;
+		return this;
+	}
+
+	@Override
+	public HotStream<O> keepAlive() {
+		this.keepAlive(true);
 		return this;
 	}
 
@@ -106,6 +112,13 @@ public class HotStream<O> extends Action<O, O> {
 		return this;
 	}
 
+	@Override
+	protected void onShutdown() {
+		if(!keepAlive) {
+			super.onShutdown();
+		}
+	}
+
 	public boolean isComplete(){
 		return finalState == FinalState.COMPLETE;
 	}
@@ -117,5 +130,10 @@ public class HotStream<O> extends Action<O, O> {
 
 	public Throwable error(){
 		return error;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString()+"{keepAlive="+ keepAlive+"}";
 	}
 }

@@ -18,17 +18,17 @@ package reactor.rx.subscription.support;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.rx.Stream;
-import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
 * @author Stephane Maldini
 */
-public class WrappedDropSubscription<O> extends DropSubscription<O> {
+public class WrappedReactiveSubscription<O> extends ReactiveSubscription<O> {
 
 	protected final Subscription subscription;
 
-	public WrappedDropSubscription(Subscription subscription, Subscriber<? super O> subscriber) {
+	public WrappedReactiveSubscription(Subscription subscription, Subscriber<? super O> subscriber) {
 		super(null, subscriber);
 		this.subscription = subscription;
 	}

@@ -41,6 +41,14 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 		broadcastNext(ev);
 	}
 
+	@Override
+	protected void doComplete() {
+		if (upstreamSubscription != null && runningComposables.get() == 0) {
+			cancel();
+			broadcastComplete();
+		}
+	}
+
 	protected InnerSubscriber<O> createSubscriber() {
 		return new InnerSubscriber<O>(this);
 	}
@@ -64,12 +72,11 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 		@Override
 		public void onNext(I ev) {
 			//Action.log.debug("event [" + ev + "] by: " + this);
-			emittedSignals++;
 			outerAction.innerSubscriptions.onNext(ev);
-			int size = outerAction.runningComposables.get();
-			long batchSize = outerAction.capacity / size;
-			if (emittedSignals >= batchSize) {
-				request(emittedSignals++);
+			emittedSignals++;
+			long batchSize = outerAction.runningComposables.get();
+			if (batchSize > 0 && emittedSignals >= outerAction.capacity / batchSize) {
+				request(emittedSignals);
 			}
 		}
 

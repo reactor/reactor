@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -69,7 +68,13 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			count = 0;
 			Object[] _toZip = toZip;
 			toZip = new Object[toZip.length];
-			broadcastNext(accumulator.apply((TUPLE) Tuple.of(_toZip)));
+			V res = accumulator.apply((TUPLE) Tuple.of(_toZip));
+			if (res != null) {
+				broadcastNext(res);
+			} else {
+				cancel();
+				broadcastComplete();
+			}
 		}
 	}
 
@@ -88,15 +93,15 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	@Override
 	protected void doNext(Zippable<O> ev) {
 		boolean isFinishing = completing.get();
-		if (toZip[ev.index] == null) {
+		if (toZip[ev.index] == null && !isFinishing) {
 			count++;
 		}
 
 		toZip[ev.index] = ev.data;
 
-		if(isFinishing && count == toZip.length) {
+		if (isFinishing && count >= capacity) {
 			innerSubscriptions.onComplete();
-		}else{
+		} else {
 			broadcastTuple(false);
 		}
 
@@ -107,15 +112,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	protected void doComplete() {
 		broadcastTuple(true);
 		//can receive multiple queued complete signals
-		if (upstreamSubscription != null && runningComposables.get() == 0) {
-			innerSubscriptions.scheduleTermination();
-			broadcastComplete();
-		}
-	}
+		cancel();
+		broadcastComplete();
 
-	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		super.requestUpstream(capacity, terminated, Math.max(elements, runningComposables.get()));
 	}
 
 	@Override
@@ -148,7 +147,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (toZip[i] != null)
 				formatted += "(" + (i) + "):" + toZip[i] + ",";
 		}
-		return formatted.substring(0, toZip.length > 0 ? formatted.length() -1 : formatted.length());
+		return formatted.substring(0, toZip.length > 0 ? formatted.length() - 1 : formatted.length());
 	}
 
 //Handling each new Publisher to zip
@@ -170,7 +169,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 					this));
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			if (outerAction.innerSubscriptions.capacity().get() > 0) {
+			if (outerAction.innerSubscriptions.pendingRequestSignals() > 0) {
 				request(1);
 			}
 		}
@@ -196,11 +195,19 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 					outerAction.capacity(outerAction.runningComposables.decrementAndGet());
 					if (outerAction.capacity > 0) {
 						outerAction.completing.set(true);
+						/*if(outerAction.innerSubscriptions.pendingRequestSignals() == 0) {
+							outerAction.innerSubscriptions.request(Math.max(1, outerAction.capacity));
+						}*/
 					} else {
 						outerAction.onComplete();
 					}
 				}
 			});
+		}
+
+		@Override
+		public long getCapacity() {
+			return 1;
 		}
 
 		@Override

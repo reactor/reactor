@@ -57,9 +57,11 @@ public class FanInSubscription<O, E, SUBSCRIBER extends FanInAction.InnerSubscri
 			if (size > 0) {
 				if (elements == 0) return;
 
+				//deal with recursive cancel while requesting
 				int i = 0;
 				InnerSubscription<O, E, ? extends SUBSCRIBER> subscription;
 				while (i < size){
+
 					subscription = subscriptions.get(i);
 					subscription.subscriber.request(elements);
 					if(subscription.toRemove){

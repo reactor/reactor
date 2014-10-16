@@ -26,7 +26,6 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.rx.action.Action;
-import reactor.rx.action.FinallyAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.subscription.PushSubscription;
 
@@ -145,7 +144,20 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		return stream().connect(new FinallyAction<O, Promise<O>>(dispatcher, this, onComplete)).keepAlive(true).next();
+				return stream().connect(new Action<O, O>() {
+					@Override
+					protected void doNext(O ev) {
+						onComplete.accept(Promise.this);
+						broadcastNext(ev);
+						broadcastComplete();
+					}
+
+					@Override
+					protected void doError(Throwable ev) {
+						onComplete.accept(Promise.this);
+						broadcastError(ev);
+					}
+				}).next();
 	}
 
 	/**
@@ -349,7 +361,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 						}
 					}).dispatchOn(environment, dispatcher);
 				} else {
-					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1).keepAlive(false);
+					outboundStream = Streams.<O>defer(environment, dispatcher).capacity(1);
 				}
 			}
 
@@ -490,6 +502,16 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		} finally {
 			lock.unlock();
 		}
+	}
+
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	@Override
+	public long getCapacity() {
+		return 1;
 	}
 
 	@Override

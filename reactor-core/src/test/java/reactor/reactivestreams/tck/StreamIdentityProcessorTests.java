@@ -23,8 +23,8 @@ import org.reactivestreams.tck.TestEnvironment;
 import reactor.core.Environment;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.Action;
 import reactor.rx.action.CombineAction;
+import reactor.rx.stream.HotStream;
 import reactor.util.Assert;
 
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2500, true), 3500);
+		super(new TestEnvironment(250000, true), 3500);
 	}
 
 	@Override
@@ -55,37 +55,34 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 
-		CombineAction<Integer,Integer> processor = Streams.<Integer>defer(env)
-						.keepAlive(false)
-						.capacity(bufferSize)
-						.parallel(2)
-						.map(stream -> stream
-										.observe(i -> {
-											AtomicLong counter = counters.get(Thread.currentThread());
-											if (counter == null) {
-												counter = new AtomicLong();
-												counters.put(Thread.currentThread(), counter);
-											}
-											counter.incrementAndGet();
-										})
-										.scan(0, tuple -> tuple.getT1())
-										.filter(integer -> integer >= 0)
-										.reduce((() -> 0), 1, tuple -> -tuple.getT1())
-										.map(integer -> -integer)
-										.capacity(1)
-										.sample()
-										.buffer(1024, 200, TimeUnit.MILLISECONDS)
-										.<Integer>split()
-										.flatMap(i ->
-														Streams.<Integer>just(i)
-												/*Streams.zip(
-														Streams.<Integer>just(i), otherStream,
-														tuple -> tuple.getT1())*/
+		CombineAction<Integer, Integer> processor = Streams.<Integer>defer(env)
+				.capacity(bufferSize)
+				.parallel(2, stream -> stream
+								.observe(i -> {
+									AtomicLong counter = counters.get(Thread.currentThread());
+									if (counter == null) {
+										counter = new AtomicLong();
+										counters.put(Thread.currentThread(), counter);
+									}
+									counter.incrementAndGet();
+								})
+								.scan(0, tuple -> tuple.getT1())
+								.filter(integer -> integer >= 0)
+								.reduce((() -> 0), 1, tuple -> -tuple.getT1())
+								.map(integer -> -integer)
+								.capacity(1)
+								.sample()
+								.buffer(1024, 200, TimeUnit.MILLISECONDS)
+								.<Integer>split()
+								.flatMap(i ->
+												Streams.zip(Streams.just(i), otherStream, tuple -> tuple.getT1())
 														.dispatchOn(env)
-										)
-						).<Integer>merge()
-						.when(Throwable.class, Throwable::printStackTrace)
-						.combine();
+														.log()
+								)
+						.log()
+				)
+				.when(Throwable.class, Throwable::printStackTrace)
+				.combine();
 
 		return processor;
 	}
@@ -125,7 +122,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
-		Action<Integer, Integer> stream = Streams.defer(env);
+		HotStream<Integer> stream = Streams.defer(env);
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());
@@ -163,10 +160,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		latch.await(8, TimeUnit.SECONDS);
 
-		System.out.println(stream.debug());
+		System.out.println(processor.debug());
 		System.out.println(counters);
 		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count+ " , Running on "+Environment.PROCESSORS+" CPU");
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Environment.PROCESSORS + " CPU");
 
 	}
 }

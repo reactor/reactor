@@ -462,7 +462,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == [6, 5]
+			tap.get() == [6, 3]
 	}
 
 	def "Inline Stream's values can be zipped"() {
@@ -501,7 +501,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == 11
+			tap.get() == 9
 	}
 
 
@@ -535,7 +535,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 stream'
-			tap.get() == 11
+			tap.get() == 9
 	}
 
 	def "Multiple iterable Stream's values can be zipped"() {
@@ -548,7 +548,7 @@ class StreamsSpec extends Specification {
 			'the sources are zipped'
 			def zippedStream = Streams.zip(odds, even) { [it.t1, it.t2] }
 			println zippedStream.debug()
-			def tap = zippedStream.observe { println it }.toList().await(3, TimeUnit.SECONDS)
+			def tap = zippedStream.log().toList().await(3, TimeUnit.SECONDS)
 
 			println zippedStream.debug()
 
@@ -1107,9 +1107,9 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[0].id == "1"
 			result.to[0].boundTo[1].id == "2"
 			result.to[0].boundTo[2].id == "3"
-			result.to[0].boundTo[0].to[0].id == "FlowControl"
-			result.to[0].boundTo[1].to[0].id == "FlowControl"
-			result.to[0].boundTo[2].to[0].id == "FlowControl"
+			result.to[0].boundTo[0].to[0].id == "HotStream"
+			result.to[0].boundTo[1].to[0].id == "HotStream"
+			result.to[0].boundTo[2].to[0].id == "HotStream"
 
 		when: "complete will cancel non kept-alive actions"
 			source.broadcastComplete()
@@ -1194,11 +1194,12 @@ class StreamsSpec extends Specification {
 				it.onNext('test2')
 				it.onNext('test3')
 				it.onComplete()
-			}
+			}.log()
 
 		when:
 			'accept a value'
-			def result = s.toList().await()
+			def result = s.toList().await(5, TimeUnit.SECONDS)
+		println s.debug()
 
 		then:
 			'dispatching works'
@@ -1457,7 +1458,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer()
 
 			def value = null
-			def tail = source.onOverflowDrop().observe { value = it }
+			def tail = source.onOverflowDrop().observe { value = it }.log('overflow-drop-test')
 			tail.drain(5)
 			println source.debug()
 
@@ -1468,6 +1469,8 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(3)
 			source.broadcastNext(4)
 			source.broadcastNext(5)
+
+			println source.debug()
 			source.broadcastNext(6)
 
 		and:
@@ -1614,9 +1617,9 @@ class StreamsSpec extends Specification {
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
 			def head = Streams.<Integer> defer(environment)
-			head.parallel().map {
+			head.parallel{
 				s -> s.map { it }
-			}.merge()
+			}
 					.buffer(batchSize)
 					.consume { List<Integer> ints ->
 				println ints.size()
@@ -1642,18 +1645,18 @@ class StreamsSpec extends Specification {
 			int latchCount = length
 			def latch = new CountDownLatch(latchCount)
 			def head = Streams.<Integer> defer(environment)
-			def parallels = Streams.<Integer> parallel(environment)
-
-			head.parallel().consume {
-				s -> s.map { it }.consume { parallels.onNext(it) }
-			}
-
-			parallels.consume { s ->
-				s.consume { int i ->
+			def parallels = Streams.parallel {
+				it.consume { int i ->
 					sum.addAndGet(1)
 					latch.countDown()
 				}
 			}
+
+			head.parallel {
+				s -> s.map { it }.consume { parallels.onNext(it) }
+			}.drain()
+
+			parallels.drain()
 
 		when:
 			'values are accepted into the head'

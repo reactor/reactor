@@ -17,6 +17,10 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Supplier;
+import reactor.queue.CompletableQueue;
+import reactor.rx.subscription.DropSubscription;
+import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
 /**
@@ -25,8 +29,11 @@ import reactor.rx.subscription.ReactiveSubscription;
  */
 public class FlowControlAction<O> extends Action<O, O> {
 
-	public FlowControlAction(Dispatcher dispatcher) {
+	private final Supplier<? extends CompletableQueue<O>> queueSupplier;
+
+	public FlowControlAction(Dispatcher dispatcher, Supplier<? extends CompletableQueue<O>> queueSupplier) {
 		super(dispatcher);
+		this.queueSupplier = queueSupplier;
 	}
 
 	@Override
@@ -35,13 +42,38 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected ReactiveSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		return new ReactiveSubscription<O>(this, subscriber) {
-			@Override
-			public void onRequest(long elements) {
-				super.onRequest(elements);
-				requestUpstream(capacity, buffer.isComplete(), elements);
-			}
-		};
+	public void onError(Throwable cause) {
+		doError(cause);
+	}
+
+	@Override
+	public void onComplete() {
+		broadcastComplete();
+	}
+
+	@Override
+	public void onNext(O ev) {
+		broadcastNext(ev);
+	}
+
+	@Override
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		if (queueSupplier != null) {
+			return new ReactiveSubscription<O>(this, subscriber, queueSupplier.get()) {
+				@Override
+				public void onRequest(long elements) {
+					super.onRequest(elements);
+					requestUpstream(capacity, buffer.isComplete(), elements);
+				}
+			};
+		} else {
+			return new DropSubscription<O>(this, subscriber){
+				@Override
+				public void request(long elements) {
+					super.request(elements);
+					requestUpstream(capacity, terminated, elements);
+				}
+			};
+		}
 	}
 }

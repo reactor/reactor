@@ -93,7 +93,7 @@ public final class Streams {
 	 * @return a new {@link Action}
 	 */
 	public static <T> HotStream<T> defer() {
-		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive(true);
+		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive();
 	}
 
 
@@ -130,7 +130,7 @@ public final class Streams {
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
 				Long.MAX_VALUE);
-		return hotStream.keepAlive(true);
+		return hotStream.keepAlive();
 	}
 
 	/**
@@ -207,6 +207,19 @@ public final class Streams {
 	}
 
 	/**
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe call.
+	 * It will never complete until cancelled.
+	 *
+	 * @param timer the timer to run on
+	 * @param period the period in SECONDS before each following increment
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> period(Timer timer, long period) {
+		return period(timer, -1l, period, TimeUnit.SECONDS);
+	}
+
+
+	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
 	 * It will never complete until cancelled.
 	 *
@@ -220,6 +233,19 @@ public final class Streams {
 	}
 
 
+
+	/**
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the subscribe call on each period.
+	 * It will never complete until cancelled.
+	 *
+	 * @param timer the timer to run on
+	 * @param period the period in [unit] before each following increment
+	 * @param unit  the time unit
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static Stream<Long> period(Timer timer, long period, TimeUnit unit) {
+		return period(timer, -1l, period, unit);
+	}
 
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
@@ -390,11 +416,14 @@ public final class Streams {
 	 * Will default to {@link Environment#PROCESSORS} number of partitions.
 	 * Will default to a new {@link reactor.core.Environment#newDispatcherFactory(int)}} supplier.
 	 *
-	 * @param <T> the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel() {
-		return parallel(Environment.PROCESSORS);
+	public static <I, O> ConcurrentAction<I, O> parallel(Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		return parallel(Environment.PROCESSORS, parallelStream);
 	}
 
 	/**
@@ -410,12 +439,15 @@ public final class Streams {
 	 * Will default to {@link Environment#PROCESSORS} number of partitions.
 	 * Will default to a new {@link reactor.core.Environment#newDispatcherFactory(int)}} supplier.
 	 *
-	 * @param <T>      the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @param poolSize the number of maximum parallel sub-streams consuming the broadcasted values.
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel(int poolSize) {
-		return parallel(poolSize, null, Environment.newDispatcherFactory(poolSize));
+	public static <I, O> ConcurrentAction<I, O> parallel(int poolSize, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		return parallel(poolSize, null, Environment.newDispatcherFactory(poolSize), parallelStream);
 	}
 
 	/**
@@ -432,11 +464,14 @@ public final class Streams {
 	 * Will default to {@link Environment#PROCESSORS} number of partitions.
 	 *
 	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel(Environment env) {
-		return parallel(Environment.PROCESSORS, env, env.getDefaultDispatcherFactory());
+	public static <I, O> ConcurrentAction<I, O>  parallel(Environment env, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		return parallel(Environment.PROCESSORS, env, env.getDefaultDispatcherFactory(), parallelStream);
 	}
 
 	/**
@@ -453,11 +488,14 @@ public final class Streams {
 	 *
 	 * @param env      the Reactor {@link reactor.core.Environment} to use
 	 * @param poolSize the number of maximum parallel sub-streams consuming the broadcasted values.
-	 * @param <T>      the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel(int poolSize, Environment env) {
-		return parallel(poolSize, env, env.getDefaultDispatcherFactory());
+	public static <I, O> ConcurrentAction<I, O>  parallel(int poolSize, Environment env, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		return parallel(poolSize, env, env.getDefaultDispatcherFactory(), parallelStream);
 	}
 
 	/**
@@ -476,11 +514,14 @@ public final class Streams {
 	 * @param env         the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatchers the {@link reactor.event.dispatch.Dispatcher} factory to assign each sub-stream with a call to
 	 *                    {@link reactor.function.Supplier#get()}
-	 * @param <T>         the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel(Environment env, Supplier<Dispatcher> dispatchers) {
-		return parallel(Environment.PROCESSORS, env, dispatchers);
+	public static <I, O> ConcurrentAction<I, O>  parallel(Environment env, Supplier<Dispatcher> dispatchers, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		return parallel(Environment.PROCESSORS, env, dispatchers, parallelStream);
 	}
 
 	/**
@@ -496,11 +537,16 @@ public final class Streams {
 	 * @param env         the Reactor {@link reactor.core.Environment} to use
 	 * @param dispatchers the {@link reactor.event.dispatch.Dispatcher} factory to assign each sub-stream with a call to
 	 *                    {@link reactor.function.Supplier#get()}
-	 * @param <T>         the type of values passing through the {@literal Stream}
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <I> the type of values passing through the {@literal Stream}
+	 * @param <O> the type of values produced off the parallel computation
 	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
 	 */
-	public static <T> ConcurrentAction<T> parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers) {
-		ConcurrentAction<T> parallelAction = new ConcurrentAction<T>(SynchronousDispatcher.INSTANCE, dispatchers,
+	public static <I, O> ConcurrentAction<I, O>  parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
+		ConcurrentAction<I, O> parallelAction = new ConcurrentAction<I, O>(SynchronousDispatcher.INSTANCE,
+				parallelStream,
+				dispatchers,
 				poolSize);
 		parallelAction.env(env);
 		return parallelAction;

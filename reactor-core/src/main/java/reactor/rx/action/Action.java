@@ -29,12 +29,15 @@ import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.Router;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
+import reactor.function.Supplier;
+import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.stream.HotStream;
+import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -81,7 +84,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.1, 2.0
  */
 public abstract class Action<I, O> extends Stream<O>
-		implements Processor<I, O>, Consumer<I>, NonBlocking, Pausable, Recyclable {
+		implements Processor<I, O>, Consumer<I>, Pausable, Recyclable {
 
 	//protected static final Logger log = LoggerFactory.getLogger(Action.class);
 
@@ -104,11 +107,9 @@ public abstract class Action<I, O> extends Stream<O>
 	protected PushSubscription<O> downstreamSubscription;
 
 	protected Environment environment;
-	protected Dispatcher dispatcher;
+	protected Dispatcher  dispatcher;
 
 	protected long capacity;
-	protected boolean keepAlive    = false;
-
 
 	public Action() {
 		this(Long.MAX_VALUE);
@@ -126,7 +127,6 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	public Action(@Nonnull Dispatcher dispatcher, long batchSize) {
-		this.keepAlive = false;
 		this.capacity = batchSize;
 		this.dispatcher = dispatcher;
 	}
@@ -170,29 +170,24 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
 		try {
-			final boolean asyncSubscriber = NonBlocking.class.isAssignableFrom(subscriber.getClass());
+			final NonBlocking asyncSubscriber = NonBlocking.class.isAssignableFrom(subscriber.getClass()) ?
+					(NonBlocking) subscriber :
+					null;
+
 			final PushSubscription<O> subscription = createSubscription(subscriber,
-					!asyncSubscriber && upstreamSubscription != null && upstreamSubscription.getPublisher() != null
+					(null == asyncSubscriber || asyncSubscriber.getDispatcher() != dispatcher || asyncSubscriber.getCapacity() <
+							capacity)
 			);
 
-			if (addSubscription(subscription)) {
-				if (asyncSubscriber) {
-					subscriber.onSubscribe(subscription);
-				} else {
-					dispatch(new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							try {
-								subscriber.onSubscribe(subscription);
-							} catch (Exception e) {
-								subscriber.onError(e);
-							}
-						}
-					});
-				}
-			} else {
-				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			if (subscription == null)
+				return;
+
+			if (null != asyncSubscriber) {
+				subscription.maxCapacity(asyncSubscriber.getCapacity());
 			}
+
+			subscribeWithSubscription(subscriber, subscription, asyncSubscriber == null);
+
 		} catch (Exception e) {
 			subscriber.onError(e);
 		}
@@ -204,7 +199,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 		//if request tracker was connected to another subscription
 		if (hasRequestTracker && upstreamSubscription.hasPublisher()) {
-			upstreamSubscription.cancel();
+			subscription.cancel();
 			return;
 		}
 
@@ -212,7 +207,7 @@ public abstract class Action<I, O> extends Stream<O>
 		final long pending = hasRequestTracker ? upstreamSubscription.pendingRequestSignals() : 0l;
 
 		upstreamSubscription = createTrackingSubscription(subscription);
-		upstreamSubscription.maxCapacity(capacity);
+
 
 		dispatch(upstreamSubscription, new Consumer<Subscription>() {
 			@Override
@@ -297,15 +292,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (upstreamSubscription != null) {
 			upstreamSubscription.maxCapacity(capacity);
 		}
-		/*if (log.isTraceEnabled() && capacity != elements) {
-			log.trace(" The assigned capacity is now {}. The Stream altered the requested maximum capacity {} to not " +
-							"overrun" +
-							" " +
-							"its Dispatcher which supports " +
-							"up to {} slots for next signals, minus {} slots error|" +
-							"complete|subscribe|request.",
-					capacity, elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS);
-		}*/
 		return this;
 	}
 
@@ -346,19 +332,6 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	public Action<I, O> env(Environment environment) {
 		this.environment = environment;
-		return this;
-	}
-
-	/**
-	 * Update the keep-alive property used by this {@link Stream}. When kept-alive, the stream will not shutdown
-	 * automatically on complete. Shutdown state is observed when the last subscriber is cancelled.
-	 *
-	 * @param keepAlive to either automatically shutdown and {@link this#cancel()} any upstream subscription when no
-	 *                  downstream is consuming anymore.
-	 * @return {@literal this}
-	 */
-	public Action<I, O> keepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
 		return this;
 	}
 
@@ -497,11 +470,7 @@ public abstract class Action<I, O> extends Stream<O>
 			action.env(environment);
 		}
 
-		if (action.dispatcher != this.dispatcher || action.capacity < capacity) {
-			this.subscribeWithSubscription(action, createSubscription(action, true));
-		} else {
-			this.subscribe(action);
-		}
+		this.subscribe(action);
 		return action;
 	}
 
@@ -530,36 +499,33 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public final Action<O, O> onOverflowBuffer(CompletableQueue<O> queue) {
-		FlowControlAction<O> stream = new FlowControlAction<O>(getDispatcher());
-		if (queue != null) {
-			stream.capacity(capacity).env(environment);
-			stream.keepAlive(keepAlive);
-			subscribeWithSubscription(stream, createSubscription(stream, false).toReactiveSubscription(queue));
+	public final Stream<O> onOverflowBuffer(Supplier<? extends CompletableQueue<O>> queueSupplier) {
+		HotStream<O> newStream = new HotStream<>(dispatcher, capacity);
+		if (queueSupplier == null) {
+			subscribeWithSubscription(newStream,new DropSubscription<O>(this, newStream){
+				@Override
+				public void request(long elements) {
+					super.request(elements);
+					requestUpstream(capacity, terminated, elements);
+				}
+			}, false);
 		} else {
-			connect(stream);
+			subscribeWithSubscription(newStream,
+					createSubscription(newStream, queueSupplier.get()), false);
 		}
-		return stream;
-	}
-
-	@Override
-	public final Action<O, O> onOverflowDrop() {
-		HotStream<O> stream = new HotStream<O>(getDispatcher(), Long.MAX_VALUE);
-		stream.capacity(capacity).env(environment);
-		stream.keepAlive(keepAlive);
-		subscribeWithSubscription(stream, createSubscription(stream, false).toDropSubscription());
-		return stream;
+		return newStream;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public final <T, V> Stream<V> fanIn(FanInAction<T, ?, V, ? extends FanInAction.InnerSubscriber<T, ?, V>> fanInAction) {
+	public final <T, V> Stream<V> fanIn(FanInAction<T, ?, V, ? extends FanInAction.InnerSubscriber<T, ?,
+			V>> fanInAction) {
 		Action<?, Publisher<T>> thiz = (Action<?, Publisher<T>>) this;
 
 		Action<Publisher<? extends T>, V> innerMerge = new DynamicMergeAction<T, V>(getDispatcher(), fanInAction);
-		innerMerge.capacity(capacity).env(environment).keepAlive(keepAlive);
+		innerMerge.capacity(capacity).env(environment);
 
-		thiz.subscribeWithSubscription(innerMerge, thiz.createSubscription(innerMerge, true));
+		thiz.subscribeWithSubscription(innerMerge, thiz.createSubscription(innerMerge, true), false);
 		return innerMerge;
 	}
 
@@ -682,15 +648,6 @@ public abstract class Action<I, O> extends Stream<O>
 		return upstreamSubscription;
 	}
 
-	/**
-	 * Get the current action pause status
-	 *
-	 * @return current {@link this#pause} value
-	 */
-	public final boolean isPaused() {
-		//return upstreamSubscription != null && upstreamSubscription.pause;
-		return false;
-	}
 
 	/**
 	 * Get the current action child subscription
@@ -714,9 +671,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 		if (subscription == this.downstreamSubscription) {
 			this.downstreamSubscription = null;
-			if (!keepAlive) {
-				onShutdown();
-			}
+			onShutdown();
 			return true;
 		} else {
 			PushSubscription<O> dsub = this.downstreamSubscription;
@@ -724,7 +679,7 @@ public abstract class Action<I, O> extends Stream<O>
 				FanOutSubscription<O> fsub =
 						((FanOutSubscription<O>) this.downstreamSubscription);
 
-				if (fsub.remove(subscription) && fsub.isEmpty() && !keepAlive) {
+				if (fsub.remove(subscription) && fsub.isEmpty()) {
 					onShutdown();
 					return true;
 				}
@@ -733,31 +688,13 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-	@Override
-	public void recycle() {
-		downstreamSubscription = null;
-		environment = null;
-		dispatcher = SynchronousDispatcher.INSTANCE;
-		capacity = Long.MAX_VALUE;
-		keepAlive = false;
-		upstreamSubscription = null;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public String toString() {
-		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
-				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
-						"")) +
-				", ka=" + keepAlive +
-				", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) +
-				(upstreamSubscription != null ? ", " + upstreamSubscription : "") + '}';
-	}
-
 	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, boolean reactivePull) {
-		if (reactivePull) {
-			return new ReactiveSubscription<O>(this, subscriber) {
+		return createSubscription(subscriber, reactivePull ? new CompletableLinkedQueue<O>() : null);
+	}
+
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+		if (queue != null) {
+			return new ReactiveSubscription<O>(this, subscriber, queue) {
 
 				@Override
 				protected void onRequest(long elements) {
@@ -768,7 +705,7 @@ public abstract class Action<I, O> extends Stream<O>
 		} else {
 			return new PushSubscription<O>(this, subscriber) {
 				@Override
-				public void request(long elements) {
+				protected void onRequest(long elements) {
 					requestUpstream(null, terminated, elements);
 				}
 			};
@@ -783,7 +720,7 @@ public abstract class Action<I, O> extends Stream<O>
 			}
 			long currentCapacity = capacity.get();
 			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
-			if (!isPaused() && currentCapacity > 0) {
+			if (currentCapacity > 0) {
 				final long remaining = Math.min(currentCapacity, elements);
 				onRequest(remaining);
 			}
@@ -825,7 +762,6 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-
 	protected final <E> void trySyncDispatch(E data, Consumer<E> action) {
 		if (downstreamSubscription == null ^ dispatcher.inContext()) {
 			action.accept(data);
@@ -842,6 +778,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	}
 
+
 	/**
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
@@ -852,11 +789,11 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param subscriber
 	 * @param subscription
 	 */
-	protected void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
-			subscription) {
+	protected final void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
+			subscription, boolean dispatched) {
 		try {
 			if (addSubscription(subscription)) {
-				if (NonBlocking.class.isAssignableFrom(subscriber.getClass())) {
+				if (!dispatched) {
 					subscriber.onSubscribe(subscription);
 				} else {
 					dispatch(new Consumer<Void>() {
@@ -904,7 +841,6 @@ public abstract class Action<I, O> extends Stream<O>
 		cancel();
 	}
 
-
 	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {
 		return that.upstreamSubscription != null
 				&& ((PushSubscription<?>) that.upstreamSubscription).getPublisher() != null
@@ -913,6 +849,27 @@ public abstract class Action<I, O> extends Stream<O>
 
 	private void callError(PushSubscription<O> subscription, Throwable cause) {
 		subscription.onError(cause);
+	}
+
+
+	@Override
+	public void recycle() {
+		downstreamSubscription = null;
+		environment = null;
+		dispatcher = SynchronousDispatcher.INSTANCE;
+		capacity = Long.MAX_VALUE;
+		upstreamSubscription = null;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public String toString() {
+		return "{" +
+				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
+						"")) +
+				", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) +
+				(upstreamSubscription != null ? ", " + upstreamSubscription : "") + '}';
 	}
 
 }

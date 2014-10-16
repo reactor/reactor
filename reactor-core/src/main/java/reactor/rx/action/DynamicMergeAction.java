@@ -64,8 +64,13 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if (fanInAction.started.get() && fanInAction.runningComposables.get() == 0) {
-			fanInAction.innerSubscriptions.onComplete();
+		if(fanInAction.started.get()){
+
+			if (fanInAction.runningComposables.get() == 0) {
+				fanInAction.innerSubscriptions.onComplete();
+			}else{
+				cancel();
+			}
 		}
 	}
 
@@ -79,12 +84,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	public Action<Publisher<? extends I>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
-	}
-
-	@Override
-	public Action<Publisher<? extends I>, O> keepAlive(boolean keepAlive) {
-		fanInAction.keepAlive(keepAlive);
-		return super.keepAlive(keepAlive);
 	}
 
 	@Override

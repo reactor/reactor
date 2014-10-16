@@ -104,7 +104,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public String toString() {
 		return super.toString() +
-				"{runningComposables=" + runningComposables + '}';
+				"{runningComposables=" + runningComposables + "}";
 	}
 
 	protected FanInSubscription<I, E, SUBSCRIBER> createFanInSubscription(){
@@ -146,19 +146,10 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		}
 
 		public void request(long n) {
-			if (n <= 0) return;
-
-			int size = outerAction.runningComposables.get();
-			if (size == 0) return;
-
-			long batchSize = outerAction.capacity / size;
-			long toRequest = outerAction.capacity % size + batchSize;
-			toRequest = Math.min(toRequest, n);
-			if (toRequest > 0) {
-				pendingRequests += n - toRequest;
+			if (s == null || n <= 0) return;
+				pendingRequests += n;
 				emittedSignals = 0;
-				s.request(toRequest);
-			}
+				s.request(n);
 		}
 
 		@Override
@@ -169,6 +160,16 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		protected boolean checkDynamicMerge() {
 			return outerAction.dynamicMergeAction != null && outerAction.dynamicMergeAction.upstreamSubscription != null;
+		}
+
+		@Override
+		public Dispatcher getDispatcher() {
+			return outerAction.dispatcher;
+		}
+
+		@Override
+		public long getCapacity() {
+			return outerAction.capacity;
 		}
 
 		@Override

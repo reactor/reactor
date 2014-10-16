@@ -19,6 +19,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
+import reactor.rx.Streams;
 
 /**
  * @author Stephane Maldini
@@ -90,7 +91,7 @@ public class FilterAction<T> extends Action<T, T> {
 
 	public Action<T, T> otherwise() {
 		if (elseComposable == null) {
-			elseComposable = Action.<T>passthrough(dispatcher, capacity).keepAlive(keepAlive);;
+			elseComposable = Streams.<T>defer(environment, dispatcher).keepAlive();
 		}
 		return elseComposable;
 	}

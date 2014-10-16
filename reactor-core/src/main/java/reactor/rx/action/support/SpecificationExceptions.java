@@ -19,7 +19,7 @@ package reactor.rx.action.support;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class SpecificationExceptions {
+public final class SpecificationExceptions {
 
 	public static IllegalStateException spec_2_12_exception() {
 		return new IllegalStateException("Spec. Rule 2.12 - Subscriber.onSubscribe MUST NOT be called more than once " +

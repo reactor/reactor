@@ -21,7 +21,7 @@ import reactor.function.Consumer;
 import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.support.SpecificationExceptions;
-import reactor.rx.subscription.support.WrappedDropSubscription;
+import reactor.rx.subscription.support.WrappedPushToDropSubscription;
 import reactor.rx.subscription.support.WrappedPushToReactiveSubscription;
 import reactor.rx.subscription.support.WrappedSubscription;
 
@@ -74,7 +74,7 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 	 */
 	public DropSubscription<O> toDropSubscription() {
 		final PushSubscription<O> thiz = this;
-		return new WrappedDropSubscription<>(thiz);
+		return new WrappedPushToDropSubscription<>(thiz);
 	}
 
 	@Override
@@ -198,7 +198,7 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 
 	@Override
 	public String toString() {
-		return "{push!}";
+		return "{push}";
 	}
 
 

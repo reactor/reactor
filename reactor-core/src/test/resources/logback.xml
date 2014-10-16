@@ -25,6 +25,7 @@
 	</appender>
 
 	<logger name="reactor" level="debug"/>
+	<logger name="after-flatmap" level="debug"/>
 
 	<root level="info">
 		<appender-ref ref="stdout"/>

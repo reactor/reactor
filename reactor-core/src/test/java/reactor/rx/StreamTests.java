@@ -131,7 +131,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void testComposedErrorHandlingWitIgnoreErrors() throws InterruptedException {
-		Stream<String> stream = Streams.just( "1", "2", "3", "4", "5");
+		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
 		Stream<Integer> s =
@@ -176,7 +176,7 @@ public class StreamTests extends AbstractReactorTest {
 						.dispatchOn(env)
 						.capacity(5)
 						.map(STRING_2_INTEGER)
-						.reduce( 1, r -> r.getT1() * r.getT2());
+						.reduce(1, r -> r.getT1() * r.getT2());
 		await(1, s, is(120));
 	}
 
@@ -314,17 +314,15 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
-		HotStream<String> d = Streams.<String>defer(env).capacity(128);
-		Stream<Integer> tasks = d.parallel(8)
-				.map(stream -> stream.map((String str) -> {
-							try {
-								Thread.sleep(random.nextInt(10));
-							} catch (InterruptedException e) {
-								Thread.currentThread().interrupt();
-							}
-							return Integer.parseInt(str);
-						})
-				).merge();
+		HotStream<String> d = Streams.<String>defer(env);
+		Stream<Integer> tasks = d.parallel(8, stream -> stream.map((String str) -> {
+			try {
+				Thread.sleep(random.nextInt(10));
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			return Integer.parseInt(str);
+		}));
 
 		Stream<Void> tail = tasks.consume(i -> {
 			latch.countDown();
@@ -420,7 +418,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		HotStream<Integer> d = Streams.defer(env);
 
-		d.parallel().consume(stream -> stream.map(o -> {
+		d.parallel(stream -> stream.map(o -> {
 			synchronized (internalLock) {
 
 				internalCounter.incrementAndGet();
@@ -451,7 +449,7 @@ public class StreamTests extends AbstractReactorTest {
 
 				counsumerLatch.countDown();
 			}
-		}));
+		})).consume(null, Throwable::printStackTrace);
 
 		for (int i = 0; i < COUNT; i++) {
 			d.broadcastNext(i);
@@ -462,7 +460,7 @@ public class StreamTests extends AbstractReactorTest {
 		internalLatch.await(5, TimeUnit.SECONDS);
 		System.out.println(d.debug());
 		assertEquals(COUNT, internalCounter.get());
-		assertTrue(counsumerLatch.await(5, TimeUnit.SECONDS));
+		counsumerLatch.await(5, TimeUnit.SECONDS);
 		assertEquals(COUNT, consumerCounter.get());
 	}
 
@@ -487,15 +485,14 @@ public class StreamTests extends AbstractReactorTest {
 
 		HotStream<String> deferred = Streams.<String>defer(env);
 		deferred
-				.parallel(8)
+				.parallel(8, stream -> (filter ? (stream
+						.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
+						.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
+						.consume(batch -> {
+							for (String i : batch) latch.countDown();
+						}))
 				.monitorLatency(100)
-				.consume(stream -> (filter ? (stream
-								.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
-								.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
-								.consume(batch -> {
-									for (String i : batch) latch.countDown();
-								})
-				);
+				.drain();
 
 		String[] data = new String[iterations];
 		for (int i = 0; i < iterations; i++) {
@@ -534,12 +531,11 @@ public class StreamTests extends AbstractReactorTest {
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Streams.defer(env);
-				deferred.parallel(2)
-						.consume(stream -> stream
-										.map(i -> i)
-										.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
-										.consume(i -> latch.countDown())
-						);
+				deferred.parallel(2, stream -> stream
+						.map(i -> i)
+						.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
+						.consume(i -> latch.countDown())
+				).drain();
 
 				break;
 
@@ -562,7 +558,7 @@ public class StreamTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(15, TimeUnit.SECONDS)) {
-			throw new RuntimeException("Count:"+(iterations - latch.getCount())+" "+deferred.debug().toString());
+			throw new RuntimeException("Count:" + (iterations - latch.getCount()) + " " + deferred.debug().toString());
 		}
 
 		long stop = System.currentTimeMillis() - start;
@@ -587,12 +583,11 @@ public class StreamTests extends AbstractReactorTest {
 		Action<Integer, Integer> mapManydeferred;
 		switch (dispatcher) {
 			case "partitioned":
-				mapManydeferred = Streams.<Integer>defer(env);
+				mapManydeferred = Streams.<Integer>defer(env, SynchronousDispatcher.INSTANCE);
 				mapManydeferred
-						.parallel()
-						.consume(substream ->
-										substream.consume(i -> latch.countDown())
-						);
+						.parallel(substream ->
+								substream.consume(i -> latch.countDown()))
+						.drain();
 				break;
 			default:
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
@@ -615,6 +610,8 @@ public class StreamTests extends AbstractReactorTest {
 
 		if (!latch.await(20, TimeUnit.SECONDS)) {
 			throw new RuntimeException(mapManydeferred.debug().toString());
+		}else{
+			System.out.println(mapManydeferred.debug().toString());
 		}
 		assertEquals(0, latch.getCount());
 
@@ -669,22 +666,20 @@ public class StreamTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
-		batchingStreamDef.parallel(PARALLEL_STREAMS)
-				.consume(substream ->
-								substream
-										.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
-										.consume(items -> {
-											batchesDistribution.compute(items.size(),
-													(key,
-													 value) -> value == null ? 1 : value + 1);
-											items.forEach(item -> latch.countDown());
-										})
-
-				);
+		batchingStreamDef.parallel(PARALLEL_STREAMS, substream ->
+				substream
+						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
+						.consume(items -> {
+							batchesDistribution.compute(items.size(),
+									(key,
+									 value) -> value == null ? 1 : value + 1);
+							items.forEach(item -> latch.countDown());
+						}))
+				.drain();
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
 		if (!latch.await(10, TimeUnit.SECONDS)) {
-			throw new RuntimeException(latch.getCount()+" "+batchingStreamDef.debug().toString());
+			throw new RuntimeException(latch.getCount() + " " + batchingStreamDef.debug().toString());
 
 		}
 
@@ -773,15 +768,14 @@ public class StreamTests extends AbstractReactorTest {
 				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
 
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
-		CountDownLatch countDownLatch = new CountDownLatch(max+1);
+		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
 
 		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
 		Stream<Void> tail =
-				worker.parallel(2, env.getDispatcherFactory("test-p")).keepAlive(true)
-						.consume(s ->
-										s.map(v -> v).consume(v -> countDownLatch.countDown())
-						);
+				worker.parallel(2, env.getDispatcherFactory("test-p"), s ->
+								s.map(v -> v).consume(v -> countDownLatch.countDown())
+				).drain();
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
 		System.out.println(tail.debug());
@@ -797,23 +791,22 @@ public class StreamTests extends AbstractReactorTest {
 
 		Stream<Integer> worker = Streams.defer(tasks);
 
-		worker.parallel(2)
+		Stream<Void> tail = worker.parallel(2, s ->
+				s.map(v -> v).consume(v -> countDownLatch.countDown(),
+						Throwable::printStackTrace))
 				.dispatchOn(env.getDefaultDispatcherFactory().get())
-				.consume(s ->
-								s.map(v -> v).consume(v -> countDownLatch.countDown(), Throwable::printStackTrace),
-						Throwable::printStackTrace);
+				.drain();
 		countDownLatch.await(5, TimeUnit.SECONDS);
-
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
 	@Test
-	public void shouldWindowCorrectly() throws InterruptedException{
+	public void shouldWindowCorrectly() throws InterruptedException {
 		Stream<Integer> sensorDataStream =
 				Streams.defer(createTestDataset(1000))
-				.dispatchOn(env, SynchronousDispatcher.INSTANCE);
+						.dispatchOn(env, SynchronousDispatcher.INSTANCE);
 
-		CountDownLatch endLatch = new CountDownLatch(1000/100);
+		CountDownLatch endLatch = new CountDownLatch(1000 / 100);
 
 		sensorDataStream
 				/*     step 2  */.window(100)
@@ -843,12 +836,11 @@ public class StreamTests extends AbstractReactorTest {
 		final HotStream<Integer> streamBatcher = Streams.<Integer>defer(env);
 		streamBatcher
 				.buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
-				.parallel(parallelStreams)
-				.consume(innerStream ->
-								innerStream
-										.consume(i -> latch.countDown())
-										.when(Exception.class, Throwable::printStackTrace)
-				);
+				.parallel(parallelStreams, innerStream ->
+						innerStream
+								.consume(i -> latch.countDown())
+								.when(Exception.class, Throwable::printStackTrace))
+				.drain();
 
 
 		streamBatcher.broadcastNext(12);
@@ -870,11 +862,11 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void mapLotsOfSubAndCancel() throws InterruptedException {
-		for(long i = 0; i<199; i++)
+		for (long i = 0; i < 199; i++)
 			mapPassThru();
 	}
 
-		public void mapPassThru() throws InterruptedException {
+	public void mapPassThru() throws InterruptedException {
 		Streams.just(1).map(IDENTITY_FUNCTION);
 	}
 

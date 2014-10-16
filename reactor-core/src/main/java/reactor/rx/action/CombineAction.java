@@ -93,14 +93,6 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	}
 
 	@Override
-	public CombineAction<E, O> keepAlive(boolean keepAlive) {
-		publisher.keepAlive(keepAlive);
-		subscriber.keepAlive(keepAlive);
-		super.keepAlive(keepAlive);
-		return this;
-	}
-
-	@Override
 	public Action<E, O> capacity(long elements) {
 		publisher.capacity(elements);
 		subscriber.capacity(elements);

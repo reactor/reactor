@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
@@ -52,7 +53,17 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
+	protected PushSubscription<Void> createSubscription(Subscriber<? super Void> subscriber, boolean reactivePull) {
+		return new PushSubscription<Void>(this, subscriber){
+			@Override
+			public void request(long n) {
+				//IGNORE
+			}
+		};
+	}
+
+	@Override
+	protected PushSubscription<T> createTrackingSubscription(final Subscription subscription) {
 		return new WrappedSubscription<T>(subscription, this){
 
 			@Override

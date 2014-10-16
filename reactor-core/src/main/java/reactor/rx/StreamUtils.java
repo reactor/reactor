@@ -60,15 +60,6 @@ public abstract class StreamUtils {
 					composable
 							.getClass()
 							.getSimpleName().replaceAll("Action", "") + "[" + composable + "]");
-
-
-			if (Action.class.isAssignableFrom(composable.getClass())) {
-				Action<?, ?> action = (Action<?, ?>) composable;
-				if (action.isPaused()) {
-					appender.append(" (!) - Paused");
-				}
-			}
-
 		}
 
 		@Override
@@ -287,11 +278,13 @@ public abstract class StreamUtils {
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderParallel(Stream<O> consumer, final List<Object> streamTree) {
 			if (ConcurrentAction.class.isAssignableFrom(consumer.getClass())) {
-				ConcurrentAction<O> operation = (ConcurrentAction<O>) consumer;
-				for (Stream<O> s : operation.getPublishers()) {
-					parseComposable(s, streamTree);
-					if (debugVisitor != null) {
-						debugVisitor.newLine(debugVisitor.d, false);
+				ConcurrentAction<?, O> operation = (ConcurrentAction<?, O>) consumer;
+				for (Action<?, O> s : operation.getPublishers()) {
+					if(s.downstreamSubscription() != null) {
+						parseComposable(s, streamTree);
+						if (debugVisitor != null) {
+							debugVisitor.newLine(debugVisitor.d, false);
+						}
 					}
 				}
 				return true;

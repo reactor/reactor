@@ -27,9 +27,11 @@ import reactor.event.selector.Selectors;
 import reactor.function.*;
 import reactor.function.support.Tap;
 import reactor.queue.CompletableBlockingQueue;
+import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
 import reactor.rx.action.support.DefaultSubscriber;
+import reactor.rx.action.support.NonBlocking;
 import reactor.rx.subscription.PushSubscription;
 import reactor.timer.Timer;
 import reactor.tuple.Tuple2;
@@ -61,7 +63,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @since 1.1, 2.0
  */
-public abstract class Stream<O> implements Publisher<O> {
+public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	protected Stream() {
@@ -295,6 +297,29 @@ public abstract class Stream<O> implements Publisher<O> {
 		return connect(new CallbackAction<O>(getDispatcher(), consumer, null));
 	}
 
+
+	/**
+	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 *
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public final Stream<O> log() {
+		return log(null);
+	}
+
+	/**
+	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 *
+	 * @param name The logger name
+	 *
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public final Stream<O> log(String name) {
+		return connect(new LoggerAction<O>(getDispatcher(), name));
+	}
+
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
 	 *
@@ -506,41 +531,62 @@ public abstract class Stream<O> implements Publisher<O> {
 
 	/**
 	 * Partition the stream output into N number of CPU cores sub-streams. Each partition will run on an exclusive
-	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
+	 * {@link reactor.event.dispatch.RingBufferDispatcher}. It will only complete when all the parallel stream finish their work.
+	 * A parallel stream will be generated on subscribe (e.g. stream.parallel(s -> s).subscribe(subscriber) ).
+	 * If the parallel stream is overrun (by default, when only less than 15% of its maximum capacity is available), the concurrent
+	 * action will call the parallelStream function again to generate a new stream up to N number of cores.
+	 *
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <V> the output type of the parallel computation
 	 *
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final ConcurrentAction<O> parallel() {
-		return parallel(Environment.PROCESSORS);
+	public final <V> ConcurrentAction<O, V> parallel(Function<Stream<O>, Publisher<? extends V>> parallelStream) {
+		return parallel(Environment.PROCESSORS, parallelStream);
 	}
 
 	/**
 	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive
 	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
+	 * A parallel stream will be generated on subscribe (e.g. stream.parallel(s -> s).subscribe(subscriber) ).
+	 * If the parallel stream is overrun (by default, when only less than 15% of its maximum capacity is available), the concurrent
+	 * action will call the parallelStream function again to generate a new stream up to poolSize.
 	 *
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <V> the output type of the parallel computation
 	 * @param poolsize The level of concurrency to use
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final ConcurrentAction<O> parallel(final Integer poolsize) {
+	public final <V> ConcurrentAction<O, V> parallel(final Integer poolsize, Function<Stream<O>, Publisher<? extends V>> parallelStream) {
 		return parallel(poolsize, getEnvironment() != null ?
 				getEnvironment().getDefaultDispatcherFactory() :
-				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"));
+				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"), parallelStream);
 	}
 
 	/**
 	 * Partition the stream output into N {@param poolsize} sub-streams. EEach partition will run on an exclusive
 	 * {@link Dispatcher} provided by the given {@param dispatcherSupplier}.
 	 *
+	 * A parallel stream will be generated on subscribe (e.g. stream.parallel(s -> s).subscribe(subscriber) ).
+	 * If the parallel stream is overrun (by default, when only less than 15% of its maximum capacity is available), the concurrent
+	 * action will call the parallelStream function again to generate a new stream up to poolSize.
+	 *
+	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
+	 *                       as an argument and will output whatever the stream returned as signals.
+	 * @param <V> the output type of the parallel computation
 	 * @param poolsize           The level of concurrency to use
 	 * @param dispatcherSupplier The {@link Supplier} to provide concurrent {@link Dispatcher}.
 	 * @return A Stream of {@link Action}
 	 * @since 2.0
 	 */
-	public ConcurrentAction<O> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier) {
-		return connect(new ConcurrentAction<O>(
-				getDispatcher(), dispatcherSupplier, poolsize
+	public <V> ConcurrentAction<O, V> parallel(Integer poolsize, final Supplier<Dispatcher> dispatcherSupplier,
+	                                           Function<Stream<O>, Publisher<? extends V>> parallelStream) {
+		return connect(new ConcurrentAction<O, V>(
+				getDispatcher(), parallelStream, dispatcherSupplier, poolsize
 		));
 	}
 
@@ -586,7 +632,12 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @since 2.0
 	 */
 	public final Stream<O> onOverflowBuffer() {
-		return onOverflowBuffer(null);
+		return onOverflowBuffer(new Supplier<CompletableQueue<O>>(){
+			@Override
+			public CompletableQueue<O> get() {
+				return new CompletableLinkedQueue<O>();
+			}
+		});
 	}
 
 	/**
@@ -594,12 +645,13 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * downstream. A buffering capable stream will prevent underlying getDispatcher() to be saturated (and sometimes
 	 * blocking).
 	 *
-	 * @param queue A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 * @param queueSupplier A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 *
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Stream<O> onOverflowBuffer(CompletableQueue<O> queue) {
-		return dispatchOn(getEnvironment(), getDispatcher()).onOverflowBuffer(queue);
+	public Stream<O> onOverflowBuffer(Supplier<? extends CompletableQueue<O>> queueSupplier) {
+		return connect(new FlowControlAction<O>(getDispatcher(), queueSupplier));
 	}
 
 	/**
@@ -610,8 +662,8 @@ public abstract class Stream<O> implements Publisher<O> {
 	 * @return a dropping stream
 	 * @since 2.0
 	 */
-	public Stream<O> onOverflowDrop() {
-		return dispatchOn(getEnvironment(), getDispatcher()).onOverflowDrop();
+	public final Stream<O> onOverflowDrop() {
+		return onOverflowBuffer(null);
 	}
 
 	/**
@@ -775,10 +827,7 @@ public abstract class Stream<O> implements Publisher<O> {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code
-	 * getCapacity()}
-	 * to
-	 * have been set.
+	 * Create a new {@code Stream} whose values will be only the first value of each batch.
 	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
@@ -1554,6 +1603,16 @@ public abstract class Stream<O> implements Publisher<O> {
 		return blockingQueue;
 	}
 
+
+	/**
+	 * Prevent a {@link Stream} to be cancelled. Cancel propagation occurs when last subscriber is cancelled.
+	 *
+	 * @return a new {@literal Stream} that is never cancelled.
+	 */
+	public Stream<O> keepAlive() {
+		return connect(Action.<O>passthrough(getDispatcher(), getCapacity()).env(getEnvironment()).keepAlive());
+	}
+
 	/**
 	 * Print a debugged form of the root composable relative to this. The output will be an acyclic directed graph of
 	 * composed actions.
@@ -1575,21 +1634,12 @@ public abstract class Stream<O> implements Publisher<O> {
 		subscribe(subscriber.input());
 	}
 
-	/**
-	 * Get the assigned {@link reactor.event.dispatch.Dispatcher}.
-	 *
-	 * @return current {@link reactor.event.dispatch.Dispatcher}
-	 */
+	@Override
 	public Dispatcher getDispatcher() {
 		return SynchronousDispatcher.INSTANCE;
 	}
 
-	/**
-	 * Return defined {@link Stream} capacity, used to drive new {@link org.reactivestreams.Subscription}
-	 * request needs.
-	 *
-	 * @return long capacity for this {@link Stream}
-	 */
+	@Override
 	public long getCapacity() {
 		return Long.MAX_VALUE;
 	}
