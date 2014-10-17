@@ -54,7 +54,7 @@ public class SimpleHashWheelTimer implements Timer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SimpleHashWheelTimer.class);
 
-	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>();
+	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>(true, false, null);
 	private final int    resolution;
 	private final Thread loop;
 
