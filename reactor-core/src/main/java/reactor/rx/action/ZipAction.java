@@ -230,10 +230,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 
 		@Override
-		public void doPendingRequest() {
-			if (maxCapacity > 0) {
-				request(maxCapacity);
-			}
+		public long clearPendingRequest() {
+			return maxCapacity;
 		}
 
 		@Override

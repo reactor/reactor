@@ -65,20 +65,19 @@ public final class PeriodicTimerStream extends Stream<Long> {
 		subscriber.onSubscribe(new TimerSubscription(this, subscriber));
 	}
 
-	private class TimerSubscription extends PushSubscription<Long> implements Consumer<Long>{
+	private class TimerSubscription extends PushSubscription<Long>{
 
 		long counter = 0l;
-		final Registration<? extends Consumer<Long>> registration = timer.schedule(this, period, unit, delay);
+		final Registration<? extends Consumer<Long>> registration = timer.schedule(new Consumer<Long>() {
+			@Override
+			public void accept(Long aLong) {
+				subscriber.onNext(counter++);
+			}
+		}, period, unit, delay);
 
 		public TimerSubscription(Stream<Long> publisher, Subscriber<? super Long> subscriber) {
 			super(publisher, subscriber);
 		}
-
-		@Override
-		public void accept(Long time) {
-			subscriber.onNext(counter++);
-		}
-
 
 		@Override
 		public void cancel() {
@@ -89,6 +88,6 @@ public final class PeriodicTimerStream extends Stream<Long> {
 
 	@Override
 	public String toString() {
-		return "delay=" + delay + (period > 0 ? "period=" + period : "");
+		return "delay=" + delay + "ms" + (period > 0 ? ", period=" + period : "") + ", period-unit="+unit;
 	}
 }

@@ -388,7 +388,8 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void mapNotifiesOnceConsistent() throws InterruptedException {
-		for (int i = 0; i < 15; i++) {
+		for (int i = 0; i < 100; i++) {
+			System.out.println("iteration");
 			mapNotifiesOnce();
 		}
 	}
@@ -467,10 +468,10 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
+		parallelMapManyTest("ringBuffer", 1_000_000);
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
 		parallelTest("ringBuffer", 1_000_000);
-		parallelMapManyTest("ringBuffer", 1_000_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
 		parallelBufferedTimeoutTest(1_000_000, false);

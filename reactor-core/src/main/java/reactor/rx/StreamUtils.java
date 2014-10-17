@@ -22,7 +22,6 @@ import reactor.function.Consumer;
 import reactor.rx.action.*;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.support.SubscriberToPushSubscription;
 
 import java.io.Serializable;
 import java.util.*;
@@ -184,9 +183,7 @@ public abstract class StreamUtils {
 				public void accept(E registration) {
 					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((PushSubscription<?>) registration).getSubscriber();
-						if (SubscriberToPushSubscription.class.isAssignableFrom(subscriber.getClass())) {
-							subscriber = ((SubscriberToPushSubscription<?>)subscriber).delegate().getSubscriber();
-						}
+
 						if (debugVisitor != null && multicast) {
 							debugVisitor.d ++;
 							debugVisitor.newMulticastLine(debugVisitor.d);

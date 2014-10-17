@@ -53,6 +53,11 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void onRequest(long n) {
+		trySyncDispatch(n, upstreamSubscription);
+	}
+
+	@Override
 	protected PushSubscription<Void> createSubscription(Subscriber<? super Void> subscriber, boolean reactivePull) {
 		return new PushSubscription<Void>(this, subscriber){
 			@Override
@@ -72,8 +77,8 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 			}
 
 			@Override
-			public void doPendingRequest() {
-				request(capacity);
+			public long clearPendingRequest() {
+				return capacity;
 			}
 
 			@Override
@@ -94,7 +99,6 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 			errorConsumer.accept(ev);
 		}
 		super.doError(ev);
-		cancel();
 	}
 
 	@Override
@@ -103,7 +107,6 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 			completeConsumer.accept(null);
 		}
 		super.doComplete();
-		cancel();
 	}
 
 }

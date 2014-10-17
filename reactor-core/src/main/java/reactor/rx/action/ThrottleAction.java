@@ -127,8 +127,8 @@ public class ThrottleAction<T> extends Action<T, T> {
 		}
 
 		@Override
-		public void doPendingRequest() {
-			//IGNORE
+		public long clearPendingRequest() {
+			return -1l;
 		}
 	}
 }

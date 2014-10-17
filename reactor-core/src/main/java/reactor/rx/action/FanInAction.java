@@ -73,6 +73,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
+		innerSubscriptions.maxCapacity(capacity);
 		if (composables != null) {
 			if (innerSubscriptions.subscriptions.size() > 0) {
 				innerSubscriptions.cancel();

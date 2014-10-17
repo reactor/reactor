@@ -510,7 +510,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }
+			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }.log()
 			def tap = zippedStream.tap()
 
 		when:

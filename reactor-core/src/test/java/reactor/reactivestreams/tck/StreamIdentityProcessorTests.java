@@ -25,6 +25,7 @@ import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
 import reactor.rx.stream.HotStream;
+import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(250000, true), 3500);
+		super(new TestEnvironment(2500, false), 3500);
 	}
 
 	@Override
@@ -56,6 +57,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 
 		CombineAction<Integer, Integer> processor = Streams.<Integer>defer(env)
+				.keepAlive(false)
 				.capacity(bufferSize)
 				.parallel(2, stream -> stream
 								.observe(i -> {
@@ -66,20 +68,18 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 									}
 									counter.incrementAndGet();
 								})
-								.scan(0, tuple -> tuple.getT1())
+								.scan(0, Tuple2::getT1)
 								.filter(integer -> integer >= 0)
-								.reduce((() -> 0), 1, tuple -> -tuple.getT1())
+								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
 								.map(integer -> -integer)
-								.capacity(1)
-								.sample()
+								.sample(1)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
 								.flatMap(i ->
+//												Streams.just(i)
 												Streams.zip(Streams.just(i), otherStream, tuple -> tuple.getT1())
 														.dispatchOn(env)
-														.log()
 								)
-						.log()
 				)
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
@@ -97,15 +97,17 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 			return Streams
 					.defer(list)
+					.log("iterable-publisher")
+					.dispatchOn(env)
 					.filter(integer -> true)
-					.map(integer -> integer)
-					.dispatchOn(env);
+					.map(integer -> integer);
 
 		} else {
 			final Random random = new Random();
 
 			return Streams
 					.generate(random::nextInt)
+					.log("random-publisher")
 					.map(Math::abs);
 		}
 	}

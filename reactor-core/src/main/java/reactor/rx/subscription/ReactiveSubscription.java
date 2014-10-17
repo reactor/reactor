@@ -74,7 +74,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void request(long elements) {
-
 		//Subscription terminated, Buffer done, return immediately
 		if (buffer.isComplete() && buffer.isEmpty()) {
 			return;
@@ -92,7 +91,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				pendingRequestSignals = Long.MAX_VALUE;
 			}
 		} else if(previous != Long.MAX_VALUE){
-			pendingRequestSignals += elements;
+			if((pendingRequestSignals += elements) < 0l){
+				onError(SpecificationExceptions.spec_3_17_exception(previous, elements));
+				return;
+			}
 		}
 
 		//If first demand,
@@ -129,19 +131,18 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						return;
 					}
 
-					if ((left = capacity.addAndGet(toRequest-i)) < 0l) {
-						bufferLock.unlock();
-						onError(SpecificationExceptions.spec_3_17_exception(capacity.get(), toRequest));
-						return;
-					}
+					left = capacity.addAndGet(toRequest-i);
+
 					if(left > 0){
 						bufferLock.unlock();
 						onRequest(left);
 						bufferLock.lock();
 					}
 					toRequest = Math.min(pendingRequestSignals, maxCapacity);
-				} while (pendingRequestSignals > 0 && shouldRequestPendingSignals() && !buffer.isEmpty());
+				} while (pendingRequestSignals > 0 && !buffer.isEmpty());
+
 				bufferLock.unlock();
+
 			} catch (Exception e) {
 				if(bufferLock.isHeldByCurrentThread()){
 					bufferLock.unlock();
@@ -179,7 +180,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			boolean retry = false;
 			try {
 				// we just decremented below 0 so increment back one
-				if (capacity.incrementAndGet() > 0) {
+				if (capacity.incrementAndGet() > 0 || pendingRequestSignals == Long.MAX_VALUE) {
 					retry = true;
 				} else {
 					buffer.add(ev);
@@ -200,13 +201,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public void doPendingRequest() {
-		long toRequest = pendingRequestSignals;
-		pendingRequestSignals = 0;
-		request(toRequest);
-	}
-
-	@Override
 	public void onComplete() {
 		if (buffer.isEmpty()) {
 			subscriber.onComplete();
@@ -221,8 +215,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return Long.MAX_VALUE != pendingRequestSignals && pendingRequestSignals > 0 &&
-				(currentNextSignals == maxCapacity);
+		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && currentNextSignals == maxCapacity;
 	}
 
 	public final long maxCapacity() {

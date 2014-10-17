@@ -51,13 +51,6 @@ public class WrappedSubscription<O> extends PushSubscription<O> {
 		this.subscription.request(elements);
 	}
 
-
-	@Override
-	public void doPendingRequest() {
-		super.doPendingRequest();
-		subscription.request(pendingRequestSignals);
-	}
-
 	@Override
 	public final boolean equals(Object o) {
 		return !(o == null || subscription.getClass() != o.getClass()) && subscription.equals(o);

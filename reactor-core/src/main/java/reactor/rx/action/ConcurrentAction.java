@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -43,7 +44,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 
 	private final int poolSize;
 	private final AtomicInteger active = new AtomicInteger();
-	private final ParallelAction[] publishers;
+	private final ParallelAction[]     publishers;
 	private final ParallelSubscriber[] subscribers;
 	private final AtomicBoolean started     = new AtomicBoolean();
 	private final ReentrantLock requestLock = new ReentrantLock();
@@ -162,7 +163,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if(started.compareAndSet(false, true)){
+		if (started.compareAndSet(false, true)) {
 			startNewPublisher();
 		}
 		super.subscribe(subscriber);
@@ -174,20 +175,20 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 			@Override
 			public void accept(Long elements) {
 				long actives = active.get();
-				if(actives <= 0){
+				if (actives <= 0) {
 					ConcurrentAction.super.requestUpstream(capacity, terminated, elements);
 				} else {
 					long downstreamCapacity = elements;
 					long toRequest = downstreamCapacity / actives;
 					toRequest += downstreamCapacity % actives;
-					if(toRequest > 0){
+					if (toRequest > 0) {
 						int i = 0;
-						while(downstreamCapacity > 0){
-							if(subscribers[i] != null){
+						while (downstreamCapacity > 0) {
+							if (subscribers[i] != null) {
 								downstreamCapacity -= toRequest;
 								subscribers[i].request(toRequest);
 							}
-							if(++i > actives){
+							if (++i > actives) {
 								i = 0;
 							}
 						}
@@ -201,35 +202,27 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	@SuppressWarnings("unchecked")
 	private ParallelAction<I, O> startNewPublisher() {
 		final int actives = active.getAndIncrement();
-		if(actives < poolSize) {
+		if (actives < poolSize) {
 			ParallelAction<I, O> parallelAction = publishers[actives];
 			Publisher<? extends O> tail = parallelStreamMapper.apply(parallelAction);
 			subscribers[actives] = new ParallelSubscriber<O>(this, actives);
 			tail.subscribe(subscribers[actives]);
 
-			if(actives == 0 || downstreamSubscription == null) return parallelAction;
+			if (actives == 0) return parallelAction;
 
 			trySyncDispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					if(downstreamSubscription != null && downstreamSubscription.pendingRequestSignals() > 0){
-						long downstreamPending = downstreamSubscription.pendingRequestSignals();
-						if(downstreamPending == Long.MAX_VALUE) {
-							subscribers[actives].request(downstreamPending);
-						}else{
-							long toRequest = downstreamPending / actives;
-							toRequest += downstreamPending % actives;
-							if(toRequest > 0){
-								subscribers[actives].request(toRequest);
-							}
-						}
+					if (subscribers[actives - 1] != null && subscribers[actives - 1].requested > 0) {
+						long downstreamPending = subscribers[actives - 1].requested;
+						subscribers[actives].request(downstreamPending);
 					}
 				}
 			});
 
 
 			return parallelAction;
-		}else{
+		} else {
 			active.decrementAndGet();
 		}
 		return null;
@@ -242,11 +235,15 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	}
 
 	void parallelRequest(long elements) {
-		requestLock.lock();
-		try {
+		if (SynchronousDispatcher.INSTANCE == dispatcher && elements != Long.MAX_VALUE) {
+			requestLock.lock();
+			try {
+				onRequest(elements);
+			} finally {
+				requestLock.unlock();
+			}
+		} else {
 			onRequest(elements);
-		} finally {
-			requestLock.unlock();
 		}
 	}
 
@@ -273,7 +270,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 					return;
 				} else {
 					publisher = startNewPublisher();
-					if (publisher != null){
+					if (publisher != null) {
 						publisher.broadcastNext(ev);
 						return;
 					}
@@ -303,31 +300,29 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	protected void onShutdown() {
 		dispatch(new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if (active.get() == 0) {
+				if (active.get() <= 0) {
 					cancel();
+				} else {
+					for (ParallelSubscriber<O> parallelSubscriber : subscribers) {
+						if (parallelSubscriber != null) {
+							parallelSubscriber.cancel();
+						}
+					}
 				}
 			}
 		});
 	}
 
 	@Override
-	public void broadcastComplete() {
-		if(active.decrementAndGet() < 0){
-			super.broadcastComplete();
-		} else {
-			active.incrementAndGet();
-		}
-	}
-
-	@Override
 	protected void doError(Throwable throwable) {
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			if(parallelStream != null) parallelStream.broadcastError(throwable);
+			if (parallelStream != null) parallelStream.broadcastError(throwable);
 		}
 	}
 
@@ -335,14 +330,14 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	protected void doComplete() {
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			if(parallelStream != null) parallelStream.broadcastComplete();
+			if (parallelStream != null) parallelStream.broadcastComplete();
 		}
 	}
 
-	private final static class ParallelSubscriber<O> implements NonBlocking, Subscriber<O>, Subscription, Consumer<O>{
+	private final static class ParallelSubscriber<O> implements NonBlocking, Subscriber<O>, Subscription, Consumer<O> {
 
 		final ConcurrentAction<?, O> outputAction;
-		final int index;
+		final int                    index;
 
 		long requested = 0;
 
@@ -363,24 +358,37 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 			outputAction.trySyncDispatch(o, this);
 		}
 
-		public void accept(O o){
+		public void accept(O o) {
 			requested--;
 			outputAction.broadcastNext(o);
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			outputAction.broadcastError(t);
+			outputAction.trySyncDispatch(t, new Consumer<Throwable>() {
+				@Override
+				public void accept(Throwable throwable) {
+					outputAction.broadcastError(throwable);
+				}
+			});
 		}
 
 		@Override
 		public void onComplete() {
-			outputAction.broadcastComplete();
+			outputAction.trySyncDispatch(null, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					outputAction.subscribers[index] = null;
+					if (outputAction.active.decrementAndGet() <= 0) {
+						outputAction.broadcastComplete();
+					}
+				}
+			});
 		}
 
 		@Override
 		public void request(long n) {
-			if(requested < Long.MAX_VALUE) {
+			if (requested < Long.MAX_VALUE) {
 				if ((requested += n) < 0) requested = Long.MAX_VALUE;
 				subscription.request(n);
 			}

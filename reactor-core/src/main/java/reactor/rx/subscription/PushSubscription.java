@@ -18,11 +18,8 @@ package reactor.rx.subscription;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
-import reactor.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.support.SpecificationExceptions;
-import reactor.rx.subscription.support.WrappedPushToDropSubscription;
-import reactor.rx.subscription.support.WrappedPushToReactiveSubscription;
 import reactor.rx.subscription.support.WrappedSubscription;
 
 /**
@@ -33,13 +30,13 @@ import reactor.rx.subscription.support.WrappedSubscription;
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription,  Consumer<Long> {
+public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	protected final Subscriber<? super O> subscriber;
-	protected final           Stream<O>             publisher;
+	protected final Stream<O>             publisher;
 
-	protected volatile boolean terminated = false;
+	protected volatile boolean terminated            = false;
 
-	protected long pendingRequestSignals = 0l;
+	protected long    pendingRequestSignals = 0l;
 
 	/**
 	 * Wrap the subscription behind a push subscription to start tracking its requests
@@ -56,27 +53,6 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 		this.publisher = publisher;
 	}
 
-	/**
-	 * Wrap the subscription behind a reactive subscription using the passed queue to buffer otherwise to drop rejected
-	 * data.
-	 *
-	 * @param queue the optional queue to buffer overflow
-	 * @return the new ReactiveSubscription
-	 */
-	public ReactiveSubscription<O> toReactiveSubscription(CompletableQueue<O> queue) {
-		return new WrappedPushToReactiveSubscription<O>(this, queue);
-	}
-
-	/**
-	 * Wrap the subscription behind a dropping subscription.
-	 *
-	 * @return the new DropSubscription
-	 */
-	public DropSubscription<O> toDropSubscription() {
-		final PushSubscription<O> thiz = this;
-		return new WrappedPushToDropSubscription<>(thiz);
-	}
-
 	@Override
 	public void accept(Long n) {
 		request(n);
@@ -85,7 +61,7 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 	@Override
 	public void request(long n) {
 		try {
-			if(publisher == null) {
+			if (publisher == null) {
 				if (pendingRequestSignals != Long.MAX_VALUE && (pendingRequestSignals += n) < 0)
 					subscriber.onError(SpecificationExceptions.spec_3_17_exception(pendingRequestSignals, n));
 			}
@@ -98,7 +74,7 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 
 	@Override
 	public void cancel() {
-		if(publisher != null){
+		if (publisher != null) {
 			publisher.cleanSubscriptionReference(this);
 		}
 
@@ -134,14 +110,13 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 		if ((pendingRequestSignals += n) < 0) pendingRequestSignals = Long.MAX_VALUE;
 	}
 
-
-	public void doPendingRequest() {
-		/*
-		If we have to iterate over batch of requests, what to do on each flush happens here
-		 */
+	public long clearPendingRequest() {
+		long _pendingRequestSignals = pendingRequestSignals;
+		pendingRequestSignals = 0l;
+		return _pendingRequestSignals;
 	}
 
-	protected void onRequest(long n){
+	protected void onRequest(long n) {
 		//IGNORE, full push
 	}
 
@@ -157,21 +132,22 @@ public class PushSubscription<O> implements Subscription,  Consumer<Long> {
 		return pendingRequestSignals;
 	}
 
-	public void incrementCurrentNextSignals(){
+	public void incrementCurrentNextSignals() {
 		/*
 		Count operation for each data signal
 		 */
 	}
 
-	public void maxCapacity(long n){
+	public void maxCapacity(long n) {
 		/*
 		Adjust capacity (usually the number of elements to be requested at most)
 		 */
 	}
 
-	public boolean shouldRequestPendingSignals(){
+	public boolean shouldRequestPendingSignals() {
 		/*
-		Should request the next batch of pending signals. Usually when current next signals reaches some limit like the maxCapacity.
+		Should request the next batch of pending signals. Usually when current next signals reaches some limit like the
+		maxCapacity.
 		 */
 		return false;
 	}

@@ -237,8 +237,13 @@ public abstract class Action<I, O> extends Stream<O>
 			if (upstreamSubscription != null) {
 				upstreamSubscription.incrementCurrentNextSignals();
 				doNext(i);
-				if (upstreamSubscription != null && upstreamSubscription.shouldRequestPendingSignals()) {
-					upstreamSubscription.doPendingRequest();
+				if (upstreamSubscription != null
+						&& (upstreamSubscription.shouldRequestPendingSignals())) {
+
+					long left;
+					if((left = upstreamSubscription.clearPendingRequest()) > 0){
+						dispatch(left, upstreamSubscription);
+					}
 				}
 
 			} else {
@@ -523,9 +528,11 @@ public abstract class Action<I, O> extends Stream<O>
 		Action<?, Publisher<T>> thiz = (Action<?, Publisher<T>>) this;
 
 		Action<Publisher<? extends T>, V> innerMerge = new DynamicMergeAction<T, V>(getDispatcher(), fanInAction);
-		innerMerge.capacity(capacity).env(environment);
+		innerMerge.env(environment);
 
-		thiz.subscribeWithSubscription(innerMerge, thiz.createSubscription(innerMerge, true), false);
+		PushSubscription<Publisher<T>> sub = thiz.createSubscription(innerMerge, true);
+		sub.maxCapacity(capacity);
+		thiz.subscribeWithSubscription(innerMerge, sub, false);
 		return innerMerge;
 	}
 
@@ -742,12 +749,18 @@ public abstract class Action<I, O> extends Stream<O>
 
 	protected void doComplete() {
 		broadcastComplete();
+		if(downstreamSubscription == null){
+			cancel();
+		}
 	}
 
 	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
 		broadcastError(ev);
+		if(downstreamSubscription == null){
+			cancel();
+		}
 	}
 
 	protected final void dispatch(Consumer<Void> action) {
@@ -773,9 +786,8 @@ public abstract class Action<I, O> extends Stream<O>
 	protected void onRequest(final long n) {
 		checkRequest(n);
 		if (upstreamSubscription != null) {
-			trySyncDispatch(n, upstreamSubscription);
+			dispatch(n, upstreamSubscription);
 		}
-
 	}
 
 

@@ -133,7 +133,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Stream<Void> tail = sensorOdd().zipWith(sensorEven(), this::computeMin)
-				.observe(loggingConsumer())
+				.log("zipWithTest")
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
@@ -151,11 +151,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				.collect(Collectors.toList());
 
 		LOG.info("range from 0 to " + list.size());
-		Stream<Void> tail = sensorOdd().observe(loggingConsumer()).zipWith(list, (tuple) -> (tuple.getT1().toString() +
+		Stream<Void> tail = sensorOdd().zipWith(list, (tuple) -> (tuple.getT1().toString() +
 				"" +
 				" " +
 				"-- " + tuple.getT2()))
-				.observe(loggingConsumer())
+				.log("zipWithIterableTest")
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
@@ -169,7 +169,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Stream<Void> tail = sensorOdd().joinWith(sensorEven())
-				.observe(loggingConsumer())
+				.log("joinWithTest")
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
@@ -184,7 +184,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		Stream<Void> tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
 				.dispatchOn(env)
-				.observe(loggingConsumer())
+				.log("sampleZipTest")
 				.consume(x -> latch.countDown());
 
 		generateData(elements);

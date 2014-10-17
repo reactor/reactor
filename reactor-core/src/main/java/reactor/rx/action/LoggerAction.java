@@ -61,9 +61,9 @@ public class LoggerAction<T> extends Action<T, T> {
 	@Override
 	protected void onRequest(long n) {
 		log.info("request: {}", n);
-		if(log.isDebugEnabled()){
-			log.debug("stream: {}", debug());
-		}
+//		if(log.isDebugEnabled()){
+//			log.debug("stream: {}", debug());
+//		}
 		super.onRequest(n);
 	}
 

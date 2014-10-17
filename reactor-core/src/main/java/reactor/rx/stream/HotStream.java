@@ -18,6 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -68,6 +69,18 @@ public class HotStream<O> extends Action<O, O> {
 			subscriber.onComplete();
 		}else if (hasFailed()){
 			subscriber.onError(error);
+		}
+	}
+
+	@Override
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		if(reactivePull){
+			return super.createSubscription(subscriber, true);
+		}
+		else {
+			return super.createSubscription(subscriber,
+							dispatcher != SynchronousDispatcher.INSTANCE &&
+							(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
 		}
 	}
 
