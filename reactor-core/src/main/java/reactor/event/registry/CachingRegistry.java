@@ -42,16 +42,18 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final NewRegsFn            newRegsFn            = new NewRegsFn();
 
 	private final boolean                                                                        useCache;
+	private final boolean                                                                        cacheNotFound;
 	private final Consumer<Object>                                                               onNotFound;
 	private final MultiReaderFastList<Registration<? extends T>>                                 registrations;
 	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>> threadLocalCache;
 
 	public CachingRegistry() {
-		this(true, null);
+		this(true, true, null);
 	}
 
-	public CachingRegistry(boolean useCache, Consumer<Object> onNotFound) {
+	public CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
 		this.useCache = useCache;
+		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
 		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>>();
@@ -84,7 +86,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			public void value(final MutableList<Registration<? extends T>> regs) {
 				Iterator<Registration<? extends T>> registrationIterator = regs.iterator();
 				Registration<? extends T> reg;
-				while(registrationIterator.hasNext()) {
+				while (registrationIterator.hasNext()) {
 					reg = registrationIterator.next();
 					if (reg.getSelector().matches(key)) {
 						registrationIterator.remove();
@@ -106,17 +108,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 		// maybe pull Registrations from cache for this key
 		List<Registration<? extends T>> selectedRegs = null;
-		if (useCache
-				&& (null != (selectedRegs = allRegs.get(key))
-				|| !((selectedRegs = allRegs.getIfAbsentPut(key, newRegsFn)).isEmpty()))) {
+		if (useCache && (null != (selectedRegs = allRegs.get(key)))) {
 			return selectedRegs;
 		}
 
 		// cache not used or cache miss
 		cacheMiss(key);
-		if (null == selectedRegs) {
-			selectedRegs = FastList.newList();
-		}
+		selectedRegs = FastList.newList();
 
 		// find Registrations based on Selector
 		for (Registration<? extends T> reg : this) {
@@ -124,9 +122,12 @@ public class CachingRegistry<T> implements Registry<T> {
 				selectedRegs.add(reg);
 			}
 		}
+		if (useCache && (!selectedRegs.isEmpty() || cacheNotFound)) {
+			allRegs.put(key, selectedRegs);
+		}
 
 		// nothing found, maybe invoke handler
-		if (selectedRegs.isEmpty() && null != onNotFound) {
+		if (selectedRegs.isEmpty() && (null != onNotFound)) {
 			onNotFound.accept(key);
 		}
 

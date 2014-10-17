@@ -235,7 +235,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public SPEC consumerNotFoundHandler(Consumer<Object> consumerNotFoundHandler) {
-		this.consumerRegistry = new CachingRegistry<Consumer<?>>(true, consumerNotFoundHandler);
+		this.consumerRegistry = new CachingRegistry<Consumer<?>>(true, true, consumerNotFoundHandler);
 		return (SPEC) this;
 	}
 
