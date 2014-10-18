@@ -27,7 +27,6 @@ import reactor.tuple.Tuple;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Stephane Maldini
@@ -42,8 +41,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	int count = 0;
 
 	Object[] toZip = new Object[2];
-
-	AtomicBoolean completing = new AtomicBoolean();
 
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, V> Function<TUPLE, List<V>> joinZipper() {
@@ -63,19 +60,39 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void broadcastTuple(final boolean force) {
-		if (count == capacity || force) {
+	protected void broadcastTuple(boolean isFinishing) {
+		if (count >= capacity) {
+
 			count = 0;
+
+			if(!checkAllFilled()) return;
+
 			Object[] _toZip = toZip;
 			toZip = new Object[toZip.length];
+
 			V res = accumulator.apply((TUPLE) Tuple.of(_toZip));
+
 			if (res != null) {
 				broadcastNext(res);
-			} else {
-				cancel();
-				broadcastComplete();
+
+				if (!isFinishing) {
+					innerSubscriptions.request(capacity);
+					return;
+				}
+			}
+
+			cancel();
+			broadcastComplete();
+		}
+	}
+
+	private boolean checkAllFilled() {
+		for(int i = 0; i < toZip.length; i++){
+			if(toZip[i] == null){
+				return false;
 			}
 		}
+		return true;
 	}
 
 
@@ -92,29 +109,28 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected void doNext(Zippable<O> ev) {
-		boolean isFinishing = completing.get();
-		if (toZip[ev.index] == null && !isFinishing) {
-			count++;
-		}
+		boolean isFinishing = status.get() == COMPLETING;
 
+		count++;
 		toZip[ev.index] = ev.data;
 
+		broadcastTuple(isFinishing);
+
 		if (isFinishing && count >= capacity) {
-			innerSubscriptions.onComplete();
-		} else {
-			broadcastTuple(false);
+			doComplete();
 		}
+	}
 
-
+	@Override
+	public void scheduleCompletion() {
+		//let the zip logic complete
 	}
 
 	@Override
 	protected void doComplete() {
-		broadcastTuple(true);
 		//can receive multiple queued complete signals
 		cancel();
 		broadcastComplete();
-
 	}
 
 	@Override
@@ -147,7 +163,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (toZip[i] != null)
 				formatted += "(" + (i) + "):" + toZip[i] + ",";
 		}
-		return formatted.substring(0, toZip.length > 0 ? formatted.length() - 1 : formatted.length());
+		return formatted.substring(0, count > 0 ? formatted.length() - 1 : formatted.length());
 	}
 
 //Handling each new Publisher to zip
@@ -176,7 +192,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void request(long n) {
-			pendingRequests += n - 1;
 			super.request(1);
 		}
 
@@ -193,13 +208,11 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 				@Override
 				public void accept(Void aVoid) {
 					outerAction.capacity(outerAction.runningComposables.decrementAndGet());
-					if (outerAction.capacity > 0) {
-						outerAction.completing.set(true);
-						/*if(outerAction.innerSubscriptions.pendingRequestSignals() == 0) {
-							outerAction.innerSubscriptions.request(Math.max(1, outerAction.capacity));
-						}*/
+					if (outerAction.capacity != 0 && outerAction.count <= outerAction.capacity) {
+						outerAction.status.set(COMPLETING);
 					} else {
-						outerAction.onComplete();
+						outerAction.broadcastTuple(true);
+						outerAction.doComplete();
 					}
 				}
 			});
@@ -226,7 +239,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public boolean shouldRequestPendingSignals() {
-			return count == 0;
+			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && count == maxCapacity;
 		}
 
 		@Override
@@ -235,13 +248,11 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 
 		@Override
-		protected void onRequest(long integer) {
-			try {
-				broadcastTuple(false);
-
-				super.onRequest(integer);
-			} catch (Throwable e) {
-				doError(e);
+		public void request(long elements) {
+			if(pendingRequestSignals == Long.MAX_VALUE){
+				super.parallelRequest(1);
+			}else{
+				super.request(Math.max(elements, subscriptions.size()));
 			}
 		}
 

@@ -103,22 +103,24 @@ class GroovyPromisesSpec extends Specification {
 
 		when: "add a mapping closure"
 			def s = p | { Integer.parseInt it }
+		  def p2 = s.next()
 
 		and: "setting a value"
 			p << '10'
 
 		then:
-			s.next().get() == 10
+			p2.get() == 10
 
 		when: "add a mapping closure"
 			p = Promises.defer()
 			s = p | { Integer.parseInt it }
+		  p2 = s.next()
 
 		and: "setting a value"
 			p << '10'
 
 		then:
-			s.next().get() == 10
+			p2.get() == 10
 	}
 
 	def "A promise can be be consumed by another promise"() {

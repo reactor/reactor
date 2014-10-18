@@ -178,14 +178,14 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 				if (actives <= 0) {
 					ConcurrentAction.super.requestUpstream(capacity, terminated, elements);
 				} else {
-					long downstreamCapacity = elements;
-					long toRequest = downstreamCapacity / actives;
-					toRequest += downstreamCapacity % actives;
+					long downstreamRequest = elements;
+					long toRequest = downstreamRequest / actives;
+					toRequest += downstreamRequest % actives;
 					if (toRequest > 0) {
 						int i = 0;
-						while (downstreamCapacity > 0) {
+						while (downstreamRequest > 0) {
 							if (subscribers[i] != null) {
-								downstreamCapacity -= toRequest;
+								downstreamRequest -= toRequest;
 								subscribers[i].request(toRequest);
 							}
 							if (++i > actives) {
@@ -365,6 +365,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 
 		@Override
 		public void onError(Throwable t) {
+			System.out.println(outputAction.debug());
 			outputAction.trySyncDispatch(t, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {

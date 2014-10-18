@@ -409,8 +409,12 @@ class StreamsSpec extends Specification {
 		given:
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
-			def source2 = Streams.<Integer> defer().map { it }.map { it }
+
+			def source2 = Streams.<Integer> defer()
+			source2.map { it }.map { it }
+
 			def source3 = Streams.<Integer> defer()
+
 			def tap = Streams.merge(source1, source2, source3).buffer(3).tap()
 
 		when:
@@ -433,7 +437,7 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> just(source2, source3)
-			def tail = source1.join()
+			def tail = source1.join().log()
 			def tap = tail.tap()
 
 			println tail.debug()
@@ -556,6 +560,19 @@ class StreamsSpec extends Specification {
 			'the values are all collected from source1 stream'
 			tap == [[1, 2], [3, 4], [5, 6]]
 
+		when:
+			'the sources are zipped in a flat map'
+			zippedStream = odds.log('before-flatmap').flatMap{
+				Streams.zip(Streams.just(it), even) { [it.t1, it.t2] }
+			}
+			println zippedStream.debug()
+			tap = zippedStream.log('after-zip').toList().await(3, TimeUnit.SECONDS)
+
+			println zippedStream.debug()
+
+		then:
+			'the values are all collected from source1 stream'
+			tap == [[1, 2], [3, 2], [5, 2], [7, 2], [9, 2]]
 	}
 
 

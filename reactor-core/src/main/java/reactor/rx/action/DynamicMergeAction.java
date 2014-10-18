@@ -64,12 +64,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	protected void doComplete() {
 		cancel();
-		if(fanInAction.started.get()){
-
-			if (fanInAction.runningComposables.get() == 0) {
-				fanInAction.innerSubscriptions.onComplete();
-			}
-		}
+		fanInAction.scheduleCompletion();
 	}
 
 	@Override

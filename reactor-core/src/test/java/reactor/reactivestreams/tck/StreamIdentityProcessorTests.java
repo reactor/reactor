@@ -48,7 +48,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2500, false), 3500);
+		super(new TestEnvironment(2500, true), 3500);
 	}
 
 	@Override
@@ -76,7 +76,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
 								.flatMap(i ->
-//												Streams.just(i)
+												//Streams.just(i)
 												Streams.zip(Streams.just(i), otherStream, tuple -> tuple.getT1())
 														.dispatchOn(env)
 								)

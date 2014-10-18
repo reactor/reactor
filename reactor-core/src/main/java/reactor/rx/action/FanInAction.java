@@ -23,7 +23,6 @@ import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,11 +34,18 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerSubscriber<I, E, O>> extends Action<E, O> {
 
-	final FanInSubscription<I, E, SUBSCRIBER>           innerSubscriptions;
+
+
+
+	final FanInSubscription<I, E, SUBSCRIBER>        innerSubscriptions;
 	final AtomicInteger                              runningComposables;
 	final Iterable<? extends Publisher<? extends I>> composables;
 
-	final AtomicBoolean started = new AtomicBoolean(false);
+	final static protected int NOT_STARTED = 0;
+	final static protected int RUNNING     = 1;
+	final static protected int COMPLETING  = 2;
+
+	final AtomicInteger status = new AtomicInteger();
 
 	Action<?, ?> dynamicMergeAction = null;
 
@@ -59,7 +65,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if (started.compareAndSet(false, true)) {
+		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			onSubscribe(this.innerSubscriptions);
 		}
 		super.subscribe(subscriber);
@@ -69,6 +75,19 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		runningComposables.incrementAndGet();
 		Subscriber<I> inlineMerge = createSubscriber();
 		publisher.subscribe(inlineMerge);
+	}
+
+	public void scheduleCompletion(){
+		if(status.compareAndSet(NOT_STARTED, COMPLETING)) {
+			cancel();
+			broadcastComplete();
+		} else {
+			status.set(COMPLETING);
+			if (runningComposables.get() == 0) {
+				cancel();
+				broadcastComplete();
+			}
+		}
 	}
 
 	@Override
@@ -92,6 +111,20 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			addPublisher(composable);
 		}
 		return maxCapacity;
+	}
+
+
+	protected boolean checkDynamicMerge() {
+		return dynamicMergeAction != null && dynamicMergeAction.upstreamSubscription != null;
+	}
+
+	@Override
+	protected void doComplete() {
+		status.set(COMPLETING);
+		if (runningComposables.get() == 0) {
+			cancel();
+			broadcastComplete();
+		}
 	}
 
 	@Override
@@ -157,10 +190,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		public void onError(Throwable t) {
 			outerAction.runningComposables.decrementAndGet();
 			outerAction.innerSubscriptions.onError(t);
-		}
-
-		protected boolean checkDynamicMerge() {
-			return outerAction.dynamicMergeAction != null && outerAction.dynamicMergeAction.upstreamSubscription != null;
 		}
 
 		@Override

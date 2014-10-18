@@ -63,7 +63,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		try {
 			if (publisher == null) {
 				if (pendingRequestSignals != Long.MAX_VALUE && (pendingRequestSignals += n) < 0)
-					subscriber.onError(SpecificationExceptions.spec_3_17_exception(pendingRequestSignals, n));
+					subscriber.onError(SpecificationExceptions.spec_3_17_exception(subscriber, pendingRequestSignals, n));
 			}
 			onRequest(n);
 		} catch (Throwable t) {
@@ -111,9 +111,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public long clearPendingRequest() {
-		long _pendingRequestSignals = pendingRequestSignals;
-		pendingRequestSignals = 0l;
-		return _pendingRequestSignals;
+		return 0l;
 	}
 
 	protected void onRequest(long n) {

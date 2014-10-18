@@ -43,10 +43,10 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	//Shared between subscriber and publisher
-	protected final AtomicLong          capacity;
+	protected final AtomicLong capacity;
 
 	//Shared between subscriber and publisher
-	protected final ReentrantLock       bufferLock;
+	protected final ReentrantLock bufferLock;
 
 	//Guarded by bufferLock
 	protected final CompletableQueue<O> buffer;
@@ -74,6 +74,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void request(long elements) {
+		Action.checkRequest(elements);
+
 		//Subscription terminated, Buffer done, return immediately
 		if (buffer.isComplete() && buffer.isEmpty()) {
 			return;
@@ -84,74 +86,65 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 		//If unbounded request, set and return
 		if (elements == Long.MAX_VALUE) {
-			if (previous != 0){
+			if (previous != 0) {
 				capacity.set(maxCapacity);
 				return;
 			} else {
 				pendingRequestSignals = Long.MAX_VALUE;
 			}
-		} else if(previous != Long.MAX_VALUE){
-			if((pendingRequestSignals += elements) < 0l){
-				onError(SpecificationExceptions.spec_3_17_exception(previous, elements));
+		} else if (previous != Long.MAX_VALUE) {
+			if ((pendingRequestSignals += elements) < 0l) {
+				onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
 				return;
 			}
 		}
 
-		//If first demand,
-		if (previous == 0) {
-			long toRequest = elements;
-			toRequest = Math.min(toRequest, maxCapacity);
-			Action.checkRequest(toRequest);
+		long toRequest = elements;
+		toRequest = Math.min(toRequest, maxCapacity);
 
-			try {
+		try {
 
-				int i;
-				O element;
-				long left;
-				bufferLock.lock();
+			int i;
+			O element;
+			bufferLock.lock();
 
-				do {
-					i = 0;
-					currentNextSignals = 0;
+			do {
+				i = 0;
+				currentNextSignals = 0;
 
-					if(pendingRequestSignals != Long.MAX_VALUE){
-						pendingRequestSignals = toRequest > pendingRequestSignals ? 0 : pendingRequestSignals - toRequest;
-					}
-
-					while (i < toRequest && (element = buffer.poll()) != null) {
-						bufferLock.unlock();
-						subscriber.onNext(element);
-						bufferLock.lock();
-						i++;
-					}
-
-					if (buffer.isComplete()) {
-						bufferLock.unlock();
-						onComplete();
-						return;
-					}
-
-					left = capacity.addAndGet(toRequest-i);
-
-					if(left > 0){
-						bufferLock.unlock();
-						onRequest(left);
-						bufferLock.lock();
-					}
-					toRequest = Math.min(pendingRequestSignals, maxCapacity);
-				} while (pendingRequestSignals > 0 && !buffer.isEmpty());
-
-				bufferLock.unlock();
-
-			} catch (Exception e) {
-				if(bufferLock.isHeldByCurrentThread()){
-					bufferLock.unlock();
+				if (pendingRequestSignals != Long.MAX_VALUE) {
+					pendingRequestSignals = toRequest > pendingRequestSignals ? 0 : pendingRequestSignals - toRequest;
 				}
-				onError(e);
+
+				while (i < toRequest && (element = buffer.poll()) != null) {
+					subscriber.onNext(element);
+					i++;
+				}
+
+				if (buffer.isComplete()) {
+					onComplete();
+					return;
+				}
+
+				if (capacity.addAndGet(toRequest - i) < -1l) {
+					onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
+					return;
+				}
+
+				onRequest(pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE  : toRequest);
+
+				toRequest = Math.min(pendingRequestSignals, maxCapacity);
+			} while (toRequest > 0 && !buffer.isEmpty());
+
+			bufferLock.unlock();
+
+		} catch (Exception e) {
+			if (bufferLock.isHeldByCurrentThread()) {
+				bufferLock.unlock();
 			}
-		}else{
-			onRequest(elements);
+			onError(e);
 		}
+
 	}
 
 	@Override
@@ -169,6 +162,13 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			}
 
 		}
+	}
+
+	@Override
+	public long clearPendingRequest() {
+		long _pendingRequestSignals = pendingRequestSignals;
+		pendingRequestSignals = 0l;
+		return _pendingRequestSignals;
 	}
 
 	@Override
@@ -196,7 +196,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		}
 	}
 
-	public final long currentNextSignals(){
+	public final long currentNextSignals() {
 		return currentNextSignals;
 	}
 
@@ -223,7 +223,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public final void maxCapacity(long maxCapacity){
+	public final void maxCapacity(long maxCapacity) {
 		this.maxCapacity = maxCapacity;
 	}
 
@@ -249,10 +249,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		long currentCapacity = capacity.get();
 		return "{" +
 				"capacity=" + (currentCapacity == Long.MAX_VALUE ? "infinite" : currentCapacity + "/" + maxCapacity
-				+ " [" +(int)((((float)currentCapacity)/(float)maxCapacity)*100)+ "%]") +
+				+ " [" + (int) ((((float) currentCapacity) / (float) maxCapacity) * 100) + "%]") +
 				", current=" + currentNextSignals +
 				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
-				(buffer != null ? ", waiting=" + buffer.size() : "" )+
+				(buffer != null ? ", waiting=" + buffer.size() : "") +
 				'}';
 	}
 }

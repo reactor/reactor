@@ -41,14 +41,6 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 		broadcastNext(ev);
 	}
 
-	@Override
-	protected void doComplete() {
-		if (upstreamSubscription != null && runningComposables.get() == 0) {
-			cancel();
-			broadcastComplete();
-		}
-	}
-
 	protected InnerSubscriber<O> createSubscriber() {
 		return new InnerSubscriber<O>(this);
 	}
@@ -66,7 +58,6 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			long available = outerAction.innerSubscriptions.capacity().get();
 			request(outerAction.innerSubscriptions.capacity().get());
 		}
 
@@ -91,7 +82,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 				public void accept(Void aVoid) {
 					s.toRemove = true;
 					outerAction.innerSubscriptions.removeSubscription(s);
-					if (outerAction.runningComposables.decrementAndGet() == 0 && !checkDynamicMerge()) {
+					if (outerAction.runningComposables.decrementAndGet() == 0 && !outerAction.checkDynamicMerge()) {
 						outerAction.innerSubscriptions.onComplete();
 					}
 				}

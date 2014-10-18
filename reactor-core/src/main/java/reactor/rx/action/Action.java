@@ -726,7 +726,7 @@ public abstract class Action<I, O> extends Stream<O>
 				return;
 			}
 			long currentCapacity = capacity.get();
-			currentCapacity = currentCapacity == -1 ? elements : currentCapacity;
+			currentCapacity = Long.MAX_VALUE == elements ? elements : currentCapacity;
 			if (currentCapacity > 0) {
 				final long remaining = Math.min(currentCapacity, elements);
 				onRequest(remaining);
