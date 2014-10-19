@@ -228,7 +228,7 @@ class StreamsSpec extends Specification {
 					.next()
 
 		then:
-			last.await() > 100_000
+			last.await() > 20_000
 
 		cleanup:
 			println s.debug()

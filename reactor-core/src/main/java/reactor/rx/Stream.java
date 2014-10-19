@@ -330,6 +330,26 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
 		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
 	}
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
+	 *
+	 * @param consumer the consumer to invoke on complete
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
+		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
+	}
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
+	 *
+	 * @param consumer the consumer to invoke on complete
+	 * @return {@literal this}
+	 * @since 2.0
+	 */
+	public final Stream<O> observeSubscribe(@Nonnull final Consumer<Void> consumer) {
+		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
+	}
 
 	/**
 	 * Connect an error-proof action that will ignore any error to the downstream consumers.

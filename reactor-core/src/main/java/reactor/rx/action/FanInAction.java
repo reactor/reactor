@@ -60,13 +60,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		this.composables = composables;
 		this.runningComposables = new AtomicInteger(0);
-		this.innerSubscriptions = createFanInSubscription();
+		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
-			onSubscribe(this.innerSubscriptions);
+			doSubscribe(this.innerSubscriptions);
 		}
 		super.subscribe(subscriber);
 	}
