@@ -264,6 +264,39 @@ class StreamsSpec extends Specification {
 
 
 	}
+	def "Stream 'state' related signals can be consumed"() {
+		given:
+			'a composable with values 1 to 5 inclusive'
+			def stream = Streams.defer([1, 2, 3, 4, 5])
+			def values = []
+			def signals = []
+			def hookSubscribeSubscriber
+
+		when:
+			'a Subscribe Consumer is registered'
+			stream = stream.observeSubscribe { signals << it }
+
+		and:
+			'a Cancel Consumer is registered'
+			hookSubscribeSubscriber = stream = stream.observeCancel { signals << 'cancel' }
+
+		and:
+			'a Complete Consumer is registered'
+			stream = stream.observeComplete { signals << 'complete' }
+
+		and:
+			'the stream is consumed'
+			stream.consume { values << it }
+
+		then:
+			'the initial values are passed'
+			values == [1, 2, 3, 4, 5]
+			hookSubscribeSubscriber == signals[0]
+			'complete' == signals[1]
+			'cancel' == signals[2]
+
+
+	}
 
 	def 'Accepted values are passed to a registered Consumer'() {
 		given:

@@ -324,31 +324,31 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
 	 *
 	 * @param consumer the consumer to invoke on complete
-	 * @return {@literal this}
+	 * @return {@literal a new stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
 		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
 	}
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any subscribe signal
 	 *
-	 * @param consumer the consumer to invoke on complete
-	 * @return {@literal this}
+	 * @param consumer the consumer to invoke ont subscribe
+	 * @return {@literal a new stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> observeSubscribe(@Nonnull final Consumer<? super Subscriber<? super O> > consumer) {
+		return connect(new StreamStateCallbackAction<O>(getDispatcher(), consumer, null));
+	}
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any cancel signal
+	 *
+	 * @param consumer the consumer to invoke on cancel
+	 * @return {@literal a new stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
-		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
-	}
-	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
-	 *
-	 * @param consumer the consumer to invoke on complete
-	 * @return {@literal this}
-	 * @since 2.0
-	 */
-	public final Stream<O> observeSubscribe(@Nonnull final Consumer<Void> consumer) {
-		return connect(new CallbackAction<O>(getDispatcher(), null, consumer));
+		return connect(new StreamStateCallbackAction<O>(getDispatcher(), null, consumer));
 	}
 
 	/**
