@@ -778,7 +778,7 @@ public class StreamTests extends AbstractReactorTest {
 								s.map(v -> v).consume(v -> countDownLatch.countDown())
 				).drain();
 
-		countDownLatch.await(5, TimeUnit.SECONDS);
+		countDownLatch.await(10, TimeUnit.SECONDS);
 		System.out.println(tail.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
