@@ -173,7 +173,7 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<String> stream2 = Streams.just("3", "4", "5");
 		Stream<Integer> s =
 				Streams.merge(stream1, stream2)
-						.dispatchOn(env)
+						//.dispatchOn(env)
 						.capacity(5)
 						.map(STRING_2_INTEGER)
 						.reduce(1, r -> r.getT1() * r.getT2());

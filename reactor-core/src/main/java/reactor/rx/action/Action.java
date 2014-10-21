@@ -748,19 +748,19 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected void doComplete() {
-		broadcastComplete();
 		if(downstreamSubscription == null){
 			cancel();
 		}
+		broadcastComplete();
 	}
 
 	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
-		broadcastError(ev);
 		if(downstreamSubscription == null){
 			cancel();
 		}
+		broadcastError(ev);
 	}
 
 	protected final void dispatch(Consumer<Void> action) {
