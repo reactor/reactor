@@ -264,6 +264,7 @@ class StreamsSpec extends Specification {
 
 
 	}
+
 	def "Stream 'state' related signals can be consumed"() {
 		given:
 			'a composable with values 1 to 5 inclusive'
@@ -294,8 +295,25 @@ class StreamsSpec extends Specification {
 			hookSubscribeSubscriber == signals[0]
 			'complete' == signals[1]
 			'cancel' == signals[2]
+	}
 
+	def "Stream can emit a default value if empty"() {
+		given:
+			'a composable that only completes'
+			def stream = Streams.<String>empty()
+			def values = []
 
+		when:
+			'a Subscribe Consumer is registered'
+			stream = stream.defaultIfEmpty('test').observeComplete{ values << 'complete' }
+
+		and:
+			'the stream is consumed'
+			stream.consume { values << it }
+
+		then:
+			'the initial values are passed'
+			values == ['test','complete']
 	}
 
 	def 'Accepted values are passed to a registered Consumer'() {

@@ -54,7 +54,6 @@ public final class SingleValueStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		if (value != null) {
 			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
 				boolean terminado = false;
 				@Override
@@ -62,13 +61,12 @@ public final class SingleValueStream<T> extends Stream<T> {
 					if(terminado)return;
 
 					terminado = true;
-					onNext(value);
+					if(value != null){
+						onNext(value);
+					}
 					onComplete();
 				}
 			});
-		} else {
-			subscriber.onComplete();
-		}
 	}
 
 	@Override

@@ -149,7 +149,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param exceptionType the type of exceptions to handle
 	 * @param onError       the error handler for each exception
 	 * @param <E>           type of the exception to handle
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
@@ -162,7 +162,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @param exceptionType the type of exceptions to handle
 	 * @param <E>           type of the exception to handle
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final <E extends Throwable> Stream<E> recover(@Nonnull final Class<E> exceptionType) {
@@ -203,7 +203,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.function.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer) {
 		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, null, null));
@@ -219,7 +219,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @param consumer the consumer to invoke on each next signal
 	 * @param consumer the consumer to invoke on each error signal
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer) {
@@ -235,7 +235,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * <p>
 	 *
 	 * @param consumer the consumer to invoke on each value
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer,
@@ -290,7 +290,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Stream}.
 	 *
 	 * @param consumer the consumer to invoke on each value
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> observe(@Nonnull final Consumer<? super O> consumer) {
@@ -301,7 +301,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
 	 *
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> log() {
@@ -313,7 +313,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @param name The logger name
 	 *
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> log(String name) {
@@ -375,7 +375,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * the current {@link Action} for introspection/utility.
 	 *
 	 * @param consumer the consumer to invoke on terminal signal
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -384,11 +384,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Create an operation that returns the passed value if the Stream has completed without any emitted signals.
+	 *
+	 * @param defaultValue the value to forward if the stream is empty
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> defaultIfEmpty(O defaultValue) {
+		return connect(new DefaultIfEmptyAction<O>(getDispatcher(), defaultValue));
+	}
+
+	/**
 	 * Pass values accepted by this {@code Stream} into the given {@link Observable}, notifying with the given key.
 	 *
 	 * @param key        the key to notify on
 	 * @param observable the {@link Observable} to notify
-	 * @return {@literal this}
+	 * @return {@literal new Stream}
 	 * @since 1.1, 2.0
 	 */
 	public final Stream<Void> notify(@Nonnull final Object key, @Nonnull final Observable observable) {

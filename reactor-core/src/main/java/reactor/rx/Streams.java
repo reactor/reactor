@@ -69,8 +69,8 @@ public final class Streams {
 	 *
 	 * @return a new {@link Stream}
 	 */
-	public static Stream<?> empty() {
-		return new SingleValueStream<Void>(null);
+	public static <T> Stream<T> empty() {
+		return new SingleValueStream<T>(null);
 	}
 
 	/**
