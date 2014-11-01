@@ -560,7 +560,7 @@ public final class Streams {
 	 * @param <T>       the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> create(Publisher<? extends T> publisher) {
+	public static <T> Stream<T> create(Publisher<T> publisher) {
 		return new PublisherStream<T>(publisher).defer();
 	}
 

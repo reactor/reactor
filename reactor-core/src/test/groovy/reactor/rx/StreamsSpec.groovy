@@ -1106,8 +1106,9 @@ class StreamsSpec extends Specification {
 	def 'GroupBy will re-route N elements to a nested stream based on hashcode'() {
 		given:
 			'a source and a grouped by ID stream'
-			def source = Streams.<SimplePojo> defer()
+			def source = Streams.<SimplePojo> defer(environment)
 			def result = [:]
+		def latch = new CountDownLatch(6)
 
 			def partitionStream = source.partition()
 			partitionStream.consume { stream ->
@@ -1117,6 +1118,7 @@ class StreamsSpec extends Specification {
 					} else {
 						result[pojo.id] = [pojo.title]
 					}
+					latch.countDown()
 				}
 			}
 
@@ -1135,6 +1137,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the result should group titles by id'
+			latch.await()
 			result
 			result == [
 					1: ['Stephane', 'Jon', 'Sandrine'],
@@ -1175,9 +1178,9 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[0].id == "1"
 			result.to[0].boundTo[1].id == "2"
 			result.to[0].boundTo[2].id == "3"
-			result.to[0].boundTo[0].to[0].id == "HotStream"
-			result.to[0].boundTo[1].to[0].id == "HotStream"
-			result.to[0].boundTo[2].to[0].id == "HotStream"
+			result.to[0].boundTo[0].to[0].id == "TerminalCallback"
+			result.to[0].boundTo[1].to[0].id == "TerminalCallback"
+			result.to[0].boundTo[2].to[0].id == "TerminalCallback"
 
 		when: "complete will cancel non kept-alive actions"
 			source.broadcastComplete()
@@ -2051,6 +2054,11 @@ class StreamsSpec extends Specification {
 		String title
 
 		int hashcode() { id }
+	}
+
+	static class Entity {
+		String key
+		String payload
 	}
 
 	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {

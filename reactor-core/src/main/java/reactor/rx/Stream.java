@@ -414,7 +414,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 */
-	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
+	public final <V> Stream<V> map(@Nonnull final Function<? super O, V> fn) {
 		return connect(new MapAction<O, V>(fn, getDispatcher()));
 	}
 

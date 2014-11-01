@@ -21,6 +21,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -89,6 +91,24 @@ public class StreamTests extends AbstractReactorTest {
 							}
 						});
 		await(5, s, is(15));
+	}
+
+	@Test
+	public void simpleReactiveSubscriber() throws InterruptedException {
+		HotStream<String> str = Streams.defer(env);
+
+		str
+				.subscribe(new TestSubscriber());
+
+		System.out.println(str.debug());
+
+
+
+		str.broadcastNext("Goodbye World!");
+		str.broadcastNext("Goodbye World!");
+		str.broadcastComplete();
+
+		Thread.sleep(500);
 	}
 
 	@Test
@@ -884,6 +904,42 @@ public class StreamTests extends AbstractReactorTest {
 			list.add(k);
 		}
 		return list;
+	}
+
+	class TestSubscriber implements Subscriber<String> {
+
+		private final Logger log = LoggerFactory.getLogger(getClass());
+
+		private Subscription subscription;
+
+		@Override
+		public void onSubscribe(Subscription subscription) {
+			if (null != this.subscription) {
+				subscription.cancel();
+				return;
+			}
+			this.subscription = subscription;
+			this.subscription.request(1);
+		}
+
+		@Override
+		public void onNext(String s) {
+			if (s.startsWith("GOODBYE")) {
+				log.info("This is the end");
+			}
+			subscription.request(1);
+		}
+
+		@Override
+		public void onError(Throwable throwable) {
+			log.error(throwable.getMessage(), throwable);
+		}
+
+		@Override
+		public void onComplete() {
+			log.info("stream complete");
+		}
+
 	}
 
 
