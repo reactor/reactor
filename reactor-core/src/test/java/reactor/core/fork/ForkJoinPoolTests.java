@@ -1,6 +1,7 @@
 package reactor.core.fork;
 
 import com.gs.collections.api.list.ImmutableList;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
 import org.junit.After;
 import org.junit.Before;
@@ -55,7 +56,7 @@ public class ForkJoinPoolTests {
 			}
 		};
 
-		List<Function<?, Integer>> tasks = FastList.newList();
+		MutableList<Function<?, Integer>> tasks = FastList.newList();
 		for (int i = 0; i < runs; i++) {
 			tasks.add(task);
 		}

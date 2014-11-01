@@ -19,8 +19,10 @@ package reactor.util;
 import com.gs.collections.api.block.function.Function0;
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.block.procedure.Procedure2;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.api.set.ImmutableSet;
+import com.gs.collections.api.set.MutableSet;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import com.gs.collections.impl.set.mutable.UnifiedSet;
@@ -37,10 +39,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 
 	private final int size;
-	private final Function0<FastList<T>> preAllocatedListFn = new Function0<FastList<T>>() {
+	private final Function0<MutableList<T>> preAllocatedListFn = new Function0<MutableList<T>>() {
 		@Override
-		public FastList<T> value() {
-			FastList<T> vals = FastList.newList(size);
+		public MutableList<T> value() {
+			MutableList<T> vals = FastList.newList(size);
 			for (int i = 0; i < size; i++) {
 				vals.add(factory.get());
 			}
@@ -48,7 +50,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 		}
 	};
 	private final Supplier<T> factory;
-	private final MutableMap<Long, FastList<T>>        partitions      = UnifiedMap.newMap();
+	private final MutableMap<Long, MutableList<T>>     partitions      = UnifiedMap.newMap();
 	private final MutableMap<Long, AtomicInteger>      nextAvailable   = UnifiedMap.newMap();
 	private final Function0<AtomicInteger>             atomicIntegerFn = new Function0<AtomicInteger>() {
 		@Override
@@ -56,9 +58,9 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 			return new AtomicInteger(-1);
 		}
 	};
-	private final Procedure2<FastList<T>, FastList<T>> zipFn           = new Procedure2<FastList<T>, FastList<T>>() {
+	private final Procedure2<MutableList<T>, MutableList<T>> zipFn     = new Procedure2<MutableList<T>, MutableList<T>>() {
 		@Override
-		public void value(FastList<T> vals, FastList<T> agg) {
+		public void value(MutableList<T> vals, MutableList<T> agg) {
 			agg.addAll(vals);
 		}
 	};
@@ -76,7 +78,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 	public T get() {
 		Long threadId = Thread.currentThread().getId();
 		int nextAvail = nextAvailable.getIfAbsentPut(threadId, atomicIntegerFn).incrementAndGet();
-		FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
+		MutableList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
 		int len = vals.size();
 		if (len == nextAvail) {
 			vals.addAll(preAllocatedListFn.value());
@@ -86,7 +88,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 	}
 
 	public ImmutableSet<T> collect() {
-		final UnifiedSet<T> vals = UnifiedSet.newSet();
+		final MutableSet<T> vals = UnifiedSet.newSet();
 		partitions.keysView().forEach(new Procedure<Long>() {
 			@Override
 			public void value(Long threadId) {
@@ -101,7 +103,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 
 	public boolean isEmpty() {
 		Long threadId = Thread.currentThread().getId();
-		FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
+		MutableList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
 		return !vals.isEmpty();
 	}
 
@@ -113,9 +115,9 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 	@Override
 	public String toString() {
 		final StringBuilder sb = new StringBuilder("PartitionedReferencePile{\n");
-		partitions.forEachKeyValue(new Procedure2<Long, FastList<T>>() {
+		partitions.forEachKeyValue(new Procedure2<Long, MutableList<T>>() {
 			@Override
-			public void value(Long threadId, FastList<T> vals) {
+			public void value(Long threadId, MutableList<T> vals) {
 				sb.append("\tthread:")
 				  .append(threadId)
 				  .append("=")
@@ -129,7 +131,7 @@ public class PartitionedReferencePile<T> implements Supplier<T>, Iterable<T> {
 
 	private Iterator<T> iteratorFor(Long threadId) {
 		AtomicInteger nextAvail = nextAvailable.getIfAbsentPut(threadId, atomicIntegerFn);
-		final FastList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
+		final MutableList<T> vals = partitions.getIfAbsentPut(threadId, preAllocatedListFn);
 		final int end = nextAvail.getAndSet(-1);
 
 		return new Iterator<T>() {

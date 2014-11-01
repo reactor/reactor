@@ -19,6 +19,7 @@ package reactor.event.registry;
 import com.gs.collections.api.block.function.Function0;
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.list.MutableList;
+import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.MultiReaderFastList;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
@@ -45,7 +46,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final boolean                                                                        cacheNotFound;
 	private final Consumer<Object>                                                               onNotFound;
 	private final MultiReaderFastList<Registration<? extends T>>                                 registrations;
-	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>> threadLocalCache;
+	private final ConcurrentHashMapV8<Long, MutableMap<Object, MutableList<Registration<? extends T>>>> threadLocalCache;
 
 	public CachingRegistry() {
 		this(true, true, null);
@@ -56,7 +57,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
-		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>>();
+		this.threadLocalCache = new ConcurrentHashMapV8<Long, MutableMap<Object, MutableList<Registration<? extends T>>>>();
 	}
 
 	@Override
@@ -104,10 +105,10 @@ public class CachingRegistry<T> implements Registry<T> {
 	@Override
 	public List<Registration<? extends T>> select(Object key) {
 		// use a thread-local cache
-		UnifiedMap<Object, List<Registration<? extends T>>> allRegs = threadLocalRegs();
+		MutableMap<Object, MutableList<Registration<? extends T>>> allRegs = threadLocalRegs();
 
 		// maybe pull Registrations from cache for this key
-		List<Registration<? extends T>> selectedRegs = null;
+		MutableList<Registration<? extends T>> selectedRegs = null;
 		if (useCache && (null != (selectedRegs = allRegs.get(key)))) {
 			return selectedRegs;
 		}
@@ -149,9 +150,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	protected void cacheMiss(Object key) {
 	}
 
-	private UnifiedMap<Object, List<Registration<? extends T>>> threadLocalRegs() {
+	private MutableMap<Object, MutableList<Registration<? extends T>>> threadLocalRegs() {
 		Long threadId = Thread.currentThread().getId();
-		UnifiedMap<Object, List<Registration<? extends T>>> regs;
+		MutableMap<Object, MutableList<Registration<? extends T>>> regs;
 		if (null == (regs = threadLocalCache.get(threadId))) {
 			regs = threadLocalCache.computeIfAbsent(threadId, newThreadLocalRegsFn);
 		}
@@ -174,16 +175,16 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private final class NewThreadLocalRegsFn
-			implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<? extends T>>>> {
+			implements ConcurrentHashMapV8.Fun<Long, MutableMap<Object, MutableList<Registration<? extends T>>>> {
 		@Override
-		public UnifiedMap<Object, List<Registration<? extends T>>> apply(Long aLong) {
+		public MutableMap<Object, MutableList<Registration<? extends T>>> apply(Long aLong) {
 			return UnifiedMap.newMap();
 		}
 	}
 
-	private final class NewRegsFn implements Function0<List<Registration<? extends T>>> {
+	private final class NewRegsFn implements Function0<MutableList<Registration<? extends T>>> {
 		@Override
-		public List<Registration<? extends T>> value() {
+		public MutableList<Registration<? extends T>> value() {
 			return FastList.newList();
 		}
 	}

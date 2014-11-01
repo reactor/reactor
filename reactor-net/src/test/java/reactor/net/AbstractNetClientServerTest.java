@@ -1,6 +1,7 @@
 package reactor.net;
 
-import com.gs.collections.api.RichIterable;
+import com.gs.collections.api.list.ImmutableList;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
 import org.junit.After;
 import org.junit.Before;
@@ -190,8 +191,8 @@ public class AbstractNetClientServerTest {
 		return serverPool.submit(r);
 	}
 
-	protected RichIterable<Future<?>> submitClients(Runnable r) {
-		FastList<Future<?>> futures = FastList.newList();
+	protected ImmutableList<Future<?>> submitClients(Runnable r) {
+		MutableList<Future<?>> futures = FastList.newList();
 		for (int i = 0; i < senderThreads; i++) {
 			futures.add(clientPool.submit(r));
 		}
