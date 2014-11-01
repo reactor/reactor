@@ -1178,9 +1178,9 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[0].id == "1"
 			result.to[0].boundTo[1].id == "2"
 			result.to[0].boundTo[2].id == "3"
-			result.to[0].boundTo[0].to[0].id == "TerminalCallback"
-			result.to[0].boundTo[1].to[0].id == "TerminalCallback"
-			result.to[0].boundTo[2].to[0].id == "TerminalCallback"
+			result.to[0].boundTo[0].to[0].id == "HotStream"
+			result.to[0].boundTo[1].to[0].id == "HotStream"
+			result.to[0].boundTo[2].to[0].id == "HotStream"
 
 		when: "complete will cancel non kept-alive actions"
 			source.broadcastComplete()
