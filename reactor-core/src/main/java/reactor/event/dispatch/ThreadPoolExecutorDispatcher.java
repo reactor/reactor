@@ -141,9 +141,9 @@ public class ThreadPoolExecutorDispatcher extends MultiThreadDispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		executor.shutdownNow();
-		super.halt();
+		super.forceShutdown();
 	}
 
 	@Override

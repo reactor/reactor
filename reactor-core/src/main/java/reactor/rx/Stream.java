@@ -878,7 +878,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(long timespan, TimeUnit unit) {
-		return sampleFirst(timespan, unit, getEnvironment().getTimer());
+		return sampleFirst(timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -904,7 +904,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(int maxSize, long timespan, TimeUnit unit) {
-		return sampleFirst(maxSize, timespan, unit, getEnvironment().getTimer());
+		return sampleFirst(maxSize, timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -952,7 +952,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(long timespan, TimeUnit unit) {
-		return sample(timespan, unit, getEnvironment().getTimer());
+		return sample(timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -978,7 +978,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(int maxSize, long timespan, TimeUnit unit) {
-		return sample(maxSize, timespan, unit, getEnvironment().getTimer());
+		return sample(maxSize, timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -1077,7 +1077,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(long timespan, TimeUnit unit) {
-		return buffer(timespan, unit, getEnvironment().getTimer());
+		return buffer(timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -1105,7 +1105,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(int maxSize, long timespan, TimeUnit unit) {
-		return buffer(maxSize, timespan, unit, getEnvironment().getTimer());
+		return buffer(maxSize, timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -1228,7 +1228,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(long timespan, TimeUnit unit) {
-		return window(timespan, unit, getEnvironment().getTimer());
+		return window(timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 
@@ -1258,7 +1258,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(int maxSize, long timespan, TimeUnit unit) {
-		return window(maxSize, timespan, unit, getEnvironment().getTimer());
+		return window(maxSize, timespan, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 	/**
@@ -1451,7 +1451,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Stream<O> throttle(long period, long delay) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return throttle(period, delay, getEnvironment().getTimer());
+		return throttle(period, delay,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 	/**
@@ -1501,7 +1501,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Stream<O> timeout(long timeout, TimeUnit unit) {
 		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return timeout(timeout, unit, getEnvironment().getTimer());
+		return timeout(timeout, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
 	}
 
 	/**

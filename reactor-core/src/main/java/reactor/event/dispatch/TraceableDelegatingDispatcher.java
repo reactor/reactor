@@ -71,11 +71,11 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		if(log.isTraceEnabled()) {
-			log.trace("halt()");
+			log.trace("forceShutdown()");
 		}
-		delegate.halt();
+		delegate.forceShutdown();
 	}
 
 	@Override

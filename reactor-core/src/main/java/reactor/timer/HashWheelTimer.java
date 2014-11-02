@@ -16,10 +16,10 @@
 
 package reactor.timer;
 
-import reactor.event.lifecycle.Pausable;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
+import reactor.function.Pausable;
 import reactor.jarjar.com.lmax.disruptor.EventFactory;
 import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 import reactor.support.NamedDaemonThreadFactory;

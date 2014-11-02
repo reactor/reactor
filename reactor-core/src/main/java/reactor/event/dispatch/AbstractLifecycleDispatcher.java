@@ -71,7 +71,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		alive.compareAndSet(true, false);
 	}
 

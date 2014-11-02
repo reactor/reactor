@@ -13,29 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package reactor.event.dispatch;
 
-package reactor;
-
-import org.junit.After;
-import org.junit.Before;
-import reactor.core.Environment;
+import reactor.function.Resource;
+import reactor.function.Supplier;
 
 /**
- * @author Jon Brisbin
+ * A Dispatcher {@link reactor.function.Supplier} with shutdown capacities to clean produced dispatchers.
+ *
  * @author Stephane Maldini
+ * @since 2.0
  */
-public abstract class AbstractReactorTest {
-
-	protected Environment env;
-
-	@Before
-	public void loadEnv() {
-		env = Environment.initializeIfEmpty();
-	}
-
-	@After
-	public void closeEnv() {
-		Environment.terminate();
-	}
-
+public interface DispatcherSupplier extends Resource, Supplier<Dispatcher> {
 }

@@ -27,7 +27,6 @@ import reactor.function.Supplier;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.timer.HashWheelTimer;
-import reactor.timer.SimpleHashWheelTimer;
 import reactor.timer.Timer;
 import reactor.util.LinkedMultiValueMap;
 import reactor.util.MultiValueMap;
@@ -71,16 +70,193 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			Runtime.getRuntime().availableProcessors() :
 			2;
 
+	// GLOBAL
+	private static final AtomicReference<Environment> enviromentReference = new AtomicReference<>();
+
+	/**
+	 * Create and assign a context environment bound to the current classloader.
+	 *
+	 * @return the produced {@link Environment}
+	 */
+	public static Environment initialize() {
+		return assign(new Environment());
+	}
+
+	/**
+	 * Create and assign a context environment bound to the current classloader only if it not already set. Otherwise returns
+	 * the current context environment
+	 *
+	 * @return the produced {@link Environment}
+	 */
+	public static Environment initializeIfEmpty() {
+		if (alive()) {
+			return get();
+		} else {
+			return assign(new Environment());
+		}
+	}
+
+	/**
+	 * Assign an environment to the context in order to make it available statically in the application from the current
+	 * classloader.
+	 *
+	 * @param environment The environment to assign to the current context
+	 * @return the assigned {@link Environment}
+	 */
+	public static Environment assign(Environment environment) {
+		if (!enviromentReference.compareAndSet(null, environment)) {
+			environment.shutdown();
+			throw new IllegalStateException("An environment is already initialized in the current context");
+		}
+		return environment;
+	}
+
+	/**
+	 * Read if the context environment has been set
+	 *
+	 * @return true if context environment is initialized
+	 */
+	public static boolean alive() {
+		return enviromentReference.get() != null;
+	}
+
+	/**
+	 * Read the context environment. It must have been previously assigned with
+	 * {@link this#assign(reactor.core.Environment)}.
+	 *
+	 * @return the context environment.
+	 * @throws java.lang.IllegalStateException if there is no environment initialized.
+	 */
+	public static Environment get() throws IllegalStateException {
+		Environment environment = enviromentReference.get();
+		if (environment == null) {
+			throw new IllegalStateException("The environment has not been initialized yet");
+		}
+		return environment;
+	}
+
+	/**
+	 * Clean and Shutdown the context environment. It must have been previously assigned with
+	 * {@link this#assign(reactor.core.Environment)}.
+	 *
+	 * @throws java.lang.IllegalStateException if there is no environment initialized.
+	 */
+	public static void terminate() throws IllegalStateException {
+		get().shutdown();
+		enviromentReference.set(null);
+	}
+
+	/**
+	 * Obtain the default timer from the current environment. The timer is created lazily so
+	 * it is preferrable to fetch them out of the critical path.
+	 * <p>
+	 * The default timer is a {@link reactor.timer.HashWheelTimer}. It is suitable for non blocking periodic work such as
+	 * eventing, memory access, lock=free code, dispatching...
+	 *
+	 * @return the root timer, usually a {@link reactor.timer.HashWheelTimer}
+	 */
+	public static Timer timer() {
+		return get().getTimer();
+	}
+
+	/**
+	 * Obtain the default dispatcher from the current environment. The dispatchers are created lazily so
+	 * it is preferrable to fetch them out of the critical path.
+	 * <p>
+	 * The default dispatcher is considered the root or master dispatcher. It is encouraged to use it for non-blocking
+	 * work,
+	 * such as dispatching, memory access, lock-free code, eventing...
+	 *
+	 * @return the root dispatcher, usually a RingBufferDispatcher
+	 */
+	public static Dispatcher masterDispatcher() {
+		return get().getDefaultDispatcher();
+	}
+
+	/**
+	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
+	 * it is preferrable to fetch them out of the critical path.
+	 * <p>
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link Reactor} or
+	 * streams {@link reactor.rx.Stream}.
+	 *
+	 * @return a dispatcher from the default pool, usually a RingBufferDispatcher.
+	 */
+	public static Dispatcher cachedDispatcher() {
+		return get().getDefaultDispatcherFactory().get();
+	}
+
+	/**
+	 * Obtain a registred dispatcher. The dispatchers are created lazily so
+	 * it is preferrable to fetch them out of the critical path.
+	 * <p>
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link Reactor} or
+	 * streams {@link reactor.rx.Stream}.
+	 *
+	 * @param key the dispatcher name to find
+	 * @return a dispatcher from the context environment registry.
+	 */
+	public static Dispatcher dispatcher(String key) {
+		return get().getDispatcher(key);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment.
+	 *
+	 * @param key        the dispatcher name to use for future lookups
+	 * @param dispatcher the dispatcher to register, if null, the key will be removed
+	 * @return the passed dispatcher.
+	 */
+	public static Dispatcher dispatcher(String key, Dispatcher dispatcher) {
+		if (dispatcher != null) {
+			get().addDispatcher(key, dispatcher);
+		} else {
+			get().removeDispatcher(key);
+		}
+		return dispatcher;
+	}
+
+	/**
+	 * Obtain a dispatcher supplier into the context environment. Its main purpose is to cache dispatchers and produce
+	 * them on request via {@link Supplier#get()}.
+	 *
+	 * @param key the dispatcher factory name to find
+	 * @return a dispatcher factory registered with the passed key.
+	 */
+	public static DispatcherSupplier cachedDispatchers(String key) {
+		return get().getDispatcherFactory(key);
+	}
+
+	/**
+	 * Register a dispatcher supplier into the context environment. Its main purpose is to cache dispatchers and produce
+	 * them on request via {@link Supplier#get()}.
+	 *
+	 * @param key                the dispatcher name to use for future lookups
+	 * @param dispatcherSupplier the dispatcher factory to register, if null, the key will be removed
+	 * @return a dispatcher from the default pool, usually a RingBufferDispatcher.
+	 */
+	public static DispatcherSupplier cachedDispatchers(String key, DispatcherSupplier dispatcherSupplier) {
+		if (dispatcherSupplier != null) {
+			get().addDispatcherFactory(key, dispatcherSupplier);
+		} else {
+			get().removeDispatcherFactory(key);
+		}
+		return dispatcherSupplier;
+	}
+
+
+	// INSTANCE
+
 	private static final String DEFAULT_DISPATCHER_NAME = "__default-dispatcher";
 	private static final String SYNC_DISPATCHER_NAME    = "sync";
 
 	private final Properties env;
 
-	private final AtomicReference<Timer>            timer               = new AtomicReference<Timer>();
-	private final AtomicReference<Reactor>          rootReactor         = new AtomicReference<Reactor>();
-	private final Object                            monitor             = new Object();
-	private final Filter                            dispatcherFilter    = new RoundRobinFilter();
-	private final Map<String, Supplier<Dispatcher>> dispatcherFactories = new HashMap<String, Supplier<Dispatcher>>();
+	private final AtomicReference<Timer>          timer               = new AtomicReference<Timer>();
+	private final AtomicReference<Reactor>        rootReactor         = new AtomicReference<Reactor>();
+	private final Object                          monitor             = new Object();
+	private final Filter                          dispatcherFilter    = new RoundRobinFilter();
+	private final Map<String, DispatcherSupplier> dispatcherFactories = new HashMap<String, DispatcherSupplier>();
 
 	private final ReactorConfiguration              configuration;
 	private final MultiValueMap<String, Dispatcher> dispatchers;
@@ -124,16 +300,16 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
 
-	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize) {
+	public static DispatcherSupplier newDispatcherFactory(final int poolsize) {
 		return newDispatcherFactory(poolsize, "parallel");
 	}
 
-	public static Supplier<Dispatcher> newDispatcherFactory(final int poolsize, String name) {
+	public static DispatcherSupplier newDispatcherFactory(final int poolsize, String name) {
 		return createDispatcherFactory(name, poolsize, 1024, null, ProducerType.MULTI,
 				new AgileWaitingStrategy());
 	}
 
-	public static Supplier<Dispatcher> newSingleProducerMultiConsumerDispatcherFactory(final int poolsize, String name) {
+	public static DispatcherSupplier newSingleProducerMultiConsumerDispatcherFactory(final int poolsize, String name) {
 		return createDispatcherFactory(name, poolsize, 1024, null, ProducerType.SINGLE,
 				new AgileWaitingStrategy());
 	}
@@ -240,7 +416,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return The default dispatcher group
 	 * @since 2.0
 	 */
-	public Supplier<Dispatcher> getDefaultDispatcherFactory() {
+	public DispatcherSupplier getDefaultDispatcherFactory() {
 		return getDispatcherFactory(RING_BUFFER_GROUP);
 	}
 
@@ -251,10 +427,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return The matching dispatcher factory, never {@code null}.
 	 * @throws IllegalArgumentException if the dispatcher does not exist
 	 */
-	public Supplier<Dispatcher> getDispatcherFactory(String name) {
+	public DispatcherSupplier getDispatcherFactory(String name) {
 		synchronized (monitor) {
 			initDispatcherFactoryFromConfiguration(name);
-			Supplier<Dispatcher> factory = this.dispatcherFactories.get(name);
+			DispatcherSupplier factory = this.dispatcherFactories.get(name);
 			if (factory == null) {
 				throw new IllegalArgumentException("No Supplier<Dispatcher> found for name '" + name + "', " +
 						"it must be present" +
@@ -310,15 +486,28 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Adds the {@code dispatcher} to the environment, storing it using the given {@code name}.
+	 * Adds the {@code dispatcherFactory} to the environment, storing it using the given {@code name}.
 	 *
-	 * @param name              The name of the dispatcher
+	 * @param name              The name of the dispatcher factory
 	 * @param dispatcherFactory The dispatcher factory
 	 * @return This Environment
 	 */
-	public Environment addDispatcherFactory(String name, Supplier<Dispatcher> dispatcherFactory) {
+	public Environment addDispatcherFactory(String name, DispatcherSupplier dispatcherFactory) {
 		synchronized (monitor) {
 			this.dispatcherFactories.put(name, dispatcherFactory);
+		}
+		return this;
+	}
+
+	/**
+	 * Remove the {@code dispatcherFactory} to the environment keyed as the given {@code name}.
+	 *
+	 * @param name The name of the dispatcher factory to remove
+	 * @return This Environment
+	 */
+	public Environment removeDispatcherFactory(String name) {
+		synchronized (monitor) {
+			this.dispatcherFactories.remove(name).shutdown();
 		}
 		return this;
 	}
@@ -331,7 +520,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public Environment removeDispatcher(String name) {
 		synchronized (monitor) {
-			dispatchers.remove(name);
+			for (Dispatcher dispatcher : dispatchers.remove(name)) {
+				dispatcher.shutdown();
+			}
 		}
 		return this;
 	}
@@ -384,6 +575,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
+
+		for (DispatcherSupplier dispatcherSupplier : dispatcherFactories.values()) {
+			dispatcherSupplier.shutdown();
+		}
+
 		if (null != timer.get()) {
 			timer.get().cancel();
 		}
@@ -407,15 +603,41 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @param waitStrategy
 	 * @return
 	 */
-	public static Supplier<Dispatcher> createDispatcherFactory(final String name,
-	                                                           final int poolsize,
-	                                                           final int bufferSize,
-	                                                           final Consumer<Throwable> errorHandler,
-	                                                           final ProducerType producerType,
-	                                                           final WaitStrategy waitStrategy) {
-		return new Supplier<Dispatcher>() {
+	public static DispatcherSupplier createDispatcherFactory(final String name,
+	                                                         final int poolsize,
+	                                                         final int bufferSize,
+	                                                         final Consumer<Throwable> errorHandler,
+	                                                         final ProducerType producerType,
+	                                                         final WaitStrategy waitStrategy) {
+		return new DispatcherSupplier() {
 			int roundRobinIndex = -1;
 			Dispatcher[] dispatchers = new Dispatcher[poolsize];
+			boolean terminated = false;
+
+			@Override
+			public boolean alive() {
+				return terminated;
+			}
+
+			@Override
+			public void shutdown() {
+				for (Dispatcher dispatcher : dispatchers) {
+					if (dispatcher != null) {
+						dispatcher.shutdown();
+					}
+				}
+				terminated = true;
+			}
+
+			@Override
+			public void forceShutdown() {
+				for (Dispatcher dispatcher : dispatchers) {
+					if (dispatcher != null) {
+						dispatcher.forceShutdown();
+					}
+				}
+				terminated = true;
+			}
 
 			@Override
 			public Dispatcher get() {

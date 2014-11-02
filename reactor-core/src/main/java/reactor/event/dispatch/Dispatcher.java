@@ -20,6 +20,7 @@ import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
+import reactor.function.Resource;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -35,15 +36,7 @@ import java.util.concurrent.TimeUnit;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public interface Dispatcher extends Executor {
-
-	/**
-	 * Determine whether this {@code Dispatcher} can be used for {@link Dispatcher#dispatch(Object, Object, Registry,
-	 * Consumer, reactor.event.routing.Router, Consumer) dispatching}.
-	 *
-	 * @return {@literal true} if this {@code Dispatcher} is alive and can be used, {@literal false} otherwise.
-	 */
-	boolean alive();
+public interface Dispatcher extends Executor, Resource {
 
 	/**
 	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
@@ -54,18 +47,6 @@ public interface Dispatcher extends Executor {
 	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
 	 */
 	boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
-
-	/**
-	 * Shutdown this {@code Dispatcher} such that it can no longer be used.
-	 */
-	void shutdown();
-
-	/**
-	 * Shutdown this {@code Dispatcher}, forcibly halting any tasks currently executing and discarding any tasks that
-	 * have
-	 * not yet been exected.
-	 */
-	void halt();
 
 	/**
 	 * Instruct the {@code Dispatcher} to dispatch the {@code data} that has the given {@code key}. The {@link Consumer}s

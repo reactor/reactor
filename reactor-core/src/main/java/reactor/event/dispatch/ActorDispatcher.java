@@ -80,9 +80,9 @@ public final class ActorDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		for(Dispatcher dispatcher : new HashSet<Dispatcher>(dispatcherCache.values())) {
-			dispatcher.halt();
+			dispatcher.forceShutdown();
 		}
 	}
 

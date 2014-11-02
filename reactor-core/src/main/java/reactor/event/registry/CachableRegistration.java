@@ -16,9 +16,9 @@
 
 package reactor.event.registry;
 
-import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
+import reactor.function.Pausable;
 
 /**
  * @author Jon Brisbin

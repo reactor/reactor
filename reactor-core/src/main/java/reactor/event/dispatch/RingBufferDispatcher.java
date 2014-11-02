@@ -181,10 +181,10 @@ public class RingBufferDispatcher extends SingleThreadDispatcher implements Wait
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		executor.shutdownNow();
 		disruptor.halt();
-		super.halt();
+		super.forceShutdown();
 	}
 
 	@Override

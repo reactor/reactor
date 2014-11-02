@@ -64,9 +64,9 @@ public class NettyEventLoopDispatcher extends MultiThreadDispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		eventLoop.shutdownGracefully();
-		super.halt();
+		super.forceShutdown();
 	}
 
 	@Override

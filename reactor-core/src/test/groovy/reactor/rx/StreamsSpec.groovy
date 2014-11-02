@@ -25,7 +25,6 @@ import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
 import reactor.tuple.Tuple2
-import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.*
@@ -33,15 +32,12 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class StreamsSpec extends Specification {
 
-	@Shared
-	Environment environment
-
 	void setup() {
-		environment = new Environment()
+			Environment.initializeIfEmpty()
 	}
 
 	def cleanup() {
-		environment.shutdown()
+		Environment.terminate()
 	}
 
 	def 'A deferred Stream with an initial value makes that value available immediately'() {
@@ -146,7 +142,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(environment)
+			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(Environment.get())
 
 		when:
 			'the stream is retrieved'
@@ -218,13 +214,13 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
-					.dispatchOn(environment)
+					.dispatchOn(Environment.get())
 
 		when:
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.dispatchOn(environment.defaultDispatcherFactory.get())
+					.dispatchOn(Environment.cachedDispatcher())
 					.next()
 
 		then:
@@ -438,7 +434,7 @@ class StreamsSpec extends Specification {
 	def "Stream's values can be exploded"() {
 		given:
 			'a source composable with a mapMany function'
-			def source = Streams.<Integer> defer(environment)
+			def source = Streams.<Integer> defer(Environment.get())
 			Stream<Integer> mapped = source.
 					flatMap { v -> Streams.just(v * 2) }.
 					when(Throwable) { it.printStackTrace() }
@@ -1023,7 +1019,7 @@ class StreamsSpec extends Specification {
 	def 'Window will re-route N elements over time to a fresh nested stream'() {
 		given:
 			'a source and a collected window stream'
-			def source = Streams.<Integer> defer(environment)
+			def source = Streams.<Integer> defer(Environment.get())
 			def promise = Promises.defer()
 
 			source.window(1l, TimeUnit.SECONDS).consume {
@@ -1106,7 +1102,7 @@ class StreamsSpec extends Specification {
 	def 'GroupBy will re-route N elements to a nested stream based on hashcode'() {
 		given:
 			'a source and a grouped by ID stream'
-			def source = Streams.<SimplePojo> defer(environment)
+			def source = Streams.<SimplePojo> defer(Environment.get())
 			def result = [:]
 		def latch = new CountDownLatch(6)
 
@@ -1217,11 +1213,11 @@ class StreamsSpec extends Specification {
 			value.get() == [1, 2]
 	}
 
-	def 'Creating Stream from environment'() {
+	def 'Creating Stream from Environment.get()'() {
 		given:
 			'a source stream with a given environment'
-			def source = Streams.<Integer> defer(environment, environment.getDispatcher('ringBuffer'))
-			def source2 = Streams.<Integer> defer(environment)
+			def source = Streams.<Integer> defer(Environment.get(), Environment.dispatcher('ringBuffer'))
+			def source2 = Streams.<Integer> defer(Environment.get())
 
 		when:
 			'accept a value'
@@ -1282,7 +1278,7 @@ class StreamsSpec extends Specification {
 			'a source stream with a given timer'
 
 			def res = 0l
-			def c = Streams.timer(environment.timer, 1)
+			def c = Streams.timer(1)
 			def timeStart = System.currentTimeMillis()
 
 		when:
@@ -1299,7 +1295,7 @@ class StreamsSpec extends Specification {
 		when:
 			'consuming periodic'
 			def i = []
-			Streams.period(environment.timer, 0, 1).consume {
+			Streams.period(0, 1).consume {
 				i << it
 			}
 			sleep(2500)
@@ -1385,7 +1381,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-			s = Streams.defer(future, 100, TimeUnit.MILLISECONDS).dispatchOn(environment)
+			s = Streams.defer(future, 100, TimeUnit.MILLISECONDS).dispatchOn(Environment.get())
 			nexts = []
 			errors = []
 
@@ -1407,7 +1403,7 @@ class StreamsSpec extends Specification {
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.buffer().throttle(300)
 			def value = reduced.tap()
 
@@ -1439,7 +1435,7 @@ class StreamsSpec extends Specification {
 			def random = new Random()
 			def source = Streams.generate {
 				random.nextInt()
-			}.dispatchOn(environment)
+			}.dispatchOn(Environment.get())
 
 			def values = []
 
@@ -1460,7 +1456,7 @@ class StreamsSpec extends Specification {
 	def 'Collect with Timeout will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.buffer(5, 600, TimeUnit.MILLISECONDS)
 			def value = reduced.tap()
 			println reduced.debug()
@@ -1496,7 +1492,7 @@ class StreamsSpec extends Specification {
 	def 'Timeout can be bound to a stream'() {
 		given:
 			'a source and a timeout'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS)
 			def error = null
 			def value = reduced.when(TimeoutException) {
@@ -1556,7 +1552,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
-			def source = Streams.<Integer> defer(environment)
+			def source = Streams.<Integer> defer(Environment.get())
 			long avgTime = 150l
 
 			def reduced = source
@@ -1588,7 +1584,7 @@ class StreamsSpec extends Specification {
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'
-			def source = Streams.<Integer> defer(environment)
+			def source = Streams.<Integer> defer(Environment.get())
 			def latch = new CountDownLatch(1)
 			long avgTime = 150l
 
@@ -1620,7 +1616,7 @@ class StreamsSpec extends Specification {
 	def 'Moving Buffer accumulate items without dropping previous'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.movingBuffer(5).throttle(400)
 			def value = reduced.tap()
 
@@ -1660,7 +1656,7 @@ class StreamsSpec extends Specification {
 	def 'Moving Buffer will drop overflown items'() {
 		given:
 			'a source and a collected stream'
-			def source = Streams.<Integer> defer().env(environment)
+			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.movingBuffer(5)
 
 		when:
@@ -1687,7 +1683,7 @@ class StreamsSpec extends Specification {
 			int batchSize = 333
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
-			def head = Streams.<Integer> defer(environment)
+			def head = Streams.<Integer> defer(Environment.get())
 			head.parallel{
 				s -> s.map { it }
 			}
@@ -1715,7 +1711,7 @@ class StreamsSpec extends Specification {
 			int length = 1000
 			int latchCount = length
 			def latch = new CountDownLatch(latchCount)
-			def head = Streams.<Integer> defer(environment)
+			def head = Streams.<Integer> defer(Environment.get())
 			def parallels = Streams.parallel {
 				it.consume { int i ->
 					sum.addAndGet(1)

@@ -16,8 +16,8 @@
 
 package reactor.event.registry;
 
-import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.Selector;
+import reactor.function.Pausable;
 
 /**
  * A {@code Registration} represents an object that has been {@link Registry#register(Selector,

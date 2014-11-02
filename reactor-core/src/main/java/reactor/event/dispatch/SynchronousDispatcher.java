@@ -55,7 +55,7 @@ public final class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 	}
 
 	@Override

@@ -141,10 +141,10 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher implements Waitin
 	}
 
 	@Override
-	public void halt() {
+	public void forceShutdown() {
 		executor.shutdownNow();
 		disruptor.halt();
-		super.halt();
+		super.forceShutdown();
 	}
 
 	@Override
