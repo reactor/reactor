@@ -1434,8 +1434,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> throttle(long period) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
 		return throttle(period, 0l);
 	}
 
@@ -1449,9 +1447,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> throttle(long period, long delay) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
+		Timer timer = getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
+		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return throttle(period, delay,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return throttle(period, delay,  timer);
 	}
 
 	/**
@@ -1474,7 +1473,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Request the parent stream when the last notification occurred after {@param
+	 * Signal an error if no data has been emitted for {@param
 	 * timeout} milliseconds. Timeout is run on the environment root timer.
 	 * <p>
 	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
@@ -1488,7 +1487,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Request the parent stream when the last notification occurred after {@param
+	 * Signal an error if no data has been emitted for {@param
 	 * timeout} milliseconds. Timeout is run on the environment root timer.
 	 * <p>
 	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
@@ -1499,13 +1498,33 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 1.1, 2.0
 	 */
 	public final Stream<O> timeout(long timeout, TimeUnit unit) {
-		Assert.state(getEnvironment() != null, "Cannot use default timer as no environment has been provided to this " +
-				"Stream");
-		return timeout(timeout, unit,  getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return timeout(timeout, unit,  null);
 	}
 
 	/**
-	 * Request the parent stream when the last notification occurred after {@param
+	 * Switch to the fallback Publisher if no data has been emitted for {@param
+	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 * <p>
+	 * The current subscription will be cancelled and the fallback publisher subscribed.
+	 *
+	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
+	 *
+	 * @param timeout the timeout in unit between two notifications on this composable
+	 * @param unit    the time unit
+	 * @param fallback the fallback {@link Publisher} to subscribe to once the timeout has occured
+	 *
+	 * @return a new {@link Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> timeout(long timeout, TimeUnit unit, Publisher<? extends O> fallback) {
+		Timer timer = getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
+		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
+				"Stream");
+		return timeout(timeout, unit,  fallback, timer);
+	}
+
+	/**
+	 * Signal an error if no data has been emitted for {@param
 	 * timeout} milliseconds. Timeout is run on the environment root timer.
 	 * <p>
 	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
@@ -1516,9 +1535,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final Stream<O> timeout(long timeout, TimeUnit unit, Timer timer) {
+	public final Stream<O> timeout(long timeout, TimeUnit unit, Publisher<? extends O> fallback, Timer timer) {
 		return connect(new TimeoutAction<O>(
 				getDispatcher(),
+				fallback,
 				timer,
 				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout
 		));

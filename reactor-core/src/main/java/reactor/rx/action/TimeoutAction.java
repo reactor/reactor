@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
@@ -24,6 +25,7 @@ import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -31,29 +33,46 @@ import java.util.concurrent.TimeoutException;
  */
 public class TimeoutAction<T> extends Action<T, T> {
 
-	private final Timer        timer;
-	private final long         timeout;
-	private final Consumer<Long> timeoutTask    = new Consumer<Long>() {
+	private final Timer                  timer;
+	private final long                   timeout;
+	private final Publisher<? extends T> fallback;
+	private boolean switched = false;
+	private long pendingRequests = 0l;
+
+	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
 		public void accept(Long aLong) {
 			if (timeoutRegistration.getObject() == this)
 				dispatch(timeoutRequest);
 		}
 	};
+
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
 		public void accept(Void aVoid) {
-			if(!timeoutRegistration.isCancelled())
-				doError(new TimeoutException("No data signaled for " + timeout + "ms"));
+			if (!timeoutRegistration.isCancelled()) {
+				if (fallback != null) {
+					TimeoutAction.this.cancel();
+					switched = true;
+					fallback.subscribe(TimeoutAction.this);
+
+					if(pendingRequests > 0){
+						upstreamSubscription.request(pendingRequests);
+					}
+				} else {
+					doError(new TimeoutException("No data signaled for " + timeout + "ms"));
+				}
+			}
 		}
 	};
 
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
 
-	public TimeoutAction(Dispatcher dispatcher, Timer timer, long timeout) {
+	public TimeoutAction(Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
 		super(dispatcher);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
+		this.fallback = fallback;
 		this.timeout = timeout;
 	}
 
@@ -64,16 +83,27 @@ public class TimeoutAction<T> extends Action<T, T> {
 	}
 
 	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+		if((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+		super.requestUpstream(capacity, terminated, elements);
+	}
+
+	@Override
 	protected void doNext(T ev) {
-		timeoutRegistration.cancel();
-		broadcastNext(ev);
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		if (switched) {
+			broadcastNext(ev);
+		} else {
+			timeoutRegistration.cancel();
+			broadcastNext(ev);
+			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		}
 	}
 
 	@Override
 	public Action<T, T> cancel() {
 		if (timeoutRegistration != null) {
 			timeoutRegistration.cancel();
+			timeoutRegistration = null;
 		}
 		return super.cancel();
 	}
@@ -98,6 +128,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 	public void doComplete() {
 		if (timeoutRegistration != null) {
 			timeoutRegistration.cancel();
+			timeoutRegistration = null;
 		}
 		super.doComplete();
 	}

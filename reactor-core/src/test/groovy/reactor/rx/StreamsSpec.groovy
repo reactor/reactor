@@ -1519,6 +1519,35 @@ class StreamsSpec extends Specification {
 			value.get() == 5
 	}
 
+	def 'Timeout can be bound to a stream and fallback'() {
+		given:
+			'a source and a timeout'
+			def source = Streams.<Integer> defer().env(Environment.get())
+			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS, Streams.just(10))
+			def error = null
+			def value = reduced.when(TimeoutException) {
+				error = it
+			}.tap()
+			println reduced.debug()
+
+		when:
+			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			source.broadcastNext(1)
+			sleep(500)
+			source.broadcastNext(2)
+			source.broadcastNext(3)
+			source.broadcastNext(4)
+			source.broadcastNext(5)
+			sleep(2000)
+			source.broadcastNext(6)
+		println reduced.debug()
+
+		then:
+			'last value known is 10 as the stream has used its fallback'
+			!error
+			value.get() == 10
+	}
+
 	def 'onOverflowDrop will miss events non requested'() {
 		given:
 			'a source and a timeout'
