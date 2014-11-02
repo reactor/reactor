@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.selector.ClassSelector;
 import reactor.function.Consumer;
@@ -23,19 +24,20 @@ import reactor.function.Consumer;
  * @author Stephane Maldini
  * @since 1.1
  */
-final public class ErrorAction<T, E extends Throwable> extends Action<T, T> {
+final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T> {
 
-	private final Consumer<? super E>   consumer;
-	private final ClassSelector selector;
+	private final Consumer<? super E> consumer;
+	private final ClassSelector       selector;
 
-	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<? super E> consumer) {
-		super(dispatcher);
+	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<? super E> consumer, Publisher<? extends
+			T> fallback) {
+		super(dispatcher, fallback);
 		this.consumer = consumer;
 		this.selector = selector;
 	}
 
 	@Override
-	protected void doNext(T ev) {
+	protected void doNormalNext(T ev) {
 		broadcastNext(ev);
 	}
 
@@ -43,15 +45,20 @@ final public class ErrorAction<T, E extends Throwable> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
 		if (selector.matches(cause.getClass())) {
-			consumer.accept((E) cause);
+			if (consumer != null) {
+				consumer.accept((E) cause);
+			} else if (fallback != null) {
+				doSwitch();
+				return;
+			}
 		}
 		super.doError(cause);
 	}
 
 	@Override
 	public String toString() {
-		return super.toString()+"{" +
-				"catch-type=" + selector.getObject()+
+		return super.toString() + "{" +
+				"catch-type=" + selector.getObject() +
 				'}';
 	}
 }

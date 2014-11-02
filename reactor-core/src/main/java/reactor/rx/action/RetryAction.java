@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
@@ -30,6 +31,8 @@ public class RetryAction<T> extends Action<T, T> {
 	private final long                 numRetries;
 	private final Predicate<Throwable> retryMatcher;
 	private long currentNumRetries = 0;
+	private PushSubscription<?> rootSubscription;
+	private Action<?, ?>        rootAction;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries) {
 		this(dispatcher, numRetries, null);
@@ -40,6 +43,18 @@ public class RetryAction<T> extends Action<T, T> {
 		super(dispatcher);
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		Action<?, ?> rootAction = findOldestUpstream(Action.class);
+
+		if (rootAction.getSubscription() != null
+				&& PushSubscription.class.isAssignableFrom(rootAction.getSubscription().getClass())) {
+
+			this.rootAction = rootAction;
+			this.rootSubscription = rootAction.getSubscription();
+		}
 	}
 
 	@Override
@@ -58,14 +73,10 @@ public class RetryAction<T> extends Action<T, T> {
 					doError(throwable);
 					currentNumRetries = 0;
 				} else {
-					if (getSubscription() != null) {
-						Action<?, ?> rootAction = findOldestUpstream(Action.class);
-
-						if (rootAction.getSubscription() != null
-								&& PushSubscription.class.isAssignableFrom(rootAction.getSubscription().getClass())) {
-
-							Stream originalStream = ((PushSubscription<?>) rootAction.getSubscription()).getPublisher();
-							if(originalStream != null){
+					if (upstreamSubscription != null) {
+						if (rootSubscription != null && rootAction != null) {
+							Stream originalStream = rootSubscription.getPublisher();
+							if (originalStream != null) {
 								rootAction.cancel();
 								originalStream.subscribe(rootAction);
 							}

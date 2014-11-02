@@ -21,6 +21,7 @@ import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * A {@link org.reactivestreams.Publisher} wrapper that takes care of lazy subscribing.
@@ -36,9 +37,9 @@ import reactor.rx.action.Action;
  */
 public class PublisherStream<T> extends Stream<T> {
 
-	private final Publisher<? extends T> publisher;
+	private final Publisher<T> publisher;
 
-	public PublisherStream(Publisher<? extends T> publisher) {
+	public PublisherStream(Publisher<T> publisher) {
 		this.publisher = publisher;
 	}
 
@@ -73,12 +74,35 @@ public class PublisherStream<T> extends Stream<T> {
 		}*/
 
 		@Override
+		protected void doError(Throwable ev) {
+			super.doError(ev);
+		}
+
+		@Override
 		public void subscribe(final Subscriber<? super T> subscriber) {
+			final Publisher<T> deferredPublisher = publisher;
+
 			dispatch(new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					subscribeWithSubscription(subscriber, createSubscription(subscriber, true), false);
-					publisher.subscribe(DeferredSubscribeAction.this);
+					subscribeWithSubscription(subscriber, new ReactiveSubscription<T>(DeferredSubscribeAction.this, subscriber) {
+
+						private boolean started = false;
+
+						@Override
+						protected void onRequest(long elements) {
+							super.onRequest(elements);
+
+							if(!started){
+								started = true;
+								deferredPublisher.subscribe(DeferredSubscribeAction.this);
+								DeferredSubscribeAction.this.onRequest(elements);
+							}else{
+								requestUpstream(capacity, buffer.isComplete(), elements);
+							}
+
+						}
+					}, false);
 				}
 			});
 		}

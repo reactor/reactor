@@ -144,7 +144,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use retry, ignoreError or recover to actively deal with the exception
+	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use when(class, publisher), retry, ignoreError or recover to actively deal with the exception
 	 *
 	 * @param exceptionType the type of exceptions to handle
 	 * @param onError       the error handler for each exception
@@ -154,7 +154,31 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 	                                                     @Nonnull final Consumer<E> onError) {
-		return connect(new ErrorAction<O, E>(getDispatcher(), Selectors.T(exceptionType), onError));
+		return connect(new ErrorAction<O, E>(getDispatcher(), Selectors.T(exceptionType), onError, null));
+	}
+
+	/**
+	 * Subscribe to a fallback publisher when any exception occurs.
+	 *
+	 * @param fallback       the error handler for each exception
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
+		return connect(new ErrorAction<O, Throwable>(getDispatcher(), Selectors.T(Throwable.class), null, fallback));
+	}
+
+	/**
+	 * Subscribe to a fallback publisher when exceptions of the given type occur, otherwise propagate the error.
+	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param fallback       the error handler for each exception
+	 * @param <E>           type of the exception to handle
+	 * @return {@literal new Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E extends Throwable> Stream<O> onErrorResumeNext(@Nonnull final Class<E> exceptionType,
+	                                                     @Nonnull final Publisher<? extends O> fallback) {
+		return connect(new ErrorAction<O, E>(getDispatcher(), Selectors.T(exceptionType), null, fallback));
 	}
 
 	/**

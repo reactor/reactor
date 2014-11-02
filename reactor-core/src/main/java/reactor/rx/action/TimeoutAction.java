@@ -25,19 +25,16 @@ import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  * @since 1.1
  */
-public class TimeoutAction<T> extends Action<T, T> {
+public final class TimeoutAction<T> extends FallbackAction<T> {
 
-	private final Timer                  timer;
-	private final long                   timeout;
-	private final Publisher<? extends T> fallback;
-	private boolean switched = false;
-	private long pendingRequests = 0l;
+	private final Timer timer;
+	private final long  timeout;
+
 
 	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
 		@Override
@@ -52,13 +49,7 @@ public class TimeoutAction<T> extends Action<T, T> {
 		public void accept(Void aVoid) {
 			if (!timeoutRegistration.isCancelled()) {
 				if (fallback != null) {
-					TimeoutAction.this.cancel();
-					switched = true;
-					fallback.subscribe(TimeoutAction.this);
-
-					if(pendingRequests > 0){
-						upstreamSubscription.request(pendingRequests);
-					}
+					doSwitch();
 				} else {
 					doError(new TimeoutException("No data signaled for " + timeout + "ms"));
 				}
@@ -69,10 +60,9 @@ public class TimeoutAction<T> extends Action<T, T> {
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	public TimeoutAction(Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
-		super(dispatcher);
+		super(dispatcher, fallback);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
-		this.fallback = fallback;
 		this.timeout = timeout;
 	}
 
@@ -82,21 +72,12 @@ public class TimeoutAction<T> extends Action<T, T> {
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
-	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		if((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
-		super.requestUpstream(capacity, terminated, elements);
-	}
 
 	@Override
-	protected void doNext(T ev) {
-		if (switched) {
-			broadcastNext(ev);
-		} else {
-			timeoutRegistration.cancel();
-			broadcastNext(ev);
-			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
-		}
+	protected void doNormalNext(T ev) {
+		timeoutRegistration.cancel();
+		broadcastNext(ev);
+		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override

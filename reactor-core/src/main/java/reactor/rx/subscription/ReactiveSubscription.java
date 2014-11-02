@@ -155,7 +155,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if (buffer != null) {
 			bufferLock.lock();
 			try {
-				buffer.clear();
+				//buffer.clear();
 				buffer.complete();
 			} finally {
 				bufferLock.unlock();

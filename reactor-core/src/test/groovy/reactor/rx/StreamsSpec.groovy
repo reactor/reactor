@@ -1548,6 +1548,40 @@ class StreamsSpec extends Specification {
 			value.get() == 10
 	}
 
+	def 'Errors can have a fallback'() {
+		when:
+			'A source stream emits next signals followed by an error'
+			def res = []
+			def myStream = Streams.create{ aSubscriber ->
+				 aSubscriber.onNext('Three')
+				 aSubscriber.onNext('Two')
+				 aSubscriber.onNext('One')
+				 aSubscriber.onError(new Exception())
+				aSubscriber.onNext('Zero')
+			}
+
+		and:
+			'A fallback stream will emit values and complete'
+			def myFallback = Streams.create{ aSubscriber ->
+				 aSubscriber.onNext('0')
+				 aSubscriber.onNext('1')
+				 aSubscriber.onNext('2')
+				 aSubscriber.onComplete()
+				aSubscriber.onNext('3')
+			}
+
+		and:
+			'fallback stream is assigned to source stream on any error'
+			myStream.onErrorResumeNext(myFallback).consume(
+					{ println(it); res << it },                          // onNext
+					{ println("Error: " + it.message) }, // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
+
+		then:
+			res == ['Three','Two','One','0','1','2','complete']
+	}
+
 	def 'onOverflowDrop will miss events non requested'() {
 		given:
 			'a source and a timeout'
