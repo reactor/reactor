@@ -29,6 +29,7 @@ import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.DispatcherSupplier;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
@@ -785,8 +786,8 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
-		env.addDispatcherFactory("test-p",
-				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy()));
+		DispatcherSupplier supplier = Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new
+				BlockingWaitStrategy());
 
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
@@ -794,7 +795,7 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
 		Stream<Void> tail =
-				worker.parallel(2, env.getDispatcherFactory("test-p"), s ->
+				worker.parallel(2, supplier, s ->
 								s.map(v -> v).consume(v -> countDownLatch.countDown())
 				).drain();
 

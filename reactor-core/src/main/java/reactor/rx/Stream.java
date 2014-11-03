@@ -258,6 +258,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
+	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
+	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
+	 *
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<Signal<O>> materialize() {
+		return connect(new MaterializeAction<O>(getDispatcher()));
+	}
+
+	/**
 	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
 	 * Stream}. As such this a terminal action to be placed on a stream flow.
 	 * Any Error signal will be consumed by the error consumer.
