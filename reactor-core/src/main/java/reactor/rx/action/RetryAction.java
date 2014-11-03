@@ -15,12 +15,14 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
-import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -31,8 +33,9 @@ public class RetryAction<T> extends Action<T, T> {
 	private final long                 numRetries;
 	private final Predicate<Throwable> retryMatcher;
 	private long currentNumRetries = 0;
-	private PushSubscription<?> rootSubscription;
-	private Action<?, ?>        rootAction;
+	private Publisher    rootPublisher;
+	private Action<?, ?> rootAction;
+	private long         pendingRequests;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries) {
 		this(dispatcher, numRetries, null);
@@ -53,12 +56,21 @@ public class RetryAction<T> extends Action<T, T> {
 				&& PushSubscription.class.isAssignableFrom(rootAction.getSubscription().getClass())) {
 
 			this.rootAction = rootAction;
-			this.rootSubscription = rootAction.getSubscription();
+			this.rootPublisher = rootAction.getSubscription().getPublisher();
 		}
 	}
 
 	@Override
+	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+		if((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
+		super.requestUpstream(capacity, terminated, elements);
+	}
+
+	@Override
 	protected void doNext(T ev) {
+		if (pendingRequests > 0l && pendingRequests != Long.MAX_VALUE) {
+			pendingRequests--;
+		}
 		currentNumRetries = 0;
 		broadcastNext(ev);
 	}
@@ -74,15 +86,13 @@ public class RetryAction<T> extends Action<T, T> {
 					currentNumRetries = 0;
 				} else {
 					if (upstreamSubscription != null) {
-						if (rootSubscription != null && rootAction != null) {
-							Stream originalStream = rootSubscription.getPublisher();
-							if (originalStream != null) {
+						if (rootPublisher != null) {
 								rootAction.cancel();
-								originalStream.subscribe(rootAction);
-							}
-
+								rootPublisher.subscribe(rootAction);
 						}
-						upstreamSubscription.request(capacity);
+						if(pendingRequests > 0) {
+							upstreamSubscription.request(pendingRequests);
+						}
 					}
 				}
 

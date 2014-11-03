@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 2.0
  */
 public class FallbackAction<T> extends Action<T, T> {
 
@@ -38,6 +38,10 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doNext(T ev) {
+		if(pendingRequests > 0 && pendingRequests != Long.MAX_VALUE){
+			pendingRequests--;
+		}
+
 		if(switched){
 			doFallbackNext(ev);
 		}else{

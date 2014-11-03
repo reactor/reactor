@@ -164,7 +164,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
-		return connect(new ErrorAction<O, Throwable>(getDispatcher(), Selectors.T(Throwable.class), null, fallback));
+		return onErrorResumeNext(Throwable.class, fallback);
 	}
 
 	/**
@@ -179,6 +179,30 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <E extends Throwable> Stream<O> onErrorResumeNext(@Nonnull final Class<E> exceptionType,
 	                                                     @Nonnull final Publisher<? extends O> fallback) {
 		return connect(new ErrorAction<O, E>(getDispatcher(), Selectors.T(exceptionType), null, fallback));
+	}
+
+	/**
+	 * Produce a default value if any exception occurs.
+	 *
+	 * @param fallback       the error handler for each exception
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<O> onErrorReturn(@Nonnull final Function<Throwable, ? extends O> fallback) {
+		return onErrorReturn(Throwable.class, fallback);
+	}
+
+	/**
+	 * Produce a default value when exceptions of the given type occur, otherwise propagate the error.
+	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param fallback       the error handler for each exception
+	 * @param <E>           type of the exception to handle
+	 * @return {@literal new Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E extends Throwable> Stream<O> onErrorReturn(@Nonnull final Class<E> exceptionType,
+	                                                     @Nonnull final Function<E, ? extends O> fallback) {
+		return connect(new ErrorReturnAction<O, E>(getDispatcher(), Selectors.T(exceptionType), fallback));
 	}
 
 	/**
@@ -457,6 +481,34 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
+	 * it into another {@code Stream}. The produced stream will emit the data from the most recent transformed stream.
+	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
+	 * @return a new {@link Stream} containing the transformed values
+	 * @since 1.1, 2.0
+	 */
+	public final <V> Stream<V> switchMap(@Nonnull final Function<? super O,
+			? extends Publisher<? extends V>> fn) {
+		return Streams.<V>switchOnNext(map(fn));
+	}
+
+	/**
+	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
+	 * it into another {@code Stream}. The produced stream will emit the data from all transformed streams in order.
+	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
+	 * @return a new {@link Stream} containing the transformed values
+	 * @since 1.1, 2.0
+	 */
+	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O,
+			? extends Publisher<? extends V>> fn) {
+		return Streams.<V>concat(map(fn));
+	}
+
+	/**
 	 * {@link this#connect(Action)} all the nested {@link Publisher} values to a new {@link Stream}.
 	 * Dynamic merge requires use of reactive-pull
 	 * offered by default StreamSubscription. If merge hasn't getCapacity() to take new elements because its {@link
@@ -481,6 +533,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Stream<O> mergeWith(Publisher<? extends O> publisher) {
 		return Streams.merge(this, publisher).dispatchOn(getEnvironment(), getDispatcher());
+	}
+
+	/**
+	 * {@link this#connect(Action)} all the nested {@link Publisher} values from this current upstream and then on complete consume from the
+	 * passed publisher.
+	 *
+	 * @return the merged stream
+	 * @since 2.0
+	 */
+	public final Stream<O> concatWith(Publisher<? extends O> publisher) {
+		return Streams.concat(this, publisher).dispatchOn(getEnvironment(), getDispatcher());
 	}
 
 	/**

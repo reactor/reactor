@@ -37,7 +37,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 
 
-	final FanInSubscription<I, E, SUBSCRIBER>        innerSubscriptions;
+	final FanInSubscription<I, E, O, SUBSCRIBER>        innerSubscriptions;
 	final AtomicInteger                              runningComposables;
 	final Iterable<? extends Publisher<? extends I>> composables;
 
@@ -141,9 +141,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				"{runningComposables=" + runningComposables + "}";
 	}
 
-	protected FanInSubscription<I, E, SUBSCRIBER> createFanInSubscription(){
-		return new FanInSubscription<I, E, SUBSCRIBER>(this,
-				new ArrayList<FanInSubscription.InnerSubscription<I, E, ? extends SUBSCRIBER>>(8)) {
+	protected FanInSubscription<I, E, O, SUBSCRIBER> createFanInSubscription(){
+		return new FanInSubscription<I, E, O, SUBSCRIBER>(this,
+				new ArrayList<FanInSubscription.InnerSubscription<I, E, SUBSCRIBER>>(8)) {
 			@Override
 			public void cancel() {
 				super.cancel();
@@ -157,7 +157,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	@Override
-	public  FanInSubscription<I, E, SUBSCRIBER>  getSubscription() {
+	public  FanInSubscription<I, E, O, SUBSCRIBER>  getSubscription() {
 		return innerSubscriptions;
 	}
 

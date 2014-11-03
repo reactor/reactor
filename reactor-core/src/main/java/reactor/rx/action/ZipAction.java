@@ -97,9 +97,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 
 	@Override
-	protected FanInSubscription<O, Zippable<O>, InnerSubscriber<O, V>> createFanInSubscription() {
+	protected FanInSubscription<O, Zippable<O>, V, InnerSubscriber<O, V>> createFanInSubscription() {
 		return new ZipSubscription(this,
-				new ArrayList<FanInSubscription.InnerSubscription<O, Zippable<O>, ? extends InnerSubscriber<O, V>>>(8));
+				new ArrayList<FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>>(8));
 	}
 
 	@Override
@@ -230,10 +230,10 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 	}
 
-	private final class ZipSubscription extends FanInSubscription<O, Zippable<O>, ZipAction.InnerSubscriber<O, V>> {
+	private final class ZipSubscription extends FanInSubscription<O, Zippable<O>, V, ZipAction.InnerSubscriber<O, V>> {
 
 		public ZipSubscription(Subscriber<? super Zippable<O>> subscriber,
-		                       List<InnerSubscription<O, Zippable<O>, ? extends ZipAction.InnerSubscriber<O, V>>> subs) {
+		                       List<InnerSubscription<O, Zippable<O>, ZipAction.InnerSubscriber<O, V>>> subs) {
 			super(subscriber, subs);
 		}
 

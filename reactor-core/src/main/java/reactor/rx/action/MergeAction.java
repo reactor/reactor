@@ -26,7 +26,7 @@ import java.util.List;
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.InnerSubscriber<O, O, O>> {
+final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.InnerSubscriber<O>> {
 
 	public MergeAction(Dispatcher dispatcher) {
 		super(dispatcher);
@@ -48,14 +48,14 @@ final public class MergeAction<O> extends FanInAction<O, O, O, FanInAction.Inner
 
 	public static final class InnerSubscriber<I> extends FanInAction.InnerSubscriber<I, I, I> {
 
-		InnerSubscriber(FanInAction<I, I, I, ? extends FanInAction.InnerSubscriber<I, I, I>> outerAction) {
+		InnerSubscriber(FanInAction<I, I, I, InnerSubscriber<I>> outerAction) {
 			super(outerAction);
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this);
+			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
 			request(outerAction.innerSubscriptions.capacity().get());

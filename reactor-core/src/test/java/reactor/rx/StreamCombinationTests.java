@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
+import reactor.core.Environment;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.rx.stream.HotStream;
@@ -123,6 +124,42 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				.consume(i -> latch.countDown());
 
 		generateData(elements);
+
+		awaitLatch(tail, latch);
+	}
+
+	@Test
+	public void sampleConcatTest() throws Exception {
+		int elements = 40;
+		CountDownLatch latch = new CountDownLatch(elements+1);
+
+		Stream<Void> tail = Streams.concat(sensorOdd(), sensorEven())
+				.dispatchOn(Environment.masterDispatcher())
+				.log("concat")
+				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+
+		generateData(elements);
+
+		sensorEven().broadcastComplete();
+		sensorOdd().broadcastComplete();
+
+		awaitLatch(tail, latch);
+	}
+
+	@Test
+	public void concatWithTest() throws Exception {
+		int elements = 40;
+		CountDownLatch latch = new CountDownLatch(elements+1);
+
+		Stream<Void> tail = sensorOdd().concatWith(sensorEven())
+				.dispatchOn(Environment.masterDispatcher())
+				.log("concat")
+				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+
+		generateData(elements);
+
+		sensorEven().broadcastComplete();
+		sensorOdd().broadcastComplete();
 
 		awaitLatch(tail, latch);
 	}

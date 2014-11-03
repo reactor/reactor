@@ -142,6 +142,7 @@ public abstract class StreamUtils {
 					renderParallel(composable, nextLevelNestedStreams)
 							|| renderWindow(composable, nextLevelNestedStreams)
 							|| renderGroupBy(composable, nextLevelNestedStreams)
+							|| renderSwitch(composable, nextLevelNestedStreams)
 							|| renderFilter(composable, nextLevelNestedStreams)
 							|| renderDynamicMerge(composable, nextLevelNestedStreams)
 							|| renderMerge(composable, nextLevelNestedStreams)
@@ -232,6 +233,18 @@ public abstract class StreamUtils {
 				if (operation.otherwise() != null) {
 					if (Stream.class.isAssignableFrom(operation.otherwise().getClass()))
 						loopSubscriptions((operation.otherwise()).downstreamSubscription(), streamTree);
+				}
+				return true;
+			}
+			return false;
+		}
+
+		private <O> boolean renderSwitch(Stream<O> consumer, final List<Object> streamTree) {
+			if (SwitchAction.class.isAssignableFrom(consumer.getClass())) {
+				SwitchAction<O> operation = (SwitchAction<O>) consumer;
+				SwitchAction.SwitchSubscriber switchSubscriber = operation.getSwitchSubscriber();
+				if (switchSubscriber != null && switchSubscriber.getSubscription() != null) {
+						loopSubscriptions(switchSubscriber.getSubscription(), streamTree);
 				}
 				return true;
 			}

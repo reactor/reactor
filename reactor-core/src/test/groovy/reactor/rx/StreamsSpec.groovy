@@ -647,6 +647,51 @@ class StreamsSpec extends Specification {
 
 	}
 
+	def "A simple concat"() {
+		given:
+			'source composables to zip, buffer and tap'
+			def firsts = Streams.just(1, 2, 3)
+			def lasts = Streams.just(4, 5)
+
+		when:
+			'the sources are zipped'
+			def mergedStream = Streams.concat(firsts, lasts)
+			def res = []
+			mergedStream.consume(
+					{ res << it; println it },
+					{ it.printStackTrace() },
+					{ res << 'done'; println 'completed!' }
+			)
+
+			println mergedStream.debug()
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == [1, 2, 3, 4, 5, 'done']
+	}
+
+	def "A mapped concat"() {
+		given:
+			'source composables to zip, buffer and tap'
+			def firsts = Streams.just(1, 2, 3)
+
+		when:
+			'the sources are zipped'
+			def mergedStream = firsts.concatMap{ Streams.range(it, 3) }
+			def res = []
+			mergedStream.consume(
+					{ res << it; println it },
+					{ it.printStackTrace() },
+					{ res << 'done'; println 'completed!' }
+			)
+
+			println mergedStream.debug()
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == [1, 2, 3, 2, 3, 3, 'done']
+	}
+
 	def "Stream can be counted"() {
 		given:
 			'source composables to count and tap'
@@ -1581,6 +1626,89 @@ class StreamsSpec extends Specification {
 		then:
 			res == ['Three','Two','One','0','1','2','complete']
 	}
+
+
+
+	def 'Errors can have a fallback return value'() {
+		when:
+			'A source stream emits next signals followed by an error'
+			def res = []
+			def myStream = Streams.create{ aSubscriber ->
+				aSubscriber.onNext('Three')
+				aSubscriber.onNext('Two')
+				aSubscriber.onNext('One')
+				aSubscriber.onError(new Exception())
+			}
+
+		and:
+			'A fallback value will emit values and complete'
+				myStream.onErrorReturn{ 'Zero' }.consume(
+						{ println(it); res << it },                          // onNext
+						{ println("Error: " + it.message) }, // onError
+						{ println("Sequence complete"); res << 'complete' }          // onCompleted
+				)
+
+		then:
+			res == ['Three','Two','One', 'Zero','complete']
+	}
+
+
+	def 'Streams can be switched'() {
+		when:
+			'A source stream emits next signals followed by an error'
+			def res = []
+			def myStream = Streams.create{ aSubscriber ->
+				aSubscriber.onNext('Three')
+				aSubscriber.onNext('Two')
+				aSubscriber.onNext('One')
+			}
+
+		and:
+			'Another stream will emit values and complete'
+			def myFallback = Streams.create{ aSubscriber ->
+				aSubscriber.onNext('0')
+				aSubscriber.onNext('1')
+				aSubscriber.onNext('2')
+				aSubscriber.onComplete()
+			}
+
+		and:
+			'The streams are switched'
+			def switched = Streams.switchOnNext(Streams.just(myStream, myFallback))
+			switched.consume(
+					{ println(Thread.currentThread().name+' '+it); res << it },                          // onNext
+					{ println("Error: " + it.message) }, // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
+
+		then:
+			res == ['Three','Two','One','0','1','2','complete']
+	}
+
+	def 'Streams can be switched dynamically'() {
+		when:
+			'A source stream emits next signals followed by an error'
+			def res = []
+			def myStream = Streams.<Integer>create{ aSubscriber ->
+				aSubscriber.onNext(1)
+				aSubscriber.onNext(2)
+				aSubscriber.onNext(3)
+				aSubscriber.onComplete()
+			}
+
+		and:
+			'The streams are switched'
+			def switched = myStream.switchMap{ Streams.range(it, 3) }
+			switched.consume(
+					{ println(Thread.currentThread().name+' '+it); res << it },                          // onNext
+					{ println("Error: " + it.message) }, // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
+
+		then:
+			res == [1, 2, 3, 2, 3, 3, 'complete']
+	}
+
 
 	def 'onOverflowDrop will miss events non requested'() {
 		given:
