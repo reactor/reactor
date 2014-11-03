@@ -36,12 +36,12 @@ public class MaterializeAction<T> extends Action<T, Signal<T>> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		broadcastNext(Signal.subscribe(subscription));
+		broadcastNext(Signal.<T>subscribe(subscription));
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		broadcastNext(Signal.error(ev));
+		broadcastNext(Signal.<T>error(ev));
 	}
 
 	@Override
