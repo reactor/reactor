@@ -1682,7 +1682,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return the buffered collection
 	 * @since 2.0
 	 */
-	public final Promise<List<O>> toList() throws InterruptedException {
+	public final Promise<List<O>> toList() {
 		return toList(-1);
 	}
 
