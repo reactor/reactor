@@ -37,7 +37,7 @@ class PromisesSpec extends Specification {
 		environment = new Environment()
 	}
 
-	def cleanup(){
+	def cleanup() {
 		environment.shutdown()
 	}
 
@@ -217,7 +217,7 @@ class PromisesSpec extends Specification {
 			promise.onError { v ->
 				acceptedValue = v
 			}
-		println promise.debug()
+			println promise.debug()
 
 		then:
 			"the consumer is invoked with the rejecting value"
@@ -323,7 +323,7 @@ class PromisesSpec extends Specification {
 			"the original promise is fulfilled"
 			println promise.debug()
 			promise.onNext 1
-		println promise.debug()
+			println promise.debug()
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -385,7 +385,7 @@ class PromisesSpec extends Specification {
 		when:
 			"An onSuccess consumer is registered via then"
 			def value
-			promise.onSuccess{ value = it }
+			promise.onSuccess { value = it }
 
 		then:
 			"The consumer is called"
@@ -471,7 +471,7 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Streams.<Integer> defer().observe{ println 'hey'+it }.next()
+			def promise1 = Streams.<Integer> defer().observe { println 'hey' + it }.next()
 			def promise2 = Promises.<Integer> defer()
 
 		when:
@@ -496,7 +496,7 @@ class PromisesSpec extends Specification {
 			"the second promise if fulfilled"
 			promise2.onNext 2
 
-		println combined.debug()
+			println combined.debug()
 
 		then:
 			"the combined promise is fulfilled with both values"
@@ -583,9 +583,9 @@ class PromisesSpec extends Specification {
 		when:
 			"a combined promise is first created"
 			def combined = Promises.when(promise1, promise2)
-	println promise1.debug()
-	println promise2.debug()
-	println combined.debug()
+			println promise1.debug()
+			println promise2.debug()
+			println combined.debug()
 
 		then:
 			"it is rejected"
@@ -725,7 +725,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"p1 is consumed by p2"
-			Promise p2 = p1.onSuccess( { Integer.parseInt it }).stream().
+			Promise p2 = p1.onSuccess({ Integer.parseInt it }).stream().
 					when(NumberFormatException, { latch.countDown() }).
 					map { println('not in log'); true }.next()
 
@@ -738,6 +738,34 @@ class PromisesSpec extends Specification {
 			'No value'
 			thrown(RuntimeException)
 			latch.count == 0
+	}
+
+	def "Can poll instead of await to automatically handle InterruptedException"() {
+		given:
+			"a promise"
+			def p1 = Promises.<String> defer(environment)
+
+		when:
+			"p1 is consumed by p2"
+			Promise p2 = p1.onSuccess({ Integer.parseInt it }).stream().
+					map { sleep(3000); it }.next()
+
+		and:
+			"setting a value"
+			p1.onNext '1'
+			p2.poll(1, TimeUnit.SECONDS)
+
+		then:
+			'No value'
+			!p2.get()
+
+		when:
+			'polling undefinitely'
+			p2.poll()
+
+		then:
+			'Value!'
+			p2.get()
 	}
 
 }

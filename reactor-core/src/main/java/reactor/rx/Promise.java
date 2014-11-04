@@ -299,6 +299,41 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	}
 
 	/**
+	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
+	 * Reactor's {@link Environment} properties using the key {@code reactor.await.defaultTimeout} is used. The
+	 * default is
+	 * 30 seconds. If the promise is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
+	 * not
+	 * completed
+	 * @throws RuntimeException     if the promise is completed with an error
+	 */
+	public O poll() {
+		return poll(defaultTimeout, TimeUnit.MILLISECONDS);
+	}
+
+	/**
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}. If the
+	 * promise
+	 * is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
+	 * @param timeout the timeout value
+	 * @param unit    the {@link TimeUnit} of the timeout value
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
+	 * not
+	 * completed
+	 */
+	public O poll(long timeout, TimeUnit unit) {
+		try {
+			return await(timeout, unit);
+		} catch (InterruptedException ie){
+			Thread.currentThread().interrupt();
+			return null;
+		}
+	}
+
+	/**
 	 * Returns the value that completed this promise. Returns {@code null} if the promise has not been completed. If the
 	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
