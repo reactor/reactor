@@ -228,6 +228,16 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
+	 * Obtain the default dispatcher supplier from the context environment. Its main purpose is to cache dispatchers and produce
+	 * them on request via {@link Supplier#get()}.
+	 *
+	 * @return a dispatcher factory registered with the default key.
+	 */
+	public static DispatcherSupplier cachedDispatchers() {
+		return get().getDefaultDispatcherFactory();
+	}
+
+	/**
 	 * Register a dispatcher supplier into the context environment. Its main purpose is to cache dispatchers and produce
 	 * them on request via {@link Supplier#get()}.
 	 *

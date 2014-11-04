@@ -37,10 +37,6 @@ public class RetryAction<T> extends Action<T, T> {
 	private Action<?, ?> rootAction;
 	private long         pendingRequests;
 
-	public RetryAction(Dispatcher dispatcher, int numRetries) {
-		this(dispatcher, numRetries, null);
-	}
-
 	public RetryAction(Dispatcher dispatcher, int numRetries,
 	                   Predicate<Throwable> predicate) {
 		super(dispatcher);

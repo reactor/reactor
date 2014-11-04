@@ -273,6 +273,7 @@ public abstract class Action<I, O> extends Stream<O>
 		trySyncDispatch(cause, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
+				if(upstreamSubscription != null) upstreamSubscription.clearPendingRequest();
 				doError(throwable);
 			}
 		});

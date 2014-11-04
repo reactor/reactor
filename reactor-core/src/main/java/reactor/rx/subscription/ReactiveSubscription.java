@@ -168,6 +168,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public long clearPendingRequest() {
 		long _pendingRequestSignals = pendingRequestSignals;
 		pendingRequestSignals = 0l;
+		capacity.set(0l);
 		return _pendingRequestSignals;
 	}
 
