@@ -131,10 +131,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@Test
 	public void sampleConcatTest() throws Exception {
 		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements+1);
+		CountDownLatch latch = new CountDownLatch(elements);
 
 		Stream<Void> tail = Streams.concat(sensorOdd(), sensorEven())
-				.dispatchOn(Environment.masterDispatcher())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
@@ -231,7 +230,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Stream<?> tail, CountDownLatch latch) throws Exception {
-		if (!latch.await(10, TimeUnit.SECONDS)) {
+		if (!latch.await(5, TimeUnit.SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
 					+ tail.debug());
 		}
