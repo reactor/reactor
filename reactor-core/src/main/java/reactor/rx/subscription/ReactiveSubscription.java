@@ -203,10 +203,15 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void onComplete() {
-		if (buffer.isEmpty()) {
-			subscriber.onComplete();
+		bufferLock.lock();
+		try{
+			if (buffer.isEmpty()) {
+				subscriber.onComplete();
+			}
+			buffer.complete();
+		}finally {
+			bufferLock.unlock();
 		}
-		buffer.complete();
 	}
 
 	@Override
