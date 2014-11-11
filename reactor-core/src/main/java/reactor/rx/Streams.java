@@ -69,8 +69,9 @@ public final class Streams {
 	 *
 	 * @return a new {@link Stream}
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> empty() {
-		return new SingleValueStream<T>(null);
+		return (Stream<T>)SingleValueStream.EMPTY;
 	}
 
 	/**

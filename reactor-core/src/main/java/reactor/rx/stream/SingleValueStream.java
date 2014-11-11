@@ -45,6 +45,8 @@ import reactor.rx.subscription.PushSubscription;
  */
 public final class SingleValueStream<T> extends Stream<T> {
 
+	final public static SingleValueStream<?> EMPTY = new SingleValueStream<>(null);
+
 	final private T value;
 
 	@SuppressWarnings("unchecked")
@@ -54,19 +56,20 @@ public final class SingleValueStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-				boolean terminado = false;
-				@Override
-				public void request(long elements) {
-					if(terminado)return;
+		subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
+			boolean terminado = false;
 
-					terminado = true;
-					if(value != null){
-						onNext(value);
-					}
-					onComplete();
+			@Override
+			public void request(long elements) {
+				if (terminado) return;
+
+				terminado = true;
+				if (value != null) {
+					onNext(value);
 				}
-			});
+				onComplete();
+			}
+		});
 	}
 
 	@Override
