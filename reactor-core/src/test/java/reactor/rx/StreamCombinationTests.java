@@ -131,7 +131,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@Test
 	public void sampleConcatTest() throws Exception {
 		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements);
+		CountDownLatch latch = new CountDownLatch(elements+1);
 
 		Stream<Void> tail = Streams.concat(sensorOdd(), sensorEven())
 				.log("concat")
