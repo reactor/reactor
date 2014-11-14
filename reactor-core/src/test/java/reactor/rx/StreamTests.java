@@ -809,16 +809,19 @@ public class StreamTests extends AbstractReactorTest {
 		List<Integer> tasks = IntStream.range(0, 1500).boxed().collect(Collectors.toList());
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
-
-
 		Stream<Integer> worker = Streams.defer(tasks);
 
 		Stream<Void> tail = worker.parallel(2, s ->
-				s.map(v -> v).consume(v -> countDownLatch.countDown(),
-						Throwable::printStackTrace))
-				.dispatchOn(env.getDefaultDispatcherFactory().get())
+					s.map(v -> v)
+						.consume(v -> countDownLatch.countDown(), Throwable::printStackTrace)
+		)
+				.dispatchOn(Environment.masterDispatcher())
 				.drain();
+		tail.keepAlive();
 		countDownLatch.await(5, TimeUnit.SECONDS);
+		if(countDownLatch.getCount() > 0){
+			System.out.println(tail.debug());
+		}
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 

@@ -76,10 +76,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public void request(long elements) {
 		Action.checkRequest(elements);
 
-		//Subscription terminated, Buffer done, return immediately
-		if (buffer.isComplete() && buffer.isEmpty()) {
-			return;
-		}
 
 		//Fetch current pending requests
 		long previous = pendingRequestSignals;
@@ -108,6 +104,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			O element;
 			bufferLock.lock();
 
+			//Subscription terminated, Buffer done, return immediately
+			if (buffer.isComplete() && buffer.isEmpty()) {
+				return;
+			}
+
+
 			do {
 				i = 0;
 				currentNextSignals = 0;
@@ -121,28 +123,25 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					i++;
 				}
 
-				if (buffer.isComplete()) {
-					onComplete();
-					return;
-				}
-
 				if (capacity.addAndGet(toRequest - i) < -1l) {
 					onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
 					return;
 				}
 
-				onRequest(pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE  : toRequest);
+				onRequest(pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE : toRequest);
 
 				toRequest = Math.min(pendingRequestSignals, maxCapacity);
 			} while (toRequest > 0 && !buffer.isEmpty());
 
-			bufferLock.unlock();
-
-		} catch (Exception e) {
+			if (buffer.isComplete()) {
+				onComplete();
+			}
+		} catch(Exception e){
+			onError(e);
+		} finally {
 			if (bufferLock.isHeldByCurrentThread()) {
 				bufferLock.unlock();
 			}
-			onError(e);
 		}
 
 	}
@@ -208,11 +207,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		try{
 			if(terminated)
 				return;
+			buffer.complete();
+
 			if (buffer.isEmpty()) {
 				terminated = true;
 				subscriber.onComplete();
 			}
-			buffer.complete();
 		}finally {
 			bufferLock.unlock();
 		}
@@ -262,7 +262,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				+ " [" + (int) ((((float) currentCapacity) / (float) maxCapacity) * 100) + "%]") +
 				", current=" + currentNextSignals +
 				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
-				(buffer != null ? ", waiting=" + buffer.size() : "") +
+				(buffer != null ? (buffer.isComplete() ? " ,complete" : ", waiting=" + buffer.size()) : "") +
 				'}';
 	}
 }

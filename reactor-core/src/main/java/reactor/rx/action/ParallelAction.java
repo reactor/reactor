@@ -29,7 +29,7 @@ import reactor.rx.subscription.ReactiveSubscription;
  * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
- * Streams.parallel(8).consume(parallelStream -> parallelStream.consume())
+ * Streams.parallel(8, parallelStream -> parallelStream.consume()).drain()
  * }
  *
  * @author Stephane Maldini
@@ -63,11 +63,7 @@ public final class ParallelAction<I, O> extends Action<I, I> {
 
 
 	public boolean hasCapacity() {
-		if(reactiveSubscription == null){
-			return false;
-		}else{
-			return reactiveSubscription.capacity().get() > minimumToleratedCapacity;
-		}
+		return reactiveSubscription != null && reactiveSubscription.capacity().get() > minimumToleratedCapacity;
 	}
 
 	@Override

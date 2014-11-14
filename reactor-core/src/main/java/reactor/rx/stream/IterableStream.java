@@ -28,6 +28,7 @@ import java.util.Iterator;
  * will replay all the iterable. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <code>
  * {@code
  * Streams.just(1,2,3,4).consume(
  *    log::info,
@@ -35,13 +36,15 @@ import java.util.Iterator;
  *    (-> log.info("complete"))
  * )
  * }
- * <p>
- * Will log:
+ * </code>
+ * <code>
+ * //Will log:
  * 1
  * 2
  * 3
  * 4
  * complete
+ * </code>
  *
  * @author Stephane Maldini
  */

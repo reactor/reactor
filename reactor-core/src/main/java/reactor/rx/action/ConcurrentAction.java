@@ -162,18 +162,13 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super O> subscriber) {
-		if (started.compareAndSet(false, true)) {
-			startNewPublisher();
-		}
-		super.subscribe(subscriber);
-	}
-
-	@Override
 	protected void requestUpstream(final AtomicLong capacity, final boolean terminated, final long elements) {
 		trySyncDispatch(elements, new Consumer<Long>() {
 			@Override
 			public void accept(Long elements) {
+				if (started.compareAndSet(false, true)) {
+					startNewPublisher();
+				}
 				long actives = active.get();
 				if (actives <= 0) {
 					ConcurrentAction.super.requestUpstream(capacity, terminated, elements);
@@ -292,10 +287,8 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 			} catch (Throwable e) {
 				publisher.broadcastError(e);
 			}
-		} /*else {
-			if (log.isTraceEnabled()) {
-				log.trace("event dropped " + ev + " as downstream publisher is shutdown");
-			}
+		}/*else {
+				System.out.println("event dropped " + ev + " as downstream publisher is shutdown");
 		}*/
 
 	}
@@ -322,7 +315,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	protected void doError(Throwable throwable) {
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			if (parallelStream != null) parallelStream.broadcastError(throwable);
+			if (parallelStream != null) parallelStream.onError(throwable);
 		}
 	}
 
@@ -330,7 +323,7 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 	protected void doComplete() {
 		if (consumerRegistration != null) consumerRegistration.cancel();
 		for (ParallelAction parallelStream : publishers) {
-			if (parallelStream != null) parallelStream.broadcastComplete();
+			if (parallelStream != null) parallelStream.onComplete();
 		}
 	}
 
@@ -359,13 +352,14 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 		}
 
 		public void accept(O o) {
-			requested--;
+			if (requested < Long.MAX_VALUE) {
+				requested--;
+			}
 			outputAction.broadcastNext(o);
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			System.out.println(outputAction.debug());
 			outputAction.trySyncDispatch(t, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
@@ -409,6 +403,14 @@ public class ConcurrentAction<I, O> extends Action<I, O> {
 		@Override
 		public long getCapacity() {
 			return outputAction.capacity;
+		}
+
+		@Override
+		public String toString() {
+			return "ParallelSubscriber{" +
+					"index=" + index +
+					", requested=" + requested +
+					'}';
 		}
 	}
 }

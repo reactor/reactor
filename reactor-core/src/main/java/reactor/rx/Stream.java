@@ -219,6 +219,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
+	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
+	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
+	 *
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<Signal<O>> materialize() {
+		return connect(new MaterializeAction<O>(getDispatcher()));
+	}
+
+	/**
 	 * Instruct the stream to request the produced subscription indefinitely. If the dispatcher
 	 * is asynchronous (RingBufferDispatcher for instance), it will proceed the request asynchronously as well.
 	 *
@@ -254,18 +265,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer) {
-		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, null, null));
+		return consumeOn(consumer, getDispatcher());
 	}
 
 	/**
-	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
-	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
-	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
+	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * <p>
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.function.Consumer)}
 	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @param dispatcher the dispatcher to run the consumer
 	 * @return {@literal new Stream}
 	 */
-	public final Stream<Signal<O>> materialize() {
-		return connect(new MaterializeAction<O>(getDispatcher()));
+	public final Stream<Void> consumeOn(final Consumer<? super O> consumer, Dispatcher dispatcher) {
+		return connect(new TerminalCallbackAction<O>(dispatcher, consumer, null, null));
 	}
 
 	/**
@@ -277,12 +292,30 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * <p>
 	 *
 	 * @param consumer the consumer to invoke on each next signal
-	 * @param consumer the consumer to invoke on each error signal
+	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer) {
-		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, errorConsumer, null));
+		return consumeOn(consumer, errorConsumer, getDispatcher());
+	}
+
+	/**
+	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow.
+	 * Any Error signal will be consumed by the error consumer.
+	 * Only error and complete signal will be
+	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * <p>
+	 *
+	 * @param consumer the consumer to invoke on each next signal
+	 * @param errorConsumer the consumer to invoke on each error signal
+	 * @param dispatcher the dispatcher to run the consumer
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<Void> consumeOn(final Consumer<? super O> consumer,
+	                                     Consumer<? super Throwable> errorConsumer, Dispatcher dispatcher) {
+		return consumeOn(consumer, errorConsumer, null, dispatcher);
 	}
 
 	/**
@@ -294,12 +327,35 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * <p>
 	 *
 	 * @param consumer the consumer to invoke on each value
+	 * @param errorConsumer the consumer to invoke on each error signal
+	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> consume(final Consumer<? super O> consumer,
 	                                     Consumer<? super Throwable> errorConsumer,
 	                                     Consumer<Void> completeConsumer) {
-		return connect(new TerminalCallbackAction<O>(getDispatcher(), consumer, errorConsumer, completeConsumer));
+		return consumeOn(consumer, errorConsumer, completeConsumer, getDispatcher());
+	}
+
+
+	/**
+	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow.
+	 * Any Error signal will be consumed by the error consumer.
+	 * The Complete signal will be consumed by the complete consumer.
+	 * Only error and complete signal will be signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * <p>
+	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @param errorConsumer the consumer to invoke on each error signal
+	 * @param completeConsumer the consumer to invoke on complete signal
+	 * @param dispatcher the dispatcher to run the consumer
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<Void> consumeOn(final Consumer<? super O> consumer,
+	                                     Consumer<? super Throwable> errorConsumer,
+	                                     Consumer<Void> completeConsumer, Dispatcher dispatcher) {
+		return connect(new TerminalCallbackAction<O>(dispatcher, consumer, errorConsumer, completeConsumer));
 	}
 
 	/**
@@ -693,7 +749,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <V> ConcurrentAction<O, V> parallel(final Integer poolsize, Function<Stream<O>, Publisher<? extends V>> parallelStream) {
 		return parallel(poolsize, getEnvironment() != null ?
 				getEnvironment().getDefaultDispatcherFactory() :
-				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"), parallelStream);
+				Environment.alive() ? Environment.cachedDispatchers() : Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"), parallelStream);
 	}
 
 	/**

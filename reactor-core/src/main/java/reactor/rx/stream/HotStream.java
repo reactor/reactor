@@ -132,6 +132,22 @@ public class HotStream<O> extends Action<O, O> {
 		}
 	}
 
+	@Override
+	protected void doComplete() {
+		if(!keepAlive && downstreamSubscription == null){
+			cancel();
+		}
+		broadcastComplete();
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		if(!keepAlive && downstreamSubscription == null){
+			cancel();
+		}
+		broadcastError(ev);
+	}
+
 	public boolean isComplete(){
 		return finalState == FinalState.COMPLETE;
 	}
