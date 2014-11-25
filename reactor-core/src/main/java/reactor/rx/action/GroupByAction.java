@@ -49,7 +49,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 	}
 
 	@Override
-	protected void doNext(T value) {
+	protected void doNext(final T value) {
 		final K key = fn.apply(value);
 
 		ReactiveSubscription<T> child = groupByMap.get(key);
