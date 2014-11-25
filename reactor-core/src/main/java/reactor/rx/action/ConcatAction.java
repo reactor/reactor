@@ -159,6 +159,8 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 			try {
 				if(current != null){
 					current.request(elements);
+				}else{
+					updatePendingRequests(elements);
 				}
 
 				if(terminated){

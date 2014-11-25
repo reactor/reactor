@@ -81,28 +81,12 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 	}
 
 	@Override
-	public Action<T, T> cancel() {
+	public void cancel() {
 		if (timeoutRegistration != null) {
 			timeoutRegistration.cancel();
 			timeoutRegistration = null;
 		}
-		return super.cancel();
-	}
-
-	@Override
-	public Action<T, T> pause() {
-		if (timeoutRegistration != null) {
-			timeoutRegistration.pause();
-		}
-		return super.pause();
-	}
-
-	@Override
-	public Action<T, T> resume() {
-		if (timeoutRegistration != null) {
-			timeoutRegistration.resume();
-		}
-		return super.resume();
+		super.cancel();
 	}
 
 	@Override

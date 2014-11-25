@@ -13,13 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.action;
+package reactor.rx.stream;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.rx.Stream;
 
 /**
- * An {@link java.lang.Iterable} wrapper that takes care of lazy subscribing.
- * The Stream will complete or fail whever the parent groupBy action terminates itself or when broadcastXXX is called.
+ * The Stream will complete or fail whever the parent groupBy action terminates itself.
  *
  * Create such stream with the provided factory, E.g.:
  * {@code
@@ -28,21 +27,15 @@ import reactor.event.dispatch.Dispatcher;
  *
  * @author Stephane Maldini
  */
-public final class GroupedByAction<K, T> extends Action<T, T> {
+public abstract class GroupedByStream<K, T> extends Stream<T> {
 	private final K key;
 
-	public GroupedByAction(K key, Dispatcher dispatcher) {
-		super(dispatcher);
+	public GroupedByStream(K key) {
 		this.key = key;
 	}
 
 	public K key() {
 		return key;
-	}
-
-	@Override
-	protected void doNext(T ev) {
-		broadcastNext(ev);
 	}
 
 	@Override

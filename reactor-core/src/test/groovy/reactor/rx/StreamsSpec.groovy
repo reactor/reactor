@@ -23,7 +23,6 @@ import reactor.event.Event
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
-import reactor.function.support.Tap
 import reactor.tuple.Tuple2
 import spock.lang.Specification
 
@@ -33,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class StreamsSpec extends Specification {
 
 	void setup() {
-			Environment.initializeIfEmpty()
+		Environment.initializeIfEmpty().assignErrorJournal()
 	}
 
 	def cleanup() {
@@ -54,51 +53,60 @@ class StreamsSpec extends Specification {
 			value.get() == 'test'
 	}
 
-
-	def 'A deferred Stream with an initial value makes that value available immediately in multicast'() {
-		given:
-			'a composable with an initial value'
-			def stream = Streams.just('test')
-
-			def stream1 = Streams.defer()
-			def stream2 = Streams.defer()
-			def stream3 = Streams.defer()
-			def res = []
-
-			stream1.consume {
-				res << 1
-			}
-			stream2.consume {
-				res << 2
-			}
-			stream3.consume {
-				res << 3
-			}
-
-		when:
-			'the value is retrieved'
-			stream.connectAnd(stream1).connectAnd(stream2).connectAnd(stream3)
-
-		then:
-			'it is available'
-			res == [1, 2, 3]
-	}
-
-	def 'A deferred Stream can listen for terminal states'() {
+	def 'A deferred Stream with an initial value makes that value available later'() {
 		given:
 			'a composable with an initial value'
 			Stream stream = Streams.just('test')
 
 		when:
+			'the value is not retrieved'
+			def value = ""
+			def controls = stream.observe{value = it}.consumeLater()
+
+		then:
+			'it is not available'
+			!value
+
+		when:
+			'the value is retrieved'
+			controls.start()
+
+		then:
+			'it is not available'
+			value == 'test'
+	}
+
+	def 'A deferred Stream with initial values can be consumed multiple times'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.just('test','test2','test3').map{ it }.log()
+
+		when:
+			'the value is retrieved'
+			def value1 = stream.toList().await()
+			def value2 = stream.toList().await()
+
+		then:
+			'it is available'
+			value1 == value2
+	}
+
+
+	def 'A deferred Stream can listen for terminal states'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.just('test')
+
+		when:
 			'the complete signal is observed and stream is retrieved'
 			def value = null
 
-			stream.finallyDo {
+			def tap = stream.finallyDo {
 				println 'test'
 				value = it
 			}.tap()
 
-			println stream.debug()
+			println tap.debug()
 
 		then:
 			'it is available'
@@ -115,7 +123,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the stream is retrieved'
-			tail.dispatchOn(dispatcher2)
+			tail = tail.dispatchOn(dispatcher2)
 
 		then:
 			'it is available'
@@ -132,7 +140,7 @@ class StreamsSpec extends Specification {
 			'the stream is retrieved'
 			def value = stream.map { it + '-ok' }.toList()
 
-			println stream.debug()
+			println value.debug()
 
 		then:
 			'it is available'
@@ -146,7 +154,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the stream is retrieved'
-			def queue = stream.map { it + '-ok' }.toBlockingQueue()
+			stream = stream.map { it + '-ok' }.log()
+
+			def queue = stream.toBlockingQueue()
+	//	println stream.debug()
 
 			def res
 			def result = []
@@ -160,7 +171,6 @@ class StreamsSpec extends Specification {
 				if (queue.isComplete() && !queue.peek())
 					break
 			}
-			println stream.debug()
 
 		then:
 			'it is available'
@@ -214,20 +224,21 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
-					.dispatchOn(Environment.get())
+					.subscribeOn(Environment.get())
 
 		when:
 			'the most recent value is retrieved'
-			def last = s
+			 def last = s
 					.sample(2l, TimeUnit.SECONDS)
 					.dispatchOn(Environment.cachedDispatcher())
+			    .log()
 					.next()
 
 		then:
-			last.await() > 20_000
+			last.await(5, TimeUnit.SECONDS) > 20_000
 
 		cleanup:
-			println s.debug()
+			println last.debug()
 	}
 
 	def 'A Stream can be enforced to dispatch distinct values'() {
@@ -267,15 +278,14 @@ class StreamsSpec extends Specification {
 			def stream = Streams.defer([1, 2, 3, 4, 5])
 			def values = []
 			def signals = []
-			def hookSubscribeSubscriber
 
 		when:
 			'a Subscribe Consumer is registered'
-			stream = stream.observeSubscribe { signals << it }
+			stream = stream.observeSubscribe { signals << 'subscribe' }
 
 		and:
 			'a Cancel Consumer is registered'
-			hookSubscribeSubscriber = stream = stream.observeCancel { signals << 'cancel' }
+			stream = stream.observeCancel { signals << 'cancel' }
 
 		and:
 			'a Complete Consumer is registered'
@@ -288,7 +298,7 @@ class StreamsSpec extends Specification {
 		then:
 			'the initial values are passed'
 			values == [1, 2, 3, 4, 5]
-			hookSubscribeSubscriber == signals[0]
+			'subscribe' == signals[0]
 			'complete' == signals[1]
 			'cancel' == signals[2]
 	}
@@ -296,12 +306,12 @@ class StreamsSpec extends Specification {
 	def "Stream can emit a default value if empty"() {
 		given:
 			'a composable that only completes'
-			def stream = Streams.<String>empty()
+			def stream = Streams.<String> empty()
 			def values = []
 
 		when:
 			'a Subscribe Consumer is registered'
-			stream = stream.defaultIfEmpty('test').observeComplete{ values << 'complete' }
+			stream = stream.defaultIfEmpty('test').observeComplete { values << 'complete' }
 
 		and:
 			'the stream is consumed'
@@ -309,7 +319,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the initial values are passed'
-			values == ['test','complete']
+			values == ['test', 'complete']
 	}
 
 	def 'Accepted values are passed to a registered Consumer'() {
@@ -340,8 +350,8 @@ class StreamsSpec extends Specification {
 			'a composable with a registered consumer of RuntimeExceptions'
 			Stream composable = Streams.<Integer> defer()
 			def errors = 0
-			composable.when(RuntimeException) { errors++ }
-			println composable.debug()
+			def tail = composable.when(RuntimeException) { errors++ }.consume()
+			println tail.debug()
 
 		when:
 			'A RuntimeException is accepted'
@@ -353,7 +363,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A new error consumer is subscribed'
-			composable.when(RuntimeException) { errors++ }
+			composable.when(RuntimeException) { errors++ }.consume()
 
 		then:
 			'it is called since publisher is in error state'
@@ -390,11 +400,12 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable that will accept an unknown number of values'
 			def d = Streams.<Integer> defer().capacity(3)
-			Stream composable = d
+			def composable = d
 
 		when:
 			'the expected accept count is set and that number of values is accepted'
-			def tap = composable.sample().tap()
+			def tap = composable.sample().log().tap()
+		println composable.debug()
 			d.broadcastNext(1)
 			d.broadcastNext(2)
 			d.broadcastNext(3)
@@ -462,7 +473,7 @@ class StreamsSpec extends Specification {
 
 			def source3 = Streams.<Integer> defer()
 
-			def tap = Streams.merge(source1, source2, source3).buffer(3).tap()
+			def tap = Streams.merge(source1, source2, source3).log().buffer(3).log().tap()
 
 		when:
 			'the sources accept a value'
@@ -487,18 +498,18 @@ class StreamsSpec extends Specification {
 			def tail = source1.join().log()
 			def tap = tail.tap()
 
-			println tail.debug()
+			println tap.debug()
 
 		when:
 			'the sources accept a value'
 			source2.broadcastNext(1)
 
-			println tail.debug()
+			println tap.debug()
 			source3.broadcastNext(2)
 			source3.broadcastNext(3)
 			source3.broadcastNext(4)
 
-			println tail.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -509,7 +520,7 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(5)
 			source2.broadcastNext(6)
 
-			println tail.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -522,13 +533,10 @@ class StreamsSpec extends Specification {
 			def source2 = Streams.<Integer> defer()
 			def source3 = Streams.<Integer> defer()
 			def source1 = Streams.<Stream<Integer>> just(source2, source3)
-			println source1.debug()
-			println source2.debug()
-			println source3.debug()
-			def tail = source1.observe { println it }.zip { it.t1 + it.t2 }.when(Throwable) { it.printStackTrace() }
+			def tail = source1.zip { it.t1 + it.t2 }.log().when(Throwable) { it.printStackTrace() }
 
 			def tap = tail.tap()
-			println tail.debug()
+			println tap.debug()
 
 		when:
 			'the sources accept a value'
@@ -537,7 +545,7 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(3)
 			source3.broadcastNext(4)
 
-			println tail.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -548,7 +556,7 @@ class StreamsSpec extends Specification {
 			source3.broadcastNext(5)
 			source2.broadcastNext(6)
 
-			println tail.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -571,7 +579,7 @@ class StreamsSpec extends Specification {
 			source2.broadcastNext(3)
 			source2.broadcastNext(4)
 
-			println zippedStream.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -582,7 +590,7 @@ class StreamsSpec extends Specification {
 			source2.broadcastNext(5)
 			source1.broadcastNext(6)
 
-			println zippedStream.debug()
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -598,28 +606,27 @@ class StreamsSpec extends Specification {
 		when:
 			'the sources are zipped'
 			def zippedStream = Streams.zip(odds, even) { [it.t1, it.t2] }
-			println zippedStream.debug()
-			def tap = zippedStream.log().toList().await(3, TimeUnit.SECONDS)
-
-			println zippedStream.debug()
+			def tap = zippedStream.log().toList()
+			tap.await(3, TimeUnit.SECONDS)
+			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
-			tap == [[1, 2], [3, 4], [5, 6]]
+			tap.get() == [[1, 2], [3, 4], [5, 6]]
 
 		when:
 			'the sources are zipped in a flat map'
-			zippedStream = odds.log('before-flatmap').flatMap{
+			zippedStream = odds.log('before-flatmap').flatMap {
 				Streams.zip(Streams.just(it), even) { [it.t1, it.t2] }
 			}
-			println zippedStream.debug()
-			tap = zippedStream.log('after-zip').toList().await(3, TimeUnit.SECONDS)
+			tap = zippedStream.log('after-zip').toList()
+		  tap.await(3, TimeUnit.SECONDS)
+		println tap.debug()
 
-			println zippedStream.debug()
 
 		then:
 			'the values are all collected from source1 stream'
-			tap == [[1, 2], [3, 2], [5, 2], [7, 2], [9, 2]]
+			tap.get() == [[1, 2], [3, 2], [5, 2], [7, 2], [9, 2]]
 	}
 
 
@@ -677,15 +684,13 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def mergedStream = firsts.concatMap{ Streams.range(it, 3) }
+			def mergedStream = firsts.concatMap { Streams.range(it, 3) }
 			def res = []
-			mergedStream.consume(
+			println mergedStream.consume(
 					{ res << it; println it },
 					{ it.printStackTrace() },
 					{ res << 'done'; println 'completed!' }
-			)
-
-			println mergedStream.debug()
+			).debug()
 
 		then:
 			'the values are all collected from source1 and source2 stream'
@@ -718,6 +723,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the source accepts an even value'
 			def value = filtered.tap()
+		println value.debug()
 			source.broadcastNext(2)
 
 		then:
@@ -732,16 +738,6 @@ class StreamsSpec extends Specification {
 			'it is blocked by the filter'
 			value.get() == 2
 
-		when:
-			'add a rejected stream'
-			def rejectedSource = filtered.filter { false }.otherwise()
-			def rejectedTap = rejectedSource.tap()
-			source.broadcastNext(2)
-			println source.debug()
-
-		then:
-			'it is rejected by the filter'
-			rejectedTap.get() == 2
 
 		when:
 			'simple filter'
@@ -770,8 +766,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer()
 			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
-			mapped.when(Exception) { errors++ }
-			mapped.drain()
+			mapped.when(Exception) { errors++ }.consume()
 
 		when:
 			'the source accepts a value'
@@ -789,8 +784,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer()
 			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
-			filtered.when(Exception) { errors++ }
-			filtered.drain()
+			filtered.when(Exception) { errors++ }.consume()
 
 		when:
 			'the source accepts a value'
@@ -818,7 +812,7 @@ class StreamsSpec extends Specification {
 		when:
 			'use an initial value'
 			value = source.reduce(2, new Reduction()).tap()
-			println source.debug()
+			println value.debug()
 
 		then:
 			'the updated reduction is available'
@@ -909,7 +903,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with a reduce function'
 			def source = Streams.<Integer> defer()
-			def reduced = source.reduce(new Reduction())
+			def reduced = source.window(2).log().flatMap{ it.log('lol').reduce(new Reduction()) }
 			def value = reduced.tap()
 
 		when:
@@ -923,22 +917,6 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted and flushed'
 			source.broadcastNext(2)
-			reduced.drain()
-
-		then:
-			'the updated reduction is available'
-			value.get() == 2
-
-		when:
-			'use an initial value'
-			reduced = source.reduce(2, new Reduction())
-			println source.debug()
-			value = reduced.tap()
-			println source.debug()
-			source.broadcastNext(1)
-			println source.debug()
-			reduced.drain()
-			println source.debug()
 
 		then:
 			'the updated reduction is available'
@@ -988,9 +966,9 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted'
-			println reduced.debug()
+			println value.debug()
 			source.broadcastNext(1)
-			println reduced.debug()
+			println value.debug()
 
 		then:
 			'the list contains the first element'
@@ -1025,7 +1003,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected window stream'
 			def source = Streams.<Integer> defer().capacity(2)
-			Tap<List<Integer>> value = null
+			def value = null
 
 			source.window().consume {
 				value = it.buffer(2).tap()
@@ -1044,7 +1022,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted'
 			source.broadcastNext(2)
-			println source.debug()
+			println value.debug()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -1054,7 +1032,7 @@ class StreamsSpec extends Specification {
 			'2 more values are accepted'
 			source.broadcastNext(3)
 			source.broadcastNext(4)
-			println source.debug()
+			println value.debug()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -1067,14 +1045,15 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer(Environment.get())
 			def promise = Promises.defer()
 
-			source.window(1l, TimeUnit.SECONDS).consume {
-				it.buffer(2).consume { promise.accept(it) }
+			source.log("prewindow").window(10l, TimeUnit.SECONDS).consume {
+				it.log().buffer(2).consume { promise.onNext(it) }
 			}
 
 
 		when:
 			'the first value is accepted on the source'
 			source.broadcastNext(1)
+			println source.debug()
 
 		then:
 			'the collected list is not yet available'
@@ -1149,7 +1128,7 @@ class StreamsSpec extends Specification {
 			'a source and a grouped by ID stream'
 			def source = Streams.<SimplePojo> defer(Environment.get())
 			def result = [:]
-		def latch = new CountDownLatch(6)
+			def latch = new CountDownLatch(6)
 
 			def partitionStream = source.partition()
 			partitionStream.consume { stream ->
@@ -1178,7 +1157,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the result should group titles by id'
-			latch.await()
+			latch.await(5, TimeUnit.SECONDS)
 			result
 			result == [
 					1: ['Stephane', 'Jon', 'Sandrine'],
@@ -1216,12 +1195,9 @@ class StreamsSpec extends Specification {
 			'the result should contain all stream titles by id'
 			result.to[0].id == "GroupBy"
 			result.to[0].to[0].id == "TerminalCallback"
-			result.to[0].boundTo[0].id == "1"
-			result.to[0].boundTo[1].id == "2"
-			result.to[0].boundTo[2].id == "3"
-			result.to[0].boundTo[0].to[0].id == "HotStream"
-			result.to[0].boundTo[1].to[0].id == "HotStream"
-			result.to[0].boundTo[2].to[0].id == "HotStream"
+			result.to[0].boundTo[0].id == "TerminalCallback"
+			result.to[0].boundTo[1].id == "TerminalCallback"
+			result.to[0].boundTo[2].id == "TerminalCallback"
 
 		when: "complete will cancel non kept-alive actions"
 			source.broadcastComplete()
@@ -1231,31 +1207,6 @@ class StreamsSpec extends Specification {
 		then:
 			'the result should contain zero stream'
 			!result.to
-	}
-
-	def 'Collect will accumulate a list of accepted values until flush and pass it to a consumer'() {
-		given:
-			'a source and a collected stream'
-			def source = Streams.<Integer> defer()
-			Stream reduced = source.buffer()
-			def value = reduced.tap()
-
-		when:
-			'the first value is accepted on the source'
-			source.broadcastNext(1)
-
-		then:
-			'the collected list is not yet available'
-			value.get() == null
-
-		when:
-			'the second value is accepted'
-			source.broadcastNext(2)
-			reduced.drain()
-
-		then:
-			'the collected list contains the first and second elements'
-			value.get() == [1, 2]
 	}
 
 	def 'Creating Stream from Environment.get()'() {
@@ -1311,7 +1262,7 @@ class StreamsSpec extends Specification {
 		when:
 			'accept a value'
 			def result = s.toList().await(5, TimeUnit.SECONDS)
-		println s.debug()
+			//println s.debug()
 
 		then:
 			'dispatching works'
@@ -1504,7 +1455,7 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer().env(Environment.get())
 			def reduced = source.buffer(5, 600, TimeUnit.MILLISECONDS)
 			def value = reduced.tap()
-			println reduced.debug()
+			println value.debug()
 
 		when:
 			'the first values are accepted on the source'
@@ -1513,9 +1464,9 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(1)
 			source.broadcastNext(1)
 			source.broadcastNext(1)
-			println reduced.debug()
+			println value.debug()
 			sleep(2000)
-			println reduced.debug()
+			println value.debug()
 
 		then:
 			'the collected list is not yet available'
@@ -1526,7 +1477,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(2)
 			source.broadcastNext(2)
 			sleep(2000)
-			println reduced.debug()
+			println value.debug()
 
 		then:
 			'the collected list contains the first and second elements'
@@ -1543,7 +1494,7 @@ class StreamsSpec extends Specification {
 			def value = reduced.when(TimeoutException) {
 				error = it
 			}.tap()
-			println reduced.debug()
+			println value.debug()
 
 		when:
 			'the first values are accepted on the source, paused just enough to refresh timer until 6'
@@ -1573,7 +1524,7 @@ class StreamsSpec extends Specification {
 			def value = reduced.when(TimeoutException) {
 				error = it
 			}.tap()
-			println reduced.debug()
+			println value.debug()
 
 		when:
 			'the first values are accepted on the source, paused just enough to refresh timer until 6'
@@ -1585,7 +1536,7 @@ class StreamsSpec extends Specification {
 			source.broadcastNext(5)
 			sleep(2000)
 			source.broadcastNext(6)
-		println reduced.debug()
+			println value.debug()
 
 		then:
 			'last value known is 10 as the stream has used its fallback'
@@ -1597,21 +1548,21 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create{ aSubscriber ->
-				 aSubscriber.onNext('Three')
-				 aSubscriber.onNext('Two')
-				 aSubscriber.onNext('One')
-				 aSubscriber.onError(new Exception())
+			def myStream = Streams.create { aSubscriber ->
+				aSubscriber.onNext('Three')
+				aSubscriber.onNext('Two')
+				aSubscriber.onNext('One')
+				aSubscriber.onError(new Exception())
 				aSubscriber.onNext('Zero')
 			}
 
 		and:
 			'A fallback stream will emit values and complete'
-			def myFallback = Streams.create{ aSubscriber ->
-				 aSubscriber.onNext('0')
-				 aSubscriber.onNext('1')
-				 aSubscriber.onNext('2')
-				 aSubscriber.onComplete()
+			def myFallback = Streams.create { aSubscriber ->
+				aSubscriber.onNext('0')
+				aSubscriber.onNext('1')
+				aSubscriber.onNext('2')
+				aSubscriber.onComplete()
 				aSubscriber.onNext('3')
 			}
 
@@ -1624,16 +1575,15 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == ['Three','Two','One','0','1','2','complete']
+			res == ['Three', 'Two', 'One', '0', '1', '2', 'complete']
 	}
-
 
 
 	def 'Errors can have a fallback return value'() {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create{ aSubscriber ->
+			def myStream = Streams.create { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -1642,21 +1592,21 @@ class StreamsSpec extends Specification {
 
 		and:
 			'A fallback value will emit values and complete'
-				myStream.onErrorReturn{ 'Zero' }.consume(
-						{ println(it); res << it },                          // onNext
-						{ println("Error: " + it.message) }, // onError
-						{ println("Sequence complete"); res << 'complete' }          // onCompleted
-				)
+			myStream.onErrorReturn { 'Zero' }.consume(
+					{ println(it); res << it },                          // onNext
+					{ println("Error: " + it.message) }, // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
 
 		then:
-			res == ['Three','Two','One', 'Zero','complete']
+			res == ['Three', 'Two', 'One', 'Zero', 'complete']
 	}
 
 	def 'Streams can be materialized'() {
 		when:
 			'A source stream emits next signals followed by an error and complete'
 			def res = []
-			def myStream = Streams.create{ aSubscriber ->
+			def myStream = Streams.create { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -1666,14 +1616,14 @@ class StreamsSpec extends Specification {
 
 		and:
 			'A materialized stream is consumed'
-				myStream.materialize().consume(
-						{ println(it); res << it.type.toString() },                          // onNext
-						{ it.printStackTrace() },                          // onError
-						{ println("Sequence complete"); res << 'complete' }          // onCompleted
-				)
+			myStream.materialize().consume(
+					{ println(it); res << it.type.toString() },                          // onNext
+					{ it.printStackTrace() },                          // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
 
 		then:
-			res == ['NEXT','NEXT','NEXT', 'ERROR','COMPLETE', 'complete']
+			res == ['SUBSCRIBE', 'NEXT', 'NEXT', 'NEXT', 'ERROR', 'COMPLETE', 'complete']
 	}
 
 
@@ -1681,7 +1631,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create{ aSubscriber ->
+			def myStream = Streams.create { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -1689,7 +1639,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'Another stream will emit values and complete'
-			def myFallback = Streams.create{ aSubscriber ->
+			def myFallback = Streams.create { aSubscriber ->
 				aSubscriber.onNext('0')
 				aSubscriber.onNext('1')
 				aSubscriber.onNext('2')
@@ -1700,20 +1650,20 @@ class StreamsSpec extends Specification {
 			'The streams are switched'
 			def switched = Streams.switchOnNext(Streams.just(myStream, myFallback))
 			switched.consume(
-					{ println(Thread.currentThread().name+' '+it); res << it },                          // onNext
+					{ println(Thread.currentThread().name + ' ' + it); res << it },                          // onNext
 					{ println("Error: " + it.message) }, // onError
 					{ println("Sequence complete"); res << 'complete' }          // onCompleted
 			)
 
 		then:
-			res == ['Three','Two','One','0','1','2','complete']
+			res == ['Three', 'Two', 'One', '0', '1', '2', 'complete']
 	}
 
 	def 'Streams can be switched dynamically'() {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.<Integer>create{ aSubscriber ->
+			def myStream = Streams.<Integer> create { aSubscriber ->
 				aSubscriber.onNext(1)
 				aSubscriber.onNext(2)
 				aSubscriber.onNext(3)
@@ -1722,9 +1672,9 @@ class StreamsSpec extends Specification {
 
 		and:
 			'The streams are switched'
-			def switched = myStream.switchMap{ Streams.range(it, 3) }
+			def switched = myStream.log('lol').switchMap { Streams.range(it, 3) }.log()
 			switched.consume(
-					{ println(Thread.currentThread().name+' '+it); res << it },                          // onNext
+					{ println(Thread.currentThread().name + ' ' + it); res << it },                          // onNext
 					{ println("Error: " + it.message) }, // onError
 					{ println("Sequence complete"); res << 'complete' }          // onCompleted
 			)
@@ -1740,24 +1690,23 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> defer()
 
 			def value = null
-			def tail = source.onOverflowDrop().observe { value = it }.log('overflow-drop-test')
-			tail.drain(5)
-			println source.debug()
+			def tail = source.onOverflowDrop().observe { value = it }.log('overflow-drop-test').consume(5)
+			println tail.debug()
 
 		when:
-			'the first values are accepted on the source, but we only have 5 requested elements out of 6 6'
+			'the first values are accepted on the source, but we only have 5 requested elements out of 6'
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			source.broadcastNext(3)
 			source.broadcastNext(4)
 			source.broadcastNext(5)
 
-			println source.debug()
+			println tail.debug()
 			source.broadcastNext(6)
 
 		and:
-			'we try to drain the tail to check if 6 has been buffered'
-			tail.drain(1)
+			'we try to consume the tail to check if 6 has been buffered'
+			tail.requestMore(1)
 
 		then:
 			'last value known is 5'
@@ -1773,12 +1722,12 @@ class StreamsSpec extends Specification {
 			def reduced = source
 					.throttle(avgTime)
 					.elapsed()
+					.take(10)
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
-			}
+							acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+						}
 
-			def value = reduced.next()
-			println source.debug()
+			def value = reduced.log().next()
 
 		when:
 			'the first values are accepted on the source'
@@ -1786,8 +1735,6 @@ class StreamsSpec extends Specification {
 				source.onNext(1)
 			}
 			sleep(1500)
-			reduced.resume()
-			println source.debug()
 			println(((long) (value.await())) + " milliseconds on average")
 
 		then:
@@ -1876,13 +1823,16 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the buffer overflows'
+			def value = reduced.tap()
+
 			source.broadcastNext(1)
 			source.broadcastNext(2)
 			source.broadcastNext(3)
 			source.broadcastNext(4)
 			source.broadcastNext(5)
 			source.broadcastNext(6)
-			def value = reduced.tap()
+
+		println source.debug()
 
 		then:
 			'it outputs values dismissing outdated ones'
@@ -1899,14 +1849,16 @@ class StreamsSpec extends Specification {
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
 			def head = Streams.<Integer> defer(Environment.get())
-			head.parallel{
-				s -> s.map { it }
-			}
-					.buffer(batchSize)
-					.consume { List<Integer> ints ->
-				println ints.size()
-				sum.addAndGet(ints.size())
-				latch.countDown()
+			head.partition(3).consume {
+				s -> 	s
+							.dispatchOn(Environment.cachedDispatcher())
+							.map { it }
+							.buffer(batchSize)
+							.consume { List<Integer> ints ->
+								println ints.size()
+								sum.addAndGet(ints.size())
+								latch.countDown()
+							}
 			}
 		when:
 			'values are accepted into the head'
@@ -1917,39 +1869,6 @@ class StreamsSpec extends Specification {
 			'results contains the expected values'
 			println head.debug()
 			sum.get() == length - 1
-	}
-
-	def 'Collect will accumulate values from multiple threads in MP MC scenario'() {
-		given:
-			'a source and a collected stream'
-			def sum = new AtomicInteger()
-			int length = 1000
-			int latchCount = length
-			def latch = new CountDownLatch(latchCount)
-			def head = Streams.<Integer> defer(Environment.get())
-			def parallels = Streams.parallel {
-				it.consume { int i ->
-					sum.addAndGet(1)
-					latch.countDown()
-				}
-			}
-
-			head.parallel {
-				s -> s.map { it }.consume { parallels.onNext(it) }
-			}.drain()
-
-			parallels.drain()
-
-		when:
-			'values are accepted into the head'
-			(1..length).each { head.broadcastNext(it) }
-			latch.await(6, TimeUnit.SECONDS)
-
-		then:
-			'results contains the expected values'
-			println head.debug()
-			println parallels.debug()
-			sum.get() == 1000
 	}
 
 	def 'An Observable can consume values from a Stream'() {
@@ -2073,38 +1992,37 @@ class StreamsSpec extends Specification {
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
 			stream = stream.observe {
+				println it
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
 			}.retry(2).observe { println it }.count()
-			println stream.debug()
 
-			def value = stream.tap().get()
+			def value = stream.tap()
 
-			println stream.debug()
+			println value.debug()
 
 		then:
 			'3 values are passed since it is a cold stream resubscribed 2 times and finally managed to get the 3 values'
-			value == 3
+			value.get() == 3
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry() to ignore them'
 			i = 0
 			stream = Streams.defer()
-			def value2 = stream.observe {
+			def tap = stream.observe {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry().count()
+			}.retry().count().tap()
 
-			println stream.debug()
-			println stream.debug()
+			println tap.debug()
+			println tap.debug()
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
-			def tap = value2.tap()
 			stream.broadcastComplete()
-			println stream.debug()
+			println tap.debug()
 			def res = tap.get()
 
 		then:
@@ -2121,36 +2039,53 @@ class StreamsSpec extends Specification {
 				}
 			}.retry {
 				i == 1
-			}.count().tap().get()
-			println stream.debug()
+			}.count().tap()
+			println value.debug()
 
 		then:
 			'3 values are passed since it is a cold stream resubscribed 1 time'
-			value == 3
+			value.get() == 3
 
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Streams.defer()
-			value2 = stream.observe {
+			tap = stream.observe {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
 			}.retry {
 				i == 1
-			}.count()
+			}.count().tap()
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
-			tap = value2.tap()
 			stream.broadcastComplete()
-			println stream.debug()
+			println tap.debug()
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
 			tap.get() == 1
 	}
 
+	def 'A Stream can re-subscribe its oldest parent on error signals after backoff stream'() {
+		when:
+			'when composable with an initial value'
+			def value = Streams.create {
+				println "subscribing"
+				it.onError(new RuntimeException("always fails"))
+			}.retryWhen { attempts ->
+				attempts.zipWith(Streams.range(1, 3)){ it.t2 }.flatMap { i ->
+					println "delay retry by " + i + " second(s)"
+					Streams.timer(i)
+				}
+			}.next()
+			value.await()
+
+		then:
+			'Promise completed after 3 tries'
+			 value.isComplete()
+	}
 
 	def 'A Stream can be timestamped'() {
 		given:
@@ -2164,7 +2099,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			value.t1 > timestamp
+			value.t1 >= timestamp
 			value.t2 == 'test'
 	}
 
@@ -2195,11 +2130,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'sorted operation is added and the stream is retrieved'
-			def value = stream.sort().buffer().tap().get()
+			def value = stream.sort().buffer().tap()
 
 		then:
 			'it is available'
-			value == [43, 43, 321, 422, 32122, 443311]
+			value.get() == [43, 43, 321, 422, 32122, 443311]
 
 		when:
 			'a composable with an initial value and a relative time'
@@ -2207,12 +2142,12 @@ class StreamsSpec extends Specification {
 
 		and:
 			'sorted operation is added for up to 3 elements ordered at once and the stream is retrieved'
-			value = stream.sort(3).buffer(6).tap().get()
-			println stream.debug()
+			value = stream.sort(3).buffer(6).tap()
+			println value.debug()
 
 		then:
 			'it is available'
-			value == [43, 422, 32122, 43, 321, 443311]
+			value.get() == [43, 422, 32122, 43, 321, 443311]
 
 		when:
 			'a composable with an initial value and a relative time'
@@ -2224,11 +2159,10 @@ class StreamsSpec extends Specification {
 					.sort({ a, b -> b <=> a } as Comparator<Integer>)
 					.buffer()
 					.tap()
-					.get()
 
 		then:
 			'it is available'
-			value == [4, 3, 2, 1]
+			value.get() == [4, 3, 2, 1]
 	}
 
 	def 'A Stream can be limited'() {

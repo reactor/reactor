@@ -59,7 +59,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		CombineAction<Integer, Integer> processor = Streams.<Integer>defer(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-				.parallel(2, stream -> stream
+				.partition(2)
+				.flatMap(stream -> stream
+								.dispatchOn(env, env.getCachedDispatcher())
 								.observe(i -> {
 									AtomicLong counter = counters.get(Thread.currentThread());
 									if (counter == null) {
@@ -75,12 +77,16 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.sample(1)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
-								.flatMap(i ->
+
+/*
+	.flatMap(i ->
 												//Streams.just(i)
 												Streams.zip(Streams.just(i), otherStream, tuple -> tuple.getT1())
-														.dispatchOn(env)
+//														.dispatchOn(env.getCachedDispatcher())
 								)
+ */
 				)
+				.log("flatMap")
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
 

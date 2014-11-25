@@ -75,14 +75,10 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (res != null) {
 				broadcastNext(res);
 
-				if (!isFinishing) {
+				if (!isFinishing && upstreamSubscription.pendingRequestSignals() > 0) {
 					innerSubscriptions.request(capacity);
-					return;
 				}
 			}
-
-			cancel();
-			broadcastComplete();
 		}
 	}
 
@@ -116,7 +112,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		broadcastTuple(isFinishing);
 
-		if (isFinishing && count >= capacity) {
+		if (isFinishing) {
 			doComplete();
 		}
 	}
@@ -208,7 +204,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 				@Override
 				public void accept(Void aVoid) {
 					outerAction.capacity(outerAction.runningComposables.decrementAndGet());
-					if (outerAction.capacity != 0 && outerAction.count <= outerAction.capacity) {
+					if (index != outerAction.capacity && outerAction.capacity != 0 && outerAction.count <= outerAction.capacity) {
 						outerAction.status.set(COMPLETING);
 					} else {
 						outerAction.broadcastTuple(true);
@@ -244,7 +240,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public long clearPendingRequest() {
-			return maxCapacity;
+			return pendingRequestSignals;
 		}
 
 		@Override

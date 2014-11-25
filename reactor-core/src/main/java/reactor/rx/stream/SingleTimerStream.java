@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
  * The SingleTimerStream will manage dedicated timers for new subscriber assigned via {@link this#subscribe(org.reactivestreams.Subscriber)}.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.timer(env, 1).consume(
  *log::info,
@@ -37,10 +38,14 @@ import java.util.concurrent.TimeUnit;
  * (-> log.info("complete"))
  * )
  * }
- * <p>
+ * </pre>
  * Will log:
+ * <pre>
+ * {@code
  * 0
  * complete
+ * }
+ * </pre>
  *
  * @author Stephane Maldini
  */
@@ -63,16 +68,16 @@ public final class SingleTimerStream extends Stream<Long> {
 
 	private class TimerSubscription extends PushSubscription<Long>{
 
-		final Registration<? extends Consumer<Long>> registration = timer.submit(this, delay, unit);
+		final Registration<? extends Consumer<Long>> registration = timer.submit(new Consumer<Long>() {
+			@Override
+			public void accept(Long aLong) {
+				subscriber.onNext(0l);
+				subscriber.onComplete();
+			}
+		}, delay, unit);
 
 		public TimerSubscription(Stream<Long> publisher, Subscriber<? super Long> subscriber) {
 			super(publisher, subscriber);
-		}
-
-		@Override
-		public void accept(Long time) {
-			subscriber.onNext(0l);
-			subscriber.onComplete();
 		}
 
 		@Override

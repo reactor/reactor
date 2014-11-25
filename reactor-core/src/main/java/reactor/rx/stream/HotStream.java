@@ -19,8 +19,10 @@ import org.reactivestreams.Subscriber;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.queue.CompletableQueue;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * @author Stephane Maldini
@@ -34,7 +36,7 @@ public class HotStream<O> extends Action<O, O> {
 
 	private FinalState finalState = null;
 	private Throwable error;
-	private boolean keepAlive    = false;
+	private boolean keepAlive = false;
 
 	public HotStream(Dispatcher dispatcher, long capacity) {
 		super(dispatcher, capacity);
@@ -59,27 +61,41 @@ public class HotStream<O> extends Action<O, O> {
 	}
 
 	@Override
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+		if (queue != null) {
+			return new ReactiveSubscription<O>(this, subscriber, queue) {
+
+				@Override
+				protected void onRequest(long elements) {
+					if (upstreamSubscription != null) {
+						super.onRequest(elements);
+						requestUpstream(capacity, buffer.isComplete(), elements);
+					}
+				}
+			};
+		} else {
+			return super.createSubscription(subscriber, null);
+		}
+	}
+
+	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if(finalState == null){
-			if (upstreamSubscription == null){
-				this.upstreamSubscription = new PushSubscription<>(null, this);
-			}
+		if (finalState == null) {
 			super.subscribe(subscriber);
-		}else if (isComplete()){
+		} else if (isComplete()) {
 			subscriber.onComplete();
-		}else if (hasFailed()){
+		} else if (hasFailed()) {
 			subscriber.onError(error);
 		}
 	}
 
 	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		if(reactivePull){
+		if (reactivePull) {
 			return super.createSubscription(subscriber, true);
-		}
-		else {
+		} else {
 			return super.createSubscription(subscriber,
-							dispatcher != SynchronousDispatcher.INSTANCE &&
+					dispatcher != SynchronousDispatcher.INSTANCE &&
 							(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
 		}
 	}
@@ -108,61 +124,36 @@ public class HotStream<O> extends Action<O, O> {
 	}
 
 	@Override
-	public HotStream<O> cancel() {
-		super.cancel();
-		return this;
-	}
-
-	@Override
-	public HotStream<O> pause() {
-		super.pause();
-		return this;
-	}
-
-	@Override
-	public HotStream<O> resume() {
-		super.resume();
-		return this;
-	}
-
-	@Override
 	protected void onShutdown() {
-		if(!keepAlive) {
+		if (!keepAlive) {
 			super.onShutdown();
 		}
 	}
 
 	@Override
 	protected void doComplete() {
-		if(!keepAlive && downstreamSubscription == null){
+		if (keepAlive && downstreamSubscription == null) {
 			cancel();
 		}
 		broadcastComplete();
 	}
 
-	@Override
-	protected void doError(Throwable ev) {
-		if(!keepAlive && downstreamSubscription == null){
-			cancel();
-		}
-		broadcastError(ev);
-	}
-
-	public boolean isComplete(){
+	public boolean isComplete() {
 		return finalState == FinalState.COMPLETE;
 	}
 
-	public boolean hasFailed(){
+	public boolean hasFailed() {
 		return finalState == FinalState.ERROR;
 	}
 
 
-	public Throwable error(){
+	public Throwable error() {
 		return error;
 	}
 
 	@Override
 	public String toString() {
-		return super.toString()+"{keepAlive="+ keepAlive+"}";
+		return super.toString() + "{keepAlive=" + keepAlive +
+				"}";
 	}
 }

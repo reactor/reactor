@@ -26,6 +26,7 @@ import reactor.rx.subscription.PushSubscription;
  * will replay all the range. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.range(1, 10000).consume(
  *    log::info,
@@ -33,14 +34,17 @@ import reactor.rx.subscription.PushSubscription;
  *    (-> log.info("complete"))
  * )
  * }
- * <p>
+ * </pre>
+ * <pre>
+ * {@code
  * Will log:
  * 1
  * 2
  * 3
  * 4
  * complete
- *
+ *}
+ * </pre>
  * @author Stephane Maldini
  */
 public final class RangeStream extends Stream<Integer> {
@@ -69,17 +73,15 @@ public final class RangeStream extends Stream<Integer> {
 						i++;
 					}
 
-					if (cursor >= end) {
+					if (cursor > end) {
 						onComplete();
 					}
 				}
-
 			});
 		} else {
 			subscriber.onComplete();
 		}
 	}
-
 	@Override
 	public String toString() {
 		return super.toString() + " [" + start + " to "+end+"]" ;

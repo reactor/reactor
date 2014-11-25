@@ -111,7 +111,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public long clearPendingRequest() {
-		return 0l;
+		return pendingRequestSignals;
 	}
 
 	protected void onRequest(long n) {

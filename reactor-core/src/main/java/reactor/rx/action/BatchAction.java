@@ -40,7 +40,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final int                                    batchSize;
 	protected final Consumer<Long>                         timeoutTask;
 	protected final Registration<? extends Consumer<Long>> timespanRegistration;
-	protected final Consumer<T>    flushConsumer        = new FlushConsumer();
+	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
 	protected int count = 0;
 
@@ -60,7 +60,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 					dispatch(null, flushConsumer);
 				}
 			};
-			timespanRegistration = timer.schedule(timeoutTask, timespan, unit != null ? unit : TimeUnit.SECONDS);
+			TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
+			timespanRegistration = timer.schedule(timeoutTask, timespan, targetUnit,
+					TimeUnit.MILLISECONDS.convert(timespan, targetUnit));
 			timespanRegistration.pause();
 		} else {
 			this.timeoutTask = null;
@@ -115,33 +117,14 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public final Stream<Void> drain() {
-		dispatch(null, flushConsumer);
-		return super.drain();
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public BatchAction<T, V> resume() {
-		dispatch(null, flushConsumer);
-		return (BatchAction<T, V>) super.resume();
-	}
-
-	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		dispatch(elements, upstreamSubscription);
 	}
 
 	@Override
-	public Action<T, V> cancel() {
+	public void cancel() {
 		if (timespanRegistration != null) timespanRegistration.cancel();
-		return super.cancel();
-	}
-
-	@Override
-	public Action<T, V> pause() {
-		if (timespanRegistration != null) timespanRegistration.pause();
-		return super.pause();
+		super.cancel();
 	}
 
 	final private class FlushConsumer implements Consumer<T> {
@@ -155,10 +138,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	final private static class RequestConsumer<T> extends WrappedSubscription<T> {
 
 		final Consumer<T> flushConsumer;
-		final int batchSize;
+		final int         batchSize;
 
 
-		public RequestConsumer(Subscription subscription, Subscriber<T> subscriber, Consumer<T> flushConsumer, int batchSize) {
+		public RequestConsumer(Subscription subscription, Subscriber<T> subscriber, Consumer<T> flushConsumer, int
+				batchSize) {
 			super(subscription, subscriber);
 			this.flushConsumer = flushConsumer;
 			this.batchSize = batchSize;
@@ -182,6 +166,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString() + "{"+(timespanRegistration != null ? "timed!" : "")+" batchSize=" + count+ "/" + batchSize + " [" + (int)((((float)count) / ((float)batchSize)) * 100) + "%]";
+		return super.toString() + "{" + (timespanRegistration != null ? "timed!" : "") + " batchSize=" + count + "/" +
+				batchSize + " [" + (int) ((((float) count) / ((float) batchSize)) * 100) + "%]";
 	}
 }

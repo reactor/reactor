@@ -27,12 +27,13 @@ import reactor.rx.subscription.PushSubscription;
  * The Stream will end when the result is null or {@link reactor.rx.action.Action#broadcastComplete()} is called.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.generate(env, (-> randomNumber()))
  *    .throttle(200)
  *    .consume(System.out::println)
  * }
- * <p>
+ * </pre>
  * This example will generate a random number every 200ms
  *
  * @author Stephane Maldini

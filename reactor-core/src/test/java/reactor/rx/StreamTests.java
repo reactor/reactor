@@ -104,7 +104,6 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println(str.debug());
 
 
-
 		str.broadcastNext("Goodbye World!");
 		str.broadcastNext("Goodbye World!");
 		str.broadcastComplete();
@@ -229,7 +228,7 @@ public class StreamTests extends AbstractReactorTest {
 		r.on(key, tap);
 
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Stream<Void> s =
+		Controls s =
 				stream
 						.map(STRING_2_INTEGER)
 						.notify(key.getObject(), r);
@@ -336,26 +335,27 @@ public class StreamTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		HotStream<String> d = Streams.<String>defer(env);
-		Stream<Integer> tasks = d.parallel(8, stream -> stream.map((String str) -> {
-			try {
-				Thread.sleep(random.nextInt(10));
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			return Integer.parseInt(str);
-		}));
+		Stream<Integer> tasks = d.partition().flatMap(stream ->
+				stream.dispatchOn(Environment.cachedDispatcher()).map((String str) -> {
+					try {
+						Thread.sleep(random.nextInt(10));
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+					return Integer.parseInt(str);
+				}));
 
-		Stream<Void> tail = tasks.consume(i -> {
+		Controls tail = tasks.consume(i -> {
 			latch.countDown();
 		});
 
-		System.out.println(tasks.debug());
+		System.out.println(tail.debug());
 
 		for (int i = 1; i <= items; i++) {
 			d.broadcastNext(String.valueOf(i));
 		}
 		latch.await(15, TimeUnit.SECONDS);
-		System.out.println(tasks.debug());
+		System.out.println(tail.debug());
 		assertTrue(latch.getCount() + " of " + items + " items were not counted down", latch.getCount() == 0);
 	}
 
@@ -378,12 +378,9 @@ public class StreamTests extends AbstractReactorTest {
 			e.printStackTrace();
 			latch.countDown();
 		}).consume(t -> {
-			System.out.println(s.debug());
 			ref.set(t);
 			latch.countDown();
 		});
-
-		System.out.println(s.debug());
 
 		long startTime = System.currentTimeMillis();
 		T result = null;
@@ -395,7 +392,6 @@ public class StreamTests extends AbstractReactorTest {
 		}
 		long duration = System.currentTimeMillis() - startTime;
 
-		System.out.println(s.debug());
 		assertThat(result, expected);
 		assertThat(duration, is(lessThan(2000L)));
 	}
@@ -440,47 +436,49 @@ public class StreamTests extends AbstractReactorTest {
 
 		HotStream<Integer> d = Streams.defer(env);
 
-		d.parallel(stream -> stream.map(o -> {
-			synchronized (internalLock) {
+		System.out.println(d
+				.partition().consume(stream ->
+						stream.dispatchOn(Environment.cachedDispatcher())
+								.map(o -> {
+									synchronized (internalLock) {
 
-				internalCounter.incrementAndGet();
+										internalCounter.incrementAndGet();
 
-				long curThreadId = Thread.currentThread().getId();
-				Long prevThreadId = seenInternal.put(o, curThreadId);
-				if (prevThreadId != null) {
-					fail(String.format(
-							"The object %d has already been seen internally on the thread %d, current thread %d",
-							o, prevThreadId, curThreadId));
-				}
+										long curThreadId = Thread.currentThread().getId();
+										Long prevThreadId = seenInternal.put(o, curThreadId);
+										if (prevThreadId != null) {
+											fail(String.format(
+													"The object %d has already been seen internally on the thread %d, current thread %d",
+													o, prevThreadId, curThreadId));
+										}
 
-				internalLatch.countDown();
-			}
-			return -o;
-		}).consume(o -> {
-			synchronized (consumerLock) {
-				consumerCounter.incrementAndGet();
+										internalLatch.countDown();
+									}
+									return -o;
+								})
+								.consume(o -> {
+									synchronized (consumerLock) {
+										consumerCounter.incrementAndGet();
 
-				long curThreadId = Thread.currentThread().getId();
-				Long prevThreadId = seenConsumer.put(o, curThreadId);
-				if (prevThreadId != null) {
-					System.out.println(String.format(
-							"The object %d has already been seen by the consumer on the thread %d, current thread %d",
-							o, prevThreadId, curThreadId));
-					fail();
-				}
+										long curThreadId = Thread.currentThread().getId();
+										Long prevThreadId = seenConsumer.put(o, curThreadId);
+										if (prevThreadId != null) {
+											System.out.println(String.format(
+													"The object %d has already been seen by the consumer on the thread %d, current thread %d",
+													o, prevThreadId, curThreadId));
+											fail();
+										}
 
-				counsumerLatch.countDown();
-			}
-		})).consume(null, Throwable::printStackTrace);
+										counsumerLatch.countDown();
+									}
+								}))
+				.debug());
 
 		for (int i = 0; i < COUNT; i++) {
 			d.broadcastNext(i);
 		}
 
-
-		System.out.println(d.debug());
 		internalLatch.await(5, TimeUnit.SECONDS);
-		System.out.println(d.debug());
 		assertEquals(COUNT, internalCounter.get());
 		counsumerLatch.await(5, TimeUnit.SECONDS);
 		assertEquals(COUNT, consumerCounter.get());
@@ -495,10 +493,10 @@ public class StreamTests extends AbstractReactorTest {
 		parallelTest("ringBuffer", 1_000_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
-		parallelBufferedTimeoutTest(1_000_000, false);
+		parallelBufferedTimeoutTest(1_000_000);
 	}
 
-	private void parallelBufferedTimeoutTest(int iterations, final boolean filter) throws InterruptedException {
+	private void parallelBufferedTimeoutTest(int iterations) throws InterruptedException {
 
 
 		System.out.println("Buffered Stream: " + iterations);
@@ -507,14 +505,14 @@ public class StreamTests extends AbstractReactorTest {
 
 		HotStream<String> deferred = Streams.<String>defer(env);
 		deferred
-				.parallel(8, stream -> (filter ? (stream
-						.filter(i -> i.hashCode() != 0 ? true : true)) : stream)
-						.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
-						.consume(batch -> {
-							for (String i : batch) latch.countDown();
-						}))
-				.monitorLatency(100)
-				.drain();
+				.partition()
+				.consume(stream ->
+						stream
+								.dispatchOn(env.getCachedDispatcher())
+								.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
+								.consume(batch -> {
+									for (String i : batch) latch.countDown();
+									}));
 
 		String[] data = new String[iterations];
 		for (int i = 0; i < iterations; i++) {
@@ -553,11 +551,11 @@ public class StreamTests extends AbstractReactorTest {
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Streams.defer(env);
-				deferred.parallel(2, stream -> stream
-						.map(i -> i)
-						.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
-						.consume(i -> latch.countDown())
-				).drain();
+				System.out.println(deferred.partition(2).consume(stream -> stream
+								.dispatchOn(env.getCachedDispatcher())
+								.map(i -> i)
+								.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
+								.consume(i -> latch.countDown()).debug()));
 
 				break;
 
@@ -607,9 +605,8 @@ public class StreamTests extends AbstractReactorTest {
 			case "partitioned":
 				mapManydeferred = Streams.<Integer>defer(env, SynchronousDispatcher.INSTANCE);
 				mapManydeferred
-						.parallel(substream ->
-								substream.consume(i -> latch.countDown()))
-						.drain();
+						.partition().consume(substream ->
+						substream.dispatchOn(env.getCachedDispatcher()).consume(i -> latch.countDown()));
 				break;
 			default:
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
@@ -632,7 +629,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		if (!latch.await(20, TimeUnit.SECONDS)) {
 			throw new RuntimeException(mapManydeferred.debug().toString());
-		}else{
+		} else {
 			System.out.println(mapManydeferred.debug().toString());
 		}
 		assertEquals(0, latch.getCount());
@@ -688,16 +685,16 @@ public class StreamTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
-		batchingStreamDef.parallel(PARALLEL_STREAMS, substream ->
+		batchingStreamDef.partition(PARALLEL_STREAMS).consume(substream ->
 				substream
+						.dispatchOn(env.getCachedDispatcher())
 						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 						.consume(items -> {
 							batchesDistribution.compute(items.size(),
 									(key,
 									 value) -> value == null ? 1 : value + 1);
 							items.forEach(item -> latch.countDown());
-						}))
-				.drain();
+						}));
 
 		testDataset.forEach(batchingStreamDef::broadcastNext);
 		if (!latch.await(10, TimeUnit.SECONDS)) {
@@ -774,7 +771,6 @@ public class StreamTests extends AbstractReactorTest {
 		globalFeed.broadcastNext(2224);
 
 		latch.await(5, TimeUnit.SECONDS);
-		System.out.println(s.debug());
 		assertEquals("Must have counted 4 elements", 0, latch.getCount());
 
 	}
@@ -794,10 +790,13 @@ public class StreamTests extends AbstractReactorTest {
 
 		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
-		Stream<Void> tail =
-				worker.parallel(2, supplier, s ->
-								s.map(v -> v).consume(v -> countDownLatch.countDown())
-				).drain();
+		Controls tail =
+				worker.partition(2).consume( s ->
+								s
+										.dispatchOn(supplier.get())
+										.map(v -> v)
+										.consume(v -> countDownLatch.countDown())
+				);
 
 		countDownLatch.await(10, TimeUnit.SECONDS);
 		System.out.println(tail.debug());
@@ -811,15 +810,15 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
 		Stream<Integer> worker = Streams.defer(tasks);
 
-		Stream<Void> tail = worker.parallel(2, s ->
-					s.map(v -> v)
-						.consume(v -> countDownLatch.countDown(), Throwable::printStackTrace)
-		)
-				.dispatchOn(Environment.masterDispatcher())
-				.drain();
-		tail.keepAlive();
+		Controls tail = worker.partition(2).consume(s ->
+						s
+								.dispatchOn(env.getCachedDispatcher())
+								.map(v -> v)
+								.consume(v -> countDownLatch.countDown(), Throwable::printStackTrace)
+		);
+
 		countDownLatch.await(5, TimeUnit.SECONDS);
-		if(countDownLatch.getCount() > 0){
+		if (countDownLatch.getCount() > 0) {
 			System.out.println(tail.debug());
 		}
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -833,19 +832,19 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch endLatch = new CountDownLatch(1000 / 100);
 
-		sensorDataStream
+		Controls controls = sensorDataStream
 				/*     step 2  */.window(100)
 				///*     step 3  */.timeout(1000)
 				/*     step 4  */.consume(batchedStream -> {
-			System.out.println("New window starting");
-			batchedStream
+														System.out.println("New window starting");
+														batchedStream
 						/*   step 4.1  */.reduce(Integer.MAX_VALUE, tuple -> Math.min(tuple.getT1(), tuple.getT2()))
-						/* final step  */.consume(i -> System.out.println("Minimum " + i))
-						/* ad-hoc step */.finallyDo(o -> endLatch.countDown());
+						/* ad-hoc step */.finallyDo(o -> endLatch.countDown())
+						/* final step  */.consume(i -> System.out.println("Minimum " + i));
 		});
 
 		endLatch.await(10, TimeUnit.SECONDS);
-		System.out.println(sensorDataStream.debug());
+		System.out.println(controls.debug());
 
 		Assert.assertEquals(0, endLatch.getCount());
 	}
@@ -861,11 +860,12 @@ public class StreamTests extends AbstractReactorTest {
 		final HotStream<Integer> streamBatcher = Streams.<Integer>defer(env);
 		streamBatcher
 				.buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
-				.parallel(parallelStreams, innerStream ->
+				.partition(parallelStreams)
+				.consume(innerStream ->
 						innerStream
-								.consume(i -> latch.countDown())
-								.when(Exception.class, Throwable::printStackTrace))
-				.drain();
+								.dispatchOn(env.getCachedDispatcher())
+								.when(Exception.class, Throwable::printStackTrace)
+								.consume(i -> latch.countDown()));
 
 
 		streamBatcher.broadcastNext(12);
@@ -881,9 +881,6 @@ public class StreamTests extends AbstractReactorTest {
 			assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
 		}
 	}
-
-	private final Stream<Integer> streamRange = Streams.range(0, 1000);
-
 
 	@Test
 	public void mapLotsOfSubAndCancel() throws InterruptedException {

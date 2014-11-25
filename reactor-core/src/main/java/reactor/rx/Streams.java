@@ -124,7 +124,7 @@ public final class Streams {
 	 */
 	public static <T> HotStream<T> defer(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" Refer to #parallel() method. ");
+				" For concurrent consume, refer to #partition()/groupBy() method and assign individual single dispatchers");
 		HotStream<T> hotStream = Action.<T>passthrough(dispatcher);
 		hotStream.env(env).capacity(dispatcher.backlogSize() > 0 ?
 				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
@@ -474,156 +474,6 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
-	 * generated sub-streams.
-	 *
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * <p>
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 * <p>
-	 * Will default to {@link Environment#PROCESSORS} number of partitions.
-	 * Will default to a new {@link reactor.core.Environment#newDispatcherFactory(int)}} supplier.
-	 *
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O> parallel(Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		return parallel(Environment.PROCESSORS, parallelStream);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
-	 * generated sub-streams.
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * <p>
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 * <p>
-	 * Will default to {@link Environment#PROCESSORS} number of partitions.
-	 * Will default to a new {@link reactor.core.Environment#newDispatcherFactory(int)}} supplier.
-	 *
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @param poolSize the number of maximum parallel sub-streams consuming the broadcasted values.
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O> parallel(int poolSize, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		return parallel(poolSize, null, Environment.newDispatcherFactory(poolSize), parallelStream);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
-	 * generated sub-streams.
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * <p>
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 * <p>
-	 * Will default to {@link reactor.core.Environment#getDefaultDispatcherFactory()} supplier.
-	 * Will default to {@link Environment#PROCESSORS} number of partitions.
-	 *
-	 * @param env the Reactor {@link reactor.core.Environment} to use
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O>  parallel(Environment env, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		return parallel(Environment.PROCESSORS, env, env.getDefaultDispatcherFactory(), parallelStream);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
-	 * generated sub-streams.
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * <p>
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 * <p>
-	 * Will default to {@link reactor.core.Environment#getDefaultDispatcherFactory()} supplier.
-	 *
-	 * @param env      the Reactor {@link reactor.core.Environment} to use
-	 * @param poolSize the number of maximum parallel sub-streams consuming the broadcasted values.
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O>  parallel(int poolSize, Environment env, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		return parallel(poolSize, env, env.getDefaultDispatcherFactory(), parallelStream);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, accepting data signals to broadcast to a
-	 * selected generated
-	 * sub-streams.
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * <p>
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 * <p>
-	 * Will default to {@link Environment#PROCESSORS} number of partitions.
-	 *
-	 * @param env         the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatchers the {@link reactor.event.dispatch.Dispatcher} factory to assign each sub-stream with a call to
-	 *                    {@link reactor.function.Supplier#get()}
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O>  parallel(Environment env, Supplier<Dispatcher> dispatchers, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		return parallel(Environment.PROCESSORS, env, dispatchers, parallelStream);
-	}
-
-	/**
-	 * Build a deferred concurrent {@link reactor.rx.action.ConcurrentAction}, ready to broadcast values to the
-	 * generated sub-streams.
-	 * This is a MP-MC scenario type where the parallel action dispatches within the calling dispatcher scope. There
-	 * is no
-	 * intermediate boundary such as with standard stream like str.buffer().parallel(16) where "buffer" action is run
-	 * into a dedicated dispatcher.
-	 * A Parallel action will starve its next available sub-stream to capacity before selecting the next one.
-	 *
-	 * @param poolSize    the number of maximum parallel sub-streams consuming the broadcasted values.
-	 * @param env         the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatchers the {@link reactor.event.dispatch.Dispatcher} factory to assign each sub-stream with a call to
-	 *                    {@link reactor.function.Supplier#get()}
-	 * @param parallelStream the function to map the stream to execute in parallel, will take the predefined parallel stream
-	 *                       as an argument and will output whatever the stream returned as signals.
-	 * @param <I> the type of values passing through the {@literal Stream}
-	 * @param <O> the type of values produced off the parallel computation
-	 * @return a new {@link reactor.rx.Stream} of  {@link reactor.rx.Stream}
-	 */
-	public static <I, O> ConcurrentAction<I, O>  parallel(int poolSize, Environment env, Supplier<Dispatcher> dispatchers, Function<Stream<I>, Publisher<? extends O>> parallelStream) {
-		ConcurrentAction<I, O> parallelAction = new ConcurrentAction<I, O>(SynchronousDispatcher.INSTANCE,
-				parallelStream,
-				dispatchers,
-				poolSize);
-		parallelAction.env(env);
-		return parallelAction;
-	}
-
-	/**
 	 * Build a synchronous {@literal Stream}, ready to broadcast values from the given publisher. A publisher will start
 	 * producing next elements until onComplete is called.
 	 *
@@ -632,7 +482,7 @@ public final class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> create(Publisher<T> publisher) {
-		return new PublisherStream<T>(publisher).defer();
+		return new PublisherStream<T>(publisher);
 	}
 
 	/**
@@ -645,7 +495,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> on(Observable observable, Selector broadcastSelector) {
-		return new ObservableStream<T>(observable, broadcastSelector).defer();
+		return new ObservableStream<T>(observable, broadcastSelector);
 	}
 
 	/**

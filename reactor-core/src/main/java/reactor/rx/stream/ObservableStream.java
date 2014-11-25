@@ -30,9 +30,11 @@ import javax.annotation.Nonnull;
  * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()}.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.on(reactor, $("topic")).consume(System.out::println)
  * }
+ * </pre>
  *
  * @author Stephane Maldini
  */

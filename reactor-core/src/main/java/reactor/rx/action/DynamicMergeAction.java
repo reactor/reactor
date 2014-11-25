@@ -57,6 +57,16 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
+	public long resetChildRequests() {
+		return fanInAction.resetChildRequests();
+	}
+
+	@Override
+	public void replayChildRequests(long request) {
+		fanInAction.replayChildRequests(request);
+	}
+
+	@Override
 	protected void doNext(Publisher<? extends I> value) {
 		fanInAction.addPublisher(value);
 	}
@@ -69,7 +79,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	protected void doError(Throwable ev) {
-		super.doError(ev);
+		cancel();
 		fanInAction.doError(ev);
 	}
 
@@ -85,23 +95,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		return super.env(environment);
 	}
 
-	@Override
-	public Action<Publisher<? extends I>, O> resume() {
-		fanInAction.resume();
-		return super.resume();
-	}
-
-	@Override
-	public Action<Publisher<? extends I>, O> pause() {
-		fanInAction.pause();
-		return super.pause();
-	}
-
-	@Override
-	public Action<Publisher<? extends I>, O> dispatchOn(@Nullable Environment environment, @Nonnull final Dispatcher dispatcher) {
-		fanInAction.dispatchOn(environment, dispatcher);
-		return dispatchOn(environment, dispatcher);
-	}
 
 	public FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> mergedStream() {
 		return fanInAction;

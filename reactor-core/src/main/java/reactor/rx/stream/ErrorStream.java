@@ -25,16 +25,21 @@ import reactor.rx.Stream;
  * will replay the error. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.errpr(error).when(Throwable.class, log::error)
  * }
- * <p>
+ * </pre>
+ * <pre>
  * Will log:
+ * {@code
  * 1
  * 2
  * 3
  * 4
  * complete
+ * }
+ * </pre>
  *
  * @author Stephane Maldini
  */

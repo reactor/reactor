@@ -154,7 +154,9 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		public void cancel() {
-			s.cancel();
+			if(s != null){
+				s.cancel();
+			}
 		}
 
 		public Subscription getSubscription() {

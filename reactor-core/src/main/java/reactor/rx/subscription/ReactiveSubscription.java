@@ -147,23 +147,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public void cancel() {
-		if (publisher != null) {
-			publisher.cleanSubscriptionReference(this);
-		}
-		if (buffer != null) {
-			bufferLock.lock();
-			try {
-				//buffer.clear();
-				buffer.complete();
-			} finally {
-				bufferLock.unlock();
-			}
-
-		}
-	}
-
-	@Override
 	public long clearPendingRequest() {
 		long _pendingRequestSignals = pendingRequestSignals;
 		pendingRequestSignals = 0l;
@@ -194,10 +177,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			}
 
 		}
-	}
-
-	public final long currentNextSignals() {
-		return currentNextSignals;
 	}
 
 	@Override

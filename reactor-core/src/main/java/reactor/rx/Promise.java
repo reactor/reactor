@@ -24,6 +24,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
+import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.NonBlocking;
@@ -144,7 +145,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-				return stream().connect(new Action<O, O>() {
+		return stream().lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new Action<O, O>(dispatcher) {
 					@Override
 					protected void doNext(O ev) {
 						onComplete.accept(Promise.this);
@@ -157,7 +161,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 						onComplete.accept(Promise.this);
 						broadcastError(ev);
 					}
-				}).next();
+				};
+			}
+		}).next();
 	}
 
 	/**
@@ -307,7 +313,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
 	 * not
 	 * completed
-	 * @throws RuntimeException     if the promise is completed with an error
+	 * @throws RuntimeException if the promise is completed with an error
 	 */
 	public O poll() {
 		return poll(defaultTimeout, TimeUnit.MILLISECONDS);
@@ -327,7 +333,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public O poll(long timeout, TimeUnit unit) {
 		try {
 			return await(timeout, unit);
-		} catch (InterruptedException ie){
+		} catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
 			return null;
 		}
@@ -387,12 +393,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 					return Streams.create(new Publisher<O>() {
 						@Override
 						public void subscribe(Subscriber<? super O> s) {
-							s.onSubscribe(new PushSubscription<O>(null, s){
-								@Override
-								public void request(long n) {
-									subscriber.onError(error);
-								}
-							});
+							s.onError(error);
 						}
 					}).dispatchOn(environment, dispatcher);
 				} else {
@@ -443,18 +444,16 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 
 
 	public StreamUtils.StreamVisitor debug() {
-		Stream<?> debugged = findOldestStream();
+		Action<?,?> debugged = findOldestStream();
+		if(subscription == null || debugged == null){
+			return outboundStream != null ? outboundStream.debug() : null;
+		}
 
-		return debugged == null ? stream().debug() : debugged.debug();
+		return debugged.debug();
 	}
 
 	@SuppressWarnings("unchecked")
-	public Stream<?> findOldestStream() {
-
-		if (subscription == null) {
-			return outboundStream;
-		}
-
+	public Action<?, ?> findOldestStream() {
 		Subscription sub = subscription;
 		Action<?, ?> that = null;
 
@@ -474,11 +473,17 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	protected void errorAccepted(Throwable error) {
 		lock.lock();
 		try {
-			if (!isPending()) throw new IllegalStateException();
+			if (!isPending()){
+				if (isSuccess())
+					throw new IllegalStateException(finalState.toString()+" : "+value, error);
+				else
+					throw new IllegalStateException(finalState.toString(), error);
+			}
+
 			this.error = error;
 			this.finalState = FinalState.ERROR;
 
-			if(subscription != null){
+			if (subscription != null) {
 				subscription.cancel();
 			}
 
@@ -499,13 +504,18 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		lock.lock();
 		try {
 			if (!isPending()) {
-				throw new IllegalStateException();
+				if (isError())
+					throw new IllegalStateException(value+" >> "+finalState.toString(), error);
+				else if (isSuccess())
+					throw new IllegalStateException(value+" >> "+finalState.toString()+" : "+value);
+				else
+					throw new IllegalStateException(value+" >> "+finalState.toString());
 			}
 			this.value = value;
 			this.finalState = FinalState.COMPLETE;
 
 
-			if(subscription != null){
+			if (subscription != null) {
 				subscription.cancel();
 			}
 

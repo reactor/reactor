@@ -30,7 +30,7 @@ public abstract class AbstractReactorTest {
 
 	@Before
 	public void loadEnv() {
-		env = Environment.initializeIfEmpty();
+		env = Environment.initializeIfEmpty().assignErrorJournal();
 	}
 
 	@After

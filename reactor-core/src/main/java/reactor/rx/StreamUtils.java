@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.action.*;
+import reactor.rx.stream.GroupedByStream;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 
@@ -139,11 +140,9 @@ public abstract class StreamUtils {
 			List<Object> nextLevelNestedStreams = new ArrayList<Object>();
 
 			boolean hasRenderedSpecial =
-					renderParallel(composable, nextLevelNestedStreams)
-							|| renderWindow(composable, nextLevelNestedStreams)
+							renderWindow(composable, nextLevelNestedStreams)
 							|| renderGroupBy(composable, nextLevelNestedStreams)
 							|| renderSwitch(composable, nextLevelNestedStreams)
-							|| renderFilter(composable, nextLevelNestedStreams)
 							|| renderDynamicMerge(composable, nextLevelNestedStreams)
 							|| renderMerge(composable, nextLevelNestedStreams)
 							|| renderCombine(composable, nextLevelNestedStreams);
@@ -226,18 +225,6 @@ public abstract class StreamUtils {
 			}
 		}
 
-		private <O> boolean renderFilter(Stream<O> consumer, final List<Object> streamTree) {
-			if (FilterAction.class.isAssignableFrom(consumer.getClass())) {
-				FilterAction<O> operation = (FilterAction<O>) consumer;
-
-				if (operation.otherwise() != null) {
-					if (Stream.class.isAssignableFrom(operation.otherwise().getClass()))
-						loopSubscriptions((operation.otherwise()).downstreamSubscription(), streamTree);
-				}
-				return true;
-			}
-			return false;
-		}
 
 		private <O> boolean renderSwitch(Stream<O> consumer, final List<Object> streamTree) {
 			if (SwitchAction.class.isAssignableFrom(consumer.getClass())) {
@@ -257,7 +244,7 @@ public abstract class StreamUtils {
 				WindowAction<O> operation = (WindowAction<O>) consumer;
 
 				if (operation.currentWindow() != null) {
-					loopSubscriptions(operation.currentWindow().downstreamSubscription(), streamTree);
+					loopSubscriptions(operation.currentWindow(), streamTree);
 				}
 				return true;
 			}
@@ -286,28 +273,11 @@ public abstract class StreamUtils {
 		}
 
 		@SuppressWarnings("unchecked")
-		private <O> boolean renderParallel(Stream<O> consumer, final List<Object> streamTree) {
-			if (ConcurrentAction.class.isAssignableFrom(consumer.getClass())) {
-				ConcurrentAction<?, O> operation = (ConcurrentAction<?, O>) consumer;
-				for (Action<?, O> s : operation.getPublishers()) {
-					if(s.downstreamSubscription() != null) {
-						parseComposable(s, streamTree);
-						if (debugVisitor != null) {
-							debugVisitor.newLine(debugVisitor.d, false);
-						}
-					}
-				}
-				return true;
-			}
-			return false;
-		}
-
-		@SuppressWarnings("unchecked")
 		private <O> boolean renderGroupBy(Stream<O> consumer, final List<Object> streamTree) {
 			if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
 				GroupByAction<O, ?> operation = (GroupByAction<O, ?>) consumer;
-				for (Stream<O> s : operation.groupByMap().values()) {
-					parseComposable(s, streamTree);
+				for (PushSubscription<O> s : operation.groupByMap().values()) {
+					loopSubscriptions(s, streamTree);
 					if (debugVisitor != null) {
 						debugVisitor.newLine(debugVisitor.d, false);
 					}
@@ -361,8 +331,8 @@ public abstract class StreamUtils {
 
 		public StreamKey(Stream<?> composable) {
 			this.stream = composable;
-			if (GroupedByAction.class.isAssignableFrom(stream.getClass())) {
-				this.key = ((GroupedByAction) stream).key();
+			if (GroupedByStream.class.isAssignableFrom(stream.getClass())) {
+				this.key = ((GroupedByStream) stream).key();
 			} else {
 				this.key = composable.getClass().getSimpleName().isEmpty() ? composable.getClass().getName() + "" +
 						composable :

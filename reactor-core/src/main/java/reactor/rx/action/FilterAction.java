@@ -15,11 +15,9 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
-import reactor.rx.Streams;
 
 /**
  * @author Stephane Maldini
@@ -36,13 +34,6 @@ public class FilterAction<T> extends Action<T, T> {
 
 	private final Predicate<? super T> p;
 
-	private volatile Action<T, T> elseComposable;
-
-	@SuppressWarnings("unchecked")
-	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher) {
-		this(p, dispatcher, null);
-	}
-
 	public FilterAction(final Function<? super T, Boolean> p, Dispatcher dispatcher) {
 		this(new Predicate<T>() {
 			@Override
@@ -52,10 +43,9 @@ public class FilterAction<T> extends Action<T, T> {
 		}, dispatcher);
 	}
 
-	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher, Action<T, T> pipeline) {
+	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher) {
 		super(dispatcher);
 		this.p = p;
-		this.elseComposable = pipeline;
 	}
 
 	@Override
@@ -63,44 +53,10 @@ public class FilterAction<T> extends Action<T, T> {
 		if (p.test(value)) {
 			broadcastNext(value);
 		} else {
-			onRequest(1);
-			if (elseComposable != null) {
-				elseComposable.broadcastNext(value);
-			}
+			requestMore(1);
 			// GH-154: Verbose error level logging of every event filtered out by a Stream filter
 			// Fix: ignore Predicate failures and drop values rather than notifying of errors.
 			//d.accept(new IllegalArgumentException(String.format("%s failed a predicate test.", value)));
-		}
-	}
-
-	@Override
-	protected void doError(Throwable ev) {
-		if (elseComposable != null) {
-			elseComposable.broadcastError(ev);
-		}
-		super.doError(ev);
-	}
-
-	@Override
-	protected void doComplete() {
-		if (elseComposable != null) {
-			elseComposable.broadcastComplete();
-		}
-		super.doComplete();
-	}
-
-	public Action<T, T> otherwise() {
-		if (elseComposable == null) {
-			elseComposable = Streams.<T>defer(environment, dispatcher).keepAlive();
-		}
-		return elseComposable;
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
-		if (elseComposable != null) {
-			elseComposable.capacity(capacity).onSubscribe(subscription);
 		}
 	}
 }

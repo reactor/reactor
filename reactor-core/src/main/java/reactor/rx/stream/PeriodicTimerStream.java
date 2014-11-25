@@ -32,18 +32,22 @@ import java.util.concurrent.TimeUnit;
  * .reactivestreams.Subscriber)}.
  * <p>
  * Create such stream with the provided factory, E.g with a delay of 1 second, then every 2 seconds.:
+ * <pre>
  * {@code
- * Streams.timer(env, 1, 2).consume(
+ * Streams.timer(1, 2).consume(
  *log::info,
  *log::error,
  * (-> log.info("complete"))
  * )
  * }
- * <p>
+ * </pre>
+ *
  * Will log:
+ * <pre>{@code
  * 0
  * complete
- *
+ * }
+ * </pre>
  * @author Stephane Maldini
  */
 public final class PeriodicTimerStream extends Stream<Long> {
@@ -54,7 +58,7 @@ public final class PeriodicTimerStream extends Stream<Long> {
 	final private Timer    timer;
 
 	public PeriodicTimerStream(long delay, long period, TimeUnit unit, Timer timer) {
-		this.delay = delay >= 0l ? delay : 0l;
+		this.delay = delay >= 0l ? delay : -1l;
 		this.unit = unit != null ? unit : TimeUnit.SECONDS;
 		this.period = period;
 		this.timer = timer;
@@ -73,7 +77,7 @@ public final class PeriodicTimerStream extends Stream<Long> {
 			public void accept(Long aLong) {
 				subscriber.onNext(counter++);
 			}
-		}, period, unit, delay);
+		}, period, unit, delay == -1 ? TimeUnit.MILLISECONDS.convert(period, unit) : delay);
 
 		public TimerSubscription(Stream<Long> publisher, Subscriber<? super Long> subscriber) {
 			super(publisher, subscriber);

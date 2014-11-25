@@ -15,14 +15,15 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.rx.Stream;
+import reactor.rx.stream.GroupedByStream;
+import reactor.rx.subscription.ReactiveSubscription;
 import reactor.util.Assert;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key
@@ -32,10 +33,10 @@ import java.util.Map;
  * @param <K>
  * @since 2.0
  */
-public class GroupByAction<T, K> extends Action<T, Stream<T>> {
+public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
-	private final Map<K, GroupedByAction<K, T>> groupByMap = new HashMap<K, GroupedByAction<K, T>>();
+	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
 
 	public GroupByAction(Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
 		super(dispatcher);
@@ -43,62 +44,50 @@ public class GroupByAction<T, K> extends Action<T, Stream<T>> {
 		this.fn = fn;
 	}
 
-	public Map<K, ? extends Stream<T>> groupByMap() {
+	public Map<K, ReactiveSubscription<T>> groupByMap() {
 		return groupByMap;
-	}
-
-	public Action<T, Stream<T>> cancel(K key) {
-		dispatch(key, new Consumer<K>() {
-			@Override
-			public void accept(K k) {
-				Action<T, T> s = groupByMap.remove(k);
-				if (s != null) {
-					s.cancel();
-				}
-			}
-		});
-		return this;
-	}
-
-	public Action<T, Stream<T>> complete(K key) {
-		dispatch(key, new Consumer<K>() {
-			@Override
-			public void accept(K k) {
-				Action<T, T> s = groupByMap.remove(k);
-				if (s != null) {
-					s.broadcastComplete();
-				}
-			}
-		});
-		return this;
 	}
 
 	@Override
 	protected void doNext(T value) {
 		final K key = fn.apply(value);
-		GroupedByAction<K, T> stream = groupByMap.get(key);
-		if (stream == null) {
-			stream = new GroupedByAction<K, T>(key, dispatcher);
-			stream.capacity(capacity).env(environment);
-			groupByMap.put(key, stream);
-			broadcastNext(stream.onOverflowBuffer());
+
+		ReactiveSubscription<T> child = groupByMap.get(key);
+		if (child == null) {
+			GroupedByStream<K, T> action = new GroupedByStream<K, T>(key){
+				@Override
+				public void subscribe(Subscriber<? super T> s) {
+					ReactiveSubscription<T> sub = new ReactiveSubscription<T>(this, s){
+						@Override
+						protected void onRequest(long n) {
+							requestMore(n);
+						}
+					};
+					groupByMap.put(key, sub);
+					s.onSubscribe(sub);
+					sub.onNext(value);
+				}
+			};
+			broadcastNext(action);
+		}else{
+			child.onNext(value);
 		}
-		stream.broadcastNext(value);
+
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		for (Action<T, T> stream : groupByMap.values()) {
-			stream.broadcastError(ev);
+		for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			stream.onError(ev);
 		}
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		for (Action<T, T> stream : groupByMap.values()) {
-			stream.broadcastComplete();
+		for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			stream.onComplete();
 		}
 		groupByMap.clear();
 	}

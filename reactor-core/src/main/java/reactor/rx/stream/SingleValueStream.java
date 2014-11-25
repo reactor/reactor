@@ -26,6 +26,7 @@ import reactor.rx.subscription.PushSubscription;
  * will replay the value. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.just(1).consume(
  *    log::info,
@@ -33,13 +34,14 @@ import reactor.rx.subscription.PushSubscription;
  *    (-> log.info("complete"))
  * )
  * }
- * <p>
+ * </pre>
  * Will log:
+ * <pre>
+ * {@code
  * 1
- * 2
- * 3
- * 4
  * complete
+ * }
+ </pre>
  *
  * @author Stephane Maldini
  */

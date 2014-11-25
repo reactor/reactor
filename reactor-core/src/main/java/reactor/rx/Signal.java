@@ -20,15 +20,16 @@ import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 
+/**
+ * A domain representation of a Reactive {@link Stream} signal.
+ * There are 4 differents signals and their possible sequence is defined as such:
+ * onError | (onSubscribe onNext* (onError | onComplete)?)
+ *
+ * @author Stephane Maldini
+ * @since 2.0
+ */
 public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super T>> {
-	/**
-	 * A domain representation of a Reactive {@link Stream} signal.
-	 * There are 4 differents signals and their possible sequence is defined as such:
-	 * onError | (onSubscribe onNext* (onError | onComplete)?)
-	 *
-	 * @author Stephane Maldini
-	 * @since 2.0
-	 */
+
 	public enum Type {
 		/**
 		 * Only happens once, a subscribe signal is the handshake between a new subscriber and a producer.

@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * will replay the {@link java.util.concurrent.Future#get()}
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.just(someFuture).consume(
  *log::info,
@@ -36,13 +37,17 @@ import java.util.concurrent.TimeUnit;
  * (-> log.info("complete"))
  * )
  * }
- * <p>
+ * </pre>
+ * <pre>
  * Will log:
+ * {@code
  * 1
  * 2
  * 3
  * 4
  * complete
+ * }
+ * </pre>
  *
  * @author Stephane Maldini
  */

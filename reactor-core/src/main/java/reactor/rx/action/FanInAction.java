@@ -77,6 +77,21 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		publisher.subscribe(inlineMerge);
 	}
 
+	@Override
+	public long resetChildRequests() {
+		return innerSubscriptions.clearPendingRequest();
+	}
+
+	@Override
+	public void replayChildRequests(long pending) {
+		if(pending > 0){
+			requestMore(pending);
+			if(dynamicMergeAction != null){
+				dynamicMergeAction.requestUpstream(innerSubscriptions.capacity(),innerSubscriptions.terminated, pending );
+			}
+		}
+	}
+
 	public void scheduleCompletion(){
 		if(status.compareAndSet(NOT_STARTED, COMPLETING)) {
 			cancel();

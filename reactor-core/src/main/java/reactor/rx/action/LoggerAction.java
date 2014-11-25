@@ -59,23 +59,23 @@ public class LoggerAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void onRequest(long n) {
+	public void requestMore(long n) {
 		log.info("request: {}", n);
 //		if(log.isDebugEnabled()){
 //			log.debug("stream: {}", debug());
 //		}
-		super.onRequest(n);
+		super.requestMore(n);
 	}
 
 	@Override
-	public Action<T, T> cancel() {
+	public void cancel() {
 		if (upstreamSubscription != null && upstreamSubscription.getPublisher() != null) {
 			log.info("cancel: {}-{}", this.upstreamSubscription.getPublisher().getClass().getSimpleName(),
 					this.upstreamSubscription.getPublisher());
 		} else {
 			log.info("cancel");
 		}
-		return super.cancel();
+		super.cancel();
 	}
 
 	@Override

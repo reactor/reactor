@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
+import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -33,32 +34,20 @@ public class RetryAction<T> extends Action<T, T> {
 	private final long                 numRetries;
 	private final Predicate<Throwable> retryMatcher;
 	private long currentNumRetries = 0;
-	private Publisher    rootPublisher;
-	private Action<?, ?> rootAction;
-	private long         pendingRequests;
+	private final Publisher<? extends T> rootPublisher;
+	private       long                   pendingRequests;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries,
-	                   Predicate<Throwable> predicate) {
+	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		super(dispatcher);
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription) {
-		Action<?, ?> rootAction = findOldestUpstream(Action.class);
-
-		if (rootAction.getSubscription() != null
-				&& PushSubscription.class.isAssignableFrom(rootAction.getSubscription().getClass())) {
-
-			this.rootAction = rootAction;
-			this.rootPublisher = rootAction.getSubscription().getPublisher();
-		}
+		this.rootPublisher = parentStream;
 	}
 
 	@Override
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
-		if((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
+		if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
 		super.requestUpstream(capacity, terminated, elements);
 	}
 
@@ -83,10 +72,10 @@ public class RetryAction<T> extends Action<T, T> {
 				} else {
 					if (upstreamSubscription != null) {
 						if (rootPublisher != null) {
-								rootAction.cancel();
-								rootPublisher.subscribe(rootAction);
+							cancel();
+							rootPublisher.subscribe(RetryAction.this);
 						}
-						if(pendingRequests > 0) {
+						if (pendingRequests > 0) {
 							upstreamSubscription.request(pendingRequests);
 						}
 					}

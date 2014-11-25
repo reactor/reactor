@@ -54,7 +54,7 @@ class ComponentSpecSpec extends Specification {
 		when:
 			"we create a plain Composable"
 			Stream composable = Streams.<String>defer()
-			Tap<String> tap = composable.tap()
+			def tap = composable.tap()
 			composable.broadcastNext('test')
 
 		then:

@@ -41,11 +41,6 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		subscription.request(capacity);
-	}
-
-	@Override
 	protected void doNext(T ev) {
 		if(consumer != null){
 			consumer.accept(ev);
@@ -53,8 +48,15 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	protected void onRequest(long n) {
-		trySyncDispatch(n, upstreamSubscription);
+	public void onSubscribe(Subscription subscription) {
+		upstreamSubscription = createTrackingSubscription(subscription);
+	}
+
+	@Override
+	public void requestMore(long n) {
+		if(upstreamSubscription != null) {
+			trySyncDispatch(n, upstreamSubscription);
+		}
 	}
 
 	@Override
@@ -83,7 +85,7 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 			@Override
 			public boolean shouldRequestPendingSignals() {
-				return pendingRequestSignals == 0;
+				return consumer != null && pendingRequestSignals == 0;
 			}
 
 			@Override

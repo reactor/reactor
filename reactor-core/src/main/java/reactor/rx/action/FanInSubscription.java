@@ -74,6 +74,8 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 						break;
 					}
 				}
+			} else{
+				updatePendingRequests(elements);
 			}
 
 			if (terminated) {
@@ -153,6 +155,11 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		} finally {
 			lock.writeLock().unlock();
 		}
+	}
+
+	@Override
+	public boolean hasPublisher() {
+		return super.hasPublisher();
 	}
 
 	public static class InnerSubscription<O, E, SUBSCRIBER

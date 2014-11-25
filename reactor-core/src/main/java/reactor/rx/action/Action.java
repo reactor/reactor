@@ -28,10 +28,11 @@ import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.Router;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
-import reactor.function.Pausable;
+import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.queue.CompletableLinkedQueue;
 import reactor.queue.CompletableQueue;
+import reactor.rx.Controls;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.support.NonBlocking;
@@ -43,10 +44,8 @@ import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
-import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -84,7 +83,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.1, 2.0
  */
 public abstract class Action<I, O> extends Stream<O>
-		implements Processor<I, O>, Consumer<I>, Pausable, Recyclable {
+		implements Processor<I, O>, Consumer<I>, Recyclable, Controls {
 
 	//protected static final Logger log = LoggerFactory.getLogger(Action.class);
 
@@ -106,8 +105,8 @@ public abstract class Action<I, O> extends Stream<O>
 	protected PushSubscription<I> upstreamSubscription;
 	protected PushSubscription<O> downstreamSubscription;
 
-	protected Environment environment;
-	protected Dispatcher  dispatcher;
+	protected       Environment environment;
+	protected final Dispatcher  dispatcher;
 
 	protected long capacity;
 
@@ -167,6 +166,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * --------------------------------------------------------------------------------------------------------
 	 */
 
+
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
 		try {
@@ -195,35 +195,22 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		boolean hasRequestTracker = upstreamSubscription != null;
+		final boolean hasRequestTracker = upstreamSubscription != null;
 
 		//if request tracker was connected to another subscription
-		if (hasRequestTracker && upstreamSubscription.hasPublisher()) {
+		if (hasRequestTracker) {
 			subscription.cancel();
 			return;
 		}
 
-		//if upstreamSubscription without any connected subscription, pull its current demand
-		final long pending = hasRequestTracker ? upstreamSubscription.pendingRequestSignals() : 0l;
-
 		upstreamSubscription = createTrackingSubscription(subscription);
+		upstreamSubscription.maxCapacity(getCapacity());
 
-
-		dispatch(upstreamSubscription, new Consumer<Subscription>() {
-			@Override
-			public void accept(Subscription subscription) {
-				try {
-					doSubscribe(subscription);
-
-					//if previous demand unprocessed, request now
-					if (pending > 0) {
-						subscription.request(pending);
-					}
-				} catch (Throwable t) {
-					doError(t);
-				}
-			}
-		});
+		try {
+			doSubscribe(subscription);
+		} catch (Throwable t) {
+			doError(t);
+		}
 	}
 
 	@Override
@@ -241,7 +228,7 @@ public abstract class Action<I, O> extends Stream<O>
 						&& (upstreamSubscription.shouldRequestPendingSignals())) {
 
 					long left;
-					if((left = upstreamSubscription.clearPendingRequest()) > 0){
+					if ((left = upstreamSubscription.clearPendingRequest()) > 0) {
 						dispatch(left, upstreamSubscription);
 					}
 				}
@@ -273,7 +260,7 @@ public abstract class Action<I, O> extends Stream<O>
 		trySyncDispatch(cause, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
-				if(upstreamSubscription != null) upstreamSubscription.clearPendingRequest();
+				if (upstreamSubscription != null) upstreamSubscription.clearPendingRequest();
 				doError(throwable);
 			}
 		});
@@ -294,39 +281,9 @@ public abstract class Action<I, O> extends Stream<O>
 			capacity = elements;
 		}
 
-
 		if (upstreamSubscription != null) {
 			upstreamSubscription.maxCapacity(capacity);
 		}
-		return this;
-	}
-
-	@Override
-	public final Action<I, O> dispatchOn(@Nonnull final Environment environment) {
-		return dispatchOn(environment, environment.getDefaultDispatcher());
-	}
-
-	@Override
-	public final Action<I, O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
-		return dispatchOn(null, dispatcher);
-	}
-
-	/**
-	 * Re-assign the current dispatcher to run on and evaluate the capacity against its backlog through {@link
-	 * this#capacity(long)}
-	 *
-	 * @param dispatcher the new dispatcher
-	 * @return this
-	 */
-	@Override
-	public Action<I, O> dispatchOn(@Nullable Environment environment, @Nonnull final Dispatcher dispatcher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" Refer to #parallel() method. ");
-		this.dispatcher = dispatcher;
-		this.environment = environment != null ? environment : this.environment;
-
-		//refresh capacity vs dispatcher backlog
-		capacity(capacity);
 		return this;
 	}
 
@@ -381,8 +338,9 @@ public abstract class Action<I, O> extends Stream<O>
 		}*/
 
 		if (downstreamSubscription == null) {
-			/*log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(),
-					throwable)); */
+			if (Environment.alive()) {
+				Environment.get().routeError(throwable);
+			}
 			return;
 		}
 
@@ -409,28 +367,24 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 
-	@Override
-	public Action<I, O> cancel() {
+	public void cancel() {
 		if (upstreamSubscription != null) {
 			upstreamSubscription.cancel();
 			upstreamSubscription = null;
 		}
-		return this;
 	}
 
 	@Override
-	public Action<I, O> pause() {
-		//upstreamSubscription.pause = true;
-		return this;
+	public void start() {
+		requestMore(Long.MAX_VALUE);
 	}
 
-	@Override
-	public Action<I, O> resume() {
-		//upstreamSubscription.pause = false;
-		return this;
-	}
-
-	@Override
+	/**
+	 * Print a debugged form of the root action relative to this one. The output will be an acyclic directed graph of
+	 * composed actions.
+	 *
+	 * @since 2.0
+	 */
 	@SuppressWarnings("unchecked")
 	public StreamUtils.StreamVisitor debug() {
 		return StreamUtils.browse(findOldestUpstream(Action.class));
@@ -441,44 +395,6 @@ public abstract class Action<I, O> extends Stream<O>
 	 * STREAM ACTION-SPECIFIC EXTENSIONS
 	 * --------------------------------------------------------------------------------------------------------
 	 */
-
-	/**
-	 * Subscribe an {@link Action} to the actual pipeline.
-	 * <p>
-	 * Additionally to producing events (error,complete,next and eventually flush), it will take care of setting the
-	 * environment if available.
-	 * It will also give an initial capacity size used for {@link org.reactivestreams.Subscription#request(long)}
-	 * ONLY
-	 * IF the passed action capacity is not the default Long.MAX_VALUE ({@see this#getCapacity()(elements)}.
-	 * Current KeepAlive value is also assigned
-	 * <p>
-	 * Reactive Extensions patterns also dubs this operation "lift".
-	 * The operation is returned for functional-style chaining.
-	 * <p>
-	 * If the new action dispatcher is different, the new action will take
-	 * care of buffering incoming data into a StreamSubscription. Otherwise default behavior is picked:
-	 * Push synchronous subscription is the parent stream != null.
-	 *
-	 * @param action the processor to subscribe.
-	 * @param <E>    the {@link Action} type
-	 * @param <A>    the {@link Action} output type
-	 * @return the passed action
-	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
-	 * @since 2.0
-	 */
-	@Override
-	public final <A, E extends Action<? super O, ? extends A>> E connect(@Nonnull final E action) {
-		/*if (action.capacity == Long.MAX_VALUE && capacity != Long.MAX_VALUE) {
-			action.capacity(capacity);
-		}*/
-
-		if (action.environment == null) {
-			action.env(environment);
-		}
-
-		this.subscribe(action);
-		return action;
-	}
 
 	/**
 	 * Consume a Stream to allow for dynamic {@link Action} update. Everytime
@@ -505,48 +421,33 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public final Stream<O> onOverflowBuffer(Supplier<? extends CompletableQueue<O>> queueSupplier) {
-		HotStream<O> newStream = new HotStream<>(dispatcher, capacity);
-		if (queueSupplier == null) {
-			subscribeWithSubscription(newStream,new DropSubscription<O>(this, newStream){
-				@Override
-				public void request(long elements) {
-					super.request(elements);
-					requestUpstream(capacity, terminated, elements);
+	public final Stream<O> onOverflowBuffer(final Supplier<? extends CompletableQueue<O>> queueSupplier) {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				HotStream<O> newStream = new HotStream<>(dispatcher, capacity);
+				if (queueSupplier == null) {
+					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
+						@Override
+						public void request(long elements) {
+							super.request(elements);
+							requestUpstream(capacity, terminated, elements);
+						}
+					}, false);
+				} else {
+					subscribeWithSubscription(newStream,
+							createSubscription(newStream, queueSupplier.get()), false);
 				}
-			}, false);
-		} else {
-			subscribeWithSubscription(newStream,
-					createSubscription(newStream, queueSupplier.get()), false);
-		}
-		return newStream;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public final <T, V> Stream<V> fanIn(FanInAction<T, ?, V, ? extends FanInAction.InnerSubscriber<T, ?,
-			V>> fanInAction) {
-		Action<?, Publisher<T>> thiz = (Action<?, Publisher<T>>) this;
-
-		Action<Publisher<? extends T>, V> innerMerge = new DynamicMergeAction<T, V>(getDispatcher(), fanInAction);
-		innerMerge.env(environment);
-
-		PushSubscription<Publisher<T>> sub = thiz.createSubscription(innerMerge, true);
-		sub.maxCapacity(capacity);
-		thiz.subscribeWithSubscription(innerMerge, sub, false);
-		return innerMerge;
+				return newStream;
+			}
+		});
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public final <E> CombineAction<E, O> combine() {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class);
-		long pending = 0l;
-		if (subscriber.upstreamSubscription != null) {
-			pending = subscriber.upstreamSubscription.pendingRequestSignals();
-		}
-		subscriber.upstreamSubscription = new PushSubscription<>(null, subscriber);
-		subscriber.upstreamSubscription.updatePendingRequests(pending);
+		subscriber.upstreamSubscription = null;
 		return new CombineAction<E, O>(subscriber, this);
 	}
 
@@ -666,6 +567,16 @@ public abstract class Action<I, O> extends Stream<O>
 		return downstreamSubscription;
 	}
 
+	public void replayChildRequests(long request) {
+		if (request > 0) {
+			downstreamSubscription.request(request);
+		}
+	}
+
+	public long resetChildRequests() {
+		return downstreamSubscription != null ? downstreamSubscription.clearPendingRequest() : 0l;
+	}
+
 
 	/**
 	 * --------------------------------------------------------------------------------------------------------
@@ -706,15 +617,23 @@ public abstract class Action<I, O> extends Stream<O>
 
 				@Override
 				protected void onRequest(long elements) {
-					super.onRequest(elements);
-					requestUpstream(capacity, buffer.isComplete(), elements);
+					if (upstreamSubscription == null) {
+						updatePendingRequests(elements);
+					} else {
+						super.onRequest(elements);
+						requestUpstream(capacity, buffer.isComplete(), elements);
+					}
 				}
 			};
 		} else {
 			return new PushSubscription<O>(this, subscriber) {
 				@Override
 				protected void onRequest(long elements) {
-					requestUpstream(null, terminated, elements);
+					if (upstreamSubscription == null) {
+						updatePendingRequests(elements);
+					} else {
+						requestUpstream(null, terminated, elements);
+					}
 				}
 			};
 		}
@@ -723,14 +642,18 @@ public abstract class Action<I, O> extends Stream<O>
 	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
 			if (capacity == null) {
-				onRequest(elements);
+				requestMore(elements);
 				return;
 			}
 			long currentCapacity = capacity.get();
 			currentCapacity = Long.MAX_VALUE == elements ? elements : currentCapacity;
 			if (currentCapacity > 0) {
 				final long remaining = Math.min(currentCapacity, elements);
-				onRequest(remaining);
+				requestMore(remaining);
+			}
+		} else {
+			if (downstreamSubscription != null) {
+				downstreamSubscription.updatePendingRequests(elements);
 			}
 		}
 	}
@@ -749,7 +672,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected void doComplete() {
-		if(downstreamSubscription == null){
+		if (downstreamSubscription == null) {
 			cancel();
 		}
 		broadcastComplete();
@@ -758,7 +681,7 @@ public abstract class Action<I, O> extends Stream<O>
 	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
-		if(downstreamSubscription == null){
+		if (downstreamSubscription == null) {
 			cancel();
 		}
 		broadcastError(ev);
@@ -784,7 +707,8 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-	protected void onRequest(final long n) {
+	@Override
+	public void requestMore(final long n) {
 		checkRequest(n);
 		if (upstreamSubscription != null) {
 			dispatch(n, upstreamSubscription);
@@ -796,7 +720,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
 	 * <p>
-	 * This is mainly useful for libraries implementors, usually {@link this#connect(reactor.rx.action.Action)} and
+	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.function.Function)} and
 	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
 	 *
 	 * @param subscriber
@@ -869,7 +793,6 @@ public abstract class Action<I, O> extends Stream<O>
 	public void recycle() {
 		downstreamSubscription = null;
 		environment = null;
-		dispatcher = SynchronousDispatcher.INSTANCE;
 		capacity = Long.MAX_VALUE;
 		upstreamSubscription = null;
 	}

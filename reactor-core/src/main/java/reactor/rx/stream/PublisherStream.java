@@ -17,10 +17,8 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.function.Consumer;
+import org.reactivestreams.Subscription;
 import reactor.rx.Stream;
-import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
 
 /**
@@ -29,82 +27,69 @@ import reactor.rx.subscription.ReactiveSubscription;
  * The stream will directly forward all the signals passed to the subscribers and complete when onComplete is called.
  * <p>
  * Create such stream with the provided factory, E.g.:
+ * <pre>
  * {@code
  * Streams.create(sub -> sub.onNext(1))
  * }
+ * </pre>
  *
  * @author Stephane Maldini
  */
 public class PublisherStream<T> extends Stream<T> {
 
-	private final Publisher<T> publisher;
+	private final Publisher<T> source;
 
 	public PublisherStream(Publisher<T> publisher) {
-		this.publisher = publisher;
-	}
-
-	/**
-	 * Provide a unique staging action in between the publisher and future actions to subscribe to it.
-	 *
-	 * @return a new a action
-	 */
-	public Action<T, T> defer() {
-		return new DeferredSubscribeAction();
+		this.source = publisher;
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super T> subscriber) {
-		publisher.subscribe(subscriber);
-	}
+	public void subscribe(final Subscriber<? super T> subscriber) {
+		subscriber.onSubscribe(new ReactiveSubscription<T>(PublisherStream.this, subscriber) {
 
-	private class DeferredSubscribeAction extends Action<T, T> {
+			private boolean started = false;
+			private ReactiveSubscription<T> thiz = this;
+			private Subscription subscription;
 
-		public DeferredSubscribeAction() {
-			super(SynchronousDispatcher.INSTANCE);
-		}
+			@Override
+			protected void onRequest(long elements) {
+				super.onRequest(elements);
 
-		@Override
-		protected void doNext(T ev) {
-			broadcastNext(ev);
-		}
-
-		/*@Override
-		protected PushSubscription<T> createSubscription(Subscriber<? super T> subscriber, boolean reactivePull) {
-			return new PushSubscription<>(this, subscriber);
-		}*/
-
-		@Override
-		protected void doError(Throwable ev) {
-			super.doError(ev);
-		}
-
-		@Override
-		public void subscribe(final Subscriber<? super T> subscriber) {
-			final Publisher<T> deferredPublisher = publisher;
-
-			dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					subscribeWithSubscription(subscriber, new ReactiveSubscription<T>(DeferredSubscribeAction.this, subscriber) {
-
-						private boolean started = false;
+				if (!started) {
+					started = true;
+					source.subscribe(new Subscriber<T>() {
+						@Override
+						public void onSubscribe(Subscription s) {
+							subscription = s;
+						}
 
 						@Override
-						protected void onRequest(long elements) {
-							super.onRequest(elements);
-
-							if(!started){
-								started = true;
-								deferredPublisher.subscribe(DeferredSubscribeAction.this);
-								DeferredSubscribeAction.this.onRequest(elements);
-							}else{
-								requestUpstream(capacity, buffer.isComplete(), elements);
-							}
-
+						public void onNext(T t) {
+							thiz.onNext(t);
 						}
-					}, false);
+
+						@Override
+						public void onError(Throwable t) {
+							thiz.onError(t);
+						}
+
+						@Override
+						public void onComplete() {
+							thiz.onComplete();
+						}
+					});
+				}else if(subscription != null){
+					subscription.request(elements);
 				}
-			});
-		}
+			}
+
+			@Override
+			public void cancel() {
+				super.cancel();
+				if(subscription != null){
+					subscription.cancel();
+				}
+			}
+		});
 	}
 }

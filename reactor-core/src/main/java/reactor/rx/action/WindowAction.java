@@ -17,6 +17,7 @@ package reactor.rx.action;
 
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
+import reactor.rx.subscription.ReactiveSubscription;
 import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -30,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
-	private Action<T, T> currentWindow;
+	private ReactiveSubscription<T> currentWindow;
 
 	public WindowAction(Dispatcher dispatcher, int backlog) {
 		super(dispatcher, backlog, true, true, true);
@@ -40,46 +41,48 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 		super(dispatcher, backlog, true, true, true, timespan, unit, timer);
 	}
 
-	public Action<T, T> currentWindow() {
+	public ReactiveSubscription<T> currentWindow() {
 		return currentWindow;
 	}
 
-	protected void createWindowStream() {
-		currentWindow = Action.<T>passthrough(dispatcher, capacity).env(environment);
+	protected Stream<T> createWindowStream() {
+		Action<T,T> action = Action.<T>passthrough(dispatcher, capacity).env(environment);
+		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
+		currentWindow = _currentWindow;
+		action.onSubscribe(_currentWindow);
+		return action;
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
 		super.doError(ev);
-		if(currentWindow != null)
-			currentWindow.broadcastError(ev);
+		if (currentWindow != null)
+			currentWindow.onError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
 		super.doComplete();
-		if(currentWindow != null) {
-			currentWindow.broadcastComplete();
+		if (currentWindow != null) {
+			currentWindow.onComplete();
 			currentWindow = null;
 		}
 	}
 
 	@Override
 	protected void firstCallback(T event) {
-		createWindowStream();
-		//avoid that the next signal are dropped
-		broadcastNext(currentWindow.onOverflowBuffer());
+		broadcastNext(createWindowStream());
 	}
 
 	@Override
 	protected void nextCallback(T event) {
-		currentWindow.broadcastNext(event);
+		currentWindow.onNext(event);
 	}
 
 	@Override
 	protected void flushCallback(T event) {
-		if(currentWindow != null){
-			currentWindow.broadcastComplete();
+		if (currentWindow != null) {
+			currentWindow.onComplete();
 			currentWindow = null;
 		}
 	}

@@ -155,7 +155,7 @@ public abstract class Suppliers {
 	 * reactor.function.Supplier#get()} to {@link java.util.Iterator#next()}.
 	 *
 	 * @param c
-	 * 		the collection to drain
+	 * 		the collection to consume
 	 * @param <T>
 	 * 		type of the source
 	 *
@@ -176,7 +176,7 @@ public abstract class Suppliers {
 	 * Create a {@link reactor.function.Supplier} which drains all of the given {@link java.lang.Iterable Iterables}.
 	 *
 	 * @param iters
-	 * 		the collections to drain
+	 * 		the collections to consume
 	 * @param <T>
 	 * 		type of the source
 	 *

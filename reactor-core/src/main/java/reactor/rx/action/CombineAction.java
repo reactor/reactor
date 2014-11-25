@@ -107,24 +107,10 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	}
 
 	@Override
-	public Action<E, O> pause() {
-		publisher.pause();
-		subscriber.pause();
-		return super.pause();
-	}
-
-	@Override
-	public Action<E, O> resume() {
-		publisher.resume();
-		subscriber.resume();
-		return super.resume();
-	}
-
-	@Override
-	public Action<E, O> cancel() {
+	public void cancel() {
 		publisher.cancel();
 		subscriber.cancel();
-		return super.cancel();
+		super.cancel();
 	}
 
 	@Override

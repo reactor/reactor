@@ -74,7 +74,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS, delay);
+		timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS, delay == -1l ? period : delay);
 	}
 
 	@Override
@@ -83,26 +83,14 @@ public class ThrottleAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void onRequest(long n) {
+	public void requestMore(long n) {
 		trySyncDispatch(n, throttledConsumer);
 	}
 
 	@Override
-	public Action<T, T> cancel() {
+	public void cancel() {
 		timeoutRegistration.cancel();
-		return super.cancel();
-	}
-
-	@Override
-	public Action<T, T> pause() {
-		timeoutRegistration.pause();
-		return super.pause();
-	}
-
-	@Override
-	public Action<T, T> resume() {
-		timeoutRegistration.resume();
-		return super.resume();
+		super.cancel();
 	}
 
 	@Override
@@ -119,7 +107,7 @@ public class ThrottleAction<T> extends Action<T, T> {
 
 		@Override
 		public void request(long n) {
-			if(n == -1){
+			if(n == -1l){
 				super.request(1l);
 			} else {
 				super.request(n);

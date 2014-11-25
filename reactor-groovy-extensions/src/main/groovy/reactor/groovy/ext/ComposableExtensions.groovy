@@ -20,6 +20,7 @@ import groovy.transform.CompileStatic
 import reactor.function.Consumer
 import reactor.function.Function
 import reactor.function.Predicate
+import reactor.rx.Controls
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action
@@ -39,7 +40,7 @@ class ComposableExtensions {
 	/**
 	 * Alias
 	 */
-	static <T, X extends Stream<T>> X to(final X selfType, final Object key,
+	static <T, X extends Stream<T>> Controls to(final Stream<T> selfType, final Object key,
 	                                         final reactor.core.Observable observable) {
 		selfType.notify key, observable
 	}
@@ -73,7 +74,7 @@ class ComposableExtensions {
 
 
 	//Consuming
-	static <T> Stream<T> leftShift(final Stream<T> selfType, final Consumer<T> other) {
+	static <T> Controls leftShift(final Stream<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 
