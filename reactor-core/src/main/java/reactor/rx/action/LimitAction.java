@@ -39,6 +39,7 @@ public class LimitAction<T> extends Action<T, T> {
 		broadcastNext(ev);
 
 		if (++counted >= limit || (endPredicate != null && endPredicate.test(ev))) {
+			cancel();
 			broadcastComplete();
 		}
 

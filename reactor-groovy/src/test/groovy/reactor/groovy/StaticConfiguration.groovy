@@ -131,8 +131,7 @@ class StaticConfiguration {
 			}
 
 			reactor('test2') {
-				processor 'test', Streams.<Event<?>> defer().
-						filter{false}
+				processor 'test', Streams.<Event<?>> defer().filter{false}.combine()
 
 				on('test') {
 					reply it

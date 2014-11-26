@@ -21,10 +21,12 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import reactor.core.Environment;
+import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
 import reactor.rx.stream.HotStream;
+import reactor.tuple.Tuple1;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
 
@@ -44,24 +46,24 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StreamIdentityProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Integer> {
 
 
-	private final Environment             env      = new Environment();
+	private final Environment             env      = Environment.initializeIfEmpty();
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2500, true), 3500);
+		super(new TestEnvironment(2000, true), 3500);
 	}
 
 	@Override
 	public CombineAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
-
+		Dispatcher dispatcherZip = env.getCachedDispatcher();
 		CombineAction<Integer, Integer> processor = Streams.<Integer>defer(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
 				.partition(2)
 				.flatMap(stream -> stream
-								.dispatchOn(env, env.getCachedDispatcher())
+									.dispatchOn(env, env.getCachedDispatcher())
 								.observe(i -> {
 									AtomicLong counter = counters.get(Thread.currentThread());
 									if (counter == null) {
@@ -77,14 +79,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.sample(1)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
-
-/*
-	.flatMap(i ->
-												//Streams.just(i)
-												Streams.zip(Streams.just(i), otherStream, tuple -> tuple.getT1())
-//														.dispatchOn(env.getCachedDispatcher())
+								.flatMap(i ->
+												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
 								)
- */
+								.log("sub-flatmap")
+
 				)
 				.log("flatMap")
 				.when(Throwable.class, Throwable::printStackTrace)
@@ -95,7 +94,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	@Override
 	public Publisher<Integer> createHelperPublisher(long elements) {
-		if (elements != Long.MAX_VALUE && elements > 0) {
+		if (elements < Integer.MAX_VALUE && elements > 0) {
 			List<Integer> list = new ArrayList<Integer>();
 			for (int i = 1; i <= elements; i++) {
 				list.add(i);

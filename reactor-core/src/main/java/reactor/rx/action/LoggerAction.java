@@ -54,7 +54,7 @@ public class LoggerAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		log.error("onError: {}", ev);
+		log.error("onError: {}", debug(), ev);
 		super.doError(ev);
 	}
 
@@ -87,5 +87,10 @@ public class LoggerAction<T> extends Action<T, T> {
 			log.info("complete");
 		}
 		super.doComplete();
+	}
+
+	@Override
+	public String toString() {
+		return super.toString()+"{logger="+log.getName()+"}";
 	}
 }

@@ -54,12 +54,14 @@ public final class SupplierStream<T> extends Stream<T> {
 				@Override
 				public void request(long elements) {
 					try {
-						T supplied = supplier.get();
-						if (supplied != null) {
-							subscriber.onNext(supplied);
-						} else {
-							subscriber.onComplete();
+						if(elements != Long.MAX_VALUE){
+							for(long i = 0; i < elements; i++){
+								if(supplyValue(subscriber)) return;
+							}
+						}else{
+							supplyValue(subscriber);
 						}
+
 					} catch (Throwable throwable) {
 						subscriber.onError(throwable);
 					}
@@ -68,6 +70,17 @@ public final class SupplierStream<T> extends Stream<T> {
 
 		} else {
 			subscriber.onComplete();
+		}
+	}
+
+	private boolean supplyValue(final Subscriber<? super T> subscriber){
+		T supplied = supplier.get();
+		if (supplied != null) {
+			subscriber.onNext(supplied);
+			return false;
+		} else {
+			subscriber.onComplete();
+			return true;
 		}
 	}
 

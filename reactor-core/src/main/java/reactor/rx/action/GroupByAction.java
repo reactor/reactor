@@ -18,7 +18,9 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
+import reactor.queue.CompletableQueue;
 import reactor.rx.stream.GroupedByStream;
+import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 import reactor.util.Assert;
 
@@ -51,28 +53,36 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 	@Override
 	protected void doNext(final T value) {
 		final K key = fn.apply(value);
-
 		ReactiveSubscription<T> child = groupByMap.get(key);
 		if (child == null) {
+			child = new ReactiveSubscription<T>(null, null);
+			child.onNext(value);
+			groupByMap.put(key, child);
+
+			final CompletableQueue<T> queue = child.getBuffer();
 			GroupedByStream<K, T> action = new GroupedByStream<K, T>(key){
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
-					ReactiveSubscription<T> sub = new ReactiveSubscription<T>(this, s){
+					 ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue){
 						@Override
 						protected void onRequest(long n) {
-							requestMore(n);
+							PushSubscription<T> upSub = upstreamSubscription;
+							if(upSub != null){
+								upSub.accept(n);
+							}else{
+								updatePendingRequests(n);
+							}
+
 						}
 					};
-					groupByMap.put(key, sub);
-					s.onSubscribe(sub);
-					sub.onNext(value);
+					groupByMap.put(key, finalSub);
+					s.onSubscribe(finalSub);
 				}
 			};
 			broadcastNext(action);
 		}else{
 			child.onNext(value);
 		}
-
 	}
 
 	@Override

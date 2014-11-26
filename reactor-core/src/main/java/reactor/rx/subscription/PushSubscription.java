@@ -22,6 +22,8 @@ import reactor.rx.Stream;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.subscription.support.WrappedSubscription;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 /**
  * Relationship between a Stream (Publisher) and a Subscriber. A PushSubscription offers common facilities to track
  * downstream demand. Subclasses such as ReactiveSubscription implement these mechanisms to prevent Subscriber overrun.
@@ -34,9 +36,13 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	protected final Subscriber<? super O> subscriber;
 	protected final Stream<O>             publisher;
 
-	protected volatile boolean terminated            = false;
+	protected volatile int terminated = 0;
 
-	protected long    pendingRequestSignals = 0l;
+	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATED = AtomicIntegerFieldUpdater
+			.newUpdater(PushSubscription.class, "terminated");
+
+
+	protected long pendingRequestSignals = 0l;
 
 	/**
 	 * Wrap the subscription behind a push subscription to start tracking its requests
@@ -44,7 +50,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	 * @param subscription the subscription to wrap
 	 * @return the new ReactiveSubscription
 	 */
-	public final static <O> PushSubscription<O> wrap(Subscription subscription, Subscriber<? super O> errorSubscriber) {
+	public static <O> PushSubscription<O> wrap(Subscription subscription, Subscriber<? super O> errorSubscriber) {
 		return new WrappedSubscription<O>(subscription, errorSubscriber);
 	}
 
@@ -74,28 +80,28 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	@Override
 	public void cancel() {
-		if (publisher != null) {
+		TERMINAL_UPDATED.set(this, 1);
+		if(publisher != null){
 			publisher.cleanSubscriptionReference(this);
 		}
-
-		terminated = true;
 	}
 
 	public void onComplete() {
-		if (!terminated) {
-			subscriber.onComplete();
-			terminated = true;
+		if (TERMINAL_UPDATED.compareAndSet(this, 0, 1) && subscriber != null) {
+				subscriber.onComplete();
 		}
 	}
 
 	public void onNext(O ev) {
-		if (!terminated) {
+		if(terminated == 0) {
 			subscriber.onNext(ev);
 		}
 	}
 
 	public void onError(Throwable throwable) {
-		subscriber.onError(throwable);
+		if (subscriber != null) {
+			subscriber.onError(throwable);
+		}
 	}
 
 	public Stream<O> getPublisher() {
@@ -123,7 +129,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public boolean isComplete() {
-		return terminated;
+		return TERMINAL_UPDATED.get(this) == 1;
 	}
 
 	public final long pendingRequestSignals() {

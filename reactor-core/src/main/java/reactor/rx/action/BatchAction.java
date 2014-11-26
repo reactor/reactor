@@ -20,13 +20,11 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -117,7 +115,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		dispatch(elements, upstreamSubscription);
 	}
 

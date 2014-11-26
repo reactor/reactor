@@ -150,8 +150,9 @@ class GroovyPromisesSpec extends Specification {
 					map { println('not in log'); true }
 
 		and: "setting a value"
+			def p2 = s.next()
 			p << 'not a number'
-			s.next().await(2000, TimeUnit.MILLISECONDS)
+			p2.await(2000, TimeUnit.MILLISECONDS)
 
 		then: 'No value'
 			thrown(NumberFormatException)

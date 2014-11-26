@@ -19,7 +19,7 @@ import org.reactivestreams.Subscriber;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
@@ -33,30 +33,32 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 2.0
  */
 public class DropSubscription<O> extends PushSubscription<O> {
-	protected final AtomicLong capacity;
+	protected volatile long capacity = 0l;
+
+	protected static final AtomicLongFieldUpdater<DropSubscription> CAPACITY_UPDATER = AtomicLongFieldUpdater
+			.newUpdater(DropSubscription.class, "capacity");
 
 	public DropSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		super(publisher, subscriber);
-		this.capacity = new AtomicLong();
 	}
 
 	@Override
 	public void request(long elements) {
 		Action.checkRequest(elements);
-		capacity.addAndGet(elements);
+		CAPACITY_UPDATER.addAndGet(this, elements);
 	}
 
 	@Override
 	public void cancel() {
 		super.cancel();
-		capacity.set(0l);
+		CAPACITY_UPDATER.set(this, 0l);
 	}
 
 	@Override
 	public void onNext(O ev) {
-		if (capacity.getAndDecrement() > 0) {
+		if (CAPACITY_UPDATER.getAndDecrement(this) > 0) {
 			subscriber.onNext(ev);
-		} else if (capacity.incrementAndGet() > 0) {
+		} else if (CAPACITY_UPDATER.incrementAndGet(this) > 0) {
 			onNext(ev);
 		}
 	}
@@ -65,7 +67,7 @@ public class DropSubscription<O> extends PushSubscription<O> {
 	public String toString() {
 		return "{" +
 				"capacity=" + capacity +
-				(capacity.get() <= 0 ? "[dropping]" : "") +
+				(capacity <= 0 ? "[dropping]" : "") +
 				'}';
 	}
 }

@@ -203,8 +203,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			outerAction.trySyncDispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					outerAction.capacity(outerAction.runningComposables.decrementAndGet());
-					if (index != outerAction.capacity && outerAction.capacity != 0 && outerAction.count <= outerAction.capacity) {
+					outerAction.capacity(RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction));
+					long capacity = outerAction.capacity;
+					if (index != capacity && capacity != 0 && outerAction.count <= capacity) {
 						outerAction.status.set(COMPLETING);
 					} else {
 						outerAction.broadcastTuple(true);

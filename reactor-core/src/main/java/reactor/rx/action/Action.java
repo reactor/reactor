@@ -46,7 +46,6 @@ import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
@@ -98,6 +97,8 @@ public abstract class Action<I, O> extends Stream<O>
 	 * stacking into a Dispatcher.
 	 */
 	public static final int RESERVED_SLOTS = 4;
+
+	public static final int NO_CAPACITY = -1;
 
 	/**
 	 * The upstream request tracker to avoid dispatcher overrun, based on the current {@link this#capacity}
@@ -431,7 +432,7 @@ public abstract class Action<I, O> extends Stream<O>
 						@Override
 						public void request(long elements) {
 							super.request(elements);
-							requestUpstream(capacity, terminated, elements);
+							requestUpstream(capacity, isComplete(), elements);
 						}
 					}, false);
 				} else {
@@ -632,20 +633,20 @@ public abstract class Action<I, O> extends Stream<O>
 					if (upstreamSubscription == null) {
 						updatePendingRequests(elements);
 					} else {
-						requestUpstream(null, terminated, elements);
+						requestUpstream(NO_CAPACITY, isComplete(), elements);
 					}
 				}
 			};
 		}
 	}
 
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
-			if (capacity == null) {
+			if (capacity == NO_CAPACITY) {
 				requestMore(elements);
 				return;
 			}
-			long currentCapacity = capacity.get();
+			long currentCapacity = capacity;
 			currentCapacity = Long.MAX_VALUE == elements ? elements : currentCapacity;
 			if (currentCapacity > 0) {
 				final long remaining = Math.min(currentCapacity, elements);

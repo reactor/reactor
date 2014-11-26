@@ -184,6 +184,8 @@ public abstract class StreamUtils {
 					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
 						Subscriber<?> subscriber = ((PushSubscription<?>) registration).getSubscriber();
 
+						if(subscriber == null) return;
+
 						if (debugVisitor != null && multicast) {
 							debugVisitor.d ++;
 							debugVisitor.newMulticastLine(debugVisitor.d);

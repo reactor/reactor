@@ -1604,14 +1604,14 @@ class StreamsSpec extends Specification {
 
 	def 'Streams can be materialized'() {
 		when:
-			'A source stream emits next signals followed by an error and complete'
+			'A source stream emits next signals followed by complete'
 			def res = []
 			def myStream = Streams.create { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
-				aSubscriber.onError(new Exception())
 				aSubscriber.onComplete()
+				aSubscriber.onError(new Exception())
 			}
 
 		and:
@@ -1623,7 +1623,26 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == ['SUBSCRIBE', 'NEXT', 'NEXT', 'NEXT', 'ERROR', 'COMPLETE', 'complete']
+			res == ['SUBSCRIBE', 'NEXT', 'NEXT', 'NEXT', 'COMPLETE', 'complete']
+
+		when:
+			'A source stream emits next signals followed by complete'
+			res = []
+			myStream = Streams.create { aSubscriber ->
+				aSubscriber.onNext('Three')
+				aSubscriber.onError(new Exception())
+			}
+
+		and:
+			'A materialized stream is consumed'
+			myStream.materialize().consume(
+					{ println(it); res << it.type.toString() },                          // onNext
+					{ it.printStackTrace() },                          // onError
+					{ println("Sequence complete"); res << 'complete' }          // onCompleted
+			)
+
+		then:
+			res == ['SUBSCRIBE', 'NEXT', 'ERROR']
 	}
 
 

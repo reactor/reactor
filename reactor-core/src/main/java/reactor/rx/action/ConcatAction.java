@@ -72,7 +72,7 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			request(outerAction.innerSubscriptions.capacity().get());
+			request(outerAction.innerSubscriptions.pendingRequestSignals());
 		}
 
 		@Override
@@ -80,7 +80,7 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 			//Action.log.debug("event [" + ev + "] by: " + this);
 			outerAction.innerSubscriptions.onNext(ev);
 			emittedSignals++;
-			long batchSize = outerAction.runningComposables.get();
+			long batchSize = RUNNING_COMPOSABLE_UPDATER.get(outerAction);
 			if (batchSize > 0 && emittedSignals >= outerAction.capacity / batchSize) {
 				request(emittedSignals);
 			}
@@ -96,7 +96,7 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 				public void accept(Void aVoid) {
 					s.toRemove = true;
 					outerAction.innerSubscriptions.removeSubscription(s);
-					if (outerAction.runningComposables.decrementAndGet() == 0 && !outerAction.checkDynamicMerge()) {
+					if (RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction) == 0 && !outerAction.checkDynamicMerge()) {
 						outerAction.innerSubscriptions.onComplete();
 					}
 				}

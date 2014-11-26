@@ -436,7 +436,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		HotStream<Integer> d = Streams.defer(env);
 
-		System.out.println(d
+		Controls c = d
 				.partition().consume(stream ->
 						stream.dispatchOn(Environment.cachedDispatcher())
 								.map(o -> {
@@ -471,10 +471,11 @@ public class StreamTests extends AbstractReactorTest {
 
 										counsumerLatch.countDown();
 									}
-								}))
-				.debug());
+								}));
+
 
 		for (int i = 0; i < COUNT; i++) {
+			if(i % 5000 == 0) System.out.println(c.debug());
 			d.broadcastNext(i);
 		}
 
@@ -733,35 +734,37 @@ public class StreamTests extends AbstractReactorTest {
 										Streams.just(1111, l, 3333, 4444, 5555, 6666)
 								)
 										.dispatchOn(env)
-										.observe(x -> afterSubscribe.countDown())
+										.observeSubscribe(x -> afterSubscribe.countDown())
 										.filter(nearbyLoc -> 3333 >= nearbyLoc)
 										.filter(nearbyLoc -> 2222 <= nearbyLoc)
+
 				);
 
-		s.subscribe(new Subscriber<Integer>() {
+		s.subscribe(new Action<Integer, Void>(env.getCachedDispatcher()) {
 			Subscription s;
 
 			@Override
-			public void onSubscribe(Subscription s) {
+			public void doSubscribe(Subscription s) {
 				this.s = s;
 				s.request(1);
 			}
 
 			@Override
-			public void onNext(Integer integer) {
+			public void doNext(Integer integer) {
+				System.out.println(Thread.currentThread().getName()+" "+debug());
 				latch.countDown();
 				System.out.println(integer);
 				s.request(1);
 			}
 
 			@Override
-			public void onError(Throwable t) {
+			public void doError(Throwable t) {
 				t.printStackTrace();
 			}
 
 			@Override
-			public void onComplete() {
-
+			public void doComplete() {
+				System.out.println(Thread.currentThread().getName()+" complete "+debug());
 			}
 		});
 
@@ -808,7 +811,7 @@ public class StreamTests extends AbstractReactorTest {
 		List<Integer> tasks = IntStream.range(0, 1500).boxed().collect(Collectors.toList());
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
-		Stream<Integer> worker = Streams.defer(tasks);
+		Stream<Integer> worker = Streams.defer(tasks).dispatchOn(env);
 
 		Controls tail = worker.partition(2).consume(s ->
 						s

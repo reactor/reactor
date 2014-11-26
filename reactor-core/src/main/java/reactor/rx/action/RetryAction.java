@@ -16,14 +16,9 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.function.Predicate;
-import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -46,7 +41,7 @@ public class RetryAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void requestUpstream(AtomicLong capacity, boolean terminated, long elements) {
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
 		super.requestUpstream(capacity, terminated, elements);
 	}
