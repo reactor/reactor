@@ -569,8 +569,8 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	public void replayChildRequests(long request) {
-		if (request > 0) {
-			downstreamSubscription.request(request);
+		if (request > 0 && downstreamSubscription != null) {
+			downstreamSubscription.accept(request);
 		}
 	}
 

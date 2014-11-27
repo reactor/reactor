@@ -143,7 +143,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		return new ZipAction.InnerSubscriber<>(this, index++);
 	}
 
-
 	@Override
 	protected long initUpstreamPublisherAndCapacity() {
 		for (Publisher<? extends O> composable : composables) {

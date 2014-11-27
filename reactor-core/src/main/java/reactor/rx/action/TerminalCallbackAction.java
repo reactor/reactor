@@ -75,7 +75,7 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 			@Override
 			public void incrementCurrentNextSignals() {
-				pendingRequestSignals--;
+				PENDING_UPDATER.decrementAndGet(this);
 			}
 
 			@Override
@@ -85,12 +85,12 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 			@Override
 			public boolean shouldRequestPendingSignals() {
-				return consumer != null && pendingRequestSignals == 0;
+				return consumer != null && pendingRequestSignals() == 0;
 			}
 
 			@Override
 			public String toString() {
-				return super.toString()+" pending="+pendingRequestSignals;
+				return super.toString()+" pending="+pendingRequestSignals();
 			}
 		};
 	}

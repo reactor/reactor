@@ -21,8 +21,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.subscription.PushSubscription;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -32,10 +31,16 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
 
+	private volatile int finish = 0;
+
+	protected static final AtomicIntegerFieldUpdater<DynamicMergeAction> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
+			.newUpdater(DynamicMergeAction.class, "finish");
+
+
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			Dispatcher dispatcher,
-			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I,?, O>> fanInAction
+			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
 	) {
 		super(dispatcher);
 		this.fanInAction = fanInAction == null ?
@@ -53,7 +58,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		return fanInAction.createSubscription(subscriber, reactivePull);
+		throw new IllegalAccessError("Should never use dynamicMergeAction own createSubscription");
 	}
 
 	@Override
@@ -73,14 +78,18 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	protected void doComplete() {
-		cancel();
-		fanInAction.scheduleCompletion();
+		if(TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
+			cancel();
+			fanInAction.scheduleCompletion();
+		}
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		cancel();
-		fanInAction.doError(ev);
+		if(TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
+			cancel();
+			fanInAction.doError(ev);
+		}
 	}
 
 	@Override
@@ -98,6 +107,10 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	public FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> mergedStream() {
 		return fanInAction;
+	}
+
+	boolean hasNoMorePublishers(){
+		return finish == 1;
 	}
 
 }

@@ -15,27 +15,25 @@
  */
 package reactor.reactivestreams.tck;
 
-import org.junit.Test;
+import org.junit.After;
+import org.junit.Before;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
-import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple1;
 import reactor.tuple.Tuple2;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -46,11 +44,25 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StreamIdentityProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Integer> {
 
 
-	private final Environment             env      = Environment.initializeIfEmpty();
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
+	private Environment             env;
+
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2000, true), 3500);
+		super(new TestEnvironment(2500, true), 3500);
+	}
+
+	@BeforeTest
+	@Before
+	protected void startEnv(){
+		env = Environment.initializeIfEmpty();
+	}
+
+	@AfterTest
+	@After
+	protected void cleanEnv(){
+		Environment.terminate();
+		env = null;
 	}
 
 	@Override
@@ -58,38 +70,37 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		Dispatcher dispatcherZip = env.getCachedDispatcher();
-		CombineAction<Integer, Integer> processor = Streams.<Integer>defer(env)
+
+			return Streams.<Integer>defer(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-				.partition(2)
-				.flatMap(stream -> stream
+					.partition(2)
+					.flatMap(stream -> stream
 									.dispatchOn(env, env.getCachedDispatcher())
-								.observe(i -> {
-									AtomicLong counter = counters.get(Thread.currentThread());
-									if (counter == null) {
-										counter = new AtomicLong();
-										counters.put(Thread.currentThread(), counter);
-									}
-									counter.incrementAndGet();
-								})
-								.scan(0, Tuple2::getT1)
-								.filter(integer -> integer >= 0)
-								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
-								.map(integer -> -integer)
-								.sample(1)
-								.buffer(1024, 200, TimeUnit.MILLISECONDS)
-								.<Integer>split()
-								.flatMap(i ->
-												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-								)
-								.log("sub-flatmap")
-
+									.observe(i -> {
+										AtomicLong counter = counters.get(Thread.currentThread());
+										if (counter == null) {
+											counter = new AtomicLong();
+											counters.put(Thread.currentThread(), counter);
+										}
+										counter.incrementAndGet();
+									})
+									.scan(0, Tuple2::getT1)
+									.filter(integer -> integer >= 0)
+									.reduce(() -> 0, 1, tuple -> -tuple.getT1())
+									.map(integer -> -integer)
+									.sample(1)
+									.buffer(1024, 200, TimeUnit.MILLISECONDS)
+									.<Integer>split()
+									.log("before-subfm")
+									.flatMap(i ->
+											Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
+									)
+							//.log("zip")
 				)
 				.log("flatMap")
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
-
-		return processor;
 	}
 
 	@Override
@@ -122,55 +133,5 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return Streams.fail(new Exception("oops")).cast(Integer.class);
 	}
 
-	@Test
-	public void testIdentityProcessor() throws InterruptedException {
-		final int elements = 10000;
-		CountDownLatch latch = new CountDownLatch(elements);
 
-		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
-
-		HotStream<Integer> stream = Streams.defer(env);
-
-		stream.subscribe(processor);
-		System.out.println(processor.debug());
-		Thread.sleep(2000);
-
-		processor.subscribe(new Subscriber<Integer>() {
-			@Override
-			public void onSubscribe(Subscription s) {
-				s.request(elements);
-			}
-
-			@Override
-			public void onNext(Integer integer) {
-				latch.countDown();
-			}
-
-			@Override
-			public void onError(Throwable t) {
-				t.printStackTrace();
-			}
-
-			@Override
-			public void onComplete() {
-				System.out.println("completed!");
-				latch.countDown();
-			}
-		});
-
-		System.out.println(stream.debug());
-
-		for (int i = 0; i < elements; i++) {
-			stream.broadcastNext(i);
-		}
-		//stream.broadcastComplete();
-
-		latch.await(8, TimeUnit.SECONDS);
-
-		System.out.println(processor.debug());
-		System.out.println(counters);
-		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Environment.PROCESSORS + " CPU");
-
-	}
 }

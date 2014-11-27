@@ -32,7 +32,7 @@ import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
-import reactor.rx.stream.GroupedByStream;
+import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 import reactor.timer.Timer;
@@ -432,8 +432,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param environment the environment to get dispatcher from {@link reactor.core.Environment#getDefaultDispatcher()}
 	 * @return a new {@link Stream} whom requests are running on a different {@link Dispatcher}
 	 */
-	public final Stream<O> subscribeOn(@Nonnull final Environment environment) {
-		return subscribeOn(environment.getDefaultDispatcher());
+	public final Stream<O> requestOn(@Nonnull final Environment environment) {
+		return requestOn(environment.getDefaultDispatcher());
 	}
 
 	/**
@@ -455,7 +455,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param currentDispatcher the new dispatcher
 	 * @return a new {@link Stream} whom request are running on a different {@link Dispatcher}
 	 */
-	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
+	public final Stream<O> requestOn(@Nonnull final Dispatcher currentDispatcher) {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher _dispatcher) {
@@ -1671,10 +1671,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final <K> Stream<GroupedByStream<K, O>> groupBy(final Function<? super O, ? extends K> keyMapper) {
-		return lift(new Function<Dispatcher, Action<? super O, GroupedByStream<K, O>>>() {
+	public final <K> Stream<GroupedStream<K, O>> groupBy(final Function<? super O, ? extends K> keyMapper) {
+		return lift(new Function<Dispatcher, Action<? super O, GroupedStream<K, O>>>() {
 			@Override
-			public Action<? super O, GroupedByStream<K, O>> apply(Dispatcher dispatcher) {
+			public Action<? super O, GroupedStream<K, O>> apply(Dispatcher dispatcher) {
 				return new GroupByAction<>(keyMapper, dispatcher);
 			}
 		});
@@ -1689,7 +1689,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values routed to this partition
 	 * @since 2.0
 	 */
-	public final Stream<GroupedByStream<Integer, O>> partition() {
+	public final Stream<GroupedStream<Integer, O>> partition() {
 		return partition(Environment.PROCESSORS);
 	}
 
@@ -1702,7 +1702,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Stream<GroupedByStream<Integer, O>> partition(final int buckets) {
+	public final Stream<GroupedStream<Integer, O>> partition(final int buckets) {
 		return groupBy(new Function<O, Integer>() {
 			@Override
 			public Integer apply(O o) {

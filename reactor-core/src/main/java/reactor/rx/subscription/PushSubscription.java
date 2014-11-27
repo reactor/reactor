@@ -23,6 +23,7 @@ import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.subscription.support.WrappedSubscription;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber. A PushSubscription offers common facilities to track
@@ -38,11 +39,15 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	protected volatile int terminated = 0;
 
-	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATED = AtomicIntegerFieldUpdater
+	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(PushSubscription.class, "terminated");
 
 
-	protected long pendingRequestSignals = 0l;
+	protected volatile long pendingRequestSignals = 0l;
+
+	protected static final AtomicLongFieldUpdater<PushSubscription> PENDING_UPDATER = AtomicLongFieldUpdater
+			.newUpdater(PushSubscription.class, "pendingRequestSignals");
+
 
 	/**
 	 * Wrap the subscription behind a push subscription to start tracking its requests
@@ -60,7 +65,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	@Override
-	public void accept(Long n) {
+	public final void accept(Long n) {
 		request(n);
 	}
 
@@ -68,7 +73,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	public void request(long n) {
 		try {
 			if (publisher == null) {
-				if (pendingRequestSignals != Long.MAX_VALUE && (pendingRequestSignals += n) < 0)
+				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
 					subscriber.onError(SpecificationExceptions.spec_3_17_exception(subscriber, pendingRequestSignals, n));
 			}
 			onRequest(n);
@@ -80,20 +85,20 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	@Override
 	public void cancel() {
-		TERMINAL_UPDATED.set(this, 1);
-		if(publisher != null){
+		TERMINAL_UPDATER.set(this, 1);
+		if (publisher != null) {
 			publisher.cleanSubscriptionReference(this);
 		}
 	}
 
 	public void onComplete() {
-		if (TERMINAL_UPDATED.compareAndSet(this, 0, 1) && subscriber != null) {
-				subscriber.onComplete();
+		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
+			subscriber.onComplete();
 		}
 	}
 
 	public void onNext(O ev) {
-		if(terminated == 0) {
+		if (terminated == 0) {
 			subscriber.onNext(ev);
 		}
 	}
@@ -112,12 +117,20 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		return publisher != null;
 	}
 
-	public void updatePendingRequests(long n) {
-		if ((pendingRequestSignals += n) < 0) pendingRequestSignals = Long.MAX_VALUE;
+	public final void updatePendingRequests(long n) {
+		long oldPending;
+		long newPending;
+		do{
+			oldPending = pendingRequestSignals;
+			newPending = oldPending + n;
+			if(newPending < 0) {
+				newPending = Long.MAX_VALUE;
+			}
+		}while(!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
 	}
 
 	public long clearPendingRequest() {
-		return pendingRequestSignals;
+		return pendingRequestSignals();
 	}
 
 	protected void onRequest(long n) {
@@ -129,11 +142,11 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public boolean isComplete() {
-		return TERMINAL_UPDATED.get(this) == 1;
+		return TERMINAL_UPDATER.get(this) == 1;
 	}
 
 	public final long pendingRequestSignals() {
-		return pendingRequestSignals;
+		return PENDING_UPDATER.get(this);
 	}
 
 	public void incrementCurrentNextSignals() {

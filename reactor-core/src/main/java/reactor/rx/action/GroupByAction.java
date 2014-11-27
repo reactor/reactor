@@ -19,7 +19,7 @@ import org.reactivestreams.Subscriber;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.queue.CompletableQueue;
-import reactor.rx.stream.GroupedByStream;
+import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 import reactor.util.Assert;
@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @param <K>
  * @since 2.0
  */
-public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
+public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
@@ -60,11 +60,17 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 			groupByMap.put(key, child);
 
 			final CompletableQueue<T> queue = child.getBuffer();
-			GroupedByStream<K, T> action = new GroupedByStream<K, T>(key){
+			GroupedStream<K, T> action = new GroupedStream<K, T>(key){
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
 					 ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue){
-						@Override
+						 @Override
+						 public void cancel() {
+							 super.cancel();
+							 groupByMap.remove(key);
+						 }
+
+						 @Override
 						protected void onRequest(long n) {
 							PushSubscription<T> upSub = upstreamSubscription;
 							if(upSub != null){
@@ -72,6 +78,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 							}else{
 								updatePendingRequests(n);
 							}
+
 
 						}
 					};
@@ -86,20 +93,12 @@ public class GroupByAction<T, K> extends Action<T, GroupedByStream<K, T>> {
 	}
 
 	@Override
-	protected void doError(Throwable ev) {
-		super.doError(ev);
-		for (ReactiveSubscription<T> stream : groupByMap.values()) {
-			stream.onError(ev);
-		}
-	}
-
-	@Override
 	protected void doComplete() {
-		super.doComplete();
-		for (ReactiveSubscription<T> stream : groupByMap.values()) {
-			stream.onComplete();
-		}
-		groupByMap.clear();
+			super.doComplete();
+			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+				stream.onComplete();
+			}
+			groupByMap.clear();
 	}
 
 }

@@ -78,20 +78,15 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public void request(long elements) {
 		Action.checkRequest(elements);
 
-
-		//Fetch current pending requests
-		long previous = pendingRequestSignals;
-
 		//If unbounded request, set and return
 		if (elements == Long.MAX_VALUE) {
-			if (previous != 0) {
+			if (!PENDING_UPDATER.compareAndSet(this, 0l, Long.MAX_VALUE)) {
 				CAPACITY_UPDATER.set(this, maxCapacity);
 				return;
-			} else {
-				pendingRequestSignals = Long.MAX_VALUE;
 			}
-		} else if (previous != Long.MAX_VALUE) {
-			if ((pendingRequestSignals += elements) < 0l) {
+		}else {
+			long previous = pendingRequestSignals;
+			if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
 				onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
 				return;
 			}
@@ -128,9 +123,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				if (pendingRequestSignals != Long.MAX_VALUE) {
 					long overflow = maxCapacity - CAPACITY_UPDATER.addAndGet(this, toRequest - i);
 					if (overflow < 0l) {
-						CAPACITY_UPDATER.addAndGet(this, overflow);
-						if ((pendingRequestSignals -= overflow) < 0) {
-							onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
+						CAPACITY_UPDATER.set(this, maxCapacity);
+						if (PENDING_UPDATER.addAndGet(this, -overflow) < 0) {
+							onError(SpecificationExceptions.spec_3_17_exception(subscriber, pendingRequestSignals, elements));
 						}
 					}
 				}
@@ -191,12 +186,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 		bufferLock.lock();
 		try {
-			if (TERMINAL_UPDATED.get(this) == 1)
+			if (TERMINAL_UPDATER.get(this) == 1)
 				return;
 			buffer.complete();
 
 			if (buffer.isEmpty()) {
-				if (TERMINAL_UPDATED.compareAndSet(this, 0, 1) && subscriber != null) {
+				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 					subscriber.onComplete();
 				}
 			}

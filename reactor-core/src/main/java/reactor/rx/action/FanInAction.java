@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
+import reactor.rx.subscription.PushSubscription;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,7 +51,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	protected static final AtomicIntegerFieldUpdater<FanInAction> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInAction.class, "runningComposables");
 
-	Action<?, ?> dynamicMergeAction = null;
+	DynamicMergeAction<?, ?> dynamicMergeAction = null;
 
 	@SuppressWarnings("unchecked")
 	public FanInAction(Dispatcher dispatcher) {
@@ -73,6 +74,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		super.subscribe(subscriber);
 	}
 
+	@Override
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		//Already done with inner subscriptions
+		return super.createSubscription(subscriber, false);
+	}
+
 	public void addPublisher(Publisher<? extends I> publisher) {
 		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		Subscriber<I> inlineMerge = createSubscriber();
@@ -80,17 +87,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	@Override
-	public long resetChildRequests() {
-		return innerSubscriptions.clearPendingRequest();
-	}
-
-	@Override
 	public void replayChildRequests(long pending) {
-		if (pending > 0) {
+		if (pending == 0 && dynamicMergeAction != null && dynamicMergeAction.upstreamSubscription != null) {
+			dynamicMergeAction.upstreamSubscription.clearPendingRequest();
+			dynamicMergeAction.requestUpstream(capacity, innerSubscriptions.terminated, capacity);
+		}
+		else if (pending > 0) {
 			requestMore(pending);
-			if (dynamicMergeAction != null) {
-				dynamicMergeAction.requestUpstream(innerSubscriptions.capacity(), innerSubscriptions.terminated, pending);
-			}
 		}
 	}
 
@@ -133,7 +136,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 
 	protected boolean checkDynamicMerge() {
-		return dynamicMergeAction != null && dynamicMergeAction.upstreamSubscription != null;
+		return dynamicMergeAction != null && !dynamicMergeAction.hasNoMorePublishers();
 	}
 
 	@Override

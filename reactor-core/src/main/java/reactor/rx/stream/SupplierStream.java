@@ -56,7 +56,7 @@ public final class SupplierStream<T> extends Stream<T> {
 					try {
 						if(elements != Long.MAX_VALUE){
 							for(long i = 0; i < elements; i++){
-								if(supplyValue(subscriber)) return;
+								if(isComplete() || supplyValue(subscriber)) return;
 							}
 						}else{
 							supplyValue(subscriber);
@@ -75,7 +75,7 @@ public final class SupplierStream<T> extends Stream<T> {
 
 	private boolean supplyValue(final Subscriber<? super T> subscriber){
 		T supplied = supplier.get();
-		if (supplied != null) {
+		if (supplied != null ) {
 			subscriber.onNext(supplied);
 			return false;
 		} else {

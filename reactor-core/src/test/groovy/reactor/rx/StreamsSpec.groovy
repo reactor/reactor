@@ -16,6 +16,8 @@
 package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.reactivestreams.Subscriber
+import org.reactivestreams.Subscription
 import reactor.core.Environment
 import reactor.core.Observable
 import reactor.core.spec.Reactors
@@ -199,6 +201,47 @@ class StreamsSpec extends Specification {
 		then:
 			"exception is thrown"
 			thrown(IllegalArgumentException)
+
+		when:
+			'something is provided and requested 20 elements'
+			def i = 0
+			Streams.generate{ i++ }.consume(20)
+
+		then:
+			"20 have been generated"
+			i == 20
+		when:
+			'something is provided and requested 20 elements and cancelled at 10'
+			i = 0
+			Streams.generate{ i++ }.subscribe(new Subscriber<Integer>() {
+				def s
+				@Override
+				void onSubscribe(Subscription subscription) {
+					s = subscription
+					s.request(20)
+				}
+
+				@Override
+				void onNext(Integer integer) {
+					if(integer == 9){
+						s.cancel()
+					}
+				}
+
+				@Override
+				void onError(Throwable throwable) {
+					throwable.printStackTrace()
+				}
+
+				@Override
+				void onComplete() {
+					println 'complete'
+				}
+			})
+
+		then:
+			"10 have been generated"
+			i == 10
 	}
 
 	def 'A Stream with a known set of values makes those values available immediately'() {
@@ -224,7 +267,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
-					.subscribeOn(Environment.get())
+					.requestOn(Environment.get())
 
 		when:
 			'the most recent value is retrieved'
@@ -618,6 +661,7 @@ class StreamsSpec extends Specification {
 			'the sources are zipped in a flat map'
 			zippedStream = odds.log('before-flatmap').flatMap {
 				Streams.zip(Streams.just(it), even) { [it.t1, it.t2] }
+				.log('second-fm')
 			}
 			tap = zippedStream.log('after-zip').toList()
 		  tap.await(3, TimeUnit.SECONDS)

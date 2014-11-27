@@ -20,7 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.action.*;
-import reactor.rx.stream.GroupedByStream;
+import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 
@@ -333,8 +333,8 @@ public abstract class StreamUtils {
 
 		public StreamKey(Stream<?> composable) {
 			this.stream = composable;
-			if (GroupedByStream.class.isAssignableFrom(stream.getClass())) {
-				this.key = ((GroupedByStream) stream).key();
+			if (GroupedStream.class.isAssignableFrom(stream.getClass())) {
+				this.key = ((GroupedStream) stream).key();
 			} else {
 				this.key = composable.getClass().getSimpleName().isEmpty() ? composable.getClass().getName() + "" +
 						composable :

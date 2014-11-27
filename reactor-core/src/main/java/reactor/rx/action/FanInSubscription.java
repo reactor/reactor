@@ -30,7 +30,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O,E,X>> extends ReactiveSubscription<E> {
+public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O, E, X>> extends
+		ReactiveSubscription<E> {
 
 
 	final List<InnerSubscription<O, E, SUBSCRIBER>> subscriptions;
@@ -101,7 +102,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 	}
 
-	protected void pruneObsoleteSub(Iterator<InnerSubscription<O,E, SUBSCRIBER>> subscriptionIterator,
+	protected void pruneObsoleteSub(Iterator<InnerSubscription<O, E, SUBSCRIBER>> subscriptionIterator,
 	                                boolean toRemove) {
 		if (toRemove) {
 			lock.writeLock().lock();
@@ -114,7 +115,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	}
 
 
-	public List<InnerSubscription<O,E, SUBSCRIBER>> unsafeImmutableSubscriptions() {
+	public List<InnerSubscription<O, E, SUBSCRIBER>> unsafeImmutableSubscriptions() {
 		return Collections.unmodifiableList(subscriptions);
 	}
 
@@ -147,7 +148,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	void addSubscription(final InnerSubscription s) {
 		lock.writeLock().lock();
 		try {
-			Iterator<InnerSubscription<O,E, SUBSCRIBER>> subscriptionIterator = subscriptions.iterator();
+			Iterator<InnerSubscription<O, E, SUBSCRIBER>> subscriptionIterator = subscriptions.iterator();
 			while (subscriptionIterator.hasNext()) {
 				pruneObsoleteSub(subscriptionIterator, subscriptionIterator.next().toRemove);
 			}
@@ -155,6 +156,26 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		} finally {
 			lock.writeLock().unlock();
 		}
+	}
+
+	@Override
+	public long clearPendingRequest() {
+		long res = super.clearPendingRequest();
+		if(Long.MAX_VALUE == res){
+			return res;
+		}
+		lock.readLock().lock();
+		try {
+			if (!subscriptions.isEmpty()) {
+				for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
+					res += subscription.subscriber.pendingRequests;
+					subscription.subscriber.pendingRequests = 0;
+				}
+			}
+		} finally {
+			lock.readLock().unlock();
+		}
+		return res;
 	}
 
 	@Override

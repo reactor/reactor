@@ -58,7 +58,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this);
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			request(outerAction.innerSubscriptions.capacity());
+			request(outerAction.innerSubscriptions.maxCapacity());
 		}
 
 		@Override
