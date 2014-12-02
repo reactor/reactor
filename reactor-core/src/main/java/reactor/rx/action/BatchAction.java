@@ -149,7 +149,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		@Override
 		public void request(long n) {
 			flushConsumer.accept(null);
-			super.request(Math.max(n, batchSize));
+			if(n == Long.MAX_VALUE || pendingRequestSignals == Long.MAX_VALUE){
+				super.request(Math.max(n, batchSize));
+			}else{
+				super.request(n);
+			}
 		}
 
 		@Override

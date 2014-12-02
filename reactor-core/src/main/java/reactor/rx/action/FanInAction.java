@@ -19,9 +19,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
+import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
-import reactor.rx.subscription.PushSubscription;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,7 +46,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	final AtomicInteger status = new AtomicInteger();
 
-	volatile int runningComposables = 0;
+	volatile int  runningComposables = 0;
 
 	protected static final AtomicIntegerFieldUpdater<FanInAction> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInAction.class, "runningComposables");
@@ -68,59 +68,47 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
-			doSubscribe(this.innerSubscriptions);
-		}
+		doSubscribe(this.innerSubscriptions);
 		super.subscribe(subscriber);
 	}
 
-	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		//Already done with inner subscriptions
-		return super.createSubscription(subscriber, false);
-	}
-
 	public void addPublisher(Publisher<? extends I> publisher) {
-		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
-		Subscriber<I> inlineMerge = createSubscriber();
+		int current = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
+		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
+		inlineMerge.pendingRequests += (innerSubscriptions.pendingRequestSignals() / current);
 		publisher.subscribe(inlineMerge);
-	}
-
-	@Override
-	public void replayChildRequests(long pending) {
-		if (pending == 0 && dynamicMergeAction != null && dynamicMergeAction.upstreamSubscription != null) {
-			dynamicMergeAction.upstreamSubscription.clearPendingRequest();
-			dynamicMergeAction.requestUpstream(capacity, innerSubscriptions.terminated, capacity);
-		}
-		else if (pending > 0) {
-			requestMore(pending);
-		}
 	}
 
 	public void scheduleCompletion() {
 		if (status.compareAndSet(NOT_STARTED, COMPLETING)) {
-			cancel();
 			broadcastComplete();
 		} else {
-			status.set(COMPLETING);
-			if (RUNNING_COMPOSABLE_UPDATER.get(this) == 0) {
-				cancel();
+			if (runningComposables == 0) {
 				broadcastComplete();
 			}
 		}
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		innerSubscriptions.maxCapacity(capacity);
-		if (composables != null) {
-			if (innerSubscriptions.subscriptions.size() > 0) {
-				innerSubscriptions.cancel();
-				return;
-			}
-			capacity(initUpstreamPublisherAndCapacity());
+	public void cancel() {
+		if(dynamicMergeAction != null){
+			dynamicMergeAction.cancel();
 		}
-		super.doSubscribe(subscription);
+		super.cancel();
+	}
+
+	@Override
+	protected void doSubscribe(Subscription subscription) {
+		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
+			innerSubscriptions.maxCapacity(capacity);
+			if (composables != null) {
+				if (innerSubscriptions.subscriptions.size() > 0) {
+					innerSubscriptions.cancel();
+					return;
+				}
+				capacity(initUpstreamPublisherAndCapacity());
+			}
+		}
 	}
 
 	protected long initUpstreamPublisherAndCapacity() {
@@ -135,14 +123,14 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 
-	protected boolean checkDynamicMerge() {
-		return dynamicMergeAction != null && !dynamicMergeAction.hasNoMorePublishers();
+	protected final boolean checkDynamicMerge() {
+		return dynamicMergeAction != null && dynamicMergeAction.hasProducer();
 	}
 
 	@Override
 	protected void doComplete() {
 		status.set(COMPLETING);
-		if (RUNNING_COMPOSABLE_UPDATER.get(this) == 0) {
+		if (!checkDynamicMerge() && runningComposables == 0) {
 			cancel();
 			broadcastComplete();
 		}
@@ -150,9 +138,10 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		//	innerSubscriptions.request(elements);
 		super.requestUpstream(capacity, terminated, elements);
-		if (dynamicMergeAction != null && dynamicMergeAction.upstreamSubscription != null) {
-				dynamicMergeAction.requestUpstream(capacity, terminated, elements);
+		if ( dynamicMergeAction != null) {
+			dynamicMergeAction.requestUpstream(capacity, terminated, elements );
 		}
 	}
 
@@ -164,17 +153,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected FanInSubscription<I, E, O, SUBSCRIBER> createFanInSubscription() {
 		return new FanInSubscription<I, E, O, SUBSCRIBER>(this,
-				new ArrayList<FanInSubscription.InnerSubscription<I, E, SUBSCRIBER>>(8)) {
-			@Override
-			public void cancel() {
-				super.cancel();
-				Action<?, ?> master = dynamicMergeAction;
-				if (master != null) {
-					dynamicMergeAction = null;
-					master.cancel();
-				}
-			}
-		};
+				new ArrayList<FanInSubscription.InnerSubscription<I, E, SUBSCRIBER>>(8));
 	}
 
 	@Override
@@ -200,9 +179,21 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			this.s = s;
 		}
 
+		public void start(){
+			outerAction.innerSubscriptions.addSubscription(s);
+			if(pendingRequests > 0){
+				s.request(pendingRequests);
+			}
+			if(outerAction.dynamicMergeAction != null){
+				outerAction.dynamicMergeAction.decrementWip();
+			}
+		}
+
 		public void request(long n) {
 			if (s == null || n <= 0) return;
-			pendingRequests += n;
+			if((pendingRequests += n) < 0l){
+				pendingRequests = Long.MAX_VALUE;
+			}
 			emittedSignals = 0;
 			s.request(n);
 		}
@@ -211,6 +202,27 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		public void onError(Throwable t) {
 			RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction);
 			outerAction.innerSubscriptions.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			//Action.log.debug("event [complete] by: " + this);
+			s.cancel();
+
+			Consumer<Void> completeConsumer = new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					s.toRemove = true;
+					outerAction.innerSubscriptions.removeSubscription(s);
+					if (RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction) == 0 && !outerAction.checkDynamicMerge()) {
+						outerAction.innerSubscriptions.onComplete();
+					}
+
+				}
+			};
+
+			outerAction.trySyncDispatch(null, completeConsumer);
+
 		}
 
 		@Override

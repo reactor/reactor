@@ -740,7 +740,7 @@ public class StreamTests extends AbstractReactorTest {
 
 				);
 
-		s.subscribe(new Action<Integer, Void>(env.getCachedDispatcher()) {
+		s.subscribe(new Action<Integer, Void>() {
 			Subscription s;
 
 			@Override

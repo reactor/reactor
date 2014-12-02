@@ -209,6 +209,11 @@ public abstract class Action<I, O> extends Stream<O>
 
 		try {
 			doSubscribe(subscription);
+
+			long pending;
+			if (downstreamSubscription != null && ( pending = downstreamSubscription.pendingRequestSignals() ) > 0l){
+				requestMore(pending);
+			}
 		} catch (Throwable t) {
 			doError(t);
 		}
@@ -367,10 +372,16 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
+	public boolean hasProducer() {
+		PushSubscription<I> parentSubscription = upstreamSubscription;
+		return parentSubscription != null && !parentSubscription.isComplete();
+	}
+
 
 	public void cancel() {
-		if (upstreamSubscription != null) {
-			upstreamSubscription.cancel();
+		PushSubscription<I> parentSub = upstreamSubscription;
+		if (parentSub != null) {
+			parentSub.cancel();
 			upstreamSubscription = null;
 		}
 	}

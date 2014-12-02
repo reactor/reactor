@@ -17,11 +17,13 @@ package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -31,10 +33,15 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
 
-	private volatile int finish = 0;
+	private volatile int wip = 0;
 
-	protected static final AtomicIntegerFieldUpdater<DynamicMergeAction> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(DynamicMergeAction.class, "finish");
+	protected static final AtomicIntegerFieldUpdater<DynamicMergeAction> WIP_UPDATER = AtomicIntegerFieldUpdater
+			.newUpdater(DynamicMergeAction.class, "wip");
+
+	private volatile long requested = 0;
+
+	protected static final AtomicLongFieldUpdater<DynamicMergeAction> REQUESTED_UPDATER = AtomicLongFieldUpdater
+			.newUpdater(DynamicMergeAction.class, "requested");
 
 
 	@SuppressWarnings("unchecked")
@@ -56,40 +63,74 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		fanInAction.subscribe(subscriber);
 	}
 
+
 	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		throw new IllegalAccessError("Should never use dynamicMergeAction own createSubscription");
 	}
 
 	@Override
-	public long resetChildRequests() {
-		return fanInAction.resetChildRequests();
-	}
-
-	@Override
-	public void replayChildRequests(long request) {
-		fanInAction.replayChildRequests(request);
+	public void requestMore(long n) {
+		if(upstreamSubscription != null) upstreamSubscription.accept(n);
 	}
 
 	@Override
 	protected void doNext(Publisher<? extends I> value) {
+		WIP_UPDATER.incrementAndGet(this);
 		fanInAction.addPublisher(value);
 	}
 
 	@Override
-	protected void doComplete() {
-		if(TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
-			cancel();
+	public void onSubscribe(Subscription subscription) {
+		super.onSubscribe(subscription);
+		long toRequest = REQUESTED_UPDATER.getAndSet(this, 0l);
+		if(toRequest > 0l){
+			requestMore(toRequest);
+		}
+	}
+
+	@Override
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		if (upstreamSubscription != null && !terminated) {
+			long toRequest = elements;
+			if((toRequest += REQUESTED_UPDATER.getAndSet(this, 0l)) < 0l){
+				toRequest = Long.MAX_VALUE;
+			}
+			if(elements != toRequest){
+				//upstreamSubscription.clearPendingRequest();
+				toRequest = elements > toRequest ? elements - toRequest : 0;
+			}
+
+			if (toRequest > 0) {
+				requestMore(toRequest);
+			}
+		} else {
+				if(REQUESTED_UPDATER.addAndGet(this, elements) < 0l){
+					REQUESTED_UPDATER.set(this, Long.MAX_VALUE);
+				}
+		}
+	}
+
+	@Override
+	public void onError(Throwable cause) {
+		fanInAction.onError(cause);
+	}
+
+	@Override
+	public void onComplete() {
+		if(wip == 0) {
 			fanInAction.scheduleCompletion();
 		}
 	}
 
 	@Override
-	protected void doError(Throwable ev) {
-		if(TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
-			cancel();
-			fanInAction.doError(ev);
-		}
+	public void onNext(Publisher<? extends I> ev) {
+		accept(ev);
+	}
+
+	@Override
+	public boolean hasProducer() {
+		return super.hasProducer() || wip > 0;
 	}
 
 	@Override
@@ -104,13 +145,19 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		return super.env(environment);
 	}
 
+	public int decrementWip(){
+		return WIP_UPDATER.decrementAndGet(this);
+	}
 
 	public FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> mergedStream() {
 		return fanInAction;
 	}
 
-	boolean hasNoMorePublishers(){
-		return finish == 1;
+	@Override
+	public String toString() {
+		return "{" +
+				"wip=" + wip +
+				", requested=" + requested +
+				'}';
 	}
-
 }

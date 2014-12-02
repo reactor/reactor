@@ -54,13 +54,7 @@ public final class SupplierStream<T> extends Stream<T> {
 				@Override
 				public void request(long elements) {
 					try {
-						if(elements != Long.MAX_VALUE){
-							for(long i = 0; i < elements; i++){
-								if(isComplete() || supplyValue(subscriber)) return;
-							}
-						}else{
 							supplyValue(subscriber);
-						}
 
 					} catch (Throwable throwable) {
 						subscriber.onError(throwable);

@@ -87,6 +87,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		}else {
 			long previous = pendingRequestSignals;
 			if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
+				SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements).printStackTrace();
 				onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
 				return;
 			}
@@ -186,7 +187,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 		bufferLock.lock();
 		try {
-			if (TERMINAL_UPDATER.get(this) == 1)
+			if (terminated == 1)
 				return;
 			buffer.complete();
 
@@ -224,7 +225,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	public final long capacity() {
-		return pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE : CAPACITY_UPDATER.get(this);
+		return pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE : capacity;
 	}
 
 	public final CompletableQueue<O> getBuffer() {

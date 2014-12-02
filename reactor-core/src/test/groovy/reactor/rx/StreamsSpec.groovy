@@ -16,8 +16,6 @@
 package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.reactivestreams.Subscriber
-import org.reactivestreams.Subscription
 import reactor.core.Environment
 import reactor.core.Observable
 import reactor.core.spec.Reactors
@@ -77,6 +75,26 @@ class StreamsSpec extends Specification {
 			'it is not available'
 			value == 'test'
 	}
+
+	/*def 'A deferred Stream with an initial value makes that value available later up to Long.MAX '() {
+		given:
+			'a composable with an initial value'
+			Stream stream = Streams.defer([1,2,3]).dispatchOn(Environment.get())
+
+		when:
+			'the value is not retrieved'
+			def i = 0
+			long test = Long.MAX_VALUE / 2l
+			def controls = stream.observe{i++}.consumeLater()
+			controls.requestMore(test)
+			controls.requestMore(test)
+			controls.requestMore(1)
+		//sleep(2000)
+
+		then:
+			'it is not available'
+			i == Long.MAX_VALUE
+	}*/
 
 	def 'A deferred Stream with initial values can be consumed multiple times'() {
 		given:
@@ -202,7 +220,7 @@ class StreamsSpec extends Specification {
 			"exception is thrown"
 			thrown(IllegalArgumentException)
 
-		when:
+		/*when:
 			'something is provided and requested 20 elements'
 			def i = 0
 			Streams.generate{ i++ }.consume(20)
@@ -241,7 +259,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			"10 have been generated"
-			i == 10
+			i == 10*/
 	}
 
 	def 'A Stream with a known set of values makes those values available immediately'() {
@@ -1450,6 +1468,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the first values are accepted on the source'
 			source.broadcastNext(1)
+			println source.debug()
 			source.broadcastNext(2)
 			sleep(1200)
 			println source.debug()
@@ -2134,7 +2153,9 @@ class StreamsSpec extends Specification {
 	def 'A Stream can re-subscribe its oldest parent on error signals after backoff stream'() {
 		when:
 			'when composable with an initial value'
+		def counter = 0
 			def value = Streams.create {
+				counter++
 				println "subscribing"
 				it.onError(new RuntimeException("always fails"))
 			}.retryWhen { attempts ->
@@ -2148,6 +2169,7 @@ class StreamsSpec extends Specification {
 		then:
 			'Promise completed after 3 tries'
 			 value.isComplete()
+			  counter == 4
 	}
 
 	def 'A Stream can be timestamped'() {

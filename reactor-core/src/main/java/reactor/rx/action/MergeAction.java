@@ -18,7 +18,6 @@ package reactor.rx.action;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
-import reactor.function.Consumer;
 
 import java.util.List;
 
@@ -56,9 +55,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
 			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this);
-
-			outerAction.innerSubscriptions.addSubscription(s);
-			request(outerAction.innerSubscriptions.maxCapacity());
+			start();
 		}
 
 		@Override
@@ -66,29 +63,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			//Action.log.debug("event [" + ev + "] by: " + this);
 			outerAction.innerSubscriptions.onNext(ev);
 			emittedSignals++;
-			long batchSize = RUNNING_COMPOSABLE_UPDATER.get(outerAction);
-			if (batchSize > 0 && emittedSignals >= outerAction.capacity / batchSize) {
-				request(emittedSignals);
-			}
-		}
-
-		@Override
-		public void onComplete() {
-			//Action.log.debug("event [complete] by: " + this);
-			s.cancel();
-
-			Consumer<Void> completeConsumer = new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					s.toRemove = true;
-					outerAction.innerSubscriptions.removeSubscription(s);
-					if (RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction) == 0 && !outerAction.checkDynamicMerge()) {
-						outerAction.innerSubscriptions.onComplete();
-					}
-				}
-			};
-
-			outerAction.trySyncDispatch(null, completeConsumer);
+			if(--pendingRequests < 0) pendingRequests = 0;
 
 		}
 

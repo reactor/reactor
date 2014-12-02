@@ -180,8 +180,11 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 					this));
 
 			outerAction.innerSubscriptions.addSubscription(s);
-			if (outerAction.innerSubscriptions.pendingRequestSignals() > 0) {
+			if (pendingRequests > 0) {
 				request(1);
+			}
+			if (outerAction.dynamicMergeAction != null){
+				outerAction.dynamicMergeAction.decrementWip();
 			}
 		}
 
@@ -192,6 +195,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void onNext(O ev) {
+			if(--pendingRequests > 0) pendingRequests = 0;
+			//emittedSignals++;
 			outerAction.innerSubscriptions.onNext(new Zippable<O>(index, ev));
 		}
 

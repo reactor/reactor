@@ -19,7 +19,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
 import reactor.rx.Stream;
-import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.subscription.support.WrappedSubscription;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -74,7 +73,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		try {
 			if (publisher == null) {
 				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
-					subscriber.onError(SpecificationExceptions.spec_3_17_exception(subscriber, pendingRequestSignals, n));
+					PENDING_UPDATER.set(this, Long.MAX_VALUE);
 			}
 			onRequest(n);
 		} catch (Throwable t) {
@@ -91,6 +90,10 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		}
 	}
 
+	public boolean terminate(){
+		return TERMINAL_UPDATER.compareAndSet(this, 0, 1);
+	}
+
 	public void onComplete() {
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onComplete();
@@ -98,9 +101,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public void onNext(O ev) {
-		if (terminated == 0) {
+	//	if (terminated == 0) {
 			subscriber.onNext(ev);
-		}
+	//	}
 	}
 
 	public void onError(Throwable throwable) {
@@ -124,7 +127,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 			oldPending = pendingRequestSignals;
 			newPending = oldPending + n;
 			if(newPending < 0) {
-				newPending = Long.MAX_VALUE;
+				newPending = n > 0 ? Long.MAX_VALUE : 0;
 			}
 		}while(!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
 	}
@@ -142,11 +145,11 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public boolean isComplete() {
-		return TERMINAL_UPDATER.get(this) == 1;
+		return terminated == 1;
 	}
 
 	public final long pendingRequestSignals() {
-		return PENDING_UPDATER.get(this);
+		return pendingRequestSignals;
 	}
 
 	public void incrementCurrentNextSignals() {

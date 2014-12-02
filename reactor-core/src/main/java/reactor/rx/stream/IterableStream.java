@@ -66,6 +66,7 @@ public final class IterableStream<T> extends Stream<T> {
 				public void request(long elements) {
 					long i = 0;
 					while (i < elements && iterator.hasNext()) {
+						if(isComplete()) return;
 						onNext(iterator.next());
 						i++;
 					}

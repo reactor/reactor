@@ -26,6 +26,7 @@ import reactor.util.Assert;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key
@@ -51,6 +52,11 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
+	public void onNext(T ev) {
+		accept(ev);
+	}
+
+	@Override
 	protected void doNext(final T value) {
 		final K key = fn.apply(value);
 		ReactiveSubscription<T> child = groupByMap.get(key);
@@ -60,22 +66,35 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 			groupByMap.put(key, child);
 
 			final CompletableQueue<T> queue = child.getBuffer();
-			GroupedStream<K, T> action = new GroupedStream<K, T>(key){
+			GroupedStream<K, T> action = new GroupedStream<K, T>(key) {
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
-					 ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue){
-						 @Override
-						 public void cancel() {
-							 super.cancel();
-							 groupByMap.remove(key);
-						 }
+					final AtomicBoolean last = new AtomicBoolean();
 
-						 @Override
+					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue) {
+
+						@Override
+						public void cancel() {
+							super.cancel();
+							if (last.compareAndSet(false, true)) {
+								removeGroupedStream(key);
+							}
+						}
+
+						@Override
+						public void onComplete() {
+							super.onComplete();
+							if (last.compareAndSet(false, true)) {
+								removeGroupedStream(key);
+							}
+						}
+
+						@Override
 						protected void onRequest(long n) {
 							PushSubscription<T> upSub = upstreamSubscription;
-							if(upSub != null){
+							if (upSub != null) {
 								upSub.accept(n);
-							}else{
+							} else {
 								updatePendingRequests(n);
 							}
 
@@ -87,18 +106,45 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 				}
 			};
 			broadcastNext(action);
-		}else{
+		} else {
 			child.onNext(value);
 		}
 	}
 
-	@Override
-	protected void doComplete() {
-			super.doComplete();
-			for (ReactiveSubscription<T> stream : groupByMap.values()) {
-				stream.onComplete();
+	private void removeGroupedStream(K key) {
+		PushSubscription<T> parentSub = upstreamSubscription;
+		ReactiveSubscription<T> innerSub = groupByMap.remove(key);
+		if (innerSub != null
+				&& groupByMap.isEmpty() &&
+				((parentSub == null || parentSub.isComplete()))) {
+
+			PushSubscription<GroupedStream<K, T>> childSub = downstreamSubscription;
+			if (childSub == null || childSub.isComplete()) {
+				cancel();
 			}
-			groupByMap.clear();
+
+			if(innerSub.getBufferSize() == 0l){
+				broadcastComplete();
+			}
+		}
+	}
+
+	@Override
+	public void onError(Throwable cause) {
+		if (upstreamSubscription.terminate()) {
+			broadcastError(cause);
+		}
+	}
+
+	@Override
+	public void onComplete() {
+		for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			stream.onComplete();
+		}
+
+		if (groupByMap.isEmpty()) {
+			broadcastComplete();
+		}
 	}
 
 }

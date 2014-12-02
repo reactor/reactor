@@ -1704,9 +1704,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Stream<GroupedStream<Integer, O>> partition(final int buckets) {
 		return groupBy(new Function<O, Integer>() {
+			//volatile int cursor = -1;
 			@Override
 			public Integer apply(O o) {
 				return o.hashCode() % buckets;
+				/*int key =  ++cursor % buckets;
+				if(cursor == buckets){
+					cursor = 0;
+				}
+				return key;*/
 			}
 		});
 	}

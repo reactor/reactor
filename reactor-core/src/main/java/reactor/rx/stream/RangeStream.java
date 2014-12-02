@@ -77,11 +77,20 @@ public final class RangeStream extends Stream<Integer> {
 						onComplete();
 					}
 				}
+
+				@Override
+				public String toString() {
+					return "{" +
+							"cursor=" + cursor + (end > 0 ? '[' + 100*cursor/end + "%]" : "") +
+							'}';
+				}
 			});
 		} else {
 			subscriber.onComplete();
 		}
 	}
+
+
 	@Override
 	public String toString() {
 		return super.toString() + " [" + start + " to "+end+"]" ;

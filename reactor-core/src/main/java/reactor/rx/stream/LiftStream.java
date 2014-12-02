@@ -116,12 +116,10 @@ public class LiftStream<O, V> extends Stream<V> {
 	public final void subscribe(Subscriber<? super V> s) {
 		try {
 			Action<? super O, ? extends V> action = onLift();
-			action.subscribe(s);
-			long pending = action.resetChildRequests();
 
+			action.subscribe(s);
 			producer.subscribe(action);
 
-			action.replayChildRequests(pending);
 		} catch (Throwable throwable) {
 			s.onError(throwable);
 		}

@@ -15,25 +15,29 @@
  */
 package reactor.reactivestreams.tck;
 
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
-import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
+import reactor.rx.stream.HotStream;
 import reactor.tuple.Tuple1;
 import reactor.tuple.Tuple2;
+import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -54,15 +58,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	@BeforeTest
 	@Before
-	protected void startEnv(){
-		env = Environment.initializeIfEmpty();
-	}
-
-	@AfterTest
-	@After
-	protected void cleanEnv(){
-		Environment.terminate();
-		env = null;
+	public void startEnv(){
+		env = new Environment();
 	}
 
 	@Override
@@ -92,20 +89,20 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 									.sample(1)
 									.buffer(1024, 200, TimeUnit.MILLISECONDS)
 									.<Integer>split()
-									.log("before-subfm")
 									.flatMap(i ->
-											Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
+													Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
+															//.log(stream.key() + ":zip")
 									)
-							//.log("zip")
+							//		.log(stream.key()+":zip")
 				)
-				.log("flatMap")
-				.when(Throwable.class, Throwable::printStackTrace)
+				//.log("flatMap")
+					.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
 	}
 
 	@Override
 	public Publisher<Integer> createHelperPublisher(long elements) {
-		if (elements < Integer.MAX_VALUE && elements > 0) {
+		if (elements < 100 && elements > 0) {
 			List<Integer> list = new ArrayList<Integer>();
 			for (int i = 1; i <= elements; i++) {
 				list.add(i);
@@ -133,5 +130,55 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return Streams.fail(new Exception("oops")).cast(Integer.class);
 	}
 
+	@Test
+	public void testIdentityProcessor() throws InterruptedException {
+		final int elements = 10000;
+		CountDownLatch latch = new CountDownLatch(elements);
 
+		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
+
+		HotStream<Integer> stream = Streams.defer(env);
+
+		stream.subscribe(processor);
+		System.out.println(processor.debug());
+		Thread.sleep(2000);
+
+		processor.subscribe(new Subscriber<Integer>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(elements);
+			}
+
+			@Override
+			public void onNext(Integer integer) {
+				latch.countDown();
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				t.printStackTrace();
+			}
+
+			@Override
+			public void onComplete() {
+				System.out.println("completed!");
+				latch.countDown();
+			}
+		});
+
+		System.out.println(stream.debug());
+
+		for (int i = 0; i < elements; i++) {
+			stream.broadcastNext(i);
+		}
+		//stream.broadcastComplete();
+
+		latch.await(8, TimeUnit.SECONDS);
+
+		System.out.println(processor.debug());
+		System.out.println(counters);
+		long count = latch.getCount();
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Environment.PROCESSORS + " CPU");
+
+	}
 }
