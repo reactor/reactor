@@ -16,12 +16,11 @@
 
 package reactor.net.zmq.tcp;
 
+import com.gs.collections.api.block.function.Function0;
 import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.function.checked.CheckedFunction0;
+import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
-import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,11 +55,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class ZeroMQ<T> {
 
-	private static final SynchronizedMutableMap<Integer, String> SOCKET_TYPES = SynchronizedMutableMap.of(UnifiedMap.<Integer, String>newMap());
+	private static final MutableMap<Integer, String> SOCKET_TYPES = UnifiedMap.<Integer, String>newMap().asSynchronized();
 
 	private final Logger                       log     = LoggerFactory.getLogger(getClass());
-	private final MutableList<TcpClient<T, T>> clients = SynchronizedMutableList.of(FastList.<TcpClient<T, T>>newList());
-	private final MutableList<TcpServer<T, T>> servers = SynchronizedMutableList.of(FastList.<TcpServer<T, T>>newList());
+	private final MutableList<TcpClient<T, T>> clients = FastList.<TcpClient<T, T>>newList().asSynchronized();
+	private final MutableList<TcpServer<T, T>> servers = FastList.<TcpServer<T, T>>newList().asSynchronized();
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq"));
 
@@ -90,9 +89,9 @@ public class ZeroMQ<T> {
 	}
 
 	public static String findSocketTypeName(final int socketType) {
-		return SOCKET_TYPES.getIfAbsentPut(socketType, new CheckedFunction0<String>() {
+		return SOCKET_TYPES.getIfAbsentPut(socketType, new Function0<String>() {
 			@Override
-			public String safeValue() throws Exception {
+			public String value() {
 				for (Field f : ZMQ.class.getDeclaredFields()) {
 					if (int.class.isAssignableFrom(f.getType())) {
 						f.setAccessible(true);

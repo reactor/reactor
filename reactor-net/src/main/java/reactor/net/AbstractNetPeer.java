@@ -16,6 +16,7 @@
 
 package reactor.net;
 
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
 import reactor.core.Environment;
 import reactor.core.Reactor;
@@ -94,7 +95,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	public Iterator<NetChannel<IN, OUT>> iterator() {
-		FastList<NetChannel<IN, OUT>> channels = FastList.newList();
+		MutableList<NetChannel<IN, OUT>> channels = FastList.newList();
 		for (Registration<? extends NetChannel<IN, OUT>> reg : getChannels()) {
 			channels.add(reg.getObject());
 		}

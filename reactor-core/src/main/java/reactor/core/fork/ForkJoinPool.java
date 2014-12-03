@@ -17,6 +17,7 @@
 package reactor.core.fork;
 
 import com.gs.collections.api.list.ImmutableList;
+import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,7 @@ public class ForkJoinPool {
 				= new ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>>(executor, d);
 
 		final AtomicInteger count = new AtomicInteger(tasks.size());
-		final FastList<V> results = FastList.newList();
+		final MutableList<V> results = FastList.newList();
 
 		for (final Function fn : tasks) {
 			t.add(new Function<Object, ImmutableList<V>>() {

@@ -16,10 +16,9 @@
 
 package reactor.net.zmq;
 
+import com.gs.collections.api.block.predicate.Predicate;
 import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZFrame;
@@ -51,7 +50,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	private final Logger                log           = LoggerFactory.getLogger(getClass());
 	private final ZeroMQConsumerSpec    eventSpec     = new ZeroMQConsumerSpec();
-	private final MutableList<Runnable> closeHandlers = SynchronizedMutableList.of(FastList.<Runnable>newList());
+	private final MutableList<Runnable> closeHandlers = FastList.<Runnable>newList().asSynchronized();
 
 	private volatile String     connectionId;
 	private volatile ZMQ.Socket socket;
@@ -132,9 +131,9 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		getEventsReactor().schedule(new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
-				closeHandlers.removeIf(new CheckedPredicate<Runnable>() {
+				closeHandlers.removeIf(new Predicate<Runnable>() {
 					@Override
-					public boolean safeAccept(Runnable r) throws Exception {
+					public boolean accept(Runnable r) {
 						r.run();
 						return true;
 					}

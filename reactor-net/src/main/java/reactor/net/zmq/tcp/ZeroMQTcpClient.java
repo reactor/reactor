@@ -18,7 +18,6 @@ package reactor.net.zmq.tcp;
 
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure2;
-import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
 import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +61,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final Logger                                       log     = LoggerFactory.getLogger(getClass());
 	private final MutableMap<ZeroMQWorker<IN, OUT>, Future<?>> workers =
-			SynchronizedMutableMap.of(UnifiedMap.<ZeroMQWorker<IN, OUT>, Future<?>>newMap());
+			UnifiedMap.<ZeroMQWorker<IN, OUT>, Future<?>>newMap().asSynchronized();
 
 	private final int                       ioThreadCount;
 	private final ZeroMQClientSocketOptions zmqOpts;
