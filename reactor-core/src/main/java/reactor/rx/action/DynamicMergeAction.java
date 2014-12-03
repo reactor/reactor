@@ -92,13 +92,15 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
-			long toRequest = elements;
-			if((toRequest += REQUESTED_UPDATER.getAndSet(this, 0l)) < 0l){
+			long toRequest;
+			if((toRequest = REQUESTED_UPDATER.getAndSet(this, 0l)) < 0l){
 				toRequest = Long.MAX_VALUE;
 			}
-			if(elements != toRequest){
+			if(toRequest == 0){
+				toRequest = elements;
+			} else if(elements != toRequest){
 				//upstreamSubscription.clearPendingRequest();
-				toRequest = elements > toRequest ? elements - toRequest : 0;
+				toRequest = elements + toRequest;
 			}
 
 			if (toRequest > 0) {
@@ -155,7 +157,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	public String toString() {
-		return "{" +
+		return super.toString()+"{" +
 				"wip=" + wip +
 				", requested=" + requested +
 				'}';

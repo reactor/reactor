@@ -101,6 +101,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 						}
 					};
+					//finalSub.maxCapacity(capacity);
 					groupByMap.put(key, finalSub);
 					s.onSubscribe(finalSub);
 				}
@@ -131,9 +132,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	@Override
 	public void onError(Throwable cause) {
-		if (upstreamSubscription.terminate()) {
 			broadcastError(cause);
-		}
 	}
 
 	@Override

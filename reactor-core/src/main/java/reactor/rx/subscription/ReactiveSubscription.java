@@ -87,8 +87,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		}else {
 			long previous = pendingRequestSignals;
 			if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
-				SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements).printStackTrace();
-				onError(SpecificationExceptions.spec_3_17_exception(subscriber, previous, elements));
+				onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, elements));
 				return;
 			}
 		}
@@ -126,7 +125,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					if (overflow < 0l) {
 						CAPACITY_UPDATER.set(this, maxCapacity);
 						if (PENDING_UPDATER.addAndGet(this, -overflow) < 0) {
-							onError(SpecificationExceptions.spec_3_17_exception(subscriber, pendingRequestSignals, elements));
+							onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, pendingRequestSignals,
+									elements));
 						}
 					}
 				}
@@ -208,7 +208,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && currentNextSignals == maxCapacity;
+		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && (currentNextSignals == maxCapacity ||
+		 pendingRequestSignals <= maxCapacity);
 	}
 
 	public final long maxCapacity() {

@@ -1895,7 +1895,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new ThrottleAction<O>(
+				return new ThrottleRequestAction<O>(
 						dispatcher,
 						timer,
 						period,

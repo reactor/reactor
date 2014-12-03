@@ -107,7 +107,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public void onError(Throwable throwable) {
-		if (subscriber != null) {
+		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onError(throwable);
 		}
 	}
@@ -194,7 +194,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	@Override
 	public String toString() {
-		return "{push}";
+		return "{push"+
+				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? " ,pending="+pendingRequestSignals : "")
+				+"}";
 	}
 
 

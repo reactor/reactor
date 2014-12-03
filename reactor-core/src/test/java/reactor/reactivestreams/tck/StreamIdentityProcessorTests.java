@@ -50,7 +50,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
-	private Environment             env;
+	private Environment env;
 
 	public StreamIdentityProcessorTests() {
 		super(new TestEnvironment(2500, true), 3500);
@@ -58,8 +58,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	@BeforeTest
 	@Before
-	public void startEnv(){
-		env = new Environment();
+	public void startEnv() {
+		env = new Environment().assignErrorJournal();
 	}
 
 	@Override
@@ -68,36 +68,40 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		Dispatcher dispatcherZip = env.getCachedDispatcher();
 
-			return Streams.<Integer>defer(env)
+		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>defer(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-					.partition(2)
-					.flatMap(stream -> stream
-									.dispatchOn(env, env.getCachedDispatcher())
-									.observe(i -> {
-										AtomicLong counter = counters.get(Thread.currentThread());
-										if (counter == null) {
-											counter = new AtomicLong();
-											counters.put(Thread.currentThread(), counter);
-										}
-										counter.incrementAndGet();
-									})
-									.scan(0, Tuple2::getT1)
-									.filter(integer -> integer >= 0)
-									.reduce(() -> 0, 1, tuple -> -tuple.getT1())
-									.map(integer -> -integer)
-									.sample(1)
-									.buffer(1024, 200, TimeUnit.MILLISECONDS)
-									.<Integer>split()
-									.flatMap(i ->
-													Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-															//.log(stream.key() + ":zip")
-									)
-							//		.log(stream.key()+":zip")
+				.partition(2)
+				.flatMap(stream -> stream
+								.dispatchOn(env, env.getCachedDispatcher())
+								.observe(i -> {
+									AtomicLong counter = counters.get(Thread.currentThread());
+									if (counter == null) {
+										counter = new AtomicLong();
+										counters.put(Thread.currentThread(), counter);
+									}
+									counter.incrementAndGet();
+								})
+								.scan(0, Tuple2::getT1)
+								.filter(integer -> integer >= 0)
+								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
+								.sample(1)
+								.map(integer -> -integer)
+								.buffer(1024, 200, TimeUnit.MILLISECONDS, env.getTimer())
+								.<Integer>split()
+								.flatMap(i ->
+												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
+										//.log(stream.key() + ":zip")
+								)
 				)
-				//.log("flatMap")
-					.when(Throwable.class, Throwable::printStackTrace)
+				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
+
+		/*Streams.period(env.getTimer(), 2, 1)
+				.takeUntil(i -> !integerIntegerCombineAction.hasProducer())
+				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
+
+		return integerIntegerCombineAction;
 	}
 
 	@Override

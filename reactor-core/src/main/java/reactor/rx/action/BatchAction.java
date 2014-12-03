@@ -70,6 +70,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		this.flush = flush;
 		this.next = next;
 		this.batchSize = batchSize;
+		//this.capacity = batchSize;
 	}
 
 	@Override

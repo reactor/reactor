@@ -15,13 +15,10 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
-import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 import reactor.util.Assert;
 
@@ -31,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class ThrottleAction<T> extends Action<T, T> {
+public class ThrottleRequestAction<T> extends Action<T, T> {
 
 	private final Timer timer;
 	private final long  period;
@@ -39,15 +36,8 @@ public class ThrottleAction<T> extends Action<T, T> {
 		@Override
 		public void accept(Long aLong) {
 			if (upstreamSubscription != null) {
-				dispatch(-1l, upstreamSubscription);
+				dispatch(1l, upstreamSubscription);
 			}
-		}
-	};
-
-	protected final Consumer<Long> throttledConsumer = new Consumer<Long>() {
-		@Override
-		public void accept(Long n) {
-			upstreamSubscription.updatePendingRequests(n);
 		}
 	};
 
@@ -56,8 +46,8 @@ public class ThrottleAction<T> extends Action<T, T> {
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
-	public ThrottleAction(Dispatcher dispatcher,
-	                      Timer timer, long period, long delay) {
+	public ThrottleRequestAction(Dispatcher dispatcher,
+	                             Timer timer, long period, long delay) {
 		super(dispatcher, 1);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
@@ -66,15 +56,8 @@ public class ThrottleAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
-		return new TimeoutTracker<>(subscription, this);
-	}
-
-	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS, delay == -1l ? period : delay);
 	}
 
 	@Override
@@ -84,39 +67,27 @@ public class ThrottleAction<T> extends Action<T, T> {
 
 	@Override
 	public void requestMore(long n) {
-		trySyncDispatch(n, throttledConsumer);
+		timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
+	}
+
+	@Override
+	protected void doStart(long pending) {
+		requestMore(pending);
 	}
 
 	@Override
 	public void cancel() {
-		timeoutRegistration.cancel();
+		if(timeoutRegistration != null) {
+			timeoutRegistration.cancel();
+		}
 		super.cancel();
 	}
 
 	@Override
 	public void doComplete() {
-		timeoutRegistration.cancel();
+		if(timeoutRegistration != null) {
+			timeoutRegistration.cancel();
+		}
 		super.doComplete();
-	}
-
-	static class TimeoutTracker<T> extends WrappedSubscription<T> {
-
-		public TimeoutTracker(Subscription subscription, Subscriber<T> subscriber) {
-			super(subscription, subscriber);
-		}
-
-		@Override
-		public void request(long n) {
-			if(n == -1l){
-				super.request(1l);
-			} else {
-				super.request(n);
-			}
-		}
-
-		@Override
-		public long clearPendingRequest() {
-			return -1l;
-		}
 	}
 }

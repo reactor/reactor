@@ -81,8 +81,8 @@ public class LoggerAction<T> extends Action<T, T> {
 	@Override
 	protected void doComplete() {
 		if (upstreamSubscription != null && upstreamSubscription.getPublisher() != null) {
-			log.info("complete: {}-{} {}", this.upstreamSubscription.getPublisher().getClass().getSimpleName(),
-					this.upstreamSubscription.getPublisher(), debug());
+			log.info("complete: {}-{}", this.upstreamSubscription.getPublisher().getClass().getSimpleName(),
+					this.upstreamSubscription.getPublisher());
 		} else {
 			log.info("complete");
 		}

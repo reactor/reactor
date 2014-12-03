@@ -1804,12 +1804,14 @@ class StreamsSpec extends Specification {
 			def reduced = source
 					.throttle(avgTime)
 					.elapsed()
+					.log()
 					.take(10)
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
 							acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
 						}
 
 			def value = reduced.log().next()
+		println value.debug()
 
 		when:
 			'the first values are accepted on the source'

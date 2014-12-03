@@ -212,7 +212,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 			long pending;
 			if (downstreamSubscription != null && ( pending = downstreamSubscription.pendingRequestSignals() ) > 0l){
-				requestMore(pending);
+				doStart(pending);
 			}
 		} catch (Throwable t) {
 			doError(t);
@@ -688,6 +688,10 @@ public abstract class Action<I, O> extends Stream<O>
 			cancel();
 		}
 		broadcastComplete();
+	}
+
+	protected void doStart(long pending) {
+			upstreamSubscription.request(pending);
 	}
 
 	abstract protected void doNext(I ev);

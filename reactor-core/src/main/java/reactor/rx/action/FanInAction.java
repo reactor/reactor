@@ -73,9 +73,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
-		int current = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
+		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests += (innerSubscriptions.pendingRequestSignals() / current);
+		inlineMerge.pendingRequests += innerSubscriptions.capacity();
 		publisher.subscribe(inlineMerge);
 	}
 
