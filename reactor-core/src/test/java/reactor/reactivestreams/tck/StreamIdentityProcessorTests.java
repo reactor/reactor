@@ -87,7 +87,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
 								.sample(1)
 								.map(integer -> -integer)
-								.buffer(1024, 200, TimeUnit.MILLISECONDS, env.getTimer())
+								.buffer(1024, 100, TimeUnit.MILLISECONDS)
 								.<Integer>split()
 								.flatMap(i ->
 												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
