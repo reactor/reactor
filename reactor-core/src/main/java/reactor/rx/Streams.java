@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * {@code
  * Streams.just(1, 2, 3).map(i -> i*2) //...
  * <p>
- * Stream<String> stream = Streams.from().map(i -> i*2).consume(System.out::println);
+ * Stream<String> stream = Streams.broadcast().map(i -> i*2).consume(System.out::println);
  * stream.broadcastNext("hello");
  * <p>
  * Stream.create( subscriber -> {
@@ -53,8 +53,8 @@ import java.util.concurrent.TimeUnit;
  * subscriber.onComplete();
  * }).consume(System.out::println);
  * <p>
- * Stream<Integer> inputStream1 = Streams.from(env);
- * Stream<Integer> inputStream2 = Streams.from(env);
+ * Broadcaster<Integer> inputStream1 = Streams.broadcast(env);
+ * Broadcaster<Integer> inputStream2 = Streams.broadcast(env);
  * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  * <p>
  * }
