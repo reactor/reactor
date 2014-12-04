@@ -22,13 +22,13 @@ import reactor.function.Predicate;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class LimitAction<T> extends Action<T, T> {
+public class TakeAction<T> extends Action<T, T> {
 
 	private final Predicate<T> endPredicate;
 	private final long         limit;
 	private long counted = 0l;
 
-	public LimitAction(Dispatcher dispatcher, Predicate<T> predicate, long limit) {
+	public TakeAction(Dispatcher dispatcher, Predicate<T> predicate, long limit) {
 		super(dispatcher);
 		this.endPredicate = predicate;
 		this.limit = limit;
@@ -38,7 +38,7 @@ public class LimitAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		broadcastNext(ev);
 
-		if (++counted >= limit || (endPredicate != null && endPredicate.test(ev))) {
+		if (++counted >= limit || (endPredicate != null && !endPredicate.test(ev))) {
 			cancel();
 			broadcastComplete();
 		}

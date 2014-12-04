@@ -41,6 +41,17 @@ public interface Controls {
 	 */
 	void cancel();
 
+	/**
+	 * Block the consumer until it has received a terminal event (complete or error). If an error occurs, it will be propagated to the caller.
+	 * If no previous request has been made, it will automatically ask for every element (Long.MAX_VALUE)
+	 */
+	void block() throws Throwable;
+
+	/**
+	 * Check if the current stream is emitting any signal.
+	 */
+	boolean isPublishing();
+
 
 	/**
 	 * Parse the materialized upstream source to fetch a materialized map form which allows for graph-style printing.

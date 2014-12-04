@@ -131,8 +131,8 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	public boolean hasProducer() {
-		return super.hasProducer() || wip > 0;
+	public boolean isPublishing() {
+		return super.isPublishing() || wip > 0;
 	}
 
 	@Override

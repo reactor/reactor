@@ -49,6 +49,16 @@ public class TapAndControls<O> implements Controls, Supplier<O>{
 	}
 
 	@Override
+	public void block() throws Throwable {
+		controls.block();
+	}
+
+	@Override
+	public boolean isPublishing() {
+		return controls.isPublishing();
+	}
+
+	@Override
 	public void requestMore(long n) {
 		controls.requestMore(n);
 	}

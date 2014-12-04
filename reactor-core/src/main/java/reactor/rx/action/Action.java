@@ -46,6 +46,9 @@ import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
@@ -372,7 +375,8 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-	public boolean hasProducer() {
+	@Override
+	public boolean isPublishing() {
 		PushSubscription<I> parentSubscription = upstreamSubscription;
 		return parentSubscription != null && !parentSubscription.isComplete();
 	}
@@ -389,6 +393,46 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void start() {
 		requestMore(Long.MAX_VALUE);
+	}
+
+	@Override
+	public void block() throws Throwable {
+		if(upstreamSubscription == null || upstreamSubscription.isComplete()){
+			return;
+		}
+
+		AtomicReference<Throwable> exception = new AtomicReference<>();
+
+		CountDownLatch latch = new CountDownLatch(1);
+		subscribe(new Subscriber<O>() {
+			@Override
+			public void onSubscribe(Subscription subscription) {
+			}
+
+			@Override
+			public void onNext(O o) {
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				exception.set(throwable);
+				latch.countDown();
+			}
+
+			@Override
+			public void onComplete() {
+				latch.countDown();
+			}
+		});
+
+		long timeout = 30000l;
+		if(Environment.alive()){
+			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+		}
+		latch.await(timeout, TimeUnit.MILLISECONDS);
+		if(exception.get() != null){
+			throw exception.get();
+		}
 	}
 
 	/**

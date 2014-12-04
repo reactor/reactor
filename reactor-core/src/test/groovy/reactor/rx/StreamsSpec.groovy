@@ -69,6 +69,20 @@ class StreamsSpec extends Specification {
 			!value2.get()
 	}
 
+	def 'A Stream can propagate the error using block'() {
+		given:
+			'a composable with no initial value'
+			def stream = Streams.broadcast(Environment.get())
+
+		when:
+			'the exception is retrieved after 2 sec'
+			stream.timeout(2, TimeUnit.SECONDS).consume().block()
+
+		then:
+			'an exception has been thrown'
+			thrown TimeoutException
+	}
+
 	def 'A deferred Stream with an initial value makes that value available later'() {
 		given:
 			'a composable with an initial value'
@@ -92,25 +106,26 @@ class StreamsSpec extends Specification {
 			value == 'test'
 	}
 
-	/*def 'A deferred Stream with an initial value makes that value available later up to Long.MAX '() {
+	def 'A deferred Stream with an initial value makes that value available later up to Long.MAX '() {
 		given:
 			'a composable with an initial value'
 			Stream stream = Streams.from([1,2,3]).dispatchOn(Environment.get())
 
 		when:
-			'the value is not retrieved'
+			'cumulated request of Long MAX'
 			def i = 0
 			long test = Long.MAX_VALUE / 2l
 			def controls = stream.observe{i++}.consumeLater()
 			controls.requestMore(test)
 			controls.requestMore(test)
 			controls.requestMore(1)
+			controls.block()
 		//sleep(2000)
 
 		then:
-			'it is not available'
-			i == Long.MAX_VALUE
-	}*/
+			'it is available'
+			i == 3
+	}
 
 	def 'A deferred Stream with initial values can be consumed multiple times'() {
 		given:
@@ -2284,8 +2299,8 @@ class StreamsSpec extends Specification {
 		when:
 			'take until test2 is seen'
 			stream = Streams.broadcast()
-			def value2 = stream.takeUntil {
-				'test2' == it
+			def value2 = stream.takeWhile {
+				'test2' != it
 			}.tap()
 
 			stream.broadcastNext('test1')
@@ -2295,6 +2310,24 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			value2.get() == 'test2'
+	}
+
+
+	def 'A Stream can be limited in time'() {
+		given:
+			'a composable with an initial values'
+			def stream = Streams.range(0, Integer.MAX_VALUE)
+					.dispatchOn(Environment.cachedDispatcher())
+
+		when:
+			'take to the first 2 elements'
+			def tap = stream.take(2, TimeUnit.SECONDS)
+					.tap()
+					tap.block()
+
+		then:
+			'the second is the last available'
+			tap.get() > 0
 	}
 
 	static class SimplePojo {

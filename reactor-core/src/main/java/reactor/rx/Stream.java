@@ -1071,6 +1071,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return Streams.just(this);
 	}
 
+
 	/**
 	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@literal Integer.MAX_VALUE}.
@@ -1152,41 +1153,80 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Create a new {@code Stream} that will signal next elements up to {@param max} times.
 	 *
-	 * @param max the number of times to broadcast next signals before dropping
+	 * @param max the number of times to broadcast next signals before completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> take(long max) {
-		return takeUntil(max, null);
+		return takeWhile(max, null);
 	}
 
 	/**
-	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true.
+	 * Create a new {@code Stream} that will signal next elements up to the specified {@param time}.
 	 *
-	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 * @param time the time window to broadcast next signals before completing
+	 * @param unit the time unit to use
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> takeUntil(Predicate<O> limitMatcher) {
-		return takeUntil(Long.MAX_VALUE, limitMatcher);
+	public final Stream<O> take(long time, TimeUnit unit) {
+		return take(time, unit, getTimer());
 	}
 
 	/**
-	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true or
+	 * Create a new {@code Stream} that will signal next elements up to the specified {@param time}.
+	 *
+	 * @param time the time window to broadcast next signals before completing
+	 * @param unit the time unit to use
+	 * @param timer the Timer to use
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> take(long time, TimeUnit unit, Timer timer) {
+		if(time > 0) {
+			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
+			return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+				@Override
+				public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+					return new TakeUntilTimeout<O>(dispatcher, time, unit, timer);
+				}
+			});
+		}else{
+			return Streams.empty();
+		}
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements while {@param limitMatcher} is true.
+	 *
+	 * @param limitMatcher the predicate to evaluate for stop broadcasting events
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> takeWhile(Predicate<O> limitMatcher) {
+		return takeWhile(Long.MAX_VALUE, limitMatcher);
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements while {@param limitMatcher} is true or
 	 * up to {@param max} times.
 	 *
 	 * @param max          the number of times to broadcast next signals before dropping
-	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> takeUntil(final long max, final Predicate<O> limitMatcher) {
-		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
-			@Override
-			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new LimitAction<O>(dispatcher, limitMatcher, max);
-			}
-		});
+	public final Stream<O> takeWhile(final long max, final Predicate<O> limitMatcher) {
+		if(max > 0) {
+			return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+				@Override
+				public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+					return new TakeAction<O>(dispatcher, limitMatcher, max);
+				}
+			});
+		}else{
+			return Streams.empty();
+		}
 	}
 
 	/**
@@ -1264,7 +1304,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(long timespan, TimeUnit unit) {
-		return sampleFirst(timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return sampleFirst(timespan, unit, getTimer());
 	}
 
 
@@ -1290,8 +1330,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(int maxSize, long timespan, TimeUnit unit) {
-		return sampleFirst(maxSize, timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment()
-				.getTimer());
+		return sampleFirst(maxSize, timespan, unit, getTimer());
 	}
 
 
@@ -1349,7 +1388,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(long timespan, TimeUnit unit) {
-		return sample(timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return sample(timespan, unit, getTimer());
 	}
 
 
@@ -1480,7 +1519,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(long timespan, TimeUnit unit) {
-		return buffer(timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return buffer(timespan, unit, getTimer());
 	}
 
 
@@ -1508,8 +1547,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(int maxSize, long timespan, TimeUnit unit) {
-		return buffer(maxSize, timespan, unit,
-				getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return buffer(maxSize, timespan, unit, getTimer());
 	}
 
 
@@ -1652,7 +1690,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(long timespan, TimeUnit unit) {
-		return window(timespan, unit, getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer());
+		return window(timespan, unit, getTimer());
 	}
 
 
@@ -1919,7 +1957,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> throttle(long period, long delay) {
-		Timer timer = getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
+		Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return throttle(period, delay, timer);
@@ -1993,7 +2031,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> timeout(long timeout, TimeUnit unit, Publisher<? extends O> fallback) {
-		Timer timer = getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
+		Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
 		return timeout(timeout, unit, fallback, timer);
@@ -2171,6 +2209,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	@Override
 	public long getCapacity() {
 		return Long.MAX_VALUE;
+	}
+
+	public Timer getTimer(){
+		return getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
 	}
 
 	/**

@@ -98,7 +98,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 				.combine();
 
 		/*Streams.period(env.getTimer(), 2, 1)
-				.takeUntil(i -> !integerIntegerCombineAction.hasProducer())
+				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
 				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
 
 		return integerIntegerCombineAction;
