@@ -17,7 +17,6 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.Environment
-import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.EventBus
 import spock.lang.Shared
@@ -41,9 +40,9 @@ class GroovyReactorSpec extends Specification {
 
 	def "Groovy Reactor dispatches events properly"() {
 
-		given: "a simple reactor implementation"
-		def r1 = Reactors.reactor().get()
-		def r2 = Reactors.reactor().get()
+		given: "a simple eventBus implementation"
+		def r1 = EventBus.config().get()
+		def r2 = EventBus.config().get()
 		def latch = new CountDownLatch(1)
 
 		when: 'Using simple arguments'
@@ -80,7 +79,7 @@ class GroovyReactorSpec extends Specification {
 	def "Groovy Reactor provides Closure as Supplier on notify"() {
 
 		given: "a simple Reactor"
-		def r = Reactors.reactor().get()
+		def r = EventBus.config().get()
 		def result = ""
 		r.react('supplier') { String s ->
 			result = s
@@ -96,8 +95,8 @@ class GroovyReactorSpec extends Specification {
 
 	def "Groovy Reactor allows inline reply"() {
 
-		given: "a simple reactor implementation"
-		def reactor = Reactors.reactor().get()
+		given: "a simple eventBus implementation"
+		def reactor = EventBus.config().get()
 
 		when: 'Using simple arguments'
 		def data2 = ""
@@ -118,7 +117,7 @@ class GroovyReactorSpec extends Specification {
 		given:
 			final reactor.core.Environment env = new reactor.core.Environment()
 
-			final EventBus reactor = Reactors.reactor()
+			final EventBus reactor = EventBus.config()
 					.env(env) // our current Environment
 					.dispatcher(Environment.THREAD_POOL)
 					.get()

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.core.support;
+package reactor.event.support;
 
 import reactor.event.Event;
 import reactor.event.Observable;

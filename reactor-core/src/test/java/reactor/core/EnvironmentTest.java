@@ -2,7 +2,6 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.EventBus;
 import reactor.event.selector.Selectors;
@@ -29,7 +28,7 @@ public class EnvironmentTest extends AbstractReactorTest {
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {
-		EventBus reactor = Reactors.reactor(env, Environment.WORK_QUEUE);
+		EventBus reactor = EventBus.create(env, Environment.WORK_QUEUE);
 
 		CountDownLatch latch = new CountDownLatch(3);
 

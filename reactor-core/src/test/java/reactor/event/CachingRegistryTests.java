@@ -132,7 +132,7 @@ public final class CachingRegistryTests {
 	}
 
 
-	//Issue : https://github.com/reactor/reactor/issues/237
+	//Issue : https://github.com/eventBus/eventBus/issues/237
 	@Test
 	public void invokeConsumersWithCustomSelector() {
 

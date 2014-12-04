@@ -16,7 +16,7 @@
 
 package reactor.net.spec;
 
-import reactor.core.spec.support.EventRoutingComponentSpec;
+import reactor.event.spec.EventRoutingComponentSpec;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;

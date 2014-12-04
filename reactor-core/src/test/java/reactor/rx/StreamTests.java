@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.core.Environment;
-import reactor.core.spec.Reactors;
 import reactor.event.Event;
 import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
@@ -213,7 +212,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		EventBus r = Reactors.reactor().get();
+		EventBus r = EventBus.config().get();
 		Selector key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
@@ -649,7 +648,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	/**
 	 * original from @oiavorskyl
-	 * https://github.com/reactor/reactor/issues/358
+	 * https://github.com/eventBus/eventBus/issues/358
 	 *
 	 * @throws Exception
 	 */
@@ -662,7 +661,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	/**
 	 * original from @oiavorskyl
-	 * https://github.com/reactor/reactor/issues/358
+	 * https://github.com/eventBus/eventBus/issues/358
 	 *
 	 * @throws Exception
 	 */

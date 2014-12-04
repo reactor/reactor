@@ -15,6 +15,7 @@
  */
 package reactor.core.spec
 
+import reactor.event.EventBus
 import reactor.event.dispatch.TraceableDelegatingDispatcher
 import reactor.rx.Promise
 import reactor.rx.Promises
@@ -31,17 +32,17 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Reactor"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
+			def reactor = EventBus.config().synchronousDispatcher().get()
 
 		then:
-			reactor.core.EventBus.isAssignableFrom(reactor.class)
+			EventBus.isAssignableFrom(reactor.class)
 	}
 
 	def "Tracing is enabled"() {
 
 		when:
 			"a traceable Reactor is created"
-			def reactor = Reactors.reactor().synchronousDispatcher().traceEventPath().get()
+			def reactor = EventBus.config().synchronousDispatcher().traceEventPath().get()
 
 		then:
 			"Reactor uses traceable components"

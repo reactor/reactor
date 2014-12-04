@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.core.spec.support;
+package reactor.event.spec;
 
 import reactor.core.Environment;
 import reactor.event.dispatch.ActorDispatcher;

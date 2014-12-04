@@ -6,7 +6,6 @@ import groovy.transform.stc.SimpleType
 import org.reactivestreams.Processor
 import reactor.convert.Converter
 import reactor.core.Environment
-import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.EventBus
 import reactor.event.dispatch.Dispatcher
@@ -201,7 +200,7 @@ class ReactorBuilder implements Supplier<EventBus> {
 		if (reactor)
 			return reactor
 
-		def spec = Reactors.reactor().env(env)
+		def spec = EventBus.config().env(env)
 		if (dispatcherName) {
 			spec.dispatcher(dispatcherName)
 		} else {

@@ -17,8 +17,8 @@
 
 package reactor.core
 
-import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.EventBus
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.RoundRobinFilter
@@ -47,19 +47,19 @@ class ReactorsSpec extends Specification {
 		testEnv = new Environment()
 	}
 
-	def "A Reactor can be configured with Reactors.reactor()"() {
+	def "A Reactor can be configured with EventBus.create()"() {
 
 		when:
-			"Building a Synchronous Reactor"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
+			"Building a Synchronous EventBus"
+			def reactor = EventBus.config().synchronousDispatcher().get()
 
 		then:
 			"Dispatcher has been set to Synchronous"
 			reactor.dispatcher instanceof SynchronousDispatcher
 
 		when:
-			"Building a RoundRobin Reactor"
-			reactor = Reactors.reactor().roundRobinEventRouting().get()
+			"Building a RoundRobin EventBus"
+			reactor = EventBus.config().roundRobinEventRouting().get()
 
 		then:
 			"EventRouter has been correctly set"
@@ -71,7 +71,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a plain Reactor and a simple consumer on \$('test')"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
+			def reactor = EventBus.config().synchronousDispatcher().get()
 			def data = ""
 			Thread t = null
 			reactor.on($("test"), { ev ->
@@ -120,8 +120,8 @@ class ReactorsSpec extends Specification {
 	def "A Registration is pausable and cancellable"() {
 
 		given:
-			"a simple reactor implementation"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
+			"a simple eventBus implementation"
+			def reactor = EventBus.config().synchronousDispatcher().get()
 			def data = ""
 			def reg = reactor.on($("test"), { ev ->
 				data = ev.data
@@ -150,7 +150,7 @@ class ReactorsSpec extends Specification {
 
 	def "A Reactor can reply to events"() {
 
-		def r = Reactors.reactor().synchronousDispatcher().get()
+		def r = EventBus.config().synchronousDispatcher().get()
 
 		given:
 			"a simple consumer"
@@ -160,7 +160,7 @@ class ReactorsSpec extends Specification {
 			}
 
 		when:
-			"an event is dispatched to the global reactor"
+			"an event is dispatched to the global eventBus"
 			r.on($('say-hello'), a as Consumer<Event<String>>)
 			r.notify('say-hello', new Event<String>('Hello World!'))
 
@@ -174,7 +174,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a simple Reactor and a response-producing Function"
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			def r = EventBus.config().synchronousDispatcher().get()
 			def f = function { s ->
 				"Hello World!"
 			}
@@ -209,8 +209,8 @@ class ReactorsSpec extends Specification {
 			result == "Hello World!"
 
 		when:
-			"A different reactor is provided"
-			def r2 = Reactors.reactor().get()
+			"A different eventBus is provided"
+			def r2 = EventBus.config().get()
 
 		and:
 			"A new consumer is attached"
@@ -219,7 +219,7 @@ class ReactorsSpec extends Specification {
 			})
 
 		and:
-			"an event is triggered using the provided reactor"
+			"an event is triggered using the provided eventBus"
 			result = ""
 			r.send("hello", Event.wrap("Hello World!", replyTo.object), r2)
 
@@ -228,7 +228,7 @@ class ReactorsSpec extends Specification {
 			result == "Hello World!"
 
 		when:
-			"an event is triggered using the provided reactor through Supplier#get()"
+			"an event is triggered using the provided eventBus through Supplier#get()"
 			result = ""
 			r.send("hello", supplier { Event.wrap("Hello World!", replyTo.object) }, r2)
 
@@ -285,8 +285,8 @@ class ReactorsSpec extends Specification {
 	def "A Consumer can be unassigned"() {
 
 		given:
-			"a normal reactor"
-			def reactor = Reactors.reactor().synchronousDispatcher().get()
+			"a normal eventBus"
+			def reactor = EventBus.config().synchronousDispatcher().get()
 
 		when:
 			"registering few handlers"
@@ -306,8 +306,8 @@ class ReactorsSpec extends Specification {
 	def "Multiple consumers can use the same selector"() {
 
 		given:
-			"a normal synchronous reactor"
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			"a normal synchronous eventBus"
+			def r = EventBus.config().synchronousDispatcher().get()
 			def d1, d2
 			def selector = $("test")
 
@@ -326,7 +326,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a synchronous Reactor and a single-use Consumer"
-			def r = Reactors.reactor().get()
+			def r = EventBus.config().get()
 			def count = 0
 			r.on($('test'),new SingleUseConsumer(consumer { count++ }))
 
@@ -363,7 +363,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			def r = EventBus.config().synchronousDispatcher().get()
 
 		when:
 			"an error consumer is registered"
@@ -394,7 +394,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			def r = EventBus.config().synchronousDispatcher().get()
 
 		when:
 			"the Reactor default Selector is notified with a tuple of consumer and data"
@@ -431,7 +431,7 @@ class ReactorsSpec extends Specification {
 		given:
 			"a synchronous Reactor with a dispatch error handler"
 			def count = 0
-			def r = Reactors.reactor().
+			def r = EventBus.config().
 					synchronousDispatcher().
 					dispatchErrorHandler(consumer { t -> count++ }).
 					uncaughtErrorHandler(consumer { t -> count++ }).

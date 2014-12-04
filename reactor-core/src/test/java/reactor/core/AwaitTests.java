@@ -18,7 +18,6 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.core.spec.Reactors;
 import reactor.event.EventBus;
 import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
@@ -40,7 +39,7 @@ public class AwaitTests extends AbstractReactorTest {
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
 		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
 
-		EventBus innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
+		EventBus innerReactor = EventBus.config().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 10000; i++) {
 			final Promise<String> deferred = Promises.<String>prepare(env);

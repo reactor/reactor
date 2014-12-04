@@ -16,7 +16,6 @@
 
 package reactor.event
 
-import reactor.core.spec.Reactors
 import reactor.event.selector.MatchAllSelector
 import reactor.event.selector.SetMembershipSelector
 import reactor.event.selector.UriSelector
@@ -28,6 +27,7 @@ import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
 import static reactor.GroovyTestUtils.$
 import static reactor.event.selector.Selectors.*
+
 /**
  * @author Jon Brisbin
  * @author Andy Wilkinson
@@ -97,7 +97,7 @@ class SelectorSpec extends Specification {
 			"A UriPathSelector"
 			def sel1 = U("/path/**/{resource}")
 			def key = "/path/to/some/resourceId"
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			def r = EventBus.config().synchronousDispatcher().get()
 			def resourceId = ""
 			r.on(sel1) { Event<String> ev ->
 				resourceId = ev.headers["resource"]
@@ -120,7 +120,7 @@ class SelectorSpec extends Specification {
 			def sel1 = new UriSelector("http://user:pwd@host:80/path/segment?param=value#fragment")
 			def sel2 = new UriSelector("http://*:80/path/segment#fragment")
 			def sel3 = new UriSelector("http://user:ENCODEDPWD@*:3000/path/segment#fragment")
-			def r = Reactors.reactor().synchronousDispatcher().get()
+			def r = EventBus.config().synchronousDispatcher().get()
 			def vals = [:]
 			r.on(sel1) { Event<String> ev ->
 				vals = ev.headers
@@ -194,7 +194,7 @@ class SelectorSpec extends Specification {
 
 		given:
 			"A Reactor using round-robin routing and a set of consumers assigned to the same selector"
-			def r = Reactors.reactor().synchronousDispatcher().roundRobinEventRouting().get()
+			def r = EventBus.config().synchronousDispatcher().roundRobinEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1
@@ -230,7 +230,7 @@ class SelectorSpec extends Specification {
 		given:
 			"A Reactor using random routing and a set of consumers assigned to the same selector"
 
-			def r = Reactors.reactor().synchronousDispatcher().randomEventRouting().get()
+			def r = EventBus.config().synchronousDispatcher().randomEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1

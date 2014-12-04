@@ -16,7 +16,7 @@
 package reactor.groovy
 
 import reactor.core.Environment
-import reactor.core.spec.Reactors
+import reactor.event.EventBus
 import reactor.function.support.Tap
 import reactor.rx.Stream
 import reactor.rx.Streams
@@ -123,8 +123,8 @@ class GroovyStreamSpec extends Specification {
 
 	/*def "Compose events (Request/Reply)"() {
 		given:
-			'a reactor and a selector'
-			def r = Reactors.reactor().using(testEnv).dispatcher('eventLoop').get()
+			'a eventBus and a selector'
+			def r = EventBus.config().using(testEnv).dispatcher('eventLoop').get()
 			def key = $()
 
 		when:
@@ -144,8 +144,8 @@ class GroovyStreamSpec extends Specification {
 
 	/* def "Compose events (Request/ N Replies)"() {
 			given:
-				'a reactor and a selector'
-				def r = Reactors.reactor().using(testEnv).dispatcher('eventLoop').get()
+				'a eventBus and a selector'
+				def r = EventBus.config().using(testEnv).dispatcher('eventLoop').get()
 				def key = $()
 
 			when:
@@ -186,12 +186,12 @@ class GroovyStreamSpec extends Specification {
 
 	def "relay events to reactor"() {
 		given:
-			'a reactor and a selector'
-			def r = Reactors.reactor().env(testEnv).get()
+			'a eventBus and a selector'
+			def r = EventBus.config().env(testEnv).get()
 			def key = $()
 
 		when:
-			'we connect when this reactor and key'
+			'we connect when this eventBus and key'
 			def latch = new CountDownLatch(5)
 			r.on(key) {
 				latch.countDown()
@@ -202,7 +202,7 @@ class GroovyStreamSpec extends Specification {
 			def c = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
-			'apply a transformation and call an explicit reactor'
+			'apply a transformation and call an explicit eventBus'
 			(c | { Integer.parseInt it }).to(key.object, r)
 
 		then:
@@ -217,7 +217,7 @@ class GroovyStreamSpec extends Specification {
 			def c = Streams.from(new TestIterable('1', '2', '3', '4', '5'))
 
 		and:
-			'apply a transformation and call an explicit reactor'
+			'apply a transformation and call an explicit eventBus'
 			def sum = 0
 			Stream d = c | { Integer.parseInt it } | { sum += it; sum }
 

@@ -13,8 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package reactor.event.spec;
+
+import reactor.core.Environment;
+import reactor.event.EventBus;
 
 /**
- * Annotations to influence how proxies listen for and publish events on a {@link reactor.event.EventBus}.
+ * A helper class for configuring a new {@link reactor.event.EventBus}.
+ *
+ * @author Jon Brisbin
  */
-package reactor.core.dynamic.annotation;
+public class EventBusSpec extends EventRoutingComponentSpec<EventBusSpec, EventBus> {
+
+	@Override
+	protected final EventBus configure(EventBus reactor, Environment environment) {
+		return reactor;
+	}
+
+}

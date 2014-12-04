@@ -18,6 +18,7 @@ package reactor.event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
@@ -29,6 +30,7 @@ import reactor.event.routing.Router;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.event.spec.EventBusSpec;
 import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
@@ -67,6 +69,57 @@ public class EventBus implements Observable {
 	private final Consumer<Throwable> uncaughtErrorHandler;
 
 	private volatile UUID id;
+
+
+	/**
+	 * Create a new {@link reactor.event.spec.EventBusSpec} to configure a Reactor.
+	 *
+	 * @return The Reactor spec
+	 */
+	public static EventBusSpec config() {
+		return new EventBusSpec();
+	}
+
+	/**
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment}.
+	 *
+	 * @param env
+	 * 		The {@link reactor.core.Environment} to use.
+	 *
+	 * @return A new {@link reactor.event.EventBus}
+	 */
+	public static EventBus create(Environment env) {
+		return new EventBusSpec().env(env).dispatcher(env.getDefaultDispatcher()).get();
+	}
+
+	/**
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment} and dispatcher name.
+	 *
+	 * @param env
+	 * 		The {@link reactor.core.Environment} to use.
+	 * @param dispatcher
+	 * 		The name of the {@link reactor.event.dispatch.Dispatcher} to use.
+	 *
+	 * @return A new {@link reactor.event.EventBus}
+	 */
+	public static EventBus create(Environment env, String dispatcher) {
+		return new EventBusSpec().env(env).dispatcher(dispatcher).get();
+	}
+
+	/**
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment} and {@link
+	 * reactor.event.dispatch.Dispatcher}.
+	 *
+	 * @param env
+	 * 		The {@link reactor.core.Environment} to use.
+	 * @param dispatcher
+	 * 		The {@link reactor.event.dispatch.Dispatcher} to use.
+	 *
+	 * @return A new {@link reactor.event.EventBus}
+	 */
+	public static EventBus create(Environment env, Dispatcher dispatcher) {
+		return new EventBusSpec().env(env).dispatcher(dispatcher).get();
+	}
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link

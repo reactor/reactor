@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
-import reactor.core.spec.Reactors;
 import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.io.Buffer;
@@ -85,7 +84,7 @@ public class ZeroMQ<T> {
 	public ZeroMQ(Environment env, Dispatcher dispatcher) {
 		this.env = env;
 		this.dispatcher = dispatcher;
-		this.reactor = Reactors.reactor(env, dispatcher);
+		this.reactor = EventBus.create(env, dispatcher);
 		this.zmqCtx = new ZContext();
 		this.zmqCtx.setLinger(100);
 	}

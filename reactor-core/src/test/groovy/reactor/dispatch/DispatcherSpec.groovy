@@ -18,7 +18,6 @@
 package reactor.dispatch
 
 import reactor.core.Environment
-import reactor.core.spec.Reactors
 import reactor.event.Event
 import reactor.event.EventBus
 import reactor.event.dispatch.*
@@ -97,8 +96,8 @@ class DispatcherSpec extends Specification {
 	def "Dispatcher thread can be reused"() {
 
 		given:
-			"ring buffer reactor"
-			def r = Reactors.reactor().env(env).dispatcher("ringBuffer").get()
+			"ring buffer eventBus"
+			def r = EventBus.config().env(env).dispatcher("ringBuffer").get()
 			def latch = new CountDownLatch(2)
 
 		when:
@@ -111,7 +110,7 @@ class DispatcherSpec extends Specification {
 			}
 
 		and:
-			"call the reactor"
+			"call the eventBus"
 			r.notify('test', Event.wrap(0))
 
 		then:
@@ -123,7 +122,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def r = Reactors.reactor().
+			def r = EventBus.config().
 					env(env).
 					dispatcher(Environment.THREAD_POOL).
 					get()
@@ -208,7 +207,7 @@ class DispatcherSpec extends Specification {
 	def "MultiThreadDispatchers support ping pong dispatching"(Dispatcher d) {
 
 		given:
-			def r = Reactors.reactor(env, d)
+			def r = EventBus.create(env, d)
 			def latch = new CountDownLatch(4)
 			def main = Thread.currentThread()
 			def t1 = Thread.currentThread()

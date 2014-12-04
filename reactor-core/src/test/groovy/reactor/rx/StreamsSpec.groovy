@@ -17,8 +17,8 @@ package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
-import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.EventBus
 import reactor.event.Observable
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
@@ -1326,7 +1326,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from observable'() {
 		given:
 			'a source stream with a given observable'
-			def r = Reactors.reactor().get()
+			def r = EventBus.config().get()
 			def selector = Selectors.anonymous()
 			int event = 0
 			def s = Streams.<Integer> on(r, selector).consume { event = it }

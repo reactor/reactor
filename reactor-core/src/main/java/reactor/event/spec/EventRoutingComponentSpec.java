@@ -13,13 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.core.spec.support;
+package reactor.event.spec;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
-import reactor.event.EventBus;
 import reactor.event.Event;
+import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.registry.CachingRegistry;
