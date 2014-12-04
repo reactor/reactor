@@ -1182,7 +1182,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> take(long time, TimeUnit unit, Timer timer) {
+	public final Stream<O> take(final long time, final TimeUnit unit, final Timer timer) {
 		if(time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
 			return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
