@@ -42,7 +42,7 @@ public class AwaitTests extends AbstractReactorTest {
 		Reactor innerReactor = Reactors.reactor().env(env).dispatcher(dispatcher).get();
 
 		for (int i = 0; i < 10000; i++) {
-			final Promise<String> deferred = Promises.<String>defer(env);
+			final Promise<String> deferred = Promises.<String>ready(env);
 
 			innerReactor.schedule(new Consumer() {
 

@@ -161,7 +161,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 		getReactor().schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})

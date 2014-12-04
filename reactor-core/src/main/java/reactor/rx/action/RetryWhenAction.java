@@ -25,7 +25,7 @@ import reactor.function.Function;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.support.NonBlocking;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 
 /**
  * @author Stephane Maldini
@@ -33,8 +33,8 @@ import reactor.rx.stream.HotStream;
  */
 public class RetryWhenAction<T> extends Action<T, T> {
 
-	private final HotStream<Throwable>                                          retryStream;
-	private final Publisher<? extends T>                                        rootPublisher;
+	private final Broadcaster<Throwable> retryStream;
+	private final Publisher<? extends T> rootPublisher;
 
 	private long pendingRequests;
 
@@ -42,7 +42,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	                       Function<Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<? extends
 			T> rootPublisher) {
 		super(dispatcher);
-		this.retryStream = Streams.defer(null, dispatcher);
+		this.retryStream = Streams.broadcast(null, dispatcher);
 		this.rootPublisher = rootPublisher;
 		Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
 		afterRetryPublisher.subscribe(new RestartSubscriber());

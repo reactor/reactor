@@ -148,7 +148,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started"));
 		}
 
-		Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		super.close(null);
 

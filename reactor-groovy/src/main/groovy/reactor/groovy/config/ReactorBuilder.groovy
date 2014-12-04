@@ -180,7 +180,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
 	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
 	            Closure<Action<Event<?>, Event<?>>> closure) {
-		Stream<Event<?>> head = Streams.<Event<?>> defer(env, SynchronousDispatcher.INSTANCE)
+		Stream<Event<?>> head = Streams.<Event<?>> broadcast(env, SynchronousDispatcher.INSTANCE)
 		Processor<Event<?>, Event<?>> newTail = DSLUtils.delegateFirstAndRun(head, closure)?.combine()
 		if(!newTail){
 			throw new IllegalArgumentException("A Stream closure must return a non null reactor.rx.Action")

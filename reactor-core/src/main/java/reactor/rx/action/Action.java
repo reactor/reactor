@@ -37,7 +37,7 @@ import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
@@ -144,7 +144,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param <O>        the streamed data type
 	 * @return a new Action subscribed to this one
 	 */
-	public static <O> HotStream<O> passthrough(Dispatcher dispatcher) {
+	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher) {
 		return passthrough(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
 				.backlogSize());
 	}
@@ -157,8 +157,8 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param <O>        the streamed data type
 	 * @return a new Action subscribed to this one
 	 */
-	public static <O> HotStream<O> passthrough(Dispatcher dispatcher, long capacity) {
-		return new HotStream<>(dispatcher, capacity);
+	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher, long capacity) {
+		return new Broadcaster<>(dispatcher, capacity);
 	}
 
 	/**
@@ -437,7 +437,7 @@ public abstract class Action<I, O> extends Stream<O>
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				HotStream<O> newStream = new HotStream<>(dispatcher, capacity);
+				Broadcaster<O> newStream = new Broadcaster<>(dispatcher, capacity);
 				if (queueSupplier == null) {
 					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
 						@Override

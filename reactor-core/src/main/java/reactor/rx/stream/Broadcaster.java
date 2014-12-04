@@ -27,7 +27,7 @@ import reactor.rx.subscription.ReactiveSubscription;
 /**
  * @author Stephane Maldini
  */
-public class HotStream<O> extends Action<O, O> {
+public class Broadcaster<O> extends Action<O, O> {
 
 	public static enum FinalState {
 		ERROR,
@@ -38,7 +38,7 @@ public class HotStream<O> extends Action<O, O> {
 	private Throwable error;
 	private boolean keepAlive = false;
 
-	public HotStream(Dispatcher dispatcher, long capacity) {
+	public Broadcaster(Dispatcher dispatcher, long capacity) {
 		super(dispatcher, capacity);
 	}
 
@@ -101,24 +101,24 @@ public class HotStream<O> extends Action<O, O> {
 	}
 
 	@Override
-	public HotStream<O> env(Environment environment) {
+	public Broadcaster<O> env(Environment environment) {
 		super.env(environment);
 		return this;
 	}
 
 	@Override
-	public HotStream<O> capacity(long elements) {
+	public Broadcaster<O> capacity(long elements) {
 		super.capacity(elements);
 		return this;
 	}
 
-	public HotStream<O> keepAlive(boolean keepAlive) {
+	public Broadcaster<O> keepAlive(boolean keepAlive) {
 		this.keepAlive = keepAlive;
 		return this;
 	}
 
 	@Override
-	public HotStream<O> keepAlive() {
+	public Broadcaster<O> keepAlive() {
 		this.keepAlive(true);
 		return this;
 	}

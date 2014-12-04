@@ -45,7 +45,7 @@ class GroovyStreamSpec extends Specification {
 	def "Compose from multiple values"() {
 		when:
 			'Defer a composition'
-			def s = Streams.defer(['1', '2', '3', '4', '5'])
+			def s = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation'
@@ -60,7 +60,7 @@ class GroovyStreamSpec extends Specification {
 	def "Compose from multiple filtered values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5'])
+			def c = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation that filters odd elements'
@@ -74,7 +74,7 @@ class GroovyStreamSpec extends Specification {
 	def "Error handling with composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5'])
+			def c = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation that generates an exception for the last value'
@@ -91,7 +91,7 @@ class GroovyStreamSpec extends Specification {
 	def "Reduce composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def c = Streams.defer([1, 2, 3, 4, 5])
+			def c = Streams.from([1, 2, 3, 4, 5])
 
 		and:
 			'apply a reduction'
@@ -106,7 +106,7 @@ class GroovyStreamSpec extends Specification {
 	def "consume first and last with a composition from multiple values"() {
 		when:
 			'Defer a composition'
-			def d = Streams.defer([1, 2, 3, 4, 5])
+			def d = Streams.from([1, 2, 3, 4, 5])
 
 		and:
 			'apply a transformation'
@@ -199,7 +199,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'Defer a composition'
-			def c = Streams.defer(['1', '2', '3', '4', '5'])
+			def c = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
 			'apply a transformation and call an explicit reactor'
@@ -214,7 +214,7 @@ class GroovyStreamSpec extends Specification {
 
 		when:
 			'Defer a composition'
-			def c = Streams.defer(new TestIterable('1', '2', '3', '4', '5'))
+			def c = Streams.from(new TestIterable('1', '2', '3', '4', '5'))
 
 		and:
 			'apply a transformation and call an explicit reactor'

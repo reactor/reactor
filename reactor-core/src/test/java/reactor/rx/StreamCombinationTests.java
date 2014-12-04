@@ -22,7 +22,7 @@ import reactor.AbstractReactorTest;
 import reactor.core.Environment;
 import reactor.function.Consumer;
 import reactor.function.Function;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 import reactor.tuple.Tuple2;
 
 import java.util.ArrayList;
@@ -41,8 +41,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
 
 	private ArrayList<Stream<SensorData>> allSensors;
-	private HotStream<SensorData>         sensorEven;
-	private HotStream<SensorData>         sensorOdd;
+	private Broadcaster<SensorData>       sensorEven;
+	private Broadcaster<SensorData>       sensorOdd;
 
 
 	public Consumer<Object> loggingConsumer() {
@@ -56,10 +56,10 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return allSensors;
 	}
 
-	public HotStream<SensorData> sensorOdd() {
+	public Broadcaster<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Streams.<SensorData>defer(env, env.getCachedDispatchers().get());
+			this.sensorOdd = Streams.<SensorData>broadcast(env, env.getCachedDispatchers().get());
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
@@ -68,10 +68,10 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return sensorOdd;
 	}
 
-	public HotStream<SensorData> sensorEven() {
+	public Broadcaster<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Streams.<SensorData>defer(env, env.getCachedDispatchers().get());
+			this.sensorEven = Streams.<SensorData>broadcast(env, env.getCachedDispatchers().get());
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
@@ -229,7 +229,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	private void generateData(int elements) {
 		Random random = new Random();
 		SensorData data;
-		HotStream<SensorData> upstream;
+		Broadcaster<SensorData> upstream;
 
 		for (long i = 0; i < elements; i++) {
 			data = new SensorData(i, random.nextFloat() * 100);

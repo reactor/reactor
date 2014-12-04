@@ -91,7 +91,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
 		Promise<NetChannel<IN, OUT>> d =
-				Promises.defer(getEnvironment(), getReactor().getDispatcher());
+				Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		doOpen(d);
 

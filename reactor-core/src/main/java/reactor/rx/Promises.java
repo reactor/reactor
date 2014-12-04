@@ -43,8 +43,8 @@ public final class Promises {
 	 * @param <T> type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> defer() {
-		return defer(null, SynchronousDispatcher.INSTANCE);
+	public static <T> Promise<T> ready() {
+		return ready(null, SynchronousDispatcher.INSTANCE);
 	}
 
 	/**
@@ -54,8 +54,8 @@ public final class Promises {
 	 * @param <T> type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
-	public static <T> Promise<T> defer(Environment env) {
-		return defer(env, env.getDefaultDispatcher());
+	public static <T> Promise<T> ready(Environment env) {
+		return ready(env, env.getDefaultDispatcher());
 	}
 
 	/**
@@ -66,7 +66,7 @@ public final class Promises {
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
-	public static <T> Promise<T> defer(Environment env, Dispatcher dispatcher) {
+	public static <T> Promise<T> ready(Environment env, Dispatcher dispatcher) {
 		return new Promise<T>(dispatcher, env);
 	}
 

@@ -16,7 +16,6 @@
 package reactor.core.spec
 
 import reactor.event.dispatch.TraceableDelegatingDispatcher
-import reactor.function.support.Tap
 import reactor.rx.Promise
 import reactor.rx.Promises
 import reactor.rx.Stream
@@ -53,7 +52,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Composable"
-			Stream composable = Streams.<String>defer()
+			Stream composable = Streams.<String>broadcast()
 			def tap = composable.tap()
 			composable.broadcastNext('test')
 
@@ -78,7 +77,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Promise"
-			Promise promise = Promises.<String>defer()
+			Promise promise = Promises.<String>ready()
 			promise.onNext 'test'
 
 		then:

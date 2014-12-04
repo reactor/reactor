@@ -32,6 +32,7 @@ import reactor.queue.CompletableQueue;
 import reactor.rx.action.*;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
+import reactor.rx.stream.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
@@ -252,6 +253,49 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, key);
 		subscribe(observableAction);
 		return observableAction;
+	}
+
+
+	/**
+	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
+	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
+	 * stream. Complete and Error signals are however retained unless {@link this#keepAlive()} has been called before.
+	 * <p>
+	 *
+	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
+	 */
+	public final Stream<O> broadcast() {
+		return broadcastOn(getDispatcher());
+	}
+
+	/**
+	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
+	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
+	 * stream. Complete and Error signals are however retained unless {@link this#keepAlive()} has been called before.
+	 * <p>
+	 *
+	 * @param dispatcher         the dispatcher to run the signals
+	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
+	 */
+	public final Stream<O> broadcastOn(Dispatcher dispatcher) {
+		Broadcaster<O> broadcaster = new Broadcaster<O>(dispatcher, getCapacity()).env(getEnvironment());
+		return broadcastTo(broadcaster);
+	}
+
+
+	/**
+	 * Subscribe the passed subscriber, only creating once necessary upstream Subscriptions and returning itself.
+	 * Mostly used by other broadcast actions which transform any Stream into a publish-subscribe Stream (every subscribers
+	 * see all values).
+	 * <p>
+	 *
+	 * @param subscriber         the subscriber to subscribe to this stream and return
+	 * @param <E>    the hydrated generic type for the passed argument, allowing for method chaining
+	 * @return {@param subscriber}
+	 */
+	public final <E extends Subscriber<? super O>> E  broadcastTo(E subscriber) {
+		subscribe(subscriber);
+		return subscriber;
 	}
 
 	/**
@@ -867,7 +911,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	@SuppressWarnings("unchecked")
 	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
 	                                       @Nonnull Function<Tuple2<O, T2>, V> zipper) {
-		return zipWith(Streams.defer(iterable), zipper);
+		return zipWith(Streams.from(iterable), zipper);
 	}
 
 	/**
@@ -2149,9 +2193,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Try cleaning a given subscription from the stream references. Unicast implementation such as IterableStream
-	 * (Streams.defer(1,2,3)) or SupplierStream (Streams.generate(-> 1)) won't need to perform any job and as such will
+	 * (Streams.from(1,2,3)) or SupplierStream (Streams.generate(-> 1)) won't need to perform any job and as such will
 	 * return @{code false} upon this call.
-	 * Alternatively, Action and HotStream (Streams.defer()) will clean any reference to that subscription from their
+	 * Alternatively, Action and HotStream (Streams.from()) will clean any reference to that subscription from their
 	 * internal registry and might return {@code true} if successful.
 	 *
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}

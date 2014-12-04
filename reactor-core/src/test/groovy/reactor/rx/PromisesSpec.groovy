@@ -44,7 +44,7 @@ class PromisesSpec extends Specification {
 	def "An onComplete consumer is called when a promise is rejected"() {
 		given:
 			"a Promise with an onComplete Consumer"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def acceptedPromise
 
 			promise.onComplete { self ->
@@ -83,7 +83,7 @@ class PromisesSpec extends Specification {
 	def "An onComplete consumer is called when a promise is fulfilled"() {
 		given:
 			"a Promise with an onComplete Consumer"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def acceptedPromise
 
 			promise.onComplete { self ->
@@ -122,7 +122,7 @@ class PromisesSpec extends Specification {
 	def "An onSuccess consumer is called when a promise is fulfilled"() {
 		given:
 			"a Promise with an onSuccess Consumer"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def acceptedValue
 
 			promise.onSuccess { v ->
@@ -187,7 +187,7 @@ class PromisesSpec extends Specification {
 	def "An onError consumer is called when a promise is rejected"() {
 		given:
 			"a Promise with an onError Consumer"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def acceptedValue
 
 			promise.onError { v ->
@@ -256,7 +256,7 @@ class PromisesSpec extends Specification {
 	def "A promise can be fulfilled with null"() {
 		given:
 			"a promise"
-			def promise = Promises.<Object> defer()
+			def promise = Promises.<Object> ready()
 
 		when:
 			"the promise is fulfilled with null"
@@ -270,7 +270,7 @@ class PromisesSpec extends Specification {
 	def "An Observable can be used to consume a promise's value when it's fulfilled"() {
 		given:
 			"a promise with a consuming Observable"
-			def promise = Promises.<Object> defer()
+			def promise = Promises.<Object> ready()
 			def observable = Mock(Observable)
 			promise.stream().notify('key', observable)
 
@@ -301,7 +301,7 @@ class PromisesSpec extends Specification {
 	def "A function can be used to map a Promise's value when it's fulfilled"() {
 		given:
 			"a promise with a mapping function"
-			def promise = Promises.<Integer> defer()
+			def promise = Promises.<Integer> ready()
 			def mappedPromise = promise.stream().map { it * 2 }.next()
 
 		when:
@@ -316,7 +316,7 @@ class PromisesSpec extends Specification {
 	def "A map many can be used to bind to another Promise and compose asynchronous results "() {
 		given:
 			"a promise with a map many function"
-			def promise = Promises.<Integer> defer()
+			def promise = Promises.<Integer> ready()
 			def mappedPromise = promise.stream().flatMap { Promises.success(it + 1) }.next()
 
 		when:
@@ -347,7 +347,7 @@ class PromisesSpec extends Specification {
 	def "An onSuccess consumer registered via then is called when the promise is fulfilled"() {
 		given:
 			"A promise with an onSuccess consumer registered using then"
-			Promise<String> promise = Promises.<String> defer()
+			Promise<String> promise = Promises.<String> ready()
 			def value = null
 			promise.onSuccess { value = it }
 
@@ -363,7 +363,7 @@ class PromisesSpec extends Specification {
 	def "An onError consumer registered via then is called when the promise is rejected"() {
 		given:
 			"A promise with an onError consumer registered using then"
-			Promise<String> promise = Promises.<String> defer()
+			Promise<String> promise = Promises.<String> ready()
 			def value
 			promise.onSuccess {}.onError { value = it }
 
@@ -395,7 +395,7 @@ class PromisesSpec extends Specification {
 	def "When a promise is fulfilled, if a mapping function throws an exception the mapped promise is rejected"() {
 		given:
 			"a promise with a filter that throws an exception"
-			Promise<String> promise = Promises.<String> defer()
+			Promise<String> promise = Promises.<String> ready()
 			def e = new RuntimeException()
 			def mapped = promise.stream().map { throw e }.next()
 
@@ -426,7 +426,7 @@ class PromisesSpec extends Specification {
 	def "An IllegalStateException is thrown if an attempt is made to fulfil a fulfilled promise"() {
 		given:
 			"a fulfilled promise"
-			def promise = Promises.<Integer> defer()
+			def promise = Promises.<Integer> ready()
 
 		when:
 			"an attempt is made to fulfil it"
@@ -441,7 +441,7 @@ class PromisesSpec extends Specification {
 	def "An IllegalStateException is thrown if an attempt is made to reject a rejected promise"() {
 		given:
 			"a rejected promise"
-			Promise promise = Promises.defer()
+			Promise promise = Promises.ready()
 
 		when:
 			"an attempt is made to fulfil it"
@@ -456,7 +456,7 @@ class PromisesSpec extends Specification {
 	def "An IllegalStateException is thrown if an attempt is made to reject a fulfilled promise"() {
 		given:
 			"a fulfilled promise"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 
 		when:
 			"an attempt is made to fulfil it"
@@ -471,8 +471,8 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Streams.<Integer> defer().observe { println 'hey' + it }.next()
-			def promise2 = Promises.<Integer> defer()
+			def promise1 = Streams.<Integer> broadcast().observe { println 'hey' + it }.next()
+			def promise2 = Promises.<Integer> ready()
 
 		when:
 			"a combined promise is first created"
@@ -508,8 +508,8 @@ class PromisesSpec extends Specification {
 	def "A combined promise is rejected once any of its component promises are rejected"() {
 		given:
 			"two unfulfilled promises"
-			def promise1 = Promises.<Integer> defer()
-			def promise2 = Promises.<Integer> defer()
+			def promise1 = Promises.<Integer> ready()
+			def promise2 = Promises.<Integer> ready()
 
 		when:
 			"a combined promise is first created"
@@ -595,7 +595,7 @@ class PromisesSpec extends Specification {
 	def "A single promise can be 'combined'"() {
 		given:
 			"one unfulfilled promise"
-			def promise1 = Promises.defer()
+			def promise1 = Promises.ready()
 
 		when:
 			"a combined promise is first created"
@@ -641,7 +641,7 @@ class PromisesSpec extends Specification {
 	def "A filtered promise is not fulfilled if the filter does not allow the value to pass through"() {
 		given:
 			"a promise with a filter that only accepts even values"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def filtered = promise.stream().filter { it % 2 == 0 }.next()
 
 		when:
@@ -657,7 +657,7 @@ class PromisesSpec extends Specification {
 	def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
 		given:
 			"a promise with a filter that only accepts even values"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			promise.stream().filter { it % 2 == 0 }.next()
 
 		when:
@@ -673,7 +673,7 @@ class PromisesSpec extends Specification {
 	def "If a filter throws an exception the filtered promise is rejected"() {
 		given:
 			"a promise with a filter that throws an exception"
-			def promise = Promises.defer()
+			def promise = Promises.ready()
 			def e = new RuntimeException()
 			def filteredPromise = promise.stream().filter { throw e }.next()
 
@@ -719,7 +719,7 @@ class PromisesSpec extends Specification {
 	def "Errors stop compositions"() {
 		given:
 			"a promise"
-			def p1 = Promises.<String> defer(environment)
+			def p1 = Promises.<String> ready(environment)
 
 			final latch = new CountDownLatch(1)
 
@@ -743,7 +743,7 @@ class PromisesSpec extends Specification {
 	def "Can poll instead of await to automatically handle InterruptedException"() {
 		given:
 			"a promise"
-			def p1 = Promises.<String> defer(environment)
+			def p1 = Promises.<String> ready(environment)
 
 		when:
 			"p1 is consumed by p2"

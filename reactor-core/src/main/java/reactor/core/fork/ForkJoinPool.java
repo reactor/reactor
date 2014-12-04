@@ -24,7 +24,7 @@ import reactor.core.Environment;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Streams;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -71,7 +71,7 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> join(final Function<?, V>... tasks) {
+	public <V> ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>> join(final Function<?, V>... tasks) {
 		return join(Arrays.asList(tasks));
 	}
 
@@ -87,11 +87,11 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
-		final HotStream<ImmutableList<V>> d
-				= Streams.defer(env, dispatcher);
-		final ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>> t
-				= new ForkJoinTask<ImmutableList<V>, HotStream<ImmutableList<V>>>(executor, d);
+	public <V> ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
+		final Broadcaster<ImmutableList<V>> d
+				= Streams.broadcast(env, dispatcher);
+		final ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>> t
+				= new ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>>(executor, d);
 
 		final AtomicInteger count = new AtomicInteger(tasks.size());
 		final FastList<V> results = FastList.newList();
@@ -129,9 +129,9 @@ public class ForkJoinPool {
 	 *
 	 * @return fork/join task
 	 */
-	public <V> ForkJoinTask<V, HotStream<V>> fork() {
-		HotStream<V> d = Streams.defer(env, dispatcher);
-		return new ForkJoinTask<V, HotStream<V>>(executor, d);
+	public <V> ForkJoinTask<V, Broadcaster<V>> fork() {
+		Broadcaster<V> d = Streams.broadcast(env, dispatcher);
+		return new ForkJoinTask<V, Broadcaster<V>>(executor, d);
 	}
 
 }

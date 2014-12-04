@@ -158,7 +158,7 @@ public class ZeroMQ<T> {
 	public Promise<NetChannel<T, T>> createServer(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
-		Promise<NetChannel<T, T>> d = Promises.defer(env, dispatcher);
+		Promise<NetChannel<T, T>> d = Promises.ready(env, dispatcher);
 
 		TcpServer<T, T> server = new TcpServerSpec<T, T>(ZeroMQTcpServer.class)
 				.env(env).dispatcher(dispatcher).codec(codec)

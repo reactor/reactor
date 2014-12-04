@@ -70,7 +70,7 @@ public abstract class DatagramServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public Promise<Boolean> start() {
-		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {

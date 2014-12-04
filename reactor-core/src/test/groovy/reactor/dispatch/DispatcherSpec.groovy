@@ -155,7 +155,7 @@ class DispatcherSpec extends Specification {
 			def r = new Reactor(dispatcher)
 
 		when:
-			def stream = Streams.<Throwable> defer()
+			def stream = Streams.<Throwable> broadcast()
 			def promise = stream.take(16).count().toList()
 			r.on(T(Throwable), stream.toBroadcastNextConsumer())
 			r.on($("test"), { ev ->

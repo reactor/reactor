@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * {@code
  * Streams.just(1, 2, 3).map(i -> i*2) //...
  * <p>
- * Stream<String> stream = Streams.defer().map(i -> i*2).consume(System.out::println);
+ * Stream<String> stream = Streams.from().map(i -> i*2).consume(System.out::println);
  * stream.broadcastNext("hello");
  * <p>
  * Stream.create( subscriber -> {
@@ -53,8 +53,8 @@ import java.util.concurrent.TimeUnit;
  * subscriber.onComplete();
  * }).consume(System.out::println);
  * <p>
- * Stream<Integer> inputStream1 = Streams.defer(env);
- * Stream<Integer> inputStream2 = Streams.defer(env);
+ * Stream<Integer> inputStream1 = Streams.from(env);
+ * Stream<Integer> inputStream2 = Streams.from(env);
  * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  * <p>
  * }
@@ -65,7 +65,7 @@ import java.util.concurrent.TimeUnit;
 public final class Streams {
 
 	/**
-	 * Build a deferred synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
+	 * Build a synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
 	 */
@@ -75,7 +75,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a deferred synchronous {@literal Stream} that will only emit an error signal to any new subscriber.
+	 * Build a synchronous {@literal Stream} that will only emit an error signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
 	 */
@@ -85,7 +85,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a deferred synchronous {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
+	 * Build a synchronous {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
 	 * .Action#broadcastNext
 	 * (Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
@@ -93,13 +93,13 @@ public final class Streams {
 	 * @param <T> the type of values passing through the {@literal action}
 	 * @return a new {@link Action}
 	 */
-	public static <T> HotStream<T> defer() {
+	public static <T> Broadcaster<T> broadcast() {
 		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive();
 	}
 
 
 	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
+	 * Build a {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
 	 * reactor.rx.action.Action#broadcastNext(Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
@@ -107,13 +107,13 @@ public final class Streams {
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> HotStream<T> defer(Environment env) {
-		return defer(env, env.getDefaultDispatcher());
+	public static <T> Broadcaster<T> broadcast(Environment env) {
+		return broadcast(env, env.getDefaultDispatcher());
 	}
 
 
 	/**
-	 * Build a deferred {@literal Stream}, ready to broadcast values with {@link reactor.rx.action.Action#broadcastNext
+	 * Build a {@literal Stream}, ready to broadcast values with {@link reactor.rx.action.Action#broadcastNext
 	 * (Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
@@ -122,16 +122,16 @@ public final class Streams {
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> HotStream<T> defer(Environment env, Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> broadcast(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to #partition()/groupBy() method and assign individual single dispatchers");
-		HotStream<T> hotStream = Action.<T>passthrough(dispatcher);
-		hotStream.env(env).capacity(dispatcher.backlogSize() > 0 ?
+		Broadcaster<T> broadcaster = Action.<T>passthrough(dispatcher);
+		broadcaster.env(env).capacity(dispatcher.backlogSize() > 0 ?
 				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
 				Long.MAX_VALUE);
-		return hotStream.keepAlive();
+		return broadcaster.keepAlive();
 	}
 
 	/**
@@ -143,35 +143,35 @@ public final class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> defer(Iterable<? extends T> values) {
+	public static <T> Stream<T> from(Iterable<? extends T> values) {
 		return new IterableStream<T>(values);
 	}
 
 	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * Build a {@literal Stream} that will only emit the result of the future and then complete.
 	 * The future will be polled for an unbounded amount of time.
 	 *
 	 * @param future the future to poll value from
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> defer(Future<? extends T> future) {
+	public static <T> Stream<T> from(Future<? extends T> future) {
 		return new FutureStream<T>(future);
 	}
 
 
 	/**
-	 * Build a deferred {@literal Stream} that will only emit the result of the future and then complete.
+	 * Build a {@literal Stream} that will only emit the result of the future and then complete.
 	 * The future will be polled for an unbounded amount of time.
 	 *
 	 * @param future the future to poll value from
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> defer(Future<? extends T> future, long time, TimeUnit unit) {
+	public static <T> Stream<T> from(Future<? extends T> future, long time, TimeUnit unit) {
 		return new FutureStream<T>(future, time, unit);
 	}
 
 	/**
-	 * Build a deferred {@literal Stream} that will only emit a sequence of integers within the specified range and then
+	 * Build a {@literal Stream} that will only emit a sequence of integers within the specified range and then
 	 * complete.
 	 *
 	 * @param start the inclusive starting value to be emitted
@@ -359,7 +359,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2) {
-		return defer(Arrays.asList(value1, value2));
+		return from(Arrays.asList(value1, value2));
 	}
 
 
@@ -375,7 +375,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3) {
-		return defer(Arrays.asList(value1, value2, value3));
+		return from(Arrays.asList(value1, value2, value3));
 	}
 
 
@@ -392,7 +392,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4) {
-		return defer(Arrays.asList(value1, value2, value3, value4));
+		return from(Arrays.asList(value1, value2, value3, value4));
 	}
 
 
@@ -410,7 +410,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
-		return defer(Arrays.asList(value1, value2, value3, value4, value5));
+		return from(Arrays.asList(value1, value2, value3, value4, value5));
 	}
 
 
@@ -429,7 +429,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6) {
-		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6));
+		return from(Arrays.asList(value1, value2, value3, value4, value5, value6));
 	}
 
 
@@ -449,7 +449,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
-		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
+		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
 	}
 
 
@@ -470,7 +470,7 @@ public final class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
-		return defer(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
+		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
 	/**

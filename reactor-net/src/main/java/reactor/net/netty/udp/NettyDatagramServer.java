@@ -178,7 +178,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		getReactor().schedule(
 				new Consumer<Void>() {
@@ -234,7 +234,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Promise<Void> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -261,7 +261,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.defer(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		final ChannelFuture future;
 		if (null != iface) {

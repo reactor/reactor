@@ -27,7 +27,7 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 import reactor.tuple.Tuple1;
 import reactor.tuple.Tuple2;
 import reactor.util.Assert;
@@ -68,10 +68,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		Dispatcher dispatcherZip = env.getCachedDispatcher();
 
-		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>defer(env)
+		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>broadcast(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-				.partition(2)
+				.partition(8)
 				.flatMap(stream -> stream
 								.dispatchOn(env, env.getCachedDispatcher())
 								.observe(i -> {
@@ -87,7 +87,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
 								.sample(1)
 								.map(integer -> -integer)
-								.buffer(1024, 100, TimeUnit.MILLISECONDS)
+								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
 								.flatMap(i ->
 												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
@@ -113,7 +113,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 			}
 
 			return Streams
-					.defer(list)
+					.from(list)
 					.log("iterable-publisher")
 					.dispatchOn(env)
 					.filter(integer -> true)
@@ -141,7 +141,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
-		HotStream<Integer> stream = Streams.defer(env);
+		Broadcaster<Integer> stream = Streams.broadcast(env);
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());

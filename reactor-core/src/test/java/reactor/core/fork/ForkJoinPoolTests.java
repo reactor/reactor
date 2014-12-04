@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.core.Environment;
 import reactor.function.Function;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 
 import java.util.List;
 import java.util.Random;
@@ -60,7 +60,7 @@ public class ForkJoinPoolTests {
 			tasks.add(task);
 		}
 
-		ForkJoinTask<ImmutableList<Integer>, HotStream<ImmutableList<Integer>>> fjt = fjp.join(tasks);
+		ForkJoinTask<ImmutableList<Integer>, Broadcaster<ImmutableList<Integer>>> fjt = fjp.join(tasks);
 		System.out.println(fjt.compose().debug());
 		fjt.submit();
 		System.out.println(fjt.compose().debug());

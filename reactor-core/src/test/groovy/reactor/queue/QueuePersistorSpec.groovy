@@ -102,7 +102,7 @@ class QueuePersistorSpec extends Specification {
 					.deleteOnExit(true)
 					.get()
 
-			def stream = Streams.<String> defer()
+			def stream = Streams.<String> broadcast()
 			def result = null
 
 			def bufferedStream = stream.onOverflowBuffer{persistentQueue}.observe{

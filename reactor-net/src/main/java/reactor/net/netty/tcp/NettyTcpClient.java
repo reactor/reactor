@@ -43,7 +43,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tuple.Tuple2;
 
@@ -159,7 +159,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
 		final Promise<NetChannel<IN, OUT>> connection
-				= Promises.defer(getEnvironment(), getReactor().getDispatcher());
+				= Promises.ready(getEnvironment(), getReactor().getDispatcher());
 
 		openChannel(new ConnectingChannelListener(connection));
 
@@ -168,8 +168,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Stream<NetChannel<IN, OUT>> open(final Reconnect reconnect) {
-		final HotStream<NetChannel<IN, OUT>> connections
-				= Streams.defer(getEnvironment(), getReactor().getDispatcher());
+		final Broadcaster<NetChannel<IN, OUT>> connections
+				= Streams.broadcast(getEnvironment(), getReactor().getDispatcher());
 
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
 
@@ -279,14 +279,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 
-		private final Reconnect                      reconnect;
-		private final HotStream<NetChannel<IN, OUT>> connections;
+		private final Reconnect                        reconnect;
+		private final Broadcaster<NetChannel<IN, OUT>> connections;
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
 		                                    Reconnect reconnect,
-		                                    HotStream<NetChannel<IN, OUT>> connections) {
+		                                    Broadcaster<NetChannel<IN, OUT>> connections) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 			this.connections = connections;

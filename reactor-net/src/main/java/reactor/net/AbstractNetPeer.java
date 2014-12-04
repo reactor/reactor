@@ -77,7 +77,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	public Promise<Boolean> close() {
-		Promise<Boolean> d = Promises.defer(env, reactor.getDispatcher());
+		Promise<Boolean> d = Promises.ready(env, reactor.getDispatcher());
 		close(d);
 		return d;
 	}

@@ -99,7 +99,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Promises can be mapped"() {
 		given: "a synchronous promise"
-			def p = Promises.<String> defer()
+			def p = Promises.<String> ready()
 
 		when: "add a mapping closure"
 			def s = p | { Integer.parseInt it }
@@ -112,7 +112,7 @@ class GroovyPromisesSpec extends Specification {
 			p2.get() == 10
 
 		when: "add a mapping closure"
-			p = Promises.defer()
+			p = Promises.ready()
 			s = p | { Integer.parseInt it }
 		  p2 = s.next()
 
@@ -125,8 +125,8 @@ class GroovyPromisesSpec extends Specification {
 
 	def "A promise can be be consumed by another promise"() {
 		given: "two synchronous promises"
-			def p1 = Promises.<String> defer()
-			def p2 = Promises.<String> defer()
+			def p1 = Promises.<String> ready()
+			def p2 = Promises.<String> ready()
 
 		when: "p1 is consumed by p2"
 			p1 << p2 //p1.consume p2
@@ -141,7 +141,7 @@ class GroovyPromisesSpec extends Specification {
 
 	def "Errors stop compositions"() {
 		given: "a promise"
-			def p = Promises.<String> defer(testEnv)
+			def p = Promises.<String> ready(testEnv)
 			final latch = new CountDownLatch(1)
 
 		when: "p1 is consumed by p2"

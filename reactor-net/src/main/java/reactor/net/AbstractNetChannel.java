@@ -37,7 +37,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.HotStream;
+import reactor.rx.stream.Broadcaster;
 import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
@@ -120,7 +120,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Stream<IN> in() {
-		final HotStream<IN> d = Streams.<IN>defer(env, eventsReactor.getDispatcher());
+		final Broadcaster<IN> d = Streams.<IN>broadcast(env, eventsReactor.getDispatcher());
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
@@ -176,7 +176,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<Void> send(OUT data) {
-		Promise<Void> d = Promises.defer(env, eventsReactor.getDispatcher());
+		Promise<Void> d = Promises.ready(env, eventsReactor.getDispatcher());
 		send(data, d);
 		return d;
 	}
@@ -189,7 +189,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<IN> sendAndReceive(OUT data) {
-		final Promise<IN> d = Promises.defer(env, eventsReactor.getDispatcher());
+		final Promise<IN> d = Promises.ready(env, eventsReactor.getDispatcher());
 		Selector sel = $();
 		eventsReactor.on(sel, new EventConsumer<IN>(d)).cancelAfterUse();
 		replyToKeys.add(sel.getObject());
@@ -199,7 +199,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	@Override
 	public Promise<Boolean> close() {
-		Promise<Boolean> d = Promises.defer(getEnvironment(), eventsReactor.getDispatcher());
+		Promise<Boolean> d = Promises.ready(getEnvironment(), eventsReactor.getDispatcher());
 		eventsReactor.getConsumerRegistry().unregister(read.getObject());
 		close(d);
 		return d;

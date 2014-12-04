@@ -106,12 +106,12 @@ class StaticConfiguration {
 				dispatcher 'testDispatcher', new SynchronousDispatcher()
 			}
 
-			def stream = Streams.<Event> defer().
+			def stream = Streams.<Event> broadcast().
 			    map { Event ev ->
 						ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
 					}.combine()
 
-			def stream2 = Streams.<Event> defer().
+			def stream2 = Streams.<Event> broadcast().
 					map { Event ev ->
 						ev.copy("$ev.data twice")
 					}.combine()
@@ -131,7 +131,7 @@ class StaticConfiguration {
 			}
 
 			reactor('test2') {
-				processor 'test', Streams.<Event<?>> defer().filter{false}.combine()
+				processor 'test', Streams.<Event<?>> broadcast().filter{false}.combine()
 
 				on('test') {
 					reply it
