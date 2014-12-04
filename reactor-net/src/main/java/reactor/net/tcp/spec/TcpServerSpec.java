@@ -17,7 +17,7 @@
 package reactor.net.tcp.spec;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.io.encoding.Codec;
 import reactor.net.config.ServerSocketOptions;
 import reactor.net.config.SslOptions;
@@ -60,7 +60,7 @@ public class TcpServerSpec<IN, OUT>
 		try {
 			this.serverImplConstructor = serverImpl.getDeclaredConstructor(
 					Environment.class,
-					Reactor.class,
+					EventBus.class,
 					InetSocketAddress.class,
 					ServerSocketOptions.class,
 					SslOptions.class,
@@ -89,7 +89,7 @@ public class TcpServerSpec<IN, OUT>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected TcpServer<IN, OUT> configure(Reactor reactor, Environment env) {
+	protected TcpServer<IN, OUT> configure(EventBus reactor, Environment env) {
 		try {
 			return serverImplConstructor.newInstance(
 					env,

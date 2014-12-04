@@ -34,7 +34,7 @@ class ComponentSpecSpec extends Specification {
 			def reactor = Reactors.reactor().synchronousDispatcher().get()
 
 		then:
-			reactor.core.Reactor.isAssignableFrom(reactor.class)
+			reactor.core.EventBus.isAssignableFrom(reactor.class)
 	}
 
 	def "Tracing is enabled"() {
@@ -77,7 +77,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Promise"
-			Promise promise = Promises.<String>ready()
+			Promise promise = Promises.<String>prepare()
 			promise.onNext 'test'
 
 		then:

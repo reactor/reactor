@@ -28,7 +28,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -71,7 +71,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup           ioGroup;
 
 	protected NettyTcpServer(@Nonnull Environment env,
-	                         @Nonnull Reactor reactor,
+	                         @Nonnull EventBus reactor,
 	                         @Nullable InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,

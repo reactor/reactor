@@ -27,7 +27,7 @@ import io.netty.util.concurrent.FutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
@@ -93,7 +93,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * @param consumers      The consumers that will interact with the connection
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
-	                      @Nonnull Reactor reactor,
+	                      @Nonnull EventBus reactor,
 	                      @Nonnull InetSocketAddress connectAddress,
 	                      @Nonnull final ClientSocketOptions options,
 	                      @Nullable final SslOptions sslOptions,

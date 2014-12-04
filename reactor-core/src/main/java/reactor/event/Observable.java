@@ -14,9 +14,8 @@
  *  limitations under the License.
  */
 
-package reactor.core;
+package reactor.event;
 
-import reactor.event.Event;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;

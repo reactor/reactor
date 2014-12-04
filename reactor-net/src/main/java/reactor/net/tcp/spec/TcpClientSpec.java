@@ -17,7 +17,7 @@
 package reactor.net.tcp.spec;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.core.spec.support.EventRoutingComponentSpec;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
@@ -66,7 +66,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		try {
 			this.clientImplConstructor = (Constructor<TcpClient<IN, OUT>>)clientImpl.getDeclaredConstructor(
 					Environment.class,
-					Reactor.class,
+					EventBus.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
 					SslOptions.class,
@@ -177,7 +177,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	}
 
 	@Override
-	protected TcpClient<IN, OUT> configure(Reactor reactor, Environment env) {
+	protected TcpClient<IN, OUT> configure(EventBus reactor, Environment env) {
 		List<Consumer<NetChannel<IN, OUT>>> channelConsumers = new ArrayList<Consumer<NetChannel<IN, OUT>>>();
 		channelConsumers.add(new Consumer<NetChannel<IN, OUT>>() {
 			@Override

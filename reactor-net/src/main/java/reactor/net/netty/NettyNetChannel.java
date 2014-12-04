@@ -22,7 +22,7 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
@@ -53,7 +53,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	public NettyNetChannel(@Nonnull Environment env,
 	                       @Nullable Codec<Buffer, IN, OUT> codec,
 	                       @Nonnull Dispatcher ioDispatcher,
-	                       @Nonnull Reactor eventsReactor,
+	                       @Nonnull EventBus eventsReactor,
 	                       @Nonnull Channel ioChannel) {
 		super(env, codec, ioDispatcher, eventsReactor);
 		this.ioChannel = ioChannel;

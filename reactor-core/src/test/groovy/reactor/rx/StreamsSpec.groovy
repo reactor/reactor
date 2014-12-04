@@ -17,9 +17,9 @@ package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
-import reactor.core.Observable
 import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.Observable
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
@@ -1136,7 +1136,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected window stream'
 			def source = Streams.<Integer> broadcast(Environment.get())
-			def promise = Promises.ready()
+			def promise = Promises.prepare()
 
 			source.log("prewindow").window(10l, TimeUnit.SECONDS).consume {
 				it.log().buffer(2).consume { promise.onNext(it) }
@@ -1163,7 +1163,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'2 more values are accepted'
-			promise = Promises.ready()
+			promise = Promises.prepare()
 
 			sleep(2000)
 			source.broadcastNext(3)

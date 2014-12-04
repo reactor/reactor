@@ -77,7 +77,7 @@ public class RingBufferDispatcher extends SingleThreadDispatcher implements Wait
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with a producer type of {@link ProducerType#MULTI MULTI}
 	 * and a {@link BlockingWaitStrategy blocking wait. A given @param uncaughtExceptionHandler} will catch anything not
-	 * handled e.g. by the owning {@link reactor.core.Reactor} or {@link reactor.rx.Stream}.
+	 * handled e.g. by the owning {@link reactor.event.EventBus} or {@link reactor.rx.Stream}.
 	 *
 	 * @param name                     The name of the dispatcher
 	 * @param bufferSize               The size to configure the ring buffer with

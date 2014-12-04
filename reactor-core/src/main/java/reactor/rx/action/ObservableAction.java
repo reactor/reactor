@@ -16,8 +16,8 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.Observable;
 import reactor.event.dispatch.Dispatcher;
 
 /**

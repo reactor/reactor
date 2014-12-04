@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -69,7 +69,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ExecutorService           threadPool;
 
 	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull Reactor reactor,
+	                       @Nonnull EventBus reactor,
 	                       @Nonnull InetSocketAddress connectAddress,
 	                       @Nullable ClientSocketOptions options,
 	                       @Nullable SslOptions sslOptions,

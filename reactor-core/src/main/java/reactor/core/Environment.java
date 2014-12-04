@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
+import reactor.event.EventBus;
 import reactor.event.dispatch.*;
 import reactor.event.dispatch.wait.AgileWaitingStrategy;
 import reactor.filter.Filter;
@@ -181,7 +182,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link Reactor} or
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event.EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
 	 * @return a dispatcher from the default pool, usually a RingBufferDispatcher.
@@ -194,7 +195,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a registred dispatcher. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link Reactor} or
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event.EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
 	 * @param key the dispatcher name to find
@@ -268,7 +269,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final Properties env;
 
 	private final AtomicReference<Timer>          timer               = new AtomicReference<Timer>();
-	private final AtomicReference<Reactor>        rootReactor         = new AtomicReference<Reactor>();
+	private final AtomicReference<EventBus>       rootReactor         = new AtomicReference<EventBus>();
 	private final Object                          monitor             = new Object();
 	private final Filter                          dispatcherFilter    = new RoundRobinFilter();
 	private final Map<String, DispatcherSupplier> dispatcherFactories = new HashMap<String, DispatcherSupplier>();
@@ -506,7 +507,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public void routeError(Throwable throwable) {
 		Consumer<? super Throwable> errorJournal = errorConsumer;
-		if(errorJournal != null){
+		if (errorJournal != null) {
 			errorJournal.accept(throwable);
 		}
 	}
@@ -605,10 +606,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return The root reactor
 	 * @see Environment#getDefaultDispatcher()
 	 */
-	public Reactor getRootReactor() {
+	public EventBus getRootReactor() {
 		if (null == rootReactor.get()) {
 			synchronized (rootReactor) {
-				rootReactor.compareAndSet(null, new Reactor(getDefaultDispatcher()));
+				rootReactor.compareAndSet(null, new EventBus(getDefaultDispatcher()));
 			}
 		}
 		return rootReactor.get();

@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
+import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -56,7 +56,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class ZeroMQ<T> {
 
-	private static final SynchronizedMutableMap<Integer, String> SOCKET_TYPES = SynchronizedMutableMap.of(UnifiedMap.<Integer, String>newMap());
+	private static final SynchronizedMutableMap<Integer, String> SOCKET_TYPES = SynchronizedMutableMap.of(UnifiedMap
+			.<Integer, String>newMap());
 
 	private final Logger                       log     = LoggerFactory.getLogger(getClass());
 	private final MutableList<TcpClient<T, T>> clients = SynchronizedMutableList.of(FastList.<TcpClient<T, T>>newList());
@@ -66,7 +67,7 @@ public class ZeroMQ<T> {
 
 	private final Environment env;
 	private final Dispatcher  dispatcher;
-	private final Reactor     reactor;
+	private final EventBus    reactor;
 	private final ZContext    zmqCtx;
 
 	@SuppressWarnings("unchecked")
@@ -145,9 +146,9 @@ public class ZeroMQ<T> {
 		TcpClient<T, T> client = new TcpClientSpec<T, T>(ZeroMQTcpClient.class)
 				.env(env).dispatcher(dispatcher).codec(codec)
 				.options(new ZeroMQClientSocketOptions()
-						         .context(zmqCtx)
-						         .connectAddresses(addrs)
-						         .socketType(socketType))
+						.context(zmqCtx)
+						.connectAddresses(addrs)
+						.socketType(socketType))
 				.get();
 
 		clients.add(client);

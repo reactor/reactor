@@ -43,7 +43,7 @@ public final class Promises {
 	 * @param <T> type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> ready() {
+	public static <T> Promise<T> prepare() {
 		return ready(null, SynchronousDispatcher.INSTANCE);
 	}
 
@@ -54,7 +54,7 @@ public final class Promises {
 	 * @param <T> type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
-	public static <T> Promise<T> ready(Environment env) {
+	public static <T> Promise<T> prepare(Environment env) {
 		return ready(env, env.getDefaultDispatcher());
 	}
 

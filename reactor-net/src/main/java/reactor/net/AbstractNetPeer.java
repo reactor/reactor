@@ -18,8 +18,8 @@ package reactor.net;
 
 import com.gs.collections.impl.list.mutable.FastList;
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.event.Event;
+import reactor.event.EventBus;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
@@ -53,12 +53,12 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	private final Selector                        shutdown    = Selectors.$();
 
 	private final Environment                               env;
-	private final Reactor                                   reactor;
+	private final EventBus                                  reactor;
 	private final Codec<Buffer, IN, OUT>                    codec;
 	private final Collection<Consumer<NetChannel<IN, OUT>>> consumers;
 
 	protected AbstractNetPeer(@Nonnull Environment env,
-	                          @Nonnull Reactor reactor,
+	                          @Nonnull EventBus reactor,
 	                          @Nullable Codec<Buffer, IN, OUT> codec,
 	                          @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		this.env = env;
@@ -241,7 +241,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	@Nonnull
-	protected Reactor getReactor() {
+	protected EventBus getReactor() {
 		return reactor;
 	}
 

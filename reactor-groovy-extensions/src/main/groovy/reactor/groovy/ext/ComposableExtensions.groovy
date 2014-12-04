@@ -17,6 +17,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import reactor.event.Observable
 import reactor.function.Consumer
 import reactor.function.Function
 import reactor.function.Predicate
@@ -41,7 +42,7 @@ class ComposableExtensions {
 	 * Alias
 	 */
 	static <T, X extends Stream<T>> Controls to(final Stream<T> selfType, final Object key,
-	                                         final reactor.core.Observable observable) {
+	                                         final Observable observable) {
 		selfType.notify key, observable
 	}
 

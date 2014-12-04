@@ -29,7 +29,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
@@ -70,7 +70,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private volatile NettyNetChannel<IN, OUT> netChannel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
-	                           @Nonnull Reactor reactor,
+	                           @Nonnull EventBus reactor,
 	                           @Nullable InetSocketAddress listenAddress,
 	                           @Nullable final NetworkInterface multicastInterface,
 	                           @Nonnull final ServerSocketOptions options,

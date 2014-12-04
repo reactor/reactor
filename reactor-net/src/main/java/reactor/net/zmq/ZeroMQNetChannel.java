@@ -26,7 +26,7 @@ import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
@@ -58,7 +58,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	private volatile ZMsg       currentMsg;
 
 	public ZeroMQNetChannel(@Nonnull Environment env,
-	                        @Nonnull Reactor eventsReactor,
+	                        @Nonnull EventBus eventsReactor,
 	                        @Nonnull Dispatcher ioDispatcher,
 	                        @Nullable Codec<Buffer, IN, OUT> codec) {
 		super(env, codec, ioDispatcher, eventsReactor);

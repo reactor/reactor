@@ -16,9 +16,9 @@
 
 package reactor.core.support;
 
-import reactor.function.Consumer;
 import reactor.event.Event;
-import reactor.core.Observable;
+import reactor.event.Observable;
+import reactor.function.Consumer;
 import reactor.util.Assert;
 
 /**

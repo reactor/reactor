@@ -18,8 +18,9 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
-import reactor.core.Reactor
 import reactor.event.Event
+import reactor.event.EventBus
+import reactor.event.Observable
 import reactor.event.registry.Registration
 import reactor.event.selector.Selector
 import reactor.event.selector.Selectors
@@ -32,7 +33,7 @@ import static reactor.event.selector.Selectors.$
 import static reactor.event.selector.Selectors.object
 
 /**
- * Extensions for providing syntax sugar for working with {@link reactor.core.Observable}s.
+ * Extensions for providing syntax sugar for working with {@link reactor.event.Observable}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -45,7 +46,7 @@ class ObservableExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T> Registration<Consumer<T>> react(Reactor selfType,
+	static <T> Registration<Consumer<T>> react(EventBus selfType,
 	                                        Selector selector,
 	                                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator,
 			                                        strategy = Closure.DELEGATE_FIRST)
@@ -54,7 +55,7 @@ class ObservableExtensions {
 		selfType.on selector, new ClosureEventConsumer<T>(handler)
 	}
 
-	static <T> Registration<Consumer<T>> react(Reactor selfType,
+	static <T> Registration<Consumer<T>> react(EventBus selfType,
 	                                        String selector,
 	                                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator,
 			                                        strategy = Closure.DELEGATE_FIRST)
@@ -66,20 +67,20 @@ class ObservableExtensions {
 	/**
 	 * Alias and Misc. Helpers
 	 */
-	static <T> Reactor send(Reactor selfType,
+	static <T> EventBus send(EventBus selfType,
 	                        Object key,
 	                        T obj) {
 		selfType.send key, Event.<T> wrap(obj)
 	}
 
-	static <T> Reactor send(Reactor selfType,
+	static <T> EventBus send(EventBus selfType,
 	                        Object key,
 	                        T obj,
 	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
 		send selfType, key, Event.wrap(obj), handler
 	}
 
-	static <T> Reactor send(Reactor selfType,
+	static <T> EventBus send(EventBus selfType,
 	                        Object key,
 	                        Event<T> obj,
 	                        @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST) Closure handler) {
@@ -88,30 +89,30 @@ class ObservableExtensions {
 		selfType.send key, obj.setReplyTo(replyTo.object)
 	}
 
-	static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
+	static <T> Observable notify(Observable selfType,
 	                                          Object key,
 	                                          T obj) {
 		selfType.notify key, Event.<T> wrap(obj)
 	}
 
-	static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
+	static <T> Observable notify(Observable selfType,
 	                                          Object key,
 	                                          Supplier<Event<T>> obj) {
 		selfType.notify key, obj.get()
 	}
 
-	static reactor.core.Observable notify(reactor.core.Observable selfType,
+	static Observable notify(Observable selfType,
 	                                      Object key) {
 		selfType.notify key, Event.<Void> wrap(null)
 	}
 
-	static <T> reactor.core.Observable notify(reactor.core.Observable selfType,
+	static <T> Observable notify(Observable selfType,
 	                                          String key,
 	                                          Closure<T> closure) {
 		selfType.notify key, Event.wrap((T) closure.call())
 	}
 
-	static reactor.core.Observable notify(final reactor.core.Observable selfType, final Map params) {
+	static Observable notify(final Observable selfType, final Map params) {
 		Object topic = params.remove ARG_TOPIC
 
 		def toSend

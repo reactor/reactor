@@ -17,7 +17,7 @@
 package reactor.net.udp;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.function.batch.BatchConsumer;
 import reactor.io.Buffer;
@@ -51,7 +51,7 @@ public abstract class DatagramServer<IN, OUT>
 	private final ServerSocketOptions options;
 
 	protected DatagramServer(@Nonnull Environment env,
-	                         @Nonnull Reactor reactor,
+	                         @Nonnull EventBus reactor,
 	                         @Nullable InetSocketAddress listenAddress,
 	                         @Nullable NetworkInterface multicastInterface,
 	                         @Nonnull ServerSocketOptions options,

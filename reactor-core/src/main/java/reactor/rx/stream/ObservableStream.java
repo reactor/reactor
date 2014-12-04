@@ -17,8 +17,8 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.Observable;
 import reactor.event.Event;
+import reactor.event.Observable;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 
 /**
  * Emit signals whenever an Event arrives from the {@link reactor.event.selector.Selector} topic from the {@link
- * reactor.core.Observable}.
+ * reactor.event.Observable}.
  * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()}.
  * <p>
  * Create such stream with the provided factory, E.g.:

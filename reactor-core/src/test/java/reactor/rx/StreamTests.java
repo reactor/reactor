@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.spec.Reactors;
 import reactor.event.Event;
+import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.DispatcherSupplier;
 import reactor.event.dispatch.SynchronousDispatcher;
@@ -213,7 +213,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		Reactor r = Reactors.reactor().get();
+		EventBus r = Reactors.reactor().get();
 		Selector key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
@@ -292,7 +292,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.<Object>ready();
+		Promise<Object> deferred = Promises.<Object>prepare();
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
@@ -304,7 +304,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseErrorCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.ready();
+		Promise<Object> deferred = Promises.prepare();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {
@@ -317,7 +317,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountAndErrorCountCannotExceedOneInTotal() {
-		Promise<Object> deferred = Promises.ready();
+		Promise<Object> deferred = Promises.prepare();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {

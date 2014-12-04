@@ -18,8 +18,8 @@ package reactor.core.dynamic;
 
 /**
  * A {@literal DynamicReactor} is an arbitrary interface that a proxy generator can use to wire calls to the interface
- * to appropriate {@link reactor.core.Reactor#on(reactor.event.selector.Selector, reactor.function.Consumer)} and {@link
- * reactor.core.Reactor#notify(Object, reactor.event.Event)} calls.
+ * to appropriate {@link reactor.event.EventBus#on(reactor.event.selector.Selector, reactor.function.Consumer)} and {@link
+ * reactor.event.EventBus#notify(Object, reactor.event.Event)} calls.
  *
  * @author Jon Brisbin
  */

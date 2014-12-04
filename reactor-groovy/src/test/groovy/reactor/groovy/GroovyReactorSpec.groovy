@@ -17,9 +17,9 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.Environment
-import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.EventBus
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -118,7 +118,7 @@ class GroovyReactorSpec extends Specification {
 		given:
 			final reactor.core.Environment env = new reactor.core.Environment()
 
-			final Reactor reactor = Reactors.reactor()
+			final EventBus reactor = Reactors.reactor()
 					.env(env) // our current Environment
 					.dispatcher(Environment.THREAD_POOL)
 					.get()
@@ -140,14 +140,14 @@ class GroovyReactorSpec extends Specification {
 	// Map params)
 	@CompileStatic
 	class Producer{
-		Reactor r
+		EventBus r
 		void makeNoise(String noise){
 			r.notify for: 'makeNoise', data: noise
 		}
 	}
 
 	class Consumer{
-		Reactor r
+		EventBus r
 		def result = new CountDownLatch(1)
 
 		void setupMessages(){

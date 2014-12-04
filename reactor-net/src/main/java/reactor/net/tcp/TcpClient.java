@@ -17,9 +17,7 @@
 package reactor.net.tcp;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
-import reactor.rx.Promise;
-import reactor.rx.Stream;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -29,6 +27,8 @@ import reactor.net.NetClient;
 import reactor.net.Reconnect;
 import reactor.net.config.ClientSocketOptions;
 import reactor.net.config.SslOptions;
+import reactor.rx.Promise;
+import reactor.rx.Stream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -55,7 +55,7 @@ public abstract class TcpClient<IN, OUT>
 	private final SslOptions          sslOptions;
 
 	protected TcpClient(@Nonnull Environment env,
-	                    @Nonnull Reactor reactor,
+	                    @Nonnull EventBus reactor,
 	                    @Nullable InetSocketAddress connectAddress,
 	                    @Nullable ClientSocketOptions options,
 	                    @Nullable SslOptions sslOptions,

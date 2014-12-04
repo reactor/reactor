@@ -19,9 +19,10 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.core.Reactor
-import reactor.function.Consumer
 import reactor.event.Event
+import reactor.event.EventBus
+import reactor.event.Observable
+import reactor.function.Consumer
 import reactor.function.support.CancelConsumerException
 
 /**
@@ -48,9 +49,9 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	@Override
 	void accept(Event<T> arg) {
 		def callback = this.callback
-		if (Reactor.ReplyToEvent.class.isAssignableFrom(arg.class)) {
+		if (EventBus.ReplyToEvent.class.isAssignableFrom(arg.class)) {
 			callback = (Closure) callback.clone()
-			callback.delegate = new ReplyDecorator(arg.replyTo, (((Reactor.ReplyToEvent) arg).replyToObservable))
+			callback.delegate = new ReplyDecorator(arg.replyTo, (((EventBus.ReplyToEvent) arg).replyToObservable))
 		}
 		if (eventArg) {
 			callback arg
@@ -62,9 +63,9 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	class ReplyDecorator {
 
 		final replyTo
-		final reactor.core.Observable observable
+		final Observable observable
 
-		ReplyDecorator(replyTo, reactor.core.Observable observable) {
+		ReplyDecorator(replyTo, Observable observable) {
 			this.replyTo = replyTo
 			this.observable = observable
 		}

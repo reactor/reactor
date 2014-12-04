@@ -17,12 +17,10 @@
 package reactor.core.spec;
 
 import reactor.core.Environment;
-import reactor.core.Observable;
-import reactor.core.Reactor;
-import reactor.event.Event;
+import reactor.event.EventBus;
+import reactor.event.Observable;
 import reactor.event.dispatch.Dispatcher;
 import reactor.function.Consumer;
-import reactor.tuple.Tuple;
 
 /**
  * Base class to encapsulate commonly-used functionality around Reactors.
@@ -43,33 +41,33 @@ public abstract class Reactors {
 	}
 
 	/**
-	 * Create a new {@link reactor.core.Reactor} using the given {@link reactor.core.Environment}.
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment}.
 	 *
 	 * @param env
 	 * 		The {@link reactor.core.Environment} to use.
 	 *
-	 * @return A new {@link reactor.core.Reactor}
+	 * @return A new {@link reactor.event.EventBus}
 	 */
-	public static Reactor reactor(Environment env) {
+	public static EventBus reactor(Environment env) {
 		return new ReactorSpec().env(env).dispatcher(env.getDefaultDispatcher()).get();
 	}
 
 	/**
-	 * Create a new {@link reactor.core.Reactor} using the given {@link reactor.core.Environment} and dispatcher name.
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment} and dispatcher name.
 	 *
 	 * @param env
 	 * 		The {@link reactor.core.Environment} to use.
 	 * @param dispatcher
 	 * 		The name of the {@link reactor.event.dispatch.Dispatcher} to use.
 	 *
-	 * @return A new {@link reactor.core.Reactor}
+	 * @return A new {@link reactor.event.EventBus}
 	 */
-	public static Reactor reactor(Environment env, String dispatcher) {
+	public static EventBus reactor(Environment env, String dispatcher) {
 		return new ReactorSpec().env(env).dispatcher(dispatcher).get();
 	}
 
 	/**
-	 * Create a new {@link reactor.core.Reactor} using the given {@link reactor.core.Environment} and {@link
+	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment} and {@link
 	 * reactor.event.dispatch.Dispatcher}.
 	 *
 	 * @param env
@@ -77,15 +75,15 @@ public abstract class Reactors {
 	 * @param dispatcher
 	 * 		The {@link reactor.event.dispatch.Dispatcher} to use.
 	 *
-	 * @return A new {@link reactor.core.Reactor}
+	 * @return A new {@link reactor.event.EventBus}
 	 */
-	public static Reactor reactor(Environment env, Dispatcher dispatcher) {
+	public static EventBus reactor(Environment env, Dispatcher dispatcher) {
 		return new ReactorSpec().env(env).dispatcher(dispatcher).get();
 	}
 
 	/**
 	 * Schedule an arbitrary {@link reactor.function.Consumer} to be executed on the given {@link
-	 * reactor.core.Observable}, passing the given {@link
+	 * reactor.event.Observable}, passing the given {@link
 	 * reactor.event.Event}.
 	 *
 	 * @param consumer
@@ -100,7 +98,7 @@ public abstract class Reactors {
 	 */
 	@Deprecated
 	public static <T> void schedule(final Consumer<T> consumer, T data, Observable observable) {
-		((Reactor)observable).schedule(consumer, data);
+		((EventBus)observable).schedule(consumer, data);
 	}
 
 }

@@ -14,11 +14,10 @@
  *  limitations under the License.
  */
 
-package reactor.core;
+package reactor.event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
@@ -55,7 +54,7 @@ import java.util.UUID;
  * @author Andy Wilkinson
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class Reactor implements Observable {
+public class EventBus implements Observable {
 
 	private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -78,7 +77,7 @@ public class Reactor implements Observable {
 	 * @param dispatcher
 	 * 		The {@link Dispatcher} to use. May be {@code null} in which case a new {@link SynchronousDispatcher} is used
 	 */
-	public Reactor(@Nullable Dispatcher dispatcher) {
+	public EventBus(@Nullable Dispatcher dispatcher) {
 		this(dispatcher, null);
 	}
 
@@ -93,15 +92,15 @@ public class Reactor implements Observable {
 	 * 		default event router that broadcasts events to all of the registered consumers that {@link
 	 * 		Selector#matches(Object) match} the notification key and does not perform any type conversion will be used.
 	 */
-	public Reactor(@Nullable Dispatcher dispatcher,
-	               @Nullable Router router) {
+	public EventBus(@Nullable Dispatcher dispatcher,
+	                @Nullable Router router) {
 		this(dispatcher, router, null, null);
 	}
 
-	public Reactor(@Nullable Dispatcher dispatcher,
-	               @Nullable Router router,
-	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	public EventBus(@Nullable Dispatcher dispatcher,
+	                @Nullable Router router,
+	                @Nullable Consumer<Throwable> dispatchErrorHandler,
+	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		this(new CachingRegistry<Consumer<?>>(),
 				dispatcher,
 				router,
@@ -121,11 +120,11 @@ public class Reactor implements Observable {
 	 * @param consumerRegistry
 	 * 		The {@link Registry} to be used to match {@link Selector} and dispatch to {@link Consumer}.
 	 */
-	public Reactor(@Nonnull Registry<Consumer<?>> consumerRegistry,
-	               @Nullable Dispatcher dispatcher,
-	               @Nullable Router router,
-	               @Nullable Consumer<Throwable> dispatchErrorHandler,
-	               @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	public EventBus(@Nonnull Registry<Consumer<?>> consumerRegistry,
+	                @Nullable Dispatcher dispatcher,
+	                @Nullable Router router,
+	                @Nullable Consumer<Throwable> dispatchErrorHandler,
+	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
 		this.dispatcher = (null == dispatcher ? SynchronousDispatcher.INSTANCE : dispatcher);
@@ -135,9 +134,9 @@ public class Reactor implements Observable {
 				@Override
 				public void accept(Throwable t) {
 					Class<? extends Throwable> type = t.getClass();
-					Reactor.this.router.route(type,
+					EventBus.this.router.route(type,
 							Event.wrap(t),
-							Reactor.this.consumerRegistry.select(type),
+							EventBus.this.consumerRegistry.select(type),
 							null,
 							null);
 				}
@@ -155,7 +154,7 @@ public class Reactor implements Observable {
 			public void accept(Event<Throwable> ev) {
 				if (null == uncaughtErrorHandler) {
 					if (null == log) {
-						log = LoggerFactory.getLogger(Reactor.class);
+						log = LoggerFactory.getLogger(EventBus.class);
 					}
 					log.error(ev.getData().getMessage(), ev.getData());
 				} else {
@@ -247,7 +246,7 @@ public class Reactor implements Observable {
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor notify(Object key, E ev, Consumer<E> onComplete) {
+	public <E extends Event<?>> EventBus notify(Object key, E ev, Consumer<E> onComplete) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
@@ -257,42 +256,42 @@ public class Reactor implements Observable {
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor notify(Object key, E ev) {
+	public <E extends Event<?>> EventBus notify(Object key, E ev) {
 		return notify(key, ev, null);
 	}
 
 	@Override
-	public <S extends Supplier<? extends Event<?>>> Reactor notify(Object key, S supplier) {
+	public <S extends Supplier<? extends Event<?>>> EventBus notify(Object key, S supplier) {
 		return notify(key, supplier.get(), null);
 	}
 
 	@Override
-	public Reactor notify(Object key) {
+	public EventBus notify(Object key) {
 		return notify(key, new Event<Void>(Void.class), null);
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor send(Object key, E ev) {
+	public <E extends Event<?>> EventBus send(Object key, E ev) {
 		return notify(key, new ReplyToEvent(ev, this));
 	}
 
 	@Override
-	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier) {
+	public <S extends Supplier<? extends Event<?>>> EventBus send(Object key, S supplier) {
 		return notify(key, new ReplyToEvent(supplier.get(), this));
 	}
 
 	@Override
-	public <E extends Event<?>> Reactor send(Object key, E ev, Observable replyTo) {
+	public <E extends Event<?>> EventBus send(Object key, E ev, Observable replyTo) {
 		return notify(key, new ReplyToEvent(ev, replyTo));
 	}
 
 	@Override
-	public <S extends Supplier<? extends Event<?>>> Reactor send(Object key, S supplier, Observable replyTo) {
+	public <S extends Supplier<? extends Event<?>>> EventBus send(Object key, S supplier, Observable replyTo) {
 		return notify(key, new ReplyToEvent(supplier.get(), replyTo));
 	}
 
 	@Override
-	public <REQ extends Event<?>, RESP extends Event<?>> Reactor sendAndReceive(Object key,
+	public <REQ extends Event<?>, RESP extends Event<?>> EventBus sendAndReceive(Object key,
 	                                                                            REQ ev,
 	                                                                            Consumer<RESP> reply) {
 		Selector sel = Selectors.anonymous();
@@ -302,7 +301,7 @@ public class Reactor implements Observable {
 	}
 
 	@Override
-	public <REQ extends Event<?>, RESP extends Event<?>, S extends Supplier<REQ>> Reactor sendAndReceive(Object key,
+	public <REQ extends Event<?>, RESP extends Event<?>, S extends Supplier<REQ>> EventBus sendAndReceive(Object key,
 	                                                                                                     S supplier,
 	                                                                                                     Consumer<RESP> reply) {
 		return sendAndReceive(key, supplier.get(), reply);
@@ -413,7 +412,7 @@ public class Reactor implements Observable {
 
 		@Override
 		public void accept(E ev) {
-			Observable replyToObservable = Reactor.this;
+			Observable replyToObservable = EventBus.this;
 
 			if (ReplyToEvent.class.isAssignableFrom(ev.getClass())) {
 				Observable o = ((ReplyToEvent<?>) ev).getReplyToObservable();

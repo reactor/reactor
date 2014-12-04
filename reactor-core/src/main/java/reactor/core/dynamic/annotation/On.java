@@ -16,19 +16,15 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
 
+import java.lang.annotation.*;
+
 /**
  * Annotation to denote that a method should proxy a call to
- * {@link reactor.core.Reactor#on(Selector, Consumer)}.
+ * {@link reactor.event.EventBus#on(Selector, Consumer)}.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

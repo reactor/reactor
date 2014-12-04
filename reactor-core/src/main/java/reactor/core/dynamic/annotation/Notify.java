@@ -16,17 +16,11 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import reactor.core.Reactor;
+import java.lang.annotation.*;
 
 /**
  * Annotation to denote that a method should proxy a call to an underlying {@link
- * Reactor#notify(Object, reactor.event.Event)} or {@link Reactor#notify(Object)} call.
+ * reactor.event.EventBus#notify(Object, reactor.event.Event)} or {@link reactor.event.EventBus#notify(Object)} call.
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson

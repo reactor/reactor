@@ -18,9 +18,9 @@
 package reactor.dispatch
 
 import reactor.core.Environment
-import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.EventBus
 import reactor.event.dispatch.*
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
@@ -152,7 +152,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
-			def r = new Reactor(dispatcher)
+			def r = new EventBus(dispatcher)
 
 		when:
 			def stream = Streams.<Throwable> broadcast()

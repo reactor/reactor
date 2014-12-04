@@ -6,9 +6,9 @@ import groovy.transform.stc.SimpleType
 import org.reactivestreams.Processor
 import reactor.convert.Converter
 import reactor.core.Environment
-import reactor.core.Reactor
 import reactor.core.spec.Reactors
 import reactor.event.Event
+import reactor.event.EventBus
 import reactor.event.dispatch.Dispatcher
 import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.registry.CachingRegistry
@@ -29,7 +29,7 @@ import reactor.rx.action.Action
  * @author Stephane Maldini
  */
 @CompileStatic
-class ReactorBuilder implements Supplier<Reactor> {
+class ReactorBuilder implements Supplier<EventBus> {
 
 	static final private Selector noSelector = Selectors.anonymous()
 	static final private Filter DEFAULT_FILTER = new PassThroughFilter()
@@ -56,14 +56,14 @@ class ReactorBuilder implements Supplier<Reactor> {
 	private final Map<Selector, List<Consumer>> consumers = [:]
 	private final Map<String, ReactorBuilder> reactorMap
 	private final List<ReactorBuilder> childNodes = []
-	private Reactor reactor
+	private EventBus reactor
 
 	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap) {
 		this.reactorMap = reactorMap
 		this.name = name
 	}
 
-	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap, Reactor reactor) {
+	ReactorBuilder(String name, Map<String, ReactorBuilder> reactorMap, EventBus reactor) {
 		this(name, reactorMap)
 		this.reactor = reactor
 	}
@@ -197,7 +197,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	}
 
 	@Override
-	Reactor get() {
+	EventBus get() {
 		if (reactor)
 			return reactor
 
@@ -292,7 +292,7 @@ class ReactorBuilder implements Supplier<Reactor> {
 	@CompileStatic
 	final class NestedReactorBuilder extends ReactorBuilder {
 
-		NestedReactorBuilder(String reactorName, ReactorBuilder parent, Reactor reactor) {
+		NestedReactorBuilder(String reactorName, ReactorBuilder parent, EventBus reactor) {
 			super(reactorName, parent.reactorMap, reactor)
 			rehydrate parent
 

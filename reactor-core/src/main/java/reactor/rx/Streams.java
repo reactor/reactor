@@ -18,7 +18,7 @@ package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import reactor.core.Environment;
-import reactor.core.Observable;
+import reactor.event.Observable;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;

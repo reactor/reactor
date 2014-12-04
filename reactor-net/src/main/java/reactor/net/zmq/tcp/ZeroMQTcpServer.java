@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -65,7 +65,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private volatile Future<?>             workerFuture;
 
 	public ZeroMQTcpServer(@Nonnull Environment env,
-	                       @Nonnull Reactor reactor,
+	                       @Nonnull EventBus reactor,
 	                       @Nullable InetSocketAddress listenAddress,
 	                       ServerSocketOptions options,
 	                       SslOptions sslOptions,

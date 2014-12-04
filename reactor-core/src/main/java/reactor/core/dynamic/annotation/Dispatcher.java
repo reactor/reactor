@@ -16,19 +16,14 @@
 
 package reactor.core.dynamic.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.dynamic.DynamicReactorFactory;
+
+import java.lang.annotation.*;
 
 /**
  * Used on a {@class DynamicReactor} to specify the {@link Dispatcher} that should be used
- * by the underlying {@link Reactor}. The {@code Dispatcher} is looked up in the
+ * by the underlying {@link reactor.event.EventBus}. The {@code Dispatcher} is looked up in the
  * {@link Environment} of the {@link DynamicReactorFactory}.
  *
  * @author Jon Brisbin

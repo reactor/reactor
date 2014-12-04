@@ -17,7 +17,7 @@
 package reactor.net.tcp;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -55,7 +55,7 @@ public abstract class TcpServer<IN, OUT>
 	private final SslOptions          sslOptions;
 
 	protected TcpServer(@Nonnull Environment env,
-	                    @Nonnull Reactor reactor,
+	                    @Nonnull EventBus reactor,
 	                    @Nullable InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,

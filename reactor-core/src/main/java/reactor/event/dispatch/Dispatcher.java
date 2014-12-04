@@ -16,7 +16,6 @@
 
 package reactor.event.dispatch;
 
-import reactor.event.Event;
 import reactor.event.registry.Registry;
 import reactor.event.routing.Router;
 import reactor.function.Consumer;
@@ -29,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Object, Registry, Consumer,
  * reactor.event.routing.Router,
  * Consumer)
- * dispatch} {@link Event}s to {@link Consumer}s. The details of how the dispatching is performed, for example on the
+ * dispatch} data to {@link Consumer}s. The details of how the dispatching is performed, for example on the
  * same thread or using a different thread, are determined by the implementation.
  *
  * @author Jon Brisbin

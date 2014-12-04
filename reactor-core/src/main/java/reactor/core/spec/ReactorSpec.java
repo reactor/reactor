@@ -16,18 +16,18 @@
 package reactor.core.spec;
 
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.spec.support.EventRoutingComponentSpec;
+import reactor.event.EventBus;
 
 /**
- * A helper class for configuring a new {@link Reactor}.
+ * A helper class for configuring a new {@link reactor.event.EventBus}.
  *
  * @author Jon Brisbin
  */
-public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, Reactor> {
+public class ReactorSpec extends EventRoutingComponentSpec<ReactorSpec, EventBus> {
 
 	@Override
-	protected final Reactor configure(Reactor reactor, Environment environment) {
+	protected final EventBus configure(EventBus reactor, Environment environment) {
 		return reactor;
 	}
 

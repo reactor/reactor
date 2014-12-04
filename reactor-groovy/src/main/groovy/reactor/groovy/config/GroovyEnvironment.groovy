@@ -1,14 +1,14 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
-import reactor.core.Environment
-import reactor.core.Reactor
-import reactor.event.dispatch.Dispatcher
-
-import static groovy.lang.Closure.*
 import groovy.transform.TypeCheckingMode
 import org.codehaus.groovy.control.CompilerConfiguration
 import org.codehaus.groovy.control.customizers.builder.CompilerCustomizationBuilder
+import reactor.core.Environment
+import reactor.event.EventBus
+import reactor.event.dispatch.Dispatcher
+
+import static groovy.lang.Closure.DELEGATE_FIRST
 
 /**
  * @author Stephane Maldini
@@ -83,7 +83,7 @@ class GroovyEnvironment {
 
 			for (reactorEntry in groovyEnvironment.reactors) {
 				reactorBuilder = ((Map.Entry<String, ReactorBuilder>) reactorEntry).value
-				key = ((Map.Entry<String, Reactor>) reactorEntry).key
+				key = ((Map.Entry<String, EventBus>) reactorEntry).key
 
 				current = reactors[key]
 				if (current) {
@@ -120,20 +120,20 @@ class GroovyEnvironment {
 		builder
 	}
 
-	Reactor getAt(String reactor) {
+	EventBus getAt(String reactor) {
 		reactors[reactor]?.get()
 	}
 
-	void putAt(String reactorName, Reactor reactor) {
+	void putAt(String reactorName, EventBus reactor) {
 		ReactorBuilder builder = new ReactorBuilder(reactorName, reactors, reactor)
 		reactors[reactorName] = builder
 	}
 
-	Reactor reactor(String reactor) {
+	EventBus reactor(String reactor) {
 		getAt reactor
 	}
 
-	Reactor reactor(String reactorName, Reactor reactor) {
+	EventBus reactor(String reactorName, EventBus reactor) {
 		putAt reactorName, reactor
 	}
 

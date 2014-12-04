@@ -19,7 +19,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.Reactor
+import reactor.event.EventBus
 import reactor.function.Functions
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
@@ -37,7 +37,7 @@ class ReactorStaticExtensions {
 	/**
 	 * Closure converters
 	 */
-	static <T> void schedule(final Functions selfType, final T value, final Reactor reactor, final Closure closure) {
+	static <T> void schedule(final Functions selfType, final T value, final EventBus reactor, final Closure closure) {
 		reactor.schedule new ClosureConsumer(closure), value
 	}
 

@@ -18,14 +18,13 @@ package reactor.core.spec.support;
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
 import reactor.core.Environment;
-import reactor.core.Reactor;
+import reactor.event.EventBus;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registry;
 import reactor.event.routing.*;
-import reactor.event.selector.Selector;
 import reactor.filter.*;
 import reactor.function.Consumer;
 import reactor.util.Assert;
@@ -239,18 +238,18 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		return (SPEC) this;
 	}
 
-	protected abstract TARGET configure(Reactor reactor, Environment environment);
+	protected abstract TARGET configure(EventBus reactor, Environment environment);
 
 	@Override
 	protected final TARGET configure(Dispatcher dispatcher, Environment environment) {
 		return configure(createReactor(dispatcher), environment);
 	}
 
-	private Reactor createReactor(Dispatcher dispatcher) {
+	private EventBus createReactor(Dispatcher dispatcher) {
 		if (traceEventPath) {
 			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
 		}
-		return new Reactor((consumerRegistry != null ? consumerRegistry : createRegistry()),
+		return new EventBus((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		                   dispatcher,
 		                   (router != null ? router : createEventRouter()),
 		                   dispatchErrorHandler,

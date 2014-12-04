@@ -19,9 +19,9 @@ package reactor.net;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Environment;
-import reactor.core.Reactor;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
+import reactor.event.EventBus;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
@@ -61,8 +61,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	private final   Selector read = $();
 
 	private final Environment            env;
-	private final Reactor                ioReactor;
-	private final Reactor                eventsReactor;
+	private final EventBus               ioReactor;
+	private final EventBus               eventsReactor;
 	private final Codec<Buffer, IN, OUT> codec;
 	private final Function<Buffer, IN>   decoder;
 	private final Function<OUT, Buffer>  encoder;
@@ -71,18 +71,18 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	protected AbstractNetChannel(@Nonnull Environment env,
 	                             @Nullable Codec<Buffer, IN, OUT> codec,
 	                             @Nonnull Dispatcher ioDispatcher,
-	                             @Nonnull Reactor eventsReactor) {
+	                             @Nonnull EventBus eventsReactor) {
 		Assert.notNull(env, "IO Dispatcher cannot be null");
 		Assert.notNull(env, "Events Reactor cannot be null");
 		this.env = env;
-		this.ioReactor = new Reactor(ioDispatcher,
-		                             null,
-		                             eventsReactor.getDispatchErrorHandler(),
-		                             eventsReactor.getUncaughtErrorHandler());
-		this.eventsReactor = new Reactor(eventsReactor.getDispatcher(),
-		                                 null,
-		                                 eventsReactor.getDispatchErrorHandler(),
-		                                 eventsReactor.getUncaughtErrorHandler());
+		this.ioReactor = new EventBus(ioDispatcher,
+				null,
+				eventsReactor.getDispatchErrorHandler(),
+				eventsReactor.getUncaughtErrorHandler());
+		this.eventsReactor = new EventBus(eventsReactor.getDispatcher(),
+				null,
+				eventsReactor.getDispatchErrorHandler(),
+				eventsReactor.getUncaughtErrorHandler());
 		this.eventsReactor.getConsumerRegistry().clear();
 		for (Registration<? extends Consumer<?>> reg : eventsReactor.getConsumerRegistry()) {
 			this.eventsReactor.getConsumerRegistry().register(reg.getSelector(), reg.getObject());
@@ -219,7 +219,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	/**
-	 * Performing necessary decoding on the data and notify the internal {@link Reactor} of any results.
+	 * Performing necessary decoding on the data and notify the internal {@link reactor.event.EventBus} of any results.
 	 *
 	 * @param data
 	 * 		The data to decode.
@@ -290,11 +290,11 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		return env;
 	}
 
-	protected Reactor getEventsReactor() {
+	protected EventBus getEventsReactor() {
 		return eventsReactor;
 	}
 
-	protected Reactor getIoReactor() {
+	protected EventBus getIoReactor() {
 		return ioReactor;
 	}
 
