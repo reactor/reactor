@@ -401,9 +401,9 @@ public abstract class Action<I, O> extends Stream<O>
 			return;
 		}
 
-		AtomicReference<Throwable> exception = new AtomicReference<>();
+		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
-		CountDownLatch latch = new CountDownLatch(1);
+		final CountDownLatch latch = new CountDownLatch(1);
 		subscribe(new Subscriber<O>() {
 			@Override
 			public void onSubscribe(Subscription subscription) {
