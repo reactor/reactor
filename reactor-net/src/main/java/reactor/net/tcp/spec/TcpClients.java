@@ -50,12 +50,12 @@ public class TcpClients {
 
 	/**
 	 * Create a {@link reactor.net.tcp.spec.TcpClientSpec} for further configuration using the given {@link
-	 * reactor.core.Environment}, {@link reactor.event.dispatch.Dispatcher} type, and {@code clientImpl}.
+	 * reactor.core.Environment}, {@link reactor.core.Dispatcher} type, and {@code clientImpl}.
 	 *
 	 * @param env
 	 * 		the {@link reactor.core.Environment} to use
 	 * @param dispatcher
-	 * 		the type of {@link reactor.event.dispatch.Dispatcher} to use
+	 * 		the type of {@link reactor.core.Dispatcher} to use
 	 * @param clientImpl
 	 * 		the {@link reactor.net.tcp.TcpClient} implementation to use
 	 * @param <IN>

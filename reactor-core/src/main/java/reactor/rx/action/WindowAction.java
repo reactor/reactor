@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.subscription.ReactiveSubscription;
 import reactor.timer.Timer;

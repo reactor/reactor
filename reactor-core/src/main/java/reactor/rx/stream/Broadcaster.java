@@ -16,9 +16,9 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.queue.CompletableQueue;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;

@@ -18,7 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.function.Consumer;
 import reactor.rx.action.support.NonBlocking;
 

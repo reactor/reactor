@@ -17,11 +17,11 @@ package reactor.event.spec;
 
 import reactor.convert.Converter;
 import reactor.convert.DelegatingConverter;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
+import reactor.core.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.Event;
 import reactor.event.EventBus;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.TraceableDelegatingDispatcher;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registry;
 import reactor.event.routing.*;

@@ -393,7 +393,7 @@ public class HashWheelTimer implements Timer {
 
 		/**
 		 * Cancel this {@link reactor.timer.HashWheelTimer.TimerRegistration} after it has been selected and used. {@link
-		 * reactor.event.dispatch.Dispatcher} implementations should respect this value and perform
+		 * reactor.core.Dispatcher} implementations should respect this value and perform
 		 * the cancellation.
 		 *
 		 * @return {@literal this}

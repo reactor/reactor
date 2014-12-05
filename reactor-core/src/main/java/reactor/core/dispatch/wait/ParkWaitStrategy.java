@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch.wait;
+package reactor.core.dispatch.wait;
 
 import reactor.jarjar.com.lmax.disruptor.*;
 

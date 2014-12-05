@@ -47,7 +47,7 @@ public interface Registration<T> extends Pausable {
 
 	/**
 	 * Cancel this {@link Registration} after it has been selected and used. {@link
-	 * reactor.event.dispatch.Dispatcher} implementations should respect this value and perform
+	 * reactor.core.Dispatcher} implementations should respect this value and perform
 	 * the cancellation.
 	 *
 	 * @return {@literal this}

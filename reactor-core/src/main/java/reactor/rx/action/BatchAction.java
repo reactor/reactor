@@ -17,7 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.rx.subscription.PushSubscription;

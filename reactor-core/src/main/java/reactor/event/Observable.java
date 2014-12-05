@@ -73,23 +73,6 @@ public interface Observable {
 	<E extends Event<?>, V> Registration<Consumer<E>> receive(Selector sel, Function<E, V> fn);
 
 	/**
-	 * Notify this component that an {@link Event} is ready to be processed and {@link Consumer#accept accept} {@code
-	 * onComplete} after dispatching.
-	 *
-	 * @param key
-	 * 		The key to be matched by {@link Selector Selectors}
-	 * @param ev
-	 * 		The {@literal Event}
-	 * @param onComplete
-	 * 		The callback {@link Consumer}
-	 * @param <E>
-	 * 		The type of the {@link Event}
-	 *
-	 * @return {@literal this}
-	 */
-	<E extends Event<?>> Observable notify(Object key, E ev, Consumer<E> onComplete);
-
-	/**
 	 * Notify this component that an {@link Event} is ready to be processed.
 	 *
 	 * @param key

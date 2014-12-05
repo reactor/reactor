@@ -20,9 +20,9 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
@@ -139,7 +139,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	/**
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed by either
 	 * setting a value or propagating an error, or, if this {@code Promise} has already been fulfilled, is immediately
-	 * scheduled to be executed on the current {@link reactor.event.dispatch.Dispatcher}.
+	 * scheduled to be executed on the current {@link reactor.core.Dispatcher}.
 	 *
 	 * @param onComplete the completion {@link Consumer}
 	 * @return {@literal the new Promise}

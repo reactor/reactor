@@ -18,7 +18,7 @@ package reactor.core.configuration;
 
 
 /**
- * An encapsulation of the configuration for a {@link reactor.event.dispatch.Dispatcher}.
+ * An encapsulation of the configuration for a {@link reactor.core.Dispatcher}.
  *
  * @author Andy Wilkinson
  *

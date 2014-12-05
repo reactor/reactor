@@ -16,9 +16,9 @@
 
 package reactor.rx;
 
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.rx.action.MergeAction;
@@ -62,7 +62,7 @@ public final class Promises {
 	 * Create a {@link Promise}.
 	 *
 	 * @param env        the {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */

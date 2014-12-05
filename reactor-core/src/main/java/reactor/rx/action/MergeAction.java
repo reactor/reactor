@@ -17,7 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 
 import java.util.List;
 

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
 import reactor.support.NamedDaemonThreadFactory;
 

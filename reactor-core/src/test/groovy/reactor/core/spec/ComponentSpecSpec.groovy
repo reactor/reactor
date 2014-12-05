@@ -15,8 +15,8 @@
  */
 package reactor.core.spec
 
+import reactor.core.dispatch.TraceableDelegatingDispatcher
 import reactor.event.EventBus
-import reactor.event.dispatch.TraceableDelegatingDispatcher
 import reactor.rx.Promise
 import reactor.rx.Promises
 import reactor.rx.Stream

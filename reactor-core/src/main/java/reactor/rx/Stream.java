@@ -18,10 +18,10 @@ package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.event.Observable;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.ClassSelector;
 import reactor.event.selector.Selectors;
 import reactor.function.*;
@@ -506,7 +506,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				return new Action<O, O>(_dispatcher) {
 					@Override
 					public void requestMore(long n) {
-						currentDispatcher.dispatch(this, n, null, null, ROUTER, upstreamSubscription);
+						currentDispatcher.dispatch(n, upstreamSubscription, null);
 					}
 
 					@Override

@@ -17,8 +17,8 @@ package reactor.groovy
 
 import groovy.transform.CompileStatic
 import reactor.core.configuration.DispatcherType
+import reactor.core.dispatch.SynchronousDispatcher
 import reactor.event.Event
-import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
 import reactor.rx.Streams
 

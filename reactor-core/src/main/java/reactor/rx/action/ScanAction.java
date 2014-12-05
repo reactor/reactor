@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple;

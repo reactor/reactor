@@ -18,10 +18,10 @@ package reactor.net;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
 import reactor.event.Event;
 import reactor.event.EventBus;
-import reactor.event.dispatch.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;

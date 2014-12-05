@@ -17,9 +17,9 @@
 
 package reactor.core
 
+import reactor.core.dispatch.SynchronousDispatcher
 import reactor.event.Event
 import reactor.event.EventBus
-import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.routing.ConsumerFilteringRouter
 import reactor.filter.RoundRobinFilter
 import reactor.function.Consumer
@@ -88,15 +88,6 @@ class ReactorsSpec extends Specification {
 			"Data and T have been populated"
 			data == "Hello World!"
 			Thread.currentThread() == t
-
-		when:
-			"Reactor is notified on 'test' and completion callback is attached"
-			def completion = ""
-			reactor.notify("test", Event.wrap("Hello World!"), consumer { completion = it.data })
-
-		then:
-			"Completion callback has been called"
-			completion == "Hello World!"
 
 		when:
 			"Reactor is notified on 'test' with a Supplier"

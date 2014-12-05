@@ -14,11 +14,11 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.dispatch.wait.WaitingMood;
+import reactor.core.dispatch.wait.WaitingMood;
 import reactor.function.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Implementation of a {@link Dispatcher} that uses a {@link RingBuffer} to queue tasks to execute.
+ * Implementation of a {@link reactor.core.Dispatcher} that uses a {@link RingBuffer} to queue tasks to execute.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -214,6 +214,16 @@ public class RingBufferDispatcher extends SingleThreadDispatcher implements Wait
 				}
 			});
 
+		}
+	}
+
+	@Override
+	protected Task tryAllocateTask() throws InsufficientCapacityException {
+		try {
+			long seqId = ringBuffer.tryNext();
+			return ringBuffer.get(seqId).setSequenceId(seqId);
+		} catch (reactor.jarjar.com.lmax.disruptor.InsufficientCapacityException e) {
+			throw InsufficientCapacityException.INSTANCE;
 		}
 	}
 

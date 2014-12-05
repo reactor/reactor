@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch.wait;
+package reactor.core.dispatch.wait;
 
 /**
- * A Component with some waiting capacities such as {@link reactor.event.dispatch.Dispatcher} that uses a CPU-friendly strategy
+ * A Component with some waiting capacities such as {@link reactor.core.Dispatcher} that uses a CPU-friendly strategy
  * (e.g. blocking wait) and a CPU-starving strategy (e.g. Thread.yield spining).
  *
  * @author Stephane Maldini

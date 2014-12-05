@@ -15,7 +15,7 @@
  */
 package reactor.rx.action.support;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 
 /**
  * A dispatcher aware component
@@ -25,9 +25,9 @@ import reactor.event.dispatch.Dispatcher;
 public interface NonBlocking {
 
 	/**
-	 * Get the assigned {@link reactor.event.dispatch.Dispatcher}.
+	 * Get the assigned {@link reactor.core.Dispatcher}.
 	 *
-	 * @return current {@link reactor.event.dispatch.Dispatcher}
+	 * @return current {@link reactor.core.Dispatcher}
 	 */
 	public Dispatcher getDispatcher();
 

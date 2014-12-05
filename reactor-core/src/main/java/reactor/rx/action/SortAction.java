@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;

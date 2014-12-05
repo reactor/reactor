@@ -4,9 +4,9 @@ import groovy.transform.CompileStatic
 import groovy.transform.TypeCheckingMode
 import org.codehaus.groovy.control.CompilerConfiguration
 import org.codehaus.groovy.control.customizers.builder.CompilerCustomizationBuilder
+import reactor.core.Dispatcher
 import reactor.core.Environment
 import reactor.event.EventBus
-import reactor.event.dispatch.Dispatcher
 
 import static groovy.lang.Closure.DELEGATE_FIRST
 

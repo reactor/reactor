@@ -17,10 +17,10 @@ package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.Environment
+import reactor.core.dispatch.SynchronousDispatcher
 import reactor.event.Event
 import reactor.event.EventBus
 import reactor.event.Observable
-import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.tuple.Tuple2
@@ -69,14 +69,14 @@ class StreamsSpec extends Specification {
 			!value2.get()
 	}
 
-	def 'A Stream can propagate the error using block'() {
+	def 'A Stream can propagate the error using await'() {
 		given:
 			'a composable with no initial value'
 			def stream = Streams.broadcast(Environment.get())
 
 		when:
 			'the exception is retrieved after 2 sec'
-			stream.timeout(2, TimeUnit.SECONDS).consume().block()
+			Streams.await(stream.timeout(2, TimeUnit.SECONDS))
 
 		then:
 			'an exception has been thrown'
@@ -109,22 +109,27 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream with an initial value makes that value available later up to Long.MAX '() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.from([1,2,3]).dispatchOn(Environment.get())
+			def e = null
+		def latch = new CountDownLatch(1)
+			def stream = Streams.from([1,2,3])
+					.broadcastOn(Environment.masterDispatcher())
+					.when(Throwable){e = it}
+					.observeComplete{ latch.countDown() }
 
 		when:
 			'cumulated request of Long MAX'
-			def i = 0
 			long test = Long.MAX_VALUE / 2l
-			def controls = stream.observe{i++}.consumeLater()
+			def controls = stream.consumeLater()
 			controls.requestMore(test)
 			controls.requestMore(test)
 			controls.requestMore(1)
-			controls.block()
+
 		//sleep(2000)
 
 		then:
-			'it is available'
-			i == 3
+			'no error available'
+			latch.await(2, TimeUnit.SECONDS)
+			!e
 	}
 
 	def 'A deferred Stream with initial values can be consumed multiple times'() {

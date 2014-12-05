@@ -17,7 +17,7 @@
 package reactor.net.netty;
 
 import io.netty.channel.EventLoop;
-import reactor.event.dispatch.MultiThreadDispatcher;
+import reactor.core.dispatch.MultiThreadDispatcher;
 
 import java.util.concurrent.TimeUnit;
 

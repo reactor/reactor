@@ -14,11 +14,11 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.dispatch.wait.WaitingMood;
+import reactor.core.dispatch.wait.WaitingMood;
 import reactor.function.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Implementation of a {@link Dispatcher} that uses a multi-threaded, multi-producer {@link RingBuffer} to queue tasks
+ * Implementation of a {@link reactor.core.Dispatcher} that uses a multi-threaded, multi-producer {@link RingBuffer} to queue tasks
  * to execute.
  *
  * @author Jon Brisbin
@@ -170,6 +170,16 @@ public class WorkQueueDispatcher extends MultiThreadDispatcher implements Waitin
 	protected Task allocateTask() {
 		long seqId = ringBuffer.next();
 		return ringBuffer.get(seqId).setSequenceId(seqId);
+	}
+
+	@Override
+	protected Task tryAllocateTask() throws InsufficientCapacityException {
+		try {
+			long seqId = ringBuffer.tryNext();
+			return ringBuffer.get(seqId).setSequenceId(seqId);
+		} catch (reactor.jarjar.com.lmax.disruptor.InsufficientCapacityException e) {
+			throw InsufficientCapacityException.INSTANCE;
+		}
 	}
 
 	protected void execute(Task task) {

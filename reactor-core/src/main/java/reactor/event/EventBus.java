@@ -18,9 +18,9 @@ package reactor.event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
@@ -56,7 +56,7 @@ import java.util.UUID;
  * @author Andy Wilkinson
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class EventBus implements Observable {
+public class EventBus implements Observable, Consumer<Event<?>> {
 
 	private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
@@ -98,7 +98,7 @@ public class EventBus implements Observable {
 	 * @param env
 	 * 		The {@link reactor.core.Environment} to use.
 	 * @param dispatcher
-	 * 		The name of the {@link reactor.event.dispatch.Dispatcher} to use.
+	 * 		The name of the {@link reactor.core.Dispatcher} to use.
 	 *
 	 * @return A new {@link reactor.event.EventBus}
 	 */
@@ -108,12 +108,12 @@ public class EventBus implements Observable {
 
 	/**
 	 * Create a new {@link reactor.event.EventBus} using the given {@link reactor.core.Environment} and {@link
-	 * reactor.event.dispatch.Dispatcher}.
+	 * reactor.core.Dispatcher}.
 	 *
 	 * @param env
 	 * 		The {@link reactor.core.Environment} to use.
 	 * @param dispatcher
-	 * 		The {@link reactor.event.dispatch.Dispatcher} to use.
+	 * 		The {@link reactor.core.Dispatcher} to use.
 	 *
 	 * @return A new {@link reactor.event.EventBus}
 	 */
@@ -299,28 +299,23 @@ public class EventBus implements Observable {
 	}
 
 	@Override
-	public <E extends Event<?>> EventBus notify(Object key, E ev, Consumer<E> onComplete) {
+	public <E extends Event<?>> EventBus notify(Object key, E ev) {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
-		dispatcher.dispatch(key, ev, consumerRegistry, dispatchErrorHandler, router, onComplete);
+		dispatcher.dispatch(ev, this, dispatchErrorHandler);
 
 		return this;
 	}
 
 	@Override
-	public <E extends Event<?>> EventBus notify(Object key, E ev) {
-		return notify(key, ev, null);
-	}
-
-	@Override
 	public <S extends Supplier<? extends Event<?>>> EventBus notify(Object key, S supplier) {
-		return notify(key, supplier.get(), null);
+		return notify(key, supplier.get());
 	}
 
 	@Override
 	public EventBus notify(Object key) {
-		return notify(key, new Event<Void>(Void.class), null);
+		return notify(key, new Event<Void>(Void.class));
 	}
 
 	@Override
@@ -370,7 +365,7 @@ public class EventBus implements Observable {
 			public void accept(Event<T> ev) {
 				for (int i = 0; i < size; i++) {
 					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>) regs.get(i);
-					dispatcher.dispatch(ev.setKey(key), router, reg.getObject(), dispatchErrorHandler);
+					dispatcher.dispatch(ev.setKey(key), reg.getObject(), dispatchErrorHandler);
 				}
 			}
 		};
@@ -404,14 +399,14 @@ public class EventBus implements Observable {
 
 			@Override
 			public void accept(Iterable<Event<T>> evs) {
-				dispatcher.dispatch(null, evs, null, dispatchErrorHandler, router, batchConsumer);
+				dispatcher.dispatch(evs, batchConsumer, dispatchErrorHandler);
 			}
 		};
 	}
 
 	/**
 	 * Schedule an arbitrary {@link reactor.function.Consumer} to be executed on the current Reactor  {@link
-	 * reactor.event.dispatch.Dispatcher}, passing the given {@param data}.
+	 * reactor.core.Dispatcher}, passing the given {@param data}.
 	 *
 	 * @param consumer
 	 * 		The {@link reactor.function.Consumer} to invoke.
@@ -421,12 +416,17 @@ public class EventBus implements Observable {
 	 * 		The type of the data.
 	 */
 	public <T> void schedule(final Consumer<T> consumer, final T data) {
-		dispatcher.dispatch(null, null, null, dispatchErrorHandler, router, new Consumer<Event<?>>() {
+		dispatcher.dispatch(null, new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
 				consumer.accept(data);
 			}
-		});
+		}, dispatchErrorHandler);
+	}
+
+	@Override
+	public void accept(Event<?> event) {
+		router.route(event.getKey(), event, consumerRegistry.select(event.getKey()), null, dispatchErrorHandler);
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {

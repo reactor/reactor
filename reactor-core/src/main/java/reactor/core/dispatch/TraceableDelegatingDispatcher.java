@@ -14,19 +14,18 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.event.registry.Registry;
-import reactor.event.routing.Router;
+import reactor.core.Dispatcher;
 import reactor.function.Consumer;
 import reactor.util.Assert;
 
 import java.util.concurrent.TimeUnit;
 
 /**
- * An implementation of {@link reactor.event.dispatch.Dispatcher} that traces activity through it.
+ * An implementation of {@link reactor.core.Dispatcher} that traces activity through it.
  *
  * @author Jon Brisbin
  */
@@ -79,33 +78,21 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E> void dispatch(Object key,
+	public <E> void tryDispatch(
 	                                          E event,
-	                                          Registry<Consumer<?>> consumerRegistry,
-	                                          Consumer<Throwable> errorConsumer,
-	                                          Router router,
-	                                          Consumer<E> completionConsumer) {
-		if(log.isTraceEnabled()) {
-			log.trace("dispatch({}, {}, {}, {}, {}, {})",
-			          key,
-			          event,
-			          consumerRegistry,
-			          errorConsumer,
-					router,
-			          completionConsumer);
-		}
-		delegate.dispatch(key, event, consumerRegistry, errorConsumer, router, completionConsumer);
+	                                          Consumer<E> eventConsumer,
+	                                          Consumer<Throwable> errorConsumer) {
+		dispatch(event, eventConsumer, errorConsumer);
 	}
 
 	@Override
 	public <E> void dispatch(E event,
-	                                          Router router,
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
-			log.trace("dispatch({}, {}, {}, {})", event, router, consumer, errorConsumer);
+			log.trace("dispatch({}, {}, {})", event, consumer, errorConsumer);
 		}
-		delegate.dispatch(event, router, consumer, errorConsumer);
+		delegate.dispatch(event, consumer, errorConsumer);
 	}
 
 	@Override

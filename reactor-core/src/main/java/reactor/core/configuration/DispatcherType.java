@@ -16,7 +16,7 @@
 
 package reactor.core.configuration;
 
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
 import java.util.concurrent.ThreadPoolExecutor;

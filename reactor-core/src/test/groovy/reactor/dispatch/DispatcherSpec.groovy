@@ -17,14 +17,14 @@
 
 package reactor.dispatch
 
+import reactor.core.Dispatcher
 import reactor.core.Environment
+import reactor.core.dispatch.RingBufferDispatcher
+import reactor.core.dispatch.SynchronousDispatcher
+import reactor.core.dispatch.ThreadPoolExecutorDispatcher
+import reactor.core.dispatch.WorkQueueDispatcher
 import reactor.event.Event
 import reactor.event.EventBus
-import reactor.event.dispatch.*
-import reactor.event.registry.CachingRegistry
-import reactor.event.routing.ArgumentConvertingConsumerInvoker
-import reactor.event.routing.ConsumerFilteringRouter
-import reactor.filter.PassThroughFilter
 import reactor.function.Consumer
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
@@ -63,17 +63,13 @@ class DispatcherSpec extends Specification {
 			def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
-			def registry = new CachingRegistry<Consumer<Event>>()
-			def eventRouter = new ConsumerFilteringRouter(
-					new PassThroughFilter(), new ArgumentConvertingConsumerInvoker())
-			def sel = $('test')
-			registry.register(sel, { Event<?> ev ->
+			def consumer = { ev ->
 				taskThread = Thread.currentThread()
-			} as Consumer<Event<?>>)
+			}
 
 		when:
 			"a task is submitted"
-			sameThread.dispatch('test', Event.wrap('Hello World!'), registry, null, eventRouter, null)
+			sameThread.dispatch('test', consumer, null)
 
 		then:
 			"the task thread should be the current thread"
@@ -82,7 +78,7 @@ class DispatcherSpec extends Specification {
 		when:
 			"a task is submitted to the thread pool dispatcher"
 			def latch = new CountDownLatch(1)
-			diffThread.dispatch('test', Event.wrap('Hello World!'), registry, null, eventRouter, { Event<String> ev -> latch.countDown() } as Consumer<Event<String>>)
+			diffThread.dispatch('test', { ev -> consumer(ev); latch.countDown() }, null)
 
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 

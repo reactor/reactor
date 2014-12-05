@@ -20,9 +20,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.alloc.Recyclable;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
 import reactor.event.routing.ConsumerFilteringRouter;
 import reactor.event.routing.Router;
@@ -46,9 +46,6 @@ import reactor.tuple.Tuple;
 import reactor.tuple.Tuple2;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
@@ -60,8 +57,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * any downstream subscription.
  * <p>
  * The implementation specifics of an Action lies in two core features:
- * - Its signal scheduler on {@link reactor.event.dispatch.Dispatcher}
- * - Its smart capacity awareness to prevent {@link reactor.event.dispatch.Dispatcher} overflow
+ * - Its signal scheduler on {@link reactor.core.Dispatcher}
+ * - Its smart capacity awareness to prevent {@link reactor.core.Dispatcher} overflow
  * <p>
  * In effect, an Action will take care of concurrent notifications through its single threaded Dispatcher.
  * Up to a maximum capacity defined with {@link this#capacity(long)} will be allowed to be dispatched by requesting
@@ -395,46 +392,6 @@ public abstract class Action<I, O> extends Stream<O>
 		requestMore(Long.MAX_VALUE);
 	}
 
-	@Override
-	public void block() throws Throwable {
-		if(upstreamSubscription == null || upstreamSubscription.isComplete()){
-			return;
-		}
-
-		final AtomicReference<Throwable> exception = new AtomicReference<>();
-
-		final CountDownLatch latch = new CountDownLatch(1);
-		subscribe(new Subscriber<O>() {
-			@Override
-			public void onSubscribe(Subscription subscription) {
-			}
-
-			@Override
-			public void onNext(O o) {
-			}
-
-			@Override
-			public void onError(Throwable throwable) {
-				exception.set(throwable);
-				latch.countDown();
-			}
-
-			@Override
-			public void onComplete() {
-				latch.countDown();
-			}
-		});
-
-		long timeout = 30000l;
-		if(Environment.alive()){
-			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
-		}
-		latch.await(timeout, TimeUnit.MILLISECONDS);
-		if(exception.get() != null){
-			throw exception.get();
-		}
-	}
-
 	/**
 	 * Print a debugged form of the root action relative to this one. The output will be an acyclic directed graph of
 	 * composed actions.
@@ -755,7 +712,7 @@ public abstract class Action<I, O> extends Stream<O>
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
 			action.accept(data);
 		} else {
-			dispatcher.dispatch(this, data, null, null, ROUTER, action);
+			dispatcher.dispatch(data, action, null);
 		}
 	}
 

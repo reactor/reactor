@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
 import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
@@ -67,6 +67,15 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 
 	protected Task allocateTask() {
 		return taskFactory.get();
+	}
+
+	@Override
+	protected Task tryAllocateTask() throws InsufficientCapacityException {
+		if(taskFactory.remaining() == 0){
+			throw InsufficientCapacityException.INSTANCE;
+		}else{
+			return allocateTask();
+		}
 	}
 
 	@Override

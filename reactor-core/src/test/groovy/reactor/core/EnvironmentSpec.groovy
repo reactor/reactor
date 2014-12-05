@@ -17,7 +17,6 @@ package reactor.core
 
 import reactor.core.configuration.ConfigurationReader
 import reactor.core.configuration.ReactorConfiguration
-import reactor.event.dispatch.Dispatcher
 import spock.lang.Specification
 
 class EnvironmentSpec extends Specification {

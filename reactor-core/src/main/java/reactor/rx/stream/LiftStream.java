@@ -16,8 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;

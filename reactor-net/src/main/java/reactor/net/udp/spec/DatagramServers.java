@@ -48,12 +48,12 @@ public class DatagramServers {
 
 	/**
 	 * Create a {@link reactor.net.udp.spec.DatagramServerSpec} for further configuration using the given {@link
-	 * reactor.core.Environment}, {@link reactor.event.dispatch.Dispatcher} type, and {@code serverImpl}.
+	 * reactor.core.Environment}, {@link reactor.core.Dispatcher} type, and {@code serverImpl}.
 	 *
 	 * @param env
 	 * 		the {@link reactor.core.Environment} to use
 	 * @param dispatcher
-	 * 		the type of {@link reactor.event.dispatch.Dispatcher} to use
+	 * 		the type of {@link reactor.core.Dispatcher} to use
 	 * @param serverImpl
 	 * 		the implementation of {@link reactor.net.udp.DatagramServer} to use
 	 * @param <IN>

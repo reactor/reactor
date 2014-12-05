@@ -14,16 +14,16 @@
  *  limitations under the License.
  */
 
-package reactor.event.dispatch;
+package reactor.core.dispatch;
 
-import reactor.event.registry.Registry;
-import reactor.event.routing.Router;
+import reactor.core.Dispatcher;
+import reactor.core.Environment;
 import reactor.function.Consumer;
 
 import java.util.concurrent.TimeUnit;
 
 /**
- * A {@link Dispatcher} implementation that dispatches events using the calling thread.
+ * A {@link reactor.core.Dispatcher} implementation that dispatches events using the calling thread.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -59,25 +59,25 @@ public final class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public <E> void dispatch(E event,
-	                         Router router,
-	                         Consumer<E> consumer,
-	                         Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, router, consumer);
+	public <E> void tryDispatch(E event,
+	                            Consumer<E> consumer,
+	                            Consumer<Throwable> errorConsumer) {
+		dispatch(event, consumer, errorConsumer);
 	}
 
 	@Override
-	public <E> void dispatch(Object key,
-	                         E event,
-	                         Registry<Consumer<?>> consumerRegistry,
-	                         Consumer<Throwable> errorConsumer,
-	                         Router router,
-	                         Consumer<E> completionConsumer) {
-		router.route(key,
-		                  event,
-		                  (null != consumerRegistry ? consumerRegistry.select(key) : null),
-		                  completionConsumer,
-		                  errorConsumer);
+	public <E> void dispatch(E event,
+	                         Consumer<E> eventConsumer,
+	                         Consumer<Throwable> errorConsumer) {
+		try {
+			eventConsumer.accept(event);
+		} catch (Exception e) {
+			if (errorConsumer != null) {
+				errorConsumer.accept(e);
+			} else if (Environment.alive()) {
+				Environment.get().routeError(e);
+			}
+		}
 	}
 
 	@Override

@@ -16,11 +16,9 @@
 
 package reactor.event.spec;
 
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
-import reactor.event.dispatch.ActorDispatcher;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
-import reactor.function.Function;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.function.Supplier;
 
 /**
@@ -49,49 +47,6 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 */
 	public final SPEC env(Environment env) {
 		this.env = env;
-		return (SPEC) this;
-	}
-
-	/**
-	 * Configures the component to use an Environment based ActorDispatcher. An Actor Dispatcher assigns a unique key
-	 * to a dispatcher provided by a mapping function. In this case, each Dispatcher mapper call will delegate to
-	 * {@link Environment#getDispatcher(String)}, returning a new dispatcher from the pool using round robin selection.
-	 *
-	 * @param name The dispatcher to use
-	 *
-	 * @return {@code this}
-	 *
-	 * @throws IllegalStateException if no Environment has been configured
-	 *
-	 * @see Environment#getDefaultDispatcher()
-	 * @see #env(Environment)
-	 */
-	public final SPEC actorSystem(final String name) {
-		assertNonNullEnvironment("Cannot create an Environment ActorDispatcher without an Environment");
-		actorSystem(new Function<Object,Dispatcher>(){
-			@Override
-			public Dispatcher apply(Object o) {
-				return env.getDispatcher(name);
-			}
-		});
-		return (SPEC) this;
-	}
-
-	/**
-	 * Configures the component to use an ActorDispatcher. An Actor Dispatcher assigns a unique key
-	 * to a dispatcher provided by a mapping function.
-	 *
-	 * @param actorMapper The dispatcher to use
-	 *
-	 * @return {@code this}
-	 *
-	 * @throws IllegalStateException if no Environment has been configured
-	 *
-	 * @see Environment#getDefaultDispatcher()
-	 * @see #env(Environment)
-	 */
-	public final SPEC actorSystem(Function<Object,Dispatcher> actorMapper) {
-		this.dispatcher = new ActorDispatcher(actorMapper);
 		return (SPEC) this;
 	}
 

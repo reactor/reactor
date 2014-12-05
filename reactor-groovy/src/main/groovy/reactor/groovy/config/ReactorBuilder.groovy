@@ -5,11 +5,11 @@ import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
 import org.reactivestreams.Processor
 import reactor.convert.Converter
+import reactor.core.Dispatcher
 import reactor.core.Environment
+import reactor.core.dispatch.SynchronousDispatcher
 import reactor.event.Event
 import reactor.event.EventBus
-import reactor.event.dispatch.Dispatcher
-import reactor.event.dispatch.SynchronousDispatcher
 import reactor.event.registry.CachingRegistry
 import reactor.event.routing.ArgumentConvertingConsumerInvoker
 import reactor.event.routing.ConsumerInvoker

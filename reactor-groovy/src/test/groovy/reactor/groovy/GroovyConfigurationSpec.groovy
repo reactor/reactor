@@ -16,8 +16,8 @@
 package reactor.groovy
 
 import reactor.core.Environment
+import reactor.core.dispatch.SynchronousDispatcher
 import reactor.event.Event
-import reactor.event.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
 import reactor.groovy.support.ClosureEventConsumer
 import spock.lang.Ignore

@@ -17,10 +17,12 @@
 package reactor.rx;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.Dispatcher;
 import reactor.core.Environment;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.event.Observable;
-import reactor.event.dispatch.Dispatcher;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.selector.Selector;
 import reactor.function.Function;
 import reactor.function.Supplier;
@@ -33,8 +35,10 @@ import reactor.util.Assert;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A public factory to build {@link Stream}.
@@ -71,7 +75,7 @@ public final class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> empty() {
-		return (Stream<T>)SingleValueStream.EMPTY;
+		return (Stream<T>) SingleValueStream.EMPTY;
 	}
 
 	/**
@@ -118,7 +122,7 @@ public final class Streams {
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
 	 * @param env        the Reactor {@link reactor.core.Environment} to use
-	 * @param dispatcher the {@link reactor.event.dispatch.Dispatcher} to use
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
@@ -182,7 +186,6 @@ public final class Streams {
 		return new RangeStream(start, end);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
 	 *
@@ -192,7 +195,6 @@ public final class Streams {
 	public static Stream<Long> timer(long delay) {
 		return timer(Environment.timer(), delay, TimeUnit.SECONDS);
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
@@ -217,6 +219,7 @@ public final class Streams {
 		return new SingleTimerStream(delay, unit, Environment.timer());
 	}
 
+
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
 	 *
@@ -230,7 +233,8 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe call.
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe
+	 * call.
 	 * It will never complete until cancelled.
 	 *
 	 * @param period the period in SECONDS before each following increment
@@ -240,12 +244,12 @@ public final class Streams {
 		return period(Environment.timer(), -1l, period, TimeUnit.SECONDS);
 	}
 
-
 	/**
-	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe call.
+	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe
+	 * call.
 	 * It will never complete until cancelled.
 	 *
-	 * @param timer the timer to run on
+	 * @param timer  the timer to run on
 	 * @param period the period in SECONDS before each following increment
 	 * @return a new {@link reactor.rx.Stream}
 	 */
@@ -258,7 +262,7 @@ public final class Streams {
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
 	 * It will never complete until cancelled.
 	 *
-	 * @param delay the timespan in SECONDS to wait before emitting 0l
+	 * @param delay  the timespan in SECONDS to wait before emitting 0l
 	 * @param period the period in SECONDS before each following increment
 	 * @return a new {@link reactor.rx.Stream}
 	 */
@@ -271,8 +275,8 @@ public final class Streams {
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
 	 * It will never complete until cancelled.
 	 *
-	 * @param timer the timer to run on
-	 * @param delay the timespan in SECONDS to wait before emitting 0l
+	 * @param timer  the timer to run on
+	 * @param delay  the timespan in SECONDS to wait before emitting 0l
 	 * @param period the period in SECONDS before each following increment
 	 * @return a new {@link reactor.rx.Stream}
 	 */
@@ -280,12 +284,13 @@ public final class Streams {
 		return period(timer, delay, period, TimeUnit.SECONDS);
 	}
 
+
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the subscribe call on each period.
 	 * It will never complete until cancelled.
 	 *
 	 * @param period the period in [unit] before each following increment
-	 * @param unit  the time unit
+	 * @param unit   the time unit
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period, TimeUnit unit) {
@@ -296,9 +301,9 @@ public final class Streams {
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the subscribe call on each period.
 	 * It will never complete until cancelled.
 	 *
-	 * @param timer the timer to run on
+	 * @param timer  the timer to run on
 	 * @param period the period in [unit] before each following increment
-	 * @param unit  the time unit
+	 * @param unit   the time unit
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(Timer timer, long period, TimeUnit unit) {
@@ -309,9 +314,9 @@ public final class Streams {
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the subscribe call on each period.
 	 * It will never complete until cancelled.
 	 *
-	 * @param delay the timespan in [unit] to wait before emitting 0l
+	 * @param delay  the timespan in [unit] to wait before emitting 0l
 	 * @param period the period in [unit] before each following increment
-	 * @param unit  the time unit
+	 * @param unit   the time unit
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period, TimeUnit unit) {
@@ -322,17 +327,15 @@ public final class Streams {
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
 	 * It will never complete until cancelled.
 	 *
-	 * @param timer the timer to run on
-	 * @param delay the timespan in [unit] to wait before emitting 0l
+	 * @param timer  the timer to run on
+	 * @param delay  the timespan in [unit] to wait before emitting 0l
 	 * @param period the period in [unit] before each following increment
-	 * @param unit  the time unit
+	 * @param unit   the time unit
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(Timer timer, long delay, long period, TimeUnit unit) {
 		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
-
-
 
 	/**
 	 * Build a synchronous {@literal Stream} whom data is sourced by the passed element on subscription
@@ -473,6 +476,7 @@ public final class Streams {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
+
 	/**
 	 * Build a synchronous {@literal Stream}, ready to broadcast values from the given publisher. A publisher will start
 	 * producing next elements until onComplete is called.
@@ -512,7 +516,6 @@ public final class Streams {
 		return new SupplierStream<T>(value);
 	}
 
-
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are emitted by the most recent passed publisher.
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
@@ -522,16 +525,19 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<? extends Publisher<? extends T>, T> switchOnNext(Publisher<? extends Publisher<? extends T>> mergedPublishers) {
+	public static <T> Action<? extends Publisher<? extends T>, T> switchOnNext(Publisher<? extends Publisher<? extends
+			T>> mergedPublishers) {
 		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(SynchronousDispatcher.INSTANCE);
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
 	}
 
+
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -548,10 +554,11 @@ public final class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param concatdPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>              type of the value
+	 * @param <T>               type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -564,10 +571,10 @@ public final class Streams {
 		return concatAction;
 	}
 
-
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -576,14 +583,16 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
+	                                   Publisher<? extends T> source2
 	) {
 		return concat(Arrays.asList(source1, source2));
 	}
 
+
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -593,15 +602,16 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3
 	) {
 		return concat(Arrays.asList(source1, source2, source3));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -612,16 +622,18 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3,
+	                                   Publisher<? extends T> source4
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4));
 	}
 
+
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -632,17 +644,18 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3,
+	                                   Publisher<? extends T> source4,
+	                                   Publisher<? extends T> source5
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -655,11 +668,11 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3,
+	                                   Publisher<? extends T> source4,
+	                                   Publisher<? extends T> source5,
+	                                   Publisher<? extends T> source6
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
 				source6));
@@ -667,7 +680,8 @@ public final class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -681,12 +695,12 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3,
+	                                   Publisher<? extends T> source4,
+	                                   Publisher<? extends T> source5,
+	                                   Publisher<? extends T> source6,
+	                                   Publisher<? extends T> source7
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
 				source6, source7));
@@ -694,7 +708,8 @@ public final class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed to.
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -709,13 +724,13 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7,
-	                                  Publisher<? extends T> source8
+	                                   Publisher<? extends T> source2,
+	                                   Publisher<? extends T> source3,
+	                                   Publisher<? extends T> source4,
+	                                   Publisher<? extends T> source5,
+	                                   Publisher<? extends T> source6,
+	                                   Publisher<? extends T> source7,
+	                                   Publisher<? extends T> source8
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
 				source6, source7, source8));
@@ -770,7 +785,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2
+	                                  Publisher<? extends T> source2
 	) {
 		return merge(Arrays.asList(source1, source2));
 	}
@@ -788,8 +803,8 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3
 	) {
 		return merge(Arrays.asList(source1, source2, source3));
 	}
@@ -808,9 +823,9 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3,
-	                                     Publisher<? extends T> source4
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3,
+	                                  Publisher<? extends T> source4
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4));
 	}
@@ -829,10 +844,10 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3,
-	                                     Publisher<? extends T> source4,
-	                                     Publisher<? extends T> source5
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3,
+	                                  Publisher<? extends T> source4,
+	                                  Publisher<? extends T> source5
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5));
 	}
@@ -853,11 +868,11 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3,
-	                                     Publisher<? extends T> source4,
-	                                     Publisher<? extends T> source5,
-	                                     Publisher<? extends T> source6
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3,
+	                                  Publisher<? extends T> source4,
+	                                  Publisher<? extends T> source5,
+	                                  Publisher<? extends T> source6
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
 				source6));
@@ -880,12 +895,12 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3,
-	                                     Publisher<? extends T> source4,
-	                                     Publisher<? extends T> source5,
-	                                     Publisher<? extends T> source6,
-	                                     Publisher<? extends T> source7
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3,
+	                                  Publisher<? extends T> source4,
+	                                  Publisher<? extends T> source5,
+	                                  Publisher<? extends T> source6,
+	                                  Publisher<? extends T> source7
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
 				source6, source7));
@@ -909,13 +924,13 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                     Publisher<? extends T> source2,
-	                                     Publisher<? extends T> source3,
-	                                     Publisher<? extends T> source4,
-	                                     Publisher<? extends T> source5,
-	                                     Publisher<? extends T> source6,
-	                                     Publisher<? extends T> source7,
-	                                     Publisher<? extends T> source8
+	                                  Publisher<? extends T> source2,
+	                                  Publisher<? extends T> source3,
+	                                  Publisher<? extends T> source4,
+	                                  Publisher<? extends T> source5,
+	                                  Publisher<? extends T> source6,
+	                                  Publisher<? extends T> source7,
+	                                  Publisher<? extends T> source8
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
 				source6, source7, source8));
@@ -937,8 +952,8 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                           Publisher<? extends T2> source2,
-	                                           Function<Tuple2<T1, T2>, ? extends V> zipper) {
+	                                        Publisher<? extends T2> source2,
+	                                        Function<Tuple2<T1, T2>, ? extends V> zipper) {
 		return zip(Arrays.asList(source1, source2), zipper);
 	}
 
@@ -960,10 +975,10 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                               Publisher<? extends T2> source2,
-	                                               Publisher<? extends T3> source3,
-	                                               Function<Tuple3<T1, T2, T3>,
-			                                               ? extends V> zipper) {
+	                                            Publisher<? extends T2> source2,
+	                                            Publisher<? extends T3> source3,
+	                                            Function<Tuple3<T1, T2, T3>,
+			                                            ? extends V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3), zipper);
 	}
 
@@ -987,11 +1002,11 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                   Publisher<? extends T2> source2,
-	                                                   Publisher<? extends T3> source3,
-	                                                   Publisher<? extends T4> source4,
-	                                                   Function<Tuple4<T1, T2, T3, T4>,
-			                                                   V> zipper) {
+	                                                Publisher<? extends T2> source2,
+	                                                Publisher<? extends T3> source3,
+	                                                Publisher<? extends T4> source4,
+	                                                Function<Tuple4<T1, T2, T3, T4>,
+			                                                V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3, source4), zipper);
 	}
 
@@ -1016,12 +1031,12 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                       Publisher<? extends T2> source2,
-	                                                       Publisher<? extends T3> source3,
-	                                                       Publisher<? extends T4> source4,
-	                                                       Publisher<? extends T5> source5,
-	                                                       Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                       V> zipper) {
+	                                                    Publisher<? extends T2> source2,
+	                                                    Publisher<? extends T3> source3,
+	                                                    Publisher<? extends T4> source4,
+	                                                    Publisher<? extends T5> source5,
+	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
+			                                                    V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5), zipper);
 	}
 
@@ -1049,13 +1064,13 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                           Publisher<? extends T2> source2,
-	                                                           Publisher<? extends T3> source3,
-	                                                           Publisher<? extends T4> source4,
-	                                                           Publisher<? extends T5> source5,
-	                                                           Publisher<? extends T6> source6,
-	                                                           Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                           V> zipper) {
+	                                                        Publisher<? extends T2> source2,
+	                                                        Publisher<? extends T3> source3,
+	                                                        Publisher<? extends T4> source4,
+	                                                        Publisher<? extends T5> source5,
+	                                                        Publisher<? extends T6> source6,
+	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
+			                                                        V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6), zipper);
 	}
 
@@ -1085,14 +1100,14 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                               Publisher<? extends T2> source2,
-	                                                               Publisher<? extends T3> source3,
-	                                                               Publisher<? extends T4> source4,
-	                                                               Publisher<? extends T5> source5,
-	                                                               Publisher<? extends T6> source6,
-	                                                               Publisher<? extends T7> source7,
-	                                                               Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                               V> zipper) {
+	                                                            Publisher<? extends T2> source2,
+	                                                            Publisher<? extends T3> source3,
+	                                                            Publisher<? extends T4> source4,
+	                                                            Publisher<? extends T5> source5,
+	                                                            Publisher<? extends T6> source6,
+	                                                            Publisher<? extends T7> source7,
+	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
+			                                                            V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
 				zipper);
 	}
@@ -1125,15 +1140,15 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> zip(Publisher<? extends T1> source1,
-	                                                                   Publisher<? extends T2> source2,
-	                                                                   Publisher<? extends T3> source3,
-	                                                                   Publisher<? extends T4> source4,
-	                                                                   Publisher<? extends T5> source5,
-	                                                                   Publisher<? extends T6> source6,
-	                                                                   Publisher<? extends T7> source7,
-	                                                                   Publisher<? extends T8> source8,
-	                                                                   Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                   ? extends V> zipper) {
+	                                                                Publisher<? extends T2> source2,
+	                                                                Publisher<? extends T3> source3,
+	                                                                Publisher<? extends T4> source4,
+	                                                                Publisher<? extends T5> source5,
+	                                                                Publisher<? extends T6> source6,
+	                                                                Publisher<? extends T7> source7,
+	                                                                Publisher<? extends T8> source8,
+	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
+			                                                                ? extends V> zipper) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8), zipper);
 	}
 
@@ -1151,7 +1166,7 @@ public final class Streams {
 	 * @since 2.0
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
-	                                                        Function<TUPLE, ? extends V> zipper) {
+	                                                     Function<TUPLE, ? extends V> zipper) {
 		return new ZipAction<>(SynchronousDispatcher.INSTANCE, zipper, sources);
 	}
 
@@ -1170,9 +1185,9 @@ public final class Streams {
 	 */
 	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
 			Publisher<? extends Publisher<E>> sources,
-			Function<TUPLE, ? extends V> zipper)
-	{
-		final  Action<Publisher<? extends E>, V>  mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher.INSTANCE,
+			Function<TUPLE, ? extends V> zipper) {
+		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher
+				.INSTANCE,
 				new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, zipper, null)
 		);
 
@@ -1356,7 +1371,7 @@ public final class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
-		return (Action<T, List<T>>)zip(sources, ZipAction.<TupleN, T>joinZipper());
+		return (Action<T, List<T>>) zip(sources, ZipAction.<TupleN, T>joinZipper());
 	}
 
 	/**
@@ -1374,4 +1389,89 @@ public final class Streams {
 		return zip(source, ZipAction.<TupleN, T>joinZipper());
 	}
 
+
+	/**
+	 * Wait 30 Seconds until a terminal signal from the passed publisher has been emitted.
+	 * If the terminal signal is an error, it will propagate to the caller.
+	 * Effectively this is making sure a stream has completed before the return of this call.
+	 * It is usually used in controlled environment such as tests.
+	 *
+	 * @param publisher the publisher to listen for terminal signals
+	 */
+	public static void await(Publisher<?> publisher) throws Throwable {
+		await(publisher, 30);
+	}
+
+	/**
+	 * Wait {code timeout} Seconds until a terminal signal from the passed publisher has been emitted.
+	 * If the terminal signal is an error, it will propagate to the caller.
+	 * Effectively this is making sure a stream has completed before the return of this call.
+	 * It is usually used in controlled environment such as tests.
+	 *
+	 * @param publisher the publisher to listen for terminal signals
+	 * @param timeout   the maximum wait time in seconds
+	 */
+	public static void await(Publisher<?> publisher, long timeout) throws Throwable {
+		await(publisher, timeout, TimeUnit.SECONDS);
+	}
+
+	/**
+	 * Wait {code timeout} in {@code unit} until a terminal signal from the passed publisher has been emitted.
+	 * If the terminal signal is an error, it will propagate to the caller.
+	 * Effectively this is making sure a stream has completed before the return of this call.
+	 * It is usually used in controlled environment such as tests.
+	 *
+	 * @param publisher the publisher to listen for terminal signals
+	 * @param timeout   the maximum wait time in unit
+	 * @param unit      the TimeUnit to use for the timeout
+	 */
+	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit) throws Throwable {
+		final AtomicReference<Throwable> exception = new AtomicReference<>();
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		publisher.subscribe(new Subscriber<Object>() {
+			Subscription s;
+			@Override
+			public void onSubscribe(Subscription subscription) {
+				s = subscription;
+				subscription.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(Object o) {
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				exception.set(throwable);
+				cancel();
+				latch.countDown();
+			}
+
+			@Override
+			public void onComplete() {
+				cancel();
+				latch.countDown();
+			}
+
+			void cancel(){
+				if(s != null){
+					try{
+						s.cancel();
+					}catch (Throwable t){
+						exception.set(t);
+					}
+
+				}
+			}
+		});
+
+		if (Environment.alive()) {
+			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+		}
+		latch.await(timeout, unit);
+		if (exception.get() != null) {
+			throw exception.get();
+		}
+	}
 }

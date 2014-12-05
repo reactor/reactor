@@ -32,7 +32,7 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.core.Environment;
-import reactor.event.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;

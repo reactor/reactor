@@ -16,7 +16,7 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
-import reactor.event.dispatch.Dispatcher;
+import reactor.core.Dispatcher;
 import reactor.function.Supplier;
 import reactor.queue.CompletableQueue;
 import reactor.rx.subscription.DropSubscription;

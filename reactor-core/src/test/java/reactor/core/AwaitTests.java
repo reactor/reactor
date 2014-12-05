@@ -18,8 +18,8 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.event.EventBus;
-import reactor.event.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.function.Consumer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
