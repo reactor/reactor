@@ -336,7 +336,7 @@ class ReactorsSpec extends Specification {
 
 		given:
 			"a root Reactor from environment and a simple Consumer"
-			def r = testEnv.rootReactor
+			def r = testEnv.rootBus
 			def latch = new CountDownLatch(1)
 			r.on($('test'),consumer { latch.countDown() })
 

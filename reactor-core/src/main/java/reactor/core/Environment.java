@@ -272,7 +272,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final Properties env;
 
 	private final AtomicReference<Timer>          timer               = new AtomicReference<Timer>();
-	private final AtomicReference<EventBus>       rootReactor         = new AtomicReference<EventBus>();
+	private final AtomicReference<EventBus>       rootBus             = new AtomicReference<EventBus>();
 	private final Object                          monitor             = new Object();
 	private final Filter                          dispatcherFilter    = new RoundRobinFilter();
 	private final Map<String, DispatcherSupplier> dispatcherFactories = new HashMap<String, DispatcherSupplier>();
@@ -609,13 +609,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @return The root reactor
 	 * @see Environment#getDefaultDispatcher()
 	 */
-	public EventBus getRootReactor() {
-		if (null == rootReactor.get()) {
-			synchronized (rootReactor) {
-				rootReactor.compareAndSet(null, new EventBus(getDefaultDispatcher()));
+	public EventBus getRootBus() {
+		if (null == rootBus.get()) {
+			synchronized (rootBus) {
+				rootBus.compareAndSet(null, new EventBus(getDefaultDispatcher()));
 			}
 		}
-		return rootReactor.get();
+		return rootBus.get();
 	}
 
 	/**
