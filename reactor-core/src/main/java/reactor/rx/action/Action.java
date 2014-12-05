@@ -23,10 +23,6 @@ import reactor.alloc.Recyclable;
 import reactor.core.Dispatcher;
 import reactor.core.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.event.routing.ArgumentConvertingConsumerInvoker;
-import reactor.event.routing.ConsumerFilteringRouter;
-import reactor.event.routing.Router;
-import reactor.filter.PassThroughFilter;
 import reactor.function.Consumer;
 import reactor.function.Function;
 import reactor.function.Supplier;
@@ -84,13 +80,6 @@ import javax.annotation.Nonnull;
 public abstract class Action<I, O> extends Stream<O>
 		implements Processor<I, O>, Consumer<I>, Recyclable, Controls {
 
-	//protected static final Logger log = LoggerFactory.getLogger(Action.class);
-
-	public static final Router ROUTER = new ConsumerFilteringRouter(
-			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
-	);
-
-
 	/**
 	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to capacity + 4 events can be
 	 * in-flight
@@ -145,7 +134,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return a new Action subscribed to this one
 	 */
 	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher) {
-		return passthrough(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
+		return broadcast(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
 				.backlogSize());
 	}
 
@@ -157,7 +146,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param <O>        the streamed data type
 	 * @return a new Action subscribed to this one
 	 */
-	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher, long capacity) {
+	public static <O> Broadcaster<O> broadcast(Dispatcher dispatcher, long capacity) {
 		return new Broadcaster<>(dispatcher, capacity);
 	}
 
@@ -579,17 +568,6 @@ public abstract class Action<I, O> extends Stream<O>
 	public final PushSubscription<O> downstreamSubscription() {
 		return downstreamSubscription;
 	}
-
-	public void replayChildRequests(long request) {
-		if (request > 0 && downstreamSubscription != null) {
-			downstreamSubscription.accept(request);
-		}
-	}
-
-	public long resetChildRequests() {
-		return downstreamSubscription != null ? downstreamSubscription.clearPendingRequest() : 0l;
-	}
-
 
 	/**
 	 * --------------------------------------------------------------------------------------------------------

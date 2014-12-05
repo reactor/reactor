@@ -133,7 +133,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public long clearPendingRequest() {
-		return pendingRequestSignals();
+		return PENDING_UPDATER.getAndSet(this, 0l);
 	}
 
 	protected void onRequest(long n) {
@@ -153,9 +153,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public void incrementCurrentNextSignals() {
-		/*
-		Count operation for each data signal
-		 */
+		if(pendingRequestSignals != Long.MAX_VALUE) PENDING_UPDATER.decrementAndGet(this);
 	}
 
 	public void maxCapacity(long n) {
@@ -195,7 +193,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public String toString() {
 		return "{push"+
-				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? " ,pending="+pendingRequestSignals : "")
+				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending="+pendingRequestSignals : "")
 				+"}";
 	}
 

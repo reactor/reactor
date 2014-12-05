@@ -46,8 +46,9 @@ public class ReduceAction<T, A> extends BatchAction<T, A> {
 	@Override
 	protected void flushCallback(T ev) {
 		if (acc != null) {
-			broadcastNext(acc);
+			A _acc = acc;
 			acc = null;
+			broadcastNext(_acc);
 		}
 	}
 

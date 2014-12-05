@@ -76,6 +76,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void request(long elements) {
+		try {
 		Action.checkRequest(elements);
 
 		//If unbounded request, set and return
@@ -95,7 +96,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		long toRequest = elements;
 		toRequest = Math.min(toRequest, maxCapacity);
 
-		try {
+
 
 			int i;
 			O element;

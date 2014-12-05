@@ -1103,8 +1103,8 @@ class StreamsSpec extends Specification {
 			def source = Streams.<Integer> broadcast().capacity(2)
 			def value = null
 
-			source.window().consume {
-				value = it.buffer(2).tap()
+			source.log('w').window().consume {
+				value = it.log().buffer(2).tap()
 			}
 
 

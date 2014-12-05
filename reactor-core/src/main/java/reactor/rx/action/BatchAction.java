@@ -136,9 +136,8 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	final private static class RequestConsumer<T> extends WrappedSubscription<T> {
 
-		final Consumer<T> flushConsumer;
-		final int         batchSize;
-
+		private final Consumer<T> flushConsumer;
+		private final int         batchSize;
 
 		public RequestConsumer(Subscription subscription, Subscriber<T> subscriber, Consumer<T> flushConsumer, int
 				batchSize) {
@@ -150,19 +149,46 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		@Override
 		public void request(long n) {
 			flushConsumer.accept(null);
-			if(n == Long.MAX_VALUE || pendingRequestSignals == Long.MAX_VALUE){
-				super.request(Math.max(n, batchSize));
-			}else{
-				super.request(n);
+			if (pushSubscription != null) {
+				if (n == Long.MAX_VALUE) {
+					pushSubscription.request(Long.MAX_VALUE);
+				} else if (pushSubscription.pendingRequestSignals() != Long.MAX_VALUE) {
+					if (n > batchSize) {
+						pushSubscription.updatePendingRequests(n - batchSize);
+						pushSubscription.request(batchSize);
+					} else {
+						pushSubscription.request(n);
+					}
+				}
+			} else {
+					super.request(n);
 			}
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
+		public boolean shouldRequestPendingSignals() {
+			return (pushSubscription != null && (pushSubscription.pendingRequestSignals() % batchSize == 0))
+					|| super.shouldRequestPendingSignals();
+		}
+
+		@Override
 		public void maxCapacity(long n) {
-			//If a reactor push subscription, assign batch size to max capacity
-			if (PushSubscription.class.isAssignableFrom(subscription.getClass())) {
-				((PushSubscription<T>) subscription).maxCapacity(batchSize);
+			super.maxCapacity(n);
+		}
+
+		@Override
+		public long clearPendingRequest() {
+			if (pushSubscription != null) {
+				long pending = pushSubscription.clearPendingRequest();
+				if (pending > batchSize) {
+					long toRequest = pending - batchSize;
+					pushSubscription.updatePendingRequests(toRequest);
+					return batchSize;
+				} else {
+					return pending;
+				}
+			} else {
+				return super.clearPendingRequest();
 			}
 		}
 	}

@@ -26,10 +26,26 @@ import reactor.rx.subscription.PushSubscription;
 public class WrappedSubscription<O> extends PushSubscription<O> {
 
 	protected final Subscription subscription;
+	protected final PushSubscription<O> pushSubscription;
 
+	@SuppressWarnings("unchecked")
 	public WrappedSubscription(Subscription subscription, Subscriber<? super O> subscriber) {
 		super(null, subscriber);
 		this.subscription = subscription;
+		if (PushSubscription.class.isAssignableFrom(subscription.getClass())) {
+			this.pushSubscription = (PushSubscription<O>) subscription;
+		}else{
+			this.pushSubscription = null;
+		}
+	}
+
+	@Override
+	public void request(long n) {
+		if(pushSubscription != null){
+			pushSubscription.request(n);
+		}else{
+			super.request(n);
+		}
 	}
 
 	@Override
@@ -44,6 +60,49 @@ public class WrappedSubscription<O> extends PushSubscription<O> {
 		return PushSubscription.class.isAssignableFrom(this.subscription.getClass()) ?
 				((PushSubscription<O>)this.subscription).getPublisher() :
 				null;
+	}
+
+	@Override
+	public void incrementCurrentNextSignals() {
+		if(pushSubscription != null){
+			pushSubscription.incrementCurrentNextSignals();
+		}else{
+			super.incrementCurrentNextSignals();
+		}
+	}
+
+	@Override
+	public void maxCapacity(long n) {
+		if(pushSubscription != null){
+			pushSubscription.maxCapacity(n);
+		}
+	}
+
+	@Override
+	public long clearPendingRequest() {
+		if(pushSubscription != null){
+			return pushSubscription.clearPendingRequest();
+		}else{
+			return super.clearPendingRequest();
+		}
+	}
+
+	@Override
+	public boolean shouldRequestPendingSignals() {
+		if(pushSubscription != null){
+			return pushSubscription.shouldRequestPendingSignals();
+		}else{
+			return super.shouldRequestPendingSignals();
+		}
+	}
+
+	@Override
+	public boolean isComplete() {
+		if(pushSubscription != null){
+			return pushSubscription.isComplete();
+		}else{
+			return super.isComplete();
+		}
 	}
 
 	@Override

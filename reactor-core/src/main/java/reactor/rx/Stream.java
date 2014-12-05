@@ -1475,6 +1475,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> split(final long batchSize) {
 		final Stream<Iterable<V>> iterableStream = (Stream<Iterable<V>>) this;
+		/*return iterableStream.flatMap(new Function<Iterable<V>, Publisher<? extends V>>() {
+			@Override
+			public Publisher<? extends V> apply(Iterable<V> vs) {
+				return Streams.from(vs);
+			}
+		});*/
 		return iterableStream.lift(new Function<Dispatcher, Action<? super Iterable<V>, ? extends V>>() {
 			@Override
 			public Action<? super Iterable<V>, ? extends V> apply(Dispatcher dispatcher) {
@@ -2185,7 +2191,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return Action.<O>passthrough(dispatcher, getCapacity()).env(getEnvironment()).keepAlive();
+				return Action.<O>broadcast(dispatcher, getCapacity()).env(getEnvironment()).keepAlive();
 			}
 		});
 	}

@@ -29,8 +29,8 @@ public final class SpecificationExceptions {
 				"(based on object equality)");
 	}
 
-	public static IllegalArgumentException spec_3_09_exception(long elements) {
-		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
+	public static IllegalStateException spec_3_09_exception(long elements) {
+		return new IllegalStateException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
 	}
 
 	public static IllegalStateException spec_3_17_exception(

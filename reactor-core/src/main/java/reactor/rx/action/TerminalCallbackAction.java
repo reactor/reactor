@@ -37,12 +37,13 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 		this.consumer = consumer;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
+		//TODO define option to choose ?
 		this.capacity = Long.MAX_VALUE;
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		if(consumer != null){
+		if (consumer != null) {
 			consumer.accept(ev);
 		}
 	}
@@ -54,14 +55,14 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	public void requestMore(long n) {
-		if(upstreamSubscription != null) {
-			trySyncDispatch(n, upstreamSubscription);
+		if (upstreamSubscription != null) {
+			dispatch(n, upstreamSubscription);
 		}
 	}
 
 	@Override
 	protected PushSubscription<Void> createSubscription(Subscriber<? super Void> subscriber, boolean reactivePull) {
-		return new PushSubscription<Void>(this, subscriber){
+		return new PushSubscription<Void>(this, subscriber) {
 			@Override
 			public void request(long n) {
 				//IGNORE
@@ -71,33 +72,40 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected PushSubscription<T> createTrackingSubscription(final Subscription subscription) {
-		return new WrappedSubscription<T>(subscription, this){
+		if (capacity != Long.MAX_VALUE) {
+			return new WrappedSubscription<T>(subscription, this) {
 
-			@Override
-			public void incrementCurrentNextSignals() {
-				PENDING_UPDATER.decrementAndGet(this);
-			}
+				@Override
+				public void incrementCurrentNextSignals() {
+					if (PENDING_UPDATER.decrementAndGet(this) < 0) {
+						pendingRequestSignals = capacity;
+					}
+				}
 
-			@Override
-			public long clearPendingRequest() {
-				return capacity;
-			}
+				@Override
+				public long clearPendingRequest() {
+					return PENDING_UPDATER.getAndSet(this, 0l);
+				}
 
-			@Override
-			public boolean shouldRequestPendingSignals() {
-				return consumer != null && pendingRequestSignals() == 0;
-			}
+				@Override
+				public boolean shouldRequestPendingSignals() {
+					return consumer != null && pendingRequestSignals > 0l && pendingRequestSignals < capacity;
+				}
 
-			@Override
-			public String toString() {
-				return super.toString()+" pending="+pendingRequestSignals();
-			}
-		};
+				@Override
+				public String toString() {
+					return super.toString() + " pending=" + pendingRequestSignals();
+				}
+			};
+		}
+		else{
+			return super.createTrackingSubscription(subscription);
+		}
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		if(errorConsumer != null){
+		if (errorConsumer != null) {
 			errorConsumer.accept(ev);
 		}
 		super.doError(ev);
@@ -105,7 +113,7 @@ public final class TerminalCallbackAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doComplete() {
-		if(completeConsumer != null){
+		if (completeConsumer != null) {
 			completeConsumer.accept(null);
 		}
 		super.doComplete();

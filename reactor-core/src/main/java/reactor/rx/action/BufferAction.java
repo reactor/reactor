@@ -48,8 +48,9 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 		if (values.isEmpty()) {
 			return;
 		}
-		broadcastNext(new ArrayList<T>(values));
+		List<T> toSend = new ArrayList<T>(values);
 		values.clear();
+		broadcastNext(toSend);
 	}
 
 }

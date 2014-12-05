@@ -46,7 +46,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream() {
-		Action<T,T> action = Action.<T>passthrough(dispatcher, capacity).env(environment);
+		Action<T,T> action = Action.<T>broadcast(dispatcher, capacity).env(environment);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
@@ -76,7 +76,9 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	@Override
 	protected void nextCallback(T event) {
-		currentWindow.onNext(event);
+		if(currentWindow != null) {
+			currentWindow.onNext(event);
+		}
 	}
 
 	@Override
