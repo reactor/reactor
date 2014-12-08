@@ -2249,7 +2249,6 @@ class StreamsSpec extends Specification {
 			def counter = 0
 			def value = Streams.create {
 				counter++
-				println "subscribing"
 				it.onError(new RuntimeException("always fails"))
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->

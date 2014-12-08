@@ -71,7 +71,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>broadcast(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-				.partition(8)
+				.partition(4)
 				.flatMap(stream -> stream
 								.dispatchOn(env, env.getCachedDispatcher())
 								.observe(i -> {
@@ -170,7 +170,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 			}
 		});
 
-		System.out.println(stream.debug());
 
 		for (int i = 0; i < elements; i++) {
 			stream.broadcastNext(i);
@@ -179,7 +178,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		latch.await(8, TimeUnit.SECONDS);
 
-		System.out.println(processor.debug());
+		new Thread(new Runnable(){
+			@Override
+			public void run() {
+				System.out.println(stream.debug());
+			}
+		}).start();
+
 		System.out.println(counters);
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Environment.PROCESSORS + " CPU");
