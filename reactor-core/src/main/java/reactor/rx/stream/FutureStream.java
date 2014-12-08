@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.rx.Stream;
+import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.concurrent.Future;
@@ -70,21 +71,18 @@ public final class FutureStream<T> extends Stream<T> {
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super T> subscriber) {
+	public void subscribe(final Subscriber<? super T> subscriber) {
 		subscriber.onSubscribe(new ReactiveSubscription<T>(this, subscriber) {
 
 			@Override
 			public void request(long elements) {
-				super.request(elements);
-
-				if (buffer.isComplete()) return;
+				Action.checkRequest(elements);
+				if (isComplete()) return;
 
 				try {
 					T result = unit == null ? future.get() : future.get(time, unit);
 
-					buffer.complete();
-
-					onNext(result);
+					subscriber.onNext(result);
 					onComplete();
 
 				} catch (Throwable e) {
