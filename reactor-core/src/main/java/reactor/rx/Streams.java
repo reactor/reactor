@@ -69,7 +69,61 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class Streams {
 
 	/**
-	 * Build a synchronous {@literal Stream} that will only emit a complete signal to any new subscriber.
+	 * Build a custom sequence {@literal Stream} from the passed {@link org.reactivestreams.Publisher} that will be subscribed on the
+	 * first
+	 * request from the new subscriber. It means that the passed {@link org.reactivestreams.Subscription#request(long)}
+	 * manually triggered or automatically consumed by {@link reactor.rx.Stream#consume()} operations. The sequence consists
+	 * of a series of calls to the {@link org.reactivestreams.Subscriber} argument: onSubscribe?|onNext*|onError?|onComplete.
+	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering subscription will be created
+	 * anyway.
+	 * For simply decorating a given Publisher with {@link Stream} API, and thus relying on the publisher to honour the Reactive Streams protocol,
+	 * use the {@link Streams#wrap(Publisher)}
+	 *
+	 * @param publisher the publisher to accept the Stream subscriber
+	 * @param <T>       the type of values passing through the {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> create(Publisher<T> publisher) {
+		return new PublisherStream<T>(publisher);
+	}
+
+	/**
+	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to the publisher.
+	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext call or will risk loosing events.
+	 *
+	 * @param publisher the publisher to decorate the Stream subscriber
+	 * @param <T>      the type of values passing through the {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> wrap(final Publisher<T> publisher) {
+		return new Stream<T>() {
+			@Override
+			public void subscribe(Subscriber<? super T> s) {
+				try{
+					publisher.subscribe(s);
+				}catch(Throwable t){
+					s.onError(t);
+				}
+			}
+		};
+	}
+
+
+	/**
+	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.function.Supplier}
+	 *  will be invoked and it's up to the developer to choose to return a new instance of a {@link Publisher} or reuse one,
+	 *  effecitvely behaving like {@link reactor.rx.Streams#wrap(Publisher)}.
+	 *
+	 * @param supplier the publisher factory to call on subscribe
+	 * @param <T>      the type of values passing through the {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> defer(Supplier<? extends Publisher<T>> supplier) {
+		return new DeferredStream<>(supplier);
+	}
+
+	/**
+	 * Build a {@literal Stream} that will only emit a complete signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
 	 */
@@ -78,8 +132,9 @@ public final class Streams {
 		return (Stream<T>) SingleValueStream.EMPTY;
 	}
 
+
 	/**
-	 * Build a synchronous {@literal Stream} that will only emit an error signal to any new subscriber.
+	 * Build a {@literal Stream} that will only emit an error signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
 	 */
@@ -89,7 +144,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
+	 * Build a {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
 	 * .Action#broadcastNext
 	 * (Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
@@ -114,7 +169,6 @@ public final class Streams {
 	public static <T> Broadcaster<T> broadcast(Environment env) {
 		return broadcast(env, env.getDefaultDispatcher());
 	}
-
 
 	/**
 	 * Build a {@literal Stream}, ready to broadcast values with {@link reactor.rx.action.Action#broadcastNext
@@ -151,6 +205,7 @@ public final class Streams {
 		return new IterableStream<T>(values);
 	}
 
+
 	/**
 	 * Build a {@literal Stream} that will only emit the result of the future and then complete.
 	 * The future will be polled for an unbounded amount of time.
@@ -161,7 +216,6 @@ public final class Streams {
 	public static <T> Stream<T> from(Future<? extends T> future) {
 		return new FutureStream<T>(future);
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will only emit the result of the future and then complete.
@@ -196,6 +250,7 @@ public final class Streams {
 		return timer(Environment.timer(), delay, TimeUnit.SECONDS);
 	}
 
+
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
 	 *
@@ -218,7 +273,6 @@ public final class Streams {
 	public static Stream<Long> timer(long delay, TimeUnit unit) {
 		return new SingleTimerStream(delay, unit, Environment.timer());
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
@@ -243,6 +297,7 @@ public final class Streams {
 	public static Stream<Long> period(long period) {
 		return period(Environment.timer(), -1l, period, TimeUnit.SECONDS);
 	}
+
 
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe
@@ -283,7 +338,6 @@ public final class Streams {
 	public static Stream<Long> period(Timer timer, long delay, long period) {
 		return period(timer, delay, period, TimeUnit.SECONDS);
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the subscribe call on each period.
@@ -337,8 +391,9 @@ public final class Streams {
 		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
 
+
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by the passed element on subscription
+	 * Build a {@literal Stream} whom data is sourced by the passed element on subscription
 	 * request. After all data is being dispatched, a complete signal will be emitted.
 	 * <p>
 	 *
@@ -352,7 +407,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -367,7 +422,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -383,7 +438,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -400,7 +455,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -418,7 +473,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -437,7 +492,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -457,7 +512,7 @@ public final class Streams {
 
 
 	/**
-	 * Build a synchronous {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
 	 * <p>
 	 *
@@ -476,21 +531,8 @@ public final class Streams {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
 	}
 
-
 	/**
-	 * Build a synchronous {@literal Stream}, ready to broadcast values from the given publisher. A publisher will start
-	 * producing next elements until onComplete is called.
-	 *
-	 * @param publisher the publisher to broadcast the Stream subscriber
-	 * @param <T>       the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> create(Publisher<T> publisher) {
-		return new PublisherStream<T>(publisher);
-	}
-
-	/**
-	 * Attach a synchronous Stream to the {@link Observable} with the specified {@link Selector}.
+	 * Attach a Stream to the {@link Observable} with the specified {@link Selector}.
 	 *
 	 * @param observable        the {@link Observable} to observe
 	 * @param broadcastSelector the {@link Selector}/{@literal Object} tuple to listen to
@@ -503,7 +545,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data is generated by the passed supplier on subscription request.
+	 * Build a {@literal Stream} whose data is generated by the passed supplier on subscription request.
 	 * The Stream's batch size will be set to 1.
 	 *
 	 * @param value The value to {@code on()}
@@ -774,7 +816,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -791,7 +833,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -810,7 +852,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -831,7 +873,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -853,7 +895,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -879,7 +921,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -907,7 +949,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -937,7 +979,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -958,7 +1000,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -983,7 +1025,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1011,7 +1053,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1041,7 +1083,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1075,7 +1117,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1113,7 +1155,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1153,7 +1195,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1171,7 +1213,7 @@ public final class Streams {
 	}
 
 	/**
-	 * Build a synchronous {@literal Stream} whose data are generated by the passed publishers.
+	 * Build a {@literal Stream} whose data are generated by the passed publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
@@ -1399,7 +1441,11 @@ public final class Streams {
 	 * @param publisher the publisher to listen for terminal signals
 	 */
 	public static void await(Publisher<?> publisher) throws Throwable {
-		await(publisher, 30);
+		long timeout = 30000l;
+		if (Environment.alive()) {
+			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+		}
+		await(publisher, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	/**
@@ -1431,6 +1477,7 @@ public final class Streams {
 		final CountDownLatch latch = new CountDownLatch(1);
 		publisher.subscribe(new Subscriber<Object>() {
 			Subscription s;
+
 			@Override
 			public void onSubscribe(Subscription subscription) {
 				s = subscription;
@@ -1454,11 +1501,11 @@ public final class Streams {
 				latch.countDown();
 			}
 
-			void cancel(){
-				if(s != null){
-					try{
+			void cancel() {
+				if (s != null) {
+					try {
 						s.cancel();
-					}catch (Throwable t){
+					} catch (Throwable t) {
 						exception.set(t);
 					}
 
@@ -1466,9 +1513,6 @@ public final class Streams {
 			}
 		});
 
-		if (Environment.alive()) {
-			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
-		}
 		latch.await(timeout, unit);
 		if (exception.get() != null) {
 			throw exception.get();

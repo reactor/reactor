@@ -29,14 +29,16 @@ public final class SpecificationExceptions {
 				"(based on object equality)");
 	}
 
-	public static IllegalStateException spec_3_09_exception(long elements) {
-		return new IllegalStateException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
+	public static IllegalArgumentException spec_3_09_exception(long elements) {
+		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
 	}
 
 	public static IllegalStateException spec_3_17_exception(
 			Publisher<?> publisher, Subscriber<?> subscriber, long currentPending, long elements) {
-		return new IllegalStateException("Spec. Rule 3.17 - "+(publisher != null ? publisher.getClass().getSimpleName() : "")
-		+" to "+subscriber.getClass().getSimpleName()+" - Cannot support pending " + currentPending + " elements " +
-				"plus requested " + elements + " elements, it overflows Long.MAX_VALUE ("+(currentPending+elements)+")");
+		return new IllegalStateException("Spec. Rule 3.17 - " + (publisher != null ? publisher.getClass().getSimpleName()
+				: "")
+				+ " to " + subscriber.getClass().getSimpleName() + " - Cannot support pending " + currentPending + " elements" +
+				" " +
+				"plus requested " + elements + " elements, it overflows Long.MAX_VALUE (" + (currentPending + elements) + ")");
 	}
 }

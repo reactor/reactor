@@ -77,25 +77,24 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public void request(long elements) {
 		try {
-		Action.checkRequest(elements);
+			Action.checkRequest(elements);
 
-		//If unbounded request, set and return
-		if (elements == Long.MAX_VALUE) {
-			if (!PENDING_UPDATER.compareAndSet(this, 0l, Long.MAX_VALUE)) {
-				CAPACITY_UPDATER.set(this, maxCapacity);
-				return;
+			//If unbounded request, set and return
+			if (elements == Long.MAX_VALUE) {
+				if (!PENDING_UPDATER.compareAndSet(this, 0l, Long.MAX_VALUE)) {
+					CAPACITY_UPDATER.set(this, maxCapacity);
+					return;
+				}
+			} else {
+				long previous = pendingRequestSignals;
+				if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
+					onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, elements));
+					return;
+				}
 			}
-		}else {
-			long previous = pendingRequestSignals;
-			if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
-				onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, elements));
-				return;
-			}
-		}
 
-		long toRequest = elements;
-		toRequest = Math.min(toRequest, maxCapacity);
-
+			long toRequest = elements;
+			toRequest = Math.min(toRequest, maxCapacity);
 
 
 			int i;
@@ -209,8 +208,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && (currentNextSignals == maxCapacity ||
-		 pendingRequestSignals <= maxCapacity);
+		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && (currentNextSignals ==
+				maxCapacity ||
+				pendingRequestSignals <= maxCapacity);
 	}
 
 	public final long maxCapacity() {

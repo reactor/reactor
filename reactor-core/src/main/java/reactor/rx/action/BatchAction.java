@@ -40,7 +40,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final Registration<? extends Consumer<Long>> timespanRegistration;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
-	protected int count = 0;
+	protected volatile int count = 0;
 
 	public BatchAction(
 			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
@@ -55,7 +55,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			this.timeoutTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					dispatch(null, flushConsumer);
+					if(count > 0) {
+						dispatch(null, flushConsumer);
+					}
 				}
 			};
 			TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
