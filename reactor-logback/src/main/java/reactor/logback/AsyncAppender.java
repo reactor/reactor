@@ -103,9 +103,7 @@ public class AsyncAppender
 
 	@Override
 	public void start() {
-		if (null != delegate.get()) {
-			delegate.get().start();
-		}
+    startDelegateAppender();
 
 		processor = new ProcessorSpec<LogEvent>()
 				.dataSupplier(new Supplier<LogEvent>() {
@@ -138,6 +136,13 @@ public class AsyncAppender
 			started = true;
 		}
 	}
+
+  private void startDelegateAppender() {
+    Appender<ILoggingEvent> delegateAppender = delegate.get();
+    if (null != delegateAppender && !delegateAppender.isStarted()) {
+      delegateAppender.start();
+    }
+  }
 
 	@Override
 	public void stop() {
