@@ -73,11 +73,16 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue) {
 
-						//TODO force buffer check
-						/*@Override
+						@Override
 						public void request(long elements) {
 							super.request(elements);
-						}*/
+							if(pendingRequestSignals == Long.MAX_VALUE && !buffer.isEmpty() && terminated == 0){
+								T elem;
+								while((elem = buffer.poll()) != null){
+									s.onNext(elem);
+								}
+							}
+						}
 
 						@Override
 						public void cancel() {
