@@ -79,7 +79,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 							if(pendingRequestSignals == Long.MAX_VALUE && !buffer.isEmpty() && terminated == 0){
 								T elem;
 								while((elem = buffer.poll()) != null){
-									s.onNext(elem);
+									subscriber.onNext(elem);
 								}
 							}
 						}
