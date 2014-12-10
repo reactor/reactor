@@ -28,13 +28,6 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends Action<O, O> {
-
-	public static enum FinalState {
-		ERROR,
-		COMPLETE
-	}
-
-	private FinalState finalState = null;
 	private Throwable error;
 	private boolean keepAlive = false;
 
@@ -50,13 +43,11 @@ public class Broadcaster<O> extends Action<O, O> {
 	@Override
 	public void broadcastError(Throwable ev) {
 		this.error = ev;
-		this.finalState = FinalState.ERROR;
 		super.broadcastError(ev);
 	}
 
 	@Override
 	public void broadcastComplete() {
-		this.finalState = FinalState.COMPLETE;
 		super.broadcastComplete();
 	}
 
@@ -80,11 +71,9 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		if (finalState == null) {
+		if (error == null) {
 			super.subscribe(subscriber);
-		} else if (isComplete()) {
-			subscriber.onComplete();
-		} else if (hasFailed()) {
+		} else {
 			subscriber.onError(error);
 		}
 	}
@@ -136,14 +125,6 @@ public class Broadcaster<O> extends Action<O, O> {
 			cancel();
 		}
 		broadcastComplete();
-	}
-
-	public boolean isComplete() {
-		return finalState == FinalState.COMPLETE;
-	}
-
-	public boolean hasFailed() {
-		return finalState == FinalState.ERROR;
 	}
 
 

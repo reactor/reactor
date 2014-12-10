@@ -18,13 +18,11 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.function.Consumer;
+import reactor.queue.internal.MpscLinkedQueue;
 import reactor.rx.subscription.ReactiveSubscription;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -33,16 +31,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O, E, X>> extends
 		ReactiveSubscription<E> {
 
+	private static final int GC_SUBSCRIPTIONS_TRESHOLD = 16;
+	volatile int runningComposables = 0;
 
-	final List<InnerSubscription<O, E, SUBSCRIBER>> subscriptions;
+	static final AtomicIntegerFieldUpdater<FanInSubscription> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
+			.newUpdater(FanInSubscription.class, "runningComposables");
 
-	protected final    ReadWriteLock lock       = new ReentrantReadWriteLock();
-	protected volatile boolean       terminated = false;
+	protected volatile boolean                                    terminated    = false;
+	protected final    Queue<InnerSubscription<O, E, SUBSCRIBER>> subscriptions = MpscLinkedQueue.create();
 
-	public FanInSubscription(Subscriber<? super E> subscriber,
-	                         List<InnerSubscription<O, E, SUBSCRIBER>> subs) {
+	public FanInSubscription(Subscriber<? super E> subscriber) {
 		super(null, subscriber);
-		this.subscriptions = subs;
 	}
 
 	@Override
@@ -51,30 +50,37 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	}
 
 	protected void parallelRequest(long elements) {
-		lock.writeLock().lock();
 		try {
-			int size = subscriptions.size();
+			Action.checkRequest(elements);
+			int size = runningComposables;
 
 			if (size > 0) {
-				if (elements == 0) return;
 
 				//deal with recursive cancel while requesting
-				int i = 0;
 				InnerSubscription<O, E, SUBSCRIBER> subscription;
-				while (i < size) {
+				int i = 0;
+				do {
 
-					subscription = subscriptions.get(i);
-					subscription.subscriber.request(elements);
-					if (subscription.toRemove) {
-						size--;
-						if (i > 0) i--;
-					} else {
-						i++;
+					//
+					synchronized (subscriptions) {
+						if (!subscriptions.isEmpty()) {
+							subscription = subscriptions.poll();
+						} else {
+							subscription = null;
+						}
 					}
-					if (terminated) {
-						break;
+					if (subscription != null) {
+						if (!subscription.toRemove) {
+							subscriptions.add(subscription);
+							i++;
+						}
+						subscription.subscriber.request(elements);
+
+						if (terminated) {
+							break;
+						}
 					}
-				}
+				} while (i < size && subscription != null);
 			} else {
 				updatePendingRequests(elements);
 			}
@@ -82,8 +88,8 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 			if (terminated) {
 				cancel();
 			}
-		} finally {
-			lock.writeLock().unlock();
+		} catch (Throwable t) {
+			subscriber.onError(t);
 		}
 	}
 
@@ -92,96 +98,75 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	}
 
 	public void forEach(Consumer<InnerSubscription<O, E, SUBSCRIBER>> consumer) {
-		lock.readLock().lock();
 		try {
 			for (InnerSubscription<O, E, SUBSCRIBER> innerSubscription : subscriptions) {
 				consumer.accept(innerSubscription);
 			}
-		} finally {
-			lock.readLock().unlock();
+		} catch (Throwable t) {
+			subscriber.onError(t);
 		}
-	}
-
-	protected void pruneObsoleteSub(Iterator<InnerSubscription<O, E, SUBSCRIBER>> subscriptionIterator,
-	                                boolean toRemove) {
-		if (toRemove) {
-			lock.writeLock().lock();
-			try {
-				subscriptionIterator.remove();
-			} finally {
-				lock.writeLock().unlock();
-			}
-		}
-	}
-
-
-	public List<InnerSubscription<O, E, SUBSCRIBER>> unsafeImmutableSubscriptions() {
-		return Collections.unmodifiableList(subscriptions);
 	}
 
 	@Override
 	public void cancel() {
-		lock.writeLock().lock();
-		try {
-			for (Subscription subscription : subscriptions) {
-				subscription.cancel();
+		if (!subscriptions.isEmpty()) {
+			Subscription s;
+			while ((s = subscriptions.poll()) != null) {
+				s.cancel();
 			}
-			subscriptions.clear();
-		} finally {
-			lock.writeLock().unlock();
 		}
-		subscriptions.clear();
 		super.cancel();
 	}
 
 	@SuppressWarnings("unchecked")
-	void removeSubscription(final InnerSubscription s) {
-		lock.writeLock().lock();
-		try {
-			subscriptions.remove(s);
-		} finally {
-			lock.writeLock().unlock();
+	int removeSubscription(final InnerSubscription s) {
+		int newSize = RUNNING_COMPOSABLE_UPDATER.decrementAndGet(this);
+		if (subscriptions.peek() == s) {
+			InnerSubscription removed;
+			if ((removed = subscriptions.poll()) != s) {
+				subscriptions.add(removed);
+				s.toRemove = true;
+			}
+		} else {
+			s.toRemove = true;
 		}
+		return newSize;
 	}
 
 	@SuppressWarnings("unchecked")
-	void addSubscription(final InnerSubscription s) {
-		lock.writeLock().lock();
-		try {
-			Iterator<InnerSubscription<O, E, SUBSCRIBER>> subscriptionIterator = subscriptions.iterator();
-			while (subscriptionIterator.hasNext()) {
-				pruneObsoleteSub(subscriptionIterator, subscriptionIterator.next().toRemove);
+	int addSubscription(final InnerSubscription s) {
+		if (terminated) return 0;
+		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
+		int realSize = subscriptions.size();
+		if( realSize > GC_SUBSCRIPTIONS_TRESHOLD){
+			InnerSubscription cleaning;
+			int i = 0;
+			while(i < realSize && (cleaning = subscriptions.poll()) != null){
+				if(!cleaning.toRemove){
+					subscriptions.add(cleaning);
+				}
+				i++;
 			}
-			subscriptions.add(s);
-		} finally {
-			lock.writeLock().unlock();
 		}
+		subscriptions.add(s);
+		return newSize;
 	}
 
 	@Override
 	public long clearPendingRequest() {
 		long res = super.clearPendingRequest();
-		if(Long.MAX_VALUE == res){
+		if (Long.MAX_VALUE == res) {
 			return res;
 		}
-		lock.readLock().lock();
-		try {
-			if (!subscriptions.isEmpty()) {
-				for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
-					res += subscription.subscriber.pendingRequests;
-					subscription.subscriber.pendingRequests = 0;
-				}
+		if (!subscriptions.isEmpty()) {
+			for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
+				res += subscription.subscriber.pendingRequests;
+				subscription.subscriber.pendingRequests = 0;
 			}
-		} finally {
-			lock.readLock().unlock();
 		}
 		return res;
 	}
 
-	@Override
-	public boolean hasPublisher() {
-		return super.hasPublisher();
-	}
 
 	public static class InnerSubscription<O, E, SUBSCRIBER
 			extends FanInAction.InnerSubscriber<O, E, ?>> implements Subscription {

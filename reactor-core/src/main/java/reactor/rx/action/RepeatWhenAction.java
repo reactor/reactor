@@ -31,16 +31,16 @@ import reactor.rx.stream.Broadcaster;
  * @author Stephane Maldini
  * @since 2.0
  */
-public class RetryWhenAction<T> extends Action<T, T> {
+public class RepeatWhenAction<T> extends Action<T, T> {
 
-	private final Broadcaster<Throwable> retryStream;
+	private final Broadcaster<Long> retryStream;
 	private final Publisher<? extends T> rootPublisher;
 
 	private long pendingRequests;
 
-	public RetryWhenAction(Dispatcher dispatcher,
-	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<? extends
-			T> rootPublisher) {
+	public RepeatWhenAction(Dispatcher dispatcher,
+	                        Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
+	                        Publisher<? extends T> rootPublisher) {
 		super(dispatcher);
 		this.retryStream = Streams.broadcast(null, dispatcher);
 		this.rootPublisher = rootPublisher;
@@ -80,7 +80,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 			public void accept(Object o) {
 				if (rootPublisher != null) {
 					if(upstreamSubscription == null) {
-						rootPublisher.subscribe(RetryWhenAction.this);
+						rootPublisher.subscribe(RepeatWhenAction.this);
 					}
 				}
 				if (pendingRequests > 0) {
@@ -91,10 +91,9 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public void onError(Throwable cause) {
+	public void onComplete() {
 		cancel();
-		retryStream.broadcastNext(cause);
+		retryStream.broadcastNext(System.currentTimeMillis());
 	}
 
 	private class RestartSubscriber implements Subscriber<Object>, NonBlocking {
@@ -127,12 +126,13 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		@Override
 		public void onError(Throwable t) {
 			s.cancel();
-			RetryWhenAction.this.onError(t);
+			RepeatWhenAction.this.doError(t);
 		}
 
 		@Override
 		public void onComplete() {
-			RetryWhenAction.this.onComplete();
+			s.cancel();
+			RepeatWhenAction.this.doComplete();
 		}
 	}
 }

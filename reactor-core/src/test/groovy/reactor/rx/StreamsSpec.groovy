@@ -1797,6 +1797,29 @@ class StreamsSpec extends Specification {
 		then:
 			res == ['SUBSCRIBE', 'NEXT', 'ERROR']
 	}
+	def 'Streams can be dematerialized'() {
+		when:
+			'A source stream emits next signals followed by complete'
+			def res = []
+			def myStream = Streams.create { aSubscriber ->
+				aSubscriber.onNext(Signal.next(1))
+				aSubscriber.onNext(Signal.next(2))
+				aSubscriber.onNext(Signal.next(3))
+				aSubscriber.onNext(Signal.complete())
+				aSubscriber.onNext(Signal.error(new Exception()))
+			}
+
+		and:
+			'A dematerialized stream is consumed'
+			myStream.dematerialize().consume(
+					{ println(it); res << it },                          // onNext
+					{ it.printStackTrace() },                          // onError
+					{ println("Sequence complete"); res << 'complete' }          // onComplete
+			)
+
+		then:
+			res == [1, 2, 3, 'complete']
+	}
 
 
 	def 'Streams can be switched'() {
@@ -2253,6 +2276,71 @@ class StreamsSpec extends Specification {
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->
 					println "delay retry by " + i + " second(s)"
+					Streams.timer(i)
+				}
+			}.next()
+			value.await()
+
+		then:
+			'Promise completed after 3 tries'
+			value.isComplete()
+			counter == 4
+	}
+
+	def 'A Stream can re-subscribe its oldest parent on complete signals'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.from(['test', 'test2', 'test3'])
+
+		when:
+			'using repeat(2) to ignore complete twice and resubscribe'
+			def i = 0
+			stream = stream.repeat(2).observe { i++ }.count()
+
+			def value = stream.tap()
+
+			println value.debug()
+
+		then:
+			'9 values are passed since it is a cold stream resubscribed 2 times and finally managed to get the 9 values'
+			value.get() == 9
+
+
+		when:
+			'using repeat() to ignore complete and resubscribe'
+			stream = Streams.broadcast()
+			i = 0
+			def tap = stream.repeat().observe{ i++ }.consume()
+
+			stream.broadcastNext('test')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+			stream.broadcastComplete()
+
+		stream.broadcastNext('test')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+			stream.broadcastComplete()
+
+		stream.broadcastNext('test')
+			stream.broadcastNext('test2')
+			stream.broadcastNext('test3')
+
+		then:
+			'it is a hot stream and only 9 value (the most recent) is available'
+			i == 9
+	}
+
+	def 'A Stream can re-subscribe its oldest parent on complete signals after backoff stream'() {
+		when:
+			'when composable with an initial value'
+			def counter = 0
+			def value = Streams.create {
+				counter++
+				it.onComplete()
+			}.repeatWhen { attempts ->
+				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->
+					println "delay repeat by " + i + " second(s)"
 					Streams.timer(i)
 				}
 			}.next()

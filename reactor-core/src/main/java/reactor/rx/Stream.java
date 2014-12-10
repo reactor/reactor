@@ -170,7 +170,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new ErrorAction<O, E>(getDispatcher(), classSelector, null, fallback);
+				return new ErrorAction<O, E>(dispatcher, classSelector, null, fallback);
 			}
 		});
 	}
@@ -201,7 +201,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new ErrorReturnAction<O, E>(getDispatcher(), classSelector, fallback);
+				return new ErrorReturnAction<O, E>(dispatcher, classSelector, fallback);
 			}
 		});
 	}
@@ -220,7 +220,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Action<? super O, ? extends E> apply(Dispatcher dispatcher) {
-				return new RecoverAction<O, E>(getDispatcher(), classSelector);
+				return new RecoverAction<O, E>(dispatcher, classSelector);
 			}
 		});
 	}
@@ -236,7 +236,26 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends Signal<O>>>() {
 			@Override
 			public Action<? super O, ? extends Signal<O>> apply(Dispatcher dispatcher) {
-				return new MaterializeAction<O>(getDispatcher());
+				return new MaterializeAction<O>(dispatcher);
+			}
+		});
+	}
+
+
+	/**
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
+	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
+	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
+	 *
+	 * @return {@literal new Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public final Stream<O> dematerialize() {
+		Stream<Signal<O>> thiz = (Stream<Signal<O>>)this;
+		return thiz.lift(new Function<Dispatcher, Action<Signal<O>, O>>() {
+			@Override
+			public Action<Signal<O>, O> apply(Dispatcher dispatcher) {
+				return new DematerializeAction<O>(dispatcher);
 			}
 		});
 	}
@@ -572,7 +591,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new CallbackAction<O>(getDispatcher(), consumer, null);
+				return new CallbackAction<O>(dispatcher, consumer, null);
 			}
 		});
 	}
@@ -873,8 +892,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return thiz.lift(new Function<Dispatcher, Action<Publisher<?>, V>>() {
 			@Override
 			public Action<Publisher<?>, V> apply(Dispatcher dispatcher) {
-				return new DynamicMergeAction<Object, V>(getDispatcher(),
-						new ZipAction<Object, V, TupleN>(getDispatcher(), zipper, null)).
+				return new DynamicMergeAction<Object, V>(dispatcher,
+						new ZipAction<Object, V, TupleN>(dispatcher, zipper, null)).
 						capacity(getCapacity()).env(getEnvironment());
 			}
 		});
@@ -946,7 +965,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return thiz.lift(new Function<Dispatcher, Action<Publisher<? extends T>, V>>() {
 			@Override
 			public Action<Publisher<? extends T>, V> apply(Dispatcher dispatcher) {
-				return new DynamicMergeAction<T, V>(getDispatcher(), fanInAction).
+				return new DynamicMergeAction<T, V>(dispatcher, fanInAction).
 						capacity(getCapacity()).env(getEnvironment());
 			}
 		});
@@ -1080,7 +1099,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> retry() {
-		return retry(Integer.MAX_VALUE);
+		return retry(-1);
 	}
 
 	/**
@@ -1106,7 +1125,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> retry(Predicate<Throwable> retryMatcher) {
-		return retry(Integer.MAX_VALUE, retryMatcher);
+		return retry(-1, retryMatcher);
 	}
 
 	/**
@@ -1141,11 +1160,60 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> retryWhen(final Function<Stream<? extends Throwable>, ? extends Publisher<?>> backOffStream) {
+	public final Stream<O> retryWhen(final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> backOffStream) {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
 				return new RetryWhenAction<O>(dispatcher, backOffStream, Stream.this);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} whom will keep re-subscribing its oldest parent-child stream pair on complete.
+	 *
+	 * @return a new infinitely repeated {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> repeat() {
+		return repeat(-1);
+	}
+
+	/**
+	 * Create a new {@code Stream} whom will keep re-subscribing its oldest parent-child stream pair on complete.
+	 * The action will be propagating complete after {@param numRepeat}.
+	 * if positive
+	 *
+	 * @param numRepeat   the number of times to re-subscribe on complete
+	 *
+	 * @return a new repeated {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> repeat(final int numRepeat) {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new RepeatAction<O>(dispatcher, numRepeat, Stream.this);
+			}
+		});
+	}
+
+
+	/**
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the backOff stream
+	 * produced by the passed mapper emits any next signal. It will propagate the complete and error if the backoff
+	 * stream emits the relative signals.
+	 *
+	 * @param backOffStream the function taking a stream of complete timestamp in millis as an input and returning a new stream that applies
+	 *                       some backoff policy e.g. Streams.timer
+	 * @return a new repeated {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> repeatWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<?>> backOffStream) {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new RepeatWhenAction<O>(dispatcher, backOffStream, Stream.this);
 			}
 		});
 	}

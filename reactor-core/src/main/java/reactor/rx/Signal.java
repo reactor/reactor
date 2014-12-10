@@ -65,13 +65,14 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		ERROR
 	}
 
+	private static final Signal<Void> ON_COMPLETE = new Signal<>(Type.COMPLETE, null, null, null);
+
 	private final Type      type;
 	private final Throwable throwable;
+
 	private final T         value;
 
 	private final Subscription subscription;
-
-	private static final Signal<Void> ON_COMPLETE = new Signal<>(Type.COMPLETE, null, null, null);
 
 	/**
 	 * Creates and returns a {@code Signal} of variety {@code Type.NEXT}, and assigns it a value.

@@ -61,7 +61,7 @@ public class RetryAction<T> extends Action<T, T> {
 		trySyncDispatch(cause, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
-				if (++currentNumRetries > numRetries && (retryMatcher == null || !retryMatcher.test(throwable))) {
+				if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test(throwable))) {
 					doError(throwable);
 					currentNumRetries = 0;
 				} else {

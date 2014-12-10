@@ -24,7 +24,6 @@ import reactor.function.Function;
 import reactor.rx.subscription.PushSubscription;
 import reactor.tuple.Tuple;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,6 +33,8 @@ import java.util.List;
  */
 public final class ZipAction<O, V, TUPLE extends Tuple>
 		extends FanInAction<O, ZipAction.Zippable<O>, V, ZipAction.InnerSubscriber<O, V>> {
+
+	private static final Object EMPTY_ZIPPED_DATA = new Object();
 
 	final Function<TUPLE, ? extends V> accumulator;
 
@@ -65,7 +66,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 			count = 0;
 
-			if(!checkAllFilled()) return;
+			if (!checkAllFilled()) return;
 
 			Object[] _toZip = toZip;
 			toZip = new Object[toZip.length];
@@ -83,8 +84,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	}
 
 	private boolean checkAllFilled() {
-		for(int i = 0; i < toZip.length; i++){
-			if(toZip[i] == null){
+		for (int i = 0; i < toZip.length; i++) {
+			if (toZip[i] == null) {
 				return false;
 			}
 		}
@@ -94,8 +95,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected FanInSubscription<O, Zippable<O>, V, InnerSubscriber<O, V>> createFanInSubscription() {
-		return new ZipSubscription(this,
-				new ArrayList<FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>>(8));
+		return new ZipSubscription(this);
 	}
 
 	@Override
@@ -108,7 +108,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		boolean isFinishing = status.get() == COMPLETING;
 
 		count++;
-		toZip[ev.index] = ev.data;
+		toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;
 
 		broadcastTuple(isFinishing);
 
@@ -207,7 +207,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			outerAction.trySyncDispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					outerAction.capacity(RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction));
+					outerAction.capacity(FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions));
 					long capacity = outerAction.capacity;
 					if (index != capacity && capacity != 0 && outerAction.count <= capacity) {
 						outerAction.status.set(COMPLETING);
@@ -233,9 +233,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	private final class ZipSubscription extends FanInSubscription<O, Zippable<O>, V, ZipAction.InnerSubscriber<O, V>> {
 
-		public ZipSubscription(Subscriber<? super Zippable<O>> subscriber,
-		                       List<InnerSubscription<O, Zippable<O>, ZipAction.InnerSubscriber<O, V>>> subs) {
-			super(subscriber, subs);
+		public ZipSubscription(Subscriber<? super Zippable<O>> subscriber) {
+			super(subscriber);
 		}
 
 		@Override

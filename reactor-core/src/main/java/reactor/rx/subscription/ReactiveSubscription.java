@@ -168,7 +168,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				// we just decremented below 0 so increment back one
 				if (CAPACITY_UPDATER.incrementAndGet(this) > 0 || pendingRequestSignals == Long.MAX_VALUE) {
 					retry = true;
-				} else {
+				} else if(ev != null){
 					buffer.add(ev);
 				}
 			} finally {

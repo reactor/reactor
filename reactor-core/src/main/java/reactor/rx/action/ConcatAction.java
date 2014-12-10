@@ -20,7 +20,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,10 +27,6 @@ import java.util.List;
  * @since 2.0
  */
 final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.InnerSubscriber<O>> {
-
-	public ConcatAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	public ConcatAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> composables) {
 		super(dispatcher, composables);
@@ -49,8 +44,7 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 
 	@Override
 	protected FanInSubscription<O, O, O, InnerSubscriber<O>> createFanInSubscription() {
-		return new ConcatSubscription(this,
-				new ArrayList<FanInSubscription.InnerSubscription<O, O, InnerSubscriber<O>>>(8));
+		return new ConcatSubscription(this);
 	}
 
 	/*@Override
@@ -78,7 +72,7 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 			//Action.log.debug("event [" + ev + "] by: " + this);
 			outerAction.innerSubscriptions.onNext(ev);
 			emittedSignals++;
-			if(--pendingRequests < 0) pendingRequests = 0;
+			if (--pendingRequests < 0) pendingRequests = 0;
 		}
 
 		@Override
@@ -91,59 +85,40 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 
 		InnerSubscription<O, O, InnerSubscriber<O>> current = null;
 
-		public ConcatSubscription(Subscriber<? super O> subscriber,
-		                       List<InnerSubscription<O, O, InnerSubscriber<O>>> subs) {
-			super(subscriber, subs);
-			if(subs != null && subs.size() > 0){
-				current = subs.get(0);
-			}
+		public ConcatSubscription(Subscriber<? super O> subscriber) {
+			super(subscriber);
 		}
 
 		@Override
-		void removeSubscription(InnerSubscription s) {
-			lock.writeLock().lock();
-			try {
-				subscriptions.remove(s);
-				if(!subscriptions.isEmpty()){
-					current = subscriptions.get(0);
-					if(pendingRequestSignals > 0){
-						current.request(pendingRequestSignals);
-					}
-				}
-			} finally {
-				lock.writeLock().unlock();
+		int removeSubscription(InnerSubscription s) {
+			int newSize = RUNNING_COMPOSABLE_UPDATER.decrementAndGet(this);
+			subscriptions.poll();
+			current = subscriptions.peek();
+
+			if (current != null && pendingRequestSignals > 0) {
+				current.request(pendingRequestSignals);
 			}
+			return newSize;
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
-		void addSubscription(InnerSubscription s) {
-			lock.writeLock().lock();
-			try {
-				if(subscriptions.isEmpty()){
-					current = s;
-				}
-				subscriptions.add(s);
-			} finally {
-				lock.writeLock().unlock();
-			}
+		int addSubscription(InnerSubscription s) {
+			int newSize = super.addSubscription(s);
+			current = subscriptions.peek();
+			return newSize;
 		}
 
 		@Override
 		protected void parallelRequest(long elements) {
-			lock.writeLock().lock();
-			try {
-				if(current != null){
-					current.request(elements);
-				}else{
-					updatePendingRequests(elements);
-				}
+			if (current != null) {
+				current.request(elements);
+			} else {
+				updatePendingRequests(elements);
+			}
 
-				if(terminated){
-					cancel();
-				}
-			} finally {
-				lock.writeLock().unlock();
+			if (terminated) {
+				cancel();
 			}
 		}
 	}

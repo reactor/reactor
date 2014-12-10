@@ -23,9 +23,7 @@ import reactor.function.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * The best moment of my life so far, not.
@@ -46,10 +44,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	final AtomicInteger status = new AtomicInteger();
 
-	volatile int  runningComposables = 0;
-
-	protected static final AtomicIntegerFieldUpdater<FanInAction> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(FanInAction.class, "runningComposables");
 
 	DynamicMergeAction<?, ?> dynamicMergeAction = null;
 
@@ -73,7 +67,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
-		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
 		inlineMerge.pendingRequests += innerSubscriptions.capacity();
 		publisher.subscribe(inlineMerge);
@@ -83,7 +76,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (status.compareAndSet(NOT_STARTED, COMPLETING)) {
 			broadcastComplete();
 		} else {
-			if (runningComposables == 0) {
+			if (innerSubscriptions.runningComposables == 0) {
 				broadcastComplete();
 			}
 		}
@@ -130,7 +123,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	protected void doComplete() {
 		status.set(COMPLETING);
-		if (!checkDynamicMerge() && runningComposables == 0) {
+		if (!checkDynamicMerge() && innerSubscriptions.runningComposables == 0) {
 			cancel();
 			broadcastComplete();
 		}
@@ -148,12 +141,11 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public String toString() {
 		return super.toString() +
-				"{runningComposables=" + runningComposables + "}";
+				"{runningComposables=" + innerSubscriptions.runningComposables + "}";
 	}
 
 	protected FanInSubscription<I, E, O, SUBSCRIBER> createFanInSubscription() {
-		return new FanInSubscription<I, E, O, SUBSCRIBER>(this,
-				new ArrayList<FanInSubscription.InnerSubscription<I, E, SUBSCRIBER>>(8));
+		return new FanInSubscription<I, E, O, SUBSCRIBER>(this);
 	}
 
 	@Override
@@ -200,7 +192,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		@Override
 		public void onError(Throwable t) {
-			RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction);
+			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 			outerAction.innerSubscriptions.onError(t);
 		}
 
@@ -213,8 +205,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				@Override
 				public void accept(Void aVoid) {
 					s.toRemove = true;
-					outerAction.innerSubscriptions.removeSubscription(s);
-					if (RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction) == 0 && !outerAction.checkDynamicMerge()) {
+					long left = outerAction.innerSubscriptions.removeSubscription(s);
+					if (left == 0 && !outerAction.checkDynamicMerge()) {
 						outerAction.innerSubscriptions.onComplete();
 					}
 

@@ -177,13 +177,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//stream.broadcastComplete();
 
 		latch.await(8, TimeUnit.SECONDS);
-
-		new Thread(new Runnable(){
-			@Override
-			public void run() {
-				System.out.println(stream.debug());
-			}
-		}).start();
+		System.out.println(stream.debug());
 
 		System.out.println(counters);
 		long count = latch.getCount();

@@ -36,8 +36,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static reactor.rx.stream.Broadcaster.FinalState;
-
 /**
  * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #get()
  * getting} or {@link #await() awaiting} the value, consumers can be registered to the outbound {@link #stream()} or via
@@ -62,6 +60,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	private final Dispatcher  dispatcher;
 	private final Environment environment;
 	Action<O, O> outboundStream;
+
+	public static enum FinalState {
+		ERROR,
+		COMPLETE
+	}
 
 	FinalState finalState = null;
 	private O         value;
