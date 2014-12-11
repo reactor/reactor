@@ -1940,6 +1940,44 @@ class StreamsSpec extends Specification {
 
 	}
 
+
+	def 'A Stream can be throttled with a backoff policy as a stream'() {
+		given:
+			'a source and a throttled stream'
+			def source = Streams.<Integer> broadcast(Environment.get())
+			long avgTime = 150l
+
+			def reduced = source
+					.requestWhen{ it
+							.flatMap{ v ->
+								Streams.period(avgTime, TimeUnit.MILLISECONDS).map{ 1l }.take(v)
+			        }
+					}
+					.elapsed()
+					.take(10)
+					.log('reduce')
+					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
+				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+			}
+
+			def value = reduced.log('promise').next()
+			println value.debug()
+
+		when:
+			'the first values are accepted on the source'
+			for (int i = 0; i < 10000; i++) {
+				source.onNext(1)
+			}
+			sleep(1500)
+			println value.debug()
+			println(((long) (value.await())) + " milliseconds on average")
+
+		then:
+			'the average elapsed time between 2 signals is greater than throttled time'
+			value.get() >= avgTime * 0.6
+
+	}
+
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'

@@ -15,7 +15,6 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
@@ -41,23 +40,16 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 		}
 	};
 
-	private final long delay;
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
 	public ThrottleRequestAction(Dispatcher dispatcher,
-	                             Timer timer, long period, long delay) {
+	                             Timer timer, long period) {
 		super(dispatcher, 1);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.period = period;
-		this.delay = delay;
-	}
-
-	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
 	}
 
 	@Override

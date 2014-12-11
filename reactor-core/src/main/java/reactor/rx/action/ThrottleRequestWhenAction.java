@@ -15,14 +15,17 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.event.registry.Registration;
+import reactor.core.Environment;
 import reactor.function.Consumer;
-import reactor.timer.Timer;
-import reactor.util.Assert;
-
-import java.util.concurrent.TimeUnit;
+import reactor.function.Function;
+import reactor.rx.Stream;
+import reactor.rx.Streams;
+import reactor.rx.action.support.NonBlocking;
+import reactor.rx.stream.Broadcaster;
 
 /**
  * @author Stephane Maldini
@@ -30,44 +33,26 @@ import java.util.concurrent.TimeUnit;
  */
 public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 
-	private final Timer timer;
-	private final long  period;
-	private final Consumer<Long> periodTask = new Consumer<Long>() {
-		@Override
-		public void accept(Long aLong) {
-			if (upstreamSubscription != null) {
-				dispatch(1l, upstreamSubscription);
-			}
-		}
-	};
+	private final Broadcaster<Long> throttleStream;
 
-	private final long delay;
-
-	private Registration<? extends Consumer<Long>> timeoutRegistration;
-
-	@SuppressWarnings("unchecked")
 	public ThrottleRequestWhenAction(Dispatcher dispatcher,
-	                                 Timer timer, long period, long delay) {
+	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
+			                                 predicate) {
 		super(dispatcher, 1);
-		Assert.state(timer != null, "Timer must be supplied");
-		this.timer = timer;
-		this.period = period;
-		this.delay = delay;
+		this.throttleStream = Streams.broadcast(null, dispatcher);
+		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
+		afterRequestStream.subscribe(new ThrottleSubscriber());
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	public Action<T, T> env(Environment environment) {
+		throttleStream.env(environment);
+		return super.env(environment);
 	}
 
 	@Override
-	protected void doNext(T ev) {
-		broadcastNext(ev);
-	}
-
-	@Override
-	public void requestMore(long n) {
-		timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
+	public void requestMore(long elements) {
+		throttleStream.broadcastNext(elements);
 	}
 
 	@Override
@@ -76,18 +61,65 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public void cancel() {
-		if(timeoutRegistration != null) {
-			timeoutRegistration.cancel();
-		}
-		super.cancel();
+	protected void doNext(T ev) {
+		broadcastNext(ev);
 	}
 
 	@Override
-	public void doComplete() {
-		if(timeoutRegistration != null) {
-			timeoutRegistration.cancel();
+	public void onComplete() {
+		throttleStream.broadcastComplete();
+	}
+
+	protected void doRequest(final long requested) {
+		trySyncDispatch(requested, new Consumer<Long>() {
+			@Override
+			public void accept(Long o) {
+				if (upstreamSubscription != null) {
+					upstreamSubscription.request(o);
+				}
+			}
+		});
+	}
+
+	private class ThrottleSubscriber implements Subscriber<Long>, NonBlocking {
+		Subscription s;
+
+		@Override
+		public Dispatcher getDispatcher() {
+			return dispatcher;
 		}
-		super.doComplete();
+
+		@Override
+		public long getCapacity() {
+			return capacity;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			this.s = s;
+			s.request(1l);
+		}
+
+		@Override
+		public void onNext(Long o) {
+			//s.cancel();
+			//publisher.subscribe(this);
+			if (o > 0) {
+				doRequest(o);
+			}
+			s.request(1l);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			s.cancel();
+			ThrottleRequestWhenAction.this.doError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			s.cancel();
+			ThrottleRequestWhenAction.this.doComplete();
+		}
 	}
 }

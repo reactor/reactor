@@ -2011,51 +2011,57 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Request the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
+	 * Request once the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
 	 *
 	 * @param period the period in milliseconds between two notifications on this stream
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> throttle(long period) {
-		return throttle(period, -1l);
-	}
-
-	/**
-	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
-	 * Timeout is run on the environment root timer.
-	 *
-	 * @param delay  the timeout in milliseconds before starting consuming
-	 * @param period the period in milliseconds between two notifications on this stream
-	 * @return a new {@link Stream}
-	 * @since 2.0
-	 */
-	public final Stream<O> throttle(long period, long delay) {
 		Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 				"Stream");
-		return throttle(period, delay, timer);
+		return throttle(period, timer);
 	}
 
+
 	/**
-	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
+	 * Request once the parent stream every {@param period} milliseconds after an initial {@param delay}.
 	 * Timeout is run on the given {@param timer}.
 	 *
 	 * @param period the timeout in milliseconds between two notifications on this stream
-	 * @param delay  the timeout in milliseconds before starting consuming
 	 * @param timer  the reactor timer to run the timeout on
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> throttle(final long period, final long delay, final Timer timer) {
+	public final Stream<O> throttle(final long period, final Timer timer) {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
 			@Override
 			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
 				return new ThrottleRequestAction<O>(
 						dispatcher,
 						timer,
-						period,
-						delay
+						period
+				);
+			}
+		});
+	}
+
+	/**
+	 * Request the parent stream every time the passed throttleStream signals a Long request volume. Complete and Error signals will be propagated.
+	 *
+	 * @param throttleStream  a function that takes a broadcasted stream of request signals and must return a stream of valid request signal (long).
+	 *
+	 * @return a new {@link Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> requestWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>> throttleStream) {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new ThrottleRequestWhenAction<O>(
+						dispatcher,
+						throttleStream
 				);
 			}
 		});
