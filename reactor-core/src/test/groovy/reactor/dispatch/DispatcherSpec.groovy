@@ -93,7 +93,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"ring buffer eventBus"
-			def r = EventBus.config().env(env).dispatcher("ringBuffer").get()
+			def r = EventBus.config().env(env).dispatcher(Environment.SHARED).get()
 			def latch = new CountDownLatch(2)
 
 		when:

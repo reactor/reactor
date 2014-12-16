@@ -20,11 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.convert.StandardConverters;
 import reactor.core.configuration.*;
-import reactor.core.dispatch.RingBufferDispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.core.dispatch.WorkQueueDispatcher;
+import reactor.core.dispatch.*;
 import reactor.core.dispatch.wait.AgileWaitingStrategy;
+import reactor.core.internal.PlatformDependent;
 import reactor.event.EventBus;
 import reactor.filter.Filter;
 import reactor.filter.RoundRobinFilter;
@@ -51,12 +49,22 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * The name of the default ring buffer group dispatcher
 	 */
-	public static final String RING_BUFFER_GROUP = "ringBufferGroup";
+	public static final String DISPATCHER_GROUP = "dispatcherGroup";
+
+	/**
+	 * The name of the default shared dispatcher
+	 */
+	public static final String SHARED = "shared";
 
 	/**
 	 * The name of the default ring buffer dispatcher
 	 */
 	public static final String RING_BUFFER = "ringBuffer";
+
+	/**
+	 * The name of the default mpsc dispatcher
+	 */
+	public static final String MPSC = "mpsc";
 
 	/**
 	 * The name of the default thread pool dispatcher
@@ -177,7 +185,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 *
 	 * @return the root dispatcher, usually a RingBufferDispatcher
 	 */
-	public static Dispatcher masterDispatcher() {
+	public static Dispatcher sharedDispatcher() {
 		return get().getDefaultDispatcher();
 	}
 
@@ -185,7 +193,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event.EventBus} or
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event
+	 * .EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
 	 * @return a dispatcher from the default pool, usually a RingBufferDispatcher.
@@ -198,7 +207,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a registred dispatcher. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event.EventBus} or
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event
+	 * .EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
 	 * @param key the dispatcher name to find
@@ -312,13 +322,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		this.dispatchers = new LinkedMultiValueMap<String, Dispatcher>(dispatchers);
 
 		configuration = configurationReader.read();
-		defaultDispatcher = configuration.getDefaultDispatcherName() != null ?
-				configuration.getDefaultDispatcherName() :
+		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
 				DEFAULT_DISPATCHER_NAME;
 
 		env = configuration.getAdditionalProperties();
-
-		addDispatcher(SYNC_DISPATCHER_NAME, SynchronousDispatcher.INSTANCE);
 	}
 
 	public static DispatcherSupplier newCachedDispatchers(final int poolsize) {
@@ -362,6 +369,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				null,
 				ProducerType.MULTI,
 				new AgileWaitingStrategy());
+	}
+
+	private MpscDispatcher createMpscDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+		int backlog = getBacklog(dispatcherConfiguration, 1024);
+		return new MpscDispatcher(dispatcherConfiguration.getName(), backlog);
 	}
 
 	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
@@ -431,27 +443,27 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	/**
 	 * Returns a default cached dispatcher for this environment. By default,
 	 * when a {@link PropertiesConfigurationReader} is
-	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.ringBufferGroup}
+	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.dispatcherGroup}
 	 * property.
 	 *
 	 * @return The next available dispatcher from default dispatcher group
 	 * @since 2.0
 	 */
 	public Dispatcher getCachedDispatcher() {
-		return getCachedDispatchers(RING_BUFFER_GROUP).get();
+		return getCachedDispatchers(DISPATCHER_GROUP).get();
 	}
 
 	/**
 	 * Returns the default dispatcher group for this environment. By default,
 	 * when a {@link PropertiesConfigurationReader} is
-	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.ringBufferGroup}
+	 * being used. This default dispatcher is specified by the value of the {@code reactor.dispatchers.dispatcherGroup}
 	 * property.
 	 *
 	 * @return The default dispatcher group
 	 * @since 2.0
 	 */
 	public DispatcherSupplier getCachedDispatchers() {
-		return getCachedDispatchers(RING_BUFFER_GROUP);
+		return getCachedDispatchers(DISPATCHER_GROUP);
 	}
 
 	/**
@@ -485,6 +497,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @throws IllegalArgumentException if the dispatcher does not exist
 	 */
 	public Dispatcher getDispatcher(String name) {
+		if (name.equals(SYNC_DISPATCHER_NAME)) return SynchronousDispatcher.INSTANCE;
+
 		synchronized (monitor) {
 			initDispatcherFromConfiguration(name);
 			List<Dispatcher> filteredDispatchers = Collections.emptyList();
@@ -493,7 +507,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
 			}
 			if (filteredDispatchers.isEmpty()) {
-				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "', it must be present" +
+				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "', it must be present " +
 						"in the configuration properties or being registered programmatically through this#addDispatcher(" + name
 						+ ", someDispatcher)");
 			} else {
@@ -516,6 +530,23 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
+	 * Assign a default error {@link Consumer} to listen for any call to {@link this#routeError(Throwable)}.
+	 * The default journal will log through SLF4J Logger onto the category "reactor-environment".
+	 *
+	 * @return This Environment
+	 */
+	public Environment assignErrorJournal() {
+		return assignErrorJournal(new Consumer<Throwable>() {
+			Logger log = LoggerFactory.getLogger("reactor-environment");
+
+			@Override
+			public void accept(Throwable throwable) {
+				log.error("", throwable);
+			}
+		});
+	}
+
+	/**
 	 * Assign the error {@link Consumer} to listen for any call to {@link this#routeError(Throwable)}.
 	 *
 	 * @param errorJournal the consumer to listen for any exception
@@ -523,23 +554,6 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public Environment assignErrorJournal(Consumer<? super Throwable> errorJournal) {
 		this.errorConsumer = errorJournal;
-		return this;
-	}
-
-	/**
-	 * Assign a default error {@link Consumer} to listen for any call to {@link this#routeError(Throwable)}.
-	 * The default journal will log through SLF4J Logger onto the category "reactor-environment".
-	 *
-	 * @return This Environment
-	 */
-	public Environment assignErrorJournal() {
-		this.errorConsumer = new Consumer<Throwable>() {
-			Logger log = LoggerFactory.getLogger("reactor-environment");
-			@Override
-			public void accept(Throwable throwable) {
-				log.error("", throwable);
-			}
-		};
 		return this;
 	}
 
@@ -720,12 +734,17 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 					roundRobinIndex = 0;
 				}
 				if (dispatchers[roundRobinIndex] == null) {
-					dispatchers[roundRobinIndex] = new RingBufferDispatcher(
-							name,
-							bufferSize,
-							errorHandler,
-							producerType,
-							waitStrategy);
+					if (PlatformDependent.hasUnsafe()) {
+						dispatchers[roundRobinIndex] = new RingBufferDispatcher(
+								name,
+								bufferSize,
+								errorHandler,
+								producerType,
+								waitStrategy);
+					}
+					else {
+						dispatchers[roundRobinIndex] = new MpscDispatcher(name, bufferSize);
+					}
 				}
 
 				return dispatchers[roundRobinIndex];
@@ -741,8 +760,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 			if (!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
 
-			if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+			if (PlatformDependent.hasUnsafe() && DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
+			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType() ||
+					DispatcherType.MPSC == dispatcherConfiguration.getType()) {
+				addDispatcher(dispatcherConfiguration.getName(), createMpscDispatcher(dispatcherConfiguration));
 			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
 				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
 			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
@@ -759,7 +781,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 			if (!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
 
-			if (DispatcherType.RING_BUFFER_GROUP == dispatcherConfiguration.getType()) {
+			if (DispatcherType.DISPATCHER_GROUP == dispatcherConfiguration.getType()) {
 				addCachedDispatchers(dispatcherConfiguration.getName(),
 						createDispatcherFactory(
 								dispatcherConfiguration.getName(),

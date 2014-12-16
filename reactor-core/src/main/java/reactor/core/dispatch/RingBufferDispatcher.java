@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class RingBufferDispatcher extends SingleThreadDispatcher implements WaitingMood {
+public final class RingBufferDispatcher extends SingleThreadDispatcher implements WaitingMood {
 
 	private static final int DEFAULT_BUFFER_SIZE = 1024;
 

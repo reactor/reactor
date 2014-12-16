@@ -146,7 +146,7 @@ public class SyslogTcpServerTests {
 		TcpServer<SyslogMessage, Void> server = new TcpServerSpec<SyslogMessage, Void>(NettyTcpServer.class)
 				.env(env)
 						//.using(SynchronousDispatcher.INSTANCE)
-						//.dispatcher(Environment.RING_BUFFER_GROUP)
+						//.dispatcher(Environment.DISPATCHER_GROUP)
 				.dispatcher(Environment.RING_BUFFER)
 				.codec(new SyslogCodec())
 				.consume(new Consumer<NetChannel<SyslogMessage, Void>>() {

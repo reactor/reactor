@@ -487,10 +487,10 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void parallelTests() throws InterruptedException {
-		parallelMapManyTest("ringBuffer", 1_000_000);
+		parallelMapManyTest("shared", 1_000_000);
 		parallelTest("sync", 1_000_000);
 		parallelMapManyTest("sync", 1_000_000);
-		parallelTest("ringBuffer", 1_000_000);
+		parallelTest("shared", 1_000_000);
 		parallelTest("partitioned", 1_000_000);
 		parallelMapManyTest("partitioned", 1_000_000);
 		parallelBufferedTimeoutTest(1_000_000);

@@ -598,6 +598,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		});
 	}
 
+	/**
+	 * Cache all signal to this {@code Stream} and release them on request that will observe any values accepted by this {@code
+	 * Stream}.
+	 *
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> cache() {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new CacheAction<O>(dispatcher, Integer.MAX_VALUE);
+			}
+		});
+	}
+
 
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.

@@ -113,7 +113,7 @@ class StreamsSpec extends Specification {
 			def e = null
 			def latch = new CountDownLatch(1)
 			def stream = Streams.from([1, 2, 3])
-					.broadcastOn(Environment.masterDispatcher())
+					.broadcastOn(Environment.sharedDispatcher())
 					.when(Throwable) { e = it }
 					.observeComplete { latch.countDown() }
 
@@ -1465,7 +1465,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from Environment.get()'() {
 		given:
 			'a source stream with a given environment'
-			def source = Streams.<Integer> broadcast(Environment.get(), Environment.dispatcher('ringBuffer'))
+			def source = Streams.<Integer> broadcast(Environment.get(), Environment.dispatcher('shared'))
 			def source2 = Streams.<Integer> broadcast(Environment.get())
 
 		when:

@@ -141,7 +141,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
 		Controls tail = sensorOdd().concatWith(sensorEven())
-				.dispatchOn(Environment.masterDispatcher())
+				.dispatchOn(Environment.sharedDispatcher())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 

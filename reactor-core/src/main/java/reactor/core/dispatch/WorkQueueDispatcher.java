@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 1.1
  */
-public class WorkQueueDispatcher extends MultiThreadDispatcher implements WaitingMood {
+public final class WorkQueueDispatcher extends MultiThreadDispatcher implements WaitingMood {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 

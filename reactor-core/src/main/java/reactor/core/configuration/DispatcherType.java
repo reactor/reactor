@@ -32,12 +32,17 @@ public enum DispatcherType {
 	/**
 	 * A grouped {@link Dispatcher}
 	 */
-	RING_BUFFER_GROUP,
+	DISPATCHER_GROUP,
 
 	/**
 	 * A {@link Dispatcher} which uses a {@link RingBuffer} for dispatching
 	 */
 	RING_BUFFER,
+
+	/**
+	 * A {@link Dispatcher} which uses a simple lock-free queue based message passing
+	 */
+	MPSC,
 
 	/**
 	 * A {@link Dispatcher} which uses the current thread for dispatching
