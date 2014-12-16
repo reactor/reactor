@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
-import reactor.support.NamedDaemonThreadFactory;
+import reactor.core.support.NamedDaemonThreadFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;

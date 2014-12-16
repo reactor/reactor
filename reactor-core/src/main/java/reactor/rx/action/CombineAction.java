@@ -17,7 +17,7 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Environment;
+import reactor.Environment;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 

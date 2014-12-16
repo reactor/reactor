@@ -18,8 +18,8 @@ package reactor.rx.action;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
 import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;

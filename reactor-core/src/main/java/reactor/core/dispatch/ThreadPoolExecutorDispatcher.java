@@ -16,7 +16,7 @@
 
 package reactor.core.dispatch;
 
-import reactor.support.NamedDaemonThreadFactory;
+import reactor.core.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.*;
 

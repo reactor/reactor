@@ -19,8 +19,8 @@ package reactor.core.dispatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
-import reactor.util.Assert;
+import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
 

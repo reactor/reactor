@@ -16,9 +16,9 @@
 
 package reactor.core.dispatch;
 
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
 

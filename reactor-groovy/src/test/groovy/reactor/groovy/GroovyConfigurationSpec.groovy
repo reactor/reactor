@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@
  */
 package reactor.groovy
 
-import reactor.core.Environment
+import reactor.Environment
+import reactor.bus.Event
 import reactor.core.dispatch.SynchronousDispatcher
-import reactor.event.Event
 import reactor.groovy.config.GroovyEnvironment
 import reactor.groovy.support.ClosureEventConsumer
 import spock.lang.Ignore
@@ -26,7 +26,7 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.event.selector.Selectors.$
+import static reactor.bus.selector.Selectors.$
 
 /**
  * @author Stephane Maldini (smaldini)

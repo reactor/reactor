@@ -19,11 +19,11 @@ package reactor.core.dispatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.dispatch.wait.WaitingMood;
-import reactor.function.Consumer;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
-import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -77,7 +77,7 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with a producer type of {@link ProducerType#MULTI MULTI}
 	 * and a {@link BlockingWaitStrategy blocking wait. A given @param uncaughtExceptionHandler} will catch anything not
-	 * handled e.g. by the owning {@link reactor.event.EventBus} or {@link reactor.rx.Stream}.
+	 * handled e.g. by the owning {@link reactor.bus.EventBus} or {@link reactor.rx.Stream}.
 	 *
 	 * @param name                     The name of the dispatcher
 	 * @param bufferSize               The size to configure the ring buffer with

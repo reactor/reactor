@@ -16,9 +16,9 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.ReactiveSubscription;
-import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
 

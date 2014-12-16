@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.event.Observable
-import reactor.function.Consumer
-import reactor.function.Function
-import reactor.function.Predicate
+import reactor.bus.Observable
+import reactor.fn.Consumer
+import reactor.fn.Function
+import reactor.fn.Predicate
+import reactor.fn.tuple.Tuple2
 import reactor.rx.Controls
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action
-import reactor.tuple.Tuple2
 
 /**
  * Glue for Groovy closures and operator overloading applied to Stream, Composable,

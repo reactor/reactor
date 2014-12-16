@@ -17,8 +17,8 @@ package reactor.rx;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.function.Consumer;
-import reactor.function.Supplier;
+import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 
 /**
  * A domain representation of a Reactive {@link Stream} signal.
@@ -49,7 +49,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		/**
 		 * Only happens once, a complete signal is used to confirm the successful end of the data sequence flowing in a
 		 * {@link Stream}. The signal releases batching operations such as {@link Stream#buffer()},
-		 * {@link Stream#window()} or {@link Stream#reduce(reactor.function.Function)}
+		 * {@link Stream#window()} or {@link Stream#reduce(reactor.fn.Function)}
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onComplete()}
 		 */
@@ -70,7 +70,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 	private final Type      type;
 	private final Throwable throwable;
 
-	private final T         value;
+	private final T value;
 
 	private final Subscription subscription;
 

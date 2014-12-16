@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.bus.EventBus;
 import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
-import reactor.event.EventBus;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 

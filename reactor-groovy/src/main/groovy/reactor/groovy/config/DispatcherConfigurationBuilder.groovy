@@ -1,9 +1,9 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
-import reactor.core.configuration.DispatcherConfiguration
-import reactor.core.configuration.DispatcherType
-import reactor.function.Supplier
+import reactor.core.config.DispatcherConfiguration
+import reactor.core.config.DispatcherType
+import reactor.fn.Supplier
 
 /**
  * @author Stephane Maldini

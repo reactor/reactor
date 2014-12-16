@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
-import reactor.event.Event
-import reactor.event.EventBus
-import reactor.event.Observable
-import reactor.function.Consumer
-import reactor.function.support.CancelConsumerException
+import reactor.bus.Event
+import reactor.bus.EventBus
+import reactor.bus.Observable
+import reactor.fn.Consumer
+import reactor.fn.support.CancelConsumerException
 
 /**
  * @author Jon Brisbin

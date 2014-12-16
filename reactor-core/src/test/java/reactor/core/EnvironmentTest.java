@@ -2,11 +2,12 @@ package reactor.core;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.event.Event;
-import reactor.event.EventBus;
-import reactor.event.selector.Selectors;
-import reactor.function.Consumer;
-import reactor.util.Assert;
+import reactor.Environment;
+import reactor.bus.Event;
+import reactor.bus.EventBus;
+import reactor.bus.selector.Selectors;
+import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

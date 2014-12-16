@@ -19,19 +19,19 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Environment;
+import reactor.bus.Observable;
+import reactor.bus.selector.Selector;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.event.Observable;
-import reactor.event.selector.Selector;
-import reactor.function.Function;
-import reactor.function.Supplier;
+import reactor.core.support.Assert;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
+import reactor.fn.tuple.*;
 import reactor.rx.action.*;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.*;
-import reactor.timer.Timer;
-import reactor.tuple.*;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -111,7 +111,7 @@ public final class Streams {
 
 
 	/**
-	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.function.Supplier}
+	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.fn.Supplier}
 	 *  will be invoked and it's up to the developer to choose to return a new instance of a {@link Publisher} or reuse one,
 	 *  effecitvely behaving like {@link reactor.rx.Streams#wrap(Publisher)}.
 	 *
@@ -163,7 +163,7 @@ public final class Streams {
 	 * reactor.rx.action.Action#broadcastNext(Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
-	 * @param env the Reactor {@link reactor.core.Environment} to use
+	 * @param env the Reactor {@link reactor.Environment} to use
 	 * @param <T> the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
@@ -176,7 +176,7 @@ public final class Streams {
 	 * (Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
-	 * @param env        the Reactor {@link reactor.core.Environment} to use
+	 * @param env        the Reactor {@link reactor.Environment} to use
 	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}

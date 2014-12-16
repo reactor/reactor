@@ -1,7 +1,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.processor.spec.ProcessorSpec
+import reactor.core.dispatch.processor.spec.ProcessorSpec
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 
@@ -25,7 +25,7 @@ class ProcessorExtensions {
   }
 
   /**
-   * Provide a {@link Closure} as a {@link reactor.function.Consumer}.
+   * Provide a {@link Closure} as a {@link reactor.fn.Consumer}.
    *
    * @param selfType
    * @param closure
@@ -36,7 +36,7 @@ class ProcessorExtensions {
   }
 
   /**
-   * Provide a {@link Closure} as an error {@link reactor.function.Consumer}.
+   * Provide a {@link Closure} as an error {@link reactor.fn.Consumer}.
    *
    * @param selfType
    * @param closure

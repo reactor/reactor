@@ -17,8 +17,8 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.function.Consumer;
-import reactor.queue.internal.MpscLinkedQueue;
+import reactor.core.queue.internal.MpscLinkedQueue;
+import reactor.fn.Consumer;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Queue;

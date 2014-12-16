@@ -19,10 +19,10 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
-import reactor.function.Function;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
-import reactor.tuple.Tuple;
 
 import java.util.Arrays;
 import java.util.List;

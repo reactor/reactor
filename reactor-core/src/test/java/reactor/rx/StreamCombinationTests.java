@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
-import reactor.core.Environment;
-import reactor.function.Consumer;
-import reactor.function.Function;
+import reactor.Environment;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.tuple.Tuple2;
 import reactor.rx.stream.Broadcaster;
-import reactor.tuple.Tuple2;
 
 import java.util.ArrayList;
 import java.util.List;

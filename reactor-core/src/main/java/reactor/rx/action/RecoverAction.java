@@ -16,8 +16,8 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
+import reactor.bus.selector.ClassSelector;
 import reactor.core.Dispatcher;
-import reactor.event.selector.ClassSelector;
 import reactor.rx.subscription.PushSubscription;
 
 /**

@@ -16,7 +16,7 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.timer.Timer;
+import reactor.fn.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -16,8 +16,8 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
-import reactor.queue.CompletableLinkedQueue;
-import reactor.queue.CompletableQueue;
+import reactor.core.queue.CompletableLinkedQueue;
+import reactor.core.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.SpecificationExceptions;

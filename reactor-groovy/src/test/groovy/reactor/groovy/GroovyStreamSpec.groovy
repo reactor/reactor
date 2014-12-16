@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@
  */
 package reactor.groovy
 
-import reactor.core.Environment
-import reactor.event.EventBus
-import reactor.function.support.Tap
+import reactor.Environment
+import reactor.bus.EventBus
+import reactor.fn.support.Tap
+import reactor.fn.tuple.Tuple2
 import reactor.rx.Stream
 import reactor.rx.Streams
-import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.event.selector.Selectors.$
+import static reactor.bus.selector.Selectors.$
 
 /**
  * @author Stephane Maldini

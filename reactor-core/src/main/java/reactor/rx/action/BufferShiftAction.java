@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Subscription;
+import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
-import reactor.event.registry.Registration;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.rx.subscription.BatchSubscription;
 import reactor.rx.subscription.PushSubscription;
-import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.Iterator;

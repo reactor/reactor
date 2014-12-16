@@ -18,7 +18,7 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 import reactor.rx.action.*;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.FanOutSubscription;

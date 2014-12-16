@@ -16,15 +16,15 @@
 
 package reactor.rx;
 
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.function.Function;
-import reactor.function.Supplier;
+import reactor.core.support.Assert;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.tuple.*;
 import reactor.rx.action.MergeAction;
 import reactor.rx.stream.SupplierStream;
-import reactor.tuple.*;
-import reactor.util.Assert;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,7 +50,7 @@ public final class Promises {
 	/**
 	 * Create a {@link Promise}.
 	 *
-	 * @param env the {@link reactor.core.Environment} to use
+	 * @param env the {@link reactor.Environment} to use
 	 * @param <T> type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
@@ -61,7 +61,7 @@ public final class Promises {
 	/**
 	 * Create a {@link Promise}.
 	 *
-	 * @param env        the {@link reactor.core.Environment} to use
+	 * @param env        the {@link reactor.Environment} to use
 	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}

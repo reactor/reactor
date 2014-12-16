@@ -16,8 +16,8 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.function.Function;
-import reactor.util.Assert;
+import reactor.core.support.Assert;
+import reactor.fn.Function;
 
 /**
  * @author Stephane Maldini

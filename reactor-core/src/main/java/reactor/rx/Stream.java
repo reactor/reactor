@@ -18,17 +18,21 @@ package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Environment;
+import reactor.bus.Observable;
+import reactor.bus.selector.ClassSelector;
+import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.event.Observable;
-import reactor.event.selector.ClassSelector;
-import reactor.event.selector.Selectors;
-import reactor.function.*;
-import reactor.function.support.Tap;
-import reactor.queue.CompletableBlockingQueue;
-import reactor.queue.CompletableLinkedQueue;
-import reactor.queue.CompletableQueue;
+import reactor.core.queue.CompletableBlockingQueue;
+import reactor.core.queue.CompletableLinkedQueue;
+import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Assert;
+import reactor.fn.*;
+import reactor.fn.support.Tap;
+import reactor.fn.timer.Timer;
+import reactor.fn.tuple.Tuple2;
+import reactor.fn.tuple.TupleN;
 import reactor.rx.action.*;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
@@ -36,10 +40,6 @@ import reactor.rx.stream.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
-import reactor.timer.Timer;
-import reactor.tuple.Tuple2;
-import reactor.tuple.TupleN;
-import reactor.util.Assert;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Base class for components designed to provide a succinct API for working with future values.
  * Provides base functionality and an internal contract for subclasses that make use of
- * the {@link #map(reactor.function.Function)} and {@link #filter(reactor.function.Predicate)} methods.
+ * the {@link #map(reactor.fn.Function)} and {@link #filter(reactor.fn.Predicate)} methods.
  * <p>
  * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
  * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
@@ -87,7 +87,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Defer the subscription of an {@link Action} to the actual pipeline.
-	 * Terminal operations such as {@link this#consume(Consumer)} will start the subscription chain.
+	 * Terminal operations such as {@link this#consume(reactor.fn.Consumer)} will start the subscription chain.
 	 * It will listen for current Stream signals and will be eventually producing signals as well (subscribe,error,
 	 * complete,next).
 	 * <p>
@@ -107,7 +107,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Subscribe an {@link Subscriber} to the actual pipeline to consume current Stream signals (error,complete,next,
 	 * subscribe).
-	 * Return the actual Subscriber that can be an implementation of {@link reactor.core.processor.Processor} and chain
+	 * Return the actual Subscriber that can be an implementation of {@link reactor.core.dispatch.processor.Processor} and chain
 	 * more
 	 * work behind.
 	 *
@@ -319,11 +319,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a {@link reactor.function.support.Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link reactor.function.support.Tap} is
+	 * Create a {@link reactor.fn.support.Tap} that maintains a reference to the last value seen by this {@code
+	 * Stream}. The {@link reactor.fn.support.Tap} is
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
-	 * @return the new {@link reactor.function.support.Tap}
+	 * @return the new {@link reactor.fn.support.Tap}
 	 * @see Consumer
 	 */
 	public final TapAndControls<O> tap() {
@@ -370,7 +370,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
 	 * signaled downstream. It will also eagerly prefetch upstream publisher.
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.function.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Controls} interface to operate on the materialized upstream
@@ -384,7 +384,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
 	 * signaled downstream. It will also eagerly prefetch upstream publisher.
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.function.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer   the consumer to invoke on each value
 	 * @param dispatcher the dispatcher to run the consumer
@@ -484,7 +484,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * care of buffering incoming data into a StreamSubscription. Otherwise default behavior is picked:
 	 * FireHose synchronous subscription is the parent stream != null
 	 *
-	 * @param environment the environment to get dispatcher from {@link reactor.core.Environment#getDefaultDispatcher()}
+	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
 	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> dispatchOn(@Nonnull final Environment environment) {
@@ -494,7 +494,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
-	 * @param environment the environment to get dispatcher from {@link reactor.core.Environment#getDefaultDispatcher()}
+	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
 	 * @return a new {@link Stream} whom requests are running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> requestOn(@Nonnull final Environment environment) {
@@ -1044,7 +1044,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 *
-	 * @param queueSupplier A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 * @param queueSupplier A completable queue {@link reactor.fn.Supplier} to provide support for overflow
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
@@ -1318,7 +1318,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} system time in millis
+	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} system time in millis
 	 * and T2 {@link
 	 * <T>}
 	 * associated data
@@ -1336,7 +1336,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link
+	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link
 	 * <T>}
 	 * associated data. The timemillis corresponds to the elapsed time between the subscribe and the first next
 	 * signals OR
@@ -2076,7 +2076,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
-	 * passed to the function's {@link reactor.tuple.Tuple2} argument.
+	 * passed to the function's {@link reactor.fn.tuple.Tuple2} argument.
 	 *
 	 * @param fn      the reduce function
 	 * @param initial the initial argument to pass to the reduce function
@@ -2515,7 +2515,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Get the assigned {@link reactor.core.Environment}.
+	 * Get the assigned {@link reactor.Environment}.
 	 *
 	 * @return current {@link Environment}
 	 */

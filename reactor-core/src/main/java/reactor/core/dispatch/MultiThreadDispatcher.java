@@ -16,8 +16,8 @@
 
 package reactor.core.dispatch;
 
-import reactor.alloc.factory.BatchFactorySupplier;
-import reactor.function.Supplier;
+import reactor.core.alloc.factory.BatchFactorySupplier;
+import reactor.fn.Supplier;
 
 /**
  * Base implementation for multi-threaded dispatchers

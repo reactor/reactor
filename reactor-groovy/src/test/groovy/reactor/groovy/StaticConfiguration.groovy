@@ -1,4 +1,4 @@
-/* * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+/* * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
-import reactor.core.configuration.DispatcherType
+import reactor.bus.Event
+import reactor.core.config.DispatcherType
 import reactor.core.dispatch.SynchronousDispatcher
-import reactor.event.Event
 import reactor.groovy.config.GroovyEnvironment
 import reactor.rx.Streams
 
-import static reactor.event.selector.Selectors.matchAll
-import static reactor.event.selector.Selectors.object
+import static reactor.bus.selector.Selectors.matchAll
+import static reactor.bus.selector.Selectors.object
 
 @CompileStatic
 class StaticConfiguration {

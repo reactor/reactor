@@ -15,11 +15,11 @@
  */
 package reactor.rx.action;
 
+import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
-import reactor.event.registry.Registration;
-import reactor.function.Consumer;
-import reactor.timer.Timer;
-import reactor.util.Assert;
+import reactor.core.support.Assert;
+import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
 

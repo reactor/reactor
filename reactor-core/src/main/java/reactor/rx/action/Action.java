@@ -19,15 +19,17 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.alloc.Recyclable;
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
+import reactor.core.alloc.Recyclable;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.function.Consumer;
-import reactor.function.Function;
-import reactor.function.Supplier;
-import reactor.queue.CompletableLinkedQueue;
-import reactor.queue.CompletableQueue;
+import reactor.core.queue.CompletableLinkedQueue;
+import reactor.core.queue.CompletableQueue;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
 import reactor.rx.Controls;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
@@ -38,8 +40,6 @@ import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-import reactor.tuple.Tuple;
-import reactor.tuple.Tuple2;
 
 import javax.annotation.Nonnull;
 
@@ -399,7 +399,7 @@ public abstract class Action<I, O> extends Stream<O>
 	/**
 	 * Consume a Stream to allow for dynamic {@link Action} update. Everytime
 	 * the {@param controlStream} receives a next signal, the current Action and the input data will be published as a
-	 * {@link reactor.tuple.Tuple2} to the attached {@param controller}.
+	 * {@link reactor.fn.tuple.Tuple2} to the attached {@param controller}.
 	 * <p>
 	 * This is particulary useful to dynamically adapt the {@link Stream} instance : capacity(), pause(), resume()...
 	 *
@@ -713,7 +713,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
 	 * <p>
-	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.function.Function)} and
+	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.fn.Function)} and
 	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
 	 *
 	 * @param subscriber

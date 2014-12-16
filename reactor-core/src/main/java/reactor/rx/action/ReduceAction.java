@@ -16,9 +16,9 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.function.Function;
-import reactor.function.Supplier;
-import reactor.tuple.Tuple2;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini

@@ -15,7 +15,7 @@
  */
 package reactor.rx.subscription;
 
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 
 import java.util.ArrayList;

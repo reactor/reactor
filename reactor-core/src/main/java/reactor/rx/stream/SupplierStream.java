@@ -16,12 +16,12 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.function.Supplier;
+import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * A Stream that returns the result from {@link reactor.function.Supplier#get()} everytime it is requested via
+ * A Stream that returns the result from {@link reactor.fn.Supplier#get()} everytime it is requested via
  * {@link org.reactivestreams.Subscription#request(long)}.
  * <p>
  * The Stream will end when the result is null or {@link reactor.rx.action.Action#broadcastComplete()} is called.

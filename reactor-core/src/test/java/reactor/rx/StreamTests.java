@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,22 +24,22 @@ import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
+import reactor.Environment;
+import reactor.bus.Event;
+import reactor.bus.EventBus;
+import reactor.bus.selector.Selector;
+import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
-import reactor.core.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.event.Event;
-import reactor.event.EventBus;
-import reactor.event.selector.Selector;
-import reactor.event.selector.Selectors;
-import reactor.function.Consumer;
-import reactor.function.Function;
-import reactor.function.support.Tap;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.support.Tap;
+import reactor.fn.tuple.Tuple2;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.stream.Broadcaster;
-import reactor.tuple.Tuple2;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

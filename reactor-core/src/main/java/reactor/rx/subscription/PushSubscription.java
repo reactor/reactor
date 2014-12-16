@@ -17,7 +17,7 @@ package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.support.WrappedSubscription;
 

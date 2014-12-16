@@ -16,7 +16,7 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini

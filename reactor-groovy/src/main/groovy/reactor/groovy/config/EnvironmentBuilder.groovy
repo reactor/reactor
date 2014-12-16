@@ -1,12 +1,12 @@
 package reactor.groovy.config
 
 import groovy.transform.CompileStatic
+import reactor.Environment
 import reactor.core.Dispatcher
-import reactor.core.Environment
-import reactor.core.configuration.ConfigurationReader
-import reactor.core.configuration.DispatcherConfiguration
-import reactor.core.configuration.ReactorConfiguration
-import reactor.function.Supplier
+import reactor.core.config.ConfigurationReader
+import reactor.core.config.DispatcherConfiguration
+import reactor.core.config.ReactorConfiguration
+import reactor.fn.Supplier
 
 import static groovy.lang.Closure.DELEGATE_FIRST
 

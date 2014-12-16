@@ -17,12 +17,12 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.Dispatcher;
-import reactor.function.Function;
-import reactor.queue.CompletableQueue;
+import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Assert;
+import reactor.fn.Function;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-import reactor.util.Assert;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

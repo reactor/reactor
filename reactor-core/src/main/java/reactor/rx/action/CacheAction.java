@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
-import reactor.queue.CompletableQueue;
+import reactor.core.queue.CompletableQueue;
+import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.rx.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-import reactor.timer.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,13 +109,13 @@ public class CacheAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doComplete() {
-		values.add(Signal.complete());
+		values.add(Signal.<T>complete());
 		super.doComplete();
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		values.add(Signal.error(ev));
+		values.add(Signal.<T>error(ev));
 		super.doError(ev);
 	}
 

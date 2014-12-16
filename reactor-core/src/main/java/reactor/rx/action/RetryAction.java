@@ -17,8 +17,8 @@ package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
-import reactor.function.Predicate;
+import reactor.fn.Consumer;
+import reactor.fn.Predicate;
 
 /**
  * @author Stephane Maldini

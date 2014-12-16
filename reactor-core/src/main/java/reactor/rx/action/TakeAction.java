@@ -16,7 +16,7 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.function.Predicate;
+import reactor.fn.Predicate;
 
 /**
  * @author Stephane Maldini

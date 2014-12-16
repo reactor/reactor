@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package reactor.core.dispatch;
  * <p>Exception thrown when the it is not possible to dispatch an event a {@link reactor.core.Dispatcher}.
  * without it wrapping the consuming sequenes.
  * Used specifically when dispatching with the
- * {@link reactor.core.Dispatcher#tryDispatch(Object,reactor.function.Consumer,reactor.function.Consumer)} call.
+ * {@link reactor.core.Dispatcher#tryDispatch(Object, reactor.fn.Consumer, reactor.fn.Consumer)} call.
  *
  * <p>For efficiency this exception will not have a stack trace.
  *

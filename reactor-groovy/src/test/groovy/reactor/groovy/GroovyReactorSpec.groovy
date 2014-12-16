@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,16 @@
 package reactor.groovy
 
 import groovy.transform.CompileStatic
-import reactor.core.Environment
-import reactor.event.Event
-import reactor.event.EventBus
+import reactor.Environment
+import reactor.bus.Event
+import reactor.bus.EventBus
 import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-import static reactor.event.selector.Selectors.$
+import static reactor.bus.selector.Selectors.$
 
 /**
  * @author Stephane Maldini (smaldini)
@@ -115,7 +115,7 @@ class GroovyReactorSpec extends Specification {
 
 	def "Compile Static Reactor"(){
 		given:
-			final reactor.core.Environment env = new reactor.core.Environment()
+			final Environment env = new Environment()
 
 			final EventBus reactor = EventBus.config()
 					.env(env) // our current Environment

@@ -4,13 +4,13 @@ package reactor.groovy.config;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.event.Event;
-import reactor.event.registry.Registration;
-import reactor.event.registry.Registry;
-import reactor.event.routing.ConsumerFilteringRouter;
-import reactor.event.routing.ConsumerInvoker;
-import reactor.filter.Filter;
-import reactor.function.Consumer;
+import reactor.bus.Event;
+import reactor.bus.filter.Filter;
+import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registry;
+import reactor.bus.routing.ConsumerFilteringRouter;
+import reactor.bus.routing.ConsumerInvoker;
+import reactor.fn.Consumer;
 
 import java.util.List;
 

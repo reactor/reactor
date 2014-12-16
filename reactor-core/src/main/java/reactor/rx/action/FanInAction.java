@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.support.NonBlocking;
 

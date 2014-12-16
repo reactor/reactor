@@ -19,11 +19,11 @@ package reactor.core.dispatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.dispatch.wait.WaitingMood;
-import reactor.function.Consumer;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
-import reactor.support.NamedDaemonThreadFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

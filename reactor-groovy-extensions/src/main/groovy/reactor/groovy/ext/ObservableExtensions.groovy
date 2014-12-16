@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +18,22 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
-import reactor.event.Event
-import reactor.event.EventBus
-import reactor.event.Observable
-import reactor.event.registry.Registration
-import reactor.event.selector.Selector
-import reactor.event.selector.Selectors
-import reactor.function.Consumer
-import reactor.function.Function
-import reactor.function.Supplier
+import reactor.bus.Event
+import reactor.bus.EventBus
+import reactor.bus.Observable
+import reactor.bus.registry.Registration
+import reactor.bus.selector.Selector
+import reactor.bus.selector.Selectors
+import reactor.fn.Consumer
+import reactor.fn.Function
+import reactor.fn.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 
-import static reactor.event.selector.Selectors.$
-import static reactor.event.selector.Selectors.object
+import static Selectors.$
+import static Selectors.object
 
 /**
- * Extensions for providing syntax sugar for working with {@link reactor.event.Observable}s.
+ * Extensions for providing syntax sugar for working with {@link Observable}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin

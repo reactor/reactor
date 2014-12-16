@@ -16,9 +16,9 @@
 package reactor.rx.action;
 
 import org.reactivestreams.Publisher;
+import reactor.bus.selector.ClassSelector;
 import reactor.core.Dispatcher;
-import reactor.event.selector.ClassSelector;
-import reactor.function.Consumer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.BeforeTest;
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
+import reactor.core.support.Assert;
+import reactor.fn.tuple.Tuple1;
+import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
 import reactor.rx.stream.Broadcaster;
-import reactor.tuple.Tuple1;
-import reactor.tuple.Tuple2;
-import reactor.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;

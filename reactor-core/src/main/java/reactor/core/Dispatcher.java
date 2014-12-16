@@ -17,8 +17,8 @@
 package reactor.core;
 
 import reactor.core.dispatch.InsufficientCapacityException;
-import reactor.function.Consumer;
-import reactor.function.Resource;
+import reactor.fn.Consumer;
+import reactor.fn.Resource;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;

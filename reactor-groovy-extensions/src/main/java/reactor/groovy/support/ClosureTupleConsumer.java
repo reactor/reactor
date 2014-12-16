@@ -1,11 +1,11 @@
 package reactor.groovy.support;
 
 import groovy.lang.Closure;
-import reactor.function.Consumer;
-import reactor.tuple.Tuple;
+import reactor.fn.Consumer;
+import reactor.fn.tuple.Tuple;
 
 /**
- * Invokes a {@link groovy.lang.Closure} using the contents of the incoming {@link reactor.tuple.Tuple} as the
+ * Invokes a {@link groovy.lang.Closure} using the contents of the incoming {@link reactor.fn.tuple.Tuple} as the
  * arguments.
  *
  * @author Jon Brisbin

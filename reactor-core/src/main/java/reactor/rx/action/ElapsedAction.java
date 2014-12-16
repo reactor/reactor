@@ -17,8 +17,8 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.tuple.Tuple;
-import reactor.tuple.Tuple2;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini

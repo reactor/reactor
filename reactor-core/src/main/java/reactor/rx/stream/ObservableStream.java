@@ -17,16 +17,16 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.event.Event;
-import reactor.event.Observable;
-import reactor.event.selector.Selector;
-import reactor.function.Consumer;
+import reactor.bus.Event;
+import reactor.bus.Observable;
+import reactor.bus.selector.Selector;
+import reactor.fn.Consumer;
 
 import javax.annotation.Nonnull;
 
 /**
- * Emit signals whenever an Event arrives from the {@link reactor.event.selector.Selector} topic from the {@link
- * reactor.event.Observable}.
+ * Emit signals whenever an Event arrives from the {@link reactor.bus.selector.Selector} topic from the {@link
+ * reactor.bus.Observable}.
  * This stream will never emit a {@link org.reactivestreams.Subscriber#onComplete()}.
  * <p>
  * Create such stream with the provided factory, E.g.:

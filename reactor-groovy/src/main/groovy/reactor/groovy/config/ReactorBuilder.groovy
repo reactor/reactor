@@ -4,21 +4,21 @@ import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
 import org.reactivestreams.Processor
-import reactor.convert.Converter
+import reactor.Environment
+import reactor.bus.Event
+import reactor.bus.EventBus
+import reactor.bus.convert.Converter
+import reactor.bus.filter.*
+import reactor.bus.registry.CachingRegistry
+import reactor.bus.routing.ArgumentConvertingConsumerInvoker
+import reactor.bus.routing.ConsumerInvoker
+import reactor.bus.routing.Router
+import reactor.bus.selector.Selector
+import reactor.bus.selector.Selectors
 import reactor.core.Dispatcher
-import reactor.core.Environment
 import reactor.core.dispatch.SynchronousDispatcher
-import reactor.event.Event
-import reactor.event.EventBus
-import reactor.event.registry.CachingRegistry
-import reactor.event.routing.ArgumentConvertingConsumerInvoker
-import reactor.event.routing.ConsumerInvoker
-import reactor.event.routing.Router
-import reactor.event.selector.Selector
-import reactor.event.selector.Selectors
-import reactor.filter.*
-import reactor.function.Consumer
-import reactor.function.Supplier
+import reactor.fn.Consumer
+import reactor.fn.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.rx.Stream
 import reactor.rx.Streams
@@ -163,21 +163,21 @@ class ReactorBuilder implements Supplier<EventBus> {
 	}
 
 	void stream(@DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
-	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            @ClosureParams(value=SimpleType, options="Event")
 	            Closure<Action<Event<?>, Event<?>>> closure) {
 		stream((Selector) null, closure)
 	}
 
 	void stream(String selector,
 	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
-	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            @ClosureParams(value=SimpleType, options="Event")
 	            Closure<Action<Event<?>, Event<?>>> closure) {
 		stream Selectors.$(selector), closure
 	}
 
 	void stream(Selector selector,
 	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
-	            @ClosureParams(value=SimpleType, options="reactor.event.Event")
+	            @ClosureParams(value=SimpleType, options="Event")
 	            Closure<Action<Event<?>, Event<?>>> closure) {
 		Stream<Event<?>> head = Streams.<Event<?>> broadcast(env, SynchronousDispatcher.INSTANCE)
 		Processor<Event<?>, Event<?>> newTail = DSLUtils.delegateFirstAndRun(head, closure)?.combine()

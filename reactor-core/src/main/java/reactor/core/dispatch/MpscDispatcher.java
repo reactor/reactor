@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 GoPivotal, Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package reactor.core.dispatch;
 
-import reactor.queue.internal.MpscLinkedQueue;
-import reactor.support.NamedDaemonThreadFactory;
+import reactor.core.queue.internal.MpscLinkedQueue;
+import reactor.core.support.NamedDaemonThreadFactory;
 
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * Implementation of a {@link reactor.core.Dispatcher} that uses a {@link reactor.queue.internal.MpscLinkedQueue} to
+ * Implementation of a {@link reactor.core.Dispatcher} that uses a {@link reactor.core.queue.internal.MpscLinkedQueue} to
  * queue tasks to execute.
  *
  * @author Stephane Maldini
@@ -60,7 +60,7 @@ public final class MpscDispatcher extends SingleThreadDispatcher {
 	 * .ProducerType#MULTI MULTI}
 	 * and a {@link reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy blocking wait. A given @param
 	 * uncaughtExceptionHandler} will catch anything not
-	 * handled e.g. by the owning {@link reactor.event.EventBus} or {@link reactor.rx.Stream}.
+	 * handled e.g. by the owning {@link reactor.bus.EventBus} or {@link reactor.rx.Stream}.
 	 *
 	 * @param name       The name of the dispatcher
 	 * @param bufferSize The size to configure the ring buffer with

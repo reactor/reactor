@@ -16,11 +16,11 @@
 
 package reactor.core.dispatch;
 
-import reactor.alloc.Recyclable;
+import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.Environment;
-import reactor.function.Consumer;
-import reactor.util.Assert;
+import reactor.core.alloc.Recyclable;
+import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
