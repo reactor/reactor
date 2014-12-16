@@ -21,7 +21,7 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	private final Properties props
 	private Environment environment
 
-	String defaultDispatcher = Environment.RING_BUFFER
+	String defaultDispatcher = Environment.SHARED
 
 	EnvironmentBuilder(Properties props) {
 		this.props = props

@@ -147,7 +147,7 @@ public class SyslogTcpServerTests {
 				.env(env)
 						//.using(SynchronousDispatcher.INSTANCE)
 						//.dispatcher(Environment.DISPATCHER_GROUP)
-				.dispatcher(Environment.RING_BUFFER)
+				.dispatcher(Environment.SHARED)
 				.codec(new SyslogCodec())
 				.consume(new Consumer<NetChannel<SyslogMessage, Void>>() {
 					@Override
