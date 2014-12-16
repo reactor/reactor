@@ -73,17 +73,17 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	}
 
 	@Override
-	public void broadcastNext(O ev) {
+	protected void broadcastNext(O ev) {
 		publisher.broadcastNext(ev);
 	}
 
 	@Override
-	public void broadcastError(Throwable throwable) {
+	protected void broadcastError(Throwable throwable) {
 		publisher.broadcastError(throwable);
 	}
 
 	@Override
-	public void broadcastComplete() {
+	protected void broadcastComplete() {
 		publisher.broadcastComplete();
 	}
 

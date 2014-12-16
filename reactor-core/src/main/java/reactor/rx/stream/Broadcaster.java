@@ -36,19 +36,31 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
+	public void onNext(O ev) {
+		if(upstreamSubscription != null){
+			super.onNext(ev);
+		}else{
+			doNext(ev);
+		}
+	}
+
+	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
 	}
 
 	@Override
-	public void broadcastError(Throwable ev) {
+	public void onError(Throwable ev) {
 		this.error = ev;
-		super.broadcastError(ev);
+		broadcastError(ev);
 	}
 
 	@Override
-	public void broadcastComplete() {
-		super.broadcastComplete();
+	public void onComplete() {
+		if (keepAlive && downstreamSubscription == null) {
+			cancel();
+		}
+		broadcastComplete();
 	}
 
 	@Override
@@ -117,14 +129,6 @@ public class Broadcaster<O> extends Action<O, O> {
 		if (!keepAlive) {
 			super.onShutdown();
 		}
-	}
-
-	@Override
-	protected void doComplete() {
-		if (keepAlive && downstreamSubscription == null) {
-			cancel();
-		}
-		broadcastComplete();
 	}
 
 

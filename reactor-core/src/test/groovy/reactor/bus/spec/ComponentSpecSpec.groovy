@@ -55,7 +55,7 @@ class ComponentSpecSpec extends Specification {
 			"we create a plain Composable"
 			Stream composable = Streams.<String>broadcast()
 			def tap = composable.tap()
-			composable.broadcastNext('test')
+			composable.onNext('test')
 
 		then:
 			Stream.isAssignableFrom(composable.class)

@@ -428,7 +428,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a value is accepted'
-			composable.broadcastNext(1)
+			composable.onNext(1)
 
 		then:
 			'it is passed to the consumer'
@@ -436,7 +436,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'another value is accepted'
-			composable.broadcastNext(2)
+			composable.onNext(2)
 
 		then:
 			'it too is passed to the consumer'
@@ -453,7 +453,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A RuntimeException is accepted'
-			composable.broadcastError(new RuntimeException())
+			composable.onError(new RuntimeException())
 
 		then:
 			'it is passed to the consumer'
@@ -470,7 +470,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A RuntimeException is accepted'
 			composable = Streams.<Integer> broadcast()
-			composable.broadcastError(new IllegalArgumentException())
+			composable.onError(new IllegalArgumentException())
 
 		then:
 			'it is not passed to the consumer'
@@ -486,7 +486,7 @@ class StreamsSpec extends Specification {
 		when:
 			'accept list of Strings'
 			def tap = composable.tap()
-			d.broadcastNext(['a', 'b', 'c'])
+			d.onNext(['a', 'b', 'c'])
 
 		then:
 			'its value is the last of the initial values'
@@ -504,9 +504,9 @@ class StreamsSpec extends Specification {
 			'the expected accept count is set and that number of values is accepted'
 			def tap = composable.sample().log().tap()
 			println composable.debug()
-			d.broadcastNext(1)
-			d.broadcastNext(2)
-			d.broadcastNext(3)
+			d.onNext(1)
+			d.onNext(2)
+			d.onNext(3)
 
 		then:
 			"last's value is now that of the last value"
@@ -515,9 +515,9 @@ class StreamsSpec extends Specification {
 		when:
 			'the expected accept count is set and that number of values is accepted'
 			tap = composable.sample(3).tap()
-			d.broadcastNext(1)
-			d.broadcastNext(2)
-			d.broadcastNext(3)
+			d.onNext(1)
+			d.onNext(2)
+			d.onNext(3)
 
 		then:
 			"last's value is now that of the last value"
@@ -533,7 +533,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the source accepts a value'
 			def value = mapped.tap()
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the value is mapped'
@@ -553,7 +553,7 @@ class StreamsSpec extends Specification {
 			'the source accepts a value'
 			def value = mapped.next()
 			println source.debug()
-			source.broadcastNext(1)
+			source.onNext(1)
 			println source.debug()
 
 		then:
@@ -575,9 +575,9 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept a value'
-			source1.broadcastNext(1)
-			source2.broadcastNext(2)
-			source3.broadcastNext(3)
+			source1.onNext(1)
+			source2.onNext(2)
+			source3.onNext(3)
 
 			println source1.debug()
 
@@ -600,12 +600,12 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept a value'
-			source2.broadcastNext(1)
+			source2.onNext(1)
 
 			println tap.debug()
-			source3.broadcastNext(2)
-			source3.broadcastNext(3)
-			source3.broadcastNext(4)
+			source3.onNext(2)
+			source3.onNext(3)
+			source3.onNext(4)
 
 			println tap.debug()
 
@@ -615,8 +615,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept the missing value'
-			source3.broadcastNext(5)
-			source2.broadcastNext(6)
+			source3.onNext(5)
+			source2.onNext(6)
 
 			println tap.debug()
 
@@ -638,10 +638,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept a value'
-			source2.broadcastNext(1)
-			source3.broadcastNext(2)
-			source3.broadcastNext(3)
-			source3.broadcastNext(4)
+			source2.onNext(1)
+			source3.onNext(2)
+			source3.onNext(3)
+			source3.onNext(4)
 
 			println tap.debug()
 
@@ -651,8 +651,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept the missing value'
-			source3.broadcastNext(5)
-			source2.broadcastNext(6)
+			source3.onNext(5)
+			source2.onNext(6)
 
 			println tap.debug()
 
@@ -672,10 +672,10 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept a value'
-			source1.broadcastNext(1)
-			source2.broadcastNext(2)
-			source2.broadcastNext(3)
-			source2.broadcastNext(4)
+			source1.onNext(1)
+			source2.onNext(2)
+			source2.onNext(3)
+			source2.onNext(4)
 
 			println tap.debug()
 
@@ -685,8 +685,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept the missing value'
-			source2.broadcastNext(5)
-			source1.broadcastNext(6)
+			source2.onNext(5)
+			source1.onNext(6)
 
 			println tap.debug()
 
@@ -804,9 +804,9 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources accept a value'
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
+			source.onNext(1)
+			source.onNext(2)
+			source.onNext(3)
 
 		then:
 			'the count value matches the number of accept'
@@ -823,7 +823,7 @@ class StreamsSpec extends Specification {
 			'the source accepts an even value'
 			def value = filtered.tap()
 			println value.debug()
-			source.broadcastNext(2)
+			source.onNext(2)
 
 		then:
 			'it passes through'
@@ -831,7 +831,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts an odd value'
-			source.broadcastNext(3)
+			source.onNext(3)
 
 		then:
 			'it is blocked by the filter'
@@ -842,7 +842,7 @@ class StreamsSpec extends Specification {
 			'simple filter'
 			def anotherSource = Streams.<Boolean> broadcast()
 			def tap = anotherSource.filter().tap()
-			anotherSource.broadcastNext(true)
+			anotherSource.onNext(true)
 
 		then:
 			'it is accepted by the filter'
@@ -852,7 +852,7 @@ class StreamsSpec extends Specification {
 			'simple filter nominal case'
 			anotherSource = Streams.<Boolean> broadcast()
 			tap = anotherSource.filter().tap()
-			anotherSource.broadcastNext(false)
+			anotherSource.onNext(false)
 
 		then:
 			'it is not accepted by the filter'
@@ -869,7 +869,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts a value'
-			source.broadcastNext(1)
+			source.onNext(1)
 			println source.debug()
 
 		then:
@@ -887,7 +887,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts a value'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the error is passed on'
@@ -944,11 +944,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the expected number of values is accepted'
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			source.broadcastNext(5)
+			source.onNext(1)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
+			source.onNext(5)
 			println source.debug()
 		then:
 			'the consumer only receives the final value'
@@ -964,11 +964,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the expected number of values is accepted'
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			source.broadcastNext(5)
+			source.onNext(1)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
+			source.onNext(5)
 
 		then:
 			'the reduced composable holds the reduced value'
@@ -983,7 +983,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the reduced value is unknown'
@@ -991,7 +991,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
+			source.onNext(2)
 
 		then:
 			'the reduced value is known'
@@ -1007,7 +1007,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the reduction is not available'
@@ -1015,7 +1015,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted and flushed'
-			source.broadcastNext(2)
+			source.onNext(2)
 
 		then:
 			'the updated reduction is available'
@@ -1031,7 +1031,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the reduction is available'
@@ -1039,7 +1039,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
+			source.onNext(2)
 
 		then:
 			'the updated reduction is available'
@@ -1048,7 +1048,7 @@ class StreamsSpec extends Specification {
 		when:
 			'use an initial value'
 			value = source.scan(4, new Reduction()).tap()
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the updated reduction is available'
@@ -1066,7 +1066,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the first value is accepted'
 			println value.debug()
-			source.broadcastNext(1)
+			source.onNext(1)
 			println value.debug()
 
 		then:
@@ -1083,7 +1083,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted on the source'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the collected list is not yet available'
@@ -1091,7 +1091,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
+			source.onNext(2)
 
 		then:
 			'the collected list contains the first and second elements'
@@ -1141,13 +1141,13 @@ class StreamsSpec extends Specification {
 			def boundaryStream = Streams.<Integer> broadcast()
 			def res = numbers.buffer{ boundaryStream }.toList()
 
-			numbers.broadcastNext(1)
-			numbers.broadcastNext(2)
-			numbers.broadcastNext(3)
-			boundaryStream.broadcastNext(1)
-			numbers.broadcastNext(5)
-			numbers.broadcastNext(6)
-			numbers.broadcastComplete()
+			numbers.onNext(1)
+			numbers.onNext(2)
+			numbers.onNext(3)
+			boundaryStream.onNext(1)
+			numbers.onNext(5)
+			numbers.onNext(6)
+			numbers.onComplete()
 
 		then:
 			'the collected lists are available'
@@ -1158,16 +1158,16 @@ class StreamsSpec extends Specification {
 			def bucketOpening = Streams.<Integer> broadcast()
 			res = numbers.buffer(bucketOpening){boundaryStream}.toList()
 
-			numbers.broadcastNext(1)
-			numbers.broadcastNext(2)
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(3)
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(5)
-			boundaryStream.broadcastComplete()
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(6)
-			bucketOpening.broadcastComplete()
+			numbers.onNext(1)
+			numbers.onNext(2)
+			bucketOpening.onNext(1)
+			numbers.onNext(3)
+			bucketOpening.onNext(1)
+			numbers.onNext(5)
+			boundaryStream.onComplete()
+			bucketOpening.onNext(1)
+			numbers.onNext(6)
+			bucketOpening.onComplete()
 
 
 		then:
@@ -1218,13 +1218,13 @@ class StreamsSpec extends Specification {
 			def boundaryStream = Streams.<Integer> broadcast()
 			def res = numbers.window{ boundaryStream }.flatMap{it.buffer()}.toList()
 
-			numbers.broadcastNext(1)
-			numbers.broadcastNext(2)
-			numbers.broadcastNext(3)
-			boundaryStream.broadcastNext(1)
-			numbers.broadcastNext(5)
-			numbers.broadcastNext(6)
-			numbers.broadcastComplete()
+			numbers.onNext(1)
+			numbers.onNext(2)
+			numbers.onNext(3)
+			boundaryStream.onNext(1)
+			numbers.onNext(5)
+			numbers.onNext(6)
+			numbers.onComplete()
 
 		then:
 			'the collected lists are available'
@@ -1235,16 +1235,16 @@ class StreamsSpec extends Specification {
 			def bucketOpening = Streams.<Integer> broadcast()
 			res = numbers.window(bucketOpening){boundaryStream}.flatMap{it.buffer()}.toList()
 
-			numbers.broadcastNext(1)
-			numbers.broadcastNext(2)
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(3)
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(5)
-			boundaryStream.broadcastComplete()
-			bucketOpening.broadcastNext(1)
-			numbers.broadcastNext(6)
-			bucketOpening.broadcastComplete()
+			numbers.onNext(1)
+			numbers.onNext(2)
+			bucketOpening.onNext(1)
+			numbers.onNext(3)
+			bucketOpening.onNext(1)
+			numbers.onNext(5)
+			boundaryStream.onComplete()
+			bucketOpening.onNext(1)
+			numbers.onNext(6)
+			bucketOpening.onComplete()
 
 
 		then:
@@ -1265,7 +1265,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted on the source'
-			source.broadcastNext(1)
+			source.onNext(1)
 
 		then:
 			'the collected list is not yet available'
@@ -1274,7 +1274,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
+			source.onNext(2)
 			println value.debug()
 
 		then:
@@ -1283,8 +1283,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'2 more values are accepted'
-			source.broadcastNext(3)
-			source.broadcastNext(4)
+			source.onNext(3)
+			source.onNext(4)
 			println value.debug()
 
 		then:
@@ -1305,7 +1305,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first value is accepted on the source'
-			source.broadcastNext(1)
+			source.onNext(1)
 			println source.debug()
 
 		then:
@@ -1314,7 +1314,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
+			source.onNext(2)
 			println source.debug()
 
 		then:
@@ -1326,8 +1326,8 @@ class StreamsSpec extends Specification {
 			promise = Promises.prepare()
 
 			sleep(2000)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
+			source.onNext(3)
+			source.onNext(4)
 			println source.debug()
 
 		then:
@@ -1358,13 +1358,13 @@ class StreamsSpec extends Specification {
 
 		when:
 			'some values are accepted'
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
-			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
-			source.broadcastComplete()
+			source.onNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.onNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.onNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.onNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme3'))
+			source.onComplete()
 
 		then:
 			'the result should group titles by id'
@@ -1400,12 +1400,12 @@ class StreamsSpec extends Specification {
 
 		when:
 			'some values are accepted'
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
-			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
+			source.onNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.onNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.onNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.onNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme3'))
 
 
 		then:
@@ -1434,12 +1434,12 @@ class StreamsSpec extends Specification {
 
 		when:
 			'some values are accepted'
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Stephane'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Jon'))
-			source.broadcastNext(new SimplePojo(id: 1, title: 'Sandrine'))
-			source.broadcastNext(new SimplePojo(id: 2, title: 'Acme'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme2'))
-			source.broadcastNext(new SimplePojo(id: 3, title: 'Acme3'))
+			source.onNext(new SimplePojo(id: 1, title: 'Stephane'))
+			source.onNext(new SimplePojo(id: 1, title: 'Jon'))
+			source.onNext(new SimplePojo(id: 1, title: 'Sandrine'))
+			source.onNext(new SimplePojo(id: 2, title: 'Acme'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme2'))
+			source.onNext(new SimplePojo(id: 3, title: 'Acme3'))
 			println source.debug()
 			def result = source.debug().toMap()
 
@@ -1453,7 +1453,7 @@ class StreamsSpec extends Specification {
 			result.to[0].boundTo[2].id == "TerminalCallback"
 
 		when: "complete will cancel non kept-alive actions"
-			source.broadcastComplete()
+			source.onComplete()
 			result = source.debug().toMap()
 			println source.debug()
 
@@ -1474,8 +1474,8 @@ class StreamsSpec extends Specification {
 			def v = ""
 			source.consume { v = 'ok'; latch.countDown() }
 			source2.consume { v = 'ok'; latch.countDown() }
-			source.broadcastNext(1)
-			source2.broadcastNext(1)
+			source.onNext(1)
+			source2.onNext(1)
 
 		then:
 			'dispatching works'
@@ -1711,9 +1711,9 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			source.broadcastNext(1)
+			source.onNext(1)
 			println source.debug()
-			source.broadcastNext(2)
+			source.onNext(2)
 			sleep(1200)
 			println source.debug()
 
@@ -1723,8 +1723,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(3)
-			source.broadcastNext(4)
+			source.onNext(3)
+			source.onNext(4)
 			sleep(1200)
 
 		then:
@@ -1766,11 +1766,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			source.broadcastNext(1)
-			source.broadcastNext(1)
-			source.broadcastNext(1)
-			source.broadcastNext(1)
-			source.broadcastNext(1)
+			source.onNext(1)
+			source.onNext(1)
+			source.onNext(1)
+			source.onNext(1)
+			source.onNext(1)
 			println value.debug()
 			sleep(2000)
 			println value.debug()
@@ -1781,8 +1781,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the second value is accepted'
-			source.broadcastNext(2)
-			source.broadcastNext(2)
+			source.onNext(2)
+			source.onNext(2)
 			sleep(2000)
 			println value.debug()
 
@@ -1805,15 +1805,15 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source, paused just enough to refresh timer until 6'
-			source.broadcastNext(1)
+			source.onNext(1)
 			sleep(500)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
 			sleep(500)
-			source.broadcastNext(5)
+			source.onNext(5)
 			sleep(2000)
-			source.broadcastNext(6)
+			source.onNext(6)
 			println error
 
 		then:
@@ -1835,14 +1835,14 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source, paused just enough to refresh timer until 6'
-			source.broadcastNext(1)
+			source.onNext(1)
 			sleep(500)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			source.broadcastNext(5)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
+			source.onNext(5)
 			sleep(2000)
-			source.broadcastNext(6)
+			source.onNext(6)
 			println value.debug()
 
 		then:
@@ -2045,14 +2045,14 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source, but we only have 5 requested elements out of 6'
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			source.broadcastNext(5)
+			source.onNext(1)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
+			source.onNext(5)
 
 			println tail.debug()
-			source.broadcastNext(6)
+			source.onNext(6)
 
 		and:
 			'we try to consume the tail to check if 6 has been buffered'
@@ -2153,9 +2153,9 @@ class StreamsSpec extends Specification {
 		when:
 			'the first values are accepted on the source'
 			for (int i = 0; i < 100000; i++) {
-				source.broadcastNext(1)
+				source.onNext(1)
 			}
-			source.broadcastComplete()
+			source.onComplete()
 			latch.await(10, TimeUnit.SECONDS)
 			println value.get()
 			println source.debug()
@@ -2190,7 +2190,7 @@ class StreamsSpec extends Specification {
 			}
 		when:
 			'values are accepted into the head'
-			(1..length).each { head.broadcastNext(it) }
+			(1..length).each { head.onNext(it) }
 			latch.await(4, TimeUnit.SECONDS)
 
 		then:
@@ -2209,7 +2209,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the composable accepts a value'
-			d.broadcastNext(1)
+			d.onNext(1)
 
 		then:
 			'the observable is notified'
@@ -2303,7 +2303,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the control stream receives a new capacity size'
-			controlStream.broadcastNext(100)
+			controlStream.onNext(100)
 
 		then:
 			'Stream has been updated'
@@ -2346,10 +2346,10 @@ class StreamsSpec extends Specification {
 
 			println tap.debug()
 			println tap.debug()
-			stream.broadcastNext('test')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
-			stream.broadcastComplete()
+			stream.onNext('test')
+			stream.onNext('test2')
+			stream.onNext('test3')
+			stream.onComplete()
 			println tap.debug()
 			def res = tap.get()
 
@@ -2385,10 +2385,10 @@ class StreamsSpec extends Specification {
 			}.retry {
 				i == 1
 			}.count().tap()
-			stream.broadcastNext('test')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
-			stream.broadcastComplete()
+			stream.onNext('test')
+			stream.onNext('test2')
+			stream.onNext('test3')
+			stream.onComplete()
 			println tap.debug()
 
 		then:
@@ -2442,19 +2442,19 @@ class StreamsSpec extends Specification {
 			i = 0
 			def tap = stream.repeat().observe { i++ }.consume()
 
-			stream.broadcastNext('test')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
-			stream.broadcastComplete()
+			stream.onNext('test')
+			stream.onNext('test2')
+			stream.onNext('test3')
+			stream.onComplete()
 
-			stream.broadcastNext('test')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
-			stream.broadcastComplete()
+			stream.onNext('test')
+			stream.onNext('test2')
+			stream.onNext('test3')
+			stream.onComplete()
 
-			stream.broadcastNext('test')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
+			stream.onNext('test')
+			stream.onNext('test2')
+			stream.onNext('test3')
 
 		then:
 			'it is a hot stream and only 9 value (the most recent) is available'
@@ -2580,9 +2580,9 @@ class StreamsSpec extends Specification {
 				'test2' != it
 			}.tap()
 
-			stream.broadcastNext('test1')
-			stream.broadcastNext('test2')
-			stream.broadcastNext('test3')
+			stream.onNext('test1')
+			stream.onNext('test2')
+			stream.onNext('test3')
 
 		then:
 			'the second is the last available'

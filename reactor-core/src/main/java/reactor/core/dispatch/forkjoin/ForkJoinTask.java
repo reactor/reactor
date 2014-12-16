@@ -106,10 +106,10 @@ public class ForkJoinTask<T, C extends Action<T,T>> implements Consumer<Object> 
 						try {
 							Object result = fn.apply(arg);
 							if (null != result) {
-								deferred.broadcastNext((T) result);
+								deferred.onNext((T) result);
 							}
 						} catch (Exception e) {
-							deferred.broadcastError(e);
+							deferred.onError(e);
 						}
 					}
 				});

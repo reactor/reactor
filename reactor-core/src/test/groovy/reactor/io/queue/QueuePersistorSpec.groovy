@@ -112,7 +112,7 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an object is persisted"
-			stream.broadcastNext("test!")
+			stream.onNext("test!")
 		println bufferedStream.debug()
 
 		then:

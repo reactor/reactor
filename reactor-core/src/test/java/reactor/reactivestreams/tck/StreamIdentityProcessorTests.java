@@ -172,7 +172,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 
 		for (int i = 0; i < elements; i++) {
-			stream.broadcastNext(i);
+			stream.onNext(i);
 		}
 		//stream.broadcastComplete();
 

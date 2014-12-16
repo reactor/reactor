@@ -129,8 +129,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		sensorEven().broadcastComplete();
-		sensorOdd().broadcastComplete();
+		sensorEven().onComplete();
+		sensorOdd().onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -147,8 +147,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		sensorEven().broadcastComplete();
-		sensorOdd().broadcastComplete();
+		sensorEven().onComplete();
+		sensorOdd().onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -238,7 +238,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			} else {
 				upstream = sensorOdd();
 			}
-			upstream.broadcastNext(data);
+			upstream.onNext(data);
 		}
 
 	}

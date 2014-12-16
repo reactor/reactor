@@ -103,9 +103,9 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println(str.debug());
 
 
-		str.broadcastNext("Goodbye World!");
-		str.broadcastNext("Goodbye World!");
-		str.broadcastComplete();
+		str.onNext("Goodbye World!");
+		str.onNext("Goodbye World!");
+		str.onComplete();
 
 		Thread.sleep(500);
 	}
@@ -351,7 +351,7 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println(tail.debug());
 
 		for (int i = 1; i <= items; i++) {
-			d.broadcastNext(String.valueOf(i));
+			d.onNext(String.valueOf(i));
 		}
 		latch.await(15, TimeUnit.SECONDS);
 		System.out.println(tail.debug());
@@ -475,7 +475,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		for (int i = 0; i < COUNT; i++) {
 			if(i % 5000 == 0) System.out.println(c.debug());
-			d.broadcastNext(i);
+			d.onNext(i);
 		}
 
 		internalLatch.await(5, TimeUnit.SECONDS);
@@ -522,7 +522,7 @@ public class StreamTests extends AbstractReactorTest {
 		long start = System.currentTimeMillis();
 
 		for (String i : data) {
-			deferred.broadcastNext(i);
+			deferred.onNext(i);
 		}
 		if (!latch.await(30, TimeUnit.SECONDS))
 			throw new RuntimeException(deferred.debug().toString());
@@ -574,7 +574,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		long start = System.currentTimeMillis();
 		for (int i : data) {
-			deferred.broadcastNext(i);
+			deferred.onNext(i);
 		}
 
 		if (!latch.await(15, TimeUnit.SECONDS)) {
@@ -624,7 +624,7 @@ public class StreamTests extends AbstractReactorTest {
 		long start = System.currentTimeMillis();
 
 		for (int i : data) {
-			mapManydeferred.broadcastNext(i);
+			mapManydeferred.onNext(i);
 		}
 
 		if (!latch.await(20, TimeUnit.SECONDS)) {
@@ -696,7 +696,7 @@ public class StreamTests extends AbstractReactorTest {
 							items.forEach(item -> latch.countDown());
 						}));
 
-		testDataset.forEach(batchingStreamDef::broadcastNext);
+		testDataset.forEach(batchingStreamDef::onNext);
 		if (!latch.await(10, TimeUnit.SECONDS)) {
 			throw new RuntimeException(latch.getCount() + " " + batchingStreamDef.debug().toString());
 
@@ -769,8 +769,8 @@ public class StreamTests extends AbstractReactorTest {
 
 		afterSubscribe.await(5, TimeUnit.SECONDS);
 
-		globalFeed.broadcastNext(2223);
-		globalFeed.broadcastNext(2224);
+		globalFeed.onNext(2223);
+		globalFeed.onNext(2224);
 
 		latch.await(5, TimeUnit.SECONDS);
 		assertEquals("Must have counted 4 elements", 0, latch.getCount());
@@ -870,10 +870,10 @@ public class StreamTests extends AbstractReactorTest {
 								.consume(i -> latch.countDown()));
 
 
-		streamBatcher.broadcastNext(12);
-		streamBatcher.broadcastNext(123);
-		streamBatcher.broadcastNext(42);
-		streamBatcher.broadcastNext(666);
+		streamBatcher.onNext(12);
+		streamBatcher.onNext(123);
+		streamBatcher.onNext(42);
+		streamBatcher.onNext(666);
 
 		boolean finished = latch.await(2, TimeUnit.SECONDS);
 		if (!finished)

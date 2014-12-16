@@ -124,7 +124,7 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 		consume(new Consumer<IN>() {
 			@Override
 			public void accept(IN in) {
-				d.broadcastNext(in);
+				d.onNext(in);
 			}
 		});
 		return d;

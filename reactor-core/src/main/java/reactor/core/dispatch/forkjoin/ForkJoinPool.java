@@ -108,8 +108,8 @@ public class ForkJoinPool {
 						}
 					} finally {
 						if (count.decrementAndGet() == 0) {
-							d.broadcastNext(results.toImmutable());
-							d.broadcastComplete();
+							d.onNext(results.toImmutable());
+							d.onComplete();
 						}
 					}
 					return null;

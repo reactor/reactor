@@ -298,7 +298,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param ev the data to forward
 	 * @since 2.0
 	 */
-	public void broadcastNext(final O ev) {
+	protected void broadcastNext(final O ev) {
 		//log.debug("event [" + ev + "] by: " + getClass().getSimpleName());
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
@@ -322,7 +322,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param throwable the error to forward
 	 * @since 2.0
 	 */
-	public void broadcastError(final Throwable throwable) {
+	protected void broadcastError(final Throwable throwable) {
 		//log.debug("event [" + throwable + "] by: " + getClass().getSimpleName());
 		/*if (!isRunning()) {
 			if (log.isTraceEnabled()) {
@@ -346,7 +346,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 *
 	 * @since 2.0
 	 */
-	public void broadcastComplete() {
+	protected void broadcastComplete() {
 		//log.debug("event [complete] by: " + getClass().getSimpleName());
 		if (downstreamSubscription == null) {
 			return;

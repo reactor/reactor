@@ -306,7 +306,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
 						public void run() {
-							connections.broadcastError(future.cause());
+							connections.onError(future.cause());
 						}
 					});
 					return;
@@ -348,7 +348,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				ioCh.eventLoop().submit(new Runnable() {
 					@Override
 					public void run() {
-						connections.broadcastNext(ch);
+						connections.onNext(ch);
 					}
 				});
 			}

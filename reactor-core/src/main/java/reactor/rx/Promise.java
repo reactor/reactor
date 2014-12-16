@@ -491,7 +491,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			}
 
 			if (outboundStream != null) {
-				outboundStream.broadcastError(error);
+				outboundStream.onError(error);
 			}
 
 			if (hasBlockers) {
@@ -523,8 +523,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			}
 
 			if (outboundStream != null) {
-				outboundStream.broadcastNext(value);
-				outboundStream.broadcastComplete();
+				outboundStream.onNext(value);
+				outboundStream.onComplete();
 			}
 
 			if (hasBlockers) {

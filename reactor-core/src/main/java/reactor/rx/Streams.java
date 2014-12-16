@@ -48,8 +48,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@code
  * Streams.just(1, 2, 3).map(i -> i*2) //...
  * <p>
- * Stream<String> stream = Streams.broadcast().map(i -> i*2).consume(System.out::println);
- * stream.broadcastNext("hello");
+ * Broadcaster<String> stream = Streams.broadcast()
+ * strean.map(i -> i*2).consume(System.out::println);
+ * stream.onNext("hello");
  * <p>
  * Stream.create( subscriber -> {
  * subscriber.onNext(1);
@@ -146,8 +147,7 @@ public final class Streams {
 
 	/**
 	 * Build a {@literal Stream}, ready to broadcast values with {@link reactor.rx.action
-	 * .Action#broadcastNext
-	 * (Object)},
+	 * .Action#onNext(Object)},
 	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
 	 *
 	 * @param <T> the type of values passing through the {@literal action}
@@ -160,8 +160,8 @@ public final class Streams {
 
 	/**
 	 * Build a {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
-	 * reactor.rx.action.Action#broadcastNext(Object)},
-	 * {@link reactor.rx.action.Action#broadcastError(Throwable)}, {@link reactor.rx.action.Action#broadcastComplete()}.
+	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link reactor.rx.action.Action#onError(Throwable)}, {@link reactor.rx.action.Action#onComplete()}.
 	 *
 	 * @param env the Reactor {@link reactor.Environment} to use
 	 * @param <T> the type of values passing through the {@literal Stream}

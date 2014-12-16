@@ -85,7 +85,7 @@ class ComposableExtensions {
 
 	//Consuming
 	static <T> Action<?, T> leftShift(final Action<?, T> selfType, final T value) {
-		selfType.broadcastNext(value)
+		selfType.onNext(value)
 	}
 
 	static <T> Promise<T> leftShift(final Promise<T> selfType, final T value) {
