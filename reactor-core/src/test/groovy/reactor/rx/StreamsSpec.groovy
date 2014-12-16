@@ -1668,12 +1668,12 @@ class StreamsSpec extends Specification {
 					{ errors << 'never ever' },
 					{ latch.countDown() }
 			)
-
+			def counted = latch.await(3, TimeUnit.SECONDS)
 		then:
 			'dispatching works'
-			latch.await(2, TimeUnit.SECONDS)
 			!errors
 			nexts[0] == 'hello future'
+			counted
 
 		when: 'timeout'
 			latch = new CountDownLatch(1)
