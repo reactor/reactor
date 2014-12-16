@@ -166,8 +166,8 @@ fc7f023 try to fix event loop logic
 a50e19c Merge branch 'refs/heads/master' into fix-271-recursive-dispatching
 fe936dc #271 Trying to troubleshoot odd dispatching problems that cause inconsistent test results.
 98a8a63 Improve test output to check against expected total result and verify that all events have been correctly dispatched
-a18ad25 Move TimeUtils in a dedicated package reactor.timer for package tangles.
-c79854c Move HashWheelTimer in a dedicated package reactor.timer for package tangles.
+a18ad25 Move TimeUtils in a dedicated package reactor.fn.timer for package tangles.
+c79854c Move HashWheelTimer in a dedicated package reactor.fn.timer for package tangles.
 e085bee Fix a generics problem
 37c8864 Merge pull request #269 from ifesdjeen/enchancement-232-event-factory
 e53879c Since a new version of HashWheelTimer is coming, comment this test out for the time being.

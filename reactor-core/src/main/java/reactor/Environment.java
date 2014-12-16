@@ -195,7 +195,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.bus
 	 * .EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
@@ -209,7 +209,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a registred dispatcher. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.event
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.bus
 	 * .EventBus} or
 	 * streams {@link reactor.rx.Stream}.
 	 *
