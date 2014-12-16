@@ -392,34 +392,6 @@ public final class Streams {
 		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
 
-
-	/**
-	 * TODO - PLACEHOLDER
-	 * @return {@literal new Stream}
-	 */
-	@SuppressWarnings("unchecked")
-	public static <E> Stream<E> circuitBreaker(final Publisher<E> publisher, final Publisher<E> fallback, CircuitBreaker circuitBreaker) {
-
-		Action<Publisher<? extends E>, E> switcher = switchOnNext();
-
-		return create(publisher)
-				.materialize()
-				.window()
-				.flatMap(new Function<Stream<Signal<E>>, Publisher<?>>() {
-					@Override
-					public Publisher<?> apply(Stream<Signal<E>> signalStream) {
-						return signalStream.reduce(new Function<Tuple2<Signal<E>,Object>, Object>() {
-							@Override
-							public Object apply(Tuple2<Signal<E>, Object> signalObjectTuple2) {
-								return null;
-							}
-						});
-					}
-				})
-				.dematerialize();
-	}
-
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by the passed element on subscription
 	 * request. After all data is being dispatched, a complete signal will be emitted.
