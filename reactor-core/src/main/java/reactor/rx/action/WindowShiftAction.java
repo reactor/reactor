@@ -49,7 +49,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	public WindowShiftAction(Dispatcher dispatcher, int size, int skip,
-	                         long timespan, long timeshift, TimeUnit unit, Timer timer) {
+	                         final long timespan, final long timeshift, TimeUnit unit, final Timer timer) {
 		super(dispatcher);
 		this.skip = skip;
 		this.batchSize = size;

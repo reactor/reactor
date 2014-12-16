@@ -47,7 +47,7 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 	}
 
 	public BufferShiftAction(Dispatcher dispatcher, int size, int skip,
-	                         long timeshift, final long timespan, TimeUnit unit, final Timer timer) {
+	                         final long timeshift, final long timespan, TimeUnit unit, final Timer timer) {
 		super(dispatcher);
 		this.skip = skip;
 		this.batchSize = size;
