@@ -1,4 +1,4 @@
-package reactor.io.encoding.protobuf;
+package reactor.io.codec.protobuf;
 
 message RichObject {
 	required string name = 1;

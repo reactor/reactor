@@ -49,7 +49,7 @@ public final class TestObjects {
     long getTotal();
   }
   /**
-   * Protobuf type {@code reactor.io.encoding.protobuf.RichObject}
+   * Protobuf type {@code reactor.io.codec.protobuf.RichObject}
    */
   public static final class RichObject extends
       com.google.protobuf.GeneratedMessage
@@ -367,7 +367,7 @@ public final class TestObjects {
       return builder;
     }
     /**
-     * Protobuf type {@code reactor.io.encoding.protobuf.RichObject}
+     * Protobuf type {@code reactor.io.codec.protobuf.RichObject}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
@@ -656,7 +656,7 @@ public final class TestObjects {
         return this;
       }
 
-      // @@protoc_insertion_point(builder_scope:reactor.io.encoding.protobuf.RichObject)
+      // @@protoc_insertion_point(builder_scope:reactor.io.codec.protobuf.RichObject)
     }
 
     static {
@@ -664,7 +664,7 @@ public final class TestObjects {
       defaultInstance.initFields();
     }
 
-    // @@protoc_insertion_point(class_scope:reactor.io.encoding.protobuf.RichObject)
+    // @@protoc_insertion_point(class_scope:reactor.io.codec.protobuf.RichObject)
   }
 
   private static com.google.protobuf.Descriptors.Descriptor
