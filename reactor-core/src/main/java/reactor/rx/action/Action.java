@@ -165,9 +165,7 @@ public abstract class Action<I, O> extends Stream<O>
 					null;
 
 			final PushSubscription<O> subscription = createSubscription(subscriber,
-					(null == asyncSubscriber || asyncSubscriber.getDispatcher() != dispatcher || asyncSubscriber.getCapacity() <
-							capacity)
-			);
+					null == asyncSubscriber || asyncSubscriber.isReactivePull(dispatcher, capacity));
 
 			if (subscription == null)
 				return;

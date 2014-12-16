@@ -27,6 +27,7 @@ import reactor.event.selector.Selector;
 import reactor.function.Function;
 import reactor.function.Supplier;
 import reactor.rx.action.*;
+import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.*;
 import reactor.timer.Timer;
 import reactor.tuple.*;
@@ -393,6 +394,33 @@ public final class Streams {
 
 
 	/**
+	 * TODO - PLACEHOLDER
+	 * @return {@literal new Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <E> Stream<E> circuitBreaker(final Publisher<E> publisher, final Publisher<E> fallback, CircuitBreaker circuitBreaker) {
+
+		Action<Publisher<? extends E>, E> switcher = switchOnNext();
+
+		return create(publisher)
+				.materialize()
+				.window()
+				.flatMap(new Function<Stream<Signal<E>>, Publisher<?>>() {
+					@Override
+					public Publisher<?> apply(Stream<Signal<E>> signalStream) {
+						return signalStream.reduce(new Function<Tuple2<Signal<E>,Object>, Object>() {
+							@Override
+							public Object apply(Tuple2<Signal<E>, Object> signalObjectTuple2) {
+								return null;
+							}
+						});
+					}
+				})
+				.dematerialize();
+	}
+
+
+	/**
 	 * Build a {@literal Stream} whom data is sourced by the passed element on subscription
 	 * request. After all data is being dispatched, a complete signal will be emitted.
 	 * <p>
@@ -559,6 +587,31 @@ public final class Streams {
 	}
 
 	/**
+	 * Build a Synchronous {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled publisher.
+	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
+	 *
+	 * @param <T>              type of the value
+	 * @return a {@link Action} accepting publishers and producing inner data T
+	 * @since 2.0
+	 */
+	public static <T> Action<Publisher<? extends T>, T> switchOnNext(){
+		return switchOnNext(SynchronousDispatcher.INSTANCE);
+	}
+
+	/**
+	 * Build an {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled publisher.
+	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
+	 *
+	 * @param dispatcher       The dispatcher to execute the signals
+	 * @param <T>              type of the value
+	 * @return a {@link Action} accepting publishers and producing inner data T
+	 * @since 2.0
+	 */
+	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher){
+		return new SwitchAction<>(dispatcher);
+	}
+
+	/**
 	 * Build a Synchronous {@literal Stream} whose data are emitted by the most recent passed publisher.
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
 	 *
@@ -567,11 +620,26 @@ public final class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Action<? extends Publisher<? extends T>, T> switchOnNext(Publisher<? extends Publisher<? extends
-			T>> mergedPublishers) {
-		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(SynchronousDispatcher.INSTANCE);
+	public static <T> Stream<T> switchOnNext(
+			Publisher<? extends Publisher<? extends T>> mergedPublishers){
+		return switchOnNext(mergedPublishers, SynchronousDispatcher.INSTANCE);
+	}
 
-		mergedPublishers.subscribe(mergeAction);
+	/**
+	 * Build a {@literal Stream} whose data are emitted by the most recent passed publisher.
+	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
+	 *
+	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param dispatcher       The dispatcher to execute the signals
+	 * @param <T>              type of the value
+	 * @return a {@link Stream} based on the produced value
+	 * @since 2.0
+	 */
+	public static <T> Stream<T> switchOnNext(
+			Publisher<? extends Publisher<? extends T>> mergedPublishers, Dispatcher dispatcher) {
+		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(dispatcher);
+
+			mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
 	}
 
@@ -1475,17 +1543,13 @@ public final class Streams {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		publisher.subscribe(new Subscriber<Object>() {
+		publisher.subscribe(new DefaultSubscriber<Object>() {
 			Subscription s;
 
 			@Override
 			public void onSubscribe(Subscription subscription) {
 				s = subscription;
 				subscription.request(Long.MAX_VALUE);
-			}
-
-			@Override
-			public void onNext(Object o) {
 			}
 
 			@Override

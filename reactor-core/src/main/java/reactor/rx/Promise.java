@@ -553,8 +553,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher;
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return true;
 	}
 
 	@Override

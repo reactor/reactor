@@ -27,9 +27,9 @@ public interface NonBlocking {
 	/**
 	 * Get the assigned {@link reactor.core.Dispatcher}.
 	 *
-	 * @return current {@link reactor.core.Dispatcher}
+	 * @return true if the component wishes to use a back-pressure ready message-passing (e.g., ReactiveSubscription)
 	 */
-	public Dispatcher getDispatcher();
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity);
 
 	/**
 	 * Return defined element capacity, used to drive new {@link org.reactivestreams.Subscription}

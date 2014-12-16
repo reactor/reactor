@@ -206,6 +206,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		currentNextSignals++;
 	}
 
+	public long getCurrentNextSignals() {
+		return currentNextSignals;
+	}
+
 	@Override
 	public boolean shouldRequestPendingSignals() {
 		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && (currentNextSignals ==

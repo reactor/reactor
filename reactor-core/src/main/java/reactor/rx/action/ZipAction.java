@@ -220,6 +220,11 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 
 		@Override
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return true;
+		}
+
+		@Override
 		public long getCapacity() {
 			return 1;
 		}

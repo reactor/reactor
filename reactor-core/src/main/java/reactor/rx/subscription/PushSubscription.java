@@ -173,7 +173,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public int hashCode() {
 		int result = subscriber.hashCode();
-		result = 31 * result + publisher.hashCode();
+		if(publisher != null){
+			result = 31 * result + publisher.hashCode();
+		}
 		return result;
 	}
 
@@ -184,7 +186,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 		PushSubscription that = (PushSubscription) o;
 
-		if (publisher.hashCode() != that.publisher.hashCode()) return false;
+		if (publisher != null && publisher.hashCode() != that.publisher.hashCode()) return false;
 		if (!subscriber.equals(that.subscriber)) return false;
 
 		return true;

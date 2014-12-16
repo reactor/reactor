@@ -218,8 +218,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		}
 
 		@Override
-		public Dispatcher getDispatcher() {
-			return outerAction.dispatcher;
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return outerAction.isReactivePull(dispatcher, producerCapacity);
 		}
 
 		@Override

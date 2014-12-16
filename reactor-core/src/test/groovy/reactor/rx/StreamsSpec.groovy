@@ -1098,6 +1098,160 @@ class StreamsSpec extends Specification {
 			value.get() == [1, 2]
 	}
 
+
+	def 'Collect will accumulate multiple lists of accepted values and pass it to a consumer'() {
+		given:
+			'a source and a collected stream'
+			def numbers = Streams.from([1, 2, 3, 4, 5, 6, 7, 8]);
+
+		when:
+			'non overlapping buffers'
+			def res = numbers.buffer(2, 3).toList()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2], [4, 5], [7, 8]]
+
+		when:
+			'overlapping buffers'
+			res = numbers.buffer(3, 2).toList()
+
+		then:
+			'the collected overlapping lists are available'
+			res.await() == [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8]]
+
+
+		when:
+			'non overlapping buffers'
+			res = numbers.throttle(200).buffer(400l, 600l, TimeUnit.MILLISECONDS).toList()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2], [4, 5], [7, 8]]
+	}
+
+
+	def 'Collect will accumulate multiple lists of accepted values and pass it to a consumer on bucket close'() {
+		given:
+			'a source and a collected stream'
+			def numbers = Streams.<Integer> broadcast();
+
+		when:
+			'non overlapping buffers'
+			def boundaryStream = Streams.<Integer> broadcast()
+			def res = numbers.buffer{ boundaryStream }.toList()
+
+			numbers.broadcastNext(1)
+			numbers.broadcastNext(2)
+			numbers.broadcastNext(3)
+			boundaryStream.broadcastNext(1)
+			numbers.broadcastNext(5)
+			numbers.broadcastNext(6)
+			numbers.broadcastComplete()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2, 3], [5, 6]]
+
+		when:
+			'overlapping buffers'
+			def bucketOpening = Streams.<Integer> broadcast()
+			res = numbers.buffer(bucketOpening){boundaryStream}.toList()
+
+			numbers.broadcastNext(1)
+			numbers.broadcastNext(2)
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(3)
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(5)
+			boundaryStream.broadcastComplete()
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(6)
+			bucketOpening.broadcastComplete()
+
+
+		then:
+			'the collected overlapping lists are available'
+			res.await() == [[3, 5], [5], [6]]
+	}
+
+	def 'Window will reroute multiple stream of accepted values and pass it to a consumer'() {
+		given:
+			'a source and a collected stream'
+			def numbers = Streams.from([1, 2, 3, 4, 5, 6, 7, 8])
+
+		when:
+			'non overlapping buffers'
+			def res = numbers.window(2, 3).flatMap{it.buffer()}.toList()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2], [4, 5], [7, 8]]
+
+		when:
+			'overlapping buffers'
+			res = numbers.window(3, 2).flatMap{it.buffer()}.toList()
+
+		then:
+			'the collected overlapping lists are available'
+			res.await() == [[1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8]]
+
+
+		when:
+			'non overlapping buffers'
+			res = numbers.throttle(200).window(400l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2], [4, 5], [7, 8]]
+
+	}
+
+
+	def 'Re route will accumulate multiple lists of accepted values and pass it to a consumer on bucket close'() {
+		given:
+			'a source and a collected stream'
+			def numbers = Streams.<Integer> broadcast();
+
+		when:
+			'non overlapping buffers'
+			def boundaryStream = Streams.<Integer> broadcast()
+			def res = numbers.window{ boundaryStream }.flatMap{it.buffer()}.toList()
+
+			numbers.broadcastNext(1)
+			numbers.broadcastNext(2)
+			numbers.broadcastNext(3)
+			boundaryStream.broadcastNext(1)
+			numbers.broadcastNext(5)
+			numbers.broadcastNext(6)
+			numbers.broadcastComplete()
+
+		then:
+			'the collected lists are available'
+			res.await() == [[1, 2, 3], [5, 6]]
+
+		when:
+			'overlapping buffers'
+			def bucketOpening = Streams.<Integer> broadcast()
+			res = numbers.window(bucketOpening){boundaryStream}.flatMap{it.buffer()}.toList()
+
+			numbers.broadcastNext(1)
+			numbers.broadcastNext(2)
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(3)
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(5)
+			boundaryStream.broadcastComplete()
+			bucketOpening.broadcastNext(1)
+			numbers.broadcastNext(6)
+			bucketOpening.broadcastComplete()
+
+
+		then:
+			'the collected overlapping lists are available'
+			res.await() == [[3, 5], [5], [6]]
+	}
+
 	def 'Window will re-route N elements to a fresh nested stream'() {
 		given:
 			'a source and a collected window stream'
@@ -1797,6 +1951,7 @@ class StreamsSpec extends Specification {
 		then:
 			res == ['SUBSCRIBE', 'NEXT', 'ERROR']
 	}
+
 	def 'Streams can be dematerialized'() {
 		when:
 			'A source stream emits next signals followed by complete'
@@ -1948,12 +2103,13 @@ class StreamsSpec extends Specification {
 			long avgTime = 150l
 
 			def reduced = source
-					.requestWhen{ it
-							.flatMap{ v ->
-								Streams.period(avgTime, TimeUnit.MILLISECONDS).map{ 1l }.take(v)
-			        }
-					}
-					.elapsed()
+					.requestWhen {
+				it
+						.flatMap { v ->
+					Streams.period(avgTime, TimeUnit.MILLISECONDS).map { 1l }.take(v)
+				}
+			}
+			.elapsed()
 					.take(10)
 					.log('reduce')
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
@@ -2010,70 +2166,6 @@ class StreamsSpec extends Specification {
 
 	}
 
-	def 'Moving Buffer accumulate items without dropping previous'() {
-		given:
-			'a source and a collected stream'
-			def source = Streams.<Integer> broadcast().env(Environment.get())
-			def reduced = source.movingBuffer(5).throttle(400)
-			def value = reduced.tap()
-
-		when:
-			'the window accepts first items'
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			sleep(1200)
-			println source.debug()
-
-		then:
-			'it outputs received values'
-			value.get() == [1, 2]
-
-		when:
-			'the window accepts following items'
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			sleep(1200)
-
-		then:
-			'it outputs received values'
-			value.get() == [1, 2, 3, 4]
-
-		when:
-			'the starts dropping items on onOverflowBuffer'
-			source.broadcastNext(5)
-			source.broadcastNext(6)
-			sleep(1200)
-
-		then:
-			'it outputs received values'
-			value.get() == [2, 3, 4, 5, 6]
-
-	}
-
-	def 'Moving Buffer will drop overflown items'() {
-		given:
-			'a source and a collected stream'
-			def source = Streams.<Integer> broadcast().env(Environment.get())
-			def reduced = source.movingBuffer(5)
-
-		when:
-			'the buffer overflows'
-			def value = reduced.tap()
-
-			source.broadcastNext(1)
-			source.broadcastNext(2)
-			source.broadcastNext(3)
-			source.broadcastNext(4)
-			source.broadcastNext(5)
-			source.broadcastNext(6)
-
-			println source.debug()
-
-		then:
-			'it outputs values dismissing outdated ones'
-			value.get() == [2, 3, 4, 5, 6]
-
-	}
 
 	def 'Collect will accumulate values from multiple threads'() {
 		given:
@@ -2348,19 +2440,19 @@ class StreamsSpec extends Specification {
 			'using repeat() to ignore complete and resubscribe'
 			stream = Streams.broadcast()
 			i = 0
-			def tap = stream.repeat().observe{ i++ }.consume()
+			def tap = stream.repeat().observe { i++ }.consume()
 
 			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
 			stream.broadcastComplete()
 
-		stream.broadcastNext('test')
+			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
 			stream.broadcastComplete()
 
-		stream.broadcastNext('test')
+			stream.broadcastNext('test')
 			stream.broadcastNext('test2')
 			stream.broadcastNext('test3')
 

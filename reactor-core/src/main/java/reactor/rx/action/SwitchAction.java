@@ -82,8 +82,8 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		Subscription s;
 
 		@Override
-		public Dispatcher getDispatcher() {
-			return dispatcher;
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return SwitchAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 
 		@Override

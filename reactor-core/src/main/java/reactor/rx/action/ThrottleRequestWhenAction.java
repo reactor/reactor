@@ -38,7 +38,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	public ThrottleRequestWhenAction(Dispatcher dispatcher,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
 			                                 predicate) {
-		super(dispatcher, 1);
+		super(dispatcher);
 		this.throttleStream = Streams.broadcast(null, dispatcher);
 		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
 		afterRequestStream.subscribe(new ThrottleSubscriber());
@@ -70,6 +70,11 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		throttleStream.broadcastComplete();
 	}
 
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return true;
+	}
+
 	protected void doRequest(final long requested) {
 		trySyncDispatch(requested, new Consumer<Long>() {
 			@Override
@@ -85,8 +90,8 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public Dispatcher getDispatcher() {
-			return dispatcher;
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return false;
 		}
 
 		@Override

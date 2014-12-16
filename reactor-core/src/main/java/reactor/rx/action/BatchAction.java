@@ -15,13 +15,12 @@
  */
 package reactor.rx.action;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
+import reactor.rx.subscription.BatchSubscription;
 import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.support.WrappedSubscription;
 import reactor.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -40,7 +39,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final Registration<? extends Consumer<Long>> timespanRegistration;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
-	protected volatile int count = 0;
+	protected volatile int index = 0;
 
 	public BatchAction(
 			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
@@ -55,7 +54,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			this.timeoutTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					if(count > 0) {
+					if (index > 0) {
 						dispatch(null, flushConsumer);
 					}
 				}
@@ -77,7 +76,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
-		return new RequestConsumer<T>(subscription, this, flushConsumer, batchSize);
+		return new BatchSubscription<T>(subscription, this, batchSize);
 	}
 
 	@Override
@@ -97,8 +96,8 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		count++;
-		if (first && count == 1) {
+		index++;
+		if (first && index == 1) {
 			firstCallback(value);
 		}
 
@@ -106,7 +105,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && count % batchSize == 0) {
+		if (flush && index % batchSize == 0) {
 			flushConsumer.accept(value);
 		}
 	}
@@ -119,6 +118,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		dispatch(null, flushConsumer);
 		dispatch(elements, upstreamSubscription);
 	}
 
@@ -132,72 +132,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		@Override
 		public void accept(T n) {
 			flushCallback(n);
-			count = 0;
-		}
-	}
-
-	final private static class RequestConsumer<T> extends WrappedSubscription<T> {
-
-		private final Consumer<T> flushConsumer;
-		private final int         batchSize;
-
-		public RequestConsumer(Subscription subscription, Subscriber<T> subscriber, Consumer<T> flushConsumer, int
-				batchSize) {
-			super(subscription, subscriber);
-			this.flushConsumer = flushConsumer;
-			this.batchSize = batchSize;
-		}
-
-		@Override
-		public void request(long n) {
-			flushConsumer.accept(null);
-			if (pushSubscription != null) {
-				if (n == Long.MAX_VALUE) {
-					pushSubscription.request(Long.MAX_VALUE);
-				} else if (pushSubscription.pendingRequestSignals() != Long.MAX_VALUE) {
-					if (n > batchSize) {
-						pushSubscription.updatePendingRequests(n - batchSize);
-						pushSubscription.request(batchSize);
-					} else {
-						pushSubscription.request(n);
-					}
-				}
-			} else {
-					super.request(n);
-			}
-		}
-
-		@Override
-		public boolean shouldRequestPendingSignals() {
-			return (pushSubscription != null && (pushSubscription.pendingRequestSignals() % batchSize == 0))
-					|| super.shouldRequestPendingSignals();
-		}
-
-		@Override
-		public void maxCapacity(long n) {
-			super.maxCapacity(n);
-		}
-
-		@Override
-		public long clearPendingRequest() {
-			if (pushSubscription != null) {
-				long pending = pushSubscription.clearPendingRequest();
-				if (pending > batchSize) {
-					long toRequest = pending - batchSize;
-					pushSubscription.updatePendingRequests(toRequest);
-					return batchSize;
-				} else {
-					return pending;
-				}
-			} else {
-				return super.clearPendingRequest();
-			}
+			index = 0;
 		}
 	}
 
 	@Override
 	public String toString() {
-		return super.toString() + "{" + (timespanRegistration != null ? "timed!" : "") + " batchSize=" + count + "/" +
-				batchSize + " [" + (int) ((((float) count) / ((float) batchSize)) * 100) + "%]";
+		return super.toString() + "{" + (timespanRegistration != null ? "timed!" : "") + " batchSize=" + index + "/" +
+				batchSize + " [" + (int) ((((float) index) / ((float) batchSize)) * 100) + "%]";
 	}
 }

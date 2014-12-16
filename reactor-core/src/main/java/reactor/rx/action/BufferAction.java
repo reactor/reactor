@@ -39,6 +39,12 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 	}
 
 	@Override
+	protected void doError(Throwable ev) {
+		values.clear();
+		super.doError(ev);
+	}
+
+	@Override
 	public void nextCallback(T value) {
 		values.add(value);
 	}

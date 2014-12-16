@@ -100,8 +100,8 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public Dispatcher getDispatcher() {
-			return dispatcher;
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return RepeatWhenAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 
 		@Override
