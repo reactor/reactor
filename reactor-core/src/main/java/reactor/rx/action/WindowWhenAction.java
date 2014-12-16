@@ -47,7 +47,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		Consumer<Void> consumerFlush = new Consumer<Void>() {
+		final Consumer<Void> consumerFlush = new Consumer<Void>() {
 			@Override
 			public void accept(Void o) {
 				flush();
