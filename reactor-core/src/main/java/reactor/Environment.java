@@ -59,11 +59,6 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public static final String SHARED = "shared";
 
 	/**
-	 * The name of the default ring buffer dispatcher
-	 */
-	public static final String RING_BUFFER = "ringBuffer";
-
-	/**
 	 * The name of the default mpsc dispatcher
 	 */
 	public static final String MPSC = "mpsc";

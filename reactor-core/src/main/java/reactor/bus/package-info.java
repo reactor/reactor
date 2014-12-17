@@ -15,7 +15,6 @@
  */
 
 /**
- * Events are the foundational abstraction within Reactor that holds the data of the event plus any additional
- * metadata about the event like the key used to notify the component and any user-specified headers.
+ * Hold the required abstraction to enable Event Driven Programming with Reactor.
  */
 package reactor.bus;

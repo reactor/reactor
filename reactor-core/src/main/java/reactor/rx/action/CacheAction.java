@@ -53,14 +53,19 @@ public class CacheAction<T> extends Action<T, T> {
 			@Override
 			public void accept(Long elem) {
 				if (values.isEmpty()) {
+					if(upstreamSubscription != null) {
+						upstreamSubscription.accept(elem);
+					}
 					return;
 				}
+
 				long toRequest = elem;
 				if(cursor < values.size()) {
 					List<Signal<T>> toSend = elem == Long.MAX_VALUE ? new ArrayList<>(values) :
 							values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
 
 					for (Signal<T> signal : toSend) {
+						cursor++;
 						if (signal.isOnNext()) {
 							subscriber.onNext(signal.get());
 						} else if (signal.isOnComplete()) {
@@ -75,9 +80,9 @@ public class CacheAction<T> extends Action<T, T> {
 				}
 
 
-				if (toRequest > 0) {
-					upstreamSubscription.accept(toRequest);
-				}
+				if (toRequest > 0 && upstreamSubscription != null) {
+						upstreamSubscription.accept(toRequest);
+					}
 			}
 		};
 
@@ -86,10 +91,9 @@ public class CacheAction<T> extends Action<T, T> {
 
 				@Override
 				protected void onRequest(long elements) {
+					requestConsumer.accept(elements);
 					if (upstreamSubscription == null) {
 						updatePendingRequests(elements);
-					} else {
-						requestConsumer.accept(elements);
 					}
 				}
 			};
@@ -97,10 +101,9 @@ public class CacheAction<T> extends Action<T, T> {
 			return new PushSubscription<T>(this, subscriber) {
 				@Override
 				protected void onRequest(long elements) {
+					requestConsumer.accept(elements);
 					if (upstreamSubscription == null) {
 						updatePendingRequests(elements);
-					} else {
-						requestConsumer.accept(elements);
 					}
 				}
 			};

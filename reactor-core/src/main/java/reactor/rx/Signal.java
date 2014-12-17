@@ -20,6 +20,8 @@ import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
+import java.io.Serializable;
+
 /**
  * A domain representation of a Reactive {@link Stream} signal.
  * There are 4 differents signals and their possible sequence is defined as such:
@@ -28,7 +30,7 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0
  */
-public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super T>> {
+public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super T>>, Serializable {
 
 	public enum Type {
 		/**
@@ -72,7 +74,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 	private final T value;
 
-	private final Subscription subscription;
+	private transient final Subscription subscription;
 
 	/**
 	 * Creates and returns a {@code Signal} of variety {@code Type.NEXT}, and assigns it a value.

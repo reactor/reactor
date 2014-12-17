@@ -1646,6 +1646,45 @@ class StreamsSpec extends Specification {
 			!errors
 	}
 
+	def 'Caching Stream from publisher'() {
+		given:
+			'a slow source stream'
+			def s = Streams.<Integer>create{
+				it.onNext(1)
+				sleep(200)
+				it.onNext(2)
+				sleep(200)
+				it.onNext(3)
+				it.onComplete()
+			}.cache().elapsed().map{it.t1}
+
+		when:
+			'consume it twice'
+			def latch = new CountDownLatch(2)
+			def nexts = []
+			def errors = []
+
+			s.consume(
+					{ nexts << it },
+					{ errors << it },
+					{ latch.countDown() }
+			)
+
+			s.consume(
+					{ nexts << it },
+					{ errors << it },
+					{ latch.countDown() }
+			)
+
+		then:
+			'dispatching works'
+			latch.await(2, TimeUnit.SECONDS)
+			nexts.size() == 6
+			nexts[0]+nexts[1]+nexts[2] > 400
+			nexts[3]+nexts[4]+nexts[5] < 50
+			!errors
+	}
+
 	def 'Creating Streams from future'() {
 		given:
 			'a source stream pre-completed'
@@ -1665,7 +1704,7 @@ class StreamsSpec extends Specification {
 
 			s.consume(
 					{ nexts << it },
-					{ errors << 'never ever' },
+					{ errors << it; it.printStackTrace() },
 					{ latch.countDown() }
 			)
 			def counted = latch.await(3, TimeUnit.SECONDS)

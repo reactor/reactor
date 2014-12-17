@@ -606,12 +606,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> cache() {
-		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
-			@Override
-			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
-				return new CacheAction<O>(dispatcher, Integer.MAX_VALUE);
-			}
-		});
+		Action<O,O> cacheAction =  new CacheAction<O>(getDispatcher(), Integer.MAX_VALUE);
+		subscribe(cacheAction);
+		return cacheAction;
 	}
 
 

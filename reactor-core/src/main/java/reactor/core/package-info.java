@@ -15,6 +15,7 @@
  */
 
 /**
- * Core components of the Reactor framework.
+ * Core components of the Reactor framework. Mainly Message-Passing facilities between resources( Dispatcher, Allocator, Queues...).
+ * Can be used outside Reactor, it is mainly powering RX and BUS modules.
  */
 package reactor.core;
