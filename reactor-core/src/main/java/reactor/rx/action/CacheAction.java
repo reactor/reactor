@@ -128,4 +128,9 @@ public class CacheAction<T> extends Action<T, T> {
 		broadcastNext(value);
 	}
 
+	@Override
+	protected void onShutdown() {
+		super.onShutdown();
+		values.clear();
+	}
 }
