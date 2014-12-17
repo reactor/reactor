@@ -127,10 +127,4 @@ public class CacheAction<T> extends Action<T, T> {
 		values.add(Signal.next(value));
 		broadcastNext(value);
 	}
-
-	@Override
-	protected void onShutdown() {
-		super.onShutdown();
-		values.clear();
-	}
 }
