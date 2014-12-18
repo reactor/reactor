@@ -163,7 +163,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain the default timer from the current environment. The timer is created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The default timer is a {@link reactor.fn.timer.HashWheelTimer}. It is suitable for non blocking periodic work such as
+	 * The default timer is a {@link reactor.fn.timer.HashWheelTimer}. It is suitable for non blocking periodic work
+	 * such as
 	 * eventing, memory access, lock=free code, dispatching...
 	 *
 	 * @return the root timer, usually a {@link reactor.fn.timer.HashWheelTimer}
@@ -227,6 +228,131 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			get().addDispatcher(key, dispatcher);
 		} else {
 			get().removeDispatcher(key);
+		}
+		return dispatcher;
+	}
+
+	/**
+	 * Register a dispatcher into the context environment.
+	 *
+	 * @param key        the dispatcher configuration name to use to inherit properties from
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcherLike(String key) {
+		return newDispatcherLike(key, null);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment.
+	 *
+	 * @param key        the dispatcher configuration name to use to inherit properties from
+	 * @param newKey     the dispatcher name to use for future lookups
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcherLike(String key, String newKey) {
+		Environment env = get();
+		for(DispatcherConfiguration dispatcherConfiguration : env.configuration.getDispatcherConfigurations()){
+			if(dispatcherConfiguration.getName().equals(key)){
+				Dispatcher newDispatcher = initDispatcherFromConfiguration(dispatcherConfiguration);
+				if(newKey != null && !newKey.isEmpty()){
+					env.addDispatcher(newKey, newDispatcher);
+				}
+				return newDispatcher;
+			}
+		}
+		throw new IllegalStateException("No dispatcher configuration found for "+key);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment. If it Unsafe friendly, will register a ringBuffer dispatcher,
+	 * otherwise a simple MP-SC dispatcher.
+	 * Will use a capacity of 2048 backlog elements.
+	 *
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcher() {
+		return newDispatcher(2048);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment. If it Unsafe friendly, will register a ringBuffer dispatcher,
+	 * otherwise a simple MP-SC dispatcher.
+	 *
+	 * @param backlog the dispatcher capacity
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcher(int backlog) {
+		return newDispatcher(null, backlog);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment. If it Unsafe friendly, will register a ringBuffer dispatcher,
+	 * otherwise a simple MP-SC dispatcher.
+	 *
+	 * @param key     the dispatcher name to use for future lookups
+	 * @param backlog the dispatcher capacity
+	 * @return the passed dispatcher.
+	 */
+	public static Dispatcher newDispatcher(String key, int backlog) {
+		return newDispatcher(key, backlog, 1, PlatformDependent.hasUnsafe() ? DispatcherType.RING_BUFFER : DispatcherType
+				.MPSC);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment. If consumers greater than 1 and Unsafe is available,
+	 * will register a WorkQueue Dispatcher, otherwise delegate to {@link Environment#newDispatcher(String, int)}
+	 *
+	 * @param backlog the dispatcher capacity
+	 * @param consumers the dispatcher number of consumers
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcher(int backlog, int consumers) {
+		return newDispatcher(null, backlog, consumers);
+	}
+
+	/**
+	 Register a dispatcher into the context environment. If consumers greater than 1 and Unsafe is available,
+	 * will register a WorkQueue Dispatcher, otherwise delegate to {@link Environment#newDispatcher(String, int)}
+	 *
+	 * @param key     the dispatcher name to use for future lookups
+	 * @param backlog the dispatcher capacity
+	 * @param consumers the dispatcher number of consumers
+	 * @return the passed dispatcher.
+	 */
+	public static Dispatcher newDispatcher(String key, int backlog, int consumers) {
+		if (consumers > 1 && PlatformDependent.hasUnsafe()) {
+			return newDispatcher(key, backlog, consumers, DispatcherType.WORK_QUEUE);
+		}
+		return newDispatcher(key, backlog);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment.
+	 *
+	 * @param backlog        the dispatcher capacity
+	 * @param consumers      the numbers of consumers
+	 * @param dispatcherType the dispatcher type
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcher(int backlog, int consumers, DispatcherType dispatcherType) {
+		return newDispatcher(null, backlog, consumers, dispatcherType);
+	}
+
+	/**
+	 * Register a dispatcher into the context environment.
+	 *
+	 * @param key            the dispatcher name to use for future lookups
+	 * @param backlog        the dispatcher capacity
+	 * @param consumers      the numbers of consumers
+	 * @param dispatcherType the dispatcher type
+	 * @return the new dispatcher.
+	 */
+	public static Dispatcher newDispatcher(String key, int backlog, int consumers, DispatcherType dispatcherType) {
+		Dispatcher dispatcher = initDispatcherFromConfiguration(new DispatcherConfiguration(key, dispatcherType, backlog,
+				consumers));
+		if (key != null && !key.isEmpty()) {
+			Environment environment = get();
+			environment.addDispatcher(key, dispatcher);
 		}
 		return dispatcher;
 	}
@@ -340,8 +466,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				new AgileWaitingStrategy());
 	}
 
-	private ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
-			                                                                        dispatcherConfiguration) {
+	private static ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
+			                                                                               dispatcherConfiguration) {
 		int size = getSize(dispatcherConfiguration, 0);
 		int backlog = getBacklog(dispatcherConfiguration, 128);
 
@@ -350,7 +476,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				dispatcherConfiguration.getName());
 	}
 
-	private WorkQueueDispatcher createWorkQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+	private static WorkQueueDispatcher createWorkQueueDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int size = getSize(dispatcherConfiguration, 0);
 		int backlog = getBacklog(dispatcherConfiguration, 16384);
 
@@ -360,7 +486,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				null);
 	}
 
-	private RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+	private static RingBufferDispatcher createRingBufferDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
 		return new RingBufferDispatcher(dispatcherConfiguration.getName(),
 				backlog,
@@ -369,12 +495,12 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				new AgileWaitingStrategy());
 	}
 
-	private MpscDispatcher createMpscDispatcher(DispatcherConfiguration dispatcherConfiguration) {
+	private static MpscDispatcher createMpscDispatcher(DispatcherConfiguration dispatcherConfiguration) {
 		int backlog = getBacklog(dispatcherConfiguration, 1024);
 		return new MpscDispatcher(dispatcherConfiguration.getName(), backlog);
 	}
 
-	private int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
+	private static int getBacklog(DispatcherConfiguration dispatcherConfiguration, int defaultBacklog) {
 		Integer backlog = dispatcherConfiguration.getBacklog();
 		if (null == backlog) {
 			backlog = defaultBacklog;
@@ -382,7 +508,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		return backlog;
 	}
 
-	private int getSize(DispatcherConfiguration dispatcherConfiguration, int defaultSize) {
+	private static int getSize(DispatcherConfiguration dispatcherConfiguration, int defaultSize) {
 		Integer size = dispatcherConfiguration.getSize();
 		if (null == size) {
 			size = defaultSize;
@@ -739,8 +865,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 								errorHandler,
 								producerType,
 								waitStrategy);
-					}
-					else {
+					} else {
 						dispatchers[roundRobinIndex] = new MpscDispatcher(name, bufferSize);
 					}
 				}
@@ -753,24 +878,34 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 	private void initDispatcherFromConfiguration(String name) {
 		if (dispatchers.get(name) != null) return;
-
+		Dispatcher dispatcher;
 		for (DispatcherConfiguration dispatcherConfiguration : configuration.getDispatcherConfigurations()) {
-
 			if (!dispatcherConfiguration.getName().equalsIgnoreCase(name)) continue;
 
-			if (PlatformDependent.hasUnsafe() && DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createRingBufferDispatcher(dispatcherConfiguration));
-			} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType() ||
-					DispatcherType.MPSC == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createMpscDispatcher(dispatcherConfiguration));
-			} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), SynchronousDispatcher.INSTANCE);
-			} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createThreadPoolExecutorDispatcher(dispatcherConfiguration));
-			} else if (DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
-				addDispatcher(dispatcherConfiguration.getName(), createWorkQueueDispatcher(dispatcherConfiguration));
+			dispatcher = initDispatcherFromConfiguration(dispatcherConfiguration);
+
+			if (dispatcher != null) {
+				addDispatcher(dispatcherConfiguration.getName(), dispatcher);
 			}
 		}
+	}
+
+	private static Dispatcher initDispatcherFromConfiguration(DispatcherConfiguration dispatcherConfiguration) {
+		Dispatcher dispatcher = null;
+		if (PlatformDependent.hasUnsafe() && DispatcherType.RING_BUFFER == dispatcherConfiguration.getType()) {
+			dispatcher = createRingBufferDispatcher(dispatcherConfiguration);
+		} else if (DispatcherType.RING_BUFFER == dispatcherConfiguration.getType() ||
+				DispatcherType.MPSC == dispatcherConfiguration.getType()) {
+			dispatcher = createMpscDispatcher(dispatcherConfiguration);
+		} else if (DispatcherType.SYNCHRONOUS == dispatcherConfiguration.getType()) {
+			dispatcher = SynchronousDispatcher.INSTANCE;
+		} else if (DispatcherType.THREAD_POOL_EXECUTOR == dispatcherConfiguration.getType()) {
+			dispatcher = createThreadPoolExecutorDispatcher(dispatcherConfiguration);
+		} else if (DispatcherType.WORK_QUEUE == dispatcherConfiguration.getType()) {
+			dispatcher = createWorkQueueDispatcher(dispatcherConfiguration);
+		}
+
+		return dispatcher;
 	}
 
 	private void initDispatcherFactoryFromConfiguration(String name) {

@@ -22,24 +22,54 @@ import spock.lang.Specification
 
 class EnvironmentSpec extends Specification {
 
-  def "An environment cleans up its Dispatchers when it's shut down"() {
+	def "An environment cleans up its Dispatchers when it's shut down"() {
 
-    given:
-      "An Environment"
+		given:
+			"An Environment"
 
-      ReactorConfiguration configuration = new ReactorConfiguration([], 'default', [:] as Properties)
-      Dispatcher dispatcher = Mock(Dispatcher)
-      Environment environment = new Environment(['alpha': [dispatcher, dispatcher], 'bravo': [dispatcher]], Mock(ConfigurationReader, {
-        read() >> configuration
-      }))
+			ReactorConfiguration configuration = new ReactorConfiguration([], 'default', [:] as Properties)
+			Dispatcher dispatcher = Mock(Dispatcher)
+			Environment environment = new Environment(['alpha': [dispatcher, dispatcher], 'bravo': [dispatcher]], Mock(ConfigurationReader, {
+				read() >> configuration
+			}))
 
-    when:
-      "it is shut down"
-      environment.shutdown()
+		when:
+			"it is shut down"
+			environment.shutdown()
 
-    then:
-      "its dispatchers are cleaned up"
-      3 * dispatcher.shutdown()
-  }
+		then:
+			"its dispatchers are cleaned up"
+			3 * dispatcher.shutdown()
+	}
+
+	def "An environment can create Dispatchers"() {
+
+		given:
+			"An Environment"
+			Environment.initializeIfEmpty()
+
+		when:
+			"it creates a dispatcher"
+			def dispatcher = Environment.newDispatcher()
+
+		then:
+			"its dispatcher exists"
+			dispatcher
+			dispatcher.backlogSize() == 2048
+
+		when:
+			"it creates a dispatcher like the default shared"
+			dispatcher = Environment.newDispatcherLike(Environment.SHARED, "newDispatcher")
+
+		then:
+			"its dispatchers exists in environment"
+			dispatcher
+			Environment.dispatcher("newDispatcher") == dispatcher
+			Environment.sharedDispatcher().getClass() == dispatcher.getClass()
+			Environment.sharedDispatcher().backlogSize() == dispatcher.backlogSize()
+
+		cleanup:
+			Environment.terminate()
+	}
 
 }
