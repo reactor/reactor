@@ -41,7 +41,7 @@ public class PopularTagTests extends AbstractReactorTest {
 			"into a glass #motherfucker house, ", "fuckin' up the way the nigger talks. ", "#Motherfucker do that shit #to" +
 					" " +
 					"me,", " he "
-			, "better paralyze my #ass, ", "'cause I'll kill the #motherfucker , ", "know what I'm sayin'?"
+			, "better paralyze my ass, ", "'cause I'll kill the #motherfucker , ", "know what I'm sayin'?"
 	);
 
 
@@ -54,16 +54,16 @@ public class PopularTagTests extends AbstractReactorTest {
 						.flatMap(samuelJackson ->
 										Streams
 												.from(samuelJackson.split(" "))
-												.filter(w -> w.startsWith("#"))
+
 						)
 						.window(5, TimeUnit.SECONDS)
 						.flatMap(s -> {
 							final Map<String, Long> store = new HashMap<>();
 							return s
-									.reduce(store, pairTuple -> {
+									.reduce(store, (acc, next) -> {
 												Long previous;
-												if ((previous = store.putIfAbsent(pairTuple.t1.toLowerCase(), 1l)) != null) {
-													store.put(pairTuple.t1.toLowerCase(), ++previous);
+												if ((previous = store.putIfAbsent(next.toLowerCase(), 1l)) != null) {
+													store.put(next.toLowerCase(), ++previous);
 												}
 												return store;
 											}

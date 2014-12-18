@@ -18,7 +18,6 @@ package reactor.groovy
 import reactor.Environment
 import reactor.bus.EventBus
 import reactor.fn.support.Tap
-import reactor.fn.tuple.Tuple2
 import reactor.rx.Stream
 import reactor.rx.Streams
 import spock.lang.Shared
@@ -95,7 +94,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'apply a reduction'
-			def d = c % { Tuple2<Integer,Integer> tuple2 -> tuple2.t1 * (tuple2.t2 ?: 1)}
+			def d = c % { acc, next -> next * acc}
 			def t = d.tap()
 
 		then:

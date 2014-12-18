@@ -18,6 +18,7 @@ package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
 import reactor.bus.Observable
+import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.Predicate
@@ -51,7 +52,7 @@ class ComposableExtensions {
 	 * Operator overloading
 	 */
 
-	static <T, V> Stream<V> mod(final Stream<T> selfType, final Function<Tuple2<T, V>, V> other) {
+	static <T> Stream<T> mod(final Stream<T> selfType, final BiFunction<T, T, T> other) {
 		selfType.reduce other
 	}
 

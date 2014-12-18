@@ -16,6 +16,8 @@
 
 package reactor.fn;
 
+import reactor.fn.tuple.Tuple2;
+
 import java.lang.reflect.Constructor;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -33,18 +35,15 @@ public abstract class Functions {
 	/**
 	 * Chain a set of {@link Consumer Consumers} together into a single {@link Consumer}.
 	 *
-	 * @param consumers
-	 * 		the {@link Consumer Consumers} to chain together
-	 * @param <T>
-	 * 		type of the event handled by the {@link Consumer}
-	 *
+	 * @param consumers the {@link Consumer Consumers} to chain together
+	 * @param <T>       type of the event handled by the {@link Consumer}
 	 * @return a new {@link Consumer}
 	 */
 	@SafeVarargs
 	public static <T> Consumer<T> chain(Consumer<T>... consumers) {
 		final AtomicReference<Consumer<T>> composition = new AtomicReference<Consumer<T>>();
-		for(final Consumer<T> next : consumers) {
-			if(null == composition.get()) {
+		for (final Consumer<T> next : consumers) {
+			if (null == composition.get()) {
 				composition.set(next);
 			} else {
 				composition.set(new Consumer<T>() {
@@ -63,9 +62,7 @@ public abstract class Functions {
 	/**
 	 * Wrap the given {@link java.util.concurrent.Callable} and compose a new {@link Function}.
 	 *
-	 * @param c
-	 * 		The {@link java.util.concurrent.Callable}.
-	 *
+	 * @param c The {@link java.util.concurrent.Callable}.
 	 * @return An {@link Consumer} that executes the {@link java.util.concurrent.Callable}.
 	 */
 	public static <T, V> Function<T, V> function(final Callable<V> c) {
@@ -74,7 +71,7 @@ public abstract class Functions {
 			public V apply(T o) {
 				try {
 					return c.call();
-				} catch(Exception e) {
+				} catch (Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}
@@ -82,11 +79,41 @@ public abstract class Functions {
 	}
 
 	/**
+	 * Wrap a given {@link reactor.fn.Function} that applies transformation to a Tuple2 into a PairFunction.
+	 *
+	 * @param function tuple2 function to wrap into a PairFunction
+	 * @return A {@link BiFunction} that delegates to a new applied tuple if called with 2 arguments an to the applied tuple itself.
+	 */
+	public static <LEFT, RIGHT, V> BiFunction<LEFT, RIGHT, V> pairFrom(final Function<Tuple2<LEFT, RIGHT>, V>
+			                                                                     function) {
+		return new BiFunction<LEFT, RIGHT, V>() {
+			@Override
+			public V apply(LEFT left, RIGHT right) {
+				return function.apply(Tuple2.of(left, right));
+			}
+		};
+	}
+
+	/**
+	 * Wrap a given {@link BiFunction} that applies transformation to a Tuple2 into a Function Tuple2.
+	 *
+	 * @param pairFunction PairFunction to wrap into a Function
+	 * @return A {@link BiFunction} that delegates to a new applied tuple if called with 2 arguments an to the applied tuple itself.
+	 */
+	public static <LEFT, RIGHT, V> Function<Tuple2<LEFT, RIGHT>, V> functionFrom(final BiFunction<LEFT, RIGHT, V>
+			                                                                     pairFunction) {
+		return new Function<Tuple2<LEFT, RIGHT>, V>() {
+			@Override
+			public V apply(Tuple2<LEFT,RIGHT> tuple2) {
+				return pairFunction.apply(tuple2.t1, tuple2.t2);
+			}
+		};
+	}
+
+	/**
 	 * Wrap the given {@link Runnable} and compose a new {@link Consumer}.
 	 *
-	 * @param r
-	 * 		The {@link Runnable}.
-	 *
+	 * @param r The {@link Runnable}.
 	 * @return An {@link Consumer} that executes the {@link Runnable}.
 	 */
 	public static <T> Consumer<T> consumer(final Runnable r) {
@@ -101,9 +128,7 @@ public abstract class Functions {
 	/**
 	 * Creates a {@code Supplier} that will always return the given {@code value}.
 	 *
-	 * @param value
-	 * 		the value to be supplied
-	 *
+	 * @param value the value to be supplied
 	 * @return the supplier for the value
 	 */
 	public static <T> Supplier<T> supplier(final T value) {
@@ -119,13 +144,9 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will return a new instance of {@code type} each time
 	 * it's called.
 	 *
-	 * @param type
-	 * 		The type to create
-	 *
+	 * @param type The type to create
 	 * @return The supplier that will create instances
-	 *
-	 * @throws IllegalArgumentException
-	 * 		if {@code type} does not have a zero-args constructor
+	 * @throws IllegalArgumentException if {@code type} does not have a zero-args constructor
 	 */
 	public static <T> Supplier<T> supplier(final Class<T> type) {
 		try {
@@ -135,12 +156,12 @@ public abstract class Functions {
 				public T get() {
 					try {
 						return ctor.newInstance();
-					} catch(Exception e) {
+					} catch (Exception e) {
 						throw new IllegalStateException(e.getMessage(), e);
 					}
 				}
 			};
-		} catch(NoSuchMethodException e) {
+		} catch (NoSuchMethodException e) {
 			throw new IllegalArgumentException(e.getMessage(), e);
 		}
 	}
@@ -149,9 +170,7 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will {@link Callable#call call} the {@code callable}
 	 * each time it's asked for a value.
 	 *
-	 * @param callable
-	 * 		The {@link Callable}.
-	 *
+	 * @param callable The {@link Callable}.
 	 * @return A {@link Supplier} that executes the {@link Callable}.
 	 */
 	public static <T> Supplier<T> supplier(final Callable<T> callable) {
@@ -160,7 +179,7 @@ public abstract class Functions {
 			public T get() {
 				try {
 					return callable.call();
-				} catch(Exception e) {
+				} catch (Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}
@@ -171,9 +190,7 @@ public abstract class Functions {
 	 * Creates a {@code Supplier} that will {@link Future#get get} its value from the
 	 * {@code future} each time it's asked for a value.
 	 *
-	 * @param future
-	 * 		The future to get values from
-	 *
+	 * @param future The future to get values from
 	 * @return A {@link Supplier} that gets its values from the Future
 	 */
 	public static <T> Supplier<T> supplier(final Future<T> future) {
@@ -182,7 +199,7 @@ public abstract class Functions {
 			public T get() {
 				try {
 					return future.get();
-				} catch(Exception e) {
+				} catch (Exception e) {
 					throw new IllegalStateException(e);
 				}
 			}

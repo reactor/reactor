@@ -26,7 +26,6 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
-import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.CombineAction;
@@ -82,9 +81,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 									}
 									counter.incrementAndGet();
 								})
-								.scan(0, Tuple2::getT1)
+								.scan(0, (prev, next) -> next)
 								.filter(integer -> integer >= 0)
-								.reduce(() -> 0, 1, tuple -> -tuple.getT1())
+								.window(1)
+								.flatMap(s ->
+												s.reduce(0, (acc, i) -> -i)
+								)
 								.sample(1)
 								.map(integer -> -integer)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)

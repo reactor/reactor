@@ -16,34 +16,27 @@
 package reactor.rx.action;
 
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
-import reactor.fn.Supplier;
-import reactor.fn.tuple.Tuple;
-import reactor.fn.tuple.Tuple2;
+import reactor.fn.BiFunction;
 
 /**
  * @author Stephane Maldini
- * @since 1.1
+ * @since 1.1, 2.0
  */
-public class ScanAction<T, A> extends Action<T,A> {
+public class ScanAction<T, A> extends Action<T, A> {
 
-	private final    Supplier<? extends A>               accumulators;
-	private final    Function<Tuple2<T, A>, ? extends A> fn;
-	private A                         acc;
+	private final BiFunction<A, ? super T, A> fn;
+	private       A                           acc;
 
 
-	public ScanAction(Supplier<? extends A> accumulators, Function<Tuple2<T, A>, ? extends A> fn, Dispatcher dispatcher) {
+	public ScanAction(A initial, BiFunction<A, ? super T, A> fn, Dispatcher dispatcher) {
 		super(dispatcher);
-		this.accumulators = accumulators;
+		this.acc = initial;
 		this.fn = fn;
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		if (null == acc) {
-			acc = (null != accumulators ? accumulators.get() : null);
-		}
-		acc = fn.apply(Tuple.of(ev, acc));
+		acc = fn.apply(acc, ev);
 		broadcastNext(acc);
 	}
 

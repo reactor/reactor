@@ -35,7 +35,6 @@ import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Tap;
-import reactor.fn.tuple.Tuple2;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
@@ -182,7 +181,7 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> s =
 				stream
 						.map(STRING_2_INTEGER)
-						.reduce(1, r -> r.getT1() * r.getT2());
+						.reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
 	}
 
@@ -195,7 +194,7 @@ public class StreamTests extends AbstractReactorTest {
 						//.dispatchOn(env)
 						.capacity(5)
 						.map(STRING_2_INTEGER)
-						.reduce(1, r -> r.getT1() * r.getT2());
+						.reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
 	}
 
@@ -552,10 +551,10 @@ public class StreamTests extends AbstractReactorTest {
 			case "partitioned":
 				deferred = Streams.broadcast(env);
 				System.out.println(deferred.partition(2).consume(stream -> stream
-								.dispatchOn(env.getCachedDispatcher())
-								.map(i -> i)
-								.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
-								.consume(i -> latch.countDown()).debug()));
+						.dispatchOn(env.getCachedDispatcher())
+						.map(i -> i)
+						.scan(1, (acc, next) -> acc + next)
+						.consume(i -> latch.countDown()).debug()));
 
 				break;
 
@@ -563,7 +562,7 @@ public class StreamTests extends AbstractReactorTest {
 				deferred = Streams.<Integer>broadcast(env, env.getDispatcher(dispatcher));
 				deferred
 						.map(i -> i)
-						.scan(1, (Tuple2<Integer, Integer> tup) -> tup.getT2() + tup.getT1())
+						.scan(1, (acc, next) -> acc + next)
 						.consume(i -> latch.countDown());
 		}
 
@@ -840,7 +839,7 @@ public class StreamTests extends AbstractReactorTest {
 				/*     step 4  */.consume(batchedStream -> {
 														System.out.println("New window starting");
 														batchedStream
-						/*   step 4.1  */.reduce(Integer.MAX_VALUE, tuple -> Math.min(tuple.getT1(), tuple.getT2()))
+						/*   step 4.1  */.reduce(Integer.MAX_VALUE, (acc, next) -> Math.min(acc, next))
 						/* ad-hoc step */.finallyDo(o -> endLatch.countDown())
 						/* final step  */.consume(i -> System.out.println("Minimum " + i));
 		});

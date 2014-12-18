@@ -42,7 +42,6 @@ import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -107,7 +106,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Subscribe an {@link Subscriber} to the actual pipeline to consume current Stream signals (error,complete,next,
 	 * subscribe).
-	 * Return the actual Subscriber that can be an implementation of {@link reactor.core.dispatch.processor.Processor} and chain
+	 * Return the actual Subscriber that can be an implementation of {@link reactor.core.dispatch.processor.Processor}
+	 * and chain
 	 * more
 	 * work behind.
 	 *
@@ -599,14 +599,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Cache all signal to this {@code Stream} and release them on request that will observe any values accepted by this {@code
+	 * Cache all signal to this {@code Stream} and release them on request that will observe any values accepted by this
+	 * {@code
 	 * Stream}.
 	 *
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> cache() {
-		Action<O,O> cacheAction =  new CacheAction<O>(getDispatcher(), Integer.MAX_VALUE);
+		Action<O, O> cacheAction = new CacheAction<O>(getDispatcher(), Integer.MAX_VALUE);
 		subscribe(cacheAction);
 		return cacheAction;
 	}
@@ -1236,6 +1237,21 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Create a new {@code Stream} that will signal the last element observed before complete signal.
+	 *
+	 * @return a new limited {@code Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> last() {
+		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+			@Override
+			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+				return new LastAction<O>(dispatcher);
+			}
+		});
+	}
+
+	/**
 	 * Create a new {@code Stream} that will signal next elements up to {@param max} times.
 	 *
 	 * @param max the number of times to broadcast next signals before completing
@@ -1315,7 +1331,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} system time in millis
+	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} system time in
+	 * millis
 	 * and T2 {@link
 	 * <T>}
 	 * associated data
@@ -1333,7 +1350,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link
+	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} nanotime and T2
+	 * {@link
 	 * <T>}
 	 * associated data. The timemillis corresponds to the elapsed time between the subscribe and the first next
 	 * signals OR
@@ -1875,10 +1893,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every  and complete every time {@code
+	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every  and
+	 * complete every time {@code
 	 * boundarySupplier} stream emits an item.
 	 *
-	 * @param boundarySupplier  the factory to create the stream to listen to for separating each window
+	 * @param boundarySupplier the factory to create the stream to listen to for separating each window
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
 	public final Stream<Stream<O>> window(final Supplier<? extends Publisher<?>> boundarySupplier) {
@@ -1891,14 +1910,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every and complete every time {@code
-	 * boundarySupplier} stream emits an item. Window starts forwarding when the bucketOpening stream emits an item, then subscribe to the boundary supplied to complete.
+	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every and
+	 * complete every time {@code
+	 * boundarySupplier} stream emits an item. Window starts forwarding when the bucketOpening stream emits an item,
+	 * then subscribe to the boundary supplied to complete.
 	 *
-	 * @param bucketOpening  the publisher to listen for signals to create a new window
-	 * @param boundarySupplier  the factory to create the stream to listen to for closing an open window
+	 * @param bucketOpening    the publisher to listen for signals to create a new window
+	 * @param boundarySupplier the factory to create the stream to listen to for closing an open window
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
-	public final Stream<Stream<O>> window(final Publisher<?> bucketOpening, final Supplier<? extends Publisher<?>> boundarySupplier) {
+	public final Stream<Stream<O>> window(final Publisher<?> bucketOpening, final Supplier<? extends Publisher<?>>
+			boundarySupplier) {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends Stream<O>>>() {
 			@Override
 			public Action<? super O, ? extends Stream<O>> apply(Dispatcher dispatcher) {
@@ -2072,64 +2094,50 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
-	 * passed to the function's {@link reactor.fn.tuple.Tuple2} argument.
+	 * Reduce the values passing through this {@code Stream} into an object {@code T}.
+	 * This is a simple functional way for accumulating values.
+	 * The arguments are the N-1 and N next signal in this order.
+	 *
+	 * @param fn the reduce function
+	 * @return a new {@link Stream} whose values contain only the reduced objects
+	 */
+	public final Stream<O> reduce(@Nonnull final BiFunction<O, O, O> fn) {
+		return scan(fn).last();
+	}
+
+	/**
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
+	 * The arguments are the N-1 and N next signal in this order.
 	 *
 	 * @param fn      the reduce function
 	 * @param initial the initial argument to pass to the reduce function
 	 * @param <A>     the type of the reduced object
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
-	public final <A> Stream<A> reduce(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
-		return reduce(Functions.supplier(initial), (int) Math.min(Integer.MAX_VALUE, getCapacity()), fn);
+	public final <A> Stream<A> reduce(final A initial, @Nonnull BiFunction<A, ? super O, A> fn) {
+
+		return scan(initial, fn).last();
 	}
 
 	/**
-	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
-	 * used to produce initial accumulator objects either on the first reduce call,
-	 * in the case of an unbounded {@code
-	 * Stream}, or on the first value of each batch, if a {@code getCapacity()} is set.
-	 * <p>
-	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
-	 * only. But when a {@code getCapacity()} has been, the accumulated
-	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the
-	 * first of
-	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
-	 * a new accumulator.
+	 * Scan the values passing through this {@code Stream} into an object {@code A}.
+	 * The arguments are the N-1 and N next signal in this order.
 	 *
-	 * @param fn           the reduce function
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param batchSize    the batch size to use
-	 * @param <A>          the type of the reduced object
+	 * @param fn the reduce function
 	 * @return a new {@link Stream} whose values contain only the reduced objects
+	 * @since 1.1, 2.0
 	 */
-	public final <A> Stream<A> reduce(@Nullable final Supplier<A> accumulators,
-	                                  final int batchSize,
-	                                  @Nonnull final Function<Tuple2<O, A>, A> fn
-	) {
-
-		return lift(new Function<Dispatcher, Action<? super O, ? extends A>>() {
-			@Override
-			public Action<? super O, ? extends A> apply(Dispatcher dispatcher) {
-				return new ReduceAction<O, A>(
-						dispatcher,
-						batchSize,
-						accumulators,
-						fn
-				);
-			}
-		});
-	}
-
-	/**
-	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
-	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
-	 * @return a new {@link Stream} whose values contain only the reduced objects
-	 */
-	public final <A> Stream<A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
-		return reduce(null, (int) Math.min(Integer.MAX_VALUE, getCapacity()), fn);
+	public final Stream<O> scan(@Nonnull final BiFunction<O, O, O> fn) {
+		return scan(null, new BiFunction<O, O, O>() {
+					@Override
+					public O apply(O o, O o2) {
+						if (o == null) {
+							return o2;
+						}
+						return fn.apply(o, o2);
+					}
+				}
+		);
 	}
 
 	/**
@@ -2143,44 +2151,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
-	public final <A> Stream<A> scan(A initial, @Nonnull Function<Tuple2<O, A>, A> fn) {
-		return scan(Functions.supplier(initial), fn);
-	}
-
-	/**
-	 * Scan the values passing through this {@code Stream} into an object {@code A}.
-	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
-	 * @return a new {@link Stream} whose values contain only the reduced objects
-	 * @since 1.1, 2.0
-	 */
-	public final <A> Stream<A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn) {
-		return scan((Supplier<A>) null, fn);
-	}
-
-	/**
-	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given {@link Supplier} will be
-	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded
-	 * {@code
-	 * Stream}, or on the first value of each batch, if a {@code getCapacity()} is set.
-	 * <p>
-	 * The accumulated value will be published on the returned {@code Stream} every time
-	 * a
-	 * value is accepted.
-	 *
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param fn           the scan function
-	 * @param <A>          the type of the reduced object
-	 * @return a new {@link Stream} whose values contain only the reduced objects
-	 * @since 1.1, 2.0
-	 */
-	public final <A> Stream<A> scan(@Nullable final Supplier<A> accumulators,
-	                                @Nonnull final Function<Tuple2<O, A>, A> fn) {
+	public final <A> Stream<A> scan(final A initial, final @Nonnull BiFunction<A, ? super O, A> fn) {
 		return lift(new Function<Dispatcher, Action<? super O, ? extends A>>() {
 			@Override
 			public Action<? super O, ? extends A> apply(Dispatcher dispatcher) {
-				return new ScanAction<O, A>(accumulators,
+				return new ScanAction<O, A>(initial,
 						fn,
 						dispatcher);
 			}

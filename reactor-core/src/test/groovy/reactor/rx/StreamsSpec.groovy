@@ -23,8 +23,7 @@ import reactor.bus.EventBus
 import reactor.bus.Observable
 import reactor.bus.selector.Selectors
 import reactor.core.dispatch.SynchronousDispatcher
-import reactor.fn.Function
-import reactor.fn.tuple.Tuple2
+import reactor.fn.BiFunction
 import spock.lang.Specification
 
 import java.util.concurrent.*
@@ -937,7 +936,7 @@ class StreamsSpec extends Specification {
 	def "When reducing a known number of values, only the final value is passed to consumers"() {
 		given:
 			'a composable with a known number of values and a reduce function'
-			def source = Streams.<Integer> broadcast().capacity(5)
+			def source = Streams.<Integer> broadcast()
 			Stream reduced = source.reduce(new Reduction())
 			def values = []
 			reduced.consume { values << it }
@@ -949,6 +948,7 @@ class StreamsSpec extends Specification {
 			source.onNext(3)
 			source.onNext(4)
 			source.onNext(5)
+			source.onComplete()
 			println source.debug()
 		then:
 			'the consumer only receives the final value'
@@ -958,7 +958,7 @@ class StreamsSpec extends Specification {
 	def 'A known number of values can be reduced'() {
 		given:
 			'a composable that will accept 5 values and a reduce function'
-			def source = Streams.<Integer> broadcast().capacity(5)
+			def source = Streams.<Integer> broadcast()
 			Stream reduced = source.reduce(new Reduction())
 			def value = reduced.tap()
 
@@ -969,6 +969,7 @@ class StreamsSpec extends Specification {
 			source.onNext(3)
 			source.onNext(4)
 			source.onNext(5)
+			source.onComplete()
 
 		then:
 			'the reduced composable holds the reduced value'
@@ -978,7 +979,7 @@ class StreamsSpec extends Specification {
 	def 'When a known number of values is being reduced, only the final value is made available'() {
 		given:
 			'a composable that will accept 2 values and a reduce function'
-			def source = Streams.<Integer> broadcast().capacity(2)
+			def source = Streams.<Integer> broadcast()
 			def value = source.reduce(new Reduction()).tap()
 
 		when:
@@ -992,13 +993,14 @@ class StreamsSpec extends Specification {
 		when:
 			'the second value is accepted'
 			source.onNext(2)
+			source.onComplete()
 
 		then:
 			'the reduced value is known'
 			value.get() == 2
 	}
 
-	def 'When an unknown number of values is being reduced, each reduction is passed to a consumer on flush'() {
+	def 'When an unknown number of values is being reduced, each reduction is passed to a consumer on window'() {
 		given:
 			'a composable with a reduce function'
 			def source = Streams.<Integer> broadcast()
@@ -2113,8 +2115,8 @@ class StreamsSpec extends Specification {
 					.elapsed()
 					.log()
 					.take(10)
-					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+					.reduce(0l) {  acc, next ->
+				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
 			def value = reduced.log().next()
@@ -2151,8 +2153,8 @@ class StreamsSpec extends Specification {
 			.elapsed()
 					.take(10)
 					.log('reduce')
-					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+					.reduce (0l) { acc, next ->
+				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
 			def value = reduced.log('promise').next()
@@ -2651,16 +2653,11 @@ class StreamsSpec extends Specification {
 		int hashcode() { id }
 	}
 
-	static class Entity {
-		String key
-		String payload
-	}
-
-	static class Reduction implements Function<Tuple2<Integer, Integer>, Integer> {
+	static class Reduction implements BiFunction<Integer,Integer,Integer> {
 		@Override
-		public Integer apply(Tuple2<Integer, Integer> reduce) {
-			def result = reduce.t2 == null ? 1 : reduce.t1 * reduce.t2
-			println "${reduce?.t2} ${reduce?.t1} reduced to ${result}"
+		public Integer apply(Integer left, Integer right) {
+			def result = right == null ? 1 : left * right
+			println "${right} ${left} reduced to ${result}"
 			return result
 		}
 	}
