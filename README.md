@@ -33,11 +33,11 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
 
     dependencies {
       // Reactor Core
-      compile 'org.projectreactor:reactor-core:$reactorVersion'
+      compile 'io.projectreactor:reactor-core:$reactorVersion'
       // Reactor Groovy
-      //compile 'org.projectreactor:reactor-groovy:$reactorVersion'
+      //compile 'io.projectreactor:reactor-groovy:$reactorVersion'
       // Reactor Spring
-      //compile 'org.projectreactor:reactor-spring:$reactorVersion'
+      //compile 'io.projectreactor:reactor-spring:$reactorVersion'
     }
 
 ### Documentation
