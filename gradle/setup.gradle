@@ -111,12 +111,12 @@ def customizePom(def pom, def gradleProject) {
 				developer {
 					id = 'smaldini'
 					name = 'Stephane Maldini'
-					email = 'smaldini@gopivotal.com'
+					email = 'smaldini@pivotal.io'
 				}
 				developer {
 					id = 'jbrisbin'
 					name = 'Jon Brisbin'
-					email = 'jbrisbin@gopivotal.com'
+					email = 'jbrisbin@pivotal.io'
 				}
 			}
 			issueManagement {

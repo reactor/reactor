@@ -18,7 +18,7 @@
 description = 'Reactive fast data framework for the JVM'
 
 ext {
-	gradleVersion = '1.12'
+	gradleVersion = '2.1'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
@@ -63,7 +63,7 @@ buildscript {
 		jcenter()
 	}
 	dependencies {
-		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.6',
+		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7',
 							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
 							'com.github.jengelman.gradle.plugins:shadow:1.1.1'
 	}
@@ -71,7 +71,7 @@ buildscript {
 apply from: "$gradleScriptDir/setup.gradle"
 
 configure(allprojects) { project ->
-	group = 'org.projectreactor'
+	group = 'io.projectreactor'
 
 	apply plugin: 'propdeps'
 	apply plugin: 'java'
@@ -134,7 +134,7 @@ configure(allprojects) { project ->
 	}
 
 	repositories {
-		mavenLocal()
+		//mavenLocal()
 		mavenCentral()
 		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
