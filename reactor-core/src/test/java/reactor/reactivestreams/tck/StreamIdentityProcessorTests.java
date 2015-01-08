@@ -23,7 +23,6 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.BeforeTest;
 import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
@@ -68,12 +67,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	public CombineAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
-		Dispatcher dispatcherZip = env.getCachedDispatcher();
+		//Dispatcher dispatcherZip = env.getCachedDispatcher();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>broadcast(env)
 				.keepAlive(false)
 				.capacity(bufferSize)
-				.partition(4)
+				.partition(2)
 				.flatMap(stream -> stream
 								.dispatchOn(env, dispatchers.get())
 								.observe(i -> {
