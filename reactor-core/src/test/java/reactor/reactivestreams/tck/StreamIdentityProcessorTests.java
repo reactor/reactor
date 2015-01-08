@@ -117,7 +117,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 			return Streams
 					.from(list)
 					.log("iterable-publisher")
-					.dispatchOn(env)
 					.filter(integer -> true)
 					.map(integer -> integer);
 
