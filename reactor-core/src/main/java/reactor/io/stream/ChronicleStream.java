@@ -16,16 +16,14 @@
 package reactor.io.stream;
 
 import net.openhft.chronicle.Chronicle;
-import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptAppender;
-import net.openhft.chronicle.IndexedChronicle;
 import net.openhft.chronicle.tools.ChronicleTools;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.queue.spec.PersistentQueueSpec;
 import reactor.rx.stream.MapStream;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 
@@ -44,14 +42,14 @@ public final class ChronicleStream<K, V>
 	private final ExcerptAppender writeExcerpt;
 
 
-	public ChronicleStream(String name) throws FileNotFoundException {
+	public ChronicleStream(String name) throws IOException {
 		this(name, DEFAULT_MESSAGE_SIZE_HINT);
 	}
 
-	public ChronicleStream(String name, int messageSizeHint) throws FileNotFoundException {
+	public ChronicleStream(String name, int messageSizeHint) throws IOException {
 		this(name,
 				messageSizeHint,
-				new IndexedChronicle(PersistentQueueSpec.DEFAULT_BASE_PATH + "/" + name, ChronicleConfig.DEFAULT.clone())
+				ChronicleQueueBuilder.indexed(PersistentQueueSpec.DEFAULT_BASE_PATH, name).build()
 		);
 	}
 

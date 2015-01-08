@@ -17,9 +17,8 @@
 package reactor.io.stream;
 
 import net.openhft.chronicle.Chronicle;
-import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
-import net.openhft.chronicle.IndexedChronicle;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
@@ -29,7 +28,6 @@ import reactor.rx.Stream;
 import reactor.rx.stream.MapStream;
 import reactor.rx.subscription.PushSubscription;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -76,9 +74,9 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 	 * @param name The name of the dispatcher.
 	 */
 	public ChronicleReaderStream(String name) throws
-			FileNotFoundException {
+			IOException {
 		this(name,
-				new IndexedChronicle(PersistentQueueSpec.DEFAULT_BASE_PATH + "/" + name, ChronicleConfig.DEFAULT.clone())
+				ChronicleQueueBuilder.indexed(PersistentQueueSpec.DEFAULT_BASE_PATH, name).build()
 		);
 	}
 

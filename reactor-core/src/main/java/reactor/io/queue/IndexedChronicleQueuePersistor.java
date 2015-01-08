@@ -55,7 +55,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private final String              basePath;
 	private final Codec<Buffer, T, T> codec;
 	private final boolean             deleteOnExit;
-	private final IndexedChronicle    data;
+	private final Chronicle    data;
 
 
 	/**
@@ -65,7 +65,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
-		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleConfig.DEFAULT.clone());
+		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleQueueBuilder.indexed(basePath));
 	}
 
 	/**
@@ -83,7 +83,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	                                      @Nonnull Codec<Buffer, T, T> codec,
 	                                      boolean clearOnStart,
 	                                      boolean deleteOnExit,
-	                                      @Nonnull ChronicleConfig config) throws IOException {
+	                                      @Nonnull ChronicleQueueBuilder config) throws IOException {
 		this.basePath = basePath;
 		this.codec = codec;
 		this.deleteOnExit = deleteOnExit;
@@ -98,8 +98,8 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		}
 
 		ChronicleTools.warmup();
-		data = new IndexedChronicle(basePath, config);
-		lastId.set(data.findTheLastIndex());
+		data = config.build();
+		lastId.set(data.lastWrittenIndex());
 
 		Excerpt ex = data.createExcerpt();
 		int status = ex.readInt();

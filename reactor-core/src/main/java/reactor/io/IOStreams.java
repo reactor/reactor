@@ -20,7 +20,7 @@ import reactor.io.stream.ChronicleStream;
 import reactor.rx.Streams;
 import reactor.rx.stream.MapStream;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * A Streams add-on to work with IO components such as ChronicleStreams.
@@ -35,7 +35,7 @@ public class IOStreams extends Streams {
 	/**
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name) throws FileNotFoundException {
+	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name) throws IOException {
 		return persistentMap(name, false);
 	}
 
@@ -43,7 +43,7 @@ public class IOStreams extends Streams {
 	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name, boolean deleteOnExit) throws FileNotFoundException {
+	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name, boolean deleteOnExit) throws IOException {
 		ChronicleStream<KEY,VALUE> chronicleStream = new ChronicleStream<>(name);
 		if(deleteOnExit){
 			chronicleStream.deleteOnExit();
@@ -54,7 +54,7 @@ public class IOStreams extends Streams {
 	/**
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMapReader(String name) throws FileNotFoundException {
+	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMapReader(String name) throws IOException {
 		return new ChronicleReaderStream<>(name);
 	}
 

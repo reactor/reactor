@@ -16,7 +16,7 @@
 
 package reactor.io.queue.spec;
 
-import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ChronicleQueueBuilder;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -32,13 +32,13 @@ import java.io.IOException;
  */
 public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 
-	public static String  DEFAULT_BASE_PATH = System.getProperty("java.io.tmpdir") + "/persistent-queue";
+	public static String DEFAULT_BASE_PATH = System.getProperty("java.io.tmpdir") + "/persistent-queue";
 
 	private String  basePath     = DEFAULT_BASE_PATH;
 	private boolean clearOnStart = false;
 	private boolean deleteOnExit = false;
 	private Codec<Buffer, T, T> codec;
-	private ChronicleConfig config = ChronicleConfig.DEFAULT.clone();
+	private ChronicleQueueBuilder.IndexedChronicleQueueBuilder config = ChronicleQueueBuilder.indexed(basePath);
 
 	public PersistentQueueSpec<T> codec(Codec<Buffer, T, T> codec) {
 		this.codec = codec;
@@ -70,23 +70,18 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 		return this;
 	}
 
-	public PersistentQueueSpec<T> indexFileCapacity(int size) {
-		config.indexFileCapacity(size);
+	public PersistentQueueSpec<T> messageCapacity(int size) {
+		config.messageCapacity(size);
 		return this;
 	}
 
-	public PersistentQueueSpec<T> indexFileCapacity(boolean synchronousMode) {
-		config.synchronousMode(synchronousMode);
+	public PersistentQueueSpec<T> sync(boolean synchronousMode) {
+		config.synchronous(synchronousMode);
 		return this;
 	}
 
-	public PersistentQueueSpec<T> indexFileExcerpts(int excerpts) {
-		config.indexFileExcerpts(excerpts);
-		return this;
-	}
-
-	public PersistentQueueSpec<T> minimiseFootprint(boolean minimiseFootprint) {
-		config.minimiseFootprint(minimiseFootprint);
+	public PersistentQueueSpec<T> indexBlockSize(int excerpts) {
+		config.indexBlockSize(excerpts);
 		return this;
 	}
 

@@ -39,8 +39,8 @@ ext {
 	protobufVersion = '2.5.0'
 	snappyVersion = '1.1.0.1'
 	hadoopVersion = '1.1.2'
-	openHftChronicleVersion = '2.0.3'
-	openHftLangVersion = '6.1.4'
+	openHftChronicleVersion = '3.3.4'
+	openHftLangVersion = '6.4.21'
 
 	// Testing
 	mockitoVersion = '1.9.5'
