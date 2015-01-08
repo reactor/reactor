@@ -19,6 +19,7 @@ package reactor.io.stream;
 import net.openhft.chronicle.Chronicle;
 import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
@@ -118,32 +119,17 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 
 	class ChronicleSubscription extends PushSubscription<MapStream.Signal<K, V>> {
 
-		final ExcerptTailer readExcerpt;
 		final MapStream.MutableSignal<K, V> signalContainer = new MapStream.MutableSignal<>();
 
 		public ChronicleSubscription(Stream<MapStream.Signal<K, V>> publisher,
 		                             Subscriber<? super MapStream.Signal<K, V>> subscriber) {
 			super(publisher, subscriber);
-			final ExcerptTailer tailer;
-			try {
-				tailer = chronicle.createTailer();
-			} catch (IOException e) {
-				subscriber.onError(e);
-				throw new IllegalStateException(e);
-			}
-			readExcerpt = tailer;
 		}
 
 		@Override
 		public void cancel() {
 			super.cancel();
-			if (CONSUMER_UPDATER.decrementAndGet(ChronicleReaderStream.this) == 0) {
-				/*try {
-					chronicle.close();
-				} catch (IOException e) {
-					subscriber.onError(e);
-				}*/
-			}
+			CONSUMER_UPDATER.decrementAndGet(ChronicleReaderStream.this);
 		}
 
 		@Override
@@ -152,13 +138,15 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 				@Override
 				public void run() {
 					try {
+						ExcerptTailer readExcerpt = chronicle.createTailer();
+
 						boolean found;
 						long i = 0;
 						while ((n == Long.MAX_VALUE || i < n) && terminated == 0) {
 							found = readExcerpt.nextIndex();
 							if (found) {
 								i++;
-								readExcerpt();
+								readExcerpt(readExcerpt);
 								signalContainer.op(put);
 								signalContainer.key(null);
 								signalContainer.value(null);
@@ -173,7 +161,7 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 			});
 		}
 
-		private void readExcerpt() {
+		private void readExcerpt(ExcerptTailer readExcerpt) {
 			long position = readExcerpt.position();
 			MapStream.Operation event = readExcerpt.readEnum(MapStream.Operation.class);
 			if (event == null) {
@@ -285,6 +273,7 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 		return localCache.containsValue(value);
 	}
 
+	@NotNull
 	@Override
 	public Set<Map.Entry<K, V>> entrySet() {
 		return localCache.entrySet();
@@ -311,6 +300,7 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 	}
 
 
+	@NotNull
 	@Override
 	public Set<K> keySet() {
 		return localCache.keySet();
@@ -357,15 +347,16 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 		return valueCodec;
 	}
 
+	@NotNull
 	@Override
-	public String toString() {
-		return localCache.toString()+"{name="+name+"}";
+	public Collection<V> values() {
+		return localCache.values();
 	}
 
 
 	@Override
-	public Collection<V> values() {
-		return localCache.values();
+	public String toString() {
+		return localCache.toString()+"{name="+name+"}";
 	}
 
 
