@@ -38,9 +38,7 @@ public final class ChronicleStream<K, V>
 
 	private static final int DEFAULT_MESSAGE_SIZE_HINT = 1024 * 1024; // 1MB
 
-	private final int             messageSizeHint;
-	private final ExcerptAppender writeExcerpt;
-
+	private final int messageSizeHint;
 
 	public ChronicleStream(String name) throws IOException {
 		this(name, DEFAULT_MESSAGE_SIZE_HINT);
@@ -61,11 +59,6 @@ public final class ChronicleStream<K, V>
 	                       Codec<Buffer, K, K> keyCodec, Codec<Buffer, V, V> valueCodec) {
 		super(name, chronicle, keyCodec, valueCodec);
 		this.messageSizeHint = messageSizeHint;
-		try {
-			this.writeExcerpt = chronicle.createAppender();
-		} catch (IOException e) {
-			throw new IllegalStateException(e);
-		}
 	}
 
 	@Override
@@ -104,32 +97,25 @@ public final class ChronicleStream<K, V>
 
 	@Override
 	public void clear() {
-		synchronized (writeExcerpt) {
-			getExcerpt(16, clear);
-			writeExcerpt.finish();
-		}
+		ExcerptAppender writeExcerpt = getExcerpt(16, clear);
+		writeExcerpt.finish();
 	}
 
 	@SuppressWarnings("unchecked")
 	protected void writeRemove(Object key) {
-		synchronized (writeExcerpt) {
 			ExcerptAppender excerpt = getExcerpt(messageSizeHint, remove);
 			writeKey(excerpt, (K) key);
 			excerpt.finish();
-		}
 	}
 
 	protected void writePut(K key, V previous, V value) {
-		synchronized (writeExcerpt) {
 			ExcerptAppender excerpt = getExcerpt(messageSizeHint, put);
 			writeKey(excerpt, key);
 			writeValue(excerpt, value);
 			excerpt.finish();
-		}
 	}
 
 	protected void writePutAll(Map<? extends K, ? extends V> m) {
-		synchronized (writeExcerpt) {
 			ExcerptAppender excerpt = getExcerpt(m.size() * messageSizeHint, putAll);
 			long pos = excerpt.position();
 			excerpt.writeInt(0); // place holder for the actual size.
@@ -146,7 +132,6 @@ public final class ChronicleStream<K, V>
 			}
 			excerpt.writeInt(pos, count);
 			excerpt.finish();
-		}
 	}
 
 	private void writeValue(ExcerptAppender excerpt, V value) {
@@ -172,7 +157,12 @@ public final class ChronicleStream<K, V>
 	}
 
 	private ExcerptAppender getExcerpt(int maxSize, MapStream.Operation event) {
-
+		ExcerptAppender writeExcerpt;
+		try {
+			writeExcerpt = chronicle.createAppender();
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
 		writeExcerpt.startExcerpt(maxSize + 2 + event.name().length());
 		writeExcerpt.writeEnum(event);
 		return writeExcerpt;

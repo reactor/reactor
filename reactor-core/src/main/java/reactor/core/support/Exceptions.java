@@ -179,7 +179,7 @@ public final class Exceptions {
 			if (value instanceof Enum) {
 				return ((Enum) value).name();
 			}
-			return value.getClass().getName() + ".class";
+			return value.getClass().getName() + ".class : "+value;
 		}
 	}
 }
