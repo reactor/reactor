@@ -16,7 +16,7 @@
 
 package reactor.io.queue
 
-import net.openhft.chronicle.ChronicleConfig
+import net.openhft.chronicle.ChronicleQueueBuilder
 import reactor.io.codec.StandardCodecs
 import reactor.rx.Streams
 import spock.lang.Specification
@@ -53,7 +53,7 @@ class QueuePersistorSpec extends Specification {
 			persistor.size() == 0
 
 		cleanup:
-			persistor.close()
+			persistor?.close()
 
 	}
 
@@ -66,7 +66,7 @@ class QueuePersistorSpec extends Specification {
 					StandardCodecs.STRING_CODEC,
 					true,
 					true,
-					ChronicleConfig.TEST.clone()
+					ChronicleQueueBuilder.indexed('queue-persistor').test()
 			)
 			def obj = "Hello World!"
 
@@ -89,7 +89,7 @@ class QueuePersistorSpec extends Specification {
 			persistor.size() == 0
 
 		cleanup:
-			persistor.close()
+			persistor?.close()
 
 	}
 
@@ -130,7 +130,7 @@ class QueuePersistorSpec extends Specification {
 			persistentQueue.size() == 0
 
 		cleanup:
-			persistentQueue.close()
+			persistentQueue?.close()
 
 	}
 

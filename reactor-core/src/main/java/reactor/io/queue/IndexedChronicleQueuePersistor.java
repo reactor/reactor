@@ -102,7 +102,6 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		lastId.set(data.lastWrittenIndex());
 
 		Excerpt ex = data.createExcerpt();
-		int status = ex.readInt();
 		ex.skip(4);
 		while (ex.nextIndex()) {
 			int len = ex.readInt();

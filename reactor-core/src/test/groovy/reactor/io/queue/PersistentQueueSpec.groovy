@@ -16,7 +16,7 @@
 
 package reactor.io.queue
 
-import net.openhft.chronicle.ChronicleConfig
+import net.openhft.chronicle.ChronicleQueueBuilder
 import net.openhft.chronicle.tools.ChronicleTools
 import reactor.io.codec.StandardCodecs
 import reactor.io.codec.json.JsonCodec
@@ -28,7 +28,7 @@ import spock.lang.Specification
 class PersistentQueueSpec extends Specification {
 
 	static QueuePersistor<String> persistor() {
-		def config = ChronicleConfig.TEST.clone()
+		def config = ChronicleQueueBuilder.indexed('persistent-queue')
 
 		new IndexedChronicleQueuePersistor<String>(
 				"persistent-queue",
@@ -40,7 +40,7 @@ class PersistentQueueSpec extends Specification {
 	}
 
 	static <T> QueuePersistor<T> jsonPersistor(Class<T> type) {
-		def config = ChronicleConfig.TEST.clone()
+		def config = ChronicleQueueBuilder.indexed('persistent-queue')
 
 		new IndexedChronicleQueuePersistor<T>(
 				"persistent-queue",
