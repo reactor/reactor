@@ -24,6 +24,7 @@ import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.BeforeTest;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.DispatcherSupplier;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
@@ -49,7 +50,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
-	private Environment env;
+	private DispatcherSupplier dispatchers;
+	private Environment        env;
 
 	public StreamIdentityProcessorTests() {
 		super(new TestEnvironment(2500, true), 3500);
@@ -58,7 +60,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@BeforeTest
 	@Before
 	public void startEnv() {
-		env = new Environment().assignErrorJournal();
+		env = Environment.initializeIfEmpty().assignErrorJournal();
+		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
 	}
 
 	@Override
@@ -72,7 +75,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 				.capacity(bufferSize)
 				.partition(4)
 				.flatMap(stream -> stream
-								.dispatchOn(env, env.getCachedDispatcher())
+								.dispatchOn(env, dispatchers.get())
 								.observe(i -> {
 									AtomicLong counter = counters.get(Thread.currentThread());
 									if (counter == null) {
