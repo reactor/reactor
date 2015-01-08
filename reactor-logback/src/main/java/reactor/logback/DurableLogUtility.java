@@ -27,9 +27,8 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;
 import net.openhft.chronicle.Chronicle;
-import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
-import net.openhft.chronicle.IndexedChronicle;
 import net.openhft.chronicle.tools.ChronicleTools;
 import org.apache.commons.cli.*;
 import org.slf4j.LoggerFactory;
@@ -105,7 +104,7 @@ public class DurableLogUtility {
 		}
 
 		ChronicleTools.warmup();
-		Chronicle chronicle = new IndexedChronicle(cl.getOptionValue("path"), ChronicleConfig.DEFAULT);
+		Chronicle chronicle = ChronicleQueueBuilder.indexed(cl.getOptionValue("path")).build();
 		ExcerptTailer ex = chronicle.createTailer();
 
 		Level level = Level.valueOf(cl.getOptionValue("level", "TRACE"));

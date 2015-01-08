@@ -19,9 +19,8 @@ package reactor.logback;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import net.openhft.chronicle.Chronicle;
-import net.openhft.chronicle.ChronicleConfig;
+import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptAppender;
-import net.openhft.chronicle.IndexedChronicle;
 import net.openhft.chronicle.tools.ChronicleTools;
 
 import java.io.IOException;
@@ -55,12 +54,9 @@ public class DurableAsyncAppender extends AsyncAppender {
 	@Override
 	protected void doStart() {
 		ChronicleTools.warmup();
-		ChronicleConfig config = ChronicleConfig.DEFAULT.clone()
-		                                                .synchronousMode(false)
-		                                                .useUnsafe(true);
 		this.basePath = (this.basePath.endsWith("/") ? this.basePath + getName() : this.basePath + "/" + getName());
 		try {
-			chronicle = new IndexedChronicle(basePath, config);
+			chronicle = ChronicleQueueBuilder.indexed(basePath).synchronous(true).build();
 			appender = chronicle.createAppender();
 		} catch (Throwable t) {
 			addError(t.getMessage(), t);
