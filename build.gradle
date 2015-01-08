@@ -305,7 +305,7 @@ project('reactor-core') {
 
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:1.0.0.RC1"
-		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC2.BUILD-SNAPSHOT"
+		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC1"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",
