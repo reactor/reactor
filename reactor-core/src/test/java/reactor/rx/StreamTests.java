@@ -904,11 +904,7 @@ public class StreamTests extends AbstractReactorTest {
 					// return new LongRangeStream(1, numBatches).map(x->batchSize);
 					return Streams.range(1, (int) numBatches).map(x -> batchSize);
 				}))
-				.consume(
-						x -> System.out.println(Thread.currentThread().getName() + " - Consuming: " + Integer.toString(x)),
-						Throwable::printStackTrace,
-						v -> System.out.println("Completed")
-				);
+				.consume();
 	}
 
 	@Test

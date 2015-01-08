@@ -1024,7 +1024,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * implement
 	 * stream.fanIn(data -> broadcastNext(data)) or stream.fanIn(System.out::println)
 	 * <p>
-	 * <p>
 	 * Dynamic merge (moving nested data into the top-level returned stream) requires use of reactive-pull offered by
 	 * default StreamSubscription. If merge hasn't getCapacity() to
 	 * take new elements because its {@link
