@@ -460,7 +460,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A new error consumer is subscribed'
-			composable.when(RuntimeException) { errors++ }.consume()
+			Streams.fail(new RuntimeException()).when(RuntimeException) { errors++ }.consume()
 
 		then:
 			'it is called since publisher is in error state'
@@ -474,6 +474,51 @@ class StreamsSpec extends Specification {
 		then:
 			'it is not passed to the consumer'
 			errors == 2
+	}
+
+	def 'Accepted errors and values are passed to a registered Consumer'() {
+		when:
+			'a composable with a registered consumer of RuntimeExceptions'
+		def res = []
+			def stream = Streams.<Integer>broadcast()
+			def tail = stream
+			    .observe{ if(it>1) throw new RuntimeException()}
+					.observeError(RuntimeException){ data, error -> res << data}
+					.retry()
+		      .consume()
+			println tail.debug()
+
+		stream.onNext(1)
+		stream.onNext(2)
+		stream.onNext(3)
+		stream.onNext(4)
+		stream.onComplete()
+
+		then:
+			'it is called since publisher is in error state'
+			res == [2, 3, 4]
+
+		when:
+			'Recover values'
+		 def b = Streams.<Integer>broadcast()
+			tail = b.toList()
+
+			stream
+					.observe{ if(it>1) throw new RuntimeException()}
+					.recover(RuntimeException, b)
+					.consume()
+
+			stream.onNext(1)
+			stream.onNext(2)
+			stream.onNext(3)
+			stream.onNext(4)
+			stream.onComplete()
+
+			println tail.debug()
+
+		then:
+			'it is not passed to the consumer'
+			tail.await(5, TimeUnit.SECONDS) == [2, 3, 4]
 	}
 
 	def 'When the accepted event is Iterable, split can iterate over values'() {
@@ -773,6 +818,31 @@ class StreamsSpec extends Specification {
 		then:
 			'the values are all collected from source1 and source2 stream'
 			res == [1, 2, 3, 4, 5, 'done']
+
+		when:
+			res = []
+			lasts.startWith(firsts).consume(
+					{ res << it; println it },
+					{ it.printStackTrace() },
+					{ res << 'done'; println 'completed!' }
+			)
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == [1, 2, 3, 4, 5, 'done']
+
+		when:
+			res = []
+			lasts.startWith([1,2,3]).consume(
+					{ res << it; println it },
+					{ it.printStackTrace() },
+					{ res << 'done'; println 'completed!' }
+			)
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == [1, 2, 3, 4, 5, 'done']
+
 	}
 
 	def "A mapped concat"() {
@@ -1747,7 +1817,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Streams.<Integer> broadcast().env(Environment.get())
-			def reduced = source.buffer().throttle(300)
+			def reduced = source.buffer(2).throttle(300)
 			def value = reduced.tap()
 
 		when:
@@ -2644,6 +2714,51 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			notThrown(Exception)
+	}
+
+
+	def 'A Stream can be skipped'() {
+		given:
+			'a composable with an initial values'
+			def stream = Streams.from(['test', 'test2', 'test3'])
+
+		when:
+			'skip to the second element'
+			def value = stream.skip(1).toList().get()
+
+		then:
+			'the first has been skipped'
+			value == ['test2', 'test3']
+
+		when:
+			'skip until test2 is seen'
+			stream = Streams.broadcast()
+			def value2 = stream.skipWhile {
+				'test1' == it
+			}.toList()
+
+			stream.onNext('test1')
+			stream.onNext('test2')
+			stream.onNext('test3')
+			stream.onComplete()
+
+		then:
+			'the second is the last available'
+			value2.get() == ['test2', 'test3']
+	}
+
+
+	def 'A Stream can be skipped in time'() {
+		given:
+			'a composable with an initial values'
+			def stream = Streams.range(0, 1000)
+					.dispatchOn(Environment.cachedDispatcher())
+
+		when:
+			def promise = stream.skip(2, TimeUnit.SECONDS).toList()
+
+		then:
+			!promise.await()
 	}
 
 	static class SimplePojo {

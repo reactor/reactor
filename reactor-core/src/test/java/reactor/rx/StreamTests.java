@@ -473,7 +473,7 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		for (int i = 0; i < COUNT; i++) {
-			if(i % 5000 == 0) System.out.println(c.debug());
+			if (i % 5000 == 0) System.out.println(c.debug());
 			d.onNext(i);
 		}
 
@@ -511,7 +511,7 @@ public class StreamTests extends AbstractReactorTest {
 								.buffer(1000 / 8, 1l, TimeUnit.SECONDS)
 								.consume(batch -> {
 									for (String i : batch) latch.countDown();
-									}));
+								}));
 
 		String[] data = new String[iterations];
 		for (int i = 0; i < iterations; i++) {
@@ -749,7 +749,7 @@ public class StreamTests extends AbstractReactorTest {
 
 			@Override
 			public void doNext(Integer integer) {
-				System.out.println(Thread.currentThread().getName()+" "+debug());
+				System.out.println(Thread.currentThread().getName() + " " + debug());
 				latch.countDown();
 				System.out.println(integer);
 				s.request(1);
@@ -762,7 +762,7 @@ public class StreamTests extends AbstractReactorTest {
 
 			@Override
 			public void doComplete() {
-				System.out.println(Thread.currentThread().getName()+" complete "+debug());
+				System.out.println(Thread.currentThread().getName() + " complete " + debug());
 			}
 		});
 
@@ -774,6 +774,39 @@ public class StreamTests extends AbstractReactorTest {
 		latch.await(5, TimeUnit.SECONDS);
 		assertEquals("Must have counted 4 elements", 0, latch.getCount());
 
+	}
+
+	@Test
+	public void testParallelAsyncStream2() throws InterruptedException {
+
+		final int numOps = 25;
+
+		CountDownLatch latch = new CountDownLatch(numOps);
+
+		Stream<String> operationStream =
+				Streams.defer(() -> Streams.<String>broadcast(Environment.cachedDispatcher()))
+						.throttle(100)
+						.map(s -> s + " MODIFIED")
+						.map(s -> {
+							latch.countDown();
+							return s;
+						})
+				//.log();
+				;
+
+
+		for (int i = 0; i < numOps; i++) {
+			final String source = "ASYNC_TEST " + i;
+
+			Streams.just(source)
+					.broadcastTo(operationStream.combine())
+					.take(2, TimeUnit.SECONDS)
+					.log()
+					.consume(System.out::println);
+		}
+
+		latch.await();
+		assertEquals(0, latch.getCount());
 	}
 
 
@@ -792,7 +825,7 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
 		Controls tail =
-				worker.partition(2).consume( s ->
+				worker.partition(2).consume(s ->
 								s
 										.dispatchOn(supplier.get())
 										.map(v -> v)
@@ -837,8 +870,8 @@ public class StreamTests extends AbstractReactorTest {
 				/*     step 2  */.window(100)
 				///*     step 3  */.timeout(1000)
 				/*     step 4  */.consume(batchedStream -> {
-														System.out.println("New window starting");
-														batchedStream
+			System.out.println("New window starting");
+			batchedStream
 						/*   step 4.1  */.reduce(Integer.MAX_VALUE, (acc, next) -> Math.min(acc, next))
 						/* ad-hoc step */.finallyDo(o -> endLatch.countDown())
 						/* final step  */.consume(i -> System.out.println("Minimum " + i));
@@ -848,6 +881,34 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println(controls.debug());
 
 		Assert.assertEquals(0, endLatch.getCount());
+	}
+
+	@Test
+	public void shouldThrottleCorrectly() throws InterruptedException {
+		Streams.range(1, 10000000)
+				.dispatchOn(Environment.sharedDispatcher())
+				.requestWhen(reqs -> reqs.flatMap(req -> {
+					// set the batch size
+					long batchSize = 10;
+
+					// Value below in reality should be req / batchSize;
+					// Now test for 30, 60, 500, 1000, 1000000 etc and see what happens
+					// small nubmers should work, but I think there is bug
+					long numBatches = 1000;
+
+					System.out.println("Original request = " + req);
+					System.out.println("Batch size = " + batchSize);
+					System.out.println("Number of batches should be = " + numBatches);
+
+					// LongRangeStream for correct handling of values > 4 byte int
+					// return new LongRangeStream(1, numBatches).map(x->batchSize);
+					return Streams.range(1, (int) numBatches).map(x -> batchSize);
+				}))
+				.consume(
+						x -> System.out.println(Thread.currentThread().getName() + " - Consuming: " + Integer.toString(x)),
+						Throwable::printStackTrace,
+						v -> System.out.println("Completed")
+				);
 	}
 
 	@Test

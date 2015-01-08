@@ -18,18 +18,16 @@ package reactor.bus.spec;
 import reactor.Environment;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
-import reactor.bus.convert.Converter;
-import reactor.bus.convert.DelegatingConverter;
 import reactor.bus.filter.*;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registry;
-import reactor.bus.routing.*;
+import reactor.bus.routing.ConsumerFilteringRouter;
+import reactor.bus.routing.Router;
+import reactor.bus.routing.TraceableDelegatingRouter;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.TraceableDelegatingDispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-
-import java.util.List;
 
 
 /**
@@ -47,41 +45,16 @@ import java.util.List;
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends
                                                                                                               DispatcherComponentSpec<SPEC, TARGET> {
 
-	private Converter             converter;
+
+
+
 	private EventRoutingStrategy  eventRoutingStrategy;
 	private Router                router;
-	private ConsumerInvoker       consumerInvoker;
 	private Filter                eventFilter;
 	private Consumer<Throwable>   dispatchErrorHandler;
 	private Consumer<Throwable>   uncaughtErrorHandler;
-	private Registry<Consumer<?>> consumerRegistry;
+	private Registry<Consumer<? extends Event<?>>> consumerRegistry;
 	private boolean traceEventPath = false;
-
-	/**
-	 * Configures the component's EventRouter to use the given {code converters}.
-	 *
-	 * @param converters
-	 * 		The converters to be used by the event router
-	 *
-	 * @return {@code this}
-	 */
-	public final SPEC converters(Converter... converters) {
-		this.converter = new DelegatingConverter(converters);
-		return (SPEC) this;
-	}
-
-	/**
-	 * Configures the component's EventRouter to use the given {code converters}.
-	 *
-	 * @param converters
-	 * 		The converters to be used by the event router
-	 *
-	 * @return {@code this}
-	 */
-	public final SPEC converters(List<Converter> converters) {
-		this.converter = new DelegatingConverter(converters);
-		return (SPEC) this;
-	}
 
 
 	/**
@@ -96,24 +69,12 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	/**
-	 * Assigns the component's Consumer Invoker
-	 *
-	 * @return {@code this}
-	 */
-	public final SPEC consumerInvoker(ConsumerInvoker consumerInvoker) {
-		Assert.isNull(router, "Cannot set both a consumerInvoker and a router. Use one or the other.");
-		this.consumerInvoker = consumerInvoker;
-		return (SPEC) this;
-	}
-
-	/**
 	 * Assigns the component's EventRouter
 	 *
 	 * @return {@code this}
 	 */
 	public final SPEC eventRouter(Router router) {
 		Assert.isNull(eventFilter, "Cannot set both a filter and a router. Use one or the other.");
-		Assert.isNull(consumerInvoker, "Cannot set both a consumerInvoker and a router. Use one or the other.");
 		this.router = router;
 		return (SPEC) this;
 	}
@@ -219,7 +180,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 *
 	 * @return {@code this}
 	 */
-	public SPEC consumerRegistry(Registry<Consumer<?>> consumerRegistry) {
+	public SPEC consumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
 		this.consumerRegistry = consumerRegistry;
 		return (SPEC) this;
 	}
@@ -234,7 +195,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public SPEC consumerNotFoundHandler(Consumer<Object> consumerNotFoundHandler) {
-		this.consumerRegistry = new CachingRegistry<Consumer<?>>(true, true, consumerNotFoundHandler);
+		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(true, true, consumerNotFoundHandler);
 		return (SPEC) this;
 	}
 
@@ -258,8 +219,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private Router createEventRouter() {
 		Router evr = new ConsumerFilteringRouter(
-				eventFilter != null ? eventFilter : createFilter(),
-				consumerInvoker != null ? consumerInvoker : new ArgumentConvertingConsumerInvoker(converter));
+				eventFilter != null ? eventFilter : createFilter());
 		if (traceEventPath) {
 			return new TraceableDelegatingRouter(evr);
 		} else {

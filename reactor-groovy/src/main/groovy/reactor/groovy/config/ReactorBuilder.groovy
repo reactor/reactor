@@ -7,11 +7,8 @@ import org.reactivestreams.Processor
 import reactor.Environment
 import reactor.bus.Event
 import reactor.bus.EventBus
-import reactor.bus.convert.Converter
 import reactor.bus.filter.*
 import reactor.bus.registry.CachingRegistry
-import reactor.bus.routing.ArgumentConvertingConsumerInvoker
-import reactor.bus.routing.ConsumerInvoker
 import reactor.bus.routing.Router
 import reactor.bus.selector.Selector
 import reactor.bus.selector.Selectors
@@ -39,9 +36,7 @@ class ReactorBuilder implements Supplier<EventBus> {
 	static final String FIRST = 'first'
 
 	Environment env
-	Converter converter
 	Router router
-	ConsumerInvoker consumerInvoker
 	Dispatcher dispatcher
 	Filter filter
 	boolean override = false
@@ -68,12 +63,10 @@ class ReactorBuilder implements Supplier<EventBus> {
 	}
 
 	void rehydrate(ReactorBuilder r) {
-		converter = converter ?: r.converter
 		filter = filter ?: r.filter
 		dispatcher = dispatcher ?: r.dispatcher
 		dispatcherName = dispatcherName ?: r.dispatcherName
 		router = router ?: r.router
-		consumerInvoker = consumerInvoker ?: r.consumerInvoker
 
 		if (!override) {
 			processors.addAll r.processors
@@ -206,9 +199,6 @@ class ReactorBuilder implements Supplier<EventBus> {
 		} else {
 			spec.dispatcher(dispatcher)
 		}
-		if (converter) {
-			spec.converters(converter)
-		}
 		if (router) {
 			spec.eventRouter(router)
 		} else if (processors) {
@@ -221,15 +211,11 @@ class ReactorBuilder implements Supplier<EventBus> {
 				registry.register p.selector, p.processor
 			}
 
-			spec.eventRouter(new StreamRouter(filter ?: DEFAULT_FILTER,
-					consumerInvoker ?: new ArgumentConvertingConsumerInvoker(converter), registry))
+			spec.eventRouter(new StreamRouter(filter ?: DEFAULT_FILTER, registry))
 
 		} else {
 			if (filter) {
 				spec.eventFilter(filter)
-			}
-			if (consumerInvoker) {
-				spec.consumerInvoker(consumerInvoker)
 			}
 		}
 

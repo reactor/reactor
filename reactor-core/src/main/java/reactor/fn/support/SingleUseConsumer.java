@@ -30,12 +30,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 		the type of the values that the consumer can accept
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class SingleUseConsumer<T> implements Consumer<T> {
 
 	private final AtomicBoolean called = new AtomicBoolean();
 
-	private final Consumer<T> delegate;
+	private final Consumer<? super T> delegate;
 
 	/**
 	 * Used to create anonymous subclasses.
@@ -50,7 +51,7 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 	 * @param delegate
 	 * 		The {@link Consumer} to delegate accept calls to.
 	 */
-	public SingleUseConsumer(Consumer<T> delegate) {
+	public SingleUseConsumer(Consumer<? super T> delegate) {
 		this.delegate = delegate;
 	}
 
@@ -64,7 +65,7 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 	 *
 	 * @return A new {@code Consumer} that will only be invoked once, then cancelled.
 	 */
-	public static <T> Consumer<T> once(Consumer<T> delegate) {
+	public static <T> Consumer<T> once(Consumer<? super T> delegate) {
 		return new SingleUseConsumer<T>(delegate);
 	}
 

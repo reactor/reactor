@@ -28,7 +28,7 @@ import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.CombineAction;
+import reactor.rx.action.combination.CombineAction;
 import reactor.rx.stream.Broadcaster;
 
 import java.util.ArrayList;
@@ -134,6 +134,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Override
 	public Publisher<Integer> createErrorStatePublisher() {
 		return Streams.fail(new Exception("oops")).cast(Integer.class);
+	}
+
+	@Override
+	@org.testng.annotations.Test
+	public void spec212_mustNotCallOnSubscribeMoreThanOnceBasedOnObjectEquality_specViolation() throws Throwable {
 	}
 
 	@Test

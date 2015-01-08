@@ -19,13 +19,17 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
+import reactor.fn.tuple.Tuple;
+import reactor.io.IOStreams;
+import reactor.rx.stream.MapStream;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static reactor.Environment.cachedDispatcher;
+import static reactor.Environment.sharedDispatcher;
 
 /**
  * @author Stephane Maldini
@@ -49,39 +53,46 @@ public class PopularTagTests extends AbstractReactorTest {
 	public void sampleTest() throws Exception {
 		CountDownLatch latch = new CountDownLatch(1);
 
-		Controls tail =
+		MapStream<String, Integer> persistentMap = IOStreams.persistentMap("popularTags", true);
+
+		Controls top10every1second =
 				Streams.from(PULP_SAMPLE)
+						.dispatchOn(sharedDispatcher())
 						.flatMap(samuelJackson ->
 										Streams
 												.from(samuelJackson.split(" "))
-
+												.dispatchOn(cachedDispatcher())
+												.filter(w -> !w.trim().isEmpty())
+												.observe(i -> simulateLatency())
 						)
-						.window(5, TimeUnit.SECONDS)
-						.flatMap(s -> {
-							final Map<String, Long> store = new HashMap<>();
-							return s
-									.reduce(store, (acc, next) -> {
-												Long previous;
-												if ((previous = store.putIfAbsent(next.toLowerCase(), 1l)) != null) {
-													store.put(next.toLowerCase(), ++previous);
-												}
-												return store;
-											}
-									).flatMap(map -> Streams.from(map.entrySet()));
-						})
-						.sort((a, b) -> -a.getValue().compareTo(b.getValue()))
+						.map(w -> Tuple.of(w, 1))
+						.window(1, SECONDS)
+						.flatMap(s ->
+										BiStreams.reduceByKey(s, persistentMap, (acc, next) -> acc + next)
+												.sort((a, b) -> -a.t2.compareTo(b.t2))
+												.take(10)
+												.finallyDo(_s -> LOG.info("------------------------ window complete! ----------------------"))
+						)
 						.consume(
-								entry -> LOG.info(entry.getKey() + ": " + entry.getValue()),
+								entry -> LOG.info(entry.t1 + ": " + entry.t2),
 								error -> LOG.error("", error),
 								nil -> latch.countDown()
 						);
 
-		awaitLatch(tail, latch);
+		awaitLatch(top10every1second, latch);
+	}
+
+	private void simulateLatency(){
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Controls tail, CountDownLatch latch) throws Exception {
-		if (!latch.await(5, TimeUnit.SECONDS)) {
+		if (!latch.await(10, SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
 					+ tail.debug());
 		}

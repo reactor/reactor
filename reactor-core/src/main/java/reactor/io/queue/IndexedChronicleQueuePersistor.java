@@ -20,6 +20,7 @@ import net.openhft.chronicle.*;
 import net.openhft.chronicle.tools.ChronicleTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.JavaSerializationCodec;
@@ -28,6 +29,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -55,6 +57,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private final boolean             deleteOnExit;
 	private final IndexedChronicle    data;
 
+
 	/**
 	 * Create an {@link IndexedChronicleQueuePersistor} based on the given base path.
 	 *
@@ -62,7 +65,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @throws IOException
 	 */
 	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
-		this(basePath, new JavaSerializationCodec<T>(), false, true, ChronicleConfig.DEFAULT.clone());
+		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleConfig.DEFAULT.clone());
 	}
 
 	/**
@@ -166,11 +169,57 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	}
 
 	@Override
+	public Long offerAll(@Nonnull Collection<T> t) {
+		if(t.isEmpty()){
+			return lastId();
+		}
+
+		Function<T, Buffer> encoder = codec.encoder();
+		int elasticity = 16;
+		Buffer buff;
+
+		synchronized (monitor) {
+			long count = 0l;
+			for(T v : t) {
+				buff = encoder.apply(v);
+				int len = buff.remaining();
+				if(count++ == 0){
+					exAppender.startExcerpt(4 + elasticity*t.size()*len);
+				}
+
+				exAppender.writeInt(len);
+				exAppender.write(buff.byteBuffer());
+
+				size.incrementAndGet();
+			}
+
+			lastId.set(exAppender.lastWrittenIndex());
+			exAppender.finish();
+		}
+
+		if (LOG.isTraceEnabled()) {
+			LOG.trace("Offered {} to Chronicle at index {}, size {}", t, lastId(), size());
+		}
+
+		return lastId();
+	}
+
+
+
+	@Override
 	public T get(Long id) {
 		if (!exTrailer.index(id)) {
 			return null;
 		}
 		return read(exTrailer);
+	}
+
+	public Codec<Buffer, T, T> codec() {
+		return codec;
+	}
+
+	public ExcerptTailer reader() {
+		return indexTrailer;
 	}
 
 	@Override
@@ -180,6 +229,8 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			size.decrementAndGet();
 			return obj;
 		}
+
+
 	}
 
 	@Override

@@ -18,9 +18,11 @@ package reactor.bus.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.bus.Event;
 import reactor.bus.filter.Filter;
 import reactor.bus.registry.Registration;
 import reactor.core.support.Assert;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.support.CancelConsumerException;
 
@@ -36,46 +38,43 @@ import java.util.List;
 public class ConsumerFilteringRouter implements Router {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
-	private final Filter          filter;
-	private final ConsumerInvoker consumerInvoker;
+	private final Filter               filter;
 
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to filter consumers.
 	 *
 	 * @param filter          The filter to use. Must not be {@code null}.
-	 * @param consumerInvoker Used to invoke consumers. Must not be {@code null}.
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
-	public ConsumerFilteringRouter(Filter filter, ConsumerInvoker consumerInvoker) {
+	public ConsumerFilteringRouter(Filter filter) {
 		Assert.notNull(filter, "filter must not be null");
-		Assert.notNull(consumerInvoker, "consumerInvoker must not be null");
 
 		this.filter = filter;
-		this.consumerInvoker = consumerInvoker;
 	}
 
 	@Override
-	public <E> void route(Object key, E event,
-	                  List<Registration<? extends Consumer<?>>> consumers,
-	                  Consumer<E> completionConsumer,
-	                  Consumer<Throwable> errorConsumer) {
+	@SuppressWarnings("unchecked")
+	public <E extends Event<?>> void route(Object key, E event,
+	                      List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                      Consumer<E> completionConsumer,
+	                      Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
-			List<Registration<? extends Consumer<?>>> regs = filter.filter(consumers, key);
+			List<Registration<? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
 			int size = regs.size();
 			// old-school for loop is much more efficient than using an iterator
 			for (int i = 0; i < size; i++) {
-				Registration<? extends Consumer<?>> reg = regs.get(i);
+				Registration<? extends Consumer<? extends Event<?>>> reg = regs.get(i);
 
 				if (null == reg || reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
 				try {
-					consumerInvoker.invoke(reg.getObject(), Void.TYPE, event);
+					((Consumer<E>)reg.getObject()).accept(event);
 				} catch (CancelConsumerException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {
 					if (null != errorConsumer) {
-						errorConsumer.accept(t);
+						errorConsumer.accept(Exceptions.addValueAsLastCause(t, event));
 					} else {
 						logger.error("Event routing failed for {}: {}", reg.getObject(), t.getMessage(), t);
 						if (RuntimeException.class.isInstance(t)) {
@@ -94,11 +93,11 @@ public class ConsumerFilteringRouter implements Router {
 		if (null != completionConsumer) {
 			try {
 				completionConsumer.accept(event);
-			} catch (Exception e) {
+			} catch (Throwable t) {
 				if (null != errorConsumer) {
-					errorConsumer.accept(e);
+					errorConsumer.accept(Exceptions.addValueAsLastCause(t, event));
 				} else {
-					logger.error("Completion Consumer {} failed: {}", completionConsumer, e.getMessage(), e);
+					logger.error("Completion Consumer {} failed: {}", completionConsumer, t.getMessage(), t);
 				}
 			}
 		}
@@ -111,15 +110,6 @@ public class ConsumerFilteringRouter implements Router {
 	 */
 	public Filter getFilter() {
 		return filter;
-	}
-
-	/**
-	 * Returns the {@code ConsumerInvoker} being used by the event router
-	 *
-	 * @return The {@code ConsumerInvoker}.
-	 */
-	public ConsumerInvoker getConsumerInvoker() {
-		return consumerInvoker;
 	}
 
 }

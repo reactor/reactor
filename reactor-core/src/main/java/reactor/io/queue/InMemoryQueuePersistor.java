@@ -17,10 +17,7 @@
 package reactor.io.queue;
 
 import javax.annotation.Nonnull;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -34,6 +31,7 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 	private final Map<Long, T> objects;
 	private final AtomicLong   counter   = new AtomicLong();
 	private final AtomicLong   currentId = new AtomicLong();
+
 
 	public InMemoryQueuePersistor() {
 		this.objects = Collections.synchronizedMap(new HashMap<Long, T>());
@@ -67,6 +65,15 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 	}
 
 	@Override
+	public Long offerAll(@Nonnull Collection<T> t) {
+		Long last = null;
+		for(T v : t){
+			last = offer(v);
+		}
+		return last;
+	}
+
+	@Override
 	public T get(Long idx) {
 		return objects.get(idx);
 	}
@@ -80,5 +87,9 @@ public class InMemoryQueuePersistor<T> implements QueuePersistor<T> {
 
 	@Override
 	public void close() {
+	}
+
+	public Map<Long, T> refMap(){
+		return objects;
 	}
 }

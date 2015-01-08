@@ -72,7 +72,6 @@ public final class RangeStream extends Stream<Integer> {
 						onNext(cursor++);
 						i++;
 					}
-
 					if (cursor > end) {
 						onComplete();
 					}
@@ -81,8 +80,8 @@ public final class RangeStream extends Stream<Integer> {
 				@Override
 				public String toString() {
 					return "{" +
-							"cursor=" + cursor + (end > 0 ? '[' + 100*cursor/end + "%]" : "") +
-							'}';
+							"cursor=" + cursor +""+ (end > 0 ? "[" + 100*cursor/end + "%]" : "") +
+							", start="+start+", end="+end+"}";
 				}
 			});
 		} else {

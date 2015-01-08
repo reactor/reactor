@@ -29,7 +29,8 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.*;
-import reactor.rx.action.*;
+import reactor.rx.action.Action;
+import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.*;
 
@@ -45,30 +46,33 @@ import java.util.concurrent.atomic.AtomicReference;
  * A public factory to build {@link Stream}.
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
+ * <p>
  * {@code
  * Streams.just(1, 2, 3).map(i -> i*2) //...
- * <p>
+ *
  * Broadcaster<String> stream = Streams.broadcast()
  * strean.map(i -> i*2).consume(System.out::println);
  * stream.onNext("hello");
- * <p>
+ *
  * Stream.create( subscriber -> {
- * subscriber.onNext(1);
- * subscriber.onNext(2);
- * subscriber.onNext(3);
- * subscriber.onComplete();
+ *   subscriber.onNext(1);
+ *   subscriber.onNext(2);
+ *   subscriber.onNext(3);
+ *   subscriber.onComplete();
  * }).consume(System.out::println);
- * <p>
+ *
  * Broadcaster<Integer> inputStream1 = Streams.broadcast(env);
  * Broadcaster<Integer> inputStream2 = Streams.broadcast(env);
  * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
- * <p>
+ *
  * }
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
  */
-public final class Streams {
+public class Streams {
+
+	protected Streams(){}
 
 	/**
 	 * Build a custom sequence {@literal Stream} from the passed {@link org.reactivestreams.Publisher} that will be subscribed on the
@@ -169,6 +173,19 @@ public final class Streams {
 	 */
 	public static <T> Broadcaster<T> broadcast(Environment env) {
 		return broadcast(env, env.getDefaultDispatcher());
+	}
+
+	/**
+	 * Build a {@literal Stream}, ready to broadcast values, ready to broadcast values with {@link
+	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link reactor.rx.action.Action#onError(Throwable)}, {@link reactor.rx.action.Action#onComplete()}.
+	 *
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T> the type of values passing through the {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Broadcaster<T> broadcast(Dispatcher dispatcher) {
+		return broadcast(null, dispatcher);
 	}
 
 	/**
@@ -554,7 +571,7 @@ public final class Streams {
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> on(Observable observable, Selector broadcastSelector) {
+	public static <T> Stream<T> on(Observable<?> observable, Selector broadcastSelector) {
 		return new ObservableStream<T>(observable, broadcastSelector);
 	}
 
@@ -1499,7 +1516,7 @@ public final class Streams {
 		if (Environment.alive()) {
 			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
 		}
-		await(publisher, timeout, TimeUnit.MILLISECONDS);
+		await(publisher, timeout, TimeUnit.MILLISECONDS, true);
 	}
 
 	/**
@@ -1512,7 +1529,7 @@ public final class Streams {
 	 * @param timeout   the maximum wait time in seconds
 	 */
 	public static void await(Publisher<?> publisher, long timeout) throws Throwable {
-		await(publisher, timeout, TimeUnit.SECONDS);
+		await(publisher, timeout, TimeUnit.SECONDS, true);
 	}
 
 	/**
@@ -1526,6 +1543,20 @@ public final class Streams {
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
 	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit) throws Throwable {
+		await(publisher, timeout, unit, true);
+	}
+
+	/**
+	 * Wait {code timeout} in {@code unit} until a terminal signal from the passed publisher has been emitted.
+	 * If the terminal signal is an error, it will propagate to the caller.
+	 * Effectively this is making sure a stream has completed before the return of this call.
+	 * It is usually used in controlled environment such as tests.
+	 *
+	 * @param publisher the publisher to listen for terminal signals
+	 * @param timeout   the maximum wait time in unit
+	 * @param unit      the TimeUnit to use for the timeout
+	 */
+	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws Throwable {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1535,7 +1566,9 @@ public final class Streams {
 			@Override
 			public void onSubscribe(Subscription subscription) {
 				s = subscription;
-				subscription.request(Long.MAX_VALUE);
+				if(request) {
+					subscription.request(Long.MAX_VALUE);
+				}
 			}
 
 			@Override

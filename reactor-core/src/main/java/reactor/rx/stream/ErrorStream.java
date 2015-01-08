@@ -27,7 +27,7 @@ import reactor.rx.Stream;
  * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
- * Streams.errpr(error).when(Throwable.class, log::error)
+ * Streams.error(error).when(Throwable.class, log::error)
  * }
  * </pre>
  * <pre>

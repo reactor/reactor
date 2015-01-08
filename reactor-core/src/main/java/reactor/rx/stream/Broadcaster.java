@@ -28,7 +28,6 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends Action<O, O> {
-	private Throwable error;
 	private boolean keepAlive = false;
 
 	public Broadcaster(Dispatcher dispatcher, long capacity) {
@@ -51,7 +50,6 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onError(Throwable ev) {
-		this.error = ev;
 		broadcastError(ev);
 	}
 
@@ -78,15 +76,6 @@ public class Broadcaster<O> extends Action<O, O> {
 			};
 		} else {
 			return super.createSubscription(subscriber, null);
-		}
-	}
-
-	@Override
-	public void subscribe(Subscriber<? super O> subscriber) {
-		if (error == null) {
-			super.subscribe(subscriber);
-		} else {
-			subscriber.onError(error);
 		}
 	}
 
@@ -129,11 +118,6 @@ public class Broadcaster<O> extends Action<O, O> {
 		if (!keepAlive) {
 			super.onShutdown();
 		}
-	}
-
-
-	public Throwable error() {
-		return error;
 	}
 
 	@Override

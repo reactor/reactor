@@ -37,6 +37,8 @@ import reactor.fn.timer.Timer;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,7 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>> {
+public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>>, Closeable {
 
 
 	/**
@@ -803,6 +805,10 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 		return this.dispatchers.entrySet().iterator();
 	}
 
+	@Override
+	public void close() throws IOException {
+		shutdown();
+	}
 
 	/**
 	 * Create a RingBuffer pool that will clone up to {@param poolSize} generated dispatcher and return a different one

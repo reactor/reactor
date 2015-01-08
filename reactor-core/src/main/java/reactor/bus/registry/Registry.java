@@ -39,7 +39,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @param obj The object to assign.
 	 * @return {@literal this}
 	 */
-	<V extends T> Registration<V> register(Selector sel, V obj);
+	Registration<T> register(Selector sel, T obj);
 
 	/**
 	 * Remove any objects matching this {@code key}. This will unregister <b>all</b> objects matching the given

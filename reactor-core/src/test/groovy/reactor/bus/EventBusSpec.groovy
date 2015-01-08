@@ -17,6 +17,7 @@
 
 package reactor.bus
 
+import groovy.transform.CompileStatic
 import reactor.Environment
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
@@ -29,6 +30,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 import static reactor.GroovyTestUtils.*
 import static reactor.bus.selector.Selectors.*
@@ -107,6 +109,36 @@ class EventBusSpec extends Specification {
 			!data
 	}
 
+	class Foo{}
+	class Bar{}
+
+	@CompileStatic
+	class TestConsumer implements Consumer<Event<Foo>>{
+		final AtomicInteger value = new AtomicInteger()
+
+		@Override
+		void accept(Event<Foo> fooEvent) {
+			value.set(1)
+		}
+	}
+
+	def "A Reactor fail fast if consumer of incorrect type"() {
+
+		given:
+			"a plain Reactor and a simple consumer on \$('test')"
+			def reactor = EventBus.create()
+		def c = new TestConsumer()
+			reactor.on($("test"), c)
+
+		when:
+			"Reactor is notified on 'test'"
+			reactor.notify("test", Event.wrap(new Bar()))
+
+		then:
+			"Data and T have been populated"
+			c.value.get() == 0
+	}
+
 	def "A Registration is pausable and cancellable"() {
 
 		given:
@@ -164,7 +196,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a simple Reactor and a response-producing Function"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.create()
 			def f = function { s ->
 				"Hello World!"
 			}

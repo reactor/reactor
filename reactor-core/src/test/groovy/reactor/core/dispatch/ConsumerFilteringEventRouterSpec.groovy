@@ -24,7 +24,6 @@ import reactor.bus.Event
 import reactor.bus.filter.PassThroughFilter
 import reactor.bus.registry.Registration
 import reactor.bus.routing.ConsumerFilteringRouter
-import reactor.bus.routing.ConsumerInvoker
 import reactor.bus.selector.Selector
 import reactor.fn.Consumer
 import spock.lang.Specification
@@ -33,14 +32,13 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 
 	def "Basic event routing"() {
 		def filter = new PassThroughFilter()
-		def consumerInvoker = Mock(ConsumerInvoker)
 		def completionConsumer = Mock(Consumer)
 		def errorConsumer = Mock(Consumer)
 		def consumer = Mock(Consumer)
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter)
 
 		when: "An event is routed to a single registered consumer"
 			Registration registration = Mock(Registration)
@@ -49,22 +47,21 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 
 			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
-		then: "The consumerInvoker is called to invoke the consumer and the completionConsumer"
-			1 * consumerInvoker.invoke(consumer, _, event)
+		then: "The consumer is called to invoke the consumer and the completionConsumer"
+			1 * consumer.accept(event)
 			1 * completionConsumer.accept(event)
 			0 * errorConsumer.accept(_)
 	}
 
 	def "Events are not routed to paused consumers"() {
 		def filter = new PassThroughFilter()
-		def consumerInvoker = Mock(ConsumerInvoker)
 		def completionConsumer = Mock(Consumer)
 		def errorConsumer = Mock(Consumer)
 		def consumer = Mock(Consumer)
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter)
 
 		when: "an event is routed to a paused consumer"
 			Registration registration = Mock()
@@ -75,21 +72,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is only called to invoke the completionConsumer"
-			0 * consumerInvoker.invoke(consumer, _, _, _)
+			0 * consumer.accept(_)
 			1 * completionConsumer.accept(event)
 			0 * errorConsumer.accept(_)
 	}
 
 	def "Events are not routed to cancelled consumers"() {
 		def filter = new PassThroughFilter()
-		def consumerInvoker = Mock(ConsumerInvoker)
 		def completionConsumer = Mock(Consumer)
 		def errorConsumer = Mock(Consumer)
 		def consumer = Mock(Consumer)
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter)
 
 		when: "an event is routed to a paused consumer"
 			Registration registration = Mock(Registration)
@@ -100,21 +96,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is only called to invoke the completion consumer"
-			0 * consumerInvoker.invoke(consumer, _, _, _)
+			0 * consumer.accept(_)
 			1 * completionConsumer.accept(event)
 			0 * errorConsumer.accept(_)
 	}
 
 	def "Consumers configured to be cancelled after use are cancelled once they've been used"() {
 		def filter = new PassThroughFilter()
-		def consumerInvoker = Mock(ConsumerInvoker)
 		def completionConsumer = Mock(Consumer)
 		def errorConsumer = Mock(Consumer)
 		def consumer = Mock(Consumer)
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter)
 			Registration registration = Mock(Registration)
 
 		when: "an event is routed to a cancel after use consumer"
@@ -125,7 +120,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 
 		then: "the consumer invoker is called to invoke the consumer and completion consumer and the consumer is cancelled"
-			1 * consumerInvoker.invoke(consumer, _, _)
+			1 * consumer.accept(_)
 			1 * completionConsumer.accept(event)
 			1 * registration.cancel()
 			0 * errorConsumer.accept(_)
@@ -133,21 +128,20 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 
 	def "An exception during event routing causes the errorConsumer to be invoked"() {
 		def filter = new PassThroughFilter()
-		def consumerInvoker = Mock(ConsumerInvoker)
 		def completionConsumer = Mock(Consumer)
 		def errorConsumer = Mock(Consumer)
 		def consumer = Mock(Consumer)
 		def event = new Event("data")
 
 		given: "A consumer filtering event router"
-			def eventRouter = new ConsumerFilteringRouter(filter, consumerInvoker)
+			def eventRouter = new ConsumerFilteringRouter(filter)
 			Registration registration = Mock(Registration)
 
 		when: "event routing triggers an exception"
 			registration.getObject() >> consumer
 			registration.getSelector() >> Mock(Selector)
 
-			consumerInvoker.invoke(_, _, _) >> { throw new Exception("failure") }
+			consumer.accept(_) >> { throw new Exception("failure") }
 
 			eventRouter.route("key", event, [registration], completionConsumer, errorConsumer)
 

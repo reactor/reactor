@@ -148,9 +148,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		return stream().lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+		return stream().lift(new Function<Dispatcher, Action<O, O>>() {
 			@Override
-			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+			public Action<O, O> apply(Dispatcher dispatcher) {
 				return new Action<O, O>(dispatcher) {
 					@Override
 					protected void doNext(O ev) {
@@ -191,7 +191,17 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<Throwable> onError(@Nonnull final Consumer<Throwable> onError) {
-		return stream().recover(Throwable.class).observe(onError).next();
+		return stream().materialize().map(new Function<Signal<O>, Throwable>() {
+			@Override
+			public Throwable apply(Signal<O> oSignal) {
+				if(oSignal.isOnError()){
+					onError.accept(oSignal.getThrowable());
+					return oSignal.getThrowable();
+				}
+				return null;
+			}
+		})
+		.next();
 	}
 
 	/**

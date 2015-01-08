@@ -16,6 +16,7 @@
 
 package reactor.bus.routing;
 
+import reactor.bus.Event;
 import reactor.bus.registry.Registration;
 import reactor.fn.Consumer;
 
@@ -44,7 +45,7 @@ public interface Router {
 	 * @param completionConsumer The {@code Consumer} to invoke upon successful completion of event routing
 	 * @param errorConsumer The {@code Consumer} to invoke when an error occurs during event routing
 	 */
-	<E> void route(Object key, E data, List<Registration<? extends Consumer<?>>> consumers,
+	<E extends Event<?>> void route(Object key, E data, List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
 	           Consumer<E> completionConsumer, Consumer<Throwable> errorConsumer);
 
 }

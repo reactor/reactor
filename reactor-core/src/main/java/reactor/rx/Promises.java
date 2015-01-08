@@ -23,7 +23,7 @@ import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.*;
-import reactor.rx.action.MergeAction;
+import reactor.rx.action.combination.MergeAction;
 import reactor.rx.stream.SupplierStream;
 
 import java.util.Arrays;

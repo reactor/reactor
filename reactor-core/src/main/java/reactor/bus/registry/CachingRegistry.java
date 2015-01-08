@@ -16,7 +16,6 @@
 
 package reactor.bus.registry;
 
-import com.gs.collections.api.block.function.Function0;
 import com.gs.collections.api.block.procedure.Procedure;
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.list.mutable.FastList;
@@ -39,7 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class CachingRegistry<T> implements Registry<T> {
 
 	private final NewThreadLocalRegsFn newThreadLocalRegsFn = new NewThreadLocalRegsFn();
-	private final NewRegsFn            newRegsFn            = new NewRegsFn();
 
 	private final boolean                                                                        useCache;
 	private final boolean                                                                        cacheNotFound;
@@ -60,9 +58,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public <V extends T> Registration<V> register(Selector sel, V obj) {
+	public Registration<T> register(Selector sel, T obj) {
 		RemoveRegistration removeFn = new RemoveRegistration();
-		final Registration<V> reg = new CachableRegistration<V>(sel, obj, removeFn);
+		final Registration<T> reg = new CachableRegistration<>(sel, obj, removeFn);
 		removeFn.reg = reg;
 
 		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
@@ -143,7 +141,7 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {
-		return FastList.<Registration<? extends T>>newList(registrations).iterator();
+		return FastList.newList(registrations).iterator();
 	}
 
 	protected void cacheMiss(Object key) {
@@ -178,13 +176,6 @@ public class CachingRegistry<T> implements Registry<T> {
 		@Override
 		public UnifiedMap<Object, List<Registration<? extends T>>> apply(Long aLong) {
 			return UnifiedMap.newMap();
-		}
-	}
-
-	private final class NewRegsFn implements Function0<List<Registration<? extends T>>> {
-		@Override
-		public List<Registration<? extends T>> value() {
-			return FastList.newList();
 		}
 	}
 

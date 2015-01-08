@@ -41,11 +41,7 @@ public final class MpscDispatcher extends SingleThreadDispatcher {
 	private final int             capacity;
 
 	/**
-	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
-	 * configured with a producer type of {@link reactor.jarjar.com.lmax.disruptor.dsl.ProducerType#MULTI MULTI} and a
-	 * {@link reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy blocking
-	 * wait
-	 * strategy}.
+	 * Creates a new {@code MpscDispatcher} with the given {@code name}. It will use a MpscLinkedQueue and a virtual capacity of 1024 slots.
 	 *
 	 * @param name The name of the dispatcher.
 	 */
@@ -54,13 +50,7 @@ public final class MpscDispatcher extends SingleThreadDispatcher {
 	}
 
 	/**
-	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link reactor.jarjar
-	 * .com.lmax.disruptor.RingBuffer} with
-	 * {@code bufferSize} slots, configured with a producer type of {@link reactor.jarjar.com.lmax.disruptor.dsl
-	 * .ProducerType#MULTI MULTI}
-	 * and a {@link reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy blocking wait. A given @param
-	 * uncaughtExceptionHandler} will catch anything not
-	 * handled e.g. by the owning {@link reactor.bus.EventBus} or {@link reactor.rx.Stream}.
+	 * Creates a new {@code MpscDispatcher} with the given {@code name}. It will use a MpscLinkedQueue and a virtual capacity of {code bufferSize}
 	 *
 	 * @param name       The name of the dispatcher
 	 * @param bufferSize The size to configure the ring buffer with

@@ -21,7 +21,7 @@ import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.CombineAction;
+import reactor.rx.action.combination.CombineAction;
 
 import javax.annotation.Nonnull;
 
@@ -33,15 +33,15 @@ import javax.annotation.Nonnull;
  */
 public class LiftStream<O, V> extends Stream<V> {
 	private final Stream<O>                                                              producer;
-	private final Function<? super Dispatcher, ? extends Action<? super O, ? extends V>> child;
+	private final Function<? super Dispatcher, ? extends Action<O, V>> child;
 
-	public LiftStream(Stream<O> thiz, Function<? super Dispatcher, ? extends Action<? super O, ? extends V>> action) {
+	public LiftStream(Stream<O> thiz, Function<? super Dispatcher, ? extends Action<O, V>> action) {
 		this.producer = thiz;
 		this.child = action;
 	}
 
-	public final Action<? super O, ? extends V> onLift() {
-		Action<? super O, ? extends V> action = child.apply(getDispatcher());
+	public final Action<O, V> onLift() {
+		Action<O, V> action = child.apply(getDispatcher());
 		if (action.getEnvironment() == null) {
 			action.env(getEnvironment());
 		}
@@ -51,26 +51,14 @@ public class LiftStream<O, V> extends Stream<V> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public final <E> CombineAction<E, V> combine() {
-		Action<? super O, ? extends V> action = onLift();
+		Action<O, V> action = onLift();
 
 		if(action == null){
 			throw new IllegalStateException("Cannot combine streams without any lifted action");
 		}
 
-		Stream<?> parent = producer;
 		producer.subscribe(action);
-
-		while (parent != null &&
-				LiftStream.class.isAssignableFrom(parent.getClass())
-				) {
-			parent = ((LiftStream) parent).producer;
-		}
-		if (parent != null && Action.class.isAssignableFrom(parent.getClass())) {
-			return new CombineAction<E, V>((Action<E, ?>) parent, (Action<?, V>) action);
-		} else {
-			Action<E, V> sub = (Action<E, V>) action;
-			return new CombineAction<E, V>(sub, sub);
-		}
+		return action.combine();
 	}
 
 	@Override

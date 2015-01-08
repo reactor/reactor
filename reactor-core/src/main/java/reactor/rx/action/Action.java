@@ -25,6 +25,7 @@ import reactor.core.alloc.Recyclable;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -33,6 +34,8 @@ import reactor.fn.tuple.Tuple2;
 import reactor.rx.Controls;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
+import reactor.rx.action.combination.CombineAction;
+import reactor.rx.action.combination.FanInAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.stream.Broadcaster;
@@ -134,7 +137,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return a new Action subscribed to this one
 	 */
 	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher) {
-		return broadcast(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
+		return passthrough(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
 				.backlogSize());
 	}
 
@@ -146,7 +149,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param <O>        the streamed data type
 	 * @return a new Action subscribed to this one
 	 */
-	public static <O> Broadcaster<O> broadcast(Dispatcher dispatcher, long capacity) {
+	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher, long capacity) {
 		return new Broadcaster<>(dispatcher, capacity);
 	}
 
@@ -230,7 +233,7 @@ public abstract class Action<I, O> extends Stream<O>
 				doNext(i);
 			}
 		} catch (Throwable cause) {
-			doError(cause);
+			doError(Exceptions.addValueAsLastCause(cause, i));
 		}
 	}
 
@@ -311,7 +314,7 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			downstreamSubscription.onNext(ev);
 		} catch (Throwable throwable) {
-			callError(downstreamSubscription, throwable);
+			callError(downstreamSubscription, Exceptions.addValueAsLastCause(throwable, ev));
 		}
 	}
 
@@ -422,9 +425,9 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public final Stream<O> onOverflowBuffer(final Supplier<? extends CompletableQueue<O>> queueSupplier) {
-		return lift(new Function<Dispatcher, Action<? super O, ? extends O>>() {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
 			@Override
-			public Action<? super O, ? extends O> apply(Dispatcher dispatcher) {
+			public Action<O, O> apply(Dispatcher dispatcher) {
 				Broadcaster<O> newStream = new Broadcaster<>(dispatcher, capacity);
 				if (queueSupplier == null) {
 					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
@@ -514,7 +517,7 @@ public abstract class Action<I, O> extends Stream<O>
 			if (that != null) {
 
 				if (FanInAction.class.isAssignableFrom(that.getClass())) {
-					that = ((FanInAction) that).dynamicMergeAction != null ? ((FanInAction) that).dynamicMergeAction : that;
+					that = ((FanInAction) that).dynamicMergeAction() != null ? ((FanInAction) that).dynamicMergeAction() : that;
 				}
 			}
 		}

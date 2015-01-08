@@ -18,6 +18,7 @@ package reactor.bus.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.bus.Event;
 import reactor.bus.registry.Registration;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -39,9 +40,9 @@ public class TraceableDelegatingRouter implements Router {
 	}
 
 	@Override
-	public <E> void route(Object key,
+	public <E extends Event<?>> void route(Object key,
 	                  E event,
-	                  List<Registration<? extends Consumer<?>>> consumers,
+	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
 	                  Consumer<E> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {

@@ -40,12 +40,7 @@ public final class BatchSubscription<T> extends WrappedSubscription<T> {
 			if (n == Long.MAX_VALUE) {
 				pushSubscription.request(Long.MAX_VALUE);
 			} else if (pushSubscription.pendingRequestSignals() != Long.MAX_VALUE) {
-				if (n > batchSize) {
-					pushSubscription.updatePendingRequests(n - batchSize);
-					pushSubscription.request(batchSize);
-				} else {
-					pushSubscription.request(n);
-				}
+					pushSubscription.request(n*batchSize);
 			}
 		} else {
 				super.request(n);
@@ -54,7 +49,7 @@ public final class BatchSubscription<T> extends WrappedSubscription<T> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return (pushSubscription != null && (pushSubscription.pendingRequestSignals() % batchSize == 0))
+		return (pushSubscription != null && (pushSubscription.pendingRequestSignals()  ==  0))
 				|| super.shouldRequestPendingSignals();
 	}
 

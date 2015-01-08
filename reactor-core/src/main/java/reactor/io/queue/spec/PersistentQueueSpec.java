@@ -32,7 +32,9 @@ import java.io.IOException;
  */
 public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 
-	private String  basePath     = System.getProperty("java.io.tmpdir") + "/persistent-queue";
+	public static String  DEFAULT_BASE_PATH = System.getProperty("java.io.tmpdir") + "/persistent-queue";
+
+	private String  basePath     = DEFAULT_BASE_PATH;
 	private boolean clearOnStart = false;
 	private boolean deleteOnExit = false;
 	private Codec<Buffer, T, T> codec;
