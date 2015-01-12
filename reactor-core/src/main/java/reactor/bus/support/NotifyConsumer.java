@@ -17,6 +17,7 @@
 package reactor.bus.support;
 
 import reactor.bus.Event;
+import reactor.bus.EventBus;
 import reactor.bus.Observable;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -26,11 +27,13 @@ import reactor.fn.Consumer;
  *
  * @param <T> the type of the values that the consumer can accept
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NotifyConsumer<T> implements Consumer<T> {
 
 	private final Object     notifyKey;
 	private final Observable observable;
+	private final boolean    wrapEvent;
 
 	/**
 	 * Creates a new {@code NotifyConsumer} that will notify the given {@code observable} using
@@ -40,16 +43,17 @@ public class NotifyConsumer<T> implements Consumer<T> {
 	 * @param notifyKey  The notification key, may be {@code null}
 	 * @param observable The observable to notify. May not be {@code null}
 	 */
-	public NotifyConsumer(Object notifyKey, Observable observable) {
+	public NotifyConsumer(Object notifyKey, Observable<?> observable) {
 		Assert.notNull(observable, "Observable cannot be null.");
 		this.notifyKey = notifyKey;
 		this.observable = observable;
+		this.wrapEvent = EventBus.class.isAssignableFrom(observable.getClass());
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void accept(T t) {
-		Event<T> ev = Event.wrap(t);
-		observable.notify(notifyKey, ev);
+		observable.notify(notifyKey, (wrapEvent ? Event.wrap(t) : t));
 	}
 
 }

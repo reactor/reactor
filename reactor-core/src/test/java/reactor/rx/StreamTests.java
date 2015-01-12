@@ -229,7 +229,7 @@ public class StreamTests extends AbstractReactorTest {
 		Controls s =
 				stream
 						.map(STRING_2_INTEGER)
-						.notify(key.getObject(), r);
+						.notify(r, key.getObject());
 		System.out.println(s.debug());
 
 		//await(s, is(5));

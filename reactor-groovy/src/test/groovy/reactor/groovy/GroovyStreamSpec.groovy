@@ -202,7 +202,7 @@ class GroovyStreamSpec extends Specification {
 
 		and:
 			'apply a transformation and call an explicit eventBus'
-			(c | { Integer.parseInt it }).to(key.object, r)
+			(c | { Integer.parseInt it }).to(r, key.object)
 
 		then:
 			latch.await(1, TimeUnit.SECONDS)

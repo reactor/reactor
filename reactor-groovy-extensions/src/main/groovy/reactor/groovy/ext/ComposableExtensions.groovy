@@ -22,7 +22,6 @@ import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.Predicate
-import reactor.fn.tuple.Tuple2
 import reactor.rx.Controls
 import reactor.rx.Promise
 import reactor.rx.Stream
@@ -42,9 +41,10 @@ class ComposableExtensions {
 	/**
 	 * Alias
 	 */
-	static <T, X extends Stream<T>> Controls to(final Stream<T> selfType, final Object key,
-	                                         final Observable observable) {
-		selfType.notify key, observable
+	static <T, X extends Stream<T>> Controls to(final Stream<T> selfType,
+	                                         final Observable observable
+	                                         , final Object key) {
+		selfType.notify observable, key
 	}
 
 

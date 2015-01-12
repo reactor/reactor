@@ -45,8 +45,8 @@ public interface Observable<T> {
 	 * @param consumer The {@literal Consumer} to be triggered
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	<V extends T> Registration<Consumer<? extends Event<?>>> on(final Selector selector,
-	                                              final Consumer<Event<V>> consumer);
+	<V extends T> Registration<Consumer<? extends T>> on(final Selector selector,
+	                                              final Consumer<V> consumer);
 
 
 	/**
@@ -56,5 +56,5 @@ public interface Observable<T> {
 	 * @param ev  The {@literal Event}
 	 * @return {@literal this}
 	 */
-	Observable notify(Object key, Event<? extends T> ev);
+	Observable notify(Object key, T ev);
 }

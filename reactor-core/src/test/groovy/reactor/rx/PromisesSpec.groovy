@@ -272,7 +272,7 @@ class PromisesSpec extends Specification {
 			"a promise with a consuming Observable"
 			def promise = Promises.<Object> prepare()
 			def observable = Mock(Observable)
-			promise.stream().notify('key', observable)
+			promise.stream().notify(observable, 'key')
 
 		when:
 			"the promise is fulfilled"
@@ -280,7 +280,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the observable is notified"
-			1 * observable.notify('key', { event -> event.data == 'test' })
+			1 * observable.notify('key', { event -> event == 'test' })
 	}
 
 	def "An Observable can be used to consume the value of an already-fulfilled promise"() {
@@ -291,18 +291,18 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an Observable is added as a consumer"
-			promise.stream().notify('key', observable)
+			promise.stream().notify(observable, 'key')
 
 		then:
 			"the observable is notified"
-			1 * observable.notify('key', { event -> event.data == 'test' })
+			1 * observable.notify('key', { event -> event == 'test' })
 	}
 
 	def "A function can be used to map a Promise's value when it's fulfilled"() {
 		given:
 			"a promise with a mapping function"
 			def promise = Promises.<Integer> prepare()
-			def mappedPromise = promise.stream().map { it * 2 }.next()
+			def mappedPromise = promise.map { it * 2 }
 
 		when:
 			"the original promise is fulfilled"
@@ -317,7 +317,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a map many function"
 			def promise = Promises.<Integer> prepare()
-			def mappedPromise = promise.stream().flatMap { Promises.success(it + 1) }.next()
+			def mappedPromise = promise.flatMap { Promises.success(it + 1) }
 
 		when:
 			"the original promise is fulfilled"
@@ -337,7 +337,7 @@ class PromisesSpec extends Specification {
 
 		when:
 			"a mapping function is added"
-			def mappedPromise = promise.stream().map { it * 2 }.next()
+			def mappedPromise = promise.map { it * 2 }
 
 		then:
 			"the mapped promise is fulfilled with the mapped value"
@@ -397,7 +397,7 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an exception"
 			Promise<String> promise = Promises.<String> prepare()
 			def e = new RuntimeException()
-			def mapped = promise.stream().map { throw e }.next()
+			def mapped = promise.map { throw e }
 
 		when:
 			"the promise is fulfilled"
@@ -416,7 +416,7 @@ class PromisesSpec extends Specification {
 		when:
 			"a mapping function that throws an exception is added"
 			def e = new RuntimeException()
-			def mapped = promise.stream().map { throw e }.next()
+			def mapped = promise.map { throw e }
 
 		then:
 			"the mapped promise is rejected"
@@ -747,8 +747,8 @@ class PromisesSpec extends Specification {
 
 		when:
 			"p1 is consumed by p2"
-			Promise p2 = p1.onSuccess({ Integer.parseInt it }).stream().
-					map { sleep(3000); it }.next()
+			Promise p2 = p1.onSuccess({ Integer.parseInt it }).
+					map { sleep(3000); it }
 
 		and:
 			"setting a value"

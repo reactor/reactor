@@ -15,10 +15,11 @@
  */
 package reactor.rx.action.terminal;
 
-import org.reactivestreams.Subscription;
 import reactor.bus.Event;
+import reactor.bus.EventBus;
 import reactor.bus.Observable;
 import reactor.core.Dispatcher;
+import reactor.fn.Function;
 import reactor.rx.action.Action;
 
 /**
@@ -27,38 +28,22 @@ import reactor.rx.action.Action;
  */
 public class ObservableAction<T> extends Action<T, Void> {
 
-	private final Observable observable;
-	private final Object     key;
-	private int count = 0;
+	private final Observable             observable;
+	private final Function<? super T, ?> keyMapper;
+	private final boolean                wrapEvent;
+	private final Object                 key;
 
-	public ObservableAction(Dispatcher dispatcher, Observable observable, Object key) {
+	public ObservableAction(Dispatcher dispatcher, Observable<?> observable, Object key, Function<? super T, ?> keyMapper) {
 		super(dispatcher);
 		this.observable = observable;
+		this.wrapEvent = EventBus.class.isAssignableFrom(observable.getClass());
 		this.key = key;
+		this.keyMapper = keyMapper;
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		consume();
-	}
-
-	@Override
+	@SuppressWarnings("unchecked")
 	protected void doNext(T ev) {
-		observable.notify(key, Event.wrap(ev));
-		if(count++ >= capacity){
-			consume();
-		}
-	}
-
-	@Override
-	protected void doComplete() {
-		cancel();
-		super.doComplete();
-	}
-
-	@Override
-	protected void doError(Throwable ev) {
-		cancel();
-		super.doError(ev);
+		observable.notify(keyMapper != null ? keyMapper.apply(ev) : key, wrapEvent ? Event.wrap(ev) : ev);
 	}
 }

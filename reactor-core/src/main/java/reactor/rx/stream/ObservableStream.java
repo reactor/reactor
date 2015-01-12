@@ -15,12 +15,13 @@
  */
 package reactor.rx.stream;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.bus.Event;
 import reactor.bus.Observable;
+import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
 import reactor.fn.Consumer;
+import reactor.rx.Stream;
+import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
 
@@ -38,21 +39,43 @@ import javax.annotation.Nonnull;
  *
  * @author Stephane Maldini
  */
-public final class ObservableStream<T> extends PublisherStream<T> {
+public final class ObservableStream<T> extends Stream<T> {
 
-	public ObservableStream(final @Nonnull Observable observable,
+	private final Selector      selector;
+	private final Observable<T> observable;
+
+
+	public ObservableStream(final @Nonnull Observable<T> observable,
 	                        final @Nonnull Selector selector) {
 
-		super(new Publisher<T>() {
+		this.selector = selector;
+		this.observable = observable;
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
+		s.onSubscribe(new PushSubscription<T>(this, s) {
+
+			final Registration<Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
+				@Override
+				public void accept(T event) {
+					subscriber.onNext(event);
+				}
+			});
+
 			@Override
-			public void subscribe(final Subscriber<? super T> subscriber) {
-				observable.on(selector, new Consumer<Event<T>>() {
-					@Override
-					public void accept(Event<T> event) {
-						subscriber.onNext(event.getData());
-					}
-				});
+			public void cancel() {
+				super.cancel();
+				registration.cancel();
 			}
 		});
+	}
+
+	@Override
+	public String toString() {
+		return "ObservableStream{" +
+				"selector=" + selector +
+				", observable=" + observable +
+				'}';
 	}
 }

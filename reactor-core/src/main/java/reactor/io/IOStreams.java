@@ -24,6 +24,7 @@ import java.io.IOException;
 
 /**
  * A Streams add-on to work with IO components such as ChronicleStreams.
+ * Chronicle backed persistentMap require chronicle 3.3+ in the classpath (not provided transitively by reactor-core)
  *
  * @author Stephane Maldini
  */
@@ -33,6 +34,10 @@ public class IOStreams extends Streams {
 	}
 
 	/**
+	 * A Persistent Map is a {@link reactor.rx.stream.MapStream} that fulfill both the Map and the Stream contract.
+	 *
+	 *
+	 *
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name) throws IOException {

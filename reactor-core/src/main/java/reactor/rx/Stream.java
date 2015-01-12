@@ -287,10 +287,24 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final Controls notify(@Nonnull final Object key, @Nonnull final Observable observable) {
-		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, key);
+	public final Controls notify(@Nonnull final Observable observable, @Nonnull final Object key) {
+		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, key, null);
 		subscribe(observableAction);
-		return observableAction;
+		return observableAction.consume();
+	}
+
+	/**
+	 * Pass values accepted by this {@code Stream} into the given {@link Observable}, notifying with the given key.
+	 *
+	 * @param observable the {@link Observable} to notify
+	 * @param keyMapper        the key function mapping each incoming data to a key to notify on
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final Controls notify(@Nonnull final Observable observable, @Nonnull Function<? super O, ?> keyMapper) {
+		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, null, keyMapper);
+		subscribe(observableAction);
+		return observableAction.consume();
 	}
 
 

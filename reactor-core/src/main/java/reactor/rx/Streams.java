@@ -571,7 +571,7 @@ public class Streams {
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> on(Observable<?> observable, Selector broadcastSelector) {
+	public static <T> Stream<T> on(Observable<T> observable, Selector broadcastSelector) {
 		return new ObservableStream<T>(observable, broadcastSelector);
 	}
 

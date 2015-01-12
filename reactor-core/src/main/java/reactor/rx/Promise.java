@@ -183,6 +183,35 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	}
 
 	/**
+	 * Assign a {@link Function} that will either be invoked later, when the {@code Promise} is successfully completed
+	 * with
+	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
+	 * current {@link Dispatcher}.
+	 *
+	 * @param transformation the function to apply on signal to the transformed Promise
+	 * @return {@literal the new Promise}
+	 */
+	public <V> Promise<V> map(@Nonnull final Function<? super O, V> transformation) {
+		return stream().map(transformation).next();
+	}
+
+	/**
+	 * Assign a {@link Function} that will either be invoked later, when the {@code Promise} is successfully completed
+	 * with
+	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
+	 * current {@link Dispatcher}.
+	 *
+	 * FlatMap is typically used to listen for a delayed/async publisher, e.g. promise.flatMap( data -> Promise.success(data) ).
+	 * The result is merged directly on the returned stream.
+	 *
+	 * @param transformation the function to apply on signal to the supplied Promise that will be merged back.
+	 * @return {@literal the new Promise}
+	 */
+	public <V> Promise<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> transformation) {
+		return stream().flatMap(transformation).next();
+	}
+
+	/**
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
 	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
 	 * {@link Dispatcher}. The error is recovered and materialized as the next signal to the returned stream.
@@ -194,14 +223,14 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		return stream().materialize().map(new Function<Signal<O>, Throwable>() {
 			@Override
 			public Throwable apply(Signal<O> oSignal) {
-				if(oSignal.isOnError()){
+				if (oSignal.isOnError()) {
 					onError.accept(oSignal.getThrowable());
 					return oSignal.getThrowable();
 				}
 				return null;
 			}
 		})
-		.next();
+				.next();
 	}
 
 	/**

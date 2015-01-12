@@ -1561,7 +1561,7 @@ class StreamsSpec extends Specification {
 			def r = EventBus.config().get()
 			def selector = Selectors.anonymous()
 			int event = 0
-			def s = Streams.<Integer> on(r, selector).consume { event = it }
+			def s = Streams.<Integer> on(r, selector).map{ it.data }.consume { event = it }
 			println s.debug()
 
 		when:
@@ -2316,7 +2316,7 @@ class StreamsSpec extends Specification {
 			def d = Streams.<Integer> broadcast()
 			Stream composable = d
 			Observable observable = Mock(Observable)
-			composable.notify('key', observable)
+			composable.notify(observable, 'key')
 
 		when:
 			'the composable accepts a value'
@@ -2335,7 +2335,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a stream consumer is registerd'
-			stream.notify('key', observable)
+			stream.notify(observable, 'key')
 
 		then:
 			'the observable is notified of the values'

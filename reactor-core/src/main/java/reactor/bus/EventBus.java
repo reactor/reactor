@@ -57,7 +57,7 @@ import java.util.UUID;
  * @author Andy Wilkinson
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class EventBus implements Observable<Object>, Consumer<Event<?>> {
+public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 
 	private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter()
@@ -283,16 +283,16 @@ public class EventBus implements Observable<Object>, Consumer<Event<?>> {
 	}
 
 	@Override
-	public <T> Registration<Consumer<? extends Event<?>>> on(final Selector selector,
-	                                                         final Consumer<Event<T>> consumer) {
+	public <T extends Event<?>> Registration<Consumer<? extends Event<?>>> on(final Selector selector,
+	                                                         final Consumer<T> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 
-		final Class<T> tClass = extractGeneric(consumer);
+		final Class<?> tClass = extractGeneric(consumer);
 
-		Consumer<Event<T>> proxyConsumer = new Consumer<Event<T>>() {
+		Consumer<T> proxyConsumer = new Consumer<T>() {
 				@Override
-				public void accept(Event<T> e) {
+				public void accept(T e) {
 					if (null != selector.getHeaderResolver()) {
 						e.getHeaders().setAll(selector.getHeaderResolver().resolve(e.getKey()));
 					}
@@ -305,7 +305,7 @@ public class EventBus implements Observable<Object>, Consumer<Event<?>> {
 		return consumerRegistry.register(selector, proxyConsumer);
 	}
 
-	private <T> Class<T> extractGeneric(Consumer<Event<T>> consumer) {
+	private Class<?> extractGeneric(Consumer<? extends Event<?>> consumer) {
 		if(consumer.getClass().getGenericInterfaces().length == 0) return null;
 
 		Type t = consumer.getClass().getGenericInterfaces()[0];
@@ -322,9 +322,9 @@ public class EventBus implements Observable<Object>, Consumer<Event<?>> {
 
 				Type t1 = pt.getActualTypeArguments()[0];
 				if (t1 instanceof ParameterizedType) {
-					return (Class<T>) ((ParameterizedType) t1).getRawType();
+					return (Class<?>) ((ParameterizedType) t1).getRawType();
 				} else if (t1 instanceof Class) {
-					return (Class<T>) t1;
+					return (Class<?>) t1;
 				}
 			}
 		}
@@ -348,7 +348,7 @@ public class EventBus implements Observable<Object>, Consumer<Event<?>> {
 	 * @param fn  The transformative {@link reactor.fn.Function} to call to receive an {@link Event}
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	public <V> Registration<Consumer<? extends Event<?>>> receive(Selector sel, Function<Event<Object>, V> fn) {
+	public <V> Registration<Consumer<? extends Event<?>>> receive(Selector sel, Function<Event<?>, V> fn) {
 		return on(sel, new ReplyToConsumer<>(fn));
 	}
 
