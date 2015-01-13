@@ -348,7 +348,7 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 	 * @param fn  The transformative {@link reactor.fn.Function} to call to receive an {@link Event}
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	public <V> Registration<Consumer<? extends Event<?>>> receive(Selector sel, Function<Event<?>, V> fn) {
+	public <T extends Event<?>, V> Registration<Consumer<? extends Event<?>>> receive(Selector sel, Function<T, V> fn) {
 		return on(sel, new ReplyToConsumer<>(fn));
 	}
 
@@ -360,7 +360,7 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 	 * @param supplier The {@link reactor.fn.Supplier} that will provide the actual {@link Event}
 	 * @return {@literal this}
 	 */
-	public EventBus notify(Object key, Supplier<? extends Event<Object>> supplier) {
+	public EventBus notify(Object key, Supplier<? extends Event<?>> supplier) {
 		return notify(key, supplier.get());
 	}
 
@@ -444,9 +444,9 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 	 * @param reply The consumer to register as a reply handler.
 	 * @return {@literal this}
 	 */
-	public EventBus sendAndReceive(Object key, Event<?> event, Consumer<Event<?>> reply) {
+	public <T extends Event<?>> EventBus sendAndReceive(Object key, Event<?> event, Consumer<T> reply) {
 		Selector sel = Selectors.anonymous();
-		on(sel, new SingleUseConsumer<Event<Object>>(reply)).cancelAfterUse();
+		on(sel, new SingleUseConsumer<T>(reply)).cancelAfterUse();
 		notify(key, event.setReplyTo(sel.getObject()));
 		return this;
 	}
@@ -461,7 +461,7 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 	 * @param reply    The consumer to register as a reply handler.
 	 * @return {@literal this}
 	 */
-	public EventBus sendAndReceive(Object key, Supplier<? extends Event<?>> supplier, Consumer<Event<?>> reply) {
+	public <T extends Event<?>> EventBus sendAndReceive(Object key, Supplier<? extends Event<?>> supplier, Consumer<T> reply) {
 		return sendAndReceive(key, supplier.get(), reply);
 	}
 
