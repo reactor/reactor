@@ -83,8 +83,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 									}
 									counter.incrementAndGet();
 								})
-								.scan(0, (prev, next) -> next)
-								.filter(integer -> integer >= 0)
+								.scan(0, (prev, next) -> -next)
+								.filter(integer -> integer <= 0)
 								.sample(1)
 								.map(integer -> -integer)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
