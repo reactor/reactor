@@ -52,6 +52,7 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		if (!ByteBuf.class.isInstance(msg) || null == netChannel.getDecoder()) {
 			netChannel.notifyRead(msg);

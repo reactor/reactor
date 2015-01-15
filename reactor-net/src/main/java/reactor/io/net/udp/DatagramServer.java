@@ -17,7 +17,7 @@
 package reactor.io.net.udp;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.batch.BatchConsumer;
@@ -51,13 +51,13 @@ public abstract class DatagramServer<IN, OUT>
 	private final ServerSocketOptions options;
 
 	protected DatagramServer(@Nonnull Environment env,
-	                         @Nonnull EventBus reactor,
+	                         @Nonnull Dispatcher dispatcher,
 	                         @Nullable InetSocketAddress listenAddress,
 	                         @Nullable NetworkInterface multicastInterface,
 	                         @Nonnull ServerSocketOptions options,
 	                         @Nullable Codec<Buffer, IN, OUT> codec,
 	                         @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, codec, consumers);
+		super(env, dispatcher, codec, consumers);
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;
@@ -70,7 +70,7 @@ public abstract class DatagramServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public Promise<Boolean> start() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {

@@ -24,7 +24,6 @@ import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +70,8 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-@Ignore
 public class TcpServerTests {
 
 	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
@@ -215,7 +214,7 @@ public class TcpServerTests {
 			threadPool.submit(new LengthFieldMessageWriter(port));
 		}
 
-		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(25, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -282,7 +281,6 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.connect("localhost", port)
-				.uncaughtErrorHandler(t -> {}) // ignore channel errors
 				.get();
 
 		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)

@@ -17,7 +17,7 @@
 package reactor.io.net.tcp;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -55,13 +55,13 @@ public abstract class TcpClient<IN, OUT>
 	private final SslOptions          sslOptions;
 
 	protected TcpClient(@Nonnull Environment env,
-	                    @Nonnull EventBus reactor,
+	                    @Nonnull Dispatcher dispatcher,
 	                    @Nullable InetSocketAddress connectAddress,
 	                    @Nullable ClientSocketOptions options,
 	                    @Nullable SslOptions sslOptions,
 	                    @Nullable Codec<Buffer, IN, OUT> codec,
 	                    @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, codec, consumers);
+		super(env, dispatcher, codec, consumers);
 		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;

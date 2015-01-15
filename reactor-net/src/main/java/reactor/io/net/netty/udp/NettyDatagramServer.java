@@ -29,7 +29,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -70,13 +70,13 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private volatile NettyNetChannel<IN, OUT> netChannel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
-	                           @Nonnull EventBus reactor,
+	                           @Nonnull Dispatcher dispatcher,
 	                           @Nullable InetSocketAddress listenAddress,
 	                           @Nullable final NetworkInterface multicastInterface,
 	                           @Nonnull final ServerSocketOptions options,
 	                           @Nullable Codec<Buffer, IN, OUT> codec,
 	                           Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, listenAddress, multicastInterface, options, codec, consumers);
+		super(env, dispatcher, listenAddress, multicastInterface, options, codec, consumers);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -178,9 +178,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
-		getReactor().schedule(
+		getDispatcher().dispatch(null,
 				new Consumer<Void>() {
 					@SuppressWarnings("unchecked")
 					@Override
@@ -234,7 +234,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Promise<Void> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -261,7 +261,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		final ChannelFuture future;
 		if (null != iface) {
@@ -280,7 +280,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				getEnvironment(),
 				getCodec(),
 				SynchronousDispatcher.INSTANCE,
-				getReactor(),
+				getDispatcher(),
 				(NioDatagramChannel) ioChannel
 		);
 	}
@@ -292,7 +292,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			future.addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
-					getReactor().schedule(onClose, future.isDone() && future.isSuccess());
+					getDispatcher().dispatch(future.isDone() && future.isSuccess(), onClose, null);
 				}
 			});
 		}

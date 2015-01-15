@@ -26,14 +26,14 @@ import reactor.rx.subscription.support.WrappedSubscription;
 /**
  * @author Stephane Maldini
  */
-public final class TerminalCallbackAction<T> extends Action<T, Void> {
+public final class ConsumerAction<T> extends Action<T, Void> {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
 	private final Consumer<Void>              completeConsumer;
 
-	public TerminalCallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer,
-	                              Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
+	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
+	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		super(dispatcher);
 		this.consumer = consumer;
 		this.errorConsumer = errorConsumer;

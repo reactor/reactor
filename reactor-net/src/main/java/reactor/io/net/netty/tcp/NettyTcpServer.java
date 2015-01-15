@@ -28,7 +28,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -71,13 +71,13 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup           ioGroup;
 
 	protected NettyTcpServer(@Nonnull Environment env,
-	                         @Nonnull EventBus reactor,
+	                         @Nonnull Dispatcher dispatcher,
 	                         @Nullable InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,
 	                         @Nullable Codec<Buffer, IN, OUT> codec,
 	                         @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, listenAddress, options, sslOptions, codec, consumers);
+		super(env, dispatcher, listenAddress, options, sslOptions, codec, consumers);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -161,8 +161,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
-		getReactor().schedule(
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
+		getDispatcher().dispatch(null,
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})
 					@Override
@@ -196,7 +196,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				getEnvironment(),
 				getCodec(),
 				new NettyEventLoopDispatcher(((Channel) ioChannel).eventLoop(), 256),
-				getReactor(),
+				getDispatcher(),
 				(Channel) ioChannel
 		);
 	}

@@ -17,8 +17,8 @@
 package reactor.io.net.tcp.spec;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
-import reactor.bus.spec.EventRoutingComponentSpec;
+import reactor.bus.spec.DispatcherComponentSpec;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -44,7 +44,7 @@ import java.util.*;
  *
  * @author Jon Brisbin
  */
-public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
+public class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
 
 	private final Constructor<TcpClient<IN, OUT>> clientImplConstructor;
 
@@ -66,7 +66,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		try {
 			this.clientImplConstructor = (Constructor<TcpClient<IN, OUT>>) clientImpl.getDeclaredConstructor(
 					Environment.class,
-					EventBus.class,
+					Dispatcher.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
 					SslOptions.class,
@@ -177,7 +177,7 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 	}
 
 	@Override
-	protected TcpClient<IN, OUT> configure(EventBus reactor, Environment env) {
+	protected TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 		List<Consumer<NetChannel<IN, OUT>>> channelConsumers = new ArrayList<Consumer<NetChannel<IN, OUT>>>();
 		channelConsumers.add(new Consumer<NetChannel<IN, OUT>>() {
 			@Override
@@ -189,8 +189,8 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		});
 		try {
 			return clientImplConstructor.newInstance(
-					env,
-					reactor,
+					environment,
+					dispatcher,
 					connectAddress,
 					options,
 					sslOptions,

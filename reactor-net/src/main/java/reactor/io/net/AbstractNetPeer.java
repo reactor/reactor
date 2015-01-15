@@ -18,19 +18,19 @@ package reactor.io.net;
 
 import com.gs.collections.impl.list.mutable.FastList;
 import reactor.Environment;
-import reactor.bus.Event;
-import reactor.bus.EventBus;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registry;
-import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
+import reactor.rx.Streams;
+import reactor.rx.stream.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -43,41 +43,42 @@ import java.util.Iterator;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class AbstractNetPeer<IN, OUT> {
+public abstract class AbstractNetPeer<IN, OUT> implements Iterable<NetChannel<IN, OUT>>{
 
-	private final Registry<NetChannel<IN, OUT>>   netChannels = new CachingRegistry<NetChannel<IN, OUT>>();
-	private final Event<AbstractNetPeer<IN, OUT>> selfEvent   = Event.wrap(this);
-	private final Selector                        open        = Selectors.$();
-	private final Selector                        close       = Selectors.$();
-	private final Selector                        start       = Selectors.$();
-	private final Selector                        shutdown    = Selectors.$();
+	private final Registry<NetChannel<IN, OUT>> netChannels = new CachingRegistry<NetChannel<IN, OUT>>();
+
+	private final Dispatcher dispatcher;
+
+	private final Broadcaster<NetChannel<IN, OUT>>      open;
+	private final Broadcaster<NetChannel<IN, OUT>>      close;
+	private final Broadcaster<AbstractNetPeer<IN, OUT>> start;
+	private final Broadcaster<AbstractNetPeer<IN, OUT>> shutdown;
 
 	private final Environment                               env;
-	private final EventBus                                  reactor;
 	private final Codec<Buffer, IN, OUT>                    codec;
 	private final Collection<Consumer<NetChannel<IN, OUT>>> consumers;
 
 	protected AbstractNetPeer(@Nonnull Environment env,
-	                          @Nonnull EventBus reactor,
+	                          @Nonnull Dispatcher dispatcher,
 	                          @Nullable Codec<Buffer, IN, OUT> codec,
 	                          @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
 		this.env = env;
-		this.reactor = reactor;
 		this.codec = codec;
 		this.consumers = consumers;
+		this.dispatcher = dispatcher;
+
+		this.open = Streams.broadcast(env, dispatcher);
+		this.close = Streams.broadcast(env, dispatcher);
+		this.start = Streams.broadcast(env, dispatcher);
+		this.shutdown = Streams.broadcast(env, dispatcher);
 
 		for (final Consumer<NetChannel<IN, OUT>> consumer : consumers) {
-			reactor.on(open, new Consumer<Event<NetChannel<IN, OUT>>>() {
-				@Override
-				public void accept(Event<NetChannel<IN, OUT>> ev) {
-					consumer.accept(ev.getData());
-				}
-			});
+			open.consume(consumer);
 		}
 	}
 
 	public Promise<Boolean> close() {
-		Promise<Boolean> d = Promises.ready(env, reactor.getDispatcher());
+		Promise<Boolean> d = Promises.ready(env, dispatcher);
 		close(d);
 		return d;
 	}
@@ -89,7 +90,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 			}
 		}
 		if (null != onClose) {
-			reactor.schedule(onClose, true);
+			dispatcher.dispatch(true, onClose, null);
 		}
 	}
 
@@ -104,13 +105,9 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Subclasses should register the given {@link NetChannel} for later use.
 	 *
-	 * @param ioChannel
-	 * 		The channel object.
-	 * @param netChannel
-	 * 		The {@link NetChannel}.
-	 * @param <C>
-	 * 		The type of the channel object.
-	 *
+	 * @param ioChannel  The channel object.
+	 * @param netChannel The {@link NetChannel}.
+	 * @param <C>        The type of the channel object.
 	 * @return {@link reactor.bus.registry.Registration} of this channel in the {@link Registry}.
 	 */
 	protected <C> Registration<? extends NetChannel<IN, OUT>> register(@Nonnull C ioChannel,
@@ -123,11 +120,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Find the {@link NetChannel} for the given IO channel object.
 	 *
-	 * @param ioChannel
-	 * 		The channel object.
-	 * @param <C>
-	 * 		The type of the channel object.
-	 *
+	 * @param ioChannel The channel object.
+	 * @param <C>       The type of the channel object.
 	 * @return The {@link NetChannel} associated with the given channel.
 	 */
 	protected <C> NetChannel<IN, OUT> select(@Nonnull C ioChannel) {
@@ -146,10 +140,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Close the given channel.
 	 *
-	 * @param channel
-	 * 		The channel object.
-	 * @param <C>
-	 * 		The type of the channel object.
+	 * @param channel The channel object.
+	 * @param <C>     The type of the channel object.
 	 */
 	protected <C> void close(@Nonnull C channel) {
 		Assert.notNull(channel, "Channel cannot be null");
@@ -163,11 +155,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	/**
 	 * Subclasses should implement this method and provide a {@link NetChannel} object.
 	 *
-	 * @param ioChannel
-	 * 		The IO channel object to associate with this {@link NetChannel}.
-	 * @param <C>
-	 * 		The type of the channel object.
-	 *
+	 * @param ioChannel The IO channel object to associate with this {@link NetChannel}.
+	 * @param <C>       The type of the channel object.
 	 * @return The new {@link NetChannel} object.
 	 */
 	protected abstract <C> NetChannel<IN, OUT> createChannel(C ioChannel);
@@ -176,53 +165,41 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	 * Notify this server's consumers that the server has started.
 	 */
 	protected void notifyStart(final Runnable started) {
-		getReactor().notify(start.getObject(), selfEvent);
-		if (null != started) {
-			getReactor().schedule(new Consumer<Runnable>() {
-				@Override
-				public void accept(Runnable r) {
-					r.run();
-				}
-			}, started);
-		}
-	}
+		start.onNext(this);
+		start.onComplete();
 
-	/**
-	 * Notify this client's consumers than a global error has occurred.
-	 *
-	 * @param error
-	 * 		The error to notify.
-	 */
-	protected void notifyError(@Nonnull Throwable error) {
-		Assert.notNull(error, "Error cannot be null.");
-		reactor.notify(error.getClass(), Event.wrap(error));
+		if (started != null) {
+			dispatcher.execute(started);
+		}
 	}
 
 	/**
 	 * Notify this peer's consumers that the channel has been opened.
 	 *
-	 * @param channel
-	 * 		The channel that was opened.
+	 * @param channel The channel that was opened.
 	 */
 	protected void notifyOpen(@Nonnull NetChannel<IN, OUT> channel) {
-		reactor.notify(open.getObject(), Event.wrap(channel));
+		open.onNext(channel);
 	}
 
 	/**
 	 * Notify this peer's consumers that the given channel has been closed.
 	 *
-	 * @param channel
-	 * 		The channel that was closed.
+	 * @param channel The channel that was closed.
 	 */
 	protected void notifyClose(@Nonnull NetChannel<IN, OUT> channel) {
-		reactor.notify(close.getObject(), Event.wrap(channel));
+		close.onNext(channel);
 	}
 
 	/**
 	 * Notify this server's consumers that the server has stopped.
 	 */
 	protected void notifyShutdown() {
-		getReactor().notify(shutdown.getObject(), selfEvent);
+		shutdown.onNext(this);
+		start.onComplete();
+		open.onComplete();
+		close.onComplete();
+		shutdown.onComplete();
 	}
 
 	/**
@@ -241,8 +218,8 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	}
 
 	@Nonnull
-	protected EventBus getReactor() {
-		return reactor;
+	protected Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 
 	@Nonnull
@@ -261,7 +238,7 @@ public abstract class AbstractNetPeer<IN, OUT> {
 	 * @param onClose
 	 */
 	protected void doClose(@Nullable Consumer<Boolean> onClose) {
-		getReactor().schedule(onClose, true);
+		dispatcher.dispatch(true, onClose, null);
 	}
 
 	/**

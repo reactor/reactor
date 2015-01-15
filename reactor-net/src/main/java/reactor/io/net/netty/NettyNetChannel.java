@@ -22,8 +22,6 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import reactor.Environment;
-import reactor.bus.Event;
-import reactor.bus.EventBus;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
@@ -53,9 +51,9 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	public NettyNetChannel(@Nonnull Environment env,
 	                       @Nullable Codec<Buffer, IN, OUT> codec,
 	                       @Nonnull Dispatcher ioDispatcher,
-	                       @Nonnull EventBus eventsReactor,
+	                       @Nonnull Dispatcher eventsDispatcher,
 	                       @Nonnull Channel ioChannel) {
-		super(env, codec, ioDispatcher, eventsReactor);
+		super(env, codec, ioDispatcher, eventsDispatcher);
 		this.ioChannel = ioChannel;
 	}
 
@@ -78,7 +76,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (null != onClose) {
-					getEventsReactor().schedule(onClose, future.isSuccess());
+					getDispatcher().dispatch(future.isSuccess(), onClose, null);
 				} else if (!future.isSuccess()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
@@ -109,7 +107,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 				if (!success) {
 					Throwable t = future.cause();
-					getEventsReactor().notify(t.getClass(), Event.wrap(t));
+					contentStream.onError(t);
 				}
 				if (null != onComplete) {
 					onComplete.onComplete();

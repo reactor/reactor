@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
@@ -65,13 +65,13 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private volatile Future<?>             workerFuture;
 
 	public ZeroMQTcpServer(@Nonnull Environment env,
-	                       @Nonnull EventBus reactor,
+	                       @Nonnull Dispatcher eventsDispatcher,
 	                       @Nullable InetSocketAddress listenAddress,
 	                       ServerSocketOptions options,
 	                       SslOptions sslOptions,
 	                       @Nullable Codec<Buffer, IN, OUT> codec,
 	                       @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, listenAddress, options, sslOptions, codec, consumers);
+		super(env, eventsDispatcher, listenAddress, options, sslOptions, codec, consumers);
 
 		this.ioThreadCount = env.getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
 
@@ -136,8 +136,8 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
 		return new ZeroMQNetChannel<IN, OUT>(
 				getEnvironment(),
-				getReactor(),
-				getReactor().getDispatcher(),
+				getDispatcher(),
+				getDispatcher(),
 				getCodec()
 		);
 	}
@@ -148,7 +148,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started"));
 		}
 
-		Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		super.close(null);
 

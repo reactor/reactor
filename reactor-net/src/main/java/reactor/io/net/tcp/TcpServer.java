@@ -17,7 +17,7 @@
 package reactor.io.net.tcp;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -55,13 +55,13 @@ public abstract class TcpServer<IN, OUT>
 	private final SslOptions          sslOptions;
 
 	protected TcpServer(@Nonnull Environment env,
-	                    @Nonnull EventBus reactor,
+	                    @Nonnull Dispatcher dispatcher,
 	                    @Nullable InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
 	                    @Nullable Codec<Buffer, IN, OUT> codec,
 	                    @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, codec, consumers);
+		super(env, dispatcher, codec, consumers);
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;
@@ -74,7 +74,7 @@ public abstract class TcpServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public Promise<Boolean> start() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 		start(new Runnable() {
 			@Override
 			public void run() {

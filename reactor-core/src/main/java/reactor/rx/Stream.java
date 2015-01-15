@@ -47,8 +47,8 @@ import reactor.rx.action.passive.CallbackAction;
 import reactor.rx.action.passive.LoggerAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
+import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.terminal.ObservableAction;
-import reactor.rx.action.terminal.TerminalCallbackAction;
 import reactor.rx.action.transformation.*;
 import reactor.rx.stream.Broadcaster;
 import reactor.rx.stream.GroupedStream;
@@ -424,15 +424,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consumeOn(final Consumer<? super O> consumer, Dispatcher dispatcher) {
-		TerminalCallbackAction<O> terminalCallbackAction = new TerminalCallbackAction<O>(dispatcher, consumer, null, null);
+		ConsumerAction<O> consumerAction = new ConsumerAction<O>(dispatcher, consumer, null, null);
 		if (dispatcher != getDispatcher()) {
-			terminalCallbackAction.capacity(getCapacity());
+			consumerAction.capacity(getCapacity());
 		}
-		subscribe(terminalCallbackAction);
+		subscribe(consumerAction);
 		if (consumer != null) {
-			terminalCallbackAction.requestMore(terminalCallbackAction.getCapacity());
+			consumerAction.requestMore(consumerAction.getCapacity());
 		}
-		return terminalCallbackAction;
+		return consumerAction;
 	}
 
 	/**
@@ -507,16 +507,16 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Control consumeOn(final Consumer<? super O> consumer,
 	                                Consumer<? super Throwable> errorConsumer,
 	                                Consumer<Void> completeConsumer, Dispatcher dispatcher) {
-		TerminalCallbackAction<O> terminalCallbackAction =
-				new TerminalCallbackAction<O>(dispatcher, consumer, errorConsumer, completeConsumer);
+		ConsumerAction<O> consumerAction =
+				new ConsumerAction<O>(dispatcher, consumer, errorConsumer, completeConsumer);
 
 		if (dispatcher != getDispatcher()) {
-			terminalCallbackAction.capacity(getCapacity());
+			consumerAction.capacity(getCapacity());
 		}
 
-		subscribe(terminalCallbackAction);
-		terminalCallbackAction.requestMore(terminalCallbackAction.getCapacity());
-		return terminalCallbackAction;
+		subscribe(consumerAction);
+		consumerAction.requestMore(consumerAction.getCapacity());
+		return consumerAction;
 	}
 
 	/**
@@ -2634,7 +2634,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			}
 		};
 
-		TerminalCallbackAction<O> callbackAction = new TerminalCallbackAction<O>(getDispatcher(), new Consumer<O>() {
+		ConsumerAction<O> callbackAction = new ConsumerAction<O>(getDispatcher(), new Consumer<O>() {
 			@Override
 			public void accept(O o) {
 				try {

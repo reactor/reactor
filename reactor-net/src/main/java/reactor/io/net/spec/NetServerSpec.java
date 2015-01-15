@@ -16,7 +16,7 @@
 
 package reactor.io.net.spec;
 
-import reactor.bus.spec.EventRoutingComponentSpec;
+import reactor.bus.spec.DispatcherComponentSpec;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -32,9 +32,10 @@ import java.util.Collections;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class NetServerSpec<IN, OUT, S extends NetServerSpec<IN, OUT, S, N>, N extends NetServer<IN, OUT>>
-		extends EventRoutingComponentSpec<S, N> {
+		extends DispatcherComponentSpec<S, N> {
 
 	protected ServerSocketOptions                       options          = new ServerSocketOptions();
 	protected Collection<Consumer<NetChannel<IN, OUT>>> channelConsumers = Collections.emptyList();

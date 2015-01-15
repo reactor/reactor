@@ -1558,10 +1558,10 @@ class StreamsSpec extends Specification {
 		then:
 			'the result should contain all stream titles by id'
 			result.to[0].id == "GroupBy"
-			result.to[0].to[0].id == "TerminalCallback"
-			result.to[0].boundTo[0].id == "TerminalCallback"
-			result.to[0].boundTo[1].id == "TerminalCallback"
-			result.to[0].boundTo[2].id == "TerminalCallback"
+			result.to[0].to[0].id == "Consumer"
+			result.to[0].boundTo[0].id == "Consumer"
+			result.to[0].boundTo[1].id == "Consumer"
+			result.to[0].boundTo[2].id == "Consumer"
 
 		when: "complete will cancel non kept-alive actions"
 			source.onComplete()

@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
@@ -69,13 +69,13 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ExecutorService           threadPool;
 
 	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull EventBus reactor,
+	                       @Nonnull Dispatcher eventsDispatcher,
 	                       @Nonnull InetSocketAddress connectAddress,
 	                       @Nullable ClientSocketOptions options,
 	                       @Nullable SslOptions sslOptions,
 	                       @Nullable Codec<Buffer, IN, OUT> codec,
 	                       @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
+		super(env, eventsDispatcher, connectAddress, options, sslOptions, codec, consumers);
 
 		this.ioThreadCount = env.getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
 
@@ -91,7 +91,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
 		Promise<NetChannel<IN, OUT>> d =
-				Promises.ready(getEnvironment(), getReactor().getDispatcher());
+				Promises.ready(getEnvironment(), getDispatcher());
 
 		doOpen(d);
 
@@ -122,7 +122,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		});
 		threadPool.shutdownNow();
 
-		getReactor().schedule(onClose, true);
+		getDispatcher().dispatch(true, onClose, null);
 		notifyShutdown();
 	}
 
@@ -130,8 +130,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
 		final ZeroMQNetChannel<IN, OUT> ch = new ZeroMQNetChannel<IN, OUT>(
 				getEnvironment(),
-				getReactor(),
-				getReactor().getDispatcher(),
+				getDispatcher(),
+				getDispatcher(),
 				getCodec()
 		);
 		ch.on().close(new Runnable() {

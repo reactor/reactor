@@ -20,13 +20,10 @@ import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
-import reactor.bus.EventBus;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -49,7 +46,6 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	private static final AtomicReferenceFieldUpdater<ZeroMQNetChannel, ZMsg> MSG_UPD =
 			AtomicReferenceFieldUpdater.newUpdater(ZeroMQNetChannel.class, ZMsg.class, "currentMsg");
 
-	private final Logger                log           = LoggerFactory.getLogger(getClass());
 	private final ZeroMQConsumerSpec    eventSpec     = new ZeroMQConsumerSpec();
 	private final MutableList<Runnable> closeHandlers = SynchronizedMutableList.of(FastList.<Runnable>newList());
 
@@ -58,10 +54,10 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	private volatile ZMsg       currentMsg;
 
 	public ZeroMQNetChannel(@Nonnull Environment env,
-	                        @Nonnull EventBus eventsReactor,
+	                        @Nonnull Dispatcher eventsDispatcher,
 	                        @Nonnull Dispatcher ioDispatcher,
 	                        @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, codec, ioDispatcher, eventsReactor);
+		super(env, codec, ioDispatcher, eventsDispatcher);
 	}
 
 	public ZeroMQNetChannel<IN, OUT> setConnectionId(String connectionId) {
@@ -129,7 +125,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	@Override
 	public void close(final Consumer<Boolean> onClose) {
-		getEventsReactor().schedule(new Consumer<Void>() {
+		getDispatcher().dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
 				closeHandlers.removeIf(new CheckedPredicate<Runnable>() {

@@ -17,7 +17,7 @@
 package reactor.io.net.udp.spec;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
@@ -44,7 +44,7 @@ public class DatagramServerSpec<IN, OUT>
 		try {
 			this.serverImplCtor = serverImpl.getDeclaredConstructor(
 					Environment.class,
-					EventBus.class,
+					Dispatcher.class,
 					InetSocketAddress.class,
 					NetworkInterface.class,
 					ServerSocketOptions.class,
@@ -73,11 +73,11 @@ public class DatagramServerSpec<IN, OUT>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected DatagramServer<IN, OUT> configure(EventBus reactor, Environment environment) {
+	protected DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 		try {
 			return serverImplCtor.newInstance(
 					environment,
-					reactor,
+					dispatcher,
 					listenAddress,
 					multicastInterface,
 					options,

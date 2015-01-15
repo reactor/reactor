@@ -127,9 +127,9 @@ public interface NetChannel<IN, OUT> {
 	Promise<IN> sendAndReceive(OUT data);
 
 	/**
-	 * Close this {@literal NetChannel}.
+	 * Close this {@literal NetChannel} and signal complete to the contentStream (@link this#in()).
 	 */
-	Promise<Boolean> close();
+	void close();
 
 	/**
 	 * Close this {@link NetChannel} and invoke the given {@link reactor.fn.Consumer} when closed.

@@ -20,7 +20,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.fn.Consumer;
@@ -64,7 +63,6 @@ import static org.junit.Assert.*;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpClientTests {
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();

@@ -27,7 +27,7 @@ import io.netty.util.concurrent.FutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -85,7 +85,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * encoding and decoding of data.
 	 *
 	 * @param env            The configuration environment
-	 * @param reactor        The reactor used to send events
+	 * @param dispatcher        The dispatcher used to send events
 	 * @param connectAddress The address the client will connect to
 	 * @param options        The configuration options for the client's socket
 	 * @param sslOptions     The SSL configuration options for the client's socket
@@ -93,13 +93,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * @param consumers      The consumers that will interact with the connection
 	 */
 	public NettyTcpClient(@Nonnull Environment env,
-	                      @Nonnull EventBus reactor,
+	                      @Nonnull Dispatcher dispatcher,
 	                      @Nonnull InetSocketAddress connectAddress,
 	                      @Nonnull final ClientSocketOptions options,
 	                      @Nullable final SslOptions sslOptions,
 	                      @Nullable Codec<Buffer, IN, OUT> codec,
 	                      @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
+		super(env, dispatcher, connectAddress, options, sslOptions, codec, consumers);
 		this.connectAddress = connectAddress;
 
 		if (options instanceof NettyClientSocketOptions) {
@@ -159,7 +159,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<NetChannel<IN, OUT>> open() {
 		final Promise<NetChannel<IN, OUT>> connection
-				= Promises.ready(getEnvironment(), getReactor().getDispatcher());
+				= Promises.ready(getEnvironment(), getDispatcher());
 
 		openChannel(new ConnectingChannelListener(connection));
 
@@ -169,7 +169,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Stream<NetChannel<IN, OUT>> open(final Reconnect reconnect) {
 		final Broadcaster<NetChannel<IN, OUT>> connections
-				= Streams.broadcast(getEnvironment(), getReactor().getDispatcher());
+				= Streams.broadcast(getEnvironment(), getDispatcher());
 
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
 
@@ -208,7 +208,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				getEnvironment(),
 				getCodec(),
 				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
-				getReactor(),
+				getDispatcher(),
 				ch
 		);
 	}
