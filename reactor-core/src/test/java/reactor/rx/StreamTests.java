@@ -226,7 +226,7 @@ public class StreamTests extends AbstractReactorTest {
 		r.on(key, tap);
 
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Controls s =
+		Control s =
 				stream
 						.map(STRING_2_INTEGER)
 						.notify(r, key.getObject());
@@ -343,7 +343,7 @@ public class StreamTests extends AbstractReactorTest {
 					return Integer.parseInt(str);
 				}));
 
-		Controls tail = tasks.consume(i -> {
+		Control tail = tasks.consume(i -> {
 			latch.countDown();
 		});
 
@@ -434,7 +434,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Broadcaster<Integer> d = Streams.broadcast(env);
 
-		Controls c = d
+		Control c = d
 				.partition().consume(stream ->
 						stream.dispatchOn(Environment.cachedDispatcher())
 								.map(o -> {
@@ -824,7 +824,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
 
-		Controls tail =
+		Control tail =
 				worker.partition(2).consume(s ->
 								s
 										.dispatchOn(supplier.get())
@@ -844,7 +844,7 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
 		Stream<Integer> worker = Streams.from(tasks).dispatchOn(env);
 
-		Controls tail = worker.partition(2).consume(s ->
+		Control tail = worker.partition(2).consume(s ->
 						s
 								.dispatchOn(env.getCachedDispatcher())
 								.map(v -> v)
@@ -866,7 +866,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch endLatch = new CountDownLatch(1000 / 100);
 
-		Controls controls = sensorDataStream
+		Control controls = sensorDataStream
 				/*     step 2  */.window(100)
 				///*     step 3  */.timeout(1000)
 				/*     step 4  */.consume(batchedStream -> {

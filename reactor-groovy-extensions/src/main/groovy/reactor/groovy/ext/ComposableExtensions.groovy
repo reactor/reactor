@@ -22,7 +22,7 @@ import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.Predicate
-import reactor.rx.Controls
+import reactor.rx.Control
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action
@@ -41,7 +41,7 @@ class ComposableExtensions {
 	/**
 	 * Alias
 	 */
-	static <T, X extends Stream<T>> Controls to(final Stream<T> selfType,
+	static <T, X extends Stream<T>> Control to(final Stream<T> selfType,
 	                                         final Observable observable
 	                                         , final Object key) {
 		selfType.notify observable, key
@@ -76,7 +76,7 @@ class ComposableExtensions {
 
 
 	//Consuming
-	static <T> Controls leftShift(final Stream<T> selfType, final Consumer<T> other) {
+	static <T> Control leftShift(final Stream<T> selfType, final Consumer<T> other) {
 		selfType.consume other
 	}
 

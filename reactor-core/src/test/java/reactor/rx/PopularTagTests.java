@@ -55,7 +55,7 @@ public class PopularTagTests extends AbstractReactorTest {
 
 		MapStream<String, Integer> persistentMap = IOStreams.persistentMap("popularTags", true);
 
-		Controls top10every1second =
+		Control top10every1second =
 				Streams.from(PULP_SAMPLE)
 						.dispatchOn(sharedDispatcher())
 						.flatMap(samuelJackson ->
@@ -91,7 +91,7 @@ public class PopularTagTests extends AbstractReactorTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void awaitLatch(Controls tail, CountDownLatch latch) throws Exception {
+	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
 		if (!latch.await(10, SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
 					+ tail.debug());

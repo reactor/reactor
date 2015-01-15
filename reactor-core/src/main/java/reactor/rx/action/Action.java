@@ -31,7 +31,7 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.Controls;
+import reactor.rx.Control;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.combination.CombineAction;
@@ -81,7 +81,7 @@ import javax.annotation.Nonnull;
  * @since 1.1, 2.0
  */
 public abstract class Action<I, O> extends Stream<O>
-		implements Processor<I, O>, Consumer<I>, Recyclable, Controls {
+		implements Processor<I, O>, Consumer<I>, Recyclable, Control {
 
 	/**
 	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to capacity + 4 events can be

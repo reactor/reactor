@@ -17,18 +17,18 @@ package reactor.rx.action.support;
 
 import reactor.fn.Supplier;
 import reactor.fn.support.Tap;
-import reactor.rx.Controls;
+import reactor.rx.Control;
 import reactor.rx.StreamUtils;
 
 /**
  * @author Stephane Maldini
  */
-public class TapAndControls<O> implements Controls, Supplier<O>{
+public class TapAndControls<O> implements Control, Supplier<O>{
 
-	private final Controls controls;
+	private final Control          controls;
 	private final Tap<? extends O> tap;
 
-	public TapAndControls(Tap<? extends O> tap, Controls controls) {
+	public TapAndControls(Tap<? extends O> tap, Control controls) {
 		this.tap = tap;
 		this.controls = controls;
 	}

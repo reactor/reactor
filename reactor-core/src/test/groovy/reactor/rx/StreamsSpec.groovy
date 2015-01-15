@@ -797,6 +797,45 @@ class StreamsSpec extends Specification {
 
 	}
 
+	def "Combine latest stream data"() {
+		given:
+			'source composables to zip, buffer and tap'
+			def w1 = Streams.<String>broadcast()
+			def w2 = Streams.<String>broadcast()
+			def w3 = Streams.<String>broadcast()
+
+		when:
+			'the sources are zipped'
+			def mergedStream = Streams.combineLatest(w1, w2, w3, {t ->  t.t1+t.t2+t.t3})
+			def res = []
+
+			mergedStream.consume(
+					{ res << it; println it },
+					{ it.printStackTrace() },
+					{ res.sort(); res << 'done'; println 'completed!' }
+			)
+
+			w1.onNext("1a")
+			w2.onNext("2a")
+			w3.onNext("3a")
+			w1.onComplete()
+			// twice for w2
+			w2.onNext("2b")
+			w2.onComplete()
+			// 4 times for w3
+			w3.onNext("3b")
+			w3.onNext("3c")
+			w3.onNext("3d")
+			w3.onComplete()
+
+			println mergedStream.debug()
+
+		then:
+			'the values are all collected from source1 and source2 stream'
+			res == ['1a2a3a', '1a2b3a', '1a2b3b', '1a2b3c', '1a2b3d' , 'done']
+
+	}
+
 	def "A simple concat"() {
 		given:
 			'source composables to zip, buffer and tap'

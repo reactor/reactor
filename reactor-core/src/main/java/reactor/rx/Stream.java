@@ -287,7 +287,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 * @since 1.1, 2.0
 	 */
-	public final Controls notify(@Nonnull final Observable observable, @Nonnull final Object key) {
+	public final Control notify(@Nonnull final Observable observable, @Nonnull final Object key) {
 		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, key, null);
 		subscribe(observableAction);
 		return observableAction.consume();
@@ -301,7 +301,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
-	public final Controls notify(@Nonnull final Observable observable, @Nonnull Function<? super O, ?> keyMapper) {
+	public final Control notify(@Nonnull final Observable observable, @Nonnull Function<? super O, ?> keyMapper) {
 		ObservableAction<O> observableAction = new ObservableAction<O>(getDispatcher(), observable, null, keyMapper);
 		subscribe(observableAction);
 		return observableAction.consume();
@@ -369,7 +369,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @return the consuming action
 	 */
-	public Controls consumeLater() {
+	public Control consumeLater() {
 		return consume(null);
 	}
 
@@ -379,8 +379,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @return the consuming action
 	 */
-	public Controls consume() {
-		Controls controls = consume(null);
+	public Control consume() {
+		Control controls = consume(null);
 		controls.requestMore(Long.MAX_VALUE);
 		return controls;
 	}
@@ -388,10 +388,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Instruct the action to request upstream subscription if any for N elements.
 	 *
-	 * @return a new {@link Controls} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public Controls consume(final long n) {
-		Controls controls = consume(null);
+	public Control consume(final long n) {
+		Control controls = consume(null);
 		if (n > 0) {
 			controls.requestMore(n);
 		}
@@ -406,9 +406,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link Controls} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Controls consume(final Consumer<? super O> consumer) {
+	public final Control consume(final Consumer<? super O> consumer) {
 		return consumeOn(consumer, getDispatcher());
 	}
 
@@ -421,9 +421,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @param consumer   the consumer to invoke on each value
 	 * @param dispatcher the dispatcher to run the consumer
-	 * @return a new {@link Controls} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Controls consumeOn(final Consumer<? super O> consumer, Dispatcher dispatcher) {
+	public final Control consumeOn(final Consumer<? super O> consumer, Dispatcher dispatcher) {
 		TerminalCallbackAction<O> terminalCallbackAction = new TerminalCallbackAction<O>(dispatcher, consumer, null, null);
 		if (dispatcher != getDispatcher()) {
 			terminalCallbackAction.capacity(getCapacity());
@@ -445,9 +445,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @param consumer      the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @return a new {@link Controls} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Controls consume(final Consumer<? super O> consumer,
+	public final Control consume(final Consumer<? super O> consumer,
 	                              Consumer<? super Throwable> errorConsumer) {
 		return consumeOn(consumer, errorConsumer, getDispatcher());
 	}
@@ -463,9 +463,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param consumer      the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @param dispatcher    the dispatcher to run the consumer
-	 * @return a new {@link Controls} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Controls consumeOn(final Consumer<? super O> consumer,
+	public final Control consumeOn(final Consumer<? super O> consumer,
 	                                Consumer<? super Throwable> errorConsumer, Dispatcher dispatcher) {
 		return consumeOn(consumer, errorConsumer, null, dispatcher);
 	}
@@ -483,7 +483,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
-	public final Controls consume(final Consumer<? super O> consumer,
+	public final Control consume(final Consumer<? super O> consumer,
 	                              Consumer<? super Throwable> errorConsumer,
 	                              Consumer<Void> completeConsumer) {
 		return consumeOn(consumer, errorConsumer, completeConsumer, getDispatcher());
@@ -504,7 +504,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param dispatcher       the dispatcher to run the consumer
 	 * @return {@literal new Stream}
 	 */
-	public final Controls consumeOn(final Consumer<? super O> consumer,
+	public final Control consumeOn(final Consumer<? super O> consumer,
 	                                Consumer<? super Throwable> errorConsumer,
 	                                Consumer<Void> completeConsumer, Dispatcher dispatcher) {
 		TerminalCallbackAction<O> terminalCallbackAction =
@@ -994,6 +994,20 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * {@link this#lift(Function)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
+	                                       @Nonnull Function<Tuple2<O, T2>, V> zipper) {
+		return zipWith(Streams.from(iterable), zipper);
+	}
+
+	/**
 	 * {@link this#lift(Function)} with the passed {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
@@ -1011,20 +1025,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 						.subscribe(s);
 			}
 		};
-	}
-
-	/**
-	 * {@link this#lift(Function)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
-	 *
-	 * @return the zipped stream
-	 * @since 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
-	                                       @Nonnull Function<Tuple2<O, T2>, V> zipper) {
-		return zipWith(Streams.from(iterable), zipper);
 	}
 
 	/**

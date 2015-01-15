@@ -22,7 +22,7 @@ package reactor.rx;
  * @author Stephane Maldini
  * @since 2.0
  */
-public interface Controls {
+public interface Control {
 
 	/**
 	 * Request the next n elements from the source
