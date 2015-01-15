@@ -18,7 +18,7 @@
 description = 'Reactive fast data framework for the JVM'
 
 ext {
-	gradleVersion = '2.1'
+	gradleVersion = '2.2.1'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
@@ -53,7 +53,8 @@ ext {
 			"http://docs.oracle.com/javase/7/docs/api/",
 			"http://docs.oracle.com/javaee/6/api/",
 			"http://fasterxml.github.com/jackson-core/javadoc/2.4.1.1/",
-			"http://www.goldmansachs.com/gs-collections/javadoc/5.1.0/"
+			"http://www.goldmansachs.com/gs-collections/javadoc/5.1.0/",
+			"http://www.reactive-streams.org/reactive-streams-tck-1.0.0.RC1-javadoc/"
 	] as String[]
 }
 
@@ -65,7 +66,7 @@ buildscript {
 	dependencies {
 		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7',
 							'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
-							'com.github.jengelman.gradle.plugins:shadow:1.1.1'
+							'com.github.jengelman.gradle.plugins:shadow:1.2.0'
 	}
 }
 apply from: "$gradleScriptDir/setup.gradle"

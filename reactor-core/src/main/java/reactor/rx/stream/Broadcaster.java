@@ -25,6 +25,10 @@ import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
 /**
+ * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
+ * It is possible to publish discreet values typed to the generic type of the {@code Stream} as well as error conditions
+ * and the Reactive Streams "complete" signal via the {@link #onComplete()} method.
+ *
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends Action<O, O> {
@@ -34,6 +38,9 @@ public class Broadcaster<O> extends Action<O, O> {
 		super(dispatcher, capacity);
 	}
 
+	/**
+	 * @see {@link org.reactivestreams.Subscriber#onNext(Object)}
+	 */
 	@Override
 	public void onNext(O ev) {
 		if(upstreamSubscription != null){
@@ -48,11 +55,17 @@ public class Broadcaster<O> extends Action<O, O> {
 		broadcastNext(ev);
 	}
 
+	/**
+	 * @see {@link org.reactivestreams.Subscriber#onError(Throwable)}
+	 */
 	@Override
 	public void onError(Throwable ev) {
 		broadcastError(ev);
 	}
 
+	/**
+	 * @see {@link org.reactivestreams.Subscriber#onComplete()}
+	 */
 	@Override
 	public void onComplete() {
 		if (keepAlive && downstreamSubscription == null) {
