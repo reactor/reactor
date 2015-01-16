@@ -394,7 +394,7 @@ public class HashWheelTimer implements Timer {
 				if (lifecycle) {
 					((Pausable) delegate).resume();
 				}
-				this.status.set(STATUS_READY);
+				reset();
 			}
 			return this;
 		}
