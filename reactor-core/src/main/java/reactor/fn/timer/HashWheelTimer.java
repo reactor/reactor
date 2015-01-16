@@ -71,8 +71,7 @@ public class HashWheelTimer implements Timer {
 	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
 	 * multiple of this resolution.
 	 *
-	 * @param resolution
-	 * 		the resolution of this timer, in milliseconds
+	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	public HashWheelTimer(int resolution) {
 		this(resolution, DEFAULT_WHEEL_SIZE, new SleepWait());
@@ -82,33 +81,27 @@ public class HashWheelTimer implements Timer {
 	 * Create a new {@code HashWheelTimer} using the given timer {@param res} and {@param wheelSize}. All times will
 	 * rounded up to the closest multiple of this resolution.
 	 *
-	 * @param res
-	 * 		resolution of this timer in milliseconds
-	 * @param wheelSize
-	 * 		size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
-	 * 		for sparse timeouts. Sane default is 512.
-	 * @param waitStrategy
-	 * 		strategy for waiting for the next tick
+	 * @param res          resolution of this timer in milliseconds
+	 * @param wheelSize    size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time
+	 *                     is
+	 *                     for sparse timeouts. Sane default is 512.
+	 * @param waitStrategy strategy for waiting for the next tick
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
 		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, Executors.newFixedThreadPool(1));
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param wheelSize}. All times will
+	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param wheelSize}. All times
+	 * will
 	 * rounded up to the closest multiple of this resolution.
 	 *
-	 * @param name
-	 * 		name for daemon thread factory to be displayed
-	 * @param res
-	 * 		resolution of this timer in milliseconds
-	 * @param wheelSize
-	 * 		size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
-	 * 		for sparse timeouts. Sane default is 512.
-	 * @param strategy
-	 * 		strategy for waiting for the next tick
-	 * @param exec
-	 * 		Executor instance to submit tasks to
+	 * @param name      name for daemon thread factory to be displayed
+	 * @param res       resolution of this timer in milliseconds
+	 * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
+	 *                  for sparse timeouts. Sane default is 512.
+	 * @param strategy  strategy for waiting for the next tick
+	 * @param exec      Executor instance to submit tasks to
 	 */
 	public HashWheelTimer(String name, int res, int wheelSize, WaitStrategy strategy, Executor exec) {
 		this.waitStrategy = strategy;
@@ -126,20 +119,20 @@ public class HashWheelTimer implements Timer {
 			public void run() {
 				long deadline = System.currentTimeMillis();
 
-				while(true) {
+				while (true) {
 					Set<TimerRegistration> registrations = wheel.get(wheel.getCursor());
 
-					for(TimerRegistration r : registrations) {
-						if(r.isCancelled()) {
+					for (TimerRegistration r : registrations) {
+						if (r.isCancelled()) {
 							registrations.remove(r);
-						} else if(r.ready()) {
+						} else if (r.ready()) {
 							executor.execute(r);
 							registrations.remove(r);
 
-							if(!r.isCancelAfterUse()) {
+							if (!r.isCancelAfterUse()) {
 								reschedule(r);
 							}
-						} else if(r.isPaused()) {
+						} else if (r.isPaused()) {
 							reschedule(r);
 						} else {
 							r.decrement();
@@ -150,7 +143,7 @@ public class HashWheelTimer implements Timer {
 
 					try {
 						waitStrategy.waitUntil(deadline);
-					} catch(InterruptedException e) {
+					} catch (InterruptedException e) {
 						return;
 					}
 
@@ -185,13 +178,13 @@ public class HashWheelTimer implements Timer {
 	                                                          TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		return (TimerRegistration<? extends Consumer<Long>>)schedule(ms, ms, consumer).cancelAfterUse();
+		return (TimerRegistration<? extends Consumer<Long>>) schedule(ms, ms, consumer).cancelAfterUse();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
-		return (TimerRegistration<? extends Consumer<Long>>)submit(consumer, resolution, TimeUnit.MILLISECONDS);
+		return (TimerRegistration<? extends Consumer<Long>>) submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
@@ -199,7 +192,9 @@ public class HashWheelTimer implements Timer {
 	public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit) {
-		return (TimerRegistration<? extends Consumer<Long>>)schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
+		return (TimerRegistration<? extends Consumer<Long>>) schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit),
+		                                                              0,
+		                                                              consumer);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -245,17 +240,35 @@ public class HashWheelTimer implements Timer {
 		this.loop.interrupt();
 	}
 
+	@Override
+	public String toString() {
+		return String.format("HashWheelTimer { Buffer Size: %d, Resolution: %d }",
+		                     wheel.getBufferSize(),
+		                     resolution);
+	}
+
+	/**
+	 * Wait strategy for the timer
+	 */
+	public static interface WaitStrategy {
+
+		/**
+		 * Wait until the given deadline, {@param deadlineMilliseconds}
+		 *
+		 * @param deadlineMilliseconds deadline to wait for, in milliseconds
+		 */
+		public void waitUntil(long deadlineMilliseconds) throws InterruptedException;
+	}
 
 	/**
 	 * Timer Registration
 	 *
-	 * @param <T>
-	 * 		type of the Timer Registration Consumer
+	 * @param <T> type of the Timer Registration Consumer
 	 */
 	public static class TimerRegistration<T extends Consumer<Long>> implements Runnable,
-	                                                                           Comparable,
-	                                                                           Pausable,
-	                                                                           Registration {
+			Comparable,
+			Pausable,
+			Registration {
 
 		public static int STATUS_PAUSED    = 1;
 		public static int STATUS_CANCELLED = -1;
@@ -267,24 +280,24 @@ public class HashWheelTimer implements Timer {
 		private final AtomicLong    rounds;
 		private final AtomicInteger status;
 		private final AtomicBoolean cancelAfterUse;
+		private final boolean       lifecycle;
 
 		/**
 		 * Creates a new Timer Registration with given {@param rounds}, {@param offset} and {@param delegate}.
 		 *
-		 * @param rounds
-		 * 		amount of rounds the Registration should go through until it's elapsed
-		 * @param offset
-		 * 		offset of in the Ring Buffer for rescheduling
-		 * @param delegate
-		 * 		delegate that will be ran whenever the timer is elapsed
+		 * @param rounds   amount of rounds the Registration should go through until it's elapsed
+		 * @param offset   offset of in the Ring Buffer for rescheduling
+		 * @param delegate delegate that will be ran whenever the timer is elapsed
 		 */
 		public TimerRegistration(long rounds, long offset, T delegate, long rescheduleRounds) {
+			Assert.notNull(delegate, "Delegate cannot be null");
 			this.rescheduleRounds = rescheduleRounds;
 			this.scheduleOffset = offset;
 			this.delegate = delegate;
 			this.rounds = new AtomicLong(rounds);
 			this.status = new AtomicInteger(STATUS_READY);
 			this.cancelAfterUse = new AtomicBoolean(false);
+			this.lifecycle = Pausable.class.isAssignableFrom(delegate.getClass());
 		}
 
 		/**
@@ -325,7 +338,12 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		public Registration cancel() {
-			this.status.set(STATUS_CANCELLED);
+			if (!isCancelled()) {
+				if (lifecycle) {
+					((Pausable) delegate).cancel();
+				}
+				this.status.set(STATUS_CANCELLED);
+			}
 			return this;
 		}
 
@@ -346,7 +364,12 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public Registration pause() {
-			this.status.set(STATUS_PAUSED);
+			if (!isPaused()) {
+				if (lifecycle) {
+					((Pausable) delegate).pause();
+				}
+				this.status.set(STATUS_PAUSED);
+			}
 			return this;
 		}
 
@@ -367,7 +390,12 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public Registration resume() {
-			reset();
+			if (isPaused()) {
+				if (lifecycle) {
+					((Pausable) delegate).resume();
+				}
+				this.status.set(STATUS_READY);
+			}
 			return this;
 		}
 
@@ -399,7 +427,7 @@ public class HashWheelTimer implements Timer {
 		 * @return {@literal this}
 		 */
 		public TimerRegistration<T> cancelAfterUse() {
-			cancelAfterUse.set(false);
+			cancelAfterUse.set(true);
 			return this;
 		}
 
@@ -410,8 +438,8 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public int compareTo(Object o) {
-			TimerRegistration other = (TimerRegistration)o;
-			if(rounds.get() == other.rounds.get()) {
+			TimerRegistration other = (TimerRegistration) o;
+			if (rounds.get() == other.rounds.get()) {
 				return other == this ? 0 : -1;
 			} else {
 				return Long.compare(rounds.get(), other.rounds.get());
@@ -422,28 +450,6 @@ public class HashWheelTimer implements Timer {
 		public String toString() {
 			return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
 		}
-	}
-
-	@Override
-	public String toString() {
-		return String.format("HashWheelTimer { Buffer Size: %d, Resolution: %d }",
-		                     wheel.getBufferSize(),
-		                     resolution);
-	}
-
-
-	/**
-	 * Wait strategy for the timer
-	 */
-	public static interface WaitStrategy {
-
-		/**
-		 * Wait until the given deadline, {@param deadlineMilliseconds}
-		 *
-		 * @param deadlineMilliseconds
-		 * 		deadline to wait for, in milliseconds
-		 */
-		public void waitUntil(long deadlineMilliseconds) throws InterruptedException;
 	}
 
 	/**
@@ -457,9 +463,9 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
-			while(deadlineMilliseconds >= System.currentTimeMillis()) {
+			while (deadlineMilliseconds >= System.currentTimeMillis()) {
 				Thread.yield();
-				if(Thread.currentThread().isInterrupted()) {
+				if (Thread.currentThread().isInterrupted()) {
 					throw new InterruptedException();
 				}
 			}
@@ -477,8 +483,8 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
-			while(deadlineMilliseconds >= System.currentTimeMillis()) {
-				if(Thread.currentThread().isInterrupted()) {
+			while (deadlineMilliseconds >= System.currentTimeMillis()) {
+				if (Thread.currentThread().isInterrupted()) {
 					throw new InterruptedException();
 				}
 			}
@@ -497,7 +503,7 @@ public class HashWheelTimer implements Timer {
 		@Override
 		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
 			long sleepTimeMs = deadlineMilliseconds - System.currentTimeMillis();
-			if(sleepTimeMs > 0) {
+			if (sleepTimeMs > 0) {
 				Thread.sleep(sleepTimeMs);
 			}
 		}
