@@ -18,6 +18,7 @@ package reactor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import reactor.bus.EventBus;
 import reactor.bus.convert.StandardConverters;
 import reactor.bus.filter.Filter;
@@ -41,6 +42,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
  * @author Jon Brisbin
@@ -829,7 +831,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	                                                         final ProducerType producerType,
 	                                                         final WaitStrategy waitStrategy) {
 		return new DispatcherSupplier() {
-			int roundRobinIndex = -1;
+			volatile int roundRobinIndex = -1;
 			Dispatcher[] dispatchers = new Dispatcher[poolsize];
 			boolean terminated = false;
 
@@ -858,25 +860,46 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				terminated = true;
 			}
 
-			@Override
-			public Dispatcher get() {
+			private int getNextIndex() {
 				if (++roundRobinIndex == poolsize) {
 					roundRobinIndex = 0;
 				}
-				if (dispatchers[roundRobinIndex] == null) {
-					if (PlatformDependent.hasUnsafe()) {
-						dispatchers[roundRobinIndex] = new RingBufferDispatcher(
-								name,
-								bufferSize,
-								errorHandler,
-								producerType,
-								waitStrategy);
-					} else {
-						dispatchers[roundRobinIndex] = new MpscDispatcher(name, bufferSize);
+				
+				return roundRobinIndex;
+			}
+			
+			@Override
+			public Dispatcher get() {
+
+				// This way we are consistent about the dispatcher index we are manipulating.
+				int index = getNextIndex();
+				
+				// use a temporary variable to reduce the number of reads of the field
+				Dispatcher dispatcher = dispatchers[index];
+				
+				if (dispatcher == null) {
+					synchronized (this) {
+						// re-read to verify it is still null, now that we are thread-safe.
+						dispatcher = dispatchers[index];
+						if (dispatcher == null) {
+							if (PlatformDependent.hasUnsafe()) {
+								dispatchers[index] = new RingBufferDispatcher(
+										name,
+										bufferSize,
+										errorHandler,
+										producerType,
+										waitStrategy);
+							} else {
+								dispatchers[index] = new MpscDispatcher(name, bufferSize);
+							}
+							
+							dispatcher = dispatchers[index];
+						}
+						
 					}
 				}
 
-				return dispatchers[roundRobinIndex];
+				return dispatcher;
 			}
 		};
 	}
