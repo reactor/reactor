@@ -16,8 +16,8 @@
 
 package reactor.io.net;
 
+import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.batch.BatchConsumer;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
@@ -25,11 +25,16 @@ import reactor.rx.Stream;
 import java.net.InetSocketAddress;
 
 /**
- * {@code NetChannel} implementations handle interacting with the client.
+ * {@code NetChannel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
+ * Implementations handle interacting inbound (received data) and errors by subscribing to it.
+ * Sending data to outbound, effectively replying on that virtual connection, is done via {@link this#send(OUT)} and
+ * {@link this#echo(OUT)} or {@link this#echoFrom(Publisher)} for fire and forget.
+ *
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public interface NetChannel<IN, OUT> {
+public interface NetChannel<IN, OUT> extends Publisher<IN> {
 
 	/**
 	 * Get the address of the remote peer.
@@ -53,51 +58,7 @@ public interface NetChannel<IN, OUT> {
 	BatchConsumer<OUT> out();
 
 	/**
-	 * When an error of the given type occurs, handle it with the given {@link reactor.fn.Consumer}.
-	 *
-	 * @param type
-	 * 		type of error
-	 * @param onError
-	 * 		error handler
-	 * @param <T>
-	 * 		type of the exception
-	 *
-	 * @return {@literal this}
-	 */
-	<T extends Throwable> NetChannel<IN, OUT> when(Class<T> type, Consumer<T> onError);
-
-	/**
-	 * Efficiently consume incoming decoded data.
-	 *
-	 * @param consumer
-	 * 		the incoming data {@link reactor.fn.Consumer}
-	 *
-	 * @return {@literal this}
-	 */
-	NetChannel<IN, OUT> consume(Consumer<IN> consumer);
-
-	/**
-	 * Handle incoming data and return the response.
-	 *
-	 * @param fn
-	 * 		request handler
-	 *
-	 * @return {@literal this}
-	 */
-	NetChannel<IN, OUT> receive(Function<IN, OUT> fn);
-
-	/**
-	 * Send data to the peer that passes through the given {@link reactor.rx.Stream}.
-	 *
-	 * @param data
-	 * 		the {@link reactor.rx.Stream} of data to monitor
-	 *
-	 * @return {@literal this}
-	 */
-	NetChannel<IN, OUT> send(Stream<OUT> data);
-
-	/**
-	 * Send data to the peer.
+	 * Send data to the peer, listen for any error on write and complete after successful write.
 	 *
 	 * @param data
 	 * 		the data to send
@@ -114,17 +75,17 @@ public interface NetChannel<IN, OUT> {
 	 *
 	 * @return {@literal this}
 	 */
-	NetChannel<IN, OUT> sendAndForget(OUT data);
+	NetChannel<IN, OUT> echo(OUT data);
 
 	/**
-	 * Send data to the peer and expect a response.
+	 * Send data to the peer that passes through the given {@link reactor.rx.Stream}.
 	 *
 	 * @param data
-	 * 		the data to send
+	 * 		the {@link reactor.rx.Stream} of data to monitor
 	 *
-	 * @return a {@link reactor.rx.Promise} representing the response from the peer
+	 * @return {@literal this}
 	 */
-	Promise<IN> sendAndReceive(OUT data);
+	NetChannel<IN, OUT> echoFrom(Publisher<? extends OUT> data);
 
 	/**
 	 * Close this {@literal NetChannel} and signal complete to the contentStream (@link this#in()).
@@ -132,16 +93,9 @@ public interface NetChannel<IN, OUT> {
 	void close();
 
 	/**
-	 * Close this {@link NetChannel} and invoke the given {@link reactor.fn.Consumer} when closed.
-	 *
-	 * @param onClose
-	 */
-	void close(Consumer<Boolean> onClose);
-
-	/**
 	 * Assign event handlers to certain channel lifecycle events.
 	 *
-	 * @return
+	 * @return ConsumerSpec to build the events handlers
 	 */
 	ConsumerSpec on();
 
@@ -157,7 +111,7 @@ public interface NetChannel<IN, OUT> {
 		 *
 		 * @return {@literal this}
 		 */
-		ConsumerSpec close(Runnable onClose);
+		ConsumerSpec close(Consumer<Void> onClose);
 
 		/**
 		 * Assign a {@link Runnable} to be invoked when reads have become idle for the given timeout.
@@ -169,7 +123,7 @@ public interface NetChannel<IN, OUT> {
 		 *
 		 * @return {@literal this}
 		 */
-		ConsumerSpec readIdle(long idleTimeout, Runnable onReadIdle);
+		ConsumerSpec readIdle(long idleTimeout, Consumer<Void> onReadIdle);
 
 		/**
 		 * Assign a {@link Runnable} to be invoked when writes have become idle for the given timeout.
@@ -181,7 +135,7 @@ public interface NetChannel<IN, OUT> {
 		 *
 		 * @return {@literal this}
 		 */
-		ConsumerSpec writeIdle(long idleTimeout, Runnable onWriteIdle);
+		ConsumerSpec writeIdle(long idleTimeout, Consumer<Void> onWriteIdle);
 	}
 
 }

@@ -30,10 +30,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Environment;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.NetChannel;
 import reactor.io.net.codec.syslog.SyslogCodec;
 import reactor.io.net.codec.syslog.SyslogMessage;
 import reactor.io.net.netty.tcp.NettyTcpServer;
@@ -89,37 +87,37 @@ public class SyslogTcpServerTests {
 
 		ServerBootstrap b = new ServerBootstrap();
 		b.group(bossGroup, workerGroup)
-		 .localAddress(3000)
-		 .channel(NioServerSocketChannel.class)
-		 .childHandler(new ChannelInitializer<SocketChannel>() {
-			 @Override
-			 public void initChannel(SocketChannel ch) throws Exception {
-				 ChannelPipeline pipeline = ch.pipeline();
-				 pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
-				 pipeline.addLast("decoder", new StringDecoder());
-				 pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String>() {
-					 Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null);
+				.localAddress(3000)
+				.channel(NioServerSocketChannel.class)
+				.childHandler(new ChannelInitializer<SocketChannel>() {
+					@Override
+					public void initChannel(SocketChannel ch) throws Exception {
+						ChannelPipeline pipeline = ch.pipeline();
+						pipeline.addLast("framer", new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter()));
+						pipeline.addLast("decoder", new StringDecoder());
+						pipeline.addLast("syslogDecoder", new MessageToMessageDecoder<String>() {
+							Function<Buffer, SyslogMessage> decoder = new SyslogCodec().decoder(null);
 
-					 @Override
-					 public void decode(ChannelHandlerContext ctx, String msg, List<Object> messages) throws Exception {
-						 messages.add(decoder.apply(Buffer.wrap(msg + "\n")));
-					 }
-				 });
-				 pipeline.addLast("handler", new ChannelInboundHandlerAdapter() {
+							@Override
+							public void decode(ChannelHandlerContext ctx, String msg, List<Object> messages) throws Exception {
+								messages.add(decoder.apply(Buffer.wrap(msg + "\n")));
+							}
+						});
+						pipeline.addLast("handler", new ChannelInboundHandlerAdapter() {
 
-					 @Override
-					 public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-						 latch.countDown();
-						 hdfs.accept((SyslogMessage)msg);
-					 }
-				 });
-			 }
-		 });
+							@Override
+							public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+								latch.countDown();
+								hdfs.accept((SyslogMessage) msg);
+							}
+						});
+					}
+				});
 
 		// Bind and start to accept incoming connections.
 		ChannelFuture channelFuture = b.bind().awaitUninterruptibly();
 
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			new SyslogMessageWriter(3000).start();
 		}
 
@@ -129,8 +127,8 @@ public class SyslogTcpServerTests {
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int)elapsed + "ms");
-		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		channelFuture.channel().close().awaitUninterruptibly();
 	}
@@ -149,35 +147,30 @@ public class SyslogTcpServerTests {
 						//.dispatcher(Environment.DISPATCHER_GROUP)
 				.dispatcher(Environment.SHARED)
 				.codec(new SyslogCodec())
-				.consume(new Consumer<NetChannel<SyslogMessage, Void>>() {
-					@Override
-					public void accept(NetChannel<SyslogMessage, Void> conn) {
-						conn
-								.consume(new Consumer<SyslogMessage>() {
-									@Override
-									public void accept(SyslogMessage msg) {
-										count.incrementAndGet();
-									}
-								})
-								.consume(hdfs);
-					}
-				})
 				.get();
 
+		server.consume(conn -> {
+					conn.consume(msg -> {
+						count.incrementAndGet();
+					});
+
+					conn.consume(hdfs);
+				}
+		);
 		server.start().await();
 
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			new SyslogMessageWriter(3000).start();
 		}
 
-		while(count.get() < (msgs * threads)) {
+		while (count.get() < (msgs * threads)) {
 			end.set(System.currentTimeMillis());
 			Thread.sleep(100);
 		}
 
 		double elapsed = (end.get() - start.get()) * 1.0;
-		System.out.println("elapsed: " + (int)elapsed + "ms");
-		System.out.println("throughput: " + (int)((msgs * threads) / (elapsed / 1000)) + "/sec");
+		System.out.println("elapsed: " + (int) elapsed + "ms");
+		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
 		server.shutdown();
 	}
@@ -189,7 +182,7 @@ public class SyslogTcpServerTests {
 
 		long start = System.currentTimeMillis();
 		SyslogMessageWriter[] writers = new SyslogMessageWriter[threads];
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			writers[i] = new SyslogMessageWriter(5140);
 			writers[i].start();
 		}
@@ -200,11 +193,11 @@ public class SyslogTcpServerTests {
 		double elapsed = (end - start) * 1.0;
 
 		int totalMsgs = 0;
-		for(int i = 0; i < threads; i++) {
+		for (int i = 0; i < threads; i++) {
 			totalMsgs += writers[i].count.intValue();
 		}
 
-		System.out.println("throughput: " + (int)((totalMsgs) / (elapsed / 1000)) + "/sec");
+		System.out.println("throughput: " + (int) ((totalMsgs) / (elapsed / 1000)) + "/sec");
 	}
 
 	private class SyslogMessageWriter extends Thread {
@@ -221,11 +214,11 @@ public class SyslogTcpServerTests {
 				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 
 				start.set(System.currentTimeMillis());
-				for(int i = 0; i < msgs; i++) {
+				for (int i = 0; i < msgs; i++) {
 					ch.write(ByteBuffer.wrap(SYSLOG_MESSAGE_DATA));
 					count.incrementAndGet();
 				}
-			} catch(IOException e) {
+			} catch (IOException e) {
 			}
 		}
 	}

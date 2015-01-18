@@ -30,11 +30,9 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.AbstractNetChannel;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.netty.*;
@@ -47,17 +45,13 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN>
- * 		The type that will be received by this server
- * @param <OUT>
- * 		The type that will be sent by this server
- *
+ * @param <IN>  The type that will be received by this server
+ * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -75,9 +69,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	                         @Nullable InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,
-	                         @Nullable Codec<Buffer, IN, OUT> codec,
-	                         @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, dispatcher, listenAddress, options, sslOptions, codec, consumers);
+	                         @Nullable Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, listenAddress, options, sslOptions, codec);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -122,21 +115,26 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
 							if (log.isDebugEnabled()) {
 								log.debug("SSL enabled using keystore {}",
-								          (null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
+										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						ch.pipeline().addLast(createChannelHandlers(ch));
+
+						final NettyNetChannel<IN, OUT> netChannel = createChannel(ch);
+						notifyNewChannel(netChannel);
+
+						ch.pipeline().addLast(createChannelHandlers(netChannel));
+
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
 								if (log.isDebugEnabled()) {
 									log.debug("CLOSE {}", ch);
 								}
-								close(ch);
+								netChannel.notifyClose();
 							}
 						});
 					}
@@ -144,65 +142,61 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public TcpServer<IN, OUT> start(@Nullable final Runnable started) {
+	public Promise<Void> start() {
 		ChannelFuture bindFuture = bootstrap.bind();
-		if (null != started) {
-			bindFuture.addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					log.info("BIND {}", future.channel().localAddress());
-					notifyStart(started);
+		final Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+		bindFuture.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				log.info("BIND {}", future.channel().localAddress());
+				if (future.isSuccess()) {
+					notifyStart();
+					promise.onComplete();
+				} else {
+					promise.onError(future.cause());
 				}
-			});
-		}
+			}
+		});
 
-		return this;
+		return promise;
 	}
 
 	@Override
-	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
-		getDispatcher().dispatch(null,
-				new Consumer<Void>() {
-					@SuppressWarnings({"rawtypes", "unchecked"})
-					@Override
-					public void accept(Void v) {
-						final AtomicInteger groupsToShutdown = new AtomicInteger(2);
-						GenericFutureListener listener = new GenericFutureListener() {
+	@SuppressWarnings("unchecked")
+	public Promise<Void> shutdown() {
+		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
 
-							@Override
-							public void operationComplete(Future future) throws Exception {
-								if (groupsToShutdown.decrementAndGet() == 0) {
-									notifyShutdown();
-									d.onNext(true);
-								}
-							}
-						};
-						selectorGroup.shutdownGracefully().addListener(listener);
-						if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
-							ioGroup.shutdownGracefully().addListener(listener);
-						}
-					}
-				},
-				null
-		);
+		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
+		GenericFutureListener listener = new GenericFutureListener() {
+
+			@Override
+			public void operationComplete(Future future) throws Exception {
+				if (groupsToShutdown.decrementAndGet() == 0) {
+					notifyShutdown();
+					d.onComplete();
+				}
+			}
+		};
+		selectorGroup.shutdownGracefully().addListener(listener);
+		if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
+			ioGroup.shutdownGracefully().addListener(listener);
+		}
 
 		return d;
 	}
 
 	@Override
-	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
+	protected NettyNetChannel<IN, OUT> createChannel(Object nativeChannel) {
 		return new NettyNetChannel<IN, OUT>(
 				getEnvironment(),
 				getCodec(),
-				new NettyEventLoopDispatcher(((Channel) ioChannel).eventLoop(), 256),
+				new NettyEventLoopDispatcher(((Channel) nativeChannel).eventLoop(), 256),
 				getDispatcher(),
-				(Channel) ioChannel
+				(Channel) nativeChannel
 		);
 	}
 
-	protected ChannelHandler[] createChannelHandlers(SocketChannel ch) {
-		AbstractNetChannel<IN, OUT> netChannel = (AbstractNetChannel<IN, OUT>) select(ch);
+	protected ChannelHandler[] createChannelHandlers(NetChannelStream<IN,OUT> netChannel) {
 		NettyNetChannelInboundHandler readHandler = new NettyNetChannelInboundHandler()
 				.setNetChannel(netChannel);
 		NettyNetChannelOutboundHandler writeHandler = new NettyNetChannelOutboundHandler();

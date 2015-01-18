@@ -16,12 +16,14 @@
 
 package reactor.io.net;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.batch.BatchConsumer;
 import reactor.io.buffer.Buffer;
@@ -29,7 +31,7 @@ import reactor.io.codec.Codec;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.Streams;
+import reactor.rx.action.Action;
 import reactor.rx.stream.Broadcaster;
 
 import javax.annotation.Nonnull;
@@ -37,17 +39,17 @@ import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 
 /**
- * An abstract {@link NetChannel} implementation that handles the basic interaction and {@link
- * reactor.rx.Stream} and {@link reactor.fn.Consumer} handling.
+ * An abstract {@link NetChannel} implementation that handles the basic interaction and behave as a {@link
+ * reactor.rx.Stream}.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT> {
+public abstract class NetChannelStream<IN, OUT> extends Stream<IN> implements NetChannel<IN, OUT> {
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
-	protected final Broadcaster<IN> contentStream;
+	protected final Action<IN, IN> contentStream;
 
 	private final Environment env;
 	private final Dispatcher  ioDispatcher;
@@ -56,16 +58,21 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 
-	protected AbstractNetChannel(@Nonnull Environment env,
-	                             @Nullable Codec<Buffer, IN, OUT> codec,
-	                             @Nonnull Dispatcher ioDispatcher,
-	                             @Nonnull Dispatcher eventsDispatcher) {
+	protected NetChannelStream(@Nonnull Environment env,
+	                           @Nullable Codec<Buffer, IN, OUT> codec,
+	                           @Nonnull Dispatcher ioDispatcher,
+	                           @Nonnull Dispatcher eventsDispatcher) {
 		Assert.notNull(env, "IO Dispatcher cannot be null");
 		Assert.notNull(env, "Events Reactor cannot be null");
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream = Streams.broadcast(env, eventsDispatcher);
+		this.contentStream =  new Action<IN, IN>(eventsDispatcher) {
+			@Override
+			protected void doNext(IN ev) {
+				broadcastNext(ev);
+			}
+		}.env(getEnvironment());
 
 		if (null != codec) {
 			this.decoder = codec.decoder(contentStream);
@@ -74,14 +81,6 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 			this.decoder = null;
 			this.encoder = null;
 		}
-	}
-
-	public Function<Buffer, IN> getDecoder() {
-		return decoder;
-	}
-
-	public Function<OUT, Buffer> getEncoder() {
-		return encoder;
 	}
 
 	@Override
@@ -95,26 +94,8 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	@Override
-	public <T extends Throwable> NetChannel<IN, OUT> when(Class<T> errorType, Consumer<T> errorConsumer) {
-		contentStream.when(errorType, errorConsumer);
-		return this;
-	}
-
-	@Override
-	public NetChannel<IN, OUT> consume(final Consumer<IN> consumer) {
-		contentStream.consume(consumer);
-		return this;
-	}
-
-	@Override
-	public NetChannel<IN, OUT> receive(final Function<IN, OUT> fn) {
-		consume(new Consumer<IN>() {
-			@Override
-			public void accept(IN in) {
-				send(fn.apply(in));
-			}
-		});
-		return this;
+	public void subscribe(Subscriber<? super IN> s) {
+		contentStream.subscribe(s);
 	}
 
 	@Override
@@ -125,14 +106,41 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	}
 
 	@Override
-	public NetChannel<IN, OUT> send(Stream<OUT> data) {
-		data.consume(new Consumer<OUT>() {
+	public NetChannelStream<IN, OUT> echo(OUT data) {
+		send(data, null);
+		return this;
+	}
+
+	@Override
+	public NetChannelStream<IN, OUT> echoFrom(Publisher<? extends OUT> dataStream) {
+		dataStream.subscribe(new Subscriber<OUT>() {
 			@Override
-			public void accept(OUT out) {
+			public void onComplete() {
+				//IGNORE
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				contentStream.onError(t);
+			}
+
+			@Override
+			public void onNext(OUT out) {
 				send(out, null);
+			}
+
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(Long.MAX_VALUE);
 			}
 		});
 		return this;
+	}
+
+	public Promise<IN> sendAndReceive(OUT request){
+		Promise<IN> promise = contentStream.next();
+		echo(request);
+		return promise;
 	}
 
 	/**
@@ -144,19 +152,6 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 */
 	protected void send(OUT data, final Promise<Void> onComplete) {
 		ioDispatcher.dispatch(data, new WriteConsumer(onComplete), null);
-	}
-
-	@Override
-	public NetChannel<IN, OUT> sendAndForget(OUT data) {
-		send(data, null);
-		return this;
-	}
-
-	@Override
-	public Promise<IN> sendAndReceive(OUT data) {
-		final Promise<IN> d = contentStream.next();
-		send(data, null);
-		return d;
 	}
 
 	@Override
@@ -188,6 +183,10 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 
 	public void notifyError(Throwable throwable) {
 		contentStream.onError(throwable);
+	}
+
+	public void notifyClose() {
+		contentStream.onComplete();
 	}
 
 	/**
@@ -223,12 +222,22 @@ public abstract class AbstractNetChannel<IN, OUT> implements NetChannel<IN, OUT>
 	 */
 	protected abstract void flush();
 
-	protected Environment getEnvironment() {
+	@Override
+	public Environment getEnvironment() {
 		return env;
 	}
 
-	protected Dispatcher getDispatcher() {
+	@Override
+	public Dispatcher getDispatcher() {
 		return eventsDispatcher;
+	}
+
+	public Function<Buffer, IN> getDecoder() {
+		return decoder;
+	}
+
+	public Function<OUT, Buffer> getEncoder() {
+		return encoder;
 	}
 
 	private final class WriteConsumer implements BatchConsumer<OUT> {

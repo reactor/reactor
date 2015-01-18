@@ -3,9 +3,9 @@ package reactor.io.net.tcp;
 import com.esotericsoftware.kryo.Kryo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Environment;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.json.JacksonJsonCodec;
 import reactor.io.codec.kryo.KryoCodec;
@@ -22,7 +22,6 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	static Kryo                  KRYO;
@@ -35,7 +34,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	public static void classSetup() {
 		KRYO = new Kryo();
 		KRYO_CODEC = new KryoCodec<>(KRYO, false);
-		ZMQ = new ZeroMQ<Data>(new Environment()).codec(KRYO_CODEC);
+		ZMQ = new ZeroMQ<Data>(new Environment(), SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
 	}
 
 	@AfterClass
@@ -74,18 +73,18 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		                                   Buffer.wrap("Hello World!"));
 	}
 
-	@Test(timeout = 60000)
+	@Test//(timeout = 60000)
 	public void zmqRequestReply() throws InterruptedException {
 		ZMQ.reply("tcp://*:" + getPort())
-		   .onSuccess(ch -> ch.consume(ch::send));
+		   .onSuccess(ch -> ch.consume(ch::echo));
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> {
-			   ch.sendAndReceive(data)
-					   .onSuccess(data -> latch.countDown());
-		   });
+		   .onSuccess(ch ->
+				   ch.sendAndReceive(data)
+						   .onSuccess(v -> latch.countDown())
+		   );
 
-		assertTrue("REQ/REP socket exchanged data", latch.await(60, TimeUnit.SECONDS));
+		assertTrue("REQ/REP socket exchanged data", latch.await(5, TimeUnit.SECONDS));
 	}
 
 	@Test(timeout = 60000)
@@ -107,7 +106,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		ZMQ.dealer("tcp://127.0.0.1:" + getPort())
 		   .onSuccess(ch -> ch.send(data));
 
-		assertTrue("ROUTER socket received data", latch.await(1, TimeUnit.SECONDS));
+		assertTrue("ROUTER socket received data", latch.await(5, TimeUnit.SECONDS));
 	}
 
 	@Test(timeout = 60000)
@@ -124,7 +123,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 		ZMQ.dealer("inproc://queue" + getPort())
 		   .onSuccess(ch -> {
-			   ch.sendAndForget(data);
+			   ch.echo(data);
 		   });
 
 		assertTrue("ROUTER socket received inproc data", latch.await(1, TimeUnit.SECONDS));

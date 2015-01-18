@@ -18,7 +18,6 @@ package reactor.io.net.spec;
 
 import reactor.bus.spec.DispatcherComponentSpec;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.NetChannel;
@@ -27,27 +26,25 @@ import reactor.io.net.config.ServerSocketOptions;
 
 import javax.annotation.Nonnull;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
 
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class NetServerSpec<IN, OUT, S extends NetServerSpec<IN, OUT, S, N>, N extends NetServer<IN, OUT>>
+public abstract class NetServerSpec<IN, OUT,
+		CONN extends NetChannel<IN,OUT>,
+		S extends NetServerSpec<IN, OUT, CONN, S, N>,
+		N extends NetServer<IN,OUT,CONN>>
 		extends DispatcherComponentSpec<S, N> {
 
-	protected ServerSocketOptions                       options          = new ServerSocketOptions();
-	protected Collection<Consumer<NetChannel<IN, OUT>>> channelConsumers = Collections.emptyList();
+	protected ServerSocketOptions options = new ServerSocketOptions();
 	protected InetSocketAddress      listenAddress;
 	protected Codec<Buffer, IN, OUT> codec;
 
 	/**
 	 * Set the common {@link ServerSocketOptions} for channels made in this server.
 	 *
-	 * @param options
-	 * 		The options to set when new channels are made.
-	 *
+	 * @param options The options to set when new channels are made.
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
@@ -60,9 +57,7 @@ public abstract class NetServerSpec<IN, OUT, S extends NetServerSpec<IN, OUT, S,
 	/**
 	 * The port on which this server should listen, assuming it should bind to all available addresses.
 	 *
-	 * @param port
-	 * 		The port to listen on.
-	 *
+	 * @param port The port to listen on.
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
@@ -73,11 +68,8 @@ public abstract class NetServerSpec<IN, OUT, S extends NetServerSpec<IN, OUT, S,
 	/**
 	 * The host and port on which this server should listen.
 	 *
-	 * @param host
-	 * 		The host to bind to.
-	 * @param port
-	 * 		The port to listen on.
-	 *
+	 * @param host The host to bind to.
+	 * @param port The port to listen on.
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
@@ -91,77 +83,25 @@ public abstract class NetServerSpec<IN, OUT, S extends NetServerSpec<IN, OUT, S,
 	/**
 	 * The {@link java.net.InetSocketAddress} on which this server should listen.
 	 *
-	 * @param listenAddress
-	 * 		the listen address
-	 *
+	 * @param listenAddress the listen address
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
 	public S listen(InetSocketAddress listenAddress) {
 		this.listenAddress = listenAddress;
-		return (S)this;
+		return (S) this;
 	}
 
 	/**
 	 * The {@link Codec} to use to encode and decode data.
 	 *
-	 * @param codec
-	 * 		The codec to use.
-	 *
+	 * @param codec The codec to use.
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
 	public S codec(@Nonnull Codec<Buffer, IN, OUT> codec) {
 		Assert.notNull(codec, "Codec cannot be null.");
 		this.codec = codec;
-		return (S)this;
+		return (S) this;
 	}
-
-	/**
-	 * Callback to invoke when a new input message is created.
-	 *
-	 * @param inputConsumer
-	 * 		The callback to invoke for new messages.
-	 *
-	 * @return {@literal this}
-	 */
-	public S consumeInput(@Nonnull final Consumer<IN> inputConsumer) {
-		Collection<Consumer<NetChannel<IN, OUT>>> channelConsumers = Collections.<Consumer<NetChannel<IN,
-				OUT>>>singletonList(
-				new Consumer<NetChannel<IN, OUT>>() {
-					@Override
-					public void accept(NetChannel<IN, OUT> channel) {
-						channel.consume(inputConsumer);
-					}
-				});
-		return consume(channelConsumers);
-	}
-
-	/**
-	 * Callback to invoke when a new channel is created.
-	 *
-	 * @param channelConsumer
-	 * 		The callback to invoke for new channels.
-	 *
-	 * @return {@literal this}
-	 */
-	public S consume(@Nonnull Consumer<NetChannel<IN, OUT>> channelConsumer) {
-		return consume(Collections.singletonList(channelConsumer));
-	}
-
-	/**
-	 * Callbacks to invoke when a new channel is created.
-	 *
-	 * @param channelConsumers
-	 * 		The callbacks to invoke for new channels.
-	 *
-	 * @return {@literal this}
-	 */
-	@SuppressWarnings("unchecked")
-	public S consume(@Nonnull Collection<Consumer<NetChannel<IN, OUT>>> channelConsumers) {
-		Assert.notNull(channelConsumers, "Connection consumers cannot be null.");
-		this.channelConsumers = channelConsumers;
-		return (S)this;
-	}
-
 }

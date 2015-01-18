@@ -19,36 +19,30 @@ package reactor.io.net.tcp;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.AbstractNetPeer;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
+import reactor.io.net.NetPeerStream;
 import reactor.io.net.NetServer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
  *
- * @param <IN>
- * 		The type that will be received by this server
- * @param <OUT>
- * 		The type that will be sent by this server
- *
+ * @param <IN>  The type that will be received by this server
+ * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends AbstractNetPeer<IN, OUT>
-		implements NetServer<IN, OUT> {
+		extends NetPeerStream<IN, OUT>
+		implements NetServer<IN, OUT, NetChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final ServerSocketOptions options;
@@ -59,9 +53,8 @@ public abstract class TcpServer<IN, OUT>
 	                    @Nullable InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
-	                    @Nullable Codec<Buffer, IN, OUT> codec,
-	                    @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, dispatcher, codec, consumers);
+	                    @Nullable Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec);
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;
@@ -73,26 +66,7 @@ public abstract class TcpServer<IN, OUT>
 	 *
 	 * @return {@literal this}
 	 */
-	public Promise<Boolean> start() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
-		start(new Runnable() {
-			@Override
-			public void run() {
-				d.onNext(true);
-			}
-		});
-		return d;
-	}
-
-	/**
-	 * Start this server, invoking the given callback when the server has started.
-	 *
-	 * @param started
-	 * 		Callback to invoke when the server is started. May be {@literal null}.
-	 *
-	 * @return {@literal this}
-	 */
-	public abstract TcpServer<IN, OUT> start(@Nullable Runnable started);
+	public abstract Promise<Void> start();
 
 	/**
 	 * Get the address to which this server is bound.

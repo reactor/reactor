@@ -16,34 +16,27 @@
 
 package reactor.io.net;
 
+import org.reactivestreams.Publisher;
 import reactor.rx.Promise;
 
-import javax.annotation.Nullable;
-
 /**
- * A network-aware server.
+ * A network-aware server that will publish virtual connections (NetChannel) to consume data on.
+ * It will complete on shutdown
+ *
+ * @param <IN> the type of the received data
+ * @param <OUT> the type of replied data
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public interface NetServer<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
+public interface NetServer<IN, OUT, CONN extends NetChannel<IN, OUT>> extends Publisher<CONN> {
 
 	/**
 	 * Start and bind this {@literal NetServer} to the configured listen port.
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is started
 	 */
-	Promise<Boolean> start();
-
-	/**
-	 * Start and bind this {@literal NetServer} to the configured listen port and notify the given {@link
-	 * reactor.fn.Consumer} when the bind operation is complete.
-	 *
-	 * @param started
-	 * 		{@link java.lang.Runnable} to invoke when bind operation is complete
-	 *
-	 * @return {@link this}
-	 */
-	NetServer<IN, OUT> start(@Nullable Runnable started);
+	Promise<Void> start();
 
 	/**
 	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
@@ -51,6 +44,6 @@ public interface NetServer<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is shut down
 	 */
-	Promise<Boolean> shutdown();
+	Promise<Void> shutdown();
 
 }

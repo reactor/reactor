@@ -35,7 +35,7 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.spec.TcpClientSpec;
@@ -43,7 +43,6 @@ import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.zmq.ZeroMQClientSocketOptions;
 import reactor.io.net.zmq.ZeroMQServerSocketOptions;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
@@ -115,31 +114,31 @@ public class ZeroMQ<T> {
 		return this;
 	}
 
-	public Promise<NetChannel<T, T>> dealer(String addrs) {
+	public Promise<NetChannelStream<T, T>> dealer(String addrs) {
 		return createClient(addrs, ZMQ.DEALER);
 	}
 
-	public Promise<NetChannel<T, T>> push(String addrs) {
+	public Promise<NetChannelStream<T, T>> push(String addrs) {
 		return createClient(addrs, ZMQ.PUSH);
 	}
 
-	public Promise<NetChannel<T, T>> pull(String addrs) {
+	public Promise<NetChannelStream<T, T>> pull(String addrs) {
 		return createServer(addrs, ZMQ.PULL);
 	}
 
-	public Promise<NetChannel<T, T>> request(String addrs) {
+	public Promise<NetChannelStream<T, T>> request(String addrs) {
 		return createClient(addrs, ZMQ.REQ);
 	}
 
-	public Promise<NetChannel<T, T>> reply(String addrs) {
+	public Promise<NetChannelStream<T, T>> reply(String addrs) {
 		return createServer(addrs, ZMQ.REP);
 	}
 
-	public Promise<NetChannel<T, T>> router(String addrs) {
+	public Promise<NetChannelStream<T, T>> router(String addrs) {
 		return createServer(addrs, ZMQ.ROUTER);
 	}
 
-	public Promise<NetChannel<T, T>> createClient(String addrs, int socketType) {
+	public Promise<NetChannelStream<T, T>> createClient(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = new TcpClientSpec<T, T>(ZeroMQTcpClient.class)
@@ -155,19 +154,18 @@ public class ZeroMQ<T> {
 		return client.open();
 	}
 
-	public Promise<NetChannel<T, T>> createServer(String addrs, int socketType) {
+	public Promise<NetChannelStream<T, T>> createServer(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
-
-		Promise<NetChannel<T, T>> d = Promises.ready(env, dispatcher);
 
 		TcpServer<T, T> server = new TcpServerSpec<T, T>(ZeroMQTcpServer.class)
 				.env(env).dispatcher(dispatcher).codec(codec)
 				.options(new ZeroMQServerSocketOptions()
-						         .context(zmqCtx)
-						         .listenAddresses(addrs)
-						         .socketType(socketType))
-				.consume(d)
+						.context(zmqCtx)
+						.listenAddresses(addrs)
+						.socketType(socketType))
 				.get();
+		
+		Promise<NetChannelStream<T, T>> d = server.next();
 
 		servers.add(server);
 
@@ -185,14 +183,18 @@ public class ZeroMQ<T> {
 		servers.removeIf(new CheckedPredicate<TcpServer<T, T>>() {
 			@Override
 			public boolean safeAccept(TcpServer<T, T> server) throws Exception {
-				Assert.isTrue(server.shutdown().await(60, TimeUnit.SECONDS), "Server " + server + " not properly shut down");
+				Promise<Void> promise = server.shutdown();
+				promise.await(60, TimeUnit.SECONDS);
+				Assert.isTrue(promise.isSuccess(), "Server " + server + " not properly shut down");
 				return true;
 			}
 		});
 		clients.removeIf(new CheckedPredicate<TcpClient<T, T>>() {
 			@Override
 			public boolean safeAccept(TcpClient<T, T> client) throws Exception {
-				Assert.isTrue(client.close().await(60, TimeUnit.SECONDS), "Client " + client + " not properly shut down");
+				Promise<Void> promise = client.close();
+				promise.await(60, TimeUnit.SECONDS);
+				Assert.isTrue(promise.isSuccess(), "Client " + client + " not properly shut down");
 				return true;
 			}
 		});

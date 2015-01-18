@@ -27,7 +27,7 @@ import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.AbstractNetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.rx.Promise;
 
 import javax.annotation.Nonnull;
@@ -35,6 +35,7 @@ import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * {@link reactor.io.net.NetChannel} implementation that delegates to Netty.
@@ -42,11 +43,14 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
+public class NettyNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
 
-	private volatile boolean closing = false;
+	private volatile int closing = 0;
+
+	private static final AtomicIntegerFieldUpdater<NettyNetChannel> CLOSING =
+			AtomicIntegerFieldUpdater.newUpdater(NettyNetChannel.class, "closing");
 
 	public NettyNetChannel(@Nonnull Environment env,
 	                       @Nullable Codec<Buffer, IN, OUT> codec,
@@ -58,7 +62,7 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	public boolean isClosing() {
-		return closing;
+		return closing == 1;
 	}
 
 	@Override
@@ -67,22 +71,20 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	public void close(@Nullable final Consumer<Boolean> onClose) {
-		if (closing) {
-			return;
-		}
-		closing = true;
-		ioChannel.close().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (null != onClose) {
-					getDispatcher().dispatch(future.isSuccess(), onClose, null);
-				} else if (!future.isSuccess()) {
-					log.error(future.cause().getMessage(), future.cause());
+	public void close() {
+		if (CLOSING.compareAndSet(this, 0, 1)) {
+			ioChannel.close().addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						notifyClose();
+					} else {
+						notifyError(future.cause());
+					}
+					closing = 0;
 				}
-				closing = false;
-			}
-		});
+			});
+		}
 	}
 
 	@Override
@@ -130,11 +132,11 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	private class NettyConsumerSpec implements ConsumerSpec {
 		@Override
-		public ConsumerSpec close(final Runnable onClose) {
+		public ConsumerSpec close(final Consumer<Void> onClose) {
 			ioChannel.pipeline().addLast(new ChannelDuplexHandler() {
 				@Override
 				public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-					onClose.run();
+					onClose.accept(null);
 					super.channelInactive(ctx);
 				}
 			});
@@ -142,12 +144,12 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		}
 
 		@Override
-		public ConsumerSpec readIdle(long idleTimeout, final Runnable onReadIdle) {
+		public ConsumerSpec readIdle(long idleTimeout, final Consumer<Void> onReadIdle) {
 			ioChannel.pipeline().addFirst(new IdleStateHandler(idleTimeout, 0, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
 					if (evt.state() == IdleState.READER_IDLE) {
-						onReadIdle.run();
+						onReadIdle.accept(null);
 					}
 					super.channelIdle(ctx, evt);
 				}
@@ -156,12 +158,12 @@ public class NettyNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 		}
 
 		@Override
-		public ConsumerSpec writeIdle(long idleTimeout, final Runnable onWriteIdle) {
+		public ConsumerSpec writeIdle(long idleTimeout, final Consumer<Void> onWriteIdle) {
 			ioChannel.pipeline().addLast(new IdleStateHandler(0, idleTimeout, 0, TimeUnit.MILLISECONDS) {
 				@Override
 				protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
 					if (evt.state() == IdleState.WRITER_IDLE) {
-						onWriteIdle.run();
+						onWriteIdle.accept(null);
 					}
 					super.channelIdle(ctx, evt);
 				}

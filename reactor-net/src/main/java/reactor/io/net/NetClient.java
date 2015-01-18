@@ -16,16 +16,20 @@
 
 package reactor.io.net;
 
-import reactor.fn.Consumer;
+import org.reactivestreams.Publisher;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 
 /**
- * A network-aware client.
+ * A network-aware client that will publish its connection once available and complete on shutdown.
  *
+ * @param <IN> the type of the received data
+ * @param <OUT> the type of replied data
+ * @param <CONN> the channel implementation
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public interface NetClient<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
+public interface NetClient<IN, OUT, CONN extends NetChannel<IN,OUT>> extends Publisher<CONN> {
 
 	/**
 	 * Open a channel to the configured address and return a {@link reactor.rx.Promise} that will be
@@ -33,31 +37,22 @@ public interface NetClient<IN, OUT> extends Iterable<NetChannel<IN, OUT>> {
 	 *
 	 * @return {@link reactor.rx.Promise} that will be completed when connected
 	 */
-	Promise<NetChannel<IN, OUT>> open();
+	Promise<NetChannelStream<IN, OUT>> open();
 
 	/**
-	 * Open a channel to the configured address and return a {@link reactor.core.composable.Stream} that will be populated
-	 * by the {@link NetChannel NetChannels} every time a connection or reconnection is made.
+	 * Open a channel to the configured address and return a {@link reactor.rx..Stream} that will be populated
+	 * by the {@link NetChannelStream} every time a connection or reconnection is made.
 	 *
 	 * @param reconnect
 	 * 		the reconnection strategy to use when disconnects happen
 	 *
 	 * @return
 	 */
-	Stream<NetChannel<IN, OUT>> open(Reconnect reconnect);
+	Stream<NetChannelStream<IN, OUT>> open(Reconnect reconnect);
 
 	/**
 	 * Close this client and the underlying channel.
 	 */
-	Promise<Boolean> close();
-
-	/**
-	 * Close this client and the underlying channel and invoke the given {@link reactor.fn.Consumer} when the
-	 * operation has completed.
-	 *
-	 * @param onClose
-	 * 		consumer to invoke when client is closed
-	 */
-	void close(Consumer<Boolean> onClose);
+	Promise<Void> close();
 
 }

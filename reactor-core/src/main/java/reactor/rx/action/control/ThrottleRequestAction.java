@@ -60,12 +60,20 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 
 	@Override
 	public void requestMore(long n) {
-		timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
+		if(timeoutRegistration == null) {
+			timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS);
+		}
+	}
+
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return true;
 	}
 
 	@Override
 	protected void doStart(long pending) {
 		requestMore(pending);
+		super.requestMore(1);
 	}
 
 	@Override

@@ -1234,11 +1234,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).buffer(400l, 600l, TimeUnit.MILLISECONDS).toList()
+			res = numbers.throttle(200).log().buffer(450l, 600l, TimeUnit.MILLISECONDS).toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[1, 2], [4, 5], [7, 8]]
+			res.await(5, TimeUnit.SECONDS) == [[3, 4], [6, 7]]
 	}
 
 
@@ -1310,11 +1310,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).window(400l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
+			res = numbers.throttle(200).window(450l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[1, 2], [4, 5], [7, 8]]
+			res.await() == [[3, 4], [6, 7]]
 
 	}
 

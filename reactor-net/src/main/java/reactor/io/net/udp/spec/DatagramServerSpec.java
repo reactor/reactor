@@ -20,6 +20,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.spec.NetServerSpec;
 import reactor.io.net.udp.DatagramServer;
@@ -27,13 +28,13 @@ import reactor.io.net.udp.DatagramServer;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-import java.util.Collection;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class DatagramServerSpec<IN, OUT>
-		extends NetServerSpec<IN, OUT, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
+		extends NetServerSpec<IN, OUT, NetChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
 
 	protected final Constructor<? extends DatagramServer> serverImplCtor;
 
@@ -48,8 +49,7 @@ public class DatagramServerSpec<IN, OUT>
 					InetSocketAddress.class,
 					NetworkInterface.class,
 					ServerSocketOptions.class,
-					Codec.class,
-					Collection.class
+					Codec.class
 			);
 			this.serverImplCtor.setAccessible(true);
 		} catch(NoSuchMethodException e) {
@@ -81,8 +81,7 @@ public class DatagramServerSpec<IN, OUT>
 					listenAddress,
 					multicastInterface,
 					options,
-					codec,
-					channelConsumers
+					codec
 			);
 		} catch(Throwable t) {
 			throw new IllegalStateException(t);

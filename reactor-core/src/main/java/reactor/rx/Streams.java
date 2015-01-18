@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * A public factory to build {@link Stream}.
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
- * <p>
+ * <pre>
  * {@code
  * Streams.just(1, 2, 3).map(i -> i*2) //...
  *
@@ -66,7 +66,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  *
  * }
- *
+ *</pre>
  * @author Stephane Maldini
  * @author Jon Brisbin
  */

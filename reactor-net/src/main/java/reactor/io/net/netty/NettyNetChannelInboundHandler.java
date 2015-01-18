@@ -22,11 +22,11 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.AbstractNetChannel;
+import reactor.io.net.NetChannelStream;
 
 /**
  * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
- * reactor.io.net.AbstractNetChannel}.
+ * reactor.io.net.NetChannelStream}.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -36,17 +36,17 @@ public class NettyNetChannelInboundHandler extends ChannelInboundHandlerAdapter 
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private volatile AbstractNetChannel netChannel;
-	private volatile ByteBuf            remainder;
+	private volatile NetChannelStream netChannel;
+	private volatile ByteBuf          remainder;
 
 	public NettyNetChannelInboundHandler() {
 	}
 
-	public AbstractNetChannel getNetChannel() {
+	public NetChannelStream getNetChannel() {
 		return netChannel;
 	}
 
-	public NettyNetChannelInboundHandler setNetChannel(AbstractNetChannel netChannel) {
+	public NettyNetChannelInboundHandler setNetChannel(NetChannelStream netChannel) {
 		this.netChannel = netChannel;
 		return this;
 	}
