@@ -41,7 +41,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 
 import javax.annotation.Nonnull;
@@ -98,7 +98,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.ROUTER);
 		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		Broadcaster<ZMsg> broadcaster = Streams.broadcast(getEnvironment(), getDispatcher());
+		Broadcaster<ZMsg> broadcaster = Streams.serializedBroadcast(getEnvironment());
 
 		final Stream<GroupedStream<String, ZMsg>> grouped = broadcaster.groupBy(new Function<ZMsg, String>() {
 			@Override

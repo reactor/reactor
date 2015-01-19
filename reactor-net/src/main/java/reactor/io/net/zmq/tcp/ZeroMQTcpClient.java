@@ -45,7 +45,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -147,7 +147,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
 		final ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		final Broadcaster<ZMsg> broadcaster = Streams.broadcast(getEnvironment(), getDispatcher());
+		final Broadcaster<ZMsg> broadcaster = Streams.serializedBroadcast(getEnvironment());
 
 		ZeroMQWorker worker = new ZeroMQWorker(id, socketType, ioThreadCount, zmq, broadcaster) {
 			@Override

@@ -13,14 +13,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.stream;
+package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
-import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
@@ -60,7 +59,11 @@ public class Broadcaster<O> extends Action<O, O> {
 	 */
 	@Override
 	public void onError(Throwable ev) {
-		broadcastError(ev);
+		if(upstreamSubscription != null){
+			super.onError(ev);
+		}else{
+			doError(ev);
+		}
 	}
 
 	/**
@@ -68,7 +71,16 @@ public class Broadcaster<O> extends Action<O, O> {
 	 */
 	@Override
 	public void onComplete() {
-		if (keepAlive && downstreamSubscription == null) {
+		if(upstreamSubscription != null){
+			super.onComplete();
+		}else{
+			doComplete();
+		}
+	}
+
+	@Override
+	protected void doComplete() {
+		if (!keepAlive && downstreamSubscription == null) {
 			cancel();
 		}
 		broadcastComplete();

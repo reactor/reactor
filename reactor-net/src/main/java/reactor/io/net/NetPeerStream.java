@@ -23,7 +23,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

@@ -18,7 +18,6 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
@@ -46,18 +45,18 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void broadcastTuple(boolean isFinishing) {
-			if (!checkAllFilled()) return;
+	protected void broadcastTuple() {
+		if (!checkAllFilled()) return;
 
-			Object[] _toZip = toZip;
+		Object[] _toZip = toZip;
 
-			V res = accumulator.apply((TUPLE) Tuple.of(_toZip));
+		V res = accumulator.apply((TUPLE) Tuple.of(_toZip));
 
-			if (res != null) {
-				broadcastNext(res);
+		if (res != null) {
+			broadcastNext(res);
 
 
-			}
+		}
 	}
 
 	private boolean checkAllFilled() {
@@ -84,7 +83,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	protected void doNext(Zippable<O> ev) {
 		toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;
 
-		broadcastTuple(false);
+		broadcastTuple();
 	}
 
 	@Override
@@ -94,9 +93,9 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected void doComplete() {
-		//can receive multiple queued complete signals
-		cancel();
-		broadcastComplete();
+			//can receive multiple queued complete signals
+			cancel();
+			broadcastComplete();
 	}
 
 	@Override
@@ -104,7 +103,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		int newSize = innerSubscriptions.subscriptions.size() + 1;
 		capacity(newSize);
 
-		if (newSize != toZip.length) {
+		if (newSize > toZip.length) {
 			Object[] previousZip = toZip;
 			toZip = new Object[newSize];
 			System.arraycopy(previousZip, 0, toZip, 0, newSize - 1);
@@ -162,28 +161,12 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		public void onNext(O ev) {
 			if (--pendingRequests > 0) pendingRequests = 0;
 			//emittedSignals++;
-			outerAction.innerSubscriptions.onNext(new Zippable<O>(index, ev));
-		}
-
-		@Override
-		public void onComplete() {
-			s.cancel();
-
-			outerAction.trySyncDispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					outerAction.capacity(FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction
-							.innerSubscriptions));
-					if (outerAction.capacity == 0) {
-						outerAction.doComplete();
-					}
-				}
-			});
+			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 		}
 
 		@Override
 		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-			return true;
+			return false;
 		}
 
 		@Override

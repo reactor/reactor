@@ -23,7 +23,7 @@ import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import java.util.ArrayList;
 import java.util.List;

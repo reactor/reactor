@@ -747,7 +747,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(odds, even) { [it.t1, it.t2] }
+			def zippedStream = Streams.zip(odds.log(), even.log()) { [it.t1, it.t2] }
 			def tap = zippedStream.log().toList()
 			tap.await(3, TimeUnit.SECONDS)
 			println tap.debug()
@@ -1600,7 +1600,7 @@ class StreamsSpec extends Specification {
 			def r = EventBus.config().get()
 			def selector = Selectors.anonymous()
 			int event = 0
-			def s = Streams.<Integer> on(r, selector).map{ it.data }.consume { event = it }
+			def s = Streams.<Integer> on(r, selector).map { it.data }.consume { event = it }
 			println s.debug()
 
 		when:
@@ -1611,6 +1611,24 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			event == 1
+
+		when:
+			"multithreaded bus can be serialized"
+			r = EventBus.create(Environment.get(), Environment.dispatcher("workQueue"))
+			s = Streams.<Event<Integer>> serializedBroadcast()
+			def tail = s.map{it.data}.observe{ sleep(100)}.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+
+			r.on(selector, s)
+
+			10.times {
+				r.notify(selector.object, Event.wrap(it))
+			}
+
+		then:
+			tail.await().size() == 10
+			tail.get().sum { it.t1 } >= 1000 //correctly serialized
+
+
 	}
 
 	def 'Creating Stream from publisher'() {

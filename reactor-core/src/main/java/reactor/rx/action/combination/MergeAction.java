@@ -61,7 +61,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		@Override
 		public void onNext(I ev) {
 			//Action.log.debug("event [" + ev + "] by: " + this);
-			outerAction.innerSubscriptions.onNext(ev);
+			outerAction.innerSubscriptions.serialNext(ev);
 			emittedSignals++;
 			if(--pendingRequests < 0) pendingRequests = 0;
 

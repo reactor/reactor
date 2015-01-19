@@ -21,6 +21,7 @@ import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
+import reactor.rx.action.broadcast.SerializedSubscriber;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -71,8 +72,8 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
 					final AtomicBoolean last = new AtomicBoolean();
-
-					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue) {
+					final SerializedSubscriber<T> serializedSubscriber = SerializedSubscriber.create(s);
+					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, serializedSubscriber, queue) {
 
 						@Override
 						public void request(long elements) {
@@ -115,7 +116,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 					};
 					//finalSub.maxCapacity(capacity);
 					groupByMap.put(key, finalSub);
-					s.onSubscribe(finalSub);
+					serializedSubscriber.onSubscribe(finalSub);
 				}
 			};
 			broadcastNext(action);

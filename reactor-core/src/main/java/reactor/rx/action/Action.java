@@ -38,7 +38,6 @@ import reactor.rx.action.combination.CombineAction;
 import reactor.rx.action.combination.FanInAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
-import reactor.rx.stream.Broadcaster;
 import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
@@ -215,7 +214,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public final void accept(I i) {
+	public void accept(I i) {
 		try {
 			if (upstreamSubscription != null) {
 				upstreamSubscription.incrementCurrentNextSignals();

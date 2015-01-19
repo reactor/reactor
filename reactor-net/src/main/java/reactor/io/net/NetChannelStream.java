@@ -32,7 +32,7 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

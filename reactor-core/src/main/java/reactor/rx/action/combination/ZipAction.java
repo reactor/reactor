@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
@@ -64,10 +63,10 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	protected void broadcastTuple(boolean isFinishing) {
 		if (count >= capacity) {
 
-			count = 0;
 
 			if (!checkAllFilled()) return;
 
+			count = 0;
 			Object[] _toZip = toZip;
 			toZip = new Object[toZip.length];
 
@@ -111,8 +110,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;
 
 		broadcastTuple(isFinishing);
-
-		if (isFinishing) {
+		if(isFinishing && count == 0l) {
 			doComplete();
 		}
 	}
@@ -124,9 +122,13 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected void doComplete() {
-		//can receive multiple queued complete signals
-		cancel();
-		broadcastComplete();
+		broadcastTuple(true);
+
+			//can receive multiple queued complete signals
+			cancel();
+			broadcastComplete();
+
+
 	}
 
 	@Override
@@ -134,7 +136,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		int newSize = innerSubscriptions.subscriptions.size() + 1;
 		capacity(newSize);
 
-		if (newSize != toZip.length) {
+		if (newSize > toZip.length) {
 			Object[] previousZip = toZip;
 			toZip = new Object[newSize];
 			System.arraycopy(previousZip, 0, toZip, 0, newSize - 1);
@@ -197,26 +199,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		public void onNext(O ev) {
 			if(--pendingRequests > 0) pendingRequests = 0;
 			//emittedSignals++;
-			outerAction.innerSubscriptions.onNext(new Zippable<O>(index, ev));
-		}
-
-		@Override
-		public void onComplete() {
-			s.cancel();
-
-			outerAction.trySyncDispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					outerAction.capacity(FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions));
-					long capacity = outerAction.capacity;
-					if (index != capacity && capacity != 0 && outerAction.count <= capacity) {
-						outerAction.status.set(COMPLETING);
-					} else {
-						outerAction.broadcastTuple(true);
-						outerAction.doComplete();
-					}
-				}
-			});
+			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 		}
 
 		@Override

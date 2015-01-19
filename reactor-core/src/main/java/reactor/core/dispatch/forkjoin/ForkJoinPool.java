@@ -24,7 +24,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.Streams;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import java.util.Arrays;
 import java.util.Collection;

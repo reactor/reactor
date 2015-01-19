@@ -35,6 +35,7 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
+import reactor.rx.action.Broadcaster;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.control.*;
@@ -50,7 +51,6 @@ import reactor.rx.action.support.TapAndControls;
 import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.terminal.ObservableAction;
 import reactor.rx.action.transformation.*;
-import reactor.rx.stream.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
@@ -883,7 +883,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				new MergeAction<>(Stream.this.getDispatcher(), Arrays.asList(Stream.this, publisher))
+				new MergeAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(Stream.this, publisher))
 						.env(Stream.this.getEnvironment())
 						.subscribe(s);
 			}
@@ -902,7 +902,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				new ConcatAction<>(Stream.this.getDispatcher(), Arrays.asList(Stream.this, publisher))
+				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(Stream.this, publisher))
 						.env(Stream.this.getEnvironment())
 						.subscribe(s);
 			}
@@ -939,7 +939,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				new ConcatAction<>(Stream.this.getDispatcher(), Arrays.asList(publisher, Stream.this))
+				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(publisher, Stream.this))
 						.env(Stream.this.getEnvironment())
 						.subscribe(s);
 			}
@@ -1020,7 +1020,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				new ZipAction<>(Stream.this.getDispatcher(), zipper, Arrays.asList(Stream.this, publisher))
+				new ZipAction<>(SynchronousDispatcher.INSTANCE, zipper, Arrays.asList(Stream.this, publisher))
 						.env(Stream.this.getEnvironment())
 						.subscribe(s);
 			}

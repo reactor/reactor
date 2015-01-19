@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.queue.internal.MpscLinkedQueue;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
+import reactor.rx.action.broadcast.SerializedSubscriber;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Queue;
@@ -30,19 +31,21 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @since 2.0
  */
 public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O, E, X>> extends
-		ReactiveSubscription<E> {
+		ReactiveSubscription<E> implements Subscriber<E> {
 
 	private static final int GC_SUBSCRIPTIONS_TRESHOLD = 16;
-	volatile int runningComposables = 0;
+	volatile             int runningComposables        = 0;
 
 	static final AtomicIntegerFieldUpdater<FanInSubscription> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInSubscription.class, "runningComposables");
 
 	protected volatile boolean                                    terminated    = false;
 	protected final    Queue<InnerSubscription<O, E, SUBSCRIBER>> subscriptions = MpscLinkedQueue.create();
+	protected final    SerializedSubscriber<E>                    serializer    = SerializedSubscriber.create(this);
 
 	public FanInSubscription(Subscriber<? super E> subscriber) {
 		super(null, subscriber);
+		serializer.onSubscribe(this);
 	}
 
 	@Override
@@ -139,11 +142,11 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		if (terminated) return 0;
 		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		int realSize = subscriptions.size();
-		if( realSize > GC_SUBSCRIPTIONS_TRESHOLD){
+		if (realSize > GC_SUBSCRIPTIONS_TRESHOLD) {
 			InnerSubscription cleaning;
 			int i = 0;
-			while(i < realSize && (cleaning = subscriptions.poll()) != null){
-				if(!cleaning.toRemove){
+			while (i < realSize && (cleaning = subscriptions.poll()) != null) {
+				if (!cleaning.toRemove) {
 					subscriptions.add(cleaning);
 				}
 				i++;
@@ -166,6 +169,31 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 			}
 		}
 		return res;
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		//IGNORE
+	}
+
+	public void serialNext(E next) {
+		serializer.onNext(next);
+	}
+
+	public void serialError(Throwable t) {
+		serializer.onError(t);
+	}
+
+	public void serialComplete() {
+		serializer.onComplete();
+	}
+
+	public void serialRequest(long n) {
+		serializer.request(n);
+	}
+
+	public void serialCancel() {
+		serializer.cancel();
 	}
 
 

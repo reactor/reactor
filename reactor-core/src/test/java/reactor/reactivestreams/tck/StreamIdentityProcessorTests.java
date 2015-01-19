@@ -28,8 +28,8 @@ import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import reactor.rx.action.Broadcaster;
 import reactor.rx.action.combination.CombineAction;
-import reactor.rx.stream.Broadcaster;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +68,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		//Dispatcher dispatcherZip = env.getCachedDispatcher();
+		AtomicLong total = new AtomicLong();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>broadcast(env)
 				.keepAlive(false)
@@ -75,14 +76,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 				.partition(2)
 				.flatMap(stream -> stream
 								.dispatchOn(env, dispatchers.get())
-								.observe(i -> {
-									AtomicLong counter = counters.get(Thread.currentThread());
-									if (counter == null) {
-										counter = new AtomicLong();
-										counters.put(Thread.currentThread(), counter);
-									}
-									counter.incrementAndGet();
-								})
+								.observe(this::monitorThreadUse)
 								.scan(0, (prev, next) -> -next)
 								.filter(integer -> integer <= 0)
 								.sample(1)
@@ -91,8 +85,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.<Integer>split()
 								.flatMap(i ->
 												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-										//.log(stream.key() + ":zip")
+										//return Streams.just(i);
+										//		.log(stream.key() + ":zip")
 								)
+
 				)
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
@@ -102,6 +98,15 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
 
 		return integerIntegerCombineAction;
+	}
+
+	private void monitorThreadUse(int val){
+		AtomicLong counter = counters.get(Thread.currentThread());
+		if (counter == null) {
+			counter = new AtomicLong();
+			counters.put(Thread.currentThread(), counter);
+		}
+		counter.incrementAndGet();
 	}
 
 	@Override

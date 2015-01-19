@@ -184,20 +184,25 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void onComplete() {
+		boolean complete = false;
+		if (terminated == 1)
+			return;
 
 		bufferLock.lock();
 		try {
-			if (terminated == 1)
-				return;
 			buffer.complete();
 
 			if (buffer.isEmpty()) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
-					subscriber.onComplete();
+					 complete = true;
 				}
 			}
 		} finally {
 			bufferLock.unlock();
+		}
+
+		if(complete){
+			subscriber.onComplete();
 		}
 	}
 

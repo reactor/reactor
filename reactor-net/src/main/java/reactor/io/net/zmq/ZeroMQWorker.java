@@ -22,7 +22,7 @@ import org.zeromq.ZContext;
 import org.zeromq.ZLoop;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.rx.stream.Broadcaster;
+import reactor.rx.action.Broadcaster;
 
 import java.util.UUID;
 
