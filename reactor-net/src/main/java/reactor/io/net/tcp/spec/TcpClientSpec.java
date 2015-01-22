@@ -17,13 +17,11 @@
 package reactor.io.net.tcp.spec;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
-import reactor.bus.spec.EventRoutingComponentSpec;
+import reactor.bus.spec.DispatcherComponentSpec;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannel;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.tcp.TcpClient;
@@ -32,7 +30,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
-import java.util.*;
 
 /**
  * A helper class for specifying a {@code TcpClient}
@@ -43,14 +40,14 @@ import java.util.*;
  * 		The type that will be sent by the client
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
+public class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, TcpClient<IN, OUT>> {
 
 	private final Constructor<TcpClient<IN, OUT>> clientImplConstructor;
 
 	private InetSocketAddress connectAddress;
 	private ClientSocketOptions      options    = new ClientSocketOptions();
-	private Collection<Consumer<IN>> consumers  = Collections.emptyList();
 	private SslOptions               sslOptions = null;
 	private Codec<Buffer, IN, OUT> codec;
 
@@ -66,12 +63,11 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		try {
 			this.clientImplConstructor = (Constructor<TcpClient<IN, OUT>>) clientImpl.getDeclaredConstructor(
 					Environment.class,
-					EventBus.class,
+					Dispatcher.class,
 					InetSocketAddress.class,
 					ClientSocketOptions.class,
 					SslOptions.class,
-					Codec.class,
-					Collection.class
+					Codec.class
 			);
 			this.clientImplConstructor.setAccessible(true);
 		} catch (NoSuchMethodException e) {
@@ -148,54 +144,16 @@ public class TcpClientSpec<IN, OUT> extends EventRoutingComponentSpec<TcpClientS
 		return this;
 	}
 
-	/**
-	 * The {@link reactor.fn.Consumer} to use to ingest incoming data.
-	 *
-	 * @param consumer
-	 * 		the incoming data {@link reactor.fn.Consumer}
-	 *
-	 * @return {@literal this}
-	 */
-	@SuppressWarnings("unchecked")
-	public TcpClientSpec<IN, OUT> consume(Consumer<IN> consumer) {
-		consume(Arrays.asList(consumer));
-		return this;
-	}
-
-	/**
-	 * The {@link reactor.fn.Consumer Consumers} to use to ingest the incoming data.
-	 *
-	 * @param consumers
-	 * 		the incoming data {@link reactor.fn.Consumer Consumers}
-	 *
-	 * @return {@literal this}
-	 */
-	public TcpClientSpec<IN, OUT> consume(Collection<Consumer<IN>> consumers) {
-		Assert.notNull(consumers, "Consumers cannot be null");
-		this.consumers = consumers;
-		return this;
-	}
-
 	@Override
-	protected TcpClient<IN, OUT> configure(EventBus reactor, Environment env) {
-		List<Consumer<NetChannel<IN, OUT>>> channelConsumers = new ArrayList<Consumer<NetChannel<IN, OUT>>>();
-		channelConsumers.add(new Consumer<NetChannel<IN, OUT>>() {
-			@Override
-			public void accept(NetChannel<IN, OUT> netChannel) {
-				for(Consumer<IN> consumer : consumers) {
-					netChannel.consume(consumer);
-				}
-			}
-		});
+	protected TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 		try {
 			return clientImplConstructor.newInstance(
-					env,
-					reactor,
+					environment,
+					dispatcher,
 					connectAddress,
 					options,
 					sslOptions,
-					codec,
-					channelConsumers
+					codec
 			);
 		} catch(Throwable t) {
 			throw new IllegalStateException(t);

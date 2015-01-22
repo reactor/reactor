@@ -163,7 +163,7 @@ public class HashWheelTimer implements Timer {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit,
 	                                                            long delayInMilliseconds) {
@@ -173,26 +173,26 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
+	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
 	                                                          long period,
 	                                                          TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		return (TimerRegistration<? extends Consumer<Long>>) schedule(ms, ms, consumer).cancelAfterUse();
+		return schedule(ms, ms, consumer).cancelAfterUse();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public TimerRegistration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
-		return (TimerRegistration<? extends Consumer<Long>>) submit(consumer, resolution, TimeUnit.MILLISECONDS);
+	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
+		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public TimerRegistration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit) {
-		return (TimerRegistration<? extends Consumer<Long>>) schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit),
+		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit),
 		                                                              0,
 		                                                              consumer);
 	}

@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.NonBlocking;
@@ -75,20 +75,25 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void scheduleCompletion() {
 		if (status.compareAndSet(NOT_STARTED, COMPLETING)) {
-			broadcastComplete();
+			innerSubscriptions.serialComplete();
 		} else {
+			status.set(COMPLETING);
 			if (innerSubscriptions.runningComposables == 0) {
-				broadcastComplete();
+				innerSubscriptions.serialComplete();
 			}
 		}
 	}
 
 	@Override
 	public void cancel() {
-		if(dynamicMergeAction != null){
+		if (dynamicMergeAction != null) {
 			dynamicMergeAction.cancel();
 		}
-		super.cancel();
+		if(SynchronousDispatcher.INSTANCE == dispatcher) {
+			innerSubscriptions.serialCancel();
+		}else{
+			innerSubscriptions.cancel();
+		}
 	}
 
 	public Action<?, ?> dynamicMergeAction() {
@@ -127,10 +132,18 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void doComplete() {
-		status.set(COMPLETING);
 		if (!checkDynamicMerge() && innerSubscriptions.runningComposables == 0) {
-			cancel();
 			broadcastComplete();
+		}
+	}
+
+	@Override
+	public void requestMore(long n) {
+		checkRequest(n);
+		if(SynchronousDispatcher.INSTANCE == dispatcher){
+			innerSubscriptions.serialRequest(n);
+		}else{
+			dispatch(n, upstreamSubscription);
 		}
 	}
 
@@ -138,8 +151,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
 		super.requestUpstream(capacity, terminated, elements);
-		if ( dynamicMergeAction != null) {
-			dynamicMergeAction.requestUpstream(capacity, terminated, elements );
+		if (dynamicMergeAction != null) {
+			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
 	}
 
@@ -176,19 +189,19 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			this.s = s;
 		}
 
-		public void start(){
+		public void start() {
 			outerAction.innerSubscriptions.addSubscription(s);
-			if(pendingRequests > 0){
+			if (pendingRequests > 0) {
 				s.request(pendingRequests);
 			}
-			if(outerAction.dynamicMergeAction != null){
+			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
 		}
 
 		public void request(long n) {
 			if (s == null || n <= 0) return;
-			if((pendingRequests += n) < 0l){
+			if ((pendingRequests += n) < 0l) {
 				pendingRequests = Long.MAX_VALUE;
 			}
 			emittedSignals = 0;
@@ -198,27 +211,21 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		@Override
 		public void onError(Throwable t) {
 			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-			outerAction.innerSubscriptions.onError(t);
+			outerAction.innerSubscriptions.serialError(t);
 		}
 
 		@Override
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
 			s.cancel();
-
-			Consumer<Void> completeConsumer = new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					s.toRemove = true;
-					long left = outerAction.innerSubscriptions.removeSubscription(s);
-					if (left == 0 && !outerAction.checkDynamicMerge()) {
-						outerAction.innerSubscriptions.onComplete();
-					}
-
-				}
-			};
-
-			outerAction.trySyncDispatch(null, completeConsumer);
+			s.toRemove = true;
+			outerAction.status.set(COMPLETING);
+			long left = outerAction.innerSubscriptions.removeSubscription(s);
+			if (left == 0
+					&& !outerAction.checkDynamicMerge()
+					) {
+				outerAction.innerSubscriptions.serialComplete();
+			}
 
 		}
 

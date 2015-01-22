@@ -57,19 +57,18 @@ public class UdpServerTests {
 				.env(env)
 				.listen(port)
 				.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-				.consumeInput(new Consumer<byte[]>() {
-					@Override
-					public void accept(byte[] bytes) {
-						if (bytes.length == 1024) {
-							latch.countDown();
-						}
-					}
-				})
 				.get();
 
-		server.start(new Runnable() {
+		server.consume(ch -> ch.consume(new Consumer<byte[]>() {
 			@Override
-			public void run() {
+			public void accept(byte[] bytes) {
+				if (bytes.length == 1024) {
+					latch.countDown();
+				}
+			}
+		}));
+
+		server.start().onComplete( p-> {
 				try {
 					DatagramChannel udp = DatagramChannel.open();
 					udp.configureBlocking(true);
@@ -85,7 +84,6 @@ public class UdpServerTests {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			}
 		});
 
 		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
@@ -93,6 +91,7 @@ public class UdpServerTests {
 
 	@Test
 	@Ignore
+	@SuppressWarnings("unchecked")
 	public void supportsUdpMulticast() throws InterruptedException,
 	                                          UnknownHostException,
 	                                          SocketException,
@@ -108,25 +107,26 @@ public class UdpServerTests {
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
 			servers[i] = new DatagramServerSpec<byte[], byte[]>(NettyDatagramServer.class)
 					.env(env)
-					.dispatcher(Environment.THREAD_POOL)
+					.dispatcher(Environment.SHARED)
 					.listen(port)
 					.multicastInterface(multicastIface)
 					.options(new ServerSocketOptions()
 							         .reuseAddr(true))
 					.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-					.consumeInput(new Consumer<byte[]>() {
-						int count = 0;
-
-						@SuppressWarnings("unchecked")
-						@Override
-						public void accept(byte[] bytes) {
-							//log.info("{} got {} bytes", ++count, bytes.length);
-							if (bytes.length == 1024) {
-								latch.countDown();
-							}
-						}
-					})
 					.get();
+
+			servers[i].consume(new Consumer<byte[]>() {
+				int count = 0;
+
+
+				@Override
+				public void accept(byte[] bytes) {
+					//log.info("{} got {} bytes", ++count, bytes.length);
+					if (bytes.length == 1024) {
+						latch.countDown();
+					}
+				}
+			});
 
 			servers[i].start().await();
 			servers[i].join(multicastGroup).await();

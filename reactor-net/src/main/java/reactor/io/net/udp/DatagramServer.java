@@ -17,18 +17,16 @@
 package reactor.io.net.udp;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.fn.batch.BatchConsumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.AbstractNetPeer;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
+import reactor.io.net.NetPeerStream;
 import reactor.io.net.NetServer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
 import reactor.rx.Stream;
 
 import javax.annotation.Nonnull;
@@ -36,28 +34,26 @@ import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-import java.util.Collection;
 
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends AbstractNetPeer<IN, OUT>
-		implements NetServer<IN, OUT> {
+		extends NetPeerStream<IN, OUT>
+		implements NetServer<IN, OUT, NetChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
 	private final ServerSocketOptions options;
 
 	protected DatagramServer(@Nonnull Environment env,
-	                         @Nonnull EventBus reactor,
+	                         @Nonnull Dispatcher dispatcher,
 	                         @Nullable InetSocketAddress listenAddress,
 	                         @Nullable NetworkInterface multicastInterface,
 	                         @Nonnull ServerSocketOptions options,
-	                         @Nullable Codec<Buffer, IN, OUT> codec,
-	                         @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, codec, consumers);
+	                         @Nullable Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec);
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;
@@ -69,19 +65,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return {@literal this}
 	 */
-	public Promise<Boolean> start() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getReactor().getDispatcher());
-		start(new Runnable() {
-			@Override
-			public void run() {
-				d.onNext(true);
-			}
-		});
-		return d;
-	}
-
-	@Override
-	public abstract DatagramServer<IN, OUT> start(@Nullable Runnable started);
+	public abstract Promise<Void> start();
 
 	/**
 	 * Send data to peers.

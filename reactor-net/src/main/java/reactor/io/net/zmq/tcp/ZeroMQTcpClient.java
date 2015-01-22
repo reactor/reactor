@@ -23,15 +23,17 @@ import com.gs.collections.impl.map.mutable.UnifiedMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
+import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
@@ -42,11 +44,12 @@ import reactor.io.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
+import reactor.rx.Streams;
+import reactor.rx.action.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -60,22 +63,21 @@ import static reactor.io.net.zmq.tcp.ZeroMQ.findSocketTypeName;
  */
 public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
-	private final Logger                                       log     = LoggerFactory.getLogger(getClass());
-	private final MutableMap<ZeroMQWorker<IN, OUT>, Future<?>> workers =
-			SynchronizedMutableMap.of(UnifiedMap.<ZeroMQWorker<IN, OUT>, Future<?>>newMap());
+	private final Logger                              log     = LoggerFactory.getLogger(getClass());
+	private final MutableMap<ZeroMQWorker, Future<?>> workers =
+			SynchronizedMutableMap.of(UnifiedMap.<ZeroMQWorker, Future<?>>newMap());
 
 	private final int                       ioThreadCount;
 	private final ZeroMQClientSocketOptions zmqOpts;
 	private final ExecutorService           threadPool;
 
 	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull EventBus reactor,
+	                       @Nonnull Dispatcher eventsDispatcher,
 	                       @Nonnull InetSocketAddress connectAddress,
 	                       @Nullable ClientSocketOptions options,
 	                       @Nullable SslOptions sslOptions,
-	                       @Nullable Codec<Buffer, IN, OUT> codec,
-	                       @Nonnull Collection<Consumer<NetChannel<IN, OUT>>> consumers) {
-		super(env, reactor, connectAddress, options, sslOptions, codec, consumers);
+	                       @Nullable Codec<Buffer, IN, OUT> codec) {
+		super(env, eventsDispatcher, connectAddress, options, sslOptions, codec);
 
 		this.ioThreadCount = env.getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
 
@@ -89,9 +91,9 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<NetChannel<IN, OUT>> open() {
-		Promise<NetChannel<IN, OUT>> d =
-				Promises.ready(getEnvironment(), getReactor().getDispatcher());
+	public Promise<NetChannelStream<IN, OUT>> open() {
+		Promise<NetChannelStream<IN, OUT>> d =
+				Promises.ready(getEnvironment(), getDispatcher());
 
 		doOpen(d);
 
@@ -99,21 +101,21 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Stream<NetChannel<IN, OUT>> open(Reconnect reconnect) {
+	public Stream<NetChannelStream<IN, OUT>> open(Reconnect reconnect) {
 		throw new IllegalStateException("Reconnects are handled transparently by the ZeroMQ network library");
 	}
 
 	@Override
-	public void close(@Nullable Consumer<Boolean> onClose) {
+	public Promise<Void> close() {
 		if (workers.isEmpty()) {
 			throw new IllegalStateException("This ZeroMQ server has not been started");
 		}
 
-		super.close(null);
+		Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
 
-		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker<IN, OUT>, Future<?>>() {
+		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker, Future<?>>() {
 			@Override
-			public void safeValue(ZeroMQWorker<IN, OUT> w, Future<?> f) throws Exception {
+			public void safeValue(ZeroMQWorker w, Future<?> f) throws Exception {
 				w.shutdown();
 				if (!f.isDone()) {
 					f.cancel(true);
@@ -122,34 +124,32 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		});
 		threadPool.shutdownNow();
 
-		getReactor().schedule(onClose, true);
 		notifyShutdown();
+		promise.onComplete();
+
+		return promise;
 	}
 
 	@Override
-	protected <C> NetChannel<IN, OUT> createChannel(C ioChannel) {
+	protected ZeroMQNetChannel<IN, OUT> createChannel(Object ioChannel) {
 		final ZeroMQNetChannel<IN, OUT> ch = new ZeroMQNetChannel<IN, OUT>(
 				getEnvironment(),
-				getReactor(),
-				getReactor().getDispatcher(),
+				getDispatcher(),
+				getDispatcher(),
 				getCodec()
 		);
-		ch.on().close(new Runnable() {
-			@Override
-			public void run() {
-				notifyClose(ch);
-			}
-		});
 		return ch;
 	}
 
-	private void doOpen(final Consumer<NetChannel<IN, OUT>> consumer) {
+	private void doOpen(final Promise<NetChannelStream<IN, OUT>> promise) {
 		final UUID id = UUIDUtils.random();
 
-		int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
-		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
+		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
+		final ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		ZeroMQWorker<IN, OUT> worker = new ZeroMQWorker<IN, OUT>(id, socketType, ioThreadCount, zmq) {
+		final Broadcaster<ZMsg> broadcaster = Streams.serializedBroadcast(getEnvironment());
+
+		ZeroMQWorker worker = new ZeroMQWorker(id, socketType, ioThreadCount, zmq, broadcaster) {
 			@Override
 			protected void configure(ZMQ.Socket socket) {
 				socket.setReceiveBufferSize(getOptions().rcvbuf());
@@ -164,27 +164,44 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 			@Override
 			protected void start(final ZMQ.Socket socket) {
-				String addr = createConnectAddress();
-				if (log.isInfoEnabled()) {
-					String type = findSocketTypeName(socket.getType());
-					log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
-				}
-
-				socket.connect(addr);
-				notifyStart(new Runnable() {
-					@Override
-					public void run() {
-						ZeroMQNetChannel<IN, OUT> ch = select(id.toString())
-								.setConnectionId(id.toString())
-								.setSocket(socket);
-						consumer.accept(ch);
+				try {
+					String addr = createConnectAddress();
+					if (log.isInfoEnabled()) {
+						String type = findSocketTypeName(socket.getType());
+						log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
 					}
-				});
-			}
 
-			@Override
-			protected ZeroMQNetChannel<IN, OUT> select(Object id) {
-				return (ZeroMQNetChannel<IN, OUT>) ZeroMQTcpClient.this.select(id);
+					socket.connect(addr);
+					notifyStart();
+
+					final ZeroMQNetChannel<IN, OUT> netChannel = createChannel(null)
+							.setConnectionId(id.toString())
+							.setSocket(socket);
+
+					notifyNewChannel(netChannel);
+					promise.onNext(netChannel);
+
+					broadcaster.consume(new Consumer<ZMsg>() {
+						@Override
+						public void accept(ZMsg msg) {
+							ZFrame content;
+							while (null != (content = msg.pop())) {
+								netChannel.read(Buffer.wrap(content.getData()));
+							}
+							msg.destroy();
+						}
+					}, null, new Consumer<Void>() {
+						@Override
+						public void accept(Void aVoid) {
+							netChannel.close();
+						}
+					});
+
+
+
+				} catch (Exception e) {
+					promise.onError(e);
+				}
 			}
 		};
 		workers.put(worker, threadPool.submit(worker));

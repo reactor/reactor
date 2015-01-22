@@ -17,9 +17,10 @@
 package reactor.io.net.udp.spec;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.spec.NetServerSpec;
 import reactor.io.net.udp.DatagramServer;
@@ -27,13 +28,13 @@ import reactor.io.net.udp.DatagramServer;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-import java.util.Collection;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class DatagramServerSpec<IN, OUT>
-		extends NetServerSpec<IN, OUT, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
+		extends NetServerSpec<IN, OUT, NetChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
 
 	protected final Constructor<? extends DatagramServer> serverImplCtor;
 
@@ -44,12 +45,11 @@ public class DatagramServerSpec<IN, OUT>
 		try {
 			this.serverImplCtor = serverImpl.getDeclaredConstructor(
 					Environment.class,
-					EventBus.class,
+					Dispatcher.class,
 					InetSocketAddress.class,
 					NetworkInterface.class,
 					ServerSocketOptions.class,
-					Codec.class,
-					Collection.class
+					Codec.class
 			);
 			this.serverImplCtor.setAccessible(true);
 		} catch(NoSuchMethodException e) {
@@ -73,16 +73,15 @@ public class DatagramServerSpec<IN, OUT>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected DatagramServer<IN, OUT> configure(EventBus reactor, Environment environment) {
+	protected DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 		try {
 			return serverImplCtor.newInstance(
 					environment,
-					reactor,
+					dispatcher,
 					listenAddress,
 					multicastInterface,
 					options,
-					codec,
-					channelConsumers
+					codec
 			);
 		} catch(Throwable t) {
 			throw new IllegalStateException(t);

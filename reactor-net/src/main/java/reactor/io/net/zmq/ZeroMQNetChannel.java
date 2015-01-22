@@ -20,18 +20,15 @@ import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
-import reactor.bus.EventBus;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.AbstractNetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.rx.Promise;
 
 import javax.annotation.Nonnull;
@@ -44,24 +41,23 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
+public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 
 	private static final AtomicReferenceFieldUpdater<ZeroMQNetChannel, ZMsg> MSG_UPD =
 			AtomicReferenceFieldUpdater.newUpdater(ZeroMQNetChannel.class, ZMsg.class, "currentMsg");
 
-	private final Logger                log           = LoggerFactory.getLogger(getClass());
 	private final ZeroMQConsumerSpec    eventSpec     = new ZeroMQConsumerSpec();
-	private final MutableList<Runnable> closeHandlers = SynchronizedMutableList.of(FastList.<Runnable>newList());
+	private final MutableList<Consumer<Void>> closeHandlers = SynchronizedMutableList.of(FastList.<Consumer<Void>>newList());
 
 	private volatile String     connectionId;
 	private volatile ZMQ.Socket socket;
 	private volatile ZMsg       currentMsg;
 
 	public ZeroMQNetChannel(@Nonnull Environment env,
-	                        @Nonnull EventBus eventsReactor,
+	                        @Nonnull Dispatcher eventsDispatcher,
 	                        @Nonnull Dispatcher ioDispatcher,
 	                        @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, codec, ioDispatcher, eventsReactor);
+		super(env, codec, ioDispatcher, eventsDispatcher);
 	}
 
 	public ZeroMQNetChannel<IN, OUT> setConnectionId(String connectionId) {
@@ -119,7 +115,7 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
 				if (success) {
-					onComplete.onNext((Void) null);
+					onComplete.onComplete();
 				} else {
 					onComplete.onError(new RuntimeException("ZeroMQ Message could not be sent"));
 				}
@@ -128,20 +124,18 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 	}
 
 	@Override
-	public void close(final Consumer<Boolean> onClose) {
-		getEventsReactor().schedule(new Consumer<Void>() {
+	public void close() {
+		getDispatcher().dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
-				closeHandlers.removeIf(new CheckedPredicate<Runnable>() {
+				closeHandlers.removeIf(new CheckedPredicate<Consumer<Void>>() {
 					@Override
-					public boolean safeAccept(Runnable r) throws Exception {
-						r.run();
+					public boolean safeAccept(Consumer<Void> r) throws Exception {
+						r.accept(null);
 						return true;
 					}
 				});
-				if (null != onClose) {
-					onClose.accept(true);
-				}
+				notifyClose();
 			}
 		}, null);
 	}
@@ -162,18 +156,18 @@ public class ZeroMQNetChannel<IN, OUT> extends AbstractNetChannel<IN, OUT> {
 
 	private class ZeroMQConsumerSpec implements ConsumerSpec {
 		@Override
-		public ConsumerSpec close(Runnable onClose) {
+		public ConsumerSpec close(Consumer<Void> onClose) {
 			closeHandlers.add(onClose);
 			return this;
 		}
 
 		@Override
-		public ConsumerSpec readIdle(long idleTimeout, Runnable onReadIdle) {
+		public ConsumerSpec readIdle(long idleTimeout, Consumer<Void>  onReadIdle) {
 			return this;
 		}
 
 		@Override
-		public ConsumerSpec writeIdle(long idleTimeout, Runnable onWriteIdle) {
+		public ConsumerSpec writeIdle(long idleTimeout, Consumer<Void>  onWriteIdle) {
 			return this;
 		}
 	}

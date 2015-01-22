@@ -18,15 +18,19 @@ package reactor.io.net.zmq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.*;
-import reactor.io.buffer.Buffer;
+import org.zeromq.ZContext;
+import org.zeromq.ZLoop;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
+import reactor.rx.action.Broadcaster;
 
 import java.util.UUID;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
+public abstract class ZeroMQWorker implements Runnable {
 
 	private final Logger log   = LoggerFactory.getLogger(getClass());
 	private final ZLoop  zloop = new ZLoop();
@@ -35,6 +39,7 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 	private final int                 socketType;
 	private final int                 ioThreadCount;
 	private final ZLoop.IZLoopHandler inputHandler;
+	private final Broadcaster<ZMsg>   b;
 
 	private volatile boolean      closed;
 	private volatile boolean      shutdownCtx;
@@ -42,11 +47,14 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 	private volatile ZMQ.Socket   socket;
 	private volatile ZMQ.PollItem pollin;
 
-	public ZeroMQWorker(UUID id, int socketType, int ioThreadCount, ZContext zmq) {
+	public ZeroMQWorker(UUID id, int socketType, int ioThreadCount, ZContext zmq, final Broadcaster<ZMsg> b) {
 		this.id = id;
 		this.socketType = socketType;
 		this.ioThreadCount = ioThreadCount;
 		this.zmq = zmq;
+		this.b = b;
+		//FIXME must be serialized
+
 		this.inputHandler = new ZLoop.IZLoopHandler() {
 			@Override
 			public int handle(ZLoop loop, ZMQ.PollItem item, Object arg) {
@@ -58,23 +66,7 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 					return -1;
 				}
 
-				String connId;
-				switch (ZeroMQWorker.this.socketType) {
-					case ZMQ.ROUTER:
-						connId = msg.popString();
-						break;
-					default:
-						connId = ZeroMQWorker.this.id.toString();
-				}
-				ZeroMQNetChannel<IN, OUT> netChannel = select(connId)
-						.setConnectionId(connId)
-						.setSocket(socket);
-
-				ZFrame content;
-				while (null != (content = msg.pop())) {
-					netChannel.read(Buffer.wrap(content.getData()));
-				}
-				msg.destroy();
+				b.onNext(msg);
 
 				return 0;
 			}
@@ -83,28 +75,32 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 
 	@Override
 	public void run() {
-		if (closed) {
-			return;
+		try {
+			if (closed) {
+				return;
+			}
+			if (null == zmq) {
+				zmq = new ZContext(ioThreadCount);
+				shutdownCtx = true;
+			}
+			socket = zmq.createSocket(socketType);
+			socket.setIdentity(id.toString().getBytes());
+			configure(socket);
+
+			pollin = new ZMQ.PollItem(socket, ZMQ.Poller.POLLIN);
+			if (log.isTraceEnabled()) {
+				zloop.verbose(true);
+			}
+			zloop.addPoller(pollin, inputHandler, null);
+
+			start(socket);
+
+			zloop.start();
+
+			zmq.destroySocket(socket);
+		}catch (Exception e){
+			b.onError(e);
 		}
-		if (null == zmq) {
-			zmq = new ZContext(ioThreadCount);
-			shutdownCtx = true;
-		}
-		socket = zmq.createSocket(socketType);
-		socket.setIdentity(id.toString().getBytes());
-		configure(socket);
-
-		pollin = new ZMQ.PollItem(socket, ZMQ.Poller.POLLIN);
-		if (log.isTraceEnabled()) {
-			zloop.verbose(true);
-		}
-		zloop.addPoller(pollin, inputHandler, null);
-
-		start(socket);
-
-		zloop.start();
-
-		zmq.destroySocket(socket);
 	}
 
 	public void shutdown() {
@@ -119,12 +115,11 @@ public abstract class ZeroMQWorker<IN, OUT> implements Runnable {
 		if (shutdownCtx) {
 			zmq.destroy();
 		}
+
+		b.onComplete();
 	}
 
 	protected abstract void configure(ZMQ.Socket socket);
 
 	protected abstract void start(ZMQ.Socket socket);
-
-	protected abstract ZeroMQNetChannel<IN, OUT> select(Object id);
-
 }

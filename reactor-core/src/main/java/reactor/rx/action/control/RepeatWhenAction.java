@@ -25,8 +25,8 @@ import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Action;
+import reactor.rx.action.Broadcaster;
 import reactor.rx.action.support.NonBlocking;
-import reactor.rx.stream.Broadcaster;
 
 /**
  * @author Stephane Maldini

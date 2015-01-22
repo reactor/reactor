@@ -747,7 +747,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(odds, even) { [it.t1, it.t2] }
+			def zippedStream = Streams.zip(odds.log(), even.log()) { [it.t1, it.t2] }
 			def tap = zippedStream.log().toList()
 			tap.await(3, TimeUnit.SECONDS)
 			println tap.debug()
@@ -1234,11 +1234,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).buffer(400l, 600l, TimeUnit.MILLISECONDS).toList()
+			res = numbers.throttle(200).log().buffer(450l, 600l, TimeUnit.MILLISECONDS).toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[1, 2], [4, 5], [7, 8]]
+			res.await(5, TimeUnit.SECONDS) == [[3, 4], [6, 7]]
 	}
 
 
@@ -1310,11 +1310,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).window(400l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
+			res = numbers.throttle(200).window(450l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[1, 2], [4, 5], [7, 8]]
+			res.await() == [[3, 4], [6, 7]]
 
 	}
 
@@ -1558,10 +1558,10 @@ class StreamsSpec extends Specification {
 		then:
 			'the result should contain all stream titles by id'
 			result.to[0].id == "GroupBy"
-			result.to[0].to[0].id == "TerminalCallback"
-			result.to[0].boundTo[0].id == "TerminalCallback"
-			result.to[0].boundTo[1].id == "TerminalCallback"
-			result.to[0].boundTo[2].id == "TerminalCallback"
+			result.to[0].to[0].id == "Consumer"
+			result.to[0].boundTo[0].id == "Consumer"
+			result.to[0].boundTo[1].id == "Consumer"
+			result.to[0].boundTo[2].id == "Consumer"
 
 		when: "complete will cancel non kept-alive actions"
 			source.onComplete()
@@ -1600,7 +1600,7 @@ class StreamsSpec extends Specification {
 			def r = EventBus.config().get()
 			def selector = Selectors.anonymous()
 			int event = 0
-			def s = Streams.<Integer> on(r, selector).map{ it.data }.consume { event = it }
+			def s = Streams.<Integer> on(r, selector).map { it.data }.consume { event = it }
 			println s.debug()
 
 		when:
@@ -1611,6 +1611,24 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			event == 1
+
+		when:
+			"multithreaded bus can be serialized"
+			r = EventBus.create(Environment.get(), Environment.dispatcher("workQueue"))
+			s = Streams.<Event<Integer>> serializedBroadcast()
+			def tail = s.map{it.data}.observe{ sleep(100)}.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+
+			r.on(selector, s)
+
+			10.times {
+				r.notify(selector.object, Event.wrap(it))
+			}
+
+		then:
+			tail.await().size() == 10
+			tail.get().sum { it.t1 } >= 1000 //correctly serialized
+
+
 	}
 
 	def 'Creating Stream from publisher'() {

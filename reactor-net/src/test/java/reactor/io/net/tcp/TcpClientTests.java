@@ -20,7 +20,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.fn.Consumer;
@@ -29,9 +28,8 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetChannel;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.NetClient;
-import reactor.io.net.NetServer;
 import reactor.io.net.Reconnect;
 import reactor.io.net.netty.NettyClientSocketOptions;
 import reactor.io.net.netty.tcp.NettyTcpClient;
@@ -64,7 +62,6 @@ import static org.junit.Assert.*;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class TcpClientTests {
 
 	private final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -120,9 +117,9 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
 			@Override
-			public void accept(NetChannel<String, String> conn) {
+			public void accept(NetChannelStream<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {
 					@Override
 					public void accept(String s) {
@@ -150,9 +147,9 @@ public class TcpClientTests {
 				.connect(new InetSocketAddress(echoServerPort))
 				.get();
 
-		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
 			@Override
-			public void accept(NetChannel<String, String> conn) {
+			public void accept(NetChannelStream<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {
 					@Override
 					public void accept(String s) {
@@ -182,9 +179,9 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		client.open().onSuccess(new Consumer<NetChannel<String, String>>() {
+		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
 			@Override
-			public void accept(NetChannel<String, String> conn) {
+			public void accept(NetChannelStream<String, String> conn) {
 				conn.in().consume(new Consumer<String>() {
 					@Override
 					public void accept(String s) {
@@ -220,7 +217,7 @@ public class TcpClientTests {
 				.connect("localhost", echoServerPort)
 				.get();
 
-		assertTrue("Client was not closed within 30 seconds", client.close().await(30, TimeUnit.SECONDS));
+		assertTrue("Client was not closed within 30 seconds", client.close().awaitSuccess(30, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -271,9 +268,9 @@ public class TcpClientTests {
 						return null;
 					}
 				})
-				.consume(new Consumer<NetChannel<Buffer, Buffer>>() {
+				.consume(new Consumer<NetChannelStream<Buffer, Buffer>>() {
 					@Override
-					public void accept(NetChannel<Buffer, Buffer> connection) {
+					public void accept(NetChannelStream<Buffer, Buffer> connection) {
 						connectionLatch.countDown();
 					}
 				});
@@ -292,25 +289,14 @@ public class TcpClientTests {
 				.env(env)
 				.connect("localhost", timeoutServerPort)
 				.get().open().await(5, TimeUnit.SECONDS).on()
-				.close(new Runnable() {
-					@Override
-					public void run() {
-						latch.countDown();
-					}
-				})
-				.readIdle(500, new Runnable() {
-					@Override
-					public void run() {
+				.close( v-> latch.countDown() )
+				.readIdle(500, v -> {
 						totalDelay.addAndGet(System.currentTimeMillis() - start);
 						latch.countDown();
-					}
 				})
-				.writeIdle(500, new Runnable() {
-					@Override
-					public void run() {
+				.writeIdle(500, v -> {
 						totalDelay.addAndGet(System.currentTimeMillis() - start);
 						latch.countDown();
-					}
 				});
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
@@ -326,11 +312,8 @@ public class TcpClientTests {
 				.env(env)
 				.connect("localhost", heartbeatServerPort)
 				.get().open().await().on()
-				.readIdle(500, new Runnable() {
-					@Override
-					public void run() {
+				.readIdle(500, v -> {
 						latch.countDown();
-					}
 				});
 
 		Thread.sleep(700);
@@ -348,22 +331,19 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		long start = System.currentTimeMillis();
 
-		NetChannel<Buffer, Buffer> connection = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
+		NetChannelStream<Buffer, Buffer> connection = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
 				.env(env)
 				.connect("localhost", echoServerPort)
 				.get().open().await();
 
 		connection.on()
-		          .writeIdle(500, new Runnable() {
-			          @Override
-			          public void run() {
+		          .writeIdle(500, v ->  {
 				          latch.countDown();
-			          }
 		          });
 
 		for (int i = 0; i < 5; i++) {
 			Thread.sleep(100);
-			connection.sendAndForget(Buffer.wrap("a"));
+			connection.echo(Buffer.wrap("a"));
 		}
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
@@ -375,7 +355,7 @@ public class TcpClientTests {
 
 	@Test
 	public void nettyNetChannelAcceptsNettyChannelHandlers() throws InterruptedException {
-		NetChannel<HttpObject, HttpRequest> connection =
+		NetChannelStream<HttpObject, HttpRequest> connection =
 				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
 						.env(env)
 						.options(new NettyClientSocketOptions()
@@ -406,28 +386,30 @@ public class TcpClientTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
 
-		NetServer<Buffer, Buffer> zmqs = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
+		TcpServer<Buffer, Buffer> zmqs = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
 				.listen(port)
-				.consume(ch -> {
-					ch.consume(buff -> {
-						if (buff.remaining() == 12) {
-							latch.countDown();
-							ch.sendAndForget(Buffer.wrap("Goodbye World!"));
-						}
-					});
-				})
 				.get();
 
-		assertTrue("server was started", zmqs.start().await(5, TimeUnit.SECONDS));
+		zmqs.consume(ch -> {
+			ch.consume(buff -> {
+				if (buff.remaining() == 12) {
+					latch.countDown();
+					ch.echo(Buffer.wrap("Goodbye World!"));
+				}
+			});
+		});
 
-		NetClient<Buffer, Buffer> zmqc = new TcpClientSpec<Buffer, Buffer>(ZeroMQTcpClient.class)
+		assertTrue("server was started", zmqs.start().awaitSuccess(5, TimeUnit.SECONDS));
+
+		NetClient<Buffer, Buffer, ?> zmqc = new TcpClientSpec<Buffer, Buffer>(ZeroMQTcpClient.class)
 				.env(env)
 				.connect("127.0.0.1", port)
 				.get();
 
-		NetChannel<Buffer, Buffer> ch = zmqc.open().await(5, TimeUnit.SECONDS);
+		NetChannelStream<Buffer, Buffer> ch = zmqc.open().await(5, TimeUnit.SECONDS);
 		assertNotNull("channel was connected", ch);
+
 
 		String msg = ch.sendAndReceive(Buffer.wrap("Hello World!"))
 		               .await(5, TimeUnit.SECONDS)

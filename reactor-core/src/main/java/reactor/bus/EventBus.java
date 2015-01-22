@@ -100,6 +100,17 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 		return new EventBusSpec().env(env).dispatcher(env.getDefaultDispatcher()).get();
 	}
 
+
+	/**
+	 * Create a new {@link EventBus} using the given {@link reactor.core.Dispatcher}.
+	 *
+	 * @param dispatcher The name of the {@link reactor.core.Dispatcher} to use.
+	 * @return A new {@link EventBus}
+	 */
+	public static EventBus create(Dispatcher dispatcher) {
+		return new EventBusSpec().dispatcher(dispatcher).get();
+	}
+
 	/**
 	 * Create a new {@link EventBus} using the given {@link reactor.Environment} and dispatcher name.
 	 *

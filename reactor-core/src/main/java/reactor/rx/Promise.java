@@ -297,6 +297,35 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * default is
 	 * 30 seconds. If the promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
+	 * @return true if complete without error
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
+	 * @throws RuntimeException     if the promise is completed with an error
+	 */
+	public boolean awaitSuccess() throws InterruptedException {
+		return awaitSuccess(defaultTimeout, TimeUnit.MILLISECONDS);
+	}
+
+
+	/**
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}.
+	 *
+	 * @param timeout the timeout value
+	 * @param unit    the {@link TimeUnit} of the timeout value
+	 * @return true if complete without error
+	 * completed
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
+	 */
+	public boolean awaitSuccess(long timeout, TimeUnit unit) throws InterruptedException {
+		await(timeout, unit);
+		return isSuccess();
+	}
+
+	/**
+	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
+	 * Reactor's {@link Environment} properties using the key {@code reactor.await.defaultTimeout} is used. The
+	 * default is
+	 * 30 seconds. If the promise is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
 	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
 	 * not
 	 * completed
@@ -308,9 +337,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	}
 
 	/**
-	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}. If the
-	 * promise
-	 * is completed with an error a RuntimeException that wraps the error is thrown.
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}.
 	 *
 	 * @param timeout the timeout value
 	 * @param unit    the {@link TimeUnit} of the timeout value

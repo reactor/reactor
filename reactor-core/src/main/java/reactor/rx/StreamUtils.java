@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.aggregation.WindowAction;
+import reactor.rx.action.broadcast.SerializedSubscriber;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.transformation.GroupByAction;
 import reactor.rx.stream.GroupedStream;
@@ -184,11 +185,15 @@ public abstract class StreamUtils {
 			Consumer<E> procedure = new Consumer<E>() {
 				@Override
 				public void accept(E registration) {
+					Subscriber<?> subscriber = null;
 					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
-						Subscriber<?> subscriber = ((PushSubscription<?>) registration).getSubscriber();
+						subscriber = ((PushSubscription<?>) registration).getSubscriber();
+					}
+					if(subscriber != null && SerializedSubscriber.class.isAssignableFrom(subscriber.getClass())){
+						subscriber =  ((SerializedSubscriber<?>)subscriber).delegate();
+					}
 
-						if(subscriber == null) return;
-
+					if (subscriber != null) {
 						if (debugVisitor != null && multicast) {
 							debugVisitor.d ++;
 							debugVisitor.newMulticastLine(debugVisitor.d);

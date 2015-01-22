@@ -17,7 +17,6 @@
 package reactor.io.net.tcp;
 
 
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.net.Reconnect;
@@ -27,7 +26,6 @@ import java.net.InetSocketAddress;
 
 import static org.junit.Assert.assertEquals;
 
-@Ignore
 public class IncrementalBackoffReconnectTest {
     @Test
     public void testDefaultReconnect() {

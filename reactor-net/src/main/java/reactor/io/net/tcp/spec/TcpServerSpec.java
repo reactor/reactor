@@ -17,9 +17,10 @@
 package reactor.io.net.tcp.spec;
 
 import reactor.Environment;
-import reactor.bus.EventBus;
+import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.spec.NetServerSpec;
@@ -29,7 +30,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
-import java.util.Collection;
 
 /**
  * A TcpServerSpec is used to specify a TcpServer
@@ -40,9 +40,10 @@ import java.util.Collection;
  * 		The type that will be sent by this client
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class TcpServerSpec<IN, OUT>
-		extends NetServerSpec<IN, OUT, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
+		extends NetServerSpec<IN, OUT, NetChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
 	private final Constructor<? extends TcpServer> serverImplConstructor;
 
@@ -60,12 +61,11 @@ public class TcpServerSpec<IN, OUT>
 		try {
 			this.serverImplConstructor = serverImpl.getDeclaredConstructor(
 					Environment.class,
-					EventBus.class,
+					Dispatcher.class,
 					InetSocketAddress.class,
 					ServerSocketOptions.class,
 					SslOptions.class,
-					Codec.class,
-					Collection.class
+					Codec.class
 			);
 			this.serverImplConstructor.setAccessible(true);
 		} catch (NoSuchMethodException e) {
@@ -89,16 +89,15 @@ public class TcpServerSpec<IN, OUT>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected TcpServer<IN, OUT> configure(EventBus reactor, Environment env) {
+	protected TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
 		try {
 			return serverImplConstructor.newInstance(
 					env,
-					reactor,
+					dispatcher,
 					listenAddress,
 					options,
 					sslOptions,
-					codec,
-					channelConsumers
+					codec
 			);
 		} catch (Throwable t) {
 			throw new IllegalStateException(t);

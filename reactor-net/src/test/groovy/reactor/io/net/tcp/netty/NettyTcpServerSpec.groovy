@@ -18,11 +18,9 @@ package reactor.io.net.tcp.netty
 
 import reactor.Environment
 import reactor.fn.Consumer
-import reactor.fn.Function
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
-import reactor.io.net.NetChannel
 import reactor.io.net.netty.tcp.NettyTcpServer
 import reactor.io.net.tcp.spec.TcpServerSpec
 import spock.lang.Specification
@@ -34,6 +32,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class NettyTcpServerSpec extends Specification {
 
@@ -46,28 +45,23 @@ class NettyTcpServerSpec extends Specification {
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
-		def startLatch = new CountDownLatch(1)
 		def stopLatch = new CountDownLatch(1)
 		def dataLatch = new CountDownLatch(1)
 		def server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer).
 				env(env).
 				listen(port).
 				codec(new PassThroughCodec<Buffer>()).
-				consume({ NetChannel<Buffer, Buffer> conn ->
-					conn.receive({ Buffer data ->
-						Buffer.wrap("Hello World!")
-					} as Function<Buffer, Buffer>)
-				} as Consumer<NetChannel<Buffer, Buffer>>).
 				get()
 
 		when: "the server is started"
-		server.start({
-			startLatch.countDown()
-		})
-		startLatch.await(5, TimeUnit.SECONDS)
+			server.consume{ conn ->
+				conn.consume{ data ->
+					conn.echo Buffer.wrap("Hello World!")
+				}
+			}
 
 		then: "the server was started"
-		startLatch.count == 0
+		server.start().awaitSuccess()
 
 		when: "data is sent"
 		def client = new SimpleClient(port, dataLatch, Buffer.wrap("Hello World!"))
@@ -91,29 +85,24 @@ class NettyTcpServerSpec extends Specification {
 
 	def "NettyTcpServer can encode and decode JSON"() {
 		given: "a TcpServer with JSON codec"
-		def startLatch = new CountDownLatch(1)
 		def stopLatch = new CountDownLatch(1)
 		def dataLatch = new CountDownLatch(1)
 		def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 				env(env).
 				listen(port).
 				codec(new JsonCodec<Pojo, Pojo>(Pojo)).
-				consume({ conn ->
-					conn.receive({ pojo ->
-						assert pojo.name == "John Doe"
-						new Pojo(name: "Jane Doe")
-					} as Function<Pojo, Pojo>)
-				} as Consumer<NetChannel<Pojo, Pojo>>).
 				get()
 
-		when: "the server is started"
-		server.start({
-			startLatch.countDown()
-		})
-		startLatch.await(5, TimeUnit.SECONDS)
+				when: "the server is started"
+					server.consume{ conn ->
+						conn.consume{ pojo ->
+							assert pojo.name == "John Doe"
+							conn.echo new Pojo(name: "Jane Doe")
+						}
+					}
 
 		then: "the server was started"
-		startLatch.count == 0
+			server.start().awaitSuccess(5, TimeUnit.SECONDS)
 
 		when: "a pojo is written"
 		def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))

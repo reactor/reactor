@@ -24,7 +24,6 @@ import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +38,7 @@ import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.*;
 import reactor.io.codec.json.JsonCodec;
-import reactor.io.net.NetChannel;
-import reactor.io.net.NetServer;
+import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.netty.NettyServerSocketOptions;
@@ -71,8 +69,8 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-@Ignore
 public class TcpServerTests {
 
 	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
@@ -148,20 +146,21 @@ public class TcpServerTests {
 				.ssl(serverOpts)
 				.listen("localhost", port)
 				.codec(codec)
-				.consume(new Consumer<NetChannel<Pojo, Pojo>>() {
-					@Override
-					public void accept(NetChannel<Pojo, Pojo> ch) {
-						ch.consume(new Consumer<Pojo>() {
-							@Override
-							public void accept(Pojo data) {
-								if ("John Doe".equals(data.getName())) {
-									latch.countDown();
-								}
-							}
-						});
-					}
-				})
 				.get();
+
+		server.consume(new Consumer<NetChannelStream<Pojo, Pojo>>() {
+			@Override
+			public void accept(NetChannelStream<Pojo, Pojo> ch) {
+				ch.consume(new Consumer<Pojo>() {
+					@Override
+					public void accept(Pojo data) {
+						if ("John Doe".equals(data.getName())) {
+							latch.countDown();
+						}
+					}
+				});
+			}
+		});
 
 		server.start().await();
 		client.open().await().send(new Pojo("John Doe"));
@@ -180,33 +179,34 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-						         .backlog(1000)
-						         .reuseAddr(true)
-						         .tcpNoDelay(true))
+						.backlog(1000)
+						.reuseAddr(true)
+						.tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
-				.consume(new Consumer<NetChannel<byte[], byte[]>>() {
-					@Override
-					public void accept(NetChannel<byte[], byte[]> ch) {
-						ch.consume(new Consumer<byte[]>() {
-							long num = 1;
-
-							@Override
-							public void accept(byte[] bytes) {
-								latch.countDown();
-								ByteBuffer bb = ByteBuffer.wrap(bytes);
-								if (bb.remaining() < 4) {
-									System.err.println("insufficient len: " + bb.remaining());
-								}
-								int next = bb.getInt();
-								if (next != num++) {
-									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
-								}
-							}
-						});
-					}
-				})
 				.get();
+		
+		server.consume(new Consumer<NetChannelStream<byte[], byte[]>>() {
+			@Override
+			public void accept(NetChannelStream<byte[], byte[]> ch) {
+				ch.consume(new Consumer<byte[]>() {
+					long num = 1;
+
+					@Override
+					public void accept(byte[] bytes) {
+						latch.countDown();
+						ByteBuffer bb = ByteBuffer.wrap(bytes);
+						if (bb.remaining() < 4) {
+							System.err.println("insufficient len: " + bb.remaining());
+						}
+						int next = bb.getInt();
+						if (next != num++) {
+							System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
+						}
+					}
+				});
+			}
+		});
 
 		server.start().await();
 
@@ -215,7 +215,7 @@ public class TcpServerTests {
 			threadPool.submit(new LengthFieldMessageWriter(port));
 		}
 
-		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(25, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -238,23 +238,24 @@ public class TcpServerTests {
 						         .tcpNoDelay(true))
 				.listen(port)
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
-				.consume(new Consumer<NetChannel<Frame, Frame>>() {
-					@Override
-					public void accept(NetChannel<Frame, Frame> ch) {
-						ch.consume(new Consumer<Frame>() {
-							@Override
-							public void accept(Frame frame) {
-								short prefix = frame.getPrefix().readShort();
-								assertThat("prefix is 0", prefix == 0);
-								Buffer data = frame.getData();
-								assertThat("len is 128", data.remaining() == 128);
-
-								latch.countDown();
-							}
-						});
-					}
-				})
 				.get();
+		
+		server.consume(new Consumer<NetChannelStream<Frame, Frame>>() {
+			@Override
+			public void accept(NetChannelStream<Frame, Frame> ch) {
+				ch.consume(new Consumer<Frame>() {
+					@Override
+					public void accept(Frame frame) {
+						short prefix = frame.getPrefix().readShort();
+						assertThat("prefix is 0", prefix == 0);
+						Buffer data = frame.getData();
+						assertThat("len is 128", data.remaining() == 128);
+
+						latch.countDown();
+					}
+				});
+			}
+		});
 
 		server.start().await();
 
@@ -282,7 +283,6 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.connect("localhost", port)
-				.uncaughtErrorHandler(t -> {}) // ignore channel errors
 				.get();
 
 		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)
@@ -290,19 +290,20 @@ public class TcpServerTests {
 				.synchronousDispatcher()
 				.listen(port)
 				.codec(new PassThroughCodec<Buffer>())
-				.consume(new Consumer<NetChannel<Buffer, Buffer>>() {
-					@Override
-					public void accept(NetChannel<Buffer, Buffer> ch) {
-						InetSocketAddress remoteAddr = ch.remoteAddress();
-						assertNotNull("remote address is not null", remoteAddr.getAddress());
-						latch.countDown();
-					}
-				})
 				.get();
+
+		server.consume(new Consumer<NetChannelStream<Buffer, Buffer>>() {
+			@Override
+			public void accept(NetChannelStream<Buffer, Buffer> ch) {
+				InetSocketAddress remoteAddr = ch.remoteAddress();
+				assertNotNull("remote address is not null", remoteAddr.getAddress());
+				latch.countDown();
+			}
+		});
 
 		server.start().await();
 
-		NetChannel<Buffer, Buffer> out = client.open().await();
+		NetChannelStream<Buffer, Buffer> out = client.open().await();
 		out.send(Buffer.wrap("Hello World!"));
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
@@ -321,9 +322,9 @@ public class TcpServerTests {
 				.codec(StandardCodecs.LINE_FEED_CODEC)
 				.get();
 
-		Consumer<NetChannel<String, String>> serverHandler = new Consumer<NetChannel<String, String>>() {
+		Consumer<NetChannelStream<String, String>> serverHandler = new Consumer<NetChannelStream<String, String>>() {
 			@Override
-			public void accept(NetChannel<String, String> ch) {
+			public void accept(NetChannelStream<String, String> ch) {
 				ch.consume(new Consumer<String>() {
 					@Override
 					public void accept(String data) {
@@ -336,20 +337,20 @@ public class TcpServerTests {
 		TcpServer<String, String> server = new TcpServerSpec<String, String>(NettyTcpServer.class)
 				.env(env)
 				.options(new NettyServerSocketOptions()
-						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-							         @Override
-							         public void accept(ChannelPipeline pipeline) {
-								         pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
-							         }
-						         }))
+						.pipelineConfigurer(new Consumer<ChannelPipeline>() {
+							@Override
+							public void accept(ChannelPipeline pipeline) {
+								pipeline.addLast(new LineBasedFrameDecoder(8 * 1024));
+							}
+						}))
 				.listen(port)
 				.codec(StandardCodecs.STRING_CODEC)
-				.consume(serverHandler)
 				.get();
 
+		server.consume(serverHandler);
 		server.start().await();
 
-		client.open().await().sendAndForget("Hello World!").sendAndForget("Hello World!");
+		client.open().await().echo("Hello World!").echo("Hello World!");
 
 		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -366,27 +367,28 @@ public class TcpServerTests {
 				.env(env)
 				.listen(port)
 				.dispatcher(SynchronousDispatcher.INSTANCE)
-				.consume(new Consumer<NetChannel<ByteBuf, ByteBuf>>() {
+				.get();
+
+		server.consume(new Consumer<NetChannelStream<ByteBuf, ByteBuf>>() {
+			@Override
+			public void accept(NetChannelStream<ByteBuf, ByteBuf> ch) {
+				ch.consume(new Consumer<ByteBuf>() {
 					@Override
-					public void accept(NetChannel<ByteBuf, ByteBuf> ch) {
-						ch.consume(new Consumer<ByteBuf>() {
+					public void accept(ByteBuf byteBuf) {
+						byteBuf.forEachByte(new ByteBufProcessor() {
 							@Override
-							public void accept(ByteBuf byteBuf) {
-								byteBuf.forEachByte(new ByteBufProcessor() {
-									@Override
-									public boolean process(byte value) throws Exception {
-										if (value == '\n') {
-											latch.countDown();
-										}
-										return true;
-									}
-								});
-								byteBuf.release();
+							public boolean process(byte value) throws Exception {
+								if (value == '\n') {
+									latch.countDown();
+								}
+								return true;
 							}
 						});
+						byteBuf.release();
 					}
-				})
-				.get();
+				});
+			}
+		});
 
 		log.info("Starting raw server on tcp://localhost:{}", port);
 		server.start().await();
@@ -412,41 +414,42 @@ public class TcpServerTests {
 				.env(env)
 				.listen(port)
 				.options(new NettyServerSocketOptions()
-						         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-							         @Override
-							         public void accept(ChannelPipeline pipeline) {
-								         pipeline.addLast(new HttpRequestDecoder());
-								         pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-								         pipeline.addLast(new HttpResponseEncoder());
-							         }
-						         }))
-				.consume(new Consumer<NetChannel<HttpRequest, HttpResponse>>() {
-					@Override
-					public void accept(final NetChannel<HttpRequest, HttpResponse> ch) {
-						ch.in().consume(new Consumer<HttpRequest>() {
+						.pipelineConfigurer(new Consumer<ChannelPipeline>() {
 							@Override
-							public void accept(HttpRequest req) {
-								ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
-								int len = buf.readableBytes();
-								DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-										HttpVersion.HTTP_1_1,
-										HttpResponseStatus.OK,
-										buf
-								);
-								resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
-								resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
-								resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
-
-								ch.send(resp);
-
-								if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
-									latch.countDown();
-								}
+							public void accept(ChannelPipeline pipeline) {
+								pipeline.addLast(new HttpRequestDecoder());
+								pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+								pipeline.addLast(new HttpResponseEncoder());
 							}
-						});
-					}
-				})
+						}))
 				.get();
+
+		server.consume(new Consumer<NetChannelStream<HttpRequest, HttpResponse>>() {
+			@Override
+			public void accept(final NetChannelStream<HttpRequest, HttpResponse> ch) {
+				ch.in().consume(new Consumer<HttpRequest>() {
+					@Override
+					public void accept(HttpRequest req) {
+						ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
+						int len = buf.readableBytes();
+						DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
+								HttpVersion.HTTP_1_1,
+								HttpResponseStatus.OK,
+								buf
+						);
+						resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
+						resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
+						resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
+
+						ch.send(resp);
+
+						if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
+							latch.countDown();
+						}
+					}
+				});
+			}
+		});
 
 		log.info("Starting HTTP server on http://localhost:{}/", port);
 		server.start().await();
@@ -471,28 +474,29 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 		ZContext zmq = new ZContext();
 
-		NetServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
+		TcpServer<Buffer,Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
 				.listen(port)
-				.consume(ch -> {
-					ch.consume(buff -> {
-						if (buff.remaining() == 128) {
-							latch.countDown();
-						} else {
-							log.info("data: {}", buff.asString());
-						}
-						ch.sendAndForget(Buffer.wrap("Goodbye World!"));
-					});
-				})
 				.get();
 
-		assertTrue("Server was started", server.start().await(5, TimeUnit.SECONDS));
+		server.consume(ch -> {
+			ch.consume(buff -> {
+				if (buff.remaining() == 128) {
+					latch.countDown();
+				} else {
+					log.info("data: {}", buff.asString());
+				}
+				ch.echo(Buffer.wrap("Goodbye World!"));
+			});
+		});
+
+		assertTrue("Server was started", server.start().awaitSuccess(5, TimeUnit.SECONDS));
 
 		ZeroMQWriter zmqw = new ZeroMQWriter(zmq, port, latch);
 		threadPool.submit(zmqw);
 
 		assertTrue("reply was received", latch.await(5, TimeUnit.SECONDS));
-		assertTrue("Server was stopped", server.shutdown().await(5, TimeUnit.SECONDS));
+		assertTrue("Server was stopped", server.shutdown().awaitSuccess(5, TimeUnit.SECONDS));
 
 		zmq.destroy();
 	}
