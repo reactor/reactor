@@ -18,12 +18,14 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.ReactiveSubscription;
+import reactor.rx.broadcast.BehaviorBroadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 /**
  * WindowAction is forwarding events on a steam until {@param boundarySupplier} returned stream emits a signal,
@@ -34,13 +36,15 @@ import reactor.rx.subscription.ReactiveSubscription;
  */
 public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
-	private ReactiveSubscription<T> currentWindow;
+	final private Supplier<? extends Publisher<?>> boundarySupplier;
+	final private Environment environment;
 
-	final Supplier<? extends Publisher<?>> boundarySupplier;
+	private Broadcaster<T> windowBroadcaster;
 
-	public WindowWhenAction(Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
+	public WindowWhenAction(Environment environment, Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
 		super(dispatcher);
 		this.boundarySupplier = boundarySupplier;
+		this.environment = environment;
 	}
 
 
@@ -92,53 +96,54 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	private void flush() {
-		ReactiveSubscription<T> _currentWindow = currentWindow;
+		Broadcaster<T> _currentWindow = windowBroadcaster;
 		if (_currentWindow != null) {
-			currentWindow = null;
+			windowBroadcaster = null;
 			_currentWindow.onComplete();
 		}
-
-
-		broadcastNext(createWindowStream());
 
 	}
 
 	@Override
 	protected void doNext(T value) {
-		if(currentWindow == null) {
-			broadcastNext(createWindowStream());
+		if(windowBroadcaster == null) {
+			broadcastNext(createWindowStream(value));
+		}else{
+			windowBroadcaster.onNext(value);
 		}
-		currentWindow.onNext(value);
 	}
 
-	public ReactiveSubscription<T> currentWindow() {
-		return currentWindow;
+	public Broadcaster<T> currentWindow() {
+		return windowBroadcaster;
 	}
 
-	protected Stream<T> createWindowStream() {
-		Action<T,T> action = Action.<T>passthrough(dispatcher, capacity).env(environment);
-		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
-		currentWindow = _currentWindow;
-		action.onSubscribe(_currentWindow);
+	protected Stream<T> createWindowStream(T first) {
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), dispatcher);
+		windowBroadcaster = action;
 		return action;
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		super.doError(ev);
-		if (currentWindow != null) {
-			currentWindow.onError(ev);
-			currentWindow = null;
+		if (windowBroadcaster != null) {
+			windowBroadcaster.onError(ev);
+			windowBroadcaster = null;
 		}
+		super.doError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		super.doComplete();
-		if (currentWindow != null) {
-			currentWindow.onComplete();
-			currentWindow = null;
+		if (windowBroadcaster != null) {
+			windowBroadcaster.onComplete();
+			windowBroadcaster = null;
 		}
+		super.doComplete();
+	}
+
+	@Override
+	public Environment getEnvironment() {
+		return environment;
 	}
 
 

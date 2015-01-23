@@ -242,7 +242,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 			if (withDefault.type == Signal.Type.COMPLETE) {
 				return new PushSubscription<O>(this, subscriber) {
 					@Override
-					protected void onRequest(long n) {
+					public void request(long n) {
 						//Promise behavior, emit last value before completing
 						if(n > 0 && capacity == 1l && withDefault.value != null){
 							capacity = 0l;
@@ -254,7 +254,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 			} else if (withDefault.type == Signal.Type.ERROR) {
 				return new PushSubscription<O>(this, subscriber) {
 					@Override
-					protected void onRequest(long n) {
+					public void request(long n) {
 						onError(withDefault.error);
 					}
 				};

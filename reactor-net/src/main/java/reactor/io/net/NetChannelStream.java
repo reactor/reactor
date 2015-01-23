@@ -58,7 +58,7 @@ public abstract class NetChannelStream<IN, OUT> extends Stream<IN> implements Ne
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 
-	protected NetChannelStream(@Nonnull Environment env,
+	protected NetChannelStream(final @Nonnull Environment env,
 	                           @Nullable Codec<Buffer, IN, OUT> codec,
 	                           @Nonnull Dispatcher ioDispatcher,
 	                           @Nonnull Dispatcher eventsDispatcher) {
@@ -72,7 +72,12 @@ public abstract class NetChannelStream<IN, OUT> extends Stream<IN> implements Ne
 			protected void doNext(IN ev) {
 				broadcastNext(ev);
 			}
-		}.env(getEnvironment());
+
+			@Override
+			public Environment getEnvironment() {
+				return env;
+			}
+		};
 
 		if (null != codec) {
 			this.decoder = codec.decoder(contentStream);

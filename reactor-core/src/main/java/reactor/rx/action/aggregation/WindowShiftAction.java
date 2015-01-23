@@ -16,12 +16,14 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Iterator;
@@ -43,16 +45,18 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	private final Registration<? extends Consumer<Long>> timeshiftRegistration;
 	private final int                                    skip;
 	private final int                                    batchSize;
+	private final Environment                            environment;
 	private       int                                    index;
 
-	public WindowShiftAction(Dispatcher dispatcher, int size, int skip) {
-		this(dispatcher, size, skip, -1l, -1l, null, null);
+	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip) {
+		this(environment, dispatcher, size, skip, -1l, -1l, null, null);
 	}
 
-	public WindowShiftAction(Dispatcher dispatcher, int size, int skip,
+	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip,
 	                         final long timespan, final long timeshift, TimeUnit unit, final Timer timer) {
 		super(dispatcher);
 		this.skip = skip;
+		this.environment = environment;
 		this.batchSize = size;
 		if (timespan > 0 && timeshift > 0) {
 			final TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
@@ -140,12 +144,17 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected ReactiveSubscription<T> createWindowStream() {
-		Action<T,T> action = Action.<T>passthrough(dispatcher, capacity).env(environment);
+		Action<T,T> action = Broadcaster.<T>create(getEnvironment(), dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindows.add(_currentWindow);
 		action.onSubscribe(_currentWindow);
 		broadcastNext(action);
 		return _currentWindow;
+	}
+
+	@Override
+	public Environment getEnvironment() {
+		return this.environment;
 	}
 
 	@Override

@@ -16,6 +16,7 @@
 package reactor.rx.action.transformation;
 
 import org.reactivestreams.Subscriber;
+import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
@@ -41,12 +42,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
+	private final Environment                      environment;
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
 
-	public GroupByAction(Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
+	public GroupByAction(Environment environment, Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
 		super(dispatcher);
 		Assert.notNull(fn, "Key mapping function cannot be null.");
 		this.fn = fn;
+		this.environment = environment;
 	}
 
 	public Map<K, ReactiveSubscription<T>> groupByMap() {
@@ -69,11 +72,27 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 			final CompletableQueue<T> queue = child.getBuffer();
 			GroupedStream<K, T> action = new GroupedStream<K, T>(key) {
+
+				@Override
+				public long getCapacity() {
+					return GroupByAction.this.getCapacity();
+				}
+
+				@Override
+				public Dispatcher getDispatcher() {
+					return GroupByAction.this.getDispatcher();
+				}
+
+				@Override
+				public Environment getEnvironment() {
+					return GroupByAction.this.getEnvironment();
+				}
+
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
 					final AtomicBoolean last = new AtomicBoolean();
 					final SerializedSubscriber<T> serializedSubscriber = SerializedSubscriber.create(s);
-					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, serializedSubscriber , queue) {
+					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, serializedSubscriber, queue) {
 
 						@Override
 						public void cancel() {
@@ -148,4 +167,8 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 		}
 	}
 
+	@Override
+	public Environment getEnvironment() {
+		return environment;
+	}
 }

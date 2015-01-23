@@ -97,7 +97,6 @@ public abstract class Action<I, O> extends Stream<O>
 	protected PushSubscription<I> upstreamSubscription;
 	protected PushSubscription<O> downstreamSubscription;
 
-	protected       Environment environment;
 	protected final Dispatcher  dispatcher;
 
 	protected long capacity;
@@ -124,30 +123,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (n <= 0l) {
 			throw SpecificationExceptions.spec_3_09_exception(n);
 		}
-	}
-
-	/**
-	 * A simple Action that can be used to broadcast Stream signals such as dispatcher or capacity.
-	 *
-	 * @param dispatcher the dispatcher to run on
-	 * @param <O>        the streamed data type
-	 * @return a new Action subscribed to this one
-	 */
-	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher) {
-		return passthrough(dispatcher, dispatcher == SynchronousDispatcher.INSTANCE ? Long.MAX_VALUE : dispatcher
-				.backlogSize());
-	}
-
-	/**
-	 * A simple Action that can be used to broadcast Stream signals such as dispatcher or capacity.
-	 *
-	 * @param dispatcher the dispatcher to run on
-	 * @param capacity   the capacity to assign {@link this#capacity(long)}
-	 * @param <O>        the streamed data type
-	 * @return a new Action subscribed to this one
-	 */
-	public static <O> Broadcaster<O> passthrough(Dispatcher dispatcher, long capacity) {
-		return new Broadcaster<>(dispatcher, capacity);
 	}
 
 	/**
@@ -273,17 +248,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (upstreamSubscription != null) {
 			upstreamSubscription.maxCapacity(capacity);
 		}
-		return this;
-	}
-
-	/**
-	 * Update the environment used by this {@link Stream}
-	 *
-	 * @param environment the new environment to use
-	 * @return {@literal this}
-	 */
-	public Action<I, O> env(Environment environment) {
-		this.environment = environment;
 		return this;
 	}
 
@@ -536,12 +500,6 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return environment;
-	}
-
-
-	@Override
 	public final long getCapacity() {
 		return capacity;
 	}
@@ -780,9 +738,8 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void recycle() {
 		downstreamSubscription = null;
-		environment = null;
-		capacity = Long.MAX_VALUE;
 		upstreamSubscription = null;
+		capacity = Long.MAX_VALUE;
 	}
 
 	@Override

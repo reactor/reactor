@@ -15,10 +15,11 @@
  */
 package reactor.rx.action.aggregation;
 
+import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.action.Action;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.concurrent.TimeUnit;
@@ -31,15 +32,18 @@ import java.util.concurrent.TimeUnit;
  * @since 2.0
  */
 public class WindowAction<T> extends BatchAction<T, Stream<T>> {
+	private final Environment environment;
 
 	private ReactiveSubscription<T> currentWindow;
 
-	public WindowAction(Dispatcher dispatcher, int backlog) {
+	public WindowAction(Environment environment, Dispatcher dispatcher, int backlog) {
 		super(dispatcher, backlog, true, true, true);
+		this.environment = environment;
 	}
 
-	public WindowAction(Dispatcher dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
+	public WindowAction(Environment environment, Dispatcher dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
 		super(dispatcher, backlog, true, true, true, timespan, unit, timer);
+		this.environment = environment;
 	}
 
 	public ReactiveSubscription<T> currentWindow() {
@@ -47,7 +51,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream() {
-		Action<T,T> action = Action.<T>passthrough(dispatcher, capacity).env(environment);
+		Broadcaster<T> action = Broadcaster.create(getEnvironment(), dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
@@ -77,7 +81,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	@Override
 	protected void nextCallback(T event) {
-		if(currentWindow != null) {
+		if (currentWindow != null) {
 			currentWindow.onNext(event);
 		}
 	}

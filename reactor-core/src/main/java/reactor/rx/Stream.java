@@ -35,7 +35,6 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.Control;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
@@ -53,6 +52,7 @@ import reactor.rx.action.support.TapAndControls;
 import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.terminal.ObservableAction;
 import reactor.rx.action.transformation.*;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
@@ -894,8 +894,21 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				new MergeAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(Stream.this, publisher))
-						.env(Stream.this.getEnvironment())
 						.subscribe(s);
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
+			}
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
 			}
 		};
 	}
@@ -913,8 +926,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(Stream.this, publisher))
-						.env(Stream.this.getEnvironment())
 						.subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
 			}
 		};
 	}
@@ -950,8 +977,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(publisher, Stream.this))
-						.env(Stream.this.getEnvironment())
 						.subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
 			}
 		};
 	}
@@ -998,7 +1039,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			public Action<Publisher<?>, V> apply(Dispatcher dispatcher) {
 				return new DynamicMergeAction<Object, V>(dispatcher,
 						new ZipAction<Object, V, TupleN>(dispatcher, zipper, null)).
-						capacity(getCapacity()).env(getEnvironment());
+						capacity(getCapacity());
 			}
 		});
 	}
@@ -1031,8 +1072,22 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				new ZipAction<>(SynchronousDispatcher.INSTANCE, zipper, Arrays.asList(Stream.this, publisher))
-						.env(Stream.this.getEnvironment())
 						.subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
 			}
 		};
 	}
@@ -1069,7 +1124,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public Action<Publisher<? extends T>, V> apply(Dispatcher dispatcher) {
 				return new DynamicMergeAction<T, V>(dispatcher, fanInAction).
-						capacity(getCapacity()).env(getEnvironment());
+						capacity(getCapacity());
 			}
 		});
 	}
@@ -2097,7 +2152,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowAction<O>(dispatcher, backlog);
+				return new WindowAction<O>(getEnvironment(), dispatcher, backlog);
 			}
 		});
 	}
@@ -2118,7 +2173,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowShiftAction<O>(dispatcher, maxSize, skip);
+				return new WindowShiftAction<O>(getEnvironment(), dispatcher, maxSize, skip);
 			}
 		});
 	}
@@ -2135,7 +2190,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowWhenAction<O>(dispatcher, boundarySupplier);
+				return new WindowWhenAction<O>(getEnvironment(), dispatcher, boundarySupplier);
 			}
 		});
 	}
@@ -2155,7 +2210,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowShiftWhenAction<O>(dispatcher, bucketOpening, boundarySupplier);
+				return new WindowShiftWhenAction<O>(getEnvironment(), dispatcher, bucketOpening, boundarySupplier);
 			}
 		});
 	}
@@ -2221,7 +2276,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowAction<O>(dispatcher, maxSize, timespan, unit, timer);
+				return new WindowAction<O>(getEnvironment(), dispatcher, maxSize, timespan, unit, timer);
 			}
 		});
 	}
@@ -2260,8 +2315,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> apply(Dispatcher dispatcher) {
-				return new WindowShiftAction<O>(dispatcher, Integer.MAX_VALUE, Integer.MAX_VALUE, timespan, timeshift, unit,
-						timer);
+				return new WindowShiftAction<O>(
+						getEnvironment(), dispatcher, Integer.MAX_VALUE, Integer.MAX_VALUE, timespan, timeshift, unit, timer);
 			}
 		});
 	}
@@ -2279,7 +2334,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, GroupedStream<K, O>>>() {
 			@Override
 			public Action<O, GroupedStream<K, O>> apply(Dispatcher dispatcher) {
-				return new GroupByAction<>(keyMapper, dispatcher);
+				return new GroupByAction<>(getEnvironment(), keyMapper, dispatcher);
 			}
 		});
 	}
@@ -2610,6 +2665,36 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
+	 * Assign an Environment to be provided to this Stream Subscribers
+	 *
+	 * @param environment the environment
+	 * @return a
+	 */
+	public Stream<O> env(final Environment environment) {
+		return new Stream<O>(){
+			@Override
+			public void subscribe(Subscriber<? super O> s) {
+				Stream.this.subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return environment;
+			}
+		};
+	}
+
+	/**
 	 * Blocking call to pass values from this stream to the queue that can be polled from a consumer.
 	 *
 	 * @return the buffered queue
@@ -2618,6 +2703,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final CompletableBlockingQueue<O> toBlockingQueue() throws InterruptedException {
 		return toBlockingQueue(-1);
 	}
+
 
 	/**
 	 * Blocking call to eagerly fetch values from this stream
@@ -2661,7 +2747,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return blockingQueue;
 	}
 
-
 	/**
 	 * Prevent a {@link Stream} to be cancelled. Cancel propagation occurs when last subscriber is cancelled.
 	 *
@@ -2671,7 +2756,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, O>>() {
 			@Override
 			public Action<O, O> apply(Dispatcher dispatcher) {
-				return Action.<O>passthrough(dispatcher, getCapacity()).env(getEnvironment()).keepAlive();
+				return Broadcaster.<O>create(getEnvironment(), dispatcher).keepAlive().capacity(getCapacity());
 			}
 		});
 	}
@@ -2686,15 +2771,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final <A> void subscribe(final CombineAction<O, A> subscriber) {
 		subscribe(subscriber.input());
-	}
-
-	/**
-	 * Get the dispatcher used to execute signals on this Stream instance.
-	 *
-	 * @return assigned dispatcher
-	 */
-	public Dispatcher getDispatcher() {
-		return SynchronousDispatcher.INSTANCE;
 	}
 
 	@Override
@@ -2719,15 +2795,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Get the assigned {@link reactor.Environment}.
-	 *
-	 * @return current {@link Environment}
-	 */
-	public Environment getEnvironment() {
-		return null;
-	}
-
-	/**
 	 * Get the current action child subscription
 	 *
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}
@@ -2747,6 +2814,24 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public boolean cleanSubscriptionReference(PushSubscription<O> oPushSubscription) {
 		return false;
+	}
+
+	/**
+	 * Get the assigned {@link reactor.Environment}.
+	 *
+	 * @return current {@link Environment}
+	 */
+	public Environment getEnvironment() {
+		return null;
+	}
+
+	/**
+	 * Get the dispatcher used to execute signals on this Stream instance.
+	 *
+	 * @return assigned dispatcher
+	 */
+	public Dispatcher getDispatcher() {
+		return SynchronousDispatcher.INSTANCE;
 	}
 
 	@Override

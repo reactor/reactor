@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -143,7 +144,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	public Action<Publisher<? extends I>, O> env(Environment environment) {
+	public Stream<O> env(Environment environment) {
 		fanInAction.env(environment);
 		return super.env(environment);
 	}

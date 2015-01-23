@@ -24,8 +24,8 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.support.NonBlocking;
+import reactor.rx.broadcast.Broadcaster;
 
 /**
  * @author Stephane Maldini
@@ -49,7 +49,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public Action<T, T> env(Environment environment) {
+	public Stream<T> env(Environment environment) {
 		retryStream.env(environment);
 		return super.env(environment);
 	}
