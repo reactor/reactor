@@ -35,7 +35,9 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.action.Control;
+import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.control.*;
@@ -245,7 +247,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action.Signal}.
 	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
 	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 *
@@ -262,7 +264,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.Signal}.
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action.Signal}.
 	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
 	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 *
@@ -591,6 +593,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
 	public Stream<O> dispatchOn(final Environment environment, @Nonnull final Dispatcher dispatcher) {
+		if(environment != null && environment == getEnvironment() && dispatcher == getDispatcher()){
+			return this;
+		}
+
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to #partition()/groupBy() method and assign individual single dispatchers. ");
 
@@ -601,6 +607,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
+				if(s != null && Action.class.isAssignableFrom(s.getClass())){
+					((Action)s).capacity(capacity);
+				}
+				
 				Stream.this.subscribe(s);
 			}
 

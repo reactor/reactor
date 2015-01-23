@@ -104,15 +104,10 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected void doNext(Zippable<O> ev) {
-		boolean isFinishing = status.get() == COMPLETING;
-
 		count++;
 		toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;
 
-		broadcastTuple(isFinishing);
-		if(isFinishing && count == 0l) {
-			doComplete();
-		}
+		broadcastTuple(false);
 	}
 
 	@Override
@@ -124,9 +119,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	protected void doComplete() {
 		broadcastTuple(true);
 
-			//can receive multiple queued complete signals
-			cancel();
-			broadcastComplete();
+		//can receive multiple queued complete signals
+		cancel();
+		broadcastComplete();
 
 
 	}
@@ -185,7 +180,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (pendingRequests > 0) {
 				request(1);
 			}
-			if (outerAction.dynamicMergeAction != null){
+			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
 		}
@@ -197,10 +192,15 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void onNext(O ev) {
-			if(--pendingRequests > 0) pendingRequests = 0;
+			if (--pendingRequests > 0) pendingRequests = 0l;
 			//emittedSignals++;
 			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
+
+			if(outerAction.status.get() == COMPLETING){
+				onComplete();
+			}
 		}
+
 
 		@Override
 		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
@@ -231,15 +231,10 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 
 		@Override
-		public long clearPendingRequest() {
-			return pendingRequestSignals;
-		}
-
-		@Override
 		public void request(long elements) {
-			if(pendingRequestSignals == Long.MAX_VALUE){
+			if (pendingRequestSignals == Long.MAX_VALUE) {
 				super.parallelRequest(1);
-			}else{
+			} else {
 				super.request(Math.max(elements, subscriptions.size()));
 			}
 		}

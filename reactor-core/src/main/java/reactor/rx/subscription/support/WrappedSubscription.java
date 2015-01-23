@@ -63,15 +63,6 @@ public class WrappedSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public void incrementCurrentNextSignals() {
-		if(pushSubscription != null){
-			pushSubscription.incrementCurrentNextSignals();
-		}else{
-			super.incrementCurrentNextSignals();
-		}
-	}
-
-	@Override
 	public void maxCapacity(long n) {
 		if(pushSubscription != null){
 			pushSubscription.maxCapacity(n);
@@ -79,11 +70,11 @@ public class WrappedSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public long clearPendingRequest() {
+	public void updatePendingRequests(long n) {
 		if(pushSubscription != null){
-			return pushSubscription.clearPendingRequest();
+			pushSubscription.updatePendingRequests(n);
 		}else{
-			return super.clearPendingRequest();
+			super.updatePendingRequests(n);
 		}
 	}
 

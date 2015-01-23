@@ -38,7 +38,8 @@ import reactor.fn.support.Tap;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.action.Control;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,7 +95,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void simpleReactiveSubscriber() throws InterruptedException {
-		Broadcaster<String> str = Streams.broadcast(env);
+		Broadcaster<String> str = Broadcaster.create(env);
 
 		str
 				.subscribe(new TestSubscriber());
@@ -332,7 +333,7 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(items);
 		Random random = ThreadLocalRandom.current();
 
-		Broadcaster<String> d = Streams.<String>broadcast(env);
+		Broadcaster<String> d = Broadcaster.<String>create(env);
 		Stream<Integer> tasks = d.partition().flatMap(stream ->
 				stream.dispatchOn(Environment.cachedDispatcher()).map((String str) -> {
 					try {
@@ -432,7 +433,7 @@ public class StreamTests extends AbstractReactorTest {
 		final ConcurrentHashMap<Object, Long> seenInternal = new ConcurrentHashMap<>();
 		final ConcurrentHashMap<Object, Long> seenConsumer = new ConcurrentHashMap<>();
 
-		Broadcaster<Integer> d = Streams.broadcast(env);
+		Broadcaster<Integer> d = Broadcaster.create(env);
 
 		Control c = d
 				.partition().consume(stream ->
@@ -473,11 +474,11 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		for (int i = 0; i < COUNT; i++) {
-			if (i % 5000 == 0) System.out.println(c.debug());
 			d.onNext(i);
 		}
 
 		internalLatch.await(5, TimeUnit.SECONDS);
+		System.out.println(c.debug());
 		assertEquals(COUNT, internalCounter.get());
 		counsumerLatch.await(5, TimeUnit.SECONDS);
 		assertEquals(COUNT, consumerCounter.get());
@@ -502,7 +503,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(iterations);
 
-		Broadcaster<String> deferred = Streams.<String>broadcast(env);
+		Broadcaster<String> deferred = Broadcaster.<String>create(env);
 		deferred
 				.partition()
 				.consume(stream ->
@@ -549,7 +550,7 @@ public class StreamTests extends AbstractReactorTest {
 		Action<Integer, Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
-				deferred = Streams.broadcast(env);
+				deferred = Broadcaster.create(env);
 				System.out.println(deferred.partition(2).consume(stream -> stream
 						.dispatchOn(env.getCachedDispatcher())
 						.map(i -> i)
@@ -559,7 +560,7 @@ public class StreamTests extends AbstractReactorTest {
 				break;
 
 			default:
-				deferred = Streams.<Integer>broadcast(env, env.getDispatcher(dispatcher));
+				deferred = Broadcaster.<Integer>create(env, env.getDispatcher(dispatcher));
 				deferred
 						.map(i -> i)
 						.scan(1, (acc, next) -> acc + next)
@@ -602,14 +603,14 @@ public class StreamTests extends AbstractReactorTest {
 		Action<Integer, Integer> mapManydeferred;
 		switch (dispatcher) {
 			case "partitioned":
-				mapManydeferred = Streams.<Integer>broadcast(env, SynchronousDispatcher.INSTANCE);
+				mapManydeferred = Broadcaster.<Integer>create(env, SynchronousDispatcher.INSTANCE);
 				mapManydeferred
 						.partition().consume(substream ->
 						substream.dispatchOn(env.getCachedDispatcher()).consume(i -> latch.countDown()));
 				break;
 			default:
 				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
-				mapManydeferred = Streams.<Integer>broadcast(env, dispatcher1);
+				mapManydeferred = Broadcaster.<Integer>create(env, dispatcher1);
 				mapManydeferred
 						.flatMap(Streams::just)
 						.consume(i -> latch.countDown());
@@ -678,7 +679,7 @@ public class StreamTests extends AbstractReactorTest {
 		final double TOLERANCE = 0.9;
 
 
-		Broadcaster<Integer> batchingStreamDef = Streams.broadcast(env);
+		Broadcaster<Integer> batchingStreamDef = Broadcaster.create(env);
 
 		List<Integer> testDataset = createTestDataset(NUM_MESSAGES);
 
@@ -719,7 +720,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void shouldCorrectlyDispatchComplexFlow() throws InterruptedException {
-		Broadcaster<Integer> globalFeed = Streams.broadcast(env);
+		Broadcaster<Integer> globalFeed = Broadcaster.create(env);
 
 		CountDownLatch afterSubscribe = new CountDownLatch(1);
 		CountDownLatch latch = new CountDownLatch(4);
@@ -784,7 +785,7 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(numOps);
 
 		Stream<String> operationStream =
-				Streams.defer(() -> Streams.<String>broadcast(Environment.cachedDispatcher()))
+				Streams.defer(() -> Broadcaster.<String>create(Environment.cachedDispatcher()))
 						.throttle(100)
 						.map(s -> s + " MODIFIED")
 						.map(s -> {
@@ -833,7 +834,7 @@ public class StreamTests extends AbstractReactorTest {
 				);
 
 		countDownLatch.await(10, TimeUnit.SECONDS);
-		System.out.println(tail.debug());
+		//System.out.println(tail.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
@@ -915,7 +916,7 @@ public class StreamTests extends AbstractReactorTest {
 		int parallelStreams = 16;
 		CountDownLatch latch = new CountDownLatch(1);
 
-		final Broadcaster<Integer> streamBatcher = Streams.<Integer>broadcast(env);
+		final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create(env);
 		streamBatcher
 				.buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
 				.partition(parallelStreams)

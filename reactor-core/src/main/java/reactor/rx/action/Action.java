@@ -31,13 +31,13 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.Control;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.combination.CombineAction;
 import reactor.rx.action.combination.FanInAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
@@ -111,9 +111,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	public Action(Dispatcher dispatcher) {
-		this(dispatcher, dispatcher != SynchronousDispatcher.INSTANCE ?
-						dispatcher.backlogSize() - Action.RESERVED_SLOTS :
-						Long.MAX_VALUE
+		this(dispatcher, Long.MAX_VALUE
 		);
 	}
 
@@ -166,13 +164,14 @@ public abstract class Action<I, O> extends Stream<O>
 					(NonBlocking) subscriber :
 					null;
 
+			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(dispatcher, capacity);
 			final PushSubscription<O> subscription = createSubscription(subscriber,
-					null == asyncSubscriber || asyncSubscriber.isReactivePull(dispatcher, capacity));
+					isReactiveCapacity);
 
 			if (subscription == null)
 				return;
 
-			if (null != asyncSubscriber) {
+			if (null != asyncSubscriber && isReactiveCapacity) {
 				subscription.maxCapacity(asyncSubscriber.getCapacity());
 			}
 
@@ -200,7 +199,7 @@ public abstract class Action<I, O> extends Stream<O>
 			doSubscribe(subscription);
 
 			long pending;
-			if (downstreamSubscription != null && ( pending = downstreamSubscription.pendingRequestSignals() ) > 0l){
+			if (downstreamSubscription != null && (pending = downstreamSubscription.pendingRequestSignals()) > 0l) {
 				doStart(pending);
 			}
 		} catch (Throwable t) {
@@ -216,20 +215,15 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void accept(I i) {
 		try {
-			if (upstreamSubscription != null) {
-				upstreamSubscription.incrementCurrentNextSignals();
-				doNext(i);
-				if (upstreamSubscription != null
-						&& (upstreamSubscription.shouldRequestPendingSignals())) {
+			doNext(i);
+			if (upstreamSubscription != null
+					&& upstreamSubscription.shouldRequestPendingSignals()) {
 
-					long left;
-					if ((left = upstreamSubscription.clearPendingRequest()) > 0) {
-						dispatch(left, upstreamSubscription);
-					}
+				long left = upstreamSubscription.pendingRequestSignals();
+				if (left > 0l) {
+					upstreamSubscription.updatePendingRequests(-left);
+					dispatch(left, upstreamSubscription);
 				}
-
-			} else {
-				doNext(i);
 			}
 		} catch (Throwable cause) {
 			doError(Exceptions.addValueAsLastCause(cause, i));
@@ -255,7 +249,7 @@ public abstract class Action<I, O> extends Stream<O>
 		trySyncDispatch(cause, new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
-				if (upstreamSubscription != null) upstreamSubscription.clearPendingRequest();
+				if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
 				doError(throwable);
 			}
 		});
@@ -313,7 +307,7 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			downstreamSubscription.onNext(ev);
 		} catch (Throwable throwable) {
-			callError(downstreamSubscription, Exceptions.addValueAsLastCause(throwable, ev));
+			doError(Exceptions.addValueAsLastCause(throwable, ev));
 		}
 	}
 
@@ -357,7 +351,7 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			downstreamSubscription.onComplete();
 		} catch (Throwable throwable) {
-			callError(downstreamSubscription, throwable);
+			doError(throwable);
 		}
 	}
 
@@ -378,7 +372,9 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void start() {
-		requestMore(Long.MAX_VALUE);
+		if (downstreamSubscription == null) {
+			requestMore(Long.MAX_VALUE);
+		}
 	}
 
 	/**
@@ -632,16 +628,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
-			if (capacity == NO_CAPACITY) {
 				requestMore(elements);
-				return;
-			}
-			long currentCapacity = capacity;
-			currentCapacity = Long.MAX_VALUE == elements ? elements : currentCapacity;
-			if (currentCapacity > 0) {
-				final long remaining = Math.min(currentCapacity, elements);
-				requestMore(remaining);
-			}
 		} else {
 			if (downstreamSubscription != null) {
 				downstreamSubscription.updatePendingRequests(elements);
@@ -670,7 +657,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected void doStart(long pending) {
-			upstreamSubscription.request(pending);
+		upstreamSubscription.request(pending);
 	}
 
 	abstract protected void doNext(I ev);
@@ -679,7 +666,18 @@ public abstract class Action<I, O> extends Stream<O>
 		if (downstreamSubscription == null) {
 			cancel();
 		}
-		broadcastError(ev);
+		if (downstreamSubscription != null) {
+			try {
+				downstreamSubscription.onError(ev);
+				return;
+			} catch (Throwable t){
+				Environment.get().routeError(t);
+			}
+		}
+
+		if (Environment.alive()) {
+			Environment.get().routeError(ev);
+		}
 	}
 
 	protected final void dispatch(Consumer<Void> action) {
@@ -695,7 +693,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected final <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if (downstreamSubscription == null ^ dispatcher.inContext()) {
+		if (dispatcher.inContext()) {
 			action.accept(data);
 		} else {
 			dispatch(data, action);
@@ -706,7 +704,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public void requestMore(final long n) {
 		checkRequest(n);
 		if (upstreamSubscription != null) {
-			dispatch(n, upstreamSubscription);
+			upstreamSubscription.request(n);
 		}
 	}
 
@@ -779,11 +777,6 @@ public abstract class Action<I, O> extends Stream<O>
 				&& actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
 	}
 
-	private void callError(PushSubscription<O> subscription, Throwable cause) {
-		subscription.onError(cause);
-	}
-
-
 	@Override
 	public void recycle() {
 		downstreamSubscription = null;
@@ -796,11 +789,14 @@ public abstract class Action<I, O> extends Stream<O>
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				"dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
-				((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher.remainingSlots()) :
-						"")) +
-				", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) +
-				(upstreamSubscription != null ? ", " + upstreamSubscription : "") + '}';
+				(capacity != Long.MAX_VALUE || upstreamSubscription == null ?
+						"{dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
+								((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher
+										.remainingSlots()) :
+										"")) +
+								", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
+				: "") +
+				(upstreamSubscription != null ? upstreamSubscription : "") + '}';
 	}
 
 }

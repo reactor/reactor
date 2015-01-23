@@ -18,6 +18,7 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Subscription;
 import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -96,6 +97,15 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
+	public void accept(T t) {
+		try {
+			doNext(t);
+		} catch (Throwable cause) {
+			doError(Exceptions.addValueAsLastCause(cause, t));
+		}
+	}
+
+	@Override
 	protected void doNext(T value) {
 		index++;
 		if (first && index == 1) {
@@ -106,8 +116,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if (flush && index % batchSize == 0) {
-			flushConsumer.accept(value);
+		if(index % batchSize == 0) {
+			index = 0;
+			if (flush) {
+				flushConsumer.accept(value);
+			}
 		}
 	}
 

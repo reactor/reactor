@@ -18,7 +18,7 @@ package reactor.io.queue
 
 import net.openhft.chronicle.ChronicleQueueBuilder
 import reactor.io.codec.StandardCodecs
-import reactor.rx.Streams
+import reactor.rx.broadcast.Broadcaster
 import spock.lang.Specification
 
 /**
@@ -102,7 +102,7 @@ class QueuePersistorSpec extends Specification {
 					.deleteOnExit(true)
 					.get()
 
-			def stream = Streams.<String> broadcast()
+			def stream = Broadcaster.<String> create()
 			def result = null
 
 			def bufferedStream = stream.onOverflowBuffer{persistentQueue}.observe{

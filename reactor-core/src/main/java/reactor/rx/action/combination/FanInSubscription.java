@@ -20,7 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.queue.internal.MpscLinkedQueue;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
-import reactor.rx.action.broadcast.SerializedSubscriber;
+import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Queue;
@@ -78,7 +78,8 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 							subscriptions.add(subscription);
 							i++;
 						}
-						subscription.subscriber.request(elements);
+
+						subscription.subscriber.request(elements / size > 0 ? elements / size : elements);
 
 						if (terminated) {
 							break;
@@ -111,6 +112,12 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 	}
 
+	boolean isDraining(){
+		synchronized (this) {
+			return draining;
+		}
+	}
+
 	@Override
 	public void cancel() {
 		if (!subscriptions.isEmpty()) {
@@ -128,7 +135,9 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		if (subscriptions.peek() == s) {
 			InnerSubscription removed;
 			if ((removed = subscriptions.poll()) != s) {
-				subscriptions.add(removed);
+				if(removed != null) {
+					subscriptions.add(removed);
+				}
 				s.toRemove = true;
 			}
 		} else {
@@ -157,18 +166,15 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	}
 
 	@Override
-	public long clearPendingRequest() {
-		long res = super.clearPendingRequest();
-		if (Long.MAX_VALUE == res) {
-			return res;
-		}
+	public void updatePendingRequests(long n) {
+		super.updatePendingRequests(n);
 		if (!subscriptions.isEmpty()) {
 			for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
-				res += subscription.subscriber.pendingRequests;
-				subscription.subscriber.pendingRequests = 0;
+				if(subscription != null && subscription.subscriber != null){
+					subscription.subscriber.pendingRequests += n;
+				}
 			}
 		}
-		return res;
 	}
 
 	@Override

@@ -17,6 +17,7 @@ package reactor.rx
 
 import reactor.Environment
 import reactor.bus.Observable
+import reactor.rx.broadcast.Broadcaster
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -471,7 +472,7 @@ class PromisesSpec extends Specification {
 	def "Multiple promises can be combined"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Streams.<Integer> broadcast().observe { println 'hey' + it }.next()
+			def promise1 = Broadcaster.<Integer> create().observe { println 'hey' + it }.next()
 			def promise2 = Promises.<Integer> prepare()
 
 		when:

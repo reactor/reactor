@@ -20,7 +20,7 @@ import reactor.bus.Event
 import reactor.core.config.DispatcherType
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.groovy.config.GroovyEnvironment
-import reactor.rx.Streams
+import reactor.rx.broadcast.Broadcaster
 
 import static reactor.bus.selector.Selectors.matchAll
 import static reactor.bus.selector.Selectors.object
@@ -106,12 +106,12 @@ class StaticConfiguration {
 				dispatcher 'testDispatcher', new SynchronousDispatcher()
 			}
 
-			def stream = Streams.<Event> broadcast().
+			def stream = Broadcaster.<Event> create().
 			    map { Event ev ->
 						ev.copy(ev.data.toString().startsWith('intercepted') ? ev.data : 'intercepted')
 					}.combine()
 
-			def stream2 = Streams.<Event> broadcast().
+			def stream2 = Broadcaster.<Event> create().
 					map { Event ev ->
 						ev.copy("$ev.data twice")
 					}.combine()
@@ -131,7 +131,7 @@ class StaticConfiguration {
 			}
 
 			reactor('test2') {
-				processor 'test', Streams.<Event<?>> broadcast().filter{false}.combine()
+				processor 'test', Broadcaster.<Event<?>> create().filter{false}.combine()
 
 				on('test') {
 					reply it

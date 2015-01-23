@@ -13,13 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.action;
+package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Assert;
+import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
@@ -38,15 +40,67 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	/**
-	 * @see {@link org.reactivestreams.Subscriber#onNext(Object)}
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
+	 * .Broadcaster#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
-	@Override
-	public void onNext(O ev) {
-		if(upstreamSubscription != null){
-			super.onNext(ev);
-		}else{
-			doNext(ev);
-		}
+	public static <T> Broadcaster<T> create() {
+		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive();
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
+	 * Broadcaster#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param env the Reactor {@link reactor.Environment} to use
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Environment env) {
+		return create(env, env.getDefaultDispatcher());
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
+	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Dispatcher dispatcher) {
+		return create(null, dispatcher);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext
+	 * (Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param env        the Reactor {@link reactor.Environment} to use
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Stream}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
+				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single dispatchers");
+		Broadcaster<T> broadcaster = Action.<T>passthrough(dispatcher);
+		broadcaster.env(env).capacity(dispatcher.backlogSize() > 0 ?
+				(RESERVED_SLOTS > dispatcher.backlogSize() ?
+						dispatcher.backlogSize() :
+						dispatcher.backlogSize() - RESERVED_SLOTS) :
+				Long.MAX_VALUE);
+		return broadcaster.keepAlive();
 	}
 
 	@Override
@@ -54,29 +108,6 @@ public class Broadcaster<O> extends Action<O, O> {
 		broadcastNext(ev);
 	}
 
-	/**
-	 * @see {@link org.reactivestreams.Subscriber#onError(Throwable)}
-	 */
-	@Override
-	public void onError(Throwable ev) {
-		if(upstreamSubscription != null){
-			super.onError(ev);
-		}else{
-			doError(ev);
-		}
-	}
-
-	/**
-	 * @see {@link org.reactivestreams.Subscriber#onComplete()}
-	 */
-	@Override
-	public void onComplete() {
-		if(upstreamSubscription != null){
-			super.onComplete();
-		}else{
-			doComplete();
-		}
-	}
 
 	@Override
 	protected void doComplete() {

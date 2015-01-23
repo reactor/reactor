@@ -72,30 +72,26 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	protected void doStart(long pending) {
+		//IGNORE
+	}
+
+	@Override
 	protected PushSubscription<T> createTrackingSubscription(final Subscription subscription) {
 		if (capacity != Long.MAX_VALUE) {
 			return new WrappedSubscription<T>(subscription, this) {
 
 				@Override
-				public void request(long n) {
-					PENDING_UPDATER.addAndGet(this,n);
-					super.request(n);
-				}
-
-				@Override
-				public void incrementCurrentNextSignals() {
-					PENDING_UPDATER.decrementAndGet(this);
-					super.incrementCurrentNextSignals();
-				}
-
-				@Override
-				public long clearPendingRequest() {
-					return capacity;
+				public void updatePendingRequests(long n) {
+					synchronized (this) {
+						pendingRequestSignals = 0l;
+					}
 				}
 
 				@Override
 				public boolean shouldRequestPendingSignals() {
-					return consumer != null && pendingRequestSignals == 0l;
+					return consumer != null && --pendingRequestSignals == 0l && PENDING_UPDATER.compareAndSet(this, 0l,
+							capacity);
 				}
 
 				@Override
@@ -103,8 +99,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 					return super.toString() + " pending=" + pendingRequestSignals();
 				}
 			};
-		}
-		else{
+		} else {
 			return super.createTrackingSubscription(subscription);
 		}
 	}

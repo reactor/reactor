@@ -20,11 +20,13 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.NonBlocking;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * The best moment of my life so far, not.
@@ -69,8 +71,16 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests += innerSubscriptions.capacity();
+		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals();
 		publisher.subscribe(inlineMerge);
+	}
+
+
+	@Override
+	protected void doStart(long pending) {
+		if(dynamicMergeAction != null){
+			dispatch(pending, innerSubscriptions);
+		}
 	}
 
 	public void scheduleCompletion() {
@@ -132,19 +142,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void doComplete() {
-		if (!checkDynamicMerge() && innerSubscriptions.runningComposables == 0) {
 			broadcastComplete();
-		}
 	}
 
 	@Override
 	public void requestMore(long n) {
 		checkRequest(n);
-		if(SynchronousDispatcher.INSTANCE == dispatcher){
-			innerSubscriptions.serialRequest(n);
-		}else{
-			dispatch(n, upstreamSubscription);
-		}
+		dispatch(n, upstreamSubscription);
 	}
 
 	@Override
@@ -171,14 +175,22 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		return innerSubscriptions;
 	}
 
+	protected final <A> void internalDispatch(A data, Consumer<A> consumer){
+		dispatch(data, consumer);
+	}
+
 	protected abstract InnerSubscriber<I, E, O> createSubscriber();
 
-	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, NonBlocking {
+	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, NonBlocking, Consumer<Long> {
 		final FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction;
 		FanInSubscription.InnerSubscription<I, E, InnerSubscriber<I, E, O>> s;
 
 		long pendingRequests = 0;
 		long emittedSignals  = 0;
+		volatile int terminated = 0;
+
+		final static AtomicIntegerFieldUpdater<InnerSubscriber> TERMINATE_UPDATER =
+				AtomicIntegerFieldUpdater.newUpdater(InnerSubscriber.class, "terminated");
 
 		InnerSubscriber(FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction) {
 			this.outerAction = outerAction;
@@ -189,15 +201,18 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			this.s = s;
 		}
 
-		public void start() {
-			outerAction.innerSubscriptions.addSubscription(s);
-			if (pendingRequests > 0) {
-				s.request(pendingRequests);
-			}
-			if (outerAction.dynamicMergeAction != null) {
-				outerAction.dynamicMergeAction.decrementWip();
+		public void accept(Long pendingRequests) {
+			try {
+				if (pendingRequests > 0) {
+					request(pendingRequests);
+				}
+			}catch(Throwable e){
+				outerAction.onError(e);
 			}
 		}
+
+
+
 
 		public void request(long n) {
 			if (s == null || n <= 0) return;
@@ -208,6 +223,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			s.request(n);
 		}
 
+
 		@Override
 		public void onError(Throwable t) {
 			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
@@ -217,14 +233,16 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		@Override
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
-			s.cancel();
-			s.toRemove = true;
-			outerAction.status.set(COMPLETING);
-			long left = outerAction.innerSubscriptions.removeSubscription(s);
-			if (left == 0
-					&& !outerAction.checkDynamicMerge()
-					) {
-				outerAction.innerSubscriptions.serialComplete();
+			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
+				s.toRemove = true;
+				s.cancel();
+				outerAction.status.set(COMPLETING);
+				long left = outerAction.innerSubscriptions.removeSubscription(s);
+				if (left == 0
+						&& !outerAction.checkDynamicMerge()
+						) {
+					outerAction.innerSubscriptions.serialComplete();
+				}
 			}
 
 		}

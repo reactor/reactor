@@ -22,7 +22,7 @@ import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.Predicate
-import reactor.rx.Control
+import reactor.rx.action.Control
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action

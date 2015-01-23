@@ -18,7 +18,7 @@ import reactor.fn.Consumer
 import reactor.fn.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.rx.Stream
-import reactor.rx.Streams
+import reactor.rx.broadcast.Broadcaster
 import reactor.rx.action.Action
 
 /**
@@ -172,7 +172,7 @@ class ReactorBuilder implements Supplier<EventBus> {
 	            @DelegatesTo(strategy = Closure.DELEGATE_FIRST, value = Stream)
 	            @ClosureParams(value=SimpleType, options="Event")
 	            Closure<Action<Event<?>, Event<?>>> closure) {
-		Stream<Event<?>> head = Streams.<Event<?>> broadcast(env, SynchronousDispatcher.INSTANCE)
+		Stream<Event<?>> head = Broadcaster.<Event<?>> create(env, SynchronousDispatcher.INSTANCE)
 		Processor<Event<?>, Event<?>> newTail = DSLUtils.delegateFirstAndRun(head, closure)?.combine()
 		if(!newTail){
 			throw new IllegalArgumentException("A Stream closure must return a non null reactor.rx.Action")

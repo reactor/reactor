@@ -23,9 +23,8 @@ import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.Streams;
 import reactor.rx.action.Action;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.support.NonBlocking;
 
 /**
@@ -43,7 +42,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	                        Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 	                        Publisher<? extends T> rootPublisher) {
 		super(dispatcher);
-		this.retryStream = Streams.broadcast(null, dispatcher);
+		this.retryStream = Broadcaster.create(null, dispatcher);
 		this.rootPublisher = rootPublisher;
 		Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
 		afterRetryPublisher.subscribe(new RestartSubscriber());

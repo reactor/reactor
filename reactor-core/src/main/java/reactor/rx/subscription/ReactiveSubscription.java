@@ -22,9 +22,6 @@ import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.SpecificationExceptions;
 
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.locks.ReentrantLock;
-
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
  * <p>
@@ -42,20 +39,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ReactiveSubscription<O> extends PushSubscription<O> {
 
-	//Shared between subscriber and publisher
-	protected volatile long capacity = 0l;
 
-	protected static final AtomicLongFieldUpdater<ReactiveSubscription> CAPACITY_UPDATER = AtomicLongFieldUpdater
-			.newUpdater(ReactiveSubscription.class, "capacity");
-
-	//Shared between subscriber and publisher
-	protected final ReentrantLock bufferLock;
-
-	//Guarded by bufferLock
 	protected final CompletableQueue<O> buffer;
 
+	//Guarded by this
+	protected boolean draining = false;
+
 	//Only read from subscriber context
-	protected long currentNextSignals = 0l;
+	protected volatile long currentNextSignals = 0l;
 
 	//Can be set outside of publisher and subscriber contexts
 	protected volatile long maxCapacity = Long.MAX_VALUE;
@@ -67,11 +58,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
 		super(publisher, subscriber);
 		this.buffer = buffer;
-		if (buffer != null) {
-			bufferLock = new ReentrantLock();
-		} else {
-			bufferLock = null;
-		}
 	}
 
 	@Override
@@ -79,100 +65,124 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		try {
 			Action.checkRequest(elements);
 
-			//If unbounded request, set and return
-			if (elements == Long.MAX_VALUE) {
-				if (!PENDING_UPDATER.compareAndSet(this, 0l, Long.MAX_VALUE)) {
-					CAPACITY_UPDATER.set(this, maxCapacity);
-					return;
-				}
-			} else {
-				long previous = pendingRequestSignals;
-				if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, elements) < 0l) {
-					onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, elements));
-					return;
-				}
-			}
-
-			long toRequest = elements;
-			toRequest = Math.min(toRequest, maxCapacity);
-
-
-			int i;
 			O element;
-			bufferLock.lock();
-
-			//Subscription terminated, Buffer done, return immediately
-			if (buffer.isComplete() && buffer.isEmpty()) {
-				return;
-			}
-
+			FastList list = null;
+			long toRequest = elements;// Math.min(maxCapacity, elements);
 
 			do {
-				i = 0;
-				currentNextSignals = 0;
 
-				if (pendingRequestSignals != Long.MAX_VALUE) {
-					pendingRequestSignals = toRequest > pendingRequestSignals ? 0 : pendingRequestSignals - toRequest;
-				}
+				synchronized (this) {
+					//Subscription terminated, Buffer done, return immediately
+					if (buffer.isComplete() && buffer.isEmpty()) {
+						return;
+					}
 
-				while (i < toRequest && (element = buffer.poll()) != null) {
-					subscriber.onNext(element);
-					i++;
-				}
-
-				if (pendingRequestSignals != Long.MAX_VALUE) {
-					long overflow = maxCapacity - CAPACITY_UPDATER.addAndGet(this, toRequest - i);
-					if (overflow < 0l) {
-						CAPACITY_UPDATER.set(this, maxCapacity);
-						if (PENDING_UPDATER.addAndGet(this, -overflow) < 0) {
-							onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, pendingRequestSignals,
-									elements));
+					//If unbounded request, set and return
+					if (toRequest == Long.MAX_VALUE) {
+						//System.out.println(subscriber.getClass().getSimpleName()+" el:"+elements);
+						if (pendingRequestSignals == Long.MAX_VALUE) {
+							return;
+						} else {
+							pendingRequestSignals = Long.MAX_VALUE;
 						}
+					} else {
+						long previous = pendingRequestSignals;
+						if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, toRequest) < 0l) {
+							PENDING_UPDATER.set(this, Long.MAX_VALUE);
+							//onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, toRequest));
+							return;
+						}
+					}
+
+					draining = !buffer.isEmpty();
+
+					if (draining) {
+						list = new FastList();
+						while (list.size < toRequest && (element = buffer.poll()) != null) {
+							list.add(element);
+						}
+
+						if (list.size != 0 && pendingRequestSignals != Long.MAX_VALUE) {
+							PENDING_UPDATER.addAndGet(this, -list.size);
+						}
+					}else {
+						currentNextSignals = 0;
 					}
 				}
 
-				onRequest(pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE : toRequest);
+				if (list != null) {
+					drainNext(list);
+				} else {
+					onRequest(elements);
+					return;
+				}
 
-				toRequest = Math.min(pendingRequestSignals, maxCapacity);
-			} while (toRequest > 0 && !buffer.isEmpty());
+				boolean last;
+				synchronized (this) {
+					draining = !buffer.isEmpty();
+					last = !draining && buffer.isComplete();
 
-			if (buffer.isComplete()) {
-				onComplete();
-			}
+				}
+
+				if (last) {
+					onComplete();
+				} else {
+					elements -= list.size;
+					toRequest = Math.min(maxCapacity, elements);
+				}
+			} while (draining && toRequest > 0);
+
 		} catch (Exception e) {
 			onError(e);
-		} finally {
-			if (bufferLock.isHeldByCurrentThread()) {
-				bufferLock.unlock();
-			}
 		}
 
 	}
 
-	@Override
-	public long clearPendingRequest() {
-		long _pendingRequestSignals = pendingRequestSignals;
-		pendingRequestSignals = 0l;
-		CAPACITY_UPDATER.set(this, 0l);
-		return _pendingRequestSignals;
+	@SuppressWarnings("unchecked")
+	private void drainNext(FastList list) {
+		if (list.size > 0) {
+			for (Object el : list.array) {
+				if (el == null) break;
+				subscriber.onNext((O) el);
+				currentNextSignals++;
+			}
+		}
 	}
 
 	@Override
 	public void onNext(O ev) {
-		if (pendingRequestSignals == Long.MAX_VALUE || CAPACITY_UPDATER.getAndDecrement(this) > 0) {
-			subscriber.onNext(ev);
-		} else {
-			bufferLock.lock();
-			boolean retry = false;
-			try {
-				// we just decremented below 0 so increment back one
-				if (CAPACITY_UPDATER.incrementAndGet(this) > 0 || pendingRequestSignals == Long.MAX_VALUE) {
-					retry = true;
-				} else if(ev != null){
+		boolean emit = false;
+
+		synchronized (this) {
+			if (draining) {
+				if (ev != null) {
+					if(pendingRequestSignals != Long.MAX_VALUE){
+						PENDING_UPDATER.incrementAndGet(this);
+					}
 					buffer.add(ev);
 				}
-			} finally {
-				bufferLock.unlock();
+				return;
+			}
+			if (pendingRequestSignals != Long.MAX_VALUE &&
+					PENDING_UPDATER.decrementAndGet(this) < 0l) {
+				PENDING_UPDATER.incrementAndGet(this);
+			} else {
+				currentNextSignals++;
+				emit = true;
+			}
+		}
+
+		if (emit) {
+			subscriber.onNext(ev);
+		} else {
+			boolean retry = false;
+
+			synchronized (this) {
+				if (pendingRequestSignals == Long.MAX_VALUE) {
+					retry = true;
+				} else if (ev != null) {
+					buffer.add(ev);
+				}
 			}
 
 			if (retry) {
@@ -188,42 +198,31 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if (terminated == 1)
 			return;
 
-		bufferLock.lock();
-		try {
+		synchronized (this) {
 			buffer.complete();
 
 			if (buffer.isEmpty()) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
-					 complete = true;
+					complete = true;
 				}
 			}
-		} finally {
-			bufferLock.unlock();
 		}
 
-		if(complete){
+		if (complete) {
 			subscriber.onComplete();
 		}
 	}
 
-	@Override
-	public final void incrementCurrentNextSignals() {
-		currentNextSignals++;
-	}
-
-	public long getCurrentNextSignals() {
+	public long currentNextSignals() {
 		return currentNextSignals;
 	}
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
-		return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && (currentNextSignals ==
-				maxCapacity ||
-				pendingRequestSignals <= maxCapacity);
-	}
-
-	public final long maxCapacity() {
-		return maxCapacity;
+		synchronized (this) {
+			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE
+					&& (!buffer.isEmpty() || currentNextSignals == maxCapacity);
+		}
 	}
 
 	@Override
@@ -236,7 +235,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	public final long capacity() {
-		return pendingRequestSignals == Long.MAX_VALUE ? Long.MAX_VALUE : capacity;
+		return pendingRequestSignals;
 	}
 
 	public final CompletableQueue<O> getBuffer() {
@@ -250,13 +249,31 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public String toString() {
-		long currentCapacity = capacity;
 		return "{" +
-				"capacity=" + (currentCapacity == Long.MAX_VALUE ? "infinite" : currentCapacity + "/" + maxCapacity
-				+ " [" + (int) ((((float) currentCapacity) / (float) maxCapacity) * 100) + "%]") +
-				", current=" + currentNextSignals +
+				"current=" + currentNextSignals +
 				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
 				(buffer != null ? (buffer.isComplete() ? " ,complete" : ", waiting=" + buffer.size()) : "") +
 				'}';
+	}
+
+	static final class FastList {
+		Object[] array;
+		int      size;
+
+		public void add(Object o) {
+			int s = size;
+			Object[] a = array;
+			if (a == null) {
+				a = new Object[16];
+				array = a;
+			} else if (s == a.length) {
+				Object[] array2 = new Object[s + (s >> 2)];
+				System.arraycopy(a, 0, array2, 0, s);
+				a = array2;
+				array = a;
+			}
+			a[s] = o;
+			size = s + 1;
+		}
 	}
 }

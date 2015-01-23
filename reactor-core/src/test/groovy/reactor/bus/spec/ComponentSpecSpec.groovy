@@ -20,7 +20,7 @@ import reactor.core.dispatch.TraceableDelegatingDispatcher
 import reactor.rx.Promise
 import reactor.rx.Promises
 import reactor.rx.Stream
-import reactor.rx.Streams
+import reactor.rx.broadcast.Broadcaster
 import spock.lang.Specification
 
 /**
@@ -53,7 +53,7 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Composable"
-			Stream composable = Streams.<String>broadcast()
+			Stream composable = Broadcaster.<String>create()
 			def tap = composable.tap()
 			composable.onNext('test')
 

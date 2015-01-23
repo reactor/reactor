@@ -159,7 +159,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void onNext(O ev) {
-			if (--pendingRequests > 0) pendingRequests = 0;
+			if (--pendingRequests > 0) pendingRequests = 0l;
 			//emittedSignals++;
 			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 		}

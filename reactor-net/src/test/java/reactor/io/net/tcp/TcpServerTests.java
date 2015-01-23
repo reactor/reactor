@@ -328,6 +328,7 @@ public class TcpServerTests {
 				ch.consume(new Consumer<String>() {
 					@Override
 					public void accept(String data) {
+						log.info("data "+data+" on "+ch);
 						latch.countDown();
 					}
 				});
@@ -350,7 +351,7 @@ public class TcpServerTests {
 		server.consume(serverHandler);
 		server.start().await();
 
-		client.open().await().echo("Hello World!").echo("Hello World!");
+		client.open().await().echo("Hello World!").echo("Hello 11!");
 
 		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 

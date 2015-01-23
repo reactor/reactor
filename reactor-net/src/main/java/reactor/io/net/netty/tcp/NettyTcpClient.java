@@ -45,8 +45,7 @@ import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.Streams;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -180,7 +179,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Stream<NetChannelStream<IN, OUT>> open(final Reconnect reconnect) {
 		final Broadcaster<NetChannelStream<IN, OUT>> connections
-				= Streams.broadcast(getEnvironment(), getDispatcher());
+				= Broadcaster.create(getEnvironment(), getDispatcher());
 
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
 

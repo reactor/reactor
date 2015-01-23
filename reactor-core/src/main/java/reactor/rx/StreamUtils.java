@@ -21,7 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.aggregation.WindowAction;
-import reactor.rx.action.broadcast.SerializedSubscriber;
+import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.transformation.GroupByAction;
 import reactor.rx.stream.GroupedStream;

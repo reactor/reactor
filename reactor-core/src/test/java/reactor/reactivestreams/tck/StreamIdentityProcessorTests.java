@@ -28,7 +28,7 @@ import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.combination.CombineAction;
 
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(3, "test-partition");
 	}
 
 	@Override
@@ -70,25 +70,26 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//Dispatcher dispatcherZip = env.getCachedDispatcher();
 		AtomicLong total = new AtomicLong();
 
-		final CombineAction<Integer, Integer> integerIntegerCombineAction = Streams.<Integer>broadcast(env)
+		final CombineAction<Integer, Integer> integerIntegerCombineAction =
+				Broadcaster.<Integer>create(dispatchers
+						.get())
 				.keepAlive(false)
 				.capacity(bufferSize)
 				.partition(2)
 				.flatMap(stream -> stream
 								.dispatchOn(env, dispatchers.get())
-								.observe(this::monitorThreadUse)
 								.scan(0, (prev, next) -> -next)
 								.filter(integer -> integer <= 0)
 								.sample(1)
+								.observe(this::monitorThreadUse)
 								.map(integer -> -integer)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
 								.flatMap(i ->
 												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-										//return Streams.just(i);
+										//Streams.just(i)
 										//		.log(stream.key() + ":zip")
 								)
-
 				)
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
@@ -143,6 +144,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	public void spec212_mustNotCallOnSubscribeMoreThanOnceBasedOnObjectEquality_specViolation() throws Throwable {
 	}
 
+	@Override
+	public void spec317_mustSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
+		//IGNORE (since 1.0 RC2)
+	}
+
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 		final int elements = 10000;
@@ -150,7 +156,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
-		Broadcaster<Integer> stream = Streams.broadcast(env);
+		Broadcaster<Integer> stream = Broadcaster.create(env);
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());

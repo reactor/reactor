@@ -20,7 +20,7 @@ import reactor.core.Dispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
-import reactor.rx.Signal;
+import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;

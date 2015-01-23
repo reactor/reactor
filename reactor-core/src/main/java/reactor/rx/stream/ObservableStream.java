@@ -16,11 +16,15 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.bus.EventBus;
 import reactor.bus.Observable;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
+import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
+import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
@@ -43,6 +47,7 @@ public final class ObservableStream<T> extends Stream<T> {
 
 	private final Selector      selector;
 	private final Observable<T> observable;
+	private final Dispatcher    dispatcher;
 
 
 	public ObservableStream(final @Nonnull Observable<T> observable,
@@ -50,10 +55,15 @@ public final class ObservableStream<T> extends Stream<T> {
 
 		this.selector = selector;
 		this.observable = observable;
+		this.dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
+				((EventBus)observable).getDispatcher() : SynchronousDispatcher.INSTANCE;
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super T> s) {
+		if(!dispatcher.supportsOrdering()) {
+			s = SerializedSubscriber.create(s);
+		}
 		s.onSubscribe(new PushSubscription<T>(this, s) {
 
 			final Registration<Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
@@ -69,6 +79,11 @@ public final class ObservableStream<T> extends Stream<T> {
 				registration.cancel();
 			}
 		});
+	}
+
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher.supportsOrdering() ? dispatcher : SynchronousDispatcher.INSTANCE;
 	}
 
 	@Override

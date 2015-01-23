@@ -23,8 +23,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Function;
-import reactor.rx.Streams;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -89,7 +88,7 @@ public class ForkJoinPool {
 	 */
 	public <V> ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>> join(final Collection<Function<?, V>> tasks) {
 		final Broadcaster<ImmutableList<V>> d
-				= Streams.broadcast(env, dispatcher);
+				= Broadcaster.create(env, dispatcher);
 		final ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>> t
 				= new ForkJoinTask<ImmutableList<V>, Broadcaster<ImmutableList<V>>>(executor, d);
 
@@ -130,7 +129,7 @@ public class ForkJoinPool {
 	 * @return fork/join task
 	 */
 	public <V> ForkJoinTask<V, Broadcaster<V>> fork() {
-		Broadcaster<V> d = Streams.broadcast(env, dispatcher);
+		Broadcaster<V> d = Broadcaster.create(env, dispatcher);
 		return new ForkJoinTask<V, Broadcaster<V>>(executor, d);
 	}
 

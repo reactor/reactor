@@ -126,7 +126,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 		while (it.hasNext()) {
 			ReactiveSubscription<T> bucket = it.next();
 			bucket.onNext(event);
-			if (bucket.getCurrentNextSignals() == batchSize ) {
+			if (bucket.currentNextSignals() == batchSize ) {
 				it.remove();
 				bucket.onComplete();
 			}

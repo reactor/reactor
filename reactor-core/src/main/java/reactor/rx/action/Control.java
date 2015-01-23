@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx;
+package reactor.rx.action;
+
+import reactor.rx.StreamUtils;
 
 /**
- * An interface generally associated with a {@link Stream} terminal action such as
- * {@link Stream#consume(reactor.fn.Consumer)}
+ * An interface generally associated with a {@link reactor.rx.Stream} terminal action such as
+ * {@link reactor.rx.Stream#consume(reactor.fn.Consumer)}
  *
  * @author Stephane Maldini
  * @since 2.0

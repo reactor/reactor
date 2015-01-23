@@ -16,7 +16,7 @@
 package reactor.rx.action.transformation;
 
 import reactor.core.Dispatcher;
-import reactor.rx.Signal;
+import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
 
 /**

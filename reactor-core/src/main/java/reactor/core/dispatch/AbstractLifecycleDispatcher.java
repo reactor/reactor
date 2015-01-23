@@ -105,6 +105,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	                               Consumer<Throwable> errorConsumer) {
 
 		Assert.isTrue(alive(), "This Dispatcher has been shut down.");
+		Assert.isTrue(eventConsumer != null, "The signal consumer has not been passed.");
 		boolean isInContext = inContext();
 		Task task;
 		if (isInContext) {

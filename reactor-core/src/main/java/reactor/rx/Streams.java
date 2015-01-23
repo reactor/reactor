@@ -30,8 +30,8 @@ import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.*;
 import reactor.rx.action.Action;
-import reactor.rx.action.Broadcaster;
-import reactor.rx.action.broadcast.SerializedBroadcaster;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.SerializedBroadcaster;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.*;
@@ -45,7 +45,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A public factory to build {@link Stream}.
+ * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
+ * Iterable or Future to a Stream, in addition to provide for combinatory operations (merge, switchOnNext...).
+ *
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
  * <pre>
@@ -63,9 +65,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *   subscriber.onComplete();
  * }).consume(System.out::println);
  *
- * Broadcaster<Integer> inputStream1 = Streams.broadcast(env);
- * Broadcaster<Integer> inputStream2 = Streams.broadcast(env);
- * Stream.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
+ * Broadcaster<Integer> inputStream1 = Broadcaster.create(env);
+ * Broadcaster<Integer> inputStream2 = Broadcaster.create(env);
+ * Streams.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  *
  * }
  *</pre>
@@ -156,107 +158,6 @@ public class Streams {
 		return new ErrorStream<O, T>(throwable);
 	}
 
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
-	 * .Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link Broadcaster}
-	 */
-	public static <T> Broadcaster<T> broadcast() {
-		return Action.<T>passthrough(SynchronousDispatcher.INSTANCE).keepAlive();
-	}
-
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
-	 * reactor.rx.action.Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link reactor.rx.action.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> broadcast(Environment env) {
-		return broadcast(env, env.getDefaultDispatcher());
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
-	 * reactor.rx.action.Action#onNext(Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link reactor.rx.action.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> broadcast(Dispatcher dispatcher) {
-		return broadcast(null, dispatcher);
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action.Broadcaster#onNext
-	 * (Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
-	 * @param <T>        the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.action.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> broadcast(Environment env, Dispatcher dispatcher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to #partitionNext()/groupBy() method and assign individual single dispatchers");
-		Broadcaster<T> broadcaster = Action.<T>passthrough(dispatcher);
-		broadcaster.env(env).capacity(dispatcher.backlogSize() > 0 ?
-				(Action.RESERVED_SLOTS > dispatcher.backlogSize() ?
-						dispatcher.backlogSize() :
-						dispatcher.backlogSize() - Action.RESERVED_SLOTS) :
-				Long.MAX_VALUE);
-		return broadcaster.keepAlive();
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
-	 * .Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to broadcast at a time.
-	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
-	 *
-	 * @param <T> the type of values passing through the {@literal action}
-	 * @return a new {@link Action}
-	 */
-	public static <T> Broadcaster<T> serializedBroadcast() {
-		return serializedBroadcast(null);
-	}
-
-
-	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
-	 * reactor.rx.action.Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.action.Broadcaster#onError(Throwable)}, {@link reactor.rx.action.Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to broadcast at a time.
-	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
-	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link reactor.rx.action.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> serializedBroadcast(Environment env) {
-		Broadcaster<T> broadcaster = new SerializedBroadcaster<>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
-		broadcaster.env(env);
-		return broadcaster.keepAlive();
-	}
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.

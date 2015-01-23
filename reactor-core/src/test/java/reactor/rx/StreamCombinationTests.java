@@ -23,7 +23,8 @@ import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.action.Control;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +60,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Broadcaster<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Streams.<SensorData>broadcast(env, env.getCachedDispatchers().get());
+			this.sensorOdd = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
@@ -71,7 +72,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Broadcaster<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Streams.<SensorData>broadcast(env, env.getCachedDispatchers().get());
+			this.sensorEven = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
@@ -188,7 +189,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@Test
 	public void zipWithIterableTest() throws Exception {
 		int elements = 31;
-		CountDownLatch latch = new CountDownLatch(elements / 2);
+		CountDownLatch latch = new CountDownLatch((elements / 2 ) - 1);
 
 		List<Integer> list = IntStream.range(0, elements / 2)
 				.boxed()

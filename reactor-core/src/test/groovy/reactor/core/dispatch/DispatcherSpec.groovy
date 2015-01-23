@@ -24,7 +24,7 @@ import reactor.core.Dispatcher
 import reactor.fn.Consumer
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
-import reactor.rx.Streams
+import reactor.rx.broadcast.Broadcaster
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -146,7 +146,7 @@ class DispatcherSpec extends Specification {
 			def r = new EventBus(dispatcher)
 
 		when:
-			def stream = Streams.<Throwable> broadcast()
+			def stream = Broadcaster.<Throwable> create()
 			def promise = stream.take(16).count().toList()
 			r.on(T(Throwable), stream.toBroadcastNextConsumer())
 			r.on($("test"), { ev ->

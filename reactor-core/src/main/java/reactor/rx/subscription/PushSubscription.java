@@ -120,20 +120,16 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		return publisher != null;
 	}
 
-	public final void updatePendingRequests(long n) {
+	public void updatePendingRequests(long n) {
 		long oldPending;
 		long newPending;
 		do{
 			oldPending = pendingRequestSignals;
-			newPending = oldPending + n;
+			newPending = n == 0l ? 0l : oldPending + n;
 			if(newPending < 0) {
 				newPending = n > 0 ? Long.MAX_VALUE : 0;
 			}
 		}while(!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
-	}
-
-	public long clearPendingRequest() {
-		return PENDING_UPDATER.getAndSet(this, 0l);
 	}
 
 	protected void onRequest(long n) {
@@ -150,10 +146,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	public final long pendingRequestSignals() {
 		return pendingRequestSignals;
-	}
-
-	public void incrementCurrentNextSignals() {
-		if(pendingRequestSignals != Long.MAX_VALUE) PENDING_UPDATER.decrementAndGet(this);
 	}
 
 	public void maxCapacity(long n) {

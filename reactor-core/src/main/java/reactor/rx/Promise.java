@@ -27,7 +27,9 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
 import reactor.rx.action.support.NonBlocking;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
@@ -466,7 +468,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 						}
 					}).dispatchOn(environment, dispatcher);
 				} else {
-					outboundStream = Streams.<O>broadcast(environment, dispatcher).capacity(1);
+					outboundStream = Broadcaster.<O>create(environment, dispatcher).capacity(1);
 				}
 			}
 

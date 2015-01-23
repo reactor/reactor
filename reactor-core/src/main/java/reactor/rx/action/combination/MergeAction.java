@@ -55,7 +55,13 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
 			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this);
-			start();
+			outerAction.innerSubscriptions.addSubscription(s);
+			if (outerAction.dynamicMergeAction != null) {
+				outerAction.dynamicMergeAction.decrementWip();
+			}
+			if(pendingRequests > 0l){
+				request(pendingRequests);
+			}
 		}
 
 		@Override
@@ -63,8 +69,10 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			//Action.log.debug("event [" + ev + "] by: " + this);
 			outerAction.innerSubscriptions.serialNext(ev);
 			emittedSignals++;
-			if(--pendingRequests < 0) pendingRequests = 0;
 
+			if(--pendingRequests < 0){
+				pendingRequests = 0l;
+			}
 		}
 
 		@Override

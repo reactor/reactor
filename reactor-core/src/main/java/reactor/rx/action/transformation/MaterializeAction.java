@@ -17,7 +17,7 @@ package reactor.rx.action.transformation;
 
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.rx.Signal;
+import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
 
 /**

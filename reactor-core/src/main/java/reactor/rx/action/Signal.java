@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx;
+package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -23,7 +23,7 @@ import reactor.fn.Supplier;
 import java.io.Serializable;
 
 /**
- * A domain representation of a Reactive {@link Stream} signal.
+ * A domain representation of a Reactive {@link reactor.rx.Stream} signal.
  * There are 4 differents signals and their possible sequence is defined as such:
  * onError | (onSubscribe onNext* (onError | onComplete)?)
  *
@@ -36,13 +36,13 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		/**
 		 * Only happens once, a subscribe signal is the handshake between a new subscriber and a producer.
 		 * <p>
-		 * see {@link Stream#subscribe(org.reactivestreams.Subscriber)}
+		 * see {@link reactor.rx.Stream#subscribe(org.reactivestreams.Subscriber)}
 		 */
 		SUBSCRIBE,
 
 		/**
 		 * Can happen N times where N is a possibly unbounded number. The signal will trigger core logic on all
-		 * {@link reactor.rx.action.Action} attached to a {@link Stream}.
+		 * {@link reactor.rx.action.Action} attached to a {@link reactor.rx.Stream}.
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onNext(Object)}
 		 */
@@ -50,8 +50,8 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		/**
 		 * Only happens once, a complete signal is used to confirm the successful end of the data sequence flowing in a
-		 * {@link Stream}. The signal releases batching operations such as {@link Stream#buffer()},
-		 * {@link Stream#window()} or {@link Stream#reduce(reactor.fn.Function)}
+		 * {@link reactor.rx.Stream}. The signal releases batching operations such as {@link reactor.rx.Stream#buffer()},
+		 * {@link reactor.rx.Stream#window()} or {@link reactor.rx.Stream#reduce(reactor.fn.Function)}
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onComplete()}
 		 */
@@ -59,7 +59,8 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		/**
 		 * Only happens once, a complete signal is used to confirm the error end of the data sequence flowing in a
-		 * {@link Stream}. However, the signal can be recovered using various operations such as {@link Stream#recover
+		 * {@link reactor.rx.Stream}. However, the signal can be recovered using various operations such as {@link reactor
+				  * .rx.Stream#recover
 		 * (Class)} or {@link reactor.rx.Stream#retry()}
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onError(Throwable cause)}

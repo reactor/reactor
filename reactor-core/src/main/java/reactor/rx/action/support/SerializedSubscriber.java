@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action.broadcast;
+package reactor.rx.action.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -212,89 +212,16 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
 
 	@Override
 	public void request(long n) {
-		FastList list;
-
-		synchronized (this) {
-			if (terminated) {
-				return;
-			}
-			if (emitting) {
-				if (queue == null) {
-					queue = new FastList();
-				}
-				queue.add(new RequestSentinel(n));
-				// another thread is emitting so we add to the queue and return
-				return;
-			}
-			// we can emit
-			emitting = true;
-			// reference to the list to drain before emitting our value
-			list = queue;
-			queue = null;
+		if(subscription != null){
+			subscription.request(n);
 		}
-
-		// we only get here if we won the right to emit, otherwise we returned in the if(emitting) block above
-		boolean skipFinal = false;
-		try {
-			int iter = MAX_DRAIN_ITERATION;
-			do {
-				drainQueue(list);
-				if (iter == MAX_DRAIN_ITERATION) {
-					// after the first draining we emit our own value
-					subscription.request(n);
-				}
-				--iter;
-				if (iter > 0) {
-					synchronized (this) {
-						list = queue;
-						queue = null;
-						if (list == null) {
-							emitting = false;
-							skipFinal = true;
-							return;
-						}
-					}
-				}
-			} while (iter > 0);
-		} finally {
-			if (!skipFinal) {
-				synchronized (this) {
-					if (terminated) {
-						list = queue;
-						queue = null;
-					} else {
-						emitting = false;
-						list = null;
-					}
-				}
-			}
-		}
-
-		// this will only drain if terminated (done here outside of synchronized block)
-		drainQueue(list);
 	}
 
 	@Override
 	public void cancel() {
-		FastList list;
-		synchronized (this) {
-			if (terminated) {
-				return;
-			}
-			terminated = true;
-			if (emitting) {
-				if (queue == null) {
-					queue = new FastList();
-				}
-				queue.add(CANCEL_SENTINEL);
-				return;
-			}
-			emitting = true;
-			list = queue;
-			queue = null;
+		if(subscription != null){
+			subscription.cancel();
 		}
-		drainQueue(list);
-		subscription.cancel();
 	}
 
 	void drainQueue(FastList list) {
@@ -310,11 +237,6 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
 			} else if (v == COMPLETE_SENTINEL) {
 				delegate.onComplete();
 				return;
-			} else if (v == CANCEL_SENTINEL && subscription != null) {
-				subscription.cancel();
-				return;
-			} else if (v.getClass() == RequestSentinel.class && subscription != null) {
-				subscription.request(((RequestSentinel) v).n);
 			} else if (v.getClass() == ErrorSentinel.class) {
 				delegate.onError(((ErrorSentinel) v).e);
 			} else {

@@ -19,14 +19,17 @@ package reactor.io.net;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
+import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.Streams;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Abstract base class that implements common functionality shared by clients and servers.
@@ -41,8 +44,8 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 
 	private final Broadcaster<NetChannelStream<IN, OUT>> open;
 	private final Broadcaster<NetChannelStream<IN, OUT>> close;
-	private final Broadcaster<NetPeerStream<IN, OUT>>    start;
-	private final Broadcaster<NetPeerStream<IN, OUT>>    shutdown;
+	private final Promise<NetPeerStream<IN, OUT>>        start;
+	private final Promise<NetPeerStream<IN, OUT>>        shutdown;
 
 	private final Environment            env;
 	private final Codec<Buffer, IN, OUT> codec;
@@ -54,16 +57,34 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 		this.codec = codec;
 		this.dispatcher = dispatcher;
 
-		this.open = Streams.broadcast(env, dispatcher);
-		this.close = Streams.broadcast(env, dispatcher);
-		this.start = Streams.broadcast(env, dispatcher);
-		this.shutdown = Streams.broadcast(env, dispatcher);
+		/*this.open = SynchronousDispatcher.INSTANCE == dispatcher ?
+				Streams.<NetChannelStream<IN, OUT>>create(env) :
+				Streams.<NetChannelStream<IN, OUT>>create(env, dispatcher);
+		this.close = SynchronousDispatcher.INSTANCE == dispatcher ?
+				Streams.<NetChannelStream<IN, OUT>>create(env) :
+				Streams.<NetChannelStream<IN, OUT>>create(env, dispatcher);*/
+
+		this.open = Broadcaster.<NetChannelStream<IN, OUT>>create(env, dispatcher);
+		this.close = Broadcaster.<NetChannelStream<IN, OUT>>create(env, dispatcher);
+		this.start = Promises.ready(env, dispatcher);
+		this.shutdown = Promises.ready(env, dispatcher);
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super NetChannelStream<IN, OUT>> s) {
-		open.subscribe(s);
-		notifyStart();
+	public void subscribe(final Subscriber<? super NetChannelStream<IN, OUT>> s) {
+		start.onSuccess(new Consumer<NetPeerStream<IN, OUT>>() {
+			@Override
+			public void accept(NetPeerStream<IN, OUT> inoutNetPeerStream) {
+				inoutNetPeerStream.open.subscribe(s);
+			}
+		});
+		if(!start.isComplete()) {
+			try {
+				start.await(5, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				s.onError(e);
+			}
+		}
 	}
 
 	/**
@@ -78,7 +99,6 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 	 */
 	protected void notifyStart() {
 		start.onNext(this);
-		start.onComplete();
 	}
 
 	/**
@@ -94,11 +114,9 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 	 * Notify this server's consumers that the server has stopped.
 	 */
 	protected void notifyShutdown() {
-		shutdown.onNext(this);
-		start.onComplete();
 		open.onComplete();
 		close.onComplete();
-		shutdown.onComplete();
+		shutdown.onNext(this);
 	}
 
 	/**

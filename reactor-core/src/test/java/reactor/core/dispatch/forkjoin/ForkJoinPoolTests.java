@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.fn.Function;
-import reactor.rx.action.Broadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 import java.util.List;
 import java.util.Random;
