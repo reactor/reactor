@@ -34,30 +34,6 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 
 	final private SerializedSubscriber<O> serializer;
 
-	public SerializedBroadcaster(Dispatcher dispatcher, long capacity) {
-		super(dispatcher, capacity);
-		this.serializer = SerializedSubscriber.create(new Subscriber<O>() {
-			@Override
-			public void onSubscribe(Subscription s) {
-				SerializedBroadcaster.super.onSubscribe(s);
-			}
-
-			@Override
-			public void onNext(O o) {
-				SerializedBroadcaster.super.accept(o);
-			}
-
-			@Override
-			public void onError(Throwable t) {
-				SerializedBroadcaster.super.onError(t);
-			}
-
-			@Override
-			public void onComplete() {
-				SerializedBroadcaster.super.onComplete();
-			}
-		});
-	}
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
@@ -95,6 +71,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 		return broadcaster.keepAlive();
 	}
 
+
 	@Override
 	public void accept(O o) {
 		try {
@@ -131,5 +108,37 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	@Override
 	public void onComplete() {
 		serializer.onComplete();
+	}
+
+
+	/**
+	 *
+	 * Internal
+	 *
+	 */
+
+	private SerializedBroadcaster(Dispatcher dispatcher, long capacity) {
+		super(dispatcher, capacity);
+		this.serializer = SerializedSubscriber.create(new Subscriber<O>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				SerializedBroadcaster.super.onSubscribe(s);
+			}
+
+			@Override
+			public void onNext(O o) {
+				SerializedBroadcaster.super.accept(o);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				SerializedBroadcaster.super.onError(t);
+			}
+
+			@Override
+			public void onComplete() {
+				SerializedBroadcaster.super.onComplete();
+			}
+		});
 	}
 }

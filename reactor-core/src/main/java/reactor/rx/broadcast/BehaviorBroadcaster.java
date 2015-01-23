@@ -20,7 +20,8 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
-import reactor.rx.action.Action;
+import reactor.core.support.Assert;
+import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
@@ -31,89 +32,275 @@ import reactor.rx.subscription.ReactiveSubscription;
  *
  * @author Stephane Maldini
  */
-public class BehaviorBroadcaster<O> extends Action<O, O> {
-	private boolean keepAlive = false;
+public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
-	public BehaviorBroadcaster(Dispatcher dispatcher, long capacity) {
+	/**
+	 * Build a {@literal Broadcaster}, rfirst broadcasting the most recent signal then starting with the passed value, 
+	 * then ready to broadcast values with {@link reactor.rx.action
+	 * .Broadcaster#onNext(Object)},
+	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
+	 * ()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * broadcast at a time.
+	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
+	 *
+	 * @param <T> the type of values passing through the {@literal action}
+	 * @return a new {@link reactor.rx.action.Action}
+	 */
+	public static <T> Broadcaster<T> first(T value) {
+		Broadcaster<T> broadcaster = new BehaviorBroadcaster<>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE, value);
+		return broadcaster.keepAlive();
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * then ready to broadcast values with {@link
+	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
+	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
+	 * ()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * broadcast at a time.
+	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
+	 *
+	 * @param env the Reactor {@link reactor.Environment} to use
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
+	 */
+	public static <T> Broadcaster<T> first(T value, Environment env) {
+		return first(value, env, env.getDefaultDispatcher());
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * then  ready to broadcast values with {@link
+	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> first(T value, Dispatcher dispatcher) {
+		return first(value, null, dispatcher);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * then ready to broadcast values with {@link Broadcaster#onNext
+	 * (Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param env        the Reactor {@link reactor.Environment} to use
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Stream}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> first(T value, Environment env, Dispatcher dispatcher) {
+		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
+				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
+				"dispatchers");
+		Broadcaster<T> broadcaster = new BehaviorBroadcaster<>(dispatcher, dispatcher.backlogSize() > 0 ?
+				(RESERVED_SLOTS > dispatcher.backlogSize() ?
+						dispatcher.backlogSize() :
+						dispatcher.backlogSize() - RESERVED_SLOTS) :
+				Long.MAX_VALUE, value);
+		return broadcaster.env(env).keepAlive();
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with {@link
+	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
+	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
+	 * ()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * broadcast at a time.
+	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
+	 *
+	 * @param env the Reactor {@link reactor.Environment} to use
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Environment env) {
+		return first(null, env);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with {@link
+	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Dispatcher dispatcher) {
+		return first(null, dispatcher);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then 
+	 * ready to broadcast values with {@link Broadcaster#onNext
+	 * (Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param env        the Reactor {@link reactor.Environment} to use
+	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param <T>        the type of values passing through the {@literal Stream}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
+		return first(null, env, dispatcher);
+	}
+
+	/**
+	 * INTERNAL
+	 */
+
+	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
+
+	private BehaviorBroadcaster(Dispatcher dispatcher, long capacity, O defaultVal) {
 		super(dispatcher, capacity);
+		if (defaultVal != null) {
+			lastSignal.type = Signal.Type.NEXT;
+			lastSignal.value = defaultVal;
+		}
+	}
+
+	private final static class BufferedSignal<O> {
+		O           value;
+		Throwable   error;
+		Signal.Type type;
+
+		public BufferedSignal(Signal.Type type) {
+			this.type = type;
+		}
 	}
 
 	@Override
 	protected void doNext(O ev) {
-		broadcastNext(ev);
+		synchronized (this){
+			if(lastSignal.type == Signal.Type.COMPLETE ||
+					lastSignal.type == Signal.Type.ERROR)
+				return;
+			lastSignal.value = ev;
+			lastSignal.error = null;
+			lastSignal.type = Signal.Type.NEXT;
+		}
+		super.doNext(ev);
 	}
-
 
 	@Override
 	protected void doComplete() {
-		if (!keepAlive && downstreamSubscription == null) {
-			cancel();
+		synchronized (this){
+			if(lastSignal.type == Signal.Type.COMPLETE ||
+					lastSignal.type == Signal.Type.ERROR)
+				return;
+			lastSignal.error = null;
+			lastSignal.type = Signal.Type.COMPLETE;
 		}
-		broadcastComplete();
+		super.doComplete();
 	}
 
 	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
-		if (queue != null) {
-			return new ReactiveSubscription<O>(this, subscriber, queue) {
+	protected void doError(Throwable ev) {
+		synchronized (this){
+			if(lastSignal.type == Signal.Type.COMPLETE ||
+					lastSignal.type == Signal.Type.ERROR)
+				return;
+			lastSignal.value = null;
+			lastSignal.error = ev;
+			lastSignal.type = Signal.Type.ERROR;
+		}
+		super.doError(ev);
+	}
 
-				@Override
-				protected void onRequest(long elements) {
-					if (upstreamSubscription != null) {
-						super.onRequest(elements);
-						requestUpstream(capacity, buffer.isComplete(), elements);
+	@Override
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+		final BufferedSignal<O> withDefault;
+		synchronized (this) {
+			if (lastSignal.type != null) {
+				withDefault = new BufferedSignal<>(lastSignal.type);
+				withDefault.error = lastSignal.error;
+				withDefault.value = lastSignal.value;
+				withDefault.type = lastSignal.type;
+			} else {
+				withDefault = null;
+			}
+		}
+
+		if (withDefault != null) {
+			if (withDefault.type == Signal.Type.COMPLETE) {
+				return new PushSubscription<O>(this, subscriber) {
+					@Override
+					protected void onRequest(long n) {
+						//Promise behavior, emit last value before completing
+						if(n > 0 && capacity == 1l && withDefault.value != null){
+							capacity = 0l;
+							subscriber.onNext(withDefault.value);
+						}
+						onComplete();
 					}
+				};
+			} else if (withDefault.type == Signal.Type.ERROR) {
+				return new PushSubscription<O>(this, subscriber) {
+					@Override
+					protected void onRequest(long n) {
+						onError(withDefault.error);
+					}
+				};
+			} else {
+				if (queue != null) {
+					queue.add(withDefault.value);
+					return new ReactiveSubscription<O>(this, subscriber, queue) {
+
+						@Override
+						protected void onRequest(long elements) {
+							if (upstreamSubscription != null) {
+								super.onRequest(elements);
+								requestUpstream(capacity, buffer.isComplete(), elements);
+							}
+						}
+					};
+				} else {
+					return new PushSubscription<O>(this, subscriber) {
+						boolean started = false;
+
+						@Override
+						public void request(long n) {
+							if(!started && n > 0){
+								started = true;
+								subscriber.onNext(withDefault.value);
+								if(n - 1 > 0){
+									super.request(n-1);
+								}
+							}else{
+								super.request(n);
+							}
+						}
+
+						@Override
+						protected void onRequest(long elements) {
+							if (upstreamSubscription == null) {
+								updatePendingRequests(elements);
+							} else {
+								requestUpstream(NO_CAPACITY, isComplete(), elements);
+							}
+						}
+					};
 				}
-			};
+			}
 		} else {
-			return super.createSubscription(subscriber, null);
+			return super.createSubscription(subscriber, queue);
 		}
-	}
-
-	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		if (reactivePull) {
-			return super.createSubscription(subscriber, true);
-		} else {
-			return super.createSubscription(subscriber,
-					dispatcher != SynchronousDispatcher.INSTANCE &&
-							(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
-		}
-	}
-
-	@Override
-	public BehaviorBroadcaster<O> env(Environment environment) {
-		super.env(environment);
-		return this;
-	}
-
-	@Override
-	public BehaviorBroadcaster<O> capacity(long elements) {
-		super.capacity(elements);
-		return this;
-	}
-
-	public BehaviorBroadcaster<O> keepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
-		return this;
-	}
-
-	@Override
-	public BehaviorBroadcaster<O> keepAlive() {
-		this.keepAlive(true);
-		return this;
-	}
-
-	@Override
-	protected void onShutdown() {
-		if (!keepAlive) {
-			super.onShutdown();
-		}
-	}
-
-	@Override
-	public String toString() {
-		return super.toString() + "{keepAlive=" + keepAlive +
-				"}";
 	}
 }

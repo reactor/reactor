@@ -53,7 +53,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
 	 * Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
@@ -67,7 +67,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values, ready to broadcast values with {@link
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
 	 * reactor.rx.action.Action#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.

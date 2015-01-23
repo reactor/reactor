@@ -29,7 +29,7 @@ import reactor.fn.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.action.support.NonBlocking;
-import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
@@ -458,17 +458,12 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		lock.lock();
 		try {
 			if (outboundStream == null) {
+				outboundStream = BehaviorBroadcaster.<O>create(environment, dispatcher).capacity(1);
 				if (isSuccess()) {
-					return Streams.just(value);
+					outboundStream.onNext(value);
+					outboundStream.onComplete();
 				} else if (isError()) {
-					return Streams.create(new Publisher<O>() {
-						@Override
-						public void subscribe(Subscriber<? super O> s) {
-							s.onError(error);
-						}
-					}).dispatchOn(environment, dispatcher);
-				} else {
-					outboundStream = Broadcaster.<O>create(environment, dispatcher).capacity(1);
+					outboundStream.onError(error);
 				}
 			}
 

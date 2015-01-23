@@ -164,10 +164,12 @@ class PromisesSpec extends Specification {
 
 		when:
 			"an onSuccess consumer is added"
-			promise.onSuccess {}
+		def ex = null
+			promise.onError { ex = it}
 
 		then:
 			"no exception is thrown"
+			ex in Exception
 			notThrown Exception
 	}
 

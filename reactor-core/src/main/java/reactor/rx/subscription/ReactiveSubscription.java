@@ -67,9 +67,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			O element;
 			FastList list = null;
 			long toRequest = elements;// Math.min(maxCapacity, elements);
+			boolean last;
 
 			do {
-
 				synchronized (this) {
 					//Subscription terminated, Buffer done, return immediately
 					if (buffer.isComplete() && buffer.isEmpty()) {
@@ -118,7 +118,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					return;
 				}
 
-				boolean last;
 				synchronized (this) {
 					draining = !buffer.isEmpty();
 					last = !draining && buffer.isComplete();
@@ -245,7 +244,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public final boolean isComplete() {
-		return buffer.isComplete();
+		synchronized (this) {
+			return buffer.isComplete();
+		}
 	}
 
 	@Override
