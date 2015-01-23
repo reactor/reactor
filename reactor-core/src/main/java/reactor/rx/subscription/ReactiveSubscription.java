@@ -218,6 +218,21 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
+	public void updatePendingRequests(long n) {
+		long oldPending;
+		long newPending;
+
+		synchronized (this) {
+			oldPending = pendingRequestSignals;
+			newPending = n == 0l ? 0l : oldPending + n;
+			if(newPending < 0) {
+				newPending = n > 0 ? Long.MAX_VALUE : 0;
+			}
+			pendingRequestSignals = newPending;
+		}
+	}
+
+	@Override
 	public boolean shouldRequestPendingSignals() {
 		synchronized (this) {
 			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE

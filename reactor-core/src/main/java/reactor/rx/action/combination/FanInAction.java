@@ -99,7 +99,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.cancel();
 		}
-		if(SynchronousDispatcher.INSTANCE == dispatcher) {
+		if(SynchronousDispatcher.INSTANCE == getDispatcher()) {
 			innerSubscriptions.serialCancel();
 		}else{
 			innerSubscriptions.cancel();

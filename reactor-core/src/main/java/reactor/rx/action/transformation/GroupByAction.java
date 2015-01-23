@@ -67,7 +67,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 		ReactiveSubscription<T> child = groupByMap.get(key);
 		if (child == null) {
 			child = new ReactiveSubscription<T>(null, null);
-			child.onNext(value);
+			child.getBuffer().add(value);
 			groupByMap.put(key, child);
 
 			final CompletableQueue<T> queue = child.getBuffer();

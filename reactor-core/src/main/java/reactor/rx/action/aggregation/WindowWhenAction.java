@@ -118,7 +118,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), getDispatcher());
 		windowBroadcaster = action;
 		return action;
 	}

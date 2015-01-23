@@ -184,7 +184,7 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected Broadcaster<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), getDispatcher());
 		currentWindows.add(action);
 		broadcastNext(action);
 		return action;

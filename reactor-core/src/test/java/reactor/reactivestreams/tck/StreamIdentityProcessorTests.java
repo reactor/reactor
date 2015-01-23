@@ -149,6 +149,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	}
 
 	@Test
+	public void test1000IdentityProcessor() throws InterruptedException {
+		for(int i = 0; i < 1000; i++){
+			testIdentityProcessor();
+		}
+	}
+
+	@Test
 	public void testIdentityProcessor() throws InterruptedException {
 		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
@@ -159,7 +166,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());
-		Thread.sleep(2000);
 
 		processor.subscribe(new Subscriber<Integer>() {
 			@Override

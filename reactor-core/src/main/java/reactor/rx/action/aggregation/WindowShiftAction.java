@@ -144,7 +144,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected ReactiveSubscription<T> createWindowStream() {
-		Action<T,T> action = Broadcaster.<T>create(getEnvironment(), dispatcher);
+		Action<T,T> action = Broadcaster.<T>create(getEnvironment(), getDispatcher());
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindows.add(_currentWindow);
 		action.onSubscribe(_currentWindow);
