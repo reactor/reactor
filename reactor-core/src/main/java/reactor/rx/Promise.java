@@ -458,9 +458,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		lock.lock();
 		try {
 			if (outboundStream == null) {
-				outboundStream = BehaviorBroadcaster.<O>create(environment, dispatcher).capacity(1);
+				outboundStream = BehaviorBroadcaster.first(value, environment, dispatcher).capacity(1);
 				if (isSuccess()) {
-					outboundStream.onNext(value);
 					outboundStream.onComplete();
 				} else if (isError()) {
 					outboundStream.onError(error);

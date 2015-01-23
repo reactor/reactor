@@ -71,11 +71,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		AtomicLong total = new AtomicLong();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
-				Broadcaster.<Integer>create()
+				Broadcaster.<Integer>create(dispatchers.get())
 						.keepAlive(false)
 						.capacity(bufferSize)
-						.map(i -> i)
-						.dispatchOn(dispatchers.get())
 						.partition(2)
 						.flatMap(stream -> stream
 										.dispatchOn(env, dispatchers.get())
