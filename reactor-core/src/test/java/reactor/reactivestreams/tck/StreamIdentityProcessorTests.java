@@ -28,8 +28,9 @@ import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.combination.CombineAction;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.SerializedBroadcaster;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,8 +72,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		AtomicLong total = new AtomicLong();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
-				Broadcaster.<Integer>create(dispatchers
-						.get())
+				SerializedBroadcaster.<Integer>create()
 				.keepAlive(false)
 				.capacity(bufferSize)
 				.partition(2)
