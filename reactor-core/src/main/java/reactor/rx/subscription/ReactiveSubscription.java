@@ -20,7 +20,6 @@ import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.SpecificationExceptions;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
@@ -103,7 +102,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						}
 
 						if (list.size != 0 && pendingRequestSignals != Long.MAX_VALUE) {
-							PENDING_UPDATER.addAndGet(this, -list.size);
+							if(PENDING_UPDATER.addAndGet(this, -list.size) < 0){
+								pendingRequestSignals = 0l;
+							}
 						}
 					}else {
 						currentNextSignals = 0;

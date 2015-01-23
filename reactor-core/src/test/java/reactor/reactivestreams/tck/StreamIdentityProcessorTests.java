@@ -30,7 +30,6 @@ import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.combination.CombineAction;
 import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.broadcast.SerializedBroadcaster;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +60,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(3, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(8, "test-partition");
 	}
 
 	@Override
@@ -72,27 +71,29 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		AtomicLong total = new AtomicLong();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
-				SerializedBroadcaster.<Integer>create()
-				.keepAlive(false)
-				.capacity(bufferSize)
-				.partition(2)
-				.flatMap(stream -> stream
-								.dispatchOn(env, dispatchers.get())
-								.scan(0, (prev, next) -> -next)
-								.filter(integer -> integer <= 0)
-								.sample(1)
-								.observe(this::monitorThreadUse)
-								.map(integer -> -integer)
-								.buffer(1024, 200, TimeUnit.MILLISECONDS)
-								.<Integer>split()
-								.flatMap(i ->
-												Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-										//Streams.just(i)
-										//		.log(stream.key() + ":zip")
-								)
-				)
-				.when(Throwable.class, Throwable::printStackTrace)
-				.combine();
+				Broadcaster.<Integer>create()
+						.keepAlive(false)
+						.capacity(bufferSize)
+						.map(i -> i)
+						.dispatchOn(dispatchers.get())
+						.partition(2)
+						.flatMap(stream -> stream
+										.dispatchOn(env, dispatchers.get())
+										.scan(0, (prev, next) -> -next)
+										.filter(integer -> integer <= 0)
+										.sample(1)
+										.observe(this::monitorThreadUse)
+										.map(integer -> -integer)
+										.buffer(1024, 200, TimeUnit.MILLISECONDS)
+										.<Integer>split()
+										.flatMap(i ->
+														Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
+												//Streams.just(i)
+												//		.log(stream.key() + ":zip")
+										)
+						)
+						.when(Throwable.class, Throwable::printStackTrace)
+						.combine();
 
 		/*Streams.period(env.getTimer(), 2, 1)
 				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
@@ -101,7 +102,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return integerIntegerCombineAction;
 	}
 
-	private void monitorThreadUse(int val){
+	private void monitorThreadUse(int val) {
 		AtomicLong counter = counters.get(Thread.currentThread());
 		if (counter == null) {
 			counter = new AtomicLong();
@@ -156,7 +157,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
-		Broadcaster<Integer> stream = Broadcaster.create(env);
+		Broadcaster<Integer> stream = Broadcaster.create();
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());
