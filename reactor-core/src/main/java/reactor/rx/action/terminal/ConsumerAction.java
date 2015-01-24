@@ -31,11 +31,12 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
 	private final Consumer<Void>              completeConsumer;
+	private final Dispatcher                  dispatcher;
 
 	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
-		super(dispatcher);
 		this.consumer = consumer;
+		this.dispatcher = dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
 		//TODO define option to choose ?
@@ -50,6 +51,11 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return capacity != Long.MAX_VALUE;
+	}
+
+	@Override
 	public void onSubscribe(Subscription subscription) {
 		upstreamSubscription = createTrackingSubscription(subscription);
 	}
@@ -57,7 +63,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	@Override
 	public void requestMore(long n) {
 		if (upstreamSubscription != null) {
-			dispatch(n, upstreamSubscription);
+			dispatcher.dispatch(n, upstreamSubscription, null);
 		}
 	}
 
@@ -83,9 +89,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 				@Override
 				public void updatePendingRequests(long n) {
-					synchronized (this) {
-						pendingRequestSignals = 0l;
-					}
+					pendingRequestSignals = 0l;
 				}
 
 				@Override
@@ -110,6 +114,11 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 			errorConsumer.accept(ev);
 		}
 		super.doError(ev);
+	}
+
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 
 	@Override

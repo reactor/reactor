@@ -20,12 +20,15 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -35,36 +38,26 @@ public class RetryWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Throwable> retryStream;
 	private final Publisher<? extends T> rootPublisher;
-
-	private long pendingRequests;
+	private Dispatcher dispatcher;
 
 	public RetryWhenAction(Dispatcher dispatcher,
-	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<? extends
+	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
+			extends
 			T> rootPublisher) {
-		super(dispatcher);
 		this.retryStream = Broadcaster.create(null, dispatcher);
+		if(SynchronousDispatcher.INSTANCE == dispatcher){
+			this.dispatcher = Environment.tailRecurse();
+		}else{
+			this.dispatcher = dispatcher;
+		}
+
 		this.rootPublisher = rootPublisher;
 		Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
 		afterRetryPublisher.subscribe(new RestartSubscriber());
 	}
 
 	@Override
-	public Stream<T> env(Environment environment) {
-		retryStream.env(environment);
-		return super.env(environment);
-	}
-
-	@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
-		super.requestUpstream(capacity, terminated, elements);
-	}
-
-	@Override
 	protected void doNext(T ev) {
-		if (pendingRequests > 0l && pendingRequests != Long.MAX_VALUE) {
-			pendingRequests--;
-		}
 		broadcastNext(ev);
 	}
 
@@ -74,20 +67,34 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		super.doComplete();
 	}
 
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
 	protected void doRetry() {
-		trySyncDispatch(null, new Consumer<Object>() {
+		dispatcher.dispatch(null, new Consumer<Void>() {
 			@Override
-			public void accept(Object o) {
+			public void accept(Void o) {
+				long pendingRequests = Long.MAX_VALUE;
 				if (rootPublisher != null) {
-					if(upstreamSubscription == null) {
+					PushSubscription<T> upstream = upstreamSubscription;
+					if (upstream == null) {
 						rootPublisher.subscribe(RetryWhenAction.this);
+						upstream = upstreamSubscription;
+					} else {
+						pendingRequests = upstream.pendingRequestSignals();
+						if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
+							dispatcher.shutdown();
+							dispatcher = Environment.tailRecurse();
+						}
+					}
+					if (upstream != null) {
+						upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
 					}
 				}
-				if (pendingRequests > 0) {
-					upstreamSubscription.request(pendingRequests);
-				}
 			}
-		});
+		}, null);
 	}
 
 	@Override
@@ -95,6 +102,10 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	public void onError(Throwable cause) {
 		cancel();
 		retryStream.onNext(cause);
+	}
+
+	public Broadcaster<Throwable> retryStream() {
+		return retryStream;
 	}
 
 	private class RestartSubscriber implements Subscriber<Object>, NonBlocking {

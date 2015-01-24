@@ -72,7 +72,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
 				Broadcaster.<Integer>create(dispatchers.get())
-						.keepAlive(false)
 						.capacity(bufferSize)
 						.partition(2)
 						.flatMap(stream -> stream
@@ -93,9 +92,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 
-		/*Streams.period(env.getTimer(), 2, 1)
+		Streams.period(env.getTimer(), 2, 1)
 				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
-				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
+				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
 
 		return integerIntegerCombineAction;
 	}
@@ -148,12 +147,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//IGNORE (since 1.0 RC2)
 	}
 
-	@Test
-	public void test1000IdentityProcessor() throws InterruptedException {
-		for(int i = 0; i < 1000; i++){
+	//@Test
+/*	public void test100IdentityProcessor() throws InterruptedException {
+		for(int i = 0; i < 100; i++){
 			testIdentityProcessor();
 		}
-	}
+	}*/
 
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {

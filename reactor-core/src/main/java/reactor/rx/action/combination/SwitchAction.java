@@ -19,9 +19,11 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
+import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.action.support.NonBlocking;
+import reactor.rx.action.support.SerializedSubscriber;
 
 /**
  * @author Stephane Maldini
@@ -29,57 +31,103 @@ import reactor.rx.action.support.NonBlocking;
  */
 public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
+	private final SerializedSubscriber<T> serialized;
+	private final Dispatcher              dispatcher;
+
 	private long pendingRequests = 0l;
 	private SwitchSubscriber switchSubscriber;
 
 	public SwitchAction(Dispatcher dispatcher) {
-		super(dispatcher);
+		this.dispatcher = dispatcher;
+		if (dispatcher != SynchronousDispatcher.INSTANCE) {
+			serialized = null;
+		} else {
+			serialized = SerializedSubscriber.create(new DefaultSubscriber<T>() {
+				@Override
+				public void onNext(T t) {
+					broadcastNext(t);
+				}
+
+				@Override
+				public void onError(Throwable t) {
+					broadcastError(t);
+				}
+
+				@Override
+				public void onComplete() {
+					broadcastComplete();
+				}
+			});
+		}
 	}
 
 	public SwitchSubscriber getSwitchSubscriber() {
 		return switchSubscriber;
 	}
 
-	protected void doCleanCurrentSwitchSubscriber(){
-		if(switchSubscriber != null){
-			switchSubscriber.cancel();
-			switchSubscriber = null;
-		}
-	}
-
 	@Override
 	protected void doNext(Publisher<? extends T> ev) {
-		doCleanCurrentSwitchSubscriber();
+		SwitchSubscriber subscriber, nextSubscriber;
+		synchronized (this) {
+			pendingRequests--;
+			subscriber = switchSubscriber;
+			switchSubscriber = nextSubscriber= new SwitchSubscriber();
+		}
 
-		switchSubscriber = new SwitchSubscriber();
-		ev.subscribe(switchSubscriber);
+		if (subscriber != null) {
+			subscriber.cancel();
+		}
+
+		ev.subscribe(nextSubscriber);
 	}
 
 	@Override
 	protected void onShutdown() {
-		doCleanCurrentSwitchSubscriber();
+		SwitchSubscriber subscriber;
+		synchronized (this) {
+			subscriber = switchSubscriber;
+			if (subscriber != null) {
+				switchSubscriber = null;
+			}
+		}
+		if (subscriber != null) {
+			subscriber.cancel();
+		}
 		super.onShutdown();
 	}
 
 	@Override
 	protected void doComplete() {
-		if(switchSubscriber == null){
+		SwitchSubscriber subscriber;
+		synchronized (this) {
+			subscriber = switchSubscriber;
+		}
+		if (subscriber == null) {
 			super.doComplete();
-		}else{
+		} else {
 			cancel();
 		}
 	}
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if ((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+		SwitchSubscriber subscriber;
+		synchronized (this) {
+			if ((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+			subscriber = switchSubscriber;
+		}
 		super.requestUpstream(capacity, terminated, elements);
-		if(switchSubscriber != null){
-			switchSubscriber.request(elements);
+		if (subscriber != null) {
+			subscriber.request(elements);
 		}
 	}
 
-	public class SwitchSubscriber implements NonBlocking, Subscriber<T>, Subscription, Consumer<T> {
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	public class SwitchSubscriber implements NonBlocking, Subscriber<T>, Subscription {
 		Subscription s;
 
 		@Override
@@ -95,65 +143,50 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		@Override
 		public void onSubscribe(final Subscription s) {
 			this.s = s;
-			dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					if(pendingRequests > 0){
-						s.request(pendingRequests);
-					}
-				}
-			});
-		}
-
-		@Override
-		public void accept(T t) {
-			if(pendingRequests > 0 && pendingRequests != Long.MAX_VALUE){
-				pendingRequests--;
+			long pending;
+			synchronized (SwitchAction.this) {
+				pending = pendingRequests;
 			}
-			broadcastNext(t);
+
+			if (pending > 0) {
+				s.request(pending);
+			}
 		}
 
 		@Override
 		public void onNext(T t) {
-			trySyncDispatch(t, this);
+			synchronized (SwitchAction.this) {
+				if (pendingRequests > 0 && pendingRequests != Long.MAX_VALUE) {
+					pendingRequests--;
+				}
+			}
+			serialized.onNext(t);
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			trySyncDispatch(t, new Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					broadcastError(throwable);
-				}
-			});
+			serialized.onError(t);
 		}
 
 		@Override
 		public void onComplete() {
-			trySyncDispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void nothing) {
-					switchSubscriber = null;
-					cancel();
-					if(upstreamSubscription == null){
-						broadcastComplete();
-					}
-				}
-			});
+			synchronized (SwitchAction.this) {
+				switchSubscriber = null;
+			}
+
+			cancel();
+			if (upstreamSubscription == null) {
+				serialized.onComplete();
+			}
 		}
 
 		@Override
 		public void request(long n) {
-			trySyncDispatch(n, new Consumer<Long>() {
-				@Override
-				public void accept(Long aLong) {
-					s.request(aLong);
-				}
-			});
+			s.request(n);
 		}
 
 		public void cancel() {
-			if(s != null){
+			if (s != null) {
 				s.cancel();
 			}
 		}

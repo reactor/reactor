@@ -1918,7 +1918,7 @@ class StreamsSpec extends Specification {
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
 		given:
 			'a source and a collected stream'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.buffer(2).throttle(300)
 			def value = reduced.tap()
 
@@ -1972,7 +1972,7 @@ class StreamsSpec extends Specification {
 	def 'Collect with Timeout will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.buffer(5, 600, TimeUnit.MILLISECONDS)
 			def value = reduced.tap()
 			println value.debug()
@@ -2008,7 +2008,7 @@ class StreamsSpec extends Specification {
 	def 'Timeout can be bound to a stream'() {
 		given:
 			'a source and a timeout'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS)
 			def error = null
 			def value = reduced.when(TimeoutException) {
@@ -2038,7 +2038,7 @@ class StreamsSpec extends Specification {
 	def 'Timeout can be bound to a stream and fallback'() {
 		given:
 			'a source and a timeout'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS, Streams.just(10))
 			def error = null
 			def value = reduced.when(TimeoutException) {
@@ -2532,7 +2532,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
-			stream = stream.observe {
+			stream = stream.log().observe {
 				println it
 				if (i++ < 2) {
 					throw new RuntimeException()
@@ -2615,14 +2615,14 @@ class StreamsSpec extends Specification {
 			def counter = 0
 			def value = Streams.create {
 				counter++
-				it.onError(new RuntimeException("always fails"))
+				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
 					Streams.timer(i)
 				}
 			}.next()
-			value.await(30, TimeUnit.SECONDS)
+			value.await(10, TimeUnit.SECONDS)
 
 		then:
 			'Promise completed after 3 tries'

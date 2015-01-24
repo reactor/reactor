@@ -38,8 +38,8 @@ import reactor.fn.support.Tap;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.Control;
+import reactor.rx.broadcast.Broadcaster;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -373,7 +373,7 @@ public class StreamTests extends AbstractReactorTest {
 	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
-		s.when(Exception.class, e -> {
+		Control control = s.when(Exception.class, e -> {
 			e.printStackTrace();
 			latch.countDown();
 		}).consume(t -> {
@@ -385,6 +385,7 @@ public class StreamTests extends AbstractReactorTest {
 		T result = null;
 		try {
 			latch.await(10, TimeUnit.SECONDS);
+			System.out.println(control.debug());
 			result = ref.get();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -603,9 +604,9 @@ public class StreamTests extends AbstractReactorTest {
 		Action<Integer, Integer> mapManydeferred;
 		switch (dispatcher) {
 			case "partitioned":
-				mapManydeferred = Broadcaster.<Integer>create(env, SynchronousDispatcher.INSTANCE);
+				mapManydeferred = Broadcaster.<Integer>create();
 				mapManydeferred
-						.partition().consume(substream ->
+						.partition(4).consume(substream ->
 						substream.dispatchOn(env.getCachedDispatcher()).consume(i -> latch.countDown()));
 				break;
 			default:

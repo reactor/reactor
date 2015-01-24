@@ -16,7 +16,6 @@
 package reactor.rx.action.metrics;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Action;
@@ -28,10 +27,6 @@ import reactor.rx.action.Action;
 public class ElapsedAction<T> extends Action<T, Tuple2<Long, T>> {
 
 	private long lastTime;
-
-	public ElapsedAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {

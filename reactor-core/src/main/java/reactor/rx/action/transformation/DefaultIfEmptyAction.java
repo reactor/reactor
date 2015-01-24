@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.transformation;
 
-import reactor.core.Dispatcher;
 import reactor.rx.action.Action;
 
 /**
@@ -27,8 +26,7 @@ public class DefaultIfEmptyAction<T> extends Action<T, T> {
 	private final T defaultValue;
 	private boolean hasValues = false;
 
-	public DefaultIfEmptyAction(Dispatcher dispatcher, T defaultValue) {
-		super(dispatcher);
+	public DefaultIfEmptyAction(T defaultValue) {
 		this.defaultValue = defaultValue;
 	}
 

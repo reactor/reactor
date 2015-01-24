@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.passive;
 
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 
@@ -27,8 +26,7 @@ public class CallbackAction<T> extends Action<T, T> {
 	private final Consumer<? super T> consumer;
 	private final Consumer<Void> completeConsumer;
 
-	public CallbackAction(Dispatcher dispatcher, Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
-		super(dispatcher);
+	public CallbackAction(Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
 		this.completeConsumer = completeConsumer;
 	}

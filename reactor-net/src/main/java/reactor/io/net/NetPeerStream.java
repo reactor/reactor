@@ -130,12 +130,12 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 	}
 
 	@Nonnull
-	public Environment getEnvironment() {
+	public final Environment getEnvironment() {
 		return env;
 	}
 
 	@Nonnull
-	public Dispatcher getDispatcher() {
+	public final Dispatcher getDispatcher() {
 		return dispatcher;
 	}
 }

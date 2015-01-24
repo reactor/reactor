@@ -18,6 +18,7 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Subscription;
 import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.InsufficientCapacityException;
 import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
@@ -39,25 +40,30 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final int                                    batchSize;
 	protected final Consumer<Long>                         timeoutTask;
 	protected final Registration<? extends Consumer<Long>> timespanRegistration;
+	protected final Dispatcher                             dispatcher;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
-	protected volatile int index = 0;
+	protected int index = 0;
 
 	public BatchAction(
 			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
 		this(dispatcher, batchSize, next, first, flush, -1l, null, null);
 	}
 
-	public BatchAction(Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush,
+	public BatchAction(final Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush,
 	                   long timespan, TimeUnit unit, Timer timer) {
-		super(dispatcher);
-
+		super(batchSize);
+		this.dispatcher = dispatcher;
 		if (timespan > 0) {
 			this.timeoutTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
 					if (index > 0) {
-						dispatch(null, flushConsumer);
+						try {
+							dispatcher.tryDispatch(null, flushConsumer, null);
+						} catch (InsufficientCapacityException e) {
+							//IGNORE
+						}
 					}
 				}
 			};
@@ -116,7 +122,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			nextCallback(value);
 		}
 
-		if(index % batchSize == 0) {
+		if (index % batchSize == 0) {
 			index = 0;
 			if (flush) {
 				flushConsumer.accept(value);
@@ -128,12 +134,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void doComplete() {
 		flushConsumer.accept(null);
 		super.doComplete();
-	}
-
-	@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		//dispatch(null, flushConsumer);
-		dispatch(elements, upstreamSubscription);
 	}
 
 	@Override
@@ -154,5 +154,10 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	public String toString() {
 		return super.toString() + "{" + (timespanRegistration != null ? "timed!" : "") + " batchSize=" + index + "/" +
 				batchSize + " [" + (int) ((((float) index) / ((float) batchSize)) * 100) + "%]";
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 }

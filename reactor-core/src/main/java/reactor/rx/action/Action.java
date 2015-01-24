@@ -23,11 +23,11 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.alloc.Recyclable;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -35,6 +35,7 @@ import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.combination.CombineAction;
 import reactor.rx.action.combination.FanInAction;
+import reactor.rx.action.control.DispatcherAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.broadcast.Broadcaster;
@@ -42,8 +43,6 @@ import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-
-import javax.annotation.Nonnull;
 
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
@@ -58,7 +57,6 @@ import javax.annotation.Nonnull;
  * - Its signal scheduler on {@link reactor.core.Dispatcher}
  * - Its smart capacity awareness to prevent {@link reactor.core.Dispatcher} overflow
  * <p>
- * In effect, an Action will take care of concurrent notifications through its single threaded Dispatcher.
  * Up to a maximum capacity defined with {@link this#capacity(long)} will be allowed to be dispatched by requesting
  * the tracked remaining slots to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
  * is a value to tune accordingly with the system and the requirements. An Action will bypass this feature anytime it is
@@ -88,7 +86,6 @@ public abstract class Action<I, O> extends Stream<O>
 	 * stacking into a Dispatcher.
 	 */
 	public static final int RESERVED_SLOTS = 4;
-
 	public static final int NO_CAPACITY = -1;
 
 	/**
@@ -97,26 +94,14 @@ public abstract class Action<I, O> extends Stream<O>
 	protected PushSubscription<I> upstreamSubscription;
 	protected PushSubscription<O> downstreamSubscription;
 
-	protected final Dispatcher  dispatcher;
-
 	protected long capacity;
 
 	public Action() {
 		this(Long.MAX_VALUE);
 	}
 
-	public Action(long capacity) {
-		this(SynchronousDispatcher.INSTANCE, capacity);
-	}
-
-	public Action(Dispatcher dispatcher) {
-		this(dispatcher, Long.MAX_VALUE
-		);
-	}
-
-	public Action(@Nonnull Dispatcher dispatcher, long batchSize) {
+	public Action(long batchSize) {
 		this.capacity = batchSize;
-		this.dispatcher = dispatcher;
 	}
 
 	public static void checkRequest(long n) {
@@ -139,7 +124,7 @@ public abstract class Action<I, O> extends Stream<O>
 					(NonBlocking) subscriber :
 					null;
 
-			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(dispatcher, capacity);
+			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(getDispatcher(), capacity);
 			final PushSubscription<O> subscription = createSubscription(subscriber,
 					isReactiveCapacity);
 
@@ -184,7 +169,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onNext(I ev) {
-		trySyncDispatch(ev, this);
+		accept(ev);
 	}
 
 	@Override
@@ -207,27 +192,17 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onComplete() {
-		trySyncDispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void any) {
-				try {
-					doComplete();
-				} catch (Throwable t) {
-					doError(t);
-				}
-			}
-		});
+		try {
+			doComplete();
+		} catch (Throwable t) {
+			doError(t);
+		}
 	}
 
 	@Override
 	public void onError(Throwable cause) {
-		trySyncDispatch(cause, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
-				doError(throwable);
-			}
-		});
+		if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
+		doError(cause);
 	}
 
 	/**
@@ -238,7 +213,8 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public Action<I, O> capacity(long elements) {
-		if (dispatcher != SynchronousDispatcher.INSTANCE) {
+		Dispatcher dispatcher = getDispatcher();
+		if (dispatcher != SynchronousDispatcher.INSTANCE && dispatcher.getClass() != TailRecurseDispatcher.class) {
 			long dispatcherCapacity = dispatcher.backlogSize() - RESERVED_SLOTS;
 			capacity = elements > dispatcherCapacity ? dispatcherCapacity : elements;
 		} else {
@@ -384,10 +360,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public final Stream<O> onOverflowBuffer(final Supplier<? extends CompletableQueue<O>> queueSupplier) {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O,O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				Broadcaster<O> newStream = new Broadcaster<>(dispatcher, capacity);
+			public Action<O, O> get() {
+				Broadcaster<O> newStream = Broadcaster.<O>create(getEnvironment(), getDispatcher()).capacity(capacity);
 				if (queueSupplier == null) {
 					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
 						@Override
@@ -495,11 +471,6 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 
 	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
-	@Override
 	public final long getCapacity() {
 		return capacity;
 	}
@@ -586,7 +557,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
-				requestMore(elements);
+			requestMore(elements);
 		} else {
 			if (downstreamSubscription != null) {
 				downstreamSubscription.updatePendingRequests(elements);
@@ -628,33 +599,13 @@ public abstract class Action<I, O> extends Stream<O>
 			try {
 				downstreamSubscription.onError(ev);
 				return;
-			} catch (Throwable t){
+			} catch (Throwable t) {
 				Environment.get().routeError(t);
 			}
 		}
 
 		if (Environment.alive()) {
 			Environment.get().routeError(ev);
-		}
-	}
-
-	protected final void dispatch(Consumer<Void> action) {
-		dispatch(null, action);
-	}
-
-	protected final <E> void dispatch(E data, Consumer<E> action) {
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			action.accept(data);
-		} else {
-			dispatcher.dispatch(data, action, null);
-		}
-	}
-
-	protected final <E> void trySyncDispatch(E data, Consumer<E> action) {
-		if (dispatcher.inContext()) {
-			action.accept(data);
-		} else {
-			dispatch(data, action);
 		}
 	}
 
@@ -665,7 +616,6 @@ public abstract class Action<I, O> extends Stream<O>
 			upstreamSubscription.request(n);
 		}
 	}
-
 
 	/**
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
@@ -684,16 +634,14 @@ public abstract class Action<I, O> extends Stream<O>
 				if (!dispatched) {
 					subscriber.onSubscribe(subscription);
 				} else {
-					dispatch(new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							try {
-								subscriber.onSubscribe(subscription);
-							} catch (Exception e) {
-								subscriber.onError(e);
-							}
-						}
-					});
+					Dispatcher dispatcher = getDispatcher();
+					if(dispatcher == SynchronousDispatcher.INSTANCE){
+						subscriber.onSubscribe(subscription);
+					}else{
+						DispatcherAction<O> dispatcherAction = new DispatcherAction<O>(dispatcher);
+						dispatcherAction.onSubscribe(subscription);
+						dispatcherAction.subscribe(subscriber);
+					}
 				}
 			} else {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
@@ -702,6 +650,7 @@ public abstract class Action<I, O> extends Stream<O>
 			subscriber.onError(e);
 		}
 	}
+
 
 	@SuppressWarnings("unchecked")
 	protected boolean addSubscription(final PushSubscription<O> subscription) {
@@ -735,6 +684,19 @@ public abstract class Action<I, O> extends Stream<O>
 				&& actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
 	}
 
+	private final void dispatch(Consumer<Void> action) {
+		dispatch(null, action);
+	}
+
+	private final <E> void dispatch(E data, Consumer<E> action) {
+		Dispatcher dispatcher = getDispatcher();
+		if (SynchronousDispatcher.INSTANCE == dispatcher) {
+			action.accept(data);
+		} else {
+			dispatcher.dispatch(data, action, null);
+		}
+	}
+
 	@Override
 	public void recycle() {
 		downstreamSubscription = null;
@@ -747,12 +709,12 @@ public abstract class Action<I, O> extends Stream<O>
 	public String toString() {
 		return "{" +
 				(capacity != Long.MAX_VALUE || upstreamSubscription == null ?
-						"{dispatcher=" + dispatcher.getClass().getSimpleName().replaceAll("Dispatcher", "") +
-								((!SynchronousDispatcher.class.isAssignableFrom(dispatcher.getClass()) ? (":" + dispatcher
+						"{dispatcher=" + getDispatcher().getClass().getSimpleName().replaceAll("Dispatcher", "") +
+								((!SynchronousDispatcher.class.isAssignableFrom(getDispatcher().getClass()) ? (":" + getDispatcher()
 										.remainingSlots()) :
 										"")) +
 								", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
-				: "") +
+						: "") +
 				(upstreamSubscription != null ? upstreamSubscription : "") + '}';
 	}
 

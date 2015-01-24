@@ -16,7 +16,6 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Dispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
@@ -32,8 +31,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 
 	private final Supplier<? extends CompletableQueue<O>> queueSupplier;
 
-	public FlowControlAction(Dispatcher dispatcher, Supplier<? extends CompletableQueue<O>> queueSupplier) {
-		super(dispatcher);
+	public FlowControlAction(Supplier<? extends CompletableQueue<O>> queueSupplier) {
 		this.queueSupplier = queueSupplier;
 	}
 

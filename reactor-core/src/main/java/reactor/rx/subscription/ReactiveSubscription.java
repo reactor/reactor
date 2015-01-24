@@ -127,8 +127,15 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				if (last) {
 					onComplete();
 				} else {
-					elements -= list.size;
-					toRequest = Math.min(maxCapacity, elements);
+					if(elements != Long.MAX_VALUE) {
+						elements -= list.size;
+					}
+					if(draining) {
+						toRequest = Math.min(maxCapacity, elements);
+					}else if(elements > 0l){
+						onRequest(elements);
+						toRequest = 0;
+					}
 				}
 			} while (draining && toRequest > 0);
 

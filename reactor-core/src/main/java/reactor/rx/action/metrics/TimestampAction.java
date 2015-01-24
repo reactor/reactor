@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.metrics;
 
-import reactor.core.Dispatcher;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Action;
@@ -25,10 +24,6 @@ import reactor.rx.action.Action;
  * @since 2.0
  */
 public class TimestampAction<T> extends Action<T, Tuple2<Long, T>> {
-
-	public TimestampAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	@Override
 	protected void doNext(T ev) {

@@ -18,9 +18,8 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.rx.Stream;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -34,6 +33,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
 	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
+
+	private final Dispatcher dispatcher;
 
 	private volatile int wip = 0;
 
@@ -51,10 +52,10 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 			Dispatcher dispatcher,
 			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
 	) {
-		super(dispatcher);
+		this.dispatcher = dispatcher;
 		this.fanInAction = fanInAction == null ?
 				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
-						(dispatcher) :
+						(SynchronousDispatcher.INSTANCE) :
 				fanInAction;
 
 		this.fanInAction.dynamicMergeAction = this;
@@ -80,6 +81,11 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	protected void doNext(Publisher<? extends I> value) {
 		WIP_UPDATER.incrementAndGet(this);
 		fanInAction.addPublisher(value);
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 
 	@Override
@@ -141,12 +147,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	public Action<Publisher<? extends I>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
-	}
-
-	@Override
-	public Stream<O> env(Environment environment) {
-		fanInAction.env(environment);
-		return super.env(environment);
 	}
 
 	public int decrementWip(){

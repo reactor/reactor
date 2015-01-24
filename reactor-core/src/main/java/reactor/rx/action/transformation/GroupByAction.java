@@ -22,6 +22,7 @@ import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
+import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.PushSubscription;
@@ -43,11 +44,26 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
 	private final Environment                      environment;
+	private final Dispatcher                       dispatcher;
+
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
+	private final SerializedSubscriber<Long>      serialized = SerializedSubscriber.create(new DefaultSubscriber<Long>
+			() {
+
+		@Override
+		public void onNext(Long aLong) {
+			checkRequest(aLong);
+			if(upstreamSubscription != null){
+				upstreamSubscription.request(aLong);
+			}
+		}
+
+	});
+
 
 	public GroupByAction(Environment environment, Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
-		super(dispatcher);
 		Assert.notNull(fn, "Key mapping function cannot be null.");
+		this.dispatcher = dispatcher;
 		this.fn = fn;
 		this.environment = environment;
 	}
@@ -80,19 +96,18 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 				@Override
 				public Dispatcher getDispatcher() {
-					return GroupByAction.this.getDispatcher();
+					return dispatcher;
 				}
 
 				@Override
 				public Environment getEnvironment() {
-					return GroupByAction.this.getEnvironment();
+					return environment;
 				}
 
 				@Override
 				public void subscribe(Subscriber<? super T> s) {
 					final AtomicBoolean last = new AtomicBoolean();
-					final SerializedSubscriber<T> serializedSubscriber = SerializedSubscriber.create(s);
-					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, serializedSubscriber, queue) {
+					ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue) {
 
 						@Override
 						public void cancel() {
@@ -112,19 +127,12 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 						@Override
 						protected void onRequest(long n) {
-							PushSubscription<T> upSub = upstreamSubscription;
-							if (upSub != null) {
-								upSub.accept(n);
-							} else {
-								updatePendingRequests(n);
-							}
-
-
+							serialized.onNext(n);
 						}
 					};
 					//finalSub.maxCapacity(capacity);
 					groupByMap.put(key, finalSub);
-					serializedSubscriber.onSubscribe(finalSub);
+					s.onSubscribe(finalSub);
 				}
 			};
 			broadcastNext(action);
@@ -145,7 +153,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 				cancel();
 			}
 
-			if(innerSub.getBufferSize() == 0l){
+			if (innerSub.getBufferSize() == 0l) {
 				broadcastComplete();
 			}
 		}
@@ -153,7 +161,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	@Override
 	public void onError(Throwable cause) {
-			broadcastError(cause);
+		broadcastError(cause);
 	}
 
 	@Override
@@ -168,7 +176,17 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
-	public Environment getEnvironment() {
+	public void requestMore(long n) {
+		serialized.onNext(n);
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	@Override
+	public final Environment getEnvironment() {
 		return environment;
 	}
 }

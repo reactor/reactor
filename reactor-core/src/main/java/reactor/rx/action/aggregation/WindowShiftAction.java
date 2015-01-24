@@ -46,15 +46,16 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	private final int                                    skip;
 	private final int                                    batchSize;
 	private final Environment                            environment;
+	private final Dispatcher                             dispatcher;
 	private       int                                    index;
 
 	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip) {
 		this(environment, dispatcher, size, skip, -1l, -1l, null, null);
 	}
 
-	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip,
+	public WindowShiftAction(Environment environment, final Dispatcher dispatcher, int size, int skip,
 	                         final long timespan, final long timeshift, TimeUnit unit, final Timer timer) {
-		super(dispatcher);
+		this.dispatcher = dispatcher;
 		this.skip = skip;
 		this.environment = environment;
 		this.batchSize = size;
@@ -78,7 +79,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 			this.timeshiftTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					dispatch(new Consumer<Void>() {
+					dispatcher.dispatch(null, new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
 							final ReactiveSubscription<T> bucket = createWindowStream();
@@ -86,11 +87,11 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 							timer.submit(new Consumer<Long>() {
 								@Override
 								public void accept(Long aLong) {
-									dispatch(bucket, flushTimerTask);
+									dispatcher.dispatch(bucket, flushTimerTask, null);
 								}
 							}, timespan, targetUnit);
 						}
-					});
+					}, null);
 				}
 			};
 
@@ -130,7 +131,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 		while (it.hasNext()) {
 			ReactiveSubscription<T> bucket = it.next();
 			bucket.onNext(event);
-			if (bucket.currentNextSignals() == batchSize ) {
+			if (bucket.currentNextSignals() == batchSize) {
 				it.remove();
 				bucket.onComplete();
 			}
@@ -144,7 +145,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected ReactiveSubscription<T> createWindowStream() {
-		Action<T,T> action = Broadcaster.<T>create(getEnvironment(), getDispatcher());
+		Action<T, T> action = Broadcaster.<T>create(environment, dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindows.add(_currentWindow);
 		action.onSubscribe(_currentWindow);
@@ -153,8 +154,13 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public Environment getEnvironment() {
+	public final Environment getEnvironment() {
 		return this.environment;
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return this.dispatcher;
 	}
 
 	@Override

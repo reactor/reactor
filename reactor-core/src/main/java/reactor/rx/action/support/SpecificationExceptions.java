@@ -15,9 +15,6 @@
  */
 package reactor.rx.action.support;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-
 /**
  * @author Stephane Maldini
  * @since 2.0
@@ -33,12 +30,4 @@ public final class SpecificationExceptions {
 		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
 	}
 
-	public static IllegalStateException spec_3_17_exception(
-			Publisher<?> publisher, Subscriber<?> subscriber, long currentPending, long elements) {
-		return new IllegalStateException("Spec. Rule 3.17 - " + (publisher != null ? publisher.getClass().getSimpleName()
-				: "")
-				+ " to " + subscriber.getClass().getSimpleName() + " - Cannot support pending " + currentPending + " elements" +
-				" " +
-				"plus requested " + elements + " elements, it overflows Long.MAX_VALUE (" + (currentPending + elements) + ")");
-	}
 }

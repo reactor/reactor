@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.filter;
 
-import reactor.core.Dispatcher;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
 
@@ -29,8 +28,7 @@ public class TakeAction<T> extends Action<T, T> {
 	private final long         limit;
 	private long counted = 0l;
 
-	public TakeAction(Dispatcher dispatcher, Predicate<T> predicate, long limit) {
-		super(dispatcher);
+	public TakeAction(Predicate<T> predicate, long limit) {
 		this.endPredicate = predicate;
 		this.limit = limit;
 	}

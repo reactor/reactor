@@ -48,8 +48,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * @return a new {@link reactor.rx.action.Action}
 	 */
 	public static <T> Broadcaster<T> create() {
-		Broadcaster<T> broadcaster = new SerializedBroadcaster<>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
-		return broadcaster.keepAlive();
+		return new SerializedBroadcaster<>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
 	}
 
 	/**
@@ -66,9 +65,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create(Environment env) {
-		Broadcaster<T> broadcaster = new SerializedBroadcaster<>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
-		broadcaster.env(env);
-		return broadcaster.keepAlive();
+		return new SerializedBroadcaster<>(env, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
 	}
 
 
@@ -117,8 +114,8 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 *
 	 */
 
-	private SerializedBroadcaster(Dispatcher dispatcher, long capacity) {
-		super(dispatcher, capacity);
+	private SerializedBroadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
+		super(environment, dispatcher, capacity);
 		this.serializer = SerializedSubscriber.create(new Subscriber<O>() {
 			@Override
 			public void onSubscribe(Subscription s) {

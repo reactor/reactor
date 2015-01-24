@@ -16,7 +16,6 @@
 package reactor.rx.action.filter;
 
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
 import reactor.rx.action.Action;
 
 /**
@@ -35,7 +34,6 @@ public class DistinctUntilChangedAction<T, V> extends Action<T, T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	protected void doNext(T currentData) {
 		V currentKey;
 		if (keySelector != null) {

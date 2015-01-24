@@ -18,12 +18,10 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
+import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.combination.CombineAction;
-
-import javax.annotation.Nonnull;
 
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.
@@ -32,18 +30,19 @@ import javax.annotation.Nonnull;
  * @since 2.0
  */
 public class LiftStream<O, V> extends Stream<V> {
-	private final Stream<O>                                                              producer;
-	private final Function<? super Dispatcher, ? extends Action<O, V>> child;
+	private final Stream<O>                        producer;
+	private final Supplier<? extends Action<O, V>> child;
 
-	public LiftStream(Stream<O> thiz, Function<? super Dispatcher, ? extends Action<O, V>> action) {
+	public LiftStream(Stream<O> thiz, Supplier<? extends Action<O, V>> action) {
 		this.producer = thiz;
 		this.child = action;
 	}
 
 	public final Action<O, V> onLift() {
-		Action<O, V> action = child.apply(getDispatcher());
-		if (action.getEnvironment() == null) {
-			action.env(getEnvironment());
+		Action<O, V> action = child.get();
+		Environment environment = getEnvironment();
+		if (environment != null && action.getEnvironment() == null) {
+			action.env(environment);
 		}
 		return action;
 	}
@@ -53,7 +52,7 @@ public class LiftStream<O, V> extends Stream<V> {
 	public final <E> CombineAction<E, V> combine() {
 		Action<O, V> action = onLift();
 
-		if(action == null){
+		if (action == null) {
 			throw new IllegalStateException("Cannot combine streams without any lifted action");
 		}
 
@@ -74,30 +73,6 @@ public class LiftStream<O, V> extends Stream<V> {
 	@Override
 	public Environment getEnvironment() {
 		return producer.getEnvironment();
-	}
-
-	@Override
-	public final Stream<V> dispatchOn(final Environment environment, final @Nonnull Dispatcher dispatcher) {
-		final long capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
-				dispatcher.backlogSize() - Action.RESERVED_SLOTS :
-				Long.MAX_VALUE;
-
-		return new LiftStream<O, V>(producer, child) {
-			@Override
-			public Dispatcher getDispatcher() {
-				return dispatcher;
-			}
-
-			@Override
-			public Environment getEnvironment() {
-				return environment;
-			}
-
-			@Override
-			public long getCapacity() {
-				return capacity;
-			}
-		};
 	}
 
 	@Override

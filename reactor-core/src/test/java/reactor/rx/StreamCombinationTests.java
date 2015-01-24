@@ -23,8 +23,8 @@ import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.action.Control;
+import reactor.rx.broadcast.Broadcaster;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,9 +90,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			public Object apply(Integer integer) {
 				return integer;
 			}
-		}).consume(o -> {
-
-		}).debug().toString());
+		}).consume().debug().toString());
 
 
 		Stream<Integer> stream = Streams.merge(

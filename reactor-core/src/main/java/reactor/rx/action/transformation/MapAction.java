@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.transformation;
 
-import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
@@ -28,8 +27,7 @@ public class MapAction<T, V> extends Action<T, V> {
 
 	private final Function<? super T, ? extends V> fn;
 
-	public MapAction(Function<? super T, ? extends V> fn, Dispatcher dispatcher) {
-		super(dispatcher);
+	public MapAction(Function<? super T, ? extends V> fn) {
 		Assert.notNull(fn, "Map function cannot be null.");
 		this.fn = fn;
 	}

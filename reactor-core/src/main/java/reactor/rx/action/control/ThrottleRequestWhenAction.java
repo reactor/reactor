@@ -18,7 +18,6 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -38,16 +37,9 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	public ThrottleRequestWhenAction(Dispatcher dispatcher,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
 			                                 predicate) {
-		super(dispatcher);
 		this.throttleStream = Broadcaster.create(null, dispatcher);
 		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
 		afterRequestStream.subscribe(new ThrottleSubscriber());
-	}
-
-	@Override
-	public Stream<T> env(Environment environment) {
-		throttleStream.env(environment);
-		return super.env(environment);
 	}
 
 	@Override
@@ -76,14 +68,14 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	}
 
 	protected void doRequest(final long requested) {
-		trySyncDispatch(requested, new Consumer<Long>() {
+		throttleStream.getDispatcher().dispatch(requested, new Consumer<Long>() {
 			@Override
 			public void accept(Long o) {
 				if (upstreamSubscription != null) {
 					upstreamSubscription.request(o);
 				}
 			}
-		});
+		}, null);
 	}
 
 	private class ThrottleSubscriber implements Subscriber<Long>, NonBlocking {

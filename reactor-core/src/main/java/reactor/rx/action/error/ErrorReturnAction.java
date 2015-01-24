@@ -16,7 +16,6 @@
 package reactor.rx.action.error;
 
 import reactor.bus.selector.ClassSelector;
-import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
 
@@ -29,8 +28,7 @@ final public class ErrorReturnAction<T, E extends Throwable> extends Action<T, T
 	private final Function<? super E, ? extends T> function;
 	private final ClassSelector       selector;
 
-	public ErrorReturnAction(Dispatcher dispatcher, ClassSelector selector, Function<? super E, ? extends T> function) {
-		super(dispatcher);
+	public ErrorReturnAction(ClassSelector selector, Function<? super E, ? extends T> function) {
 		this.function = function;
 		this.selector = selector;
 	}

@@ -39,6 +39,7 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 	protected final BiFunction<? super V, ? super V, V>         fn;
 	protected final Publisher<? extends MapStream.Signal<K, V>> mapListener;
 	protected final Map<K, V>                                   store;
+	protected final Dispatcher                                  dispatcher;
 
 	public ScanByKeyAction(BiFunction<? super V, ? super V, V> fn, MapStream<K, V> mapStream,
 	                       Dispatcher dispatcher) {
@@ -49,9 +50,9 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 	public ScanByKeyAction(BiFunction<? super V, ? super V, V> fn, Map<K, V> store, Publisher<? extends MapStream
 			.Signal<K, V>> mapListener,
 	                       Dispatcher dispatcher) {
-		super(dispatcher);
 		this.fn = fn;
-		this.store = store == null ? new HashMap<K,V>() : store;
+		this.dispatcher = dispatcher;
+		this.store = store == null ? new HashMap<K, V>() : store;
 		if (mapListener == null) {
 			MapStream<K, V> mapStream = null;
 			if (MapStream.class.isAssignableFrom(this.store.getClass())) {
@@ -151,5 +152,8 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 		}
 	}
 
-
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
 }

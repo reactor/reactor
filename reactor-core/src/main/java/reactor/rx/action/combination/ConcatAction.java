@@ -81,6 +81,28 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		}
 
 		@Override
+		public void onComplete() {
+			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
+				s.toRemove = true;
+				s.cancel();
+				outerAction.status.set(COMPLETING);
+				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+				outerAction.innerSubscriptions.subscriptions.poll();
+				Subscription current = outerAction.innerSubscriptions.subscriptions.peek();
+
+				long request = outerAction.innerSubscriptions.pendingRequestSignals();
+				if (current != null &&  request > 0) {
+					current.request(request);
+				}
+				if (left == 0
+						&& !outerAction.checkDynamicMerge()
+						) {
+					outerAction.innerSubscriptions.serialComplete();
+				}
+			}
+		}
+
+		@Override
 		public String toString() {
 			return "Concat.InnerSubscriber{pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
 		}
@@ -92,18 +114,6 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 
 		public ConcatSubscription(Subscriber<? super O> subscriber) {
 			super(subscriber);
-		}
-
-		@Override
-		int removeSubscription(InnerSubscription s) {
-			int newSize = RUNNING_COMPOSABLE_UPDATER.decrementAndGet(this);
-			subscriptions.poll();
-			current = subscriptions.peek();
-
-			if (current != null && pendingRequestSignals > 0) {
-				current.request(pendingRequestSignals);
-			}
-			return newSize;
 		}
 
 		@Override
