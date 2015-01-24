@@ -63,10 +63,10 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 				InnerSubscription<O, E, SUBSCRIBER> subscription;
 				int i = 0;
 				do {
-					subscription = subscriptions.poll();
+						subscription = subscriptions.poll();
 					if (subscription != null) {
 						if (!subscription.toRemove) {
-							subscriptions.add(subscription);
+								subscriptions.add(subscription);
 							i++;
 						}
 

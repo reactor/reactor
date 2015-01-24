@@ -1832,8 +1832,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Stream<O> distinctUntilChanged() {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new DistinctUntilChangedAction<O, O>(null, dispatcher);
+			public Action<O, O> get() {
+				return new DistinctUntilChangedAction<O, O>(null);
 			}
 		});
 	}
@@ -1846,10 +1846,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final <V> Stream<O> distinctUntilChanged(final Function<? super O, ? extends V> keySelector) {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new DistinctUntilChangedAction<O, V>(keySelector, dispatcher);
+			public Action<O, O> get() {
+				return new DistinctUntilChangedAction<O, V>(keySelector);
 			}
 		});
 	}
@@ -1860,10 +1860,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} with unique values
 	 */
 	public final Stream<O> distinct() {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new DistinctAction<O, O>(null, dispatcher);
+			public Action<O, O> get() {
+				return new DistinctAction<O, O>(null);
 			}
 		});
 	}
@@ -1875,10 +1875,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} with values having distinct keys
 	 */
 	public final <V> Stream<O> distinct(final Function<? super O, ? extends V> keySelector) {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new DistinctAction<O, V>(keySelector, dispatcher);
+			public Action<O, O> get() {
+				return new DistinctAction<O, V>(keySelector);
 			}
 		});
 	}
