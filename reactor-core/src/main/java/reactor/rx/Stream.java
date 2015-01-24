@@ -36,6 +36,7 @@ import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.action.ElementAtAction;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
@@ -1651,6 +1652,37 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public Action<O, Tuple2<Long, O>> apply(Dispatcher dispatcher) {
 				return new ElapsedAction<O>(dispatcher);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} that emits an item at a specified index from a source {@code Stream}
+	 *
+	 * @param index index of an item
+	 * @return a source item at a specified index
+	 */
+	public final Stream<O> elementAt(final int index) {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
+			@Override
+			public Action<O, O> apply(Dispatcher dispatcher) {
+				return new ElementAtAction(index);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} that emits an item at a specified index from a source {@code Stream}
+	 * or default value when index is out of bounds
+	 *
+	 * @param index index of an item
+	 * @return a source item at a specified index or a default value
+	 */
+	public final Stream<O> elementAtOrDefault(final int index, final O defaultValue) {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
+			@Override
+			public Action<O, O> apply(Dispatcher dispatcher) {
+				return new ElementAtAction(index, defaultValue);
 			}
 		});
 	}
