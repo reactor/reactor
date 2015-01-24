@@ -343,58 +343,58 @@ class StreamsSpec extends Specification {
 
 	def 'A Stream can be enforced to dispatch values distinct from their immediate predecessors'() {
 		given:
-		'a composable with values 1 to 3 with duplicates'
-		Stream s = Streams.from([1, 1, 2, 2, 3])
+			'a composable with values 1 to 3 with duplicates'
+			Stream s = Streams.from([1, 1, 2, 2, 3])
 
 		when:
-		'the values are filtered and result is collected'
-		def tap = s.distinctUntilChanged().buffer().tap()
+			'the values are filtered and result is collected'
+			def tap = s.distinctUntilChanged().buffer().tap()
 
 		then:
-		'collected must remove duplicates'
-		tap.get() == [1, 2, 3]
+			'collected must remove duplicates'
+			tap.get() == [1, 2, 3]
 	}
 
 	def 'A Stream can be enforced to dispatch values with keys distinct from their immediate predecessors keys'() {
 		given:
-		'a composable with values 1 to 5 with duplicate keys'
-		Stream s = Streams.from([2, 4, 3, 5, 2, 5])
+			'a composable with values 1 to 5 with duplicate keys'
+			Stream s = Streams.from([2, 4, 3, 5, 2, 5])
 
 		when:
-		'the values are filtered and result is collected'
-		def tap = s.distinctUntilChanged{ it % 2 == 0 }.buffer().tap()
+			'the values are filtered and result is collected'
+			def tap = s.distinctUntilChanged{ it % 2 == 0 }.buffer().tap()
 
 		then:
-		'collected must remove duplicates'
-		tap.get() == [2, 3, 2, 5]
+			'collected must remove duplicates'
+			tap.get() == [2, 3, 2, 5]
 	}
 
 	def 'A Stream can be enforced to dispatch distinct values'() {
 		given:
-		'a composable with values 1 to 4 with duplicates'
-		Stream s = Streams.from([1, 2, 3, 1, 2, 3, 4])
+			'a composable with values 1 to 4 with duplicates'
+			Stream s = Streams.from([1, 2, 3, 1, 2, 3, 4])
 
 		when:
-		'the values are filtered and result is collected'
-		def tap = s.distinct().buffer().tap()
+			'the values are filtered and result is collected'
+			def tap = s.distinct().buffer().tap()
 
 		then:
-		'collected should be without duplicates'
-		tap.get() == [1, 2, 3, 4]
+			'collected should be without duplicates'
+			tap.get() == [1, 2, 3, 4]
 	}
 
 	def 'A Stream can be enforced to dispatch values having distinct keys'() {
 		given:
-		'a composable with values 1 to 4 with duplicate keys'
-		Stream s = Streams.from([1, 2, 3, 1, 2, 3, 4])
+			'a composable with values 1 to 4 with duplicate keys'
+			Stream s = Streams.from([1, 2, 3, 1, 2, 3, 4])
 
 		when:
-		'the values are filtered and result is collected'
-		def tap = s.distinct{ it % 3 }.buffer().tap()
+			'the values are filtered and result is collected'
+			def tap = s.distinct{ it % 3 }.buffer().tap()
 
 		then:
-		'collected should be without duplicates'
-		tap.get() == [1, 2, 3]
+			'collected should be without duplicates'
+			tap.get() == [1, 2, 3]
 	}
 
 	def "A Stream's initial values are passed to consumers"() {
