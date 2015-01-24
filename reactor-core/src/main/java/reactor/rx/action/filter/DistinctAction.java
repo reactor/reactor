@@ -19,17 +19,20 @@ import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
 
-/**
- * @author Stephane Maldini
- * @since 1.1
- */
-public class DistinctUntilChangedAction<T, V> extends Action<T, T> {
+import java.util.HashSet;
+import java.util.Set;
 
-	private V lastKey;
+/**
+ * @author Anatoly Kadyshev
+ * @since 2.0
+ */
+public class DistinctAction<T, V> extends Action<T, T> {
+
+	private final Set<V> keySet = new HashSet<V>();
 
 	private final Function<? super T, ? extends V> keySelector;
 
-	public DistinctUntilChangedAction(Function<? super T, ? extends V> keySelector, Dispatcher dispatcher) {
+	public DistinctAction(Function<? super T, ? extends V> keySelector, Dispatcher dispatcher) {
 		super(dispatcher);
 		this.keySelector = keySelector;
 	}
@@ -44,9 +47,15 @@ public class DistinctUntilChangedAction<T, V> extends Action<T, T> {
 			currentKey = (V) currentData;
 		}
 
-		if(currentKey == null || !currentKey.equals(lastKey)) {
-			lastKey = currentKey;
+		if(keySet.add(currentKey)) {
 			broadcastNext(currentData);
 		}
 	}
+
+	@Override
+	protected void doComplete() {
+		super.doComplete();
+		keySet.clear();
+	}
+
 }

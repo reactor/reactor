@@ -1836,7 +1836,52 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Function<Dispatcher, Action<O, O>>() {
 			@Override
 			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new DistinctUntilChangedAction<O>(dispatcher);
+				return new DistinctUntilChangedAction<O, O>(null, dispatcher);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} that filters out consecutive values having equal keys computed by function
+	 *
+	 * @param keySelector function to compute comparison key for each element
+	 * @return a new {@link Stream} whose values are the last value of each batch
+	 * @since 2.0
+	 */
+	public final <V> Stream<O> distinctUntilChanged(final Function<? super O, ? extends V> keySelector) {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
+			@Override
+			public Action<O, O> apply(Dispatcher dispatcher) {
+				return new DistinctUntilChangedAction<O, V>(keySelector, dispatcher);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} that filters in only unique values.
+	 *
+	 * @return a new {@link Stream} with unique values
+	 */
+	public final Stream<O> distinct() {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
+			@Override
+			public Action<O, O> apply(Dispatcher dispatcher) {
+				return new DistinctAction<O, O>(null, dispatcher);
+			}
+		});
+	}
+
+	/**
+	 * Create a new {@code Stream} that filters in only values having distinct keys computed by function
+	 *
+	 * @param keySelector function to compute comparison key for each element
+	 * @return a new {@link Stream} with values having distinct keys
+	 */
+	public final <V> Stream<O> distinct(final Function<? super O, ? extends V> keySelector) {
+		return lift(new Function<Dispatcher, Action<O, O>>() {
+			@Override
+			public Action<O, O> apply(Dispatcher dispatcher) {
+				return new DistinctAction<O, V>(keySelector, dispatcher);
 			}
 		});
 	}
