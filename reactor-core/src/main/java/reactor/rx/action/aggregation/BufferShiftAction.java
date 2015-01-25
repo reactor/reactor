@@ -94,7 +94,9 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 				}
 			};
 
-			timeshiftRegistration = timer.schedule(timeshiftTask, timeshift, targetUnit);
+			timeshiftRegistration = timer.schedule(timeshiftTask,
+					timeshift,
+					targetUnit);
 			timeshiftRegistration.pause();
 		} else {
 			this.timeshiftRegistration = null;
@@ -103,9 +105,9 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
-		if (timeshiftRegistration != null) timeshiftRegistration.resume();
+	public void requestMore(long n) {
+		if (timeshiftRegistration != null && timeshiftRegistration.isPaused()) timeshiftRegistration.resume();
+		super.requestMore(n);
 	}
 
 	@Override
