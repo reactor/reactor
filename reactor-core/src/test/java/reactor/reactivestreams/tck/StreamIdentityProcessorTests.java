@@ -61,6 +61,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
 		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
+
+		//preinit the two dispatchers
+		dispatchers.get();
+		dispatchers.get();
 	}
 
 	@Override
