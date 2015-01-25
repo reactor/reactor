@@ -121,25 +121,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Subscribe an {@link Subscriber} to the actual pipeline to consume current Stream signals (error,complete,next,
-	 * subscribe).
-	 * Return the actual Subscriber that can be an implementation of {@link reactor.core.dispatch.processor.Processor}
-	 * and `chain`
-	 * more
-	 * work behind.
-	 *
-	 * @param subscriber the processor to subscribe.
-	 * @param <E>        the {@link Subscriber} output type
-	 * @return the passed subscriber
-	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
-	 * @since 2.0
-	 */
-	public final <E extends Subscriber<? super O>> E chain(@Nonnull final E subscriber) {
-		this.subscribe(subscriber);
-		return subscriber;
-	}
-
-	/**
 	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use when(class,
 	 * publisher), retry, ignoreError or recover to actively deal with the exception
 	 *
