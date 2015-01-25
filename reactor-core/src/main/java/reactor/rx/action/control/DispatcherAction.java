@@ -49,6 +49,11 @@ public final class DispatcherAction<T> extends Action<T, T> {
 		subscribeWithSubscription(subscriber, subscription, false);
 	}
 
+	@Override
+	public void requestMore(long n) {
+		checkRequest(n);
+		dispatcher.dispatch(n, upstreamSubscription, null);
+	}
 
 	@Override
 	public void onNext(T ev) {

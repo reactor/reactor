@@ -60,7 +60,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(8, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
 	}
 
 	@Override
@@ -71,7 +71,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		AtomicLong total = new AtomicLong();
 
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
-				Broadcaster.<Integer>create(dispatchers.get())
+				Broadcaster.<Integer>create(Environment.get())
 						.capacity(bufferSize)
 						.partition(2)
 						.flatMap(stream -> stream
@@ -92,9 +92,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 
-		Streams.period(env.getTimer(), 2, 1)
+		/*Streams.period(env.getTimer(), 2, 1)
 				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
-				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
+				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
 
 		return integerIntegerCombineAction;
 	}
