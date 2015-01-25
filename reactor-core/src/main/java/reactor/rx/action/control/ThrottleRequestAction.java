@@ -34,6 +34,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	private final Timer timer;
 	private final long  period;
 	private final Consumer<Long> periodTask;
+	private long pending;
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
@@ -63,12 +64,26 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+		synchronized (this){
+			if(pending != Long.MAX_VALUE){
+				pending--;
+			}
+		}
+		if(pending > 0l){
+			timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
+		}
 	}
 
 	@Override
 	public void requestMore(long n) {
+		synchronized (this){
+			if(pending != Long.MAX_VALUE){
+				pending += n;
+				pending = pending < 0l ? Long.MAX_VALUE : pending;
+			}
+		}
 		if(timeoutRegistration == null) {
-			timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS);
+			timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -80,7 +95,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	@Override
 	protected void doStart(long pending) {
 		requestMore(pending);
-		super.requestMore(1);
+		//super.requestMore(1);
 	}
 
 	@Override
