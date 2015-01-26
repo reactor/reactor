@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.control;
 
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 
@@ -28,8 +27,7 @@ public class FinallyAction<T, C> extends Action<T, T> {
 	private final Consumer<? super C> consumer;
 	private final C           input;
 
-	public FinallyAction(Dispatcher dispatcher, C input, Consumer<? super C> consumer) {
-		super(dispatcher);
+	public FinallyAction(C input, Consumer<? super C> consumer) {
 		this.consumer = consumer;
 		this.input = input;
 	}

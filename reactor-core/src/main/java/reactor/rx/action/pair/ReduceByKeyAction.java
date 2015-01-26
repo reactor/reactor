@@ -16,7 +16,6 @@
 package reactor.rx.action.pair;
 
 import org.reactivestreams.Publisher;
-import reactor.core.Dispatcher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -31,13 +30,13 @@ import java.util.Map;
  */
 public class ReduceByKeyAction<K, V> extends ScanByKeyAction<K, V> {
 
-	public ReduceByKeyAction(BiFunction<? super V, ? super V, V> fn, MapStream<K, V> mapStream, Dispatcher dispatcher) {
-		super(fn, mapStream, dispatcher);
+	public ReduceByKeyAction(BiFunction<? super V, ? super V, V> fn, MapStream<K, V> mapStream) {
+		super(fn, mapStream);
 	}
 
 	public ReduceByKeyAction(BiFunction<? super V, ? super V, V> fn, Map<K, V> store, Publisher<? extends MapStream
-			.Signal<K, V>> mapListener, Dispatcher dispatcher) {
-		super(fn, store, mapListener, dispatcher);
+			.Signal<K, V>> mapListener) {
+		super(fn, store, mapListener);
 	}
 
 	protected void doNext(PushSubscription<Tuple2<K, V>> subscriber, Tuple2<K, V> ev) {

@@ -21,7 +21,8 @@ import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.support.WrappedSubscription;
+
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -31,11 +32,19 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
 	private final Consumer<Void>              completeConsumer;
+	private final Dispatcher                  dispatcher;
+
+	private final AtomicLongFieldUpdater<ConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater(ConsumerAction
+			.class, "count");
+
+	private volatile long count;
+	private          long pendingRequests;
+
 
 	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
-		super(dispatcher);
 		this.consumer = consumer;
+		this.dispatcher = dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
 		//TODO define option to choose ?
@@ -43,64 +52,46 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
+	public void requestMore(long n) {
+		if (upstreamSubscription != null) {
+			long toRequest = Math.min(n, capacity);
+			if (toRequest != n) {
+				synchronized (this) {
+					pendingRequests += (n - capacity);
+				}
+			}
+			if(COUNTED.addAndGet(this, toRequest) < 0l){
+				COUNTED.set(this, Long.MAX_VALUE);
+			}
+			dispatcher.dispatch(toRequest, upstreamSubscription, null);
+		}else{
+			if((pendingRequests += n) < 0l){
+				pendingRequests = Long.MAX_VALUE;
+			}
+		}
+	}
+
+	@Override
 	protected void doNext(T ev) {
 		if (consumer != null) {
 			consumer.accept(ev);
 		}
-	}
-
-	@Override
-	public void onSubscribe(Subscription subscription) {
-		upstreamSubscription = createTrackingSubscription(subscription);
-	}
-
-	@Override
-	public void requestMore(long n) {
-		if (upstreamSubscription != null) {
-			dispatch(n, upstreamSubscription);
+		if (upstreamSubscription != null
+				&& capacity != Long.MAX_VALUE
+				&& COUNTED.decrementAndGet(this) == 0) {
+			requestMore(capacity);
 		}
 	}
 
 	@Override
-	protected PushSubscription<Void> createSubscription(Subscriber<? super Void> subscriber, boolean reactivePull) {
-		return new PushSubscription<Void>(this, subscriber) {
-			@Override
-			public void request(long n) {
-				//IGNORE
-			}
-		};
-	}
-
-	@Override
-	protected void doStart(long pending) {
-		//IGNORE
-	}
-
-	@Override
-	protected PushSubscription<T> createTrackingSubscription(final Subscription subscription) {
-		if (capacity != Long.MAX_VALUE) {
-			return new WrappedSubscription<T>(subscription, this) {
-
-				@Override
-				public void updatePendingRequests(long n) {
-					synchronized (this) {
-						pendingRequestSignals = 0l;
-					}
-				}
-
-				@Override
-				public boolean shouldRequestPendingSignals() {
-					return consumer != null && --pendingRequestSignals == 0l && PENDING_UPDATER.compareAndSet(this, 0l,
-							capacity);
-				}
-
-				@Override
-				public String toString() {
-					return super.toString() + " pending=" + pendingRequestSignals();
-				}
-			};
-		} else {
-			return super.createTrackingSubscription(subscription);
+	protected void doSubscribe(Subscription subscription) {
+		long toRequest;
+		synchronized (this){
+			toRequest = pendingRequests;
+			pendingRequests = 0l;
+		}
+		if(toRequest > 0l){
+			requestMore(toRequest);
 		}
 	}
 
@@ -120,4 +111,28 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		super.doComplete();
 	}
 
+	@Override
+	protected PushSubscription<Void> createSubscription(Subscriber<? super Void> subscriber, boolean reactivePull) {
+		return new PushSubscription<Void>(this, subscriber) {
+			@Override
+			public void request(long n) {
+				//IGNORE
+			}
+		};
+	}
+
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return capacity != Long.MAX_VALUE;
+	}
+
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + "{pending=" + pendingRequests + "}";
+	}
 }

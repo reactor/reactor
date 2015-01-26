@@ -18,7 +18,6 @@ package reactor.rx.action.terminal;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.Observable;
-import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
 
@@ -33,8 +32,7 @@ public class ObservableAction<T> extends Action<T, Void> {
 	private final boolean                wrapEvent;
 	private final Object                 key;
 
-	public ObservableAction(Dispatcher dispatcher, Observable<?> observable, Object key, Function<? super T, ?> keyMapper) {
-		super(dispatcher);
+	public ObservableAction(Observable<?> observable, Object key, Function<? super T, ?> keyMapper) {
 		this.observable = observable;
 		this.wrapEvent = EventBus.class.isAssignableFrom(observable.getClass());
 		this.key = key;

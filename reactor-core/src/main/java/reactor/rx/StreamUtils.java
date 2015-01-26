@@ -21,8 +21,9 @@ import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.aggregation.WindowAction;
-import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.action.combination.*;
+import reactor.rx.action.error.RetryWhenAction;
+import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.action.transformation.GroupByAction;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.FanOutSubscription;
@@ -149,6 +150,7 @@ public abstract class StreamUtils {
 							|| renderSwitch(composable, nextLevelNestedStreams)
 							|| renderDynamicMerge(composable, nextLevelNestedStreams)
 							|| renderMerge(composable, nextLevelNestedStreams)
+							|| renderRetryWhen(composable, nextLevelNestedStreams)
 							|| renderCombine(composable, nextLevelNestedStreams);
 
 			if (!nextLevelNestedStreams.isEmpty()) {
@@ -277,6 +279,16 @@ public abstract class StreamUtils {
 			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
 				DynamicMergeAction<?, O> operation = (DynamicMergeAction<?, O>) consumer;
 				parseComposable(operation.mergedStream(), streamTree);
+				return true;
+			}
+			return false;
+		}
+
+@SuppressWarnings("unchecked")
+		private <O> boolean renderRetryWhen(Stream<O> consumer, final List<Object> streamTree) {
+			if (RetryWhenAction.class.isAssignableFrom(consumer.getClass())) {
+				RetryWhenAction<O> operation = (RetryWhenAction<O>) consumer;
+				parseComposable(operation.retryStream(), streamTree);
 				return true;
 			}
 			return false;

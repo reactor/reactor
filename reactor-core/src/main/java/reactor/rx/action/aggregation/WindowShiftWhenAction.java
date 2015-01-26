@@ -44,11 +44,12 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
 	private final Environment                      environment;
+	private final Dispatcher                      dispatcher;
 
 	public WindowShiftWhenAction(Environment environment, Dispatcher dispatcher,
 	                             Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
 			boundarySupplier) {
-		super(dispatcher);
+		this.dispatcher = dispatcher;
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
 		this.environment = environment;
@@ -69,13 +70,13 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 
 			@Override
 			public void onNext(Object o) {
-				dispatch(new Consumer<Void>() {
+				dispatcher.dispatch(null, new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
 						Broadcaster<T> newBucket = createWindowStream(null);
 						bucketClosing.get().subscribe(new BucketConsumer(newBucket));
 					}
-				});
+				}, null);
 
 				if (s != null) {
 					s.request(1);
@@ -161,7 +162,7 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 			if (s != null) {
 				s.cancel();
 			}
-			dispatch(new Consumer<Void>() {
+			dispatcher.dispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
 					Iterator<Broadcaster<T>> iterator = currentWindows.iterator();
@@ -174,17 +175,22 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 						}
 					}
 				}
-			});
+			}, null);
 		}
 	}
 
 	@Override
-	public Environment getEnvironment() {
+	public final Environment getEnvironment() {
 		return environment;
 	}
 
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
 	protected Broadcaster<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, environment, dispatcher);
 		currentWindows.add(action);
 		broadcastNext(action);
 		return action;

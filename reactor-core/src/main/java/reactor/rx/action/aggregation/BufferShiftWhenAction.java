@@ -18,13 +18,10 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -38,9 +35,9 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
 
-	public BufferShiftWhenAction(Dispatcher dispatcher, Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
+	public BufferShiftWhenAction(Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
 			boundarySupplier) {
-		super(dispatcher);
+		super();
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
 	}
@@ -60,14 +57,11 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 
 			@Override
 			public void onNext(Object o) {
-				dispatch(new Consumer<Void>() {
-					@Override
-					public void accept(Void aVoid) {
-						List<T> newBucket = new ArrayList<T>();
-						buckets.add(newBucket);
-						bucketClosing.get().subscribe(new BucketConsumer(newBucket));
-					}
-				});
+				List<T> newBucket = new ArrayList<T>();
+				synchronized (buckets) {
+					buckets.add(newBucket);
+				}
+				bucketClosing.get().subscribe(new BucketConsumer(newBucket));
 
 				if (s != null) {
 					s.request(1);
@@ -111,8 +105,8 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 
 	@Override
 	protected void doNext(T value) {
-		if(!buckets.isEmpty()){
-			for(List<T> bucket : buckets){
+		if (!buckets.isEmpty()) {
+			for (List<T> bucket : buckets) {
 				bucket.add(value);
 			}
 		}
@@ -151,20 +145,13 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 			if (s != null) {
 				s.cancel();
 			}
-			dispatch(new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					Iterator<List<T>> iterator = buckets.iterator();
-					while(iterator.hasNext()){
-						List<T> itBucket = iterator.next();
-						if(itBucket == bucket){
-							iterator.remove();
-							broadcastNext(bucket);
-							break;
-						}
-					}
-				}
-			});
+			boolean emit;
+			synchronized (buckets) {
+				emit = buckets.remove(bucket);
+			}
+			if (emit) {
+				broadcastNext(bucket);
+			}
 		}
 	}
 }

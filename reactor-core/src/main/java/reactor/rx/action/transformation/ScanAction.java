@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.transformation;
 
-import reactor.core.Dispatcher;
 import reactor.fn.BiFunction;
 import reactor.rx.action.Action;
 
@@ -29,8 +28,7 @@ public class ScanAction<T, A> extends Action<T, A> {
 	private       A                           acc;
 
 
-	public ScanAction(A initial, BiFunction<A, ? super T, A> fn, Dispatcher dispatcher) {
-		super(dispatcher);
+	public ScanAction(A initial, BiFunction<A, ? super T, A> fn) {
 		this.acc = initial;
 		this.fn = fn;
 	}

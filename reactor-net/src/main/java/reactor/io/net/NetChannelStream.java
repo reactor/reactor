@@ -67,17 +67,7 @@ public abstract class NetChannelStream<IN, OUT> extends Stream<IN> implements Ne
 		this.env = env;
 		this.ioDispatcher = ioDispatcher;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream =  new Action<IN, IN>(eventsDispatcher) {
-			@Override
-			protected void doNext(IN ev) {
-				broadcastNext(ev);
-			}
-
-			@Override
-			public Environment getEnvironment() {
-				return env;
-			}
-		};
+		this.contentStream =  Broadcaster.create(env, eventsDispatcher);
 
 		if (null != codec) {
 			this.decoder = codec.decoder(contentStream);

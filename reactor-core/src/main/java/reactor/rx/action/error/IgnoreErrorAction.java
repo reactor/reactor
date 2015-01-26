@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.error;
 
-import reactor.core.Dispatcher;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
 
@@ -27,8 +26,7 @@ final public class IgnoreErrorAction<T> extends Action<T, T> {
 
 	private final Predicate<? super Throwable>   ignorePredicate;
 
-	public IgnoreErrorAction(Dispatcher dispatcher, Predicate<? super Throwable> ignorePredicate) {
-		super(dispatcher);
+	public IgnoreErrorAction(Predicate<? super Throwable> ignorePredicate) {
 		this.ignorePredicate = ignorePredicate;
 	}
 

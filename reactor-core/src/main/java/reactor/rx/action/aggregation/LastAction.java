@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.core.Dispatcher;
 import reactor.rx.action.Action;
 
 /**
@@ -25,10 +24,6 @@ import reactor.rx.action.Action;
 public class LastAction<T> extends Action<T, T> {
 
 	private T last;
-
-	public LastAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	@Override
 	protected void doNext(T value) {

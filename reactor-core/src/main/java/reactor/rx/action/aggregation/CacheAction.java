@@ -16,18 +16,15 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Dispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.fn.Consumer;
-import reactor.fn.timer.Timer;
-import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini
@@ -37,15 +34,6 @@ public class CacheAction<T> extends Action<T, T> {
 
 	private final List<Signal<T>> values = new ArrayList<>();
 
-	public CacheAction(Dispatcher dispatcher, int batchsize) {
-		this(dispatcher, batchsize, -1, null, null);
-	}
-
-	public CacheAction(Dispatcher dispatcher, int maxSize, long timespan, TimeUnit unit, Timer timer) {
-		super(dispatcher);
-
-	}
-
 	@Override
 	protected PushSubscription<T> createSubscription(final Subscriber<? super T> subscriber, CompletableQueue<T> queue) {
 		final Consumer<Long> requestConsumer = new Consumer<Long>() {
@@ -53,17 +41,28 @@ public class CacheAction<T> extends Action<T, T> {
 
 			@Override
 			public void accept(Long elem) {
-				if (values.isEmpty()) {
-					if(upstreamSubscription != null) {
-						upstreamSubscription.accept(elem);
+				PushSubscription<T> upstream = null;
+				synchronized (values) {
+					if (values.isEmpty()) {
+						upstream = upstreamSubscription;
 					}
+				}
+
+				if(upstream != null) {
+					upstreamSubscription.accept(elem);
 					return;
 				}
 
 				long toRequest = elem;
-				if(cursor < values.size()) {
-					List<Signal<T>> toSend = elem == Long.MAX_VALUE ? new ArrayList<>(values) :
-							values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
+				List<Signal<T>> toSend = null;
+				synchronized (values) {
+					if (cursor < values.size()) {
+						toSend = elem == Long.MAX_VALUE ? new ArrayList<>(values) :
+								values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
+					}
+				}
+
+				if(toSend != null) {
 
 					for (Signal<T> signal : toSend) {
 						cursor++;
@@ -113,19 +112,25 @@ public class CacheAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doComplete() {
-		values.add(Signal.<T>complete());
+		synchronized (values) {
+			values.add(Signal.<T>complete());
+		}
 		super.doComplete();
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		values.add(Signal.<T>error(ev));
+		synchronized (values){
+			values.add(Signal.<T>error(ev));
+		}
 		super.doError(ev);
 	}
 
 	@Override
 	public void doNext(T value) {
-		values.add(Signal.next(value));
+		synchronized (values) {
+			values.add(Signal.next(value));
+		}
 		broadcastNext(value);
 	}
 }

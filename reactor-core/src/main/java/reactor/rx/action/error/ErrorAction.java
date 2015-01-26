@@ -17,7 +17,6 @@ package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
 import reactor.bus.selector.ClassSelector;
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 
 /**
@@ -29,9 +28,9 @@ final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T>
 	private final Consumer<? super E> consumer;
 	private final ClassSelector       selector;
 
-	public ErrorAction(Dispatcher dispatcher, ClassSelector selector, Consumer<? super E> consumer, Publisher<? extends
+	public ErrorAction(ClassSelector selector, Consumer<? super E> consumer, Publisher<? extends
 			T> fallback) {
-		super(dispatcher, fallback);
+		super(fallback);
 		this.consumer = consumer;
 		this.selector = selector;
 	}

@@ -60,7 +60,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(8, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
+
+		//preinit the two dispatchers
+		dispatchers.get();
+		dispatchers.get();
 	}
 
 	@Override
@@ -69,10 +73,9 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		//Dispatcher dispatcherZip = env.getCachedDispatcher();
 		AtomicLong total = new AtomicLong();
-
+		System.out.println("Providing new processor");
 		final CombineAction<Integer, Integer> integerIntegerCombineAction =
-				Broadcaster.<Integer>create(dispatchers.get())
-						.keepAlive(false)
+				Broadcaster.<Integer>create(Environment.get())
 						.capacity(bufferSize)
 						.partition(2)
 						.flatMap(stream -> stream
@@ -82,6 +85,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.sample(1)
 										.observe(this::monitorThreadUse)
 										.map(integer -> -integer)
+										//.log("buffer")
 										.buffer(1024, 200, TimeUnit.MILLISECONDS)
 										.<Integer>split()
 										.flatMap(i ->
@@ -95,8 +99,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		/*Streams.period(env.getTimer(), 2, 1)
 				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
-				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );*/
-
+				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
+*/
 		return integerIntegerCombineAction;
 	}
 
@@ -146,7 +150,26 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Override
 	public void spec317_mustSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
 		//IGNORE (since 1.0 RC2)
+	}/*
+
+	@Override
+	public void spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue() throws Throwable {
+		for(int i = 0; i < 10000; i++)
+		super.spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue();
 	}
+
+	@Override
+	public void spec317_mustSupportAPendingElementCountUpToLongMaxValue() throws Throwable {
+		for(int i = 0; i < 10000; i++)
+		super.spec317_mustSupportAPendingElementCountUpToLongMaxValue();
+	}*/
+
+	//@Test
+/*	public void test100IdentityProcessor() throws InterruptedException {
+		for(int i = 0; i < 100; i++){
+			testIdentityProcessor();
+		}
+	}*/
 
 	@Test
 	public void testIdentityProcessor() throws InterruptedException {
@@ -159,7 +182,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		stream.subscribe(processor);
 		System.out.println(processor.debug());
-		Thread.sleep(2000);
 
 		processor.subscribe(new Subscriber<Integer>() {
 			@Override
@@ -185,7 +207,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		});
 
 
-		for (int i = 0; i < elements; i++) {
+		for (int i = 0; i < elements*2; i++) {
 			stream.onNext(i);
 		}
 		//stream.broadcastComplete();

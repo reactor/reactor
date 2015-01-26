@@ -15,22 +15,17 @@
  */
 package reactor.rx.action.transformation;
 
-import reactor.core.Dispatcher;
-import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
 
 /**
  * @author Stephane Maldini
  */
 public class DematerializeAction<T> extends Action<Signal<T>, T> {
 
-	public DematerializeAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
-
 	@Override
 	protected void doNext(Signal<T> ev) {
-		if(downstreamSubscription != null && !downstreamSubscription.isComplete() && !ev.isOnSubscribe()){
+		if(!ev.isOnSubscribe()){
 			if(ev.isOnNext()){
 				broadcastNext(ev.get());
 			}else if(ev.isOnComplete()){

@@ -48,6 +48,7 @@ public final class ObservableStream<T> extends Stream<T> {
 	private final Selector      selector;
 	private final Observable<T> observable;
 	private final Dispatcher    dispatcher;
+	private final boolean    ordering;
 
 
 	public ObservableStream(final @Nonnull Observable<T> observable,
@@ -57,11 +58,12 @@ public final class ObservableStream<T> extends Stream<T> {
 		this.observable = observable;
 		this.dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
 				((EventBus)observable).getDispatcher() : SynchronousDispatcher.INSTANCE;
+		this.ordering = dispatcher.supportsOrdering();
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super T> s) {
-		if(!dispatcher.supportsOrdering()) {
+		if(!ordering) {
 			s = SerializedSubscriber.create(s);
 		}
 		s.onSubscribe(new PushSubscription<T>(this, s) {
@@ -82,8 +84,8 @@ public final class ObservableStream<T> extends Stream<T> {
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher.supportsOrdering() ? dispatcher : SynchronousDispatcher.INSTANCE;
+	public final Dispatcher getDispatcher() {
+		return ordering ? dispatcher : SynchronousDispatcher.INSTANCE;
 	}
 
 	@Override

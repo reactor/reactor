@@ -16,18 +16,13 @@
 package reactor.rx.action.transformation;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.rx.action.Signal;
 import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
 
 /**
  * @author Stephane Maldini
  */
 public class MaterializeAction<T> extends Action<T, Signal<T>> {
-
-	public MaterializeAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	@Override
 	protected void doNext(T ev) {

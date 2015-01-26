@@ -18,9 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.rx.Stream;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -34,7 +32,6 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
 	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
-
 	private volatile int wip = 0;
 
 	protected static final AtomicIntegerFieldUpdater<DynamicMergeAction> WIP_UPDATER = AtomicIntegerFieldUpdater
@@ -48,13 +45,11 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
-			Dispatcher dispatcher,
 			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
 	) {
-		super(dispatcher);
 		this.fanInAction = fanInAction == null ?
 				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
-						(dispatcher) :
+						(SynchronousDispatcher.INSTANCE) :
 				fanInAction;
 
 		this.fanInAction.dynamicMergeAction = this;
@@ -128,11 +123,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	public void onNext(Publisher<? extends I> ev) {
-		accept(ev);
-	}
-
-	@Override
 	public boolean isPublishing() {
 		return super.isPublishing() || wip > 0;
 	}
@@ -141,12 +131,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	public Action<Publisher<? extends I>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);
-	}
-
-	@Override
-	public Stream<O> env(Environment environment) {
-		fanInAction.env(environment);
-		return super.env(environment);
 	}
 
 	public int decrementWip(){

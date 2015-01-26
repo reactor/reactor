@@ -17,7 +17,6 @@ package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
 import reactor.bus.selector.ClassSelector;
-import reactor.core.Dispatcher;
 import reactor.core.support.Exceptions;
 import reactor.fn.BiConsumer;
 
@@ -29,10 +28,10 @@ final public class ErrorWithValueAction<T, E extends Throwable> extends Fallback
 	private final BiConsumer<Object, ? super E> consumer;
 	private final ClassSelector       selector;
 
-	public ErrorWithValueAction(Dispatcher dispatcher, ClassSelector selector, BiConsumer<Object, ? super E> consumer, Publisher<?
+	public ErrorWithValueAction(ClassSelector selector, BiConsumer<Object, ? super E> consumer, Publisher<?
 			extends
 			T> fallback) {
-		super(dispatcher, fallback);
+		super(fallback);
 		this.consumer = consumer;
 		this.selector = selector;
 	}

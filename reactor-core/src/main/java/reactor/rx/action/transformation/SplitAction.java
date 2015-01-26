@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.transformation;
 
-import reactor.core.Dispatcher;
 import reactor.rx.action.Action;
 
 /**
@@ -23,10 +22,6 @@ import reactor.rx.action.Action;
  * @since 1.1
  */
 public class SplitAction<T> extends Action<Iterable<? extends T>, T> {
-
-	public SplitAction(Dispatcher dispatcher) {
-		super(dispatcher);
-	}
 
 	@Override
 	protected void doNext(Iterable<? extends T> values) {

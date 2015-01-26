@@ -18,8 +18,10 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -46,6 +48,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	final static protected int COMPLETING  = 2;
 
 	final AtomicInteger status = new AtomicInteger();
+	final protected Dispatcher dispatcher;
 
 
 	DynamicMergeAction<?, ?> dynamicMergeAction = null;
@@ -57,8 +60,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public FanInAction(Dispatcher dispatcher,
 	                   Iterable<? extends Publisher<? extends I>> composables) {
-		super(dispatcher);
-
+		super();
+		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
+				Environment.tailRecurse() : dispatcher;
 		this.composables = composables;
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
 	}
@@ -78,8 +82,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void doStart(long pending) {
-		if(dynamicMergeAction != null){
-			dispatch(pending, innerSubscriptions);
+		if (dynamicMergeAction != null) {
+			dispatcher.dispatch(pending, innerSubscriptions, null);
 		}
 	}
 
@@ -99,11 +103,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.cancel();
 		}
-		if(SynchronousDispatcher.INSTANCE == dispatcher) {
-			innerSubscriptions.serialCancel();
-		}else{
-			innerSubscriptions.cancel();
-		}
+
+
+		innerSubscriptions.cancel();
 	}
 
 	public Action<?, ?> dynamicMergeAction() {
@@ -115,7 +117,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			innerSubscriptions.maxCapacity(capacity);
 			if (composables != null) {
-				if (innerSubscriptions.subscriptions.size() > 0) {
+				if (innerSubscriptions.runningComposables > 0) {
 					innerSubscriptions.cancel();
 					return;
 				}
@@ -142,13 +144,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	protected void doComplete() {
-			broadcastComplete();
+		broadcastComplete();
 	}
 
 	@Override
 	public void requestMore(long n) {
 		checkRequest(n);
-		dispatch(n, upstreamSubscription);
+		dispatcher.dispatch(n, upstreamSubscription, null);
 	}
 
 	@Override
@@ -158,6 +160,11 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return TailRecurseDispatcher.class == dispatcher.getClass() ? SynchronousDispatcher.INSTANCE : dispatcher;
 	}
 
 	@Override
@@ -175,8 +182,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		return innerSubscriptions;
 	}
 
-	protected final <A> void internalDispatch(A data, Consumer<A> consumer){
-		dispatch(data, consumer);
+	protected final <A> void internalDispatch(A data, Consumer<A> consumer) {
+		dispatcher.dispatch(data, consumer, null);
 	}
 
 	protected abstract InnerSubscriber<I, E, O> createSubscriber();
@@ -206,12 +213,10 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				if (pendingRequests > 0) {
 					request(pendingRequests);
 				}
-			}catch(Throwable e){
+			} catch (Throwable e) {
 				outerAction.onError(e);
 			}
 		}
-
-
 
 
 		public void request(long n) {
@@ -233,15 +238,18 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		@Override
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
-			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
+			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
 				s.toRemove = true;
 				s.cancel();
 				outerAction.status.set(COMPLETING);
-				long left = outerAction.innerSubscriptions.removeSubscription(s);
-				if (left == 0
-						&& !outerAction.checkDynamicMerge()
-						) {
-					outerAction.innerSubscriptions.serialComplete();
+				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+				left = left < 0l ? 0l : left;
+
+				if (left == 0) {
+					outerAction.innerSubscriptions.subscriptions.clear();
+					if (!outerAction.checkDynamicMerge()){
+						outerAction.innerSubscriptions.serialComplete();
+					}
 				}
 			}
 

@@ -20,7 +20,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -38,13 +37,14 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 	final private Supplier<? extends Publisher<?>> boundarySupplier;
 	final private Environment environment;
+	final private Dispatcher dispatcher;
 
 	private Broadcaster<T> windowBroadcaster;
 
 	public WindowWhenAction(Environment environment, Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
-		super(dispatcher);
 		this.boundarySupplier = boundarySupplier;
 		this.environment = environment;
+		this.dispatcher = dispatcher;
 	}
 
 
@@ -52,13 +52,6 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		final Consumer<Void> consumerFlush = new Consumer<Void>() {
-			@Override
-			public void accept(Void o) {
-				flush();
-			}
-		};
-
 		boundarySupplier.get().subscribe(new Subscriber<Object>() {
 
 			Subscription s;
@@ -71,7 +64,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 			@Override
 			public void onNext(Object o) {
-				dispatch(consumerFlush);
+				flush();
 				if (s != null) {
 					s.request(1);
 				}
@@ -118,7 +111,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, getEnvironment(), dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, environment, dispatcher);
 		windowBroadcaster = action;
 		return action;
 	}
@@ -142,9 +135,12 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public Environment getEnvironment() {
+	public final Environment getEnvironment() {
 		return environment;
 	}
 
-
+	@Override
+	public Dispatcher getDispatcher() {
+		return dispatcher;
+	}
 }

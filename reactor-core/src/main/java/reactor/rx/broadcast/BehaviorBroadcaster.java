@@ -50,8 +50,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * @return a new {@link reactor.rx.action.Action}
 	 */
 	public static <T> Broadcaster<T> first(T value) {
-		Broadcaster<T> broadcaster = new BehaviorBroadcaster<>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE, value);
-		return broadcaster.keepAlive();
+		return new BehaviorBroadcaster<>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE, value);
 	}
 
 	/**
@@ -105,12 +104,11 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
 				"dispatchers");
-		Broadcaster<T> broadcaster = new BehaviorBroadcaster<>(dispatcher, dispatcher.backlogSize() > 0 ?
+		return new BehaviorBroadcaster<>(env, dispatcher, dispatcher.backlogSize() > 0 ?
 				(RESERVED_SLOTS > dispatcher.backlogSize() ?
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - RESERVED_SLOTS) :
 				Long.MAX_VALUE, value);
-		return broadcaster.env(env).keepAlive();
 	}
 
 	/**
@@ -168,8 +166,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
 
-	private BehaviorBroadcaster(Dispatcher dispatcher, long capacity, O defaultVal) {
-		super(dispatcher, capacity);
+	private BehaviorBroadcaster(Environment environment, Dispatcher dispatcher, long capacity, O defaultVal) {
+		super(environment, dispatcher, capacity);
 		if (defaultVal != null) {
 			lastSignal.type = Signal.Type.NEXT;
 			lastSignal.value = defaultVal;

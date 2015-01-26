@@ -324,7 +324,6 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with values 1 to INT_MAX inclusive'
 			def s = Streams.range(1, Integer.MAX_VALUE)
-					.requestOn(Environment.get())
 
 		when:
 			'the most recent value is retrieved'
@@ -332,6 +331,7 @@ class StreamsSpec extends Specification {
 					.sample(2l, TimeUnit.SECONDS)
 					.dispatchOn(Environment.cachedDispatcher())
 					.log()
+					.subscribeOn(Environment.get())
 					.next()
 
 		then:
@@ -339,6 +339,28 @@ class StreamsSpec extends Specification {
 
 		cleanup:
 			println last.debug()
+	}
+
+	def 'A Stream can sample values over time with consumeOn'() {
+		given:
+			'a composable with values 1 to INT_MAX inclusive'
+			def s = Streams.range(1, Integer.MAX_VALUE)
+
+		when:
+			'the most recent value is retrieved'
+			def i = 0
+			def last = Promises.prepare()
+			s
+					.take(4, TimeUnit.SECONDS)
+					.subscribeOn(Environment.workDispatcher())
+					.consume({
+						i++
+					}, null, {
+						last.onNext(i)
+					})
+
+		then:
+			last.await(5, TimeUnit.SECONDS) > 20_000
 	}
 
 	def 'A Stream can be enforced to dispatch values distinct from their immediate predecessors'() {
@@ -362,7 +384,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the values are filtered and result is collected'
-			def tap = s.distinctUntilChanged{ it % 2 == 0 }.buffer().tap()
+			def tap = s.distinctUntilChanged { it % 2 == 0 }.buffer().tap()
 
 		then:
 			'collected must remove duplicates'
@@ -390,7 +412,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the values are filtered and result is collected'
-			def tap = s.distinct{ it % 3 }.buffer().tap()
+			def tap = s.distinct { it % 3 }.buffer().tap()
 
 		then:
 			'collected should be without duplicates'
@@ -524,20 +546,20 @@ class StreamsSpec extends Specification {
 	def 'Accepted errors and values are passed to a registered Consumer'() {
 		when:
 			'a composable with a registered consumer of RuntimeExceptions'
-		def res = []
-			def stream = Broadcaster.<Integer>create()
+			def res = []
+			def stream = Broadcaster.<Integer> create()
 			def tail = stream
-			    .observe{ if(it>1) throw new RuntimeException()}
-					.observeError(RuntimeException){ data, error -> res << data}
+					.observe { if (it > 1) throw new RuntimeException() }
+					.observeError(RuntimeException) { data, error -> res << data }
 					.retry()
-		      .consume()
+					.consume()
 			println tail.debug()
 
-		stream.onNext(1)
-		stream.onNext(2)
-		stream.onNext(3)
-		stream.onNext(4)
-		stream.onComplete()
+			stream.onNext(1)
+			stream.onNext(2)
+			stream.onNext(3)
+			stream.onNext(4)
+			stream.onComplete()
 
 		then:
 			'it is called since publisher is in error state'
@@ -545,11 +567,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'Recover values'
-		 def b = Broadcaster.<Integer>create()
+			def b = Broadcaster.<Integer> create()
 			tail = b.toList()
 
 			stream
-					.observe{ if(it>1) throw new RuntimeException()}
+					.observe { if (it > 1) throw new RuntimeException() }
 					.recover(RuntimeException, b)
 					.consume()
 
@@ -845,13 +867,13 @@ class StreamsSpec extends Specification {
 	def "Combine latest stream data"() {
 		given:
 			'source composables to zip, buffer and tap'
-			def w1 = Broadcaster.<String>create()
-			def w2 = Broadcaster.<String>create()
-			def w3 = Broadcaster.<String>create()
+			def w1 = Broadcaster.<String> create()
+			def w2 = Broadcaster.<String> create()
+			def w3 = Broadcaster.<String> create()
 
 		when:
 			'the sources are zipped'
-			def mergedStream = Streams.combineLatest(w1, w2, w3, {t ->  t.t1+t.t2+t.t3})
+			def mergedStream = Streams.combineLatest(w1, w2, w3, { t -> t.t1 + t.t2 + t.t3 })
 			def res = []
 
 			mergedStream.consume(
@@ -877,7 +899,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 and source2 stream'
-			res == ['1a2a3a', '1a2b3a', '1a2b3b', '1a2b3c', '1a2b3d' , 'done']
+			res == ['1a2a3a', '1a2b3a', '1a2b3b', '1a2b3c', '1a2b3d', 'done']
 
 	}
 
@@ -917,7 +939,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			res = []
-			lasts.startWith([1,2,3]).consume(
+			lasts.startWith([1, 2, 3]).consume(
 					{ res << it; println it },
 					{ it.printStackTrace() },
 					{ res << 'done'; println 'completed!' }
@@ -1279,11 +1301,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).log().buffer(450l, 600l, TimeUnit.MILLISECONDS).toList()
+			res = numbers.throttle(150).log().buffer(350l, 650l, TimeUnit.MILLISECONDS).log().toList()
 
 		then:
 			'the collected lists are available'
-			res.await(5, TimeUnit.SECONDS) == [[3, 4], [6, 7]]
+			res.await(5, TimeUnit.SECONDS) == [[4, 5], [7, 8]]
 	}
 
 
@@ -1295,7 +1317,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.buffer{ boundaryStream }.toList()
+			def res = numbers.buffer { boundaryStream }.toList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1312,7 +1334,7 @@ class StreamsSpec extends Specification {
 		when:
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
-			res = numbers.buffer(bucketOpening){boundaryStream}.toList()
+			res = numbers.buffer(bucketOpening) { boundaryStream }.toList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1338,7 +1360,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			def res = numbers.window(2, 3).flatMap{it.buffer()}.toList()
+			def res = numbers.window(2, 3).flatMap { it.buffer() }.toList()
 
 		then:
 			'the collected lists are available'
@@ -1346,7 +1368,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'overlapping buffers'
-			res = numbers.window(3, 2).flatMap{it.buffer()}.toList()
+			res = numbers.window(3, 2).flatMap { it.buffer() }.toList()
 
 		then:
 			'the collected overlapping lists are available'
@@ -1355,11 +1377,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(200).window(450l, 600l, TimeUnit.MILLISECONDS).flatMap{it.log('fm').buffer()}.toList()
+			res = numbers.throttle(150).window(350l, 650l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[3, 4], [6, 7]]
+			res.await() == [[4, 5], [7, 8]]
 
 	}
 
@@ -1372,7 +1394,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.window{ boundaryStream }.flatMap{it.buffer()}.toList()
+			def res = numbers.window { boundaryStream }.flatMap { it.buffer() }.toList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1389,7 +1411,7 @@ class StreamsSpec extends Specification {
 		when:
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
-			res = numbers.window(bucketOpening){boundaryStream}.flatMap{it.buffer()}.toList()
+			res = numbers.window(bucketOpening) { boundaryStream }.flatMap { it.buffer() }.toList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1661,7 +1683,7 @@ class StreamsSpec extends Specification {
 			"multithreaded bus can be serialized"
 			r = EventBus.create(Environment.get(), Environment.dispatcher("workQueue"))
 			s = SerializedBroadcaster.<Event<Integer>> create()
-			def tail = s.map{it.data}.observe{ sleep(100)}.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
 
 			r.on(selector, s)
 
@@ -1823,14 +1845,14 @@ class StreamsSpec extends Specification {
 	def 'Caching Stream from publisher'() {
 		given:
 			'a slow source stream'
-			def s = Streams.<Integer>create{
+			def s = Streams.<Integer> create {
 				it.onNext(1)
 				sleep(200)
 				it.onNext(2)
 				sleep(200)
 				it.onNext(3)
 				it.onComplete()
-			}.cache().elapsed().map{it.t1}
+			}.cache().elapsed().map { it.t1 }
 
 		when:
 			'consume it twice'
@@ -1854,8 +1876,8 @@ class StreamsSpec extends Specification {
 			'dispatching works'
 			latch.await(2, TimeUnit.SECONDS)
 			nexts.size() == 6
-			nexts[0]+nexts[1]+nexts[2] > 400
-			nexts[3]+nexts[4]+nexts[5] < 50
+			nexts[0] + nexts[1] + nexts[2] > 400
+			nexts[3] + nexts[4] + nexts[5] < 50
 			!errors
 	}
 
@@ -1918,7 +1940,7 @@ class StreamsSpec extends Specification {
 	def 'Throttle will accumulate a list of accepted values and pass it to a consumer on the specified period'() {
 		given:
 			'a source and a collected stream'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.buffer(2).throttle(300)
 			def value = reduced.tap()
 
@@ -1972,7 +1994,7 @@ class StreamsSpec extends Specification {
 	def 'Collect with Timeout will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.buffer(5, 600, TimeUnit.MILLISECONDS)
 			def value = reduced.tap()
 			println value.debug()
@@ -2008,7 +2030,7 @@ class StreamsSpec extends Specification {
 	def 'Timeout can be bound to a stream'() {
 		given:
 			'a source and a timeout'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS)
 			def error = null
 			def value = reduced.when(TimeoutException) {
@@ -2038,7 +2060,7 @@ class StreamsSpec extends Specification {
 	def 'Timeout can be bound to a stream and fallback'() {
 		given:
 			'a source and a timeout'
-			def source = Broadcaster.<Integer> create().env(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def reduced = source.timeout(1500, TimeUnit.MILLISECONDS, Streams.just(10))
 			def error = null
 			def value = reduced.when(TimeoutException) {
@@ -2287,7 +2309,7 @@ class StreamsSpec extends Specification {
 					.elapsed()
 					.log()
 					.take(10)
-					.reduce(0l) {  acc, next ->
+					.reduce(0l) { acc, next ->
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
@@ -2325,7 +2347,7 @@ class StreamsSpec extends Specification {
 			.elapsed()
 					.take(10)
 					.log('reduce')
-					.reduce (0l) { acc, next ->
+					.reduce(0l) { acc, next ->
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
@@ -2532,7 +2554,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
-			stream = stream.observe {
+			stream = stream.log().observe {
 				println it
 				if (i++ < 2) {
 					throw new RuntimeException()
@@ -2615,14 +2637,14 @@ class StreamsSpec extends Specification {
 			def counter = 0
 			def value = Streams.create {
 				counter++
-				it.onError(new RuntimeException("always fails"))
+				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
 					Streams.timer(i)
 				}
 			}.next()
-			value.await(30, TimeUnit.SECONDS)
+			value.await(10, TimeUnit.SECONDS)
 
 		then:
 			'Promise completed after 3 tries'
@@ -2870,7 +2892,7 @@ class StreamsSpec extends Specification {
 		int hashcode() { id }
 	}
 
-	static class Reduction implements BiFunction<Integer,Integer,Integer> {
+	static class Reduction implements BiFunction<Integer, Integer, Integer> {
 		@Override
 		public Integer apply(Integer left, Integer right) {
 			def result = right == null ? 1 : left * right

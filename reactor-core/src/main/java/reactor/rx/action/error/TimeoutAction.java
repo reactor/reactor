@@ -36,13 +36,7 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 	private final long  timeout;
 
 
-	private final Consumer<Long> timeoutTask = new Consumer<Long>() {
-		@Override
-		public void accept(Long aLong) {
-			if (timeoutRegistration.getObject() == this)
-				dispatch(timeoutRequest);
-		}
-	};
+	private final Consumer<Long> timeoutTask;
 
 	private final Consumer<Void> timeoutRequest = new Consumer<Void>() {
 		@Override
@@ -59,9 +53,16 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 
 	private volatile Registration<? extends Consumer<Long>> timeoutRegistration;
 
-	public TimeoutAction(Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
-		super(dispatcher, fallback);
+	public TimeoutAction(final Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
+		super(fallback);
 		Assert.state(timer != null, "Timer must be supplied");
+		this.timeoutTask = new Consumer<Long>() {
+			@Override
+			public void accept(Long aLong) {
+				if (timeoutRegistration.getObject() == this)
+					dispatcher.dispatch(null, timeoutRequest, null);
+			}
+		};
 		this.timer = timer;
 		this.timeout = timeout;
 	}

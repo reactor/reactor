@@ -15,8 +15,6 @@
  */
 package reactor.rx.action.filter;
 
-import reactor.core.Dispatcher;
-import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
 
@@ -35,17 +33,7 @@ public class FilterAction<T> extends Action<T, T> {
 
 	private final Predicate<? super T> p;
 
-	public FilterAction(final Function<? super T, Boolean> p, Dispatcher dispatcher) {
-		this(new Predicate<T>() {
-			@Override
-			public boolean test(T t) {
-				return p.apply(t);
-			}
-		}, dispatcher);
-	}
-
-	public FilterAction(Predicate<? super T> p, Dispatcher dispatcher) {
-		super(dispatcher);
+	public FilterAction(Predicate<? super T> p) {
 		this.p = p;
 	}
 

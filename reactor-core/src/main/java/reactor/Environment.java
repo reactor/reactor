@@ -18,7 +18,6 @@ package reactor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import reactor.bus.EventBus;
 import reactor.bus.convert.StandardConverters;
 import reactor.bus.filter.Filter;
@@ -42,7 +41,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
  * @author Jon Brisbin
@@ -192,6 +190,19 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
+	 * Obtain a multi threaded dispatcher useful for scaling up slow processing.
+	 *
+	 * <p>
+	 * The Multithreaded Dispatcher is suitable for IO work if combined with reactor event buses {@link reactor.bus
+	 * .EventBus} or
+	 * streams {@link reactor.rx.Stream} using {@link reactor.rx.Stream#consumeOn}.
+	 *
+	 * @return a dispatcher from the default pool, usually a WorkQueueDispatcher.
+	 */
+	public static Dispatcher workDispatcher() {
+		return get().getDispatcher(WORK_QUEUE);
+	}
+	/**
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
@@ -218,6 +229,18 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public static Dispatcher dispatcher(String key) {
 		return get().getDispatcher(key);
+	}
+
+	/**
+	 * Obtain a fresh tailRecurse Dispatcher. Events dispatched on tailRecurse will be queued if any work is in progress.
+	 * Using a Tail Recurse Dispatcher consumers can make sure to not infinitely recurse the stack.
+	 * it is preferrable to fetch them out of the critical path.
+	 * <p>
+	 *
+	 * @return a new tailRecurse Dispatcher
+	 */
+	public static TailRecurseDispatcher tailRecurse() {
+		return new TailRecurseDispatcher();
 	}
 
 	/**

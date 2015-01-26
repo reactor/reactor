@@ -16,7 +16,6 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 
@@ -28,9 +27,8 @@ public class StreamStateCallbackAction<T> extends Action<T, T> {
 	private final Consumer<? super Subscriber<? super T>> subscribeConsumer;
 	private final Consumer<Void> cancelConsumer;
 
-	public StreamStateCallbackAction(Dispatcher dispatcher, Consumer<? super Subscriber<? super T>> subscribeConsumer,
+	public StreamStateCallbackAction(Consumer<? super Subscriber<? super T>> subscribeConsumer,
 	                                 Consumer<Void> cancelConsumer) {
-		super(dispatcher);
 		this.subscribeConsumer = subscribeConsumer;
 		this.cancelConsumer = cancelConsumer;
 	}
@@ -42,17 +40,17 @@ public class StreamStateCallbackAction<T> extends Action<T, T> {
 
 	@Override
 	protected void onShutdown() {
-		super.onShutdown();
 		if(cancelConsumer != null){
-			trySyncDispatch(null, cancelConsumer);
+			cancelConsumer.accept(null);
 		}
+		super.onShutdown();
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super T> subscriber) {
-		super.subscribe(subscriber);
 		if(subscribeConsumer != null){
-			trySyncDispatch(subscriber, subscribeConsumer);
+			subscribeConsumer.accept(subscriber);
 		}
+		super.subscribe(subscriber);
 	}
 }
