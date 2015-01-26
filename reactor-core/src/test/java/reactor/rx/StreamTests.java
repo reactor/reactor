@@ -97,8 +97,7 @@ public class StreamTests extends AbstractReactorTest {
 	public void simpleReactiveSubscriber() throws InterruptedException {
 		Broadcaster<String> str = Broadcaster.create(env);
 
-		str
-				.subscribe(new TestSubscriber());
+		str.subscribe(new TestSubscriber());
 
 		System.out.println(str.debug());
 

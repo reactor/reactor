@@ -51,11 +51,6 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	public void onNext(O ev) {
-		broadcastNext(ev);
-	}
-
-	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		if (queueSupplier != null) {
 			return new ReactiveSubscription<O>(this, subscriber, queueSupplier.get()) {

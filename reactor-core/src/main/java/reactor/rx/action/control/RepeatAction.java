@@ -30,10 +30,11 @@ import reactor.rx.subscription.PushSubscription;
  */
 public class RepeatAction<T> extends Action<T, T> {
 
-	private final long           numRetries;
+	private final long numRetries;
 	private long currentNumRetries = 0;
 	private final Publisher<? extends T> rootPublisher;
-	private Dispatcher             dispatcher;
+	private       Dispatcher             dispatcher;
+	private       long                   pendingRequests = 0l;
 
 	public RepeatAction(Dispatcher dispatcher, int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
@@ -48,11 +49,28 @@ public class RepeatAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
+			synchronized (this){
+				if(pendingRequests != Long.MAX_VALUE) {
+					pendingRequests--;
+				}
+			}
+		}
 	}
 
 	@Override
 	public final Dispatcher getDispatcher() {
 		return dispatcher;
+	}
+
+	@Override
+	public void requestMore(long n) {
+		synchronized (this) {
+			if ((pendingRequests += n) < 0l) {
+				pendingRequests = Long.MAX_VALUE;
+			}
+		}
+		super.requestMore(n);
 	}
 
 	@Override
@@ -66,7 +84,7 @@ public class RepeatAction<T> extends Action<T, T> {
 				} else {
 					PushSubscription<T> upstream = upstreamSubscription;
 					if (upstream != null) {
-						long pendingRequests = upstream.pendingRequestSignals();
+						long pendingRequests = RepeatAction.this.pendingRequests;
 						if (rootPublisher != null) {
 							if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
 								dispatcher.shutdown();

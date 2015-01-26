@@ -137,16 +137,7 @@ public final class TailRecurseDispatcher implements Dispatcher {
 
 	@Override
 	public boolean inContext() {
-		return false;
-	}
-
-	public Consumer<Void> killConsumer(){
-		return new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				terminated = true;
-			}
-		};
+		return true;
 	}
 
 	private static class Task implements Comparable<Task> {

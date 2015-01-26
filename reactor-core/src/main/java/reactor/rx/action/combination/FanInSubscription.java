@@ -62,6 +62,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 				//deal with recursive cancel while requesting
 				InnerSubscription<O, E, SUBSCRIBER> subscription;
 				int i = 0;
+				long toRequest = elements != Long.MAX_VALUE && elements / size > 0 ? elements / size : elements;
 				do {
 						subscription = subscriptions.poll();
 					if (subscription != null) {
@@ -70,7 +71,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 							i++;
 						}
 
-						subscription.subscriber.request(elements / size > 0 ? elements / size : elements);
+						subscription.subscriber.request(toRequest);
 
 						if (terminated) {
 							break;
@@ -121,18 +122,6 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		subscriptions.add(s);
 		return newSize;
-	}
-
-	@Override
-	public void updatePendingRequests(long n) {
-		super.updatePendingRequests(n);
-		if (!subscriptions.isEmpty()) {
-			for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
-				if(subscription != null && subscription.subscriber != null){
-					subscription.subscriber.pendingRequests += n;
-				}
-			}
-		}
 	}
 
 	@Override

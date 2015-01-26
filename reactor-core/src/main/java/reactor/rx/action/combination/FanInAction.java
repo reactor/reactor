@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -163,7 +164,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public final Dispatcher getDispatcher() {
-		return dispatcher;
+		return TailRecurseDispatcher.class == dispatcher.getClass() ? SynchronousDispatcher.INSTANCE : dispatcher;
 	}
 
 	@Override

@@ -68,16 +68,6 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 		return new SerializedBroadcaster<>(env, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
 	}
 
-
-	@Override
-	public void accept(O o) {
-		try {
-			serializer.onNext(o);
-		} catch (Throwable cause) {
-			doError(Exceptions.addValueAsLastCause(cause, o));
-		}
-	}
-
 	@Override
 	public void onSubscribe(Subscription subscription) {
 		serializer.onSubscribe(subscription);
@@ -88,7 +78,11 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 */
 	@Override
 	public void onNext(O ev) {
-		serializer.onNext(ev);
+		try {
+			serializer.onNext(ev);
+		} catch (Throwable cause) {
+			doError(Exceptions.addValueAsLastCause(cause, ev));
+		}
 	}
 
 	/**
@@ -124,17 +118,17 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 
 			@Override
 			public void onNext(O o) {
-				SerializedBroadcaster.super.accept(o);
+				SerializedBroadcaster.super.doNext(o);
 			}
 
 			@Override
 			public void onError(Throwable t) {
-				SerializedBroadcaster.super.onError(t);
+				SerializedBroadcaster.super.doError(t);
 			}
 
 			@Override
 			public void onComplete() {
-				SerializedBroadcaster.super.onComplete();
+				SerializedBroadcaster.super.doComplete();
 			}
 		});
 	}

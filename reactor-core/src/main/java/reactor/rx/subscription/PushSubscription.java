@@ -71,8 +71,10 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public void request(long n) {
 		try {
+			if(publisher == null) {
 				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
 					PENDING_UPDATER.set(this, Long.MAX_VALUE);
+			}
 			onRequest(n);
 		} catch (Throwable t) {
 			subscriber.onError(t);

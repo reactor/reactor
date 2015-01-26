@@ -393,7 +393,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consume(final Consumer<? super O> consumer) {
-		return consumeOn(consumer, getDispatcher());
+		return consumeOn(getDispatcher(), consumer);
 	}
 
 	/**
@@ -403,11 +403,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
-	 * @param consumer   the consumer to invoke on each value
 	 * @param dispatcher the dispatcher to run the consumer
+	 * @param consumer   the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(final Consumer<? super O> consumer, Dispatcher dispatcher) {
+	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
 		ConsumerAction<O> consumerAction = new ConsumerAction<O>(dispatcher, consumer, null, null);
 		if (dispatcher != getDispatcher()) {
 			consumerAction.capacity(getCapacity());
@@ -433,7 +433,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
 	                              Consumer<? super Throwable> errorConsumer) {
-		return consumeOn(consumer, errorConsumer, getDispatcher());
+		return consumeOn(getDispatcher(), consumer, errorConsumer);
 	}
 
 	/**
@@ -449,9 +449,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param dispatcher    the dispatcher to run the consumer
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(final Consumer<? super O> consumer,
-	                                Consumer<? super Throwable> errorConsumer, Dispatcher dispatcher) {
-		return consumeOn(consumer, errorConsumer, null, dispatcher);
+	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
+	                                Consumer<? super Throwable> errorConsumer) {
+		return consumeOn(dispatcher, consumer, errorConsumer, null);
 	}
 
 	/**
@@ -470,7 +470,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Control consume(final Consumer<? super O> consumer,
 	                              Consumer<? super Throwable> errorConsumer,
 	                              Consumer<Void> completeConsumer) {
-		return consumeOn(consumer, errorConsumer, completeConsumer, getDispatcher());
+		return consumeOn(getDispatcher(), consumer, errorConsumer, completeConsumer);
 	}
 
 
@@ -488,9 +488,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param dispatcher       the dispatcher to run the consumer
 	 * @return {@literal new Stream}
 	 */
-	public final Control consumeOn(final Consumer<? super O> consumer,
+	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
 	                                Consumer<? super Throwable> errorConsumer,
-	                                Consumer<Void> completeConsumer, Dispatcher dispatcher) {
+	                                Consumer<Void> completeConsumer) {
 		ConsumerAction<O> consumerAction =
 				new ConsumerAction<O>(dispatcher, consumer, errorConsumer, completeConsumer);
 
@@ -522,8 +522,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
 	 * @return a new {@link Stream} whom requests are running on a different {@link Dispatcher}
 	 */
-	public final Stream<O> requestOn(@Nonnull final Environment environment) {
-		return requestOn(environment.getDefaultDispatcher());
+	public final Stream<O> subscribeOn(@Nonnull final Environment environment) {
+		return subscribeOn(environment.getDefaultDispatcher());
 	}
 
 	/**
@@ -545,23 +545,34 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param currentDispatcher the new dispatcher
 	 * @return a new {@link Stream} whom request are running on a different {@link Dispatcher}
 	 */
-	public final Stream<O> requestOn(@Nonnull final Dispatcher currentDispatcher) {
-		return lift(new Supplier<Action<O, O>>() {
+	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
+		return new Stream<O>(){
 			@Override
-			public Action<O, O> get() {
-				return new Action<O, O>() {
-					@Override
-					public void requestMore(long n) {
-						currentDispatcher.dispatch(n, upstreamSubscription, null);
-					}
-
-					@Override
-					protected void doNext(O ev) {
-						broadcastNext(ev);
-					}
-				};
+			public long getCapacity() {
+				return Stream.this.getCapacity();
 			}
-		});
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return currentDispatcher;
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super O> s) {
+				currentDispatcher.dispatch(s, new Consumer<Subscriber<? super O>>() {
+					@Override
+					public void accept(Subscriber<? super O> subscriber) {
+						Stream.this.subscribe(subscriber);
+					}
+				}, null);
+			}
+
+		};
 	}
 
 	/**
@@ -575,8 +586,14 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
 	public Stream<O> dispatchOn(final Environment environment, @Nonnull final Dispatcher dispatcher) {
-		if(environment != null && environment == getEnvironment() && dispatcher == getDispatcher()){
-			return this;
+		if(dispatcher == SynchronousDispatcher.INSTANCE
+				|| dispatcher == getDispatcher()){
+
+			if (environment != getEnvironment()){
+				return env(environment);
+			}else{
+				return this;
+			}
 		}
 
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
@@ -838,7 +855,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return map(fn).lift(new Supplier<Action<Publisher<? extends V>, V>>() {
 			@Override
 			public Action<Publisher<? extends V>, V> get() {
-				return new DynamicMergeAction<V, V>(SynchronousDispatcher.INSTANCE,
+				return new DynamicMergeAction<V, V>(
 						new ConcatAction<V>(SynchronousDispatcher.INSTANCE, null));
 			}
 		});
@@ -1015,7 +1032,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return thiz.lift(new Supplier<Action<Publisher<?>, V>>() {
 			@Override
 			public Action<Publisher<?>, V> get() {
-				return new DynamicMergeAction<Object, V>(SynchronousDispatcher.INSTANCE,
+				return new DynamicMergeAction<Object, V>(
 						new ZipAction<Object, V, TupleN>(SynchronousDispatcher.INSTANCE, zipper, null)).
 						capacity(getCapacity());
 			}
@@ -1101,7 +1118,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return thiz.lift(new Supplier<Action<Publisher<? extends T>, V>>() {
 			@Override
 			public Action<Publisher<? extends T>, V> get() {
-				return new DynamicMergeAction<T, V>(getDispatcher(), fanInAction).
+				return new DynamicMergeAction<T, V>(fanInAction).
 						capacity(getCapacity());
 			}
 		});

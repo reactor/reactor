@@ -190,6 +190,19 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
+	 * Obtain a multi threaded dispatcher useful for scaling up slow processing.
+	 *
+	 * <p>
+	 * The Multithreaded Dispatcher is suitable for IO work if combined with reactor event buses {@link reactor.bus
+	 * .EventBus} or
+	 * streams {@link reactor.rx.Stream} using {@link reactor.rx.Stream#consumeOn}.
+	 *
+	 * @return a dispatcher from the default pool, usually a WorkQueueDispatcher.
+	 */
+	public static Dispatcher workDispatcher() {
+		return get().getDispatcher(WORK_QUEUE);
+	}
+	/**
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>

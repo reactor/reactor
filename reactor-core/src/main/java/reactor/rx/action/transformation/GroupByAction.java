@@ -73,11 +73,6 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
-	public void onNext(T ev) {
-		accept(ev);
-	}
-
-	@Override
 	protected void doNext(final T value) {
 		final K key = fn.apply(value);
 		ReactiveSubscription<T> child = groupByMap.get(key);
@@ -160,12 +155,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
-	public void onError(Throwable cause) {
-		broadcastError(cause);
-	}
-
-	@Override
-	public void onComplete() {
+	protected void doComplete() {
 		for (ReactiveSubscription<T> stream : groupByMap.values()) {
 			stream.onComplete();
 		}
@@ -189,4 +179,5 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	public final Environment getEnvironment() {
 		return environment;
 	}
+
 }

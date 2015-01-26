@@ -37,6 +37,7 @@ public class RetryAction<T> extends Action<T, T> {
 	private final Publisher<? extends T> rootPublisher;
 	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
 	private       long                currentNumRetries = 0;
+	private       long                pendingRequests = 0l;
 	private Dispatcher dispatcher;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries,
@@ -62,6 +63,13 @@ public class RetryAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		currentNumRetries = 0;
 		broadcastNext(ev);
+		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
+			synchronized (this){
+				if(pendingRequests != Long.MAX_VALUE) {
+					pendingRequests--;
+				}
+			}
+		}
 	}
 
 	@Override
@@ -78,6 +86,16 @@ public class RetryAction<T> extends Action<T, T> {
 	}
 
 	@Override
+	public void requestMore(long n) {
+		synchronized (this){
+			if( (pendingRequests += n) < 0l){
+				pendingRequests = Long.MAX_VALUE;
+			}
+		}
+		super.requestMore(n);
+	}
+
+	@Override
 	public final Dispatcher getDispatcher() {
 		return dispatcher;
 	}
@@ -87,7 +105,7 @@ public class RetryAction<T> extends Action<T, T> {
 		public void accept(Throwable throwable) {
 			PushSubscription<?> upstream = upstreamSubscription;
 			if (upstream != null) {
-				long pendingRequests = upstream.pendingRequestSignals();
+				long pendingRequests = RetryAction.this.pendingRequests;
 				if (rootPublisher != null) {
 					if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
 						dispatcher.shutdown();

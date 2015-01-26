@@ -101,11 +101,6 @@ public class Broadcaster<O> extends Action<O, O> {
 		return broadcaster;
 	}
 
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
 	/**
 	 *
 	 * INTERNAL
@@ -118,44 +113,49 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
 	}
 
 	@Override
 	public void onNext(O ev) {
-		if(dispatcher != SynchronousDispatcher.INSTANCE){
+		if(!dispatcher.inContext()){
 			dispatcher.dispatch(ev, this, null);
 		}else{
-			accept(ev);
+			super.onNext(ev);
 		}
 	}
 
 	@Override
 	public void onError(Throwable cause) {
-		if(dispatcher != SynchronousDispatcher.INSTANCE){
+		if(!dispatcher.inContext()){
 			dispatcher.dispatch(cause, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					doError(throwable);
+					Broadcaster.super.doError(throwable);
 				}
 			}, null);
 		}else{
-			doError(cause);
+			super.onError(cause);
 		}
 	}
 
 	@Override
 	public void onComplete() {
-		if(dispatcher != SynchronousDispatcher.INSTANCE){
+		if(!dispatcher.inContext()){
 			dispatcher.dispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					doComplete();
+					Broadcaster.super.onComplete();
 				}
 			}, null);
 		}else{
-			doComplete();
+			super.onComplete();
 		}
 	}
 

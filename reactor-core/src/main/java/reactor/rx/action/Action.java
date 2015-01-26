@@ -168,25 +168,16 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public void onNext(I ev) {
-		accept(ev);
+	public final void accept(I i) {
+		onNext(i);
 	}
 
 	@Override
-	public void accept(I i) {
+	public void onNext(I ev) {
 		try {
-			doNext(i);
-			if (upstreamSubscription != null
-					&& upstreamSubscription.shouldRequestPendingSignals()) {
-
-				long left = upstreamSubscription.pendingRequestSignals();
-				if (left > 0l) {
-					upstreamSubscription.updatePendingRequests(-left);
-					dispatch(left, upstreamSubscription);
-				}
-			}
+			doNext(ev);
 		} catch (Throwable cause) {
-			doError(Exceptions.addValueAsLastCause(cause, i));
+			doError(Exceptions.addValueAsLastCause(cause, ev));
 		}
 	}
 
@@ -621,7 +612,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
 	 * <p>
-	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.fn.Function)} and
+	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.fn.Supplier)} and
 	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
 	 *
 	 * @param subscriber
@@ -682,19 +673,6 @@ public abstract class Action<I, O> extends Stream<O>
 		return that.upstreamSubscription != null
 				&& ((PushSubscription<?>) that.upstreamSubscription).getPublisher() != null
 				&& actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
-	}
-
-	private final void dispatch(Consumer<Void> action) {
-		dispatch(null, action);
-	}
-
-	private final <E> void dispatch(E data, Consumer<E> action) {
-		Dispatcher dispatcher = getDispatcher();
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			action.accept(data);
-		} else {
-			dispatcher.dispatch(data, action, null);
-		}
 	}
 
 	@Override

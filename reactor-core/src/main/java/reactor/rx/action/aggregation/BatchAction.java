@@ -19,7 +19,6 @@ import org.reactivestreams.Subscription;
 import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.InsufficientCapacityException;
-import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -100,15 +99,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	protected void firstCallback(T event) {
-	}
-
-	@Override
-	public void accept(T t) {
-		try {
-			doNext(t);
-		} catch (Throwable cause) {
-			doError(Exceptions.addValueAsLastCause(cause, t));
-		}
 	}
 
 	@Override

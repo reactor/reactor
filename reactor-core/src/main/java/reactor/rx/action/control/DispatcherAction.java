@@ -57,27 +57,39 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	@Override
 	public void onNext(T ev) {
-		dispatcher.dispatch(ev, this, null);
+		if(dispatcher.inContext()){
+			super.onNext(ev);
+		} else {
+			dispatcher.dispatch(ev, this, null);
+		}
 	}
 
 	@Override
 	public void onError(Throwable cause) {
-		dispatcher.dispatch(cause, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				doError(throwable);
-			}
-		}, null);
+		if(dispatcher.inContext()){
+			super.onError(cause);
+		} else {
+			dispatcher.dispatch(cause, new Consumer<Throwable>() {
+				@Override
+				public void accept(Throwable throwable) {
+					doError(throwable);
+				}
+			}, null);
+		}
 	}
 
 	@Override
 	public void onComplete() {
-		dispatcher.dispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				doComplete();
-			}
-		}, null);
+		if(dispatcher.inContext()){
+			super.onComplete();
+		} else {
+			dispatcher.dispatch(null, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					doComplete();
+				}
+			}, null);
+		}
 	}
 
 	@Override
@@ -88,5 +100,14 @@ public final class DispatcherAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+		if (upstreamSubscription != null
+				&& upstreamSubscription.shouldRequestPendingSignals()) {
+
+			long left = upstreamSubscription.pendingRequestSignals();
+			if (left > 0l) {
+				upstreamSubscription.updatePendingRequests(-left);
+				dispatcher.dispatch(left, upstreamSubscription, null);
+			}
+		}
 	}
 }

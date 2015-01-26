@@ -18,7 +18,6 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -33,9 +32,6 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> {
 
 	private final FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction;
-
-	private final Dispatcher dispatcher;
-
 	private volatile int wip = 0;
 
 	protected static final AtomicIntegerFieldUpdater<DynamicMergeAction> WIP_UPDATER = AtomicIntegerFieldUpdater
@@ -49,10 +45,8 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
-			Dispatcher dispatcher,
 			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
 	) {
-		this.dispatcher = dispatcher;
 		this.fanInAction = fanInAction == null ?
 				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
 						(SynchronousDispatcher.INSTANCE) :
@@ -81,11 +75,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	protected void doNext(Publisher<? extends I> value) {
 		WIP_UPDATER.incrementAndGet(this);
 		fanInAction.addPublisher(value);
-	}
-
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
 	}
 
 	@Override
@@ -131,11 +120,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		if(wip == 0) {
 			fanInAction.scheduleCompletion();
 		}
-	}
-
-	@Override
-	public void onNext(Publisher<? extends I> ev) {
-		accept(ev);
 	}
 
 	@Override

@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -39,19 +38,15 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 	protected final BiFunction<? super V, ? super V, V>         fn;
 	protected final Publisher<? extends MapStream.Signal<K, V>> mapListener;
 	protected final Map<K, V>                                   store;
-	protected final Dispatcher                                  dispatcher;
 
-	public ScanByKeyAction(BiFunction<? super V, ? super V, V> fn, MapStream<K, V> mapStream,
-	                       Dispatcher dispatcher) {
-		this(fn, mapStream, mapStream, dispatcher);
+	public ScanByKeyAction(BiFunction<? super V, ? super V, V> fn, MapStream<K, V> mapStream) {
+		this(fn, mapStream, mapStream);
 	}
 
 	@SuppressWarnings("unchecked")
 	public ScanByKeyAction(BiFunction<? super V, ? super V, V> fn, Map<K, V> store, Publisher<? extends MapStream
-			.Signal<K, V>> mapListener,
-	                       Dispatcher dispatcher) {
+			.Signal<K, V>> mapListener) {
 		this.fn = fn;
-		this.dispatcher = dispatcher;
 		this.store = store == null ? new HashMap<K, V>() : store;
 		if (mapListener == null) {
 			MapStream<K, V> mapStream = null;
@@ -150,10 +145,5 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 		} catch (Throwable t) {
 			subscriber.onError(t);
 		}
-	}
-
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
 	}
 }
