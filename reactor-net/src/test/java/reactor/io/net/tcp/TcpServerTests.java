@@ -478,7 +478,7 @@ public class TcpServerTests {
 
 		TcpServer<Buffer,Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
-				.listen(port)
+				.listen("127.0.0.1", port)
 				.get();
 
 		server.consume(ch -> {
