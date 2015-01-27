@@ -58,7 +58,7 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 	 * configuration from {@code META-INF/reactor/default.properties}.
 	 */
 	public PropertiesConfigurationReader() {
-		this("default");
+		this("reactor-environment");
 	}
 
 	public PropertiesConfigurationReader(String defaultProfileNameDefault) {

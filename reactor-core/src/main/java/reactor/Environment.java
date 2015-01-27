@@ -447,7 +447,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Creates a new Environment that will use a {@link reactor.core.config.PropertiesConfigurationReader} to obtain its
 	 * initial
 	 * configuration. The configuration will be read from the classpath at the location {@code
-	 * META-INF/reactor/default.properties}.
+	 * META-INF/reactor/reactor-environment.properties}.
 	 */
 	public Environment() {
 		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
