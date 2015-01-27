@@ -145,6 +145,12 @@ public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 		return eventSpec;
 	}
 
+
+	@Override
+	public ZMQ.Socket nativeConnection() {
+		return socket;
+	}
+
 	@Override
 	public String toString() {
 		return "ZeroMQNetChannel{" +

@@ -36,9 +36,11 @@ public class IOStreams extends Streams {
 	/**
 	 * A Persistent Map is a {@link reactor.rx.stream.MapStream} that fulfill both the Map and the Stream contract.
 	 *
-	 *
-	 *
-	 * @return a new {@link reactor.rx.Stream}
+	 * @param name
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 * @throws IOException
 	 */
 	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name) throws IOException {
 		return persistentMap(name, false);
@@ -46,7 +48,12 @@ public class IOStreams extends Streams {
 
 	/**
 	 *
-	 * @return a new {@link reactor.rx.Stream}
+	 * @param name
+	 * @param deleteOnExit
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 * @throws IOException
 	 */
 	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMap(String name, boolean deleteOnExit) throws IOException {
 		ChronicleStream<KEY,VALUE> chronicleStream = new ChronicleStream<>(name);
@@ -57,7 +64,12 @@ public class IOStreams extends Streams {
 	}
 
 	/**
-	 * @return a new {@link reactor.rx.Stream}
+	 *
+	 * @param name
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 * @throws IOException
 	 */
 	public static <KEY, VALUE> MapStream<KEY, VALUE> persistentMapReader(String name) throws IOException {
 		return new ChronicleReaderStream<>(name);

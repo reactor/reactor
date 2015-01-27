@@ -35,17 +35,44 @@ public class BiStreams extends Streams {
 	private BiStreams() {
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return reduceByKey(publisher, null, null, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param mapStream
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                MapStream<KEY,VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return reduceByKey(publisher, mapStream, mapStream, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
@@ -53,6 +80,16 @@ public class BiStreams extends Streams {
 		return reduceByKeyOn(publisher, store, listener, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKeyOn(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
@@ -64,17 +101,44 @@ public class BiStreams extends Streams {
 
 	//scan
 
+	/**
+	 *
+	 * @param publisher
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return scanByKey(publisher, null, null, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param mapStream
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                MapStream<KEY,VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return scanByKey(publisher, mapStream, mapStream, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
@@ -82,6 +146,16 @@ public class BiStreams extends Streams {
 		return scanByKeyOn(publisher, store, listener, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKeyOn(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                  Map<KEY,VALUE> store,
 	                                                                  Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,

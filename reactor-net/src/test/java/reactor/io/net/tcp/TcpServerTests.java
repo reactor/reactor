@@ -24,7 +24,6 @@ import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +39,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.*;
 import reactor.io.codec.json.JsonCodec;
 import reactor.io.net.NetChannelStream;
+import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.netty.NettyServerSocketOptions;
@@ -135,19 +135,20 @@ public class TcpServerTests {
 		JsonCodec<Pojo, Pojo> codec = new JsonCodec<Pojo, Pojo>(Pojo.class);
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		final TcpClient<Pojo, Pojo> client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient.class)
-				.env(env)
-				.ssl(clientOpts)
-				.codec(codec)
-				.connect("localhost", port)
-				.get();
+		final TcpClient<Pojo, Pojo> client = NetStreams.tcpClient(s ->
+						s.env(env)
+								.ssl(clientOpts)
+								.codec(codec)
+								.connect("localhost", port)
+		);
 
-		TcpServer<Pojo, Pojo> server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer.class)
-				.env(env)
-				.ssl(serverOpts)
-				.listen("localhost", port)
-				.codec(codec)
-				.get();
+		final TcpServer<Pojo, Pojo> server = NetStreams.tcpServer(s ->
+						s
+								.env(env)
+								.ssl(serverOpts)
+								.listen("localhost", port)
+								.codec(codec)
+		);
 
 		server.consume(new Consumer<NetChannelStream<Pojo, Pojo>>() {
 			@Override
@@ -176,8 +177,8 @@ public class TcpServerTests {
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		TcpServer<byte[], byte[]> server = new TcpServerSpec<byte[], byte[]>(NettyTcpServer.class)
-				.env(env)
+		TcpServer<byte[], byte[]> server = NetStreams.tcpServer(s ->
+				s.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
 						.backlog(1000)
@@ -185,8 +186,8 @@ public class TcpServerTests {
 						.tcpNoDelay(true))
 				.listen(port)
 				.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
-				.get();
-		
+		);
+
 		server.consume(new Consumer<NetChannelStream<byte[], byte[]>>() {
 			@Override
 			public void accept(NetChannelStream<byte[], byte[]> ch) {
@@ -234,13 +235,13 @@ public class TcpServerTests {
 				.env(env)
 				.synchronousDispatcher()
 				.options(new ServerSocketOptions()
-						         .backlog(1000)
-						         .reuseAddr(true)
-						         .tcpNoDelay(true))
+						.backlog(1000)
+						.reuseAddr(true)
+						.tcpNoDelay(true))
 				.listen(port)
 				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 				.get();
-		
+
 		server.consume(new Consumer<NetChannelStream<Frame, Frame>>() {
 			@Override
 			public void accept(NetChannelStream<Frame, Frame> ch) {
@@ -329,7 +330,7 @@ public class TcpServerTests {
 				ch.consume(new Consumer<String>() {
 					@Override
 					public void accept(String data) {
-						log.info("data "+data+" on "+ch);
+						log.info("data " + data + " on " + ch);
 						latch.countDown();
 					}
 				});
@@ -476,7 +477,7 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 		ZContext zmq = new ZContext();
 
-		TcpServer<Buffer,Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
+		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
 				.env(env)
 				.listen("127.0.0.1", port)
 				.get();
@@ -646,7 +647,7 @@ public class TcpServerTests {
 
 	private class ZeroMQWriter implements Runnable {
 		private final Random random = new Random();
-		private final ZContext    zmq;
+		private final ZContext       zmq;
 		private final int            port;
 		private final CountDownLatch latch;
 
