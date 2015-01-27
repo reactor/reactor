@@ -116,9 +116,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@SuppressWarnings("unchecked")
 	int addSubscription(final InnerSubscription s) {
-		if (terminated) {
-			return 0;
-		}
+		if (terminated) return 0;
 		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		subscriptions.add(s);
 		return newSize;
@@ -127,12 +125,6 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	@Override
 	public void onSubscribe(Subscription s) {
 		//IGNORE
-	}
-
-	@Override
-	public void onComplete() {
-		subscriptions.clear();
-		super.onComplete();
 	}
 
 	public void serialNext(E next) {

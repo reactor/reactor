@@ -248,6 +248,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				left = left < 0l ? 0l : left;
 
 				if (left == 0) {
+					outerAction.innerSubscriptions.subscriptions.clear();
 					if (!outerAction.checkDynamicMerge()){
 						outerAction.innerSubscriptions.serialComplete();
 					}
