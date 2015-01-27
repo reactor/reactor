@@ -72,7 +72,6 @@ import static org.junit.Assert.assertTrue;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-@Ignore
 public class TcpServerTests {
 
 	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
