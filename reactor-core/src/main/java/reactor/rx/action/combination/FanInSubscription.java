@@ -107,16 +107,16 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	public void cancel() {
 		if (!subscriptions.isEmpty()) {
 			Subscription s;
-			/*while ((s = subscriptions.poll()) != null) {
+			while ((s = subscriptions.poll()) != null) {
 				s.cancel();
-			}*/
+			}
 		}
-		//super.cancel();
+		super.cancel();
 	}
 
 	@SuppressWarnings("unchecked")
 	int addSubscription(final InnerSubscription s) {
-		if (terminated){
+		if (terminated) {
 			return 0;
 		}
 		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
@@ -131,16 +131,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@Override
 	public void onComplete() {
-		synchronized (this) {
-			InnerSubscription<O, E, SUBSCRIBER> subscription;
-
-		/*	while ((subscription = subscriptions.peek()) != null) {
-				if (subscription.subscriber.terminated == 0){
-					return;
-				}
-				subscriptions.poll();
-			}*/
-		}
+		subscriptions.clear();
 		super.onComplete();
 	}
 

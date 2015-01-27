@@ -113,10 +113,7 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		TcpClient<String, String> client = NetStreams.tcpClient(s ->
-						s
-								.env(env)
-								.codec(StandardCodecs.STRING_CODEC)
-								.connect("localhost", echoServerPort)
+						s.env(env).codec(StandardCodecs.STRING_CODEC).connect("localhost", echoServerPort)
 		);
 
 		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
