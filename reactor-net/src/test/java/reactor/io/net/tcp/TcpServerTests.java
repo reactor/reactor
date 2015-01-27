@@ -500,7 +500,7 @@ public class TcpServerTests {
 		assertTrue("reply was received", latch.await(5, TimeUnit.SECONDS));
 		assertTrue("Server was stopped", server.shutdown().awaitSuccess(5, TimeUnit.SECONDS));
 
-		zmq.destroy();
+		//zmq.destroy();
 	}
 
 	public static class Pojo {
