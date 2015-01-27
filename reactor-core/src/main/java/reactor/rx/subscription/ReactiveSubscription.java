@@ -150,8 +150,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if (list.size > 0) {
 			for (Object el : list.array) {
 				if (el == null) break;
-				subscriber.onNext((O) el);
 				currentNextSignals++;
+				subscriber.onNext((O) el);
 			}
 		}
 	}
@@ -267,7 +267,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public final boolean isComplete() {
 		synchronized (this) {
-			return buffer.isComplete();
+			return buffer.isEmpty() && buffer.isComplete();
 		}
 	}
 

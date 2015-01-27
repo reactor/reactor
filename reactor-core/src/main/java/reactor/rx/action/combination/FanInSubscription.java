@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O, E, X>> extends
 		ReactiveSubscription<E> implements Subscriber<E> {
 
-	volatile             int runningComposables        = 0;
+	volatile int runningComposables = 0;
 
 	static final AtomicIntegerFieldUpdater<FanInSubscription> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInSubscription.class, "runningComposables");
@@ -64,10 +64,10 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 				int i = 0;
 				long toRequest = elements != Long.MAX_VALUE && elements / size > 0 ? elements / size : elements;
 				do {
-						subscription = subscriptions.poll();
+					subscription = subscriptions.poll();
 					if (subscription != null) {
 						if (!subscription.toRemove) {
-								subscriptions.add(subscription);
+							subscriptions.add(subscription);
 							i++;
 						}
 
@@ -78,8 +78,6 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 						}
 					}
 				} while (i < size && subscription != null);
-			} else {
-				updatePendingRequests(elements);
 			}
 
 			if (terminated) {
@@ -94,7 +92,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		try {
 			if (RUNNING_COMPOSABLE_UPDATER.get(this) > 0) {
 				for (InnerSubscription<O, E, SUBSCRIBER> innerSubscription : subscriptions) {
-					if(innerSubscription == null){
+					if (innerSubscription == null) {
 						return;
 					}
 					consumer.accept(innerSubscription);
@@ -109,16 +107,18 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	public void cancel() {
 		if (!subscriptions.isEmpty()) {
 			Subscription s;
-			while ((s = subscriptions.poll()) != null) {
+			/*while ((s = subscriptions.poll()) != null) {
 				s.cancel();
-			}
+			}*/
 		}
-		super.cancel();
+		//super.cancel();
 	}
 
 	@SuppressWarnings("unchecked")
 	int addSubscription(final InnerSubscription s) {
-		if (terminated) return 0;
+		if (terminated){
+			return 0;
+		}
 		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		subscriptions.add(s);
 		return newSize;
@@ -127,6 +127,21 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	@Override
 	public void onSubscribe(Subscription s) {
 		//IGNORE
+	}
+
+	@Override
+	public void onComplete() {
+		synchronized (this) {
+			InnerSubscription<O, E, SUBSCRIBER> subscription;
+
+		/*	while ((subscription = subscriptions.peek()) != null) {
+				if (subscription.subscriber.terminated == 0){
+					return;
+				}
+				subscriptions.poll();
+			}*/
+		}
+		super.onComplete();
 	}
 
 	public void serialNext(E next) {
@@ -139,6 +154,11 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	public void serialComplete() {
 		serializer.onComplete();
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + serializer;
 	}
 
 	public static class InnerSubscription<O, E, SUBSCRIBER

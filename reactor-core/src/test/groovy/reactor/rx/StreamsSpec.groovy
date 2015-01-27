@@ -330,8 +330,8 @@ class StreamsSpec extends Specification {
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
 					.dispatchOn(Environment.cachedDispatcher())
-					.log()
 					.subscribeOn(Environment.get())
+					.log()
 					.next()
 
 		then:

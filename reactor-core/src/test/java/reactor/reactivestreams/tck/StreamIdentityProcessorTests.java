@@ -85,12 +85,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.sample(1)
 										.observe(this::monitorThreadUse)
 										.map(integer -> -integer)
-										//.log("buffer")
 										.buffer(1024, 200, TimeUnit.MILLISECONDS)
 										.<Integer>split()
 										.flatMap(i ->
 														Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-												//Streams.just(i)
+														//Streams.just(i)
 												//		.log(stream.key() + ":zip")
 										)
 						)
@@ -164,15 +163,62 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		super.spec317_mustSupportAPendingElementCountUpToLongMaxValue();
 	}*/
 
-	//@Test
-/*	public void test100IdentityProcessor() throws InterruptedException {
-		for(int i = 0; i < 100; i++){
-			testIdentityProcessor();
-		}
-	}*/
 
 	@Test
-	public void testIdentityProcessor() throws InterruptedException {
+	public void testColdIdentityProcessor() throws InterruptedException {
+		final int elements = 10;
+		CountDownLatch latch = new CountDownLatch(elements+1);
+
+		CombineAction<Integer, Integer> processor = createIdentityProcessor(16);
+
+		createHelperPublisher(10).subscribe(processor);
+
+		System.out.println(processor.debug());
+		List<Integer> list = new ArrayList<>();
+
+		processor.subscribe(new Subscriber<Integer>() {
+			Subscription s;
+
+			@Override
+			public void onSubscribe(Subscription s) {
+				this.s = s;
+				s.request(1);
+			}
+
+			@Override
+			public void onNext(Integer integer) {
+				synchronized (list) {
+					list.add(integer);
+				}
+				latch.countDown();
+				if (latch.getCount() > 0) {
+					s.request(1);
+				}
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				t.printStackTrace();
+			}
+
+			@Override
+			public void onComplete() {
+				System.out.println("completed!");
+				latch.countDown();
+			}
+		});
+		//stream.broadcastComplete();
+
+		latch.await(8, TimeUnit.SECONDS);
+		System.out.println(processor.debug());
+
+		System.out.println(counters);
+		long count = latch.getCount();
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " ("+list+")  , Running on " + Environment.PROCESSORS + " CPU");
+	}
+
+	@Test
+	public void testHotIdentityProcessor() throws InterruptedException {
 		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
 
@@ -207,7 +253,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		});
 
 
-		for (int i = 0; i < elements*2; i++) {
+		for (int i = 0; i < elements; i++) {
 			stream.onNext(i);
 		}
 		//stream.broadcastComplete();

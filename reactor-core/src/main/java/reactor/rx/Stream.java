@@ -597,11 +597,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		}
 
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to #partition()/groupBy() method and assign individual single dispatchers. ");
+				" For concurrent signal dispatching, refer to #partition()/groupBy() method and assign individual single dispatchers. ");
 
-		final long capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
+		long _capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS :
 				Long.MAX_VALUE;
+
+		long parentCapacity = getCapacity();
+
+		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;
 
 		return new LiftStream<O, O>(this, new Supplier<Action<O, O>>(){
 			@Override
@@ -2828,10 +2832,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	@Override
 	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-		Dispatcher  currentDispatcher = getDispatcher();
-		return (currentDispatcher != dispatcher
-				|| getCapacity() < producerCapacity)
-				&& currentDispatcher.getClass() != TailRecurseDispatcher.class
+		return (getCapacity() < producerCapacity)
+				&& getDispatcher().getClass() != TailRecurseDispatcher.class
 				&& dispatcher.getClass() != TailRecurseDispatcher.class;
 	}
 

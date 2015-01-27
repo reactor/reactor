@@ -75,16 +75,17 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals();
+		inlineMerge.pendingRequests =
+				Math.min(capacity, innerSubscriptions.pendingRequestSignals());
 		publisher.subscribe(inlineMerge);
 	}
 
 
 	@Override
 	protected void doStart(long pending) {
-		if (dynamicMergeAction != null) {
+		/*if (dynamicMergeAction != null) {
 			dispatcher.dispatch(pending, innerSubscriptions, null);
-		}
+		}*/
 	}
 
 	public void scheduleCompletion() {
@@ -103,8 +104,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.cancel();
 		}
-
-
 		innerSubscriptions.cancel();
 	}
 
@@ -143,8 +142,15 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	@Override
-	protected void doComplete() {
-		broadcastComplete();
+	public void onNext(E ev) {
+		super.onNext(ev);
+		if(innerSubscriptions.shouldRequestPendingSignals()){
+			long left = upstreamSubscription.pendingRequestSignals();
+			if (left > 0l) {
+				upstreamSubscription.updatePendingRequests(-left);
+				dispatcher.dispatch(left, upstreamSubscription, null);
+			}
+		}
 	}
 
 	@Override
@@ -180,10 +186,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public FanInSubscription<I, E, O, SUBSCRIBER> getSubscription() {
 		return innerSubscriptions;
-	}
-
-	protected final <A> void internalDispatch(A data, Consumer<A> consumer) {
-		dispatcher.dispatch(data, consumer, null);
 	}
 
 	protected abstract InnerSubscriber<I, E, O> createSubscriber();
@@ -246,7 +248,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				left = left < 0l ? 0l : left;
 
 				if (left == 0) {
-					outerAction.innerSubscriptions.subscriptions.clear();
 					if (!outerAction.checkDynamicMerge()){
 						outerAction.innerSubscriptions.serialComplete();
 					}
