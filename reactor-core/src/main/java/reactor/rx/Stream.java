@@ -37,7 +37,7 @@ import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
-import reactor.rx.action.ElementAtAction;
+import reactor.rx.action.filter.ElementAtAction;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
