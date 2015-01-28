@@ -419,6 +419,38 @@ class StreamsSpec extends Specification {
 			tap.get() == [1, 2, 3]
 	}
 
+    def 'A Stream can check if there is a value satisfying a predicate'() {
+        given:
+            'a composable with values 1 to 5'
+            Stream s = Streams.from([1, 2, 3, 4, 5])
+
+        when:
+            'checking for existence of values > 2 and the result of the check is collected'
+            def tap = s.exists { it > 2 }.buffer().tap()
+
+        then:
+            'collected should be true'
+            tap.get() == [ true ]
+
+
+        when:
+            'checking for existence of values > 5 and the result of the check is collected'
+            tap = s.exists { it > 5 }.buffer().tap()
+
+        then:
+            'collected should be false'
+            tap.get() == [ false ]
+
+
+        when:
+            'checking always true predicate on empty stream and collecting the result'
+            tap = Streams.empty().exists{ true }.buffer().tap();
+
+        then:
+            'collected should be false'
+            tap.get() == [ false ]
+    }
+
 	def "A Stream's initial values are passed to consumers"() {
 		given:
 			'a composable with values 1 to 5 inclusive'

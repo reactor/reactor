@@ -37,6 +37,7 @@ import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.action.conditional.ExistsAction;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
@@ -1995,6 +1996,24 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			}
 		});
 	}
+
+    /**
+     * Create a new {@code Stream} that emits <code>true</code> when any value satisfies a predicate
+     * and <code>false</code> otherwise
+     *
+     * @param predicate predicate tested upon values
+     * @return a new {@link Stream} with <code>true</code> if any value satisfies a predicate
+     *         and <code>false</code> otherwise
+     * @since 2.0
+     */
+    public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
+        return lift(new Supplier<Action<O, Boolean>>() {
+            @Override
+            public Action<O, Boolean> get() {
+                return new ExistsAction<O>(predicate);
+            }
+        });
+    }
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
