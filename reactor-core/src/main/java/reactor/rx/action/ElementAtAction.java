@@ -58,7 +58,7 @@ public class ElementAtAction<T> extends Action<T, T> {
     }
 
     @Override
-    public void onComplete() {
+    public void doComplete() {
         if (currentIndex <= index) {
             if (defaultProvided) {
                 broadcastNext(defaultValue);
@@ -67,6 +67,6 @@ public class ElementAtAction<T> extends Action<T, T> {
                 return;
             }
         }
-        super.onComplete();
+        super.doComplete();
     }
 }

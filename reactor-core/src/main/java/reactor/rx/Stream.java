@@ -1773,10 +1773,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a source item at a specified index
 	 */
 	public final Stream<O> elementAt(final int index) {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new ElementAtAction(index);
+			public Action<O, O> get() {
+				return new ElementAtAction<O>(index);
 			}
 		});
 	}
@@ -1789,10 +1789,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a source item at a specified index or a default value
 	 */
 	public final Stream<O> elementAtOrDefault(final int index, final O defaultValue) {
-		return lift(new Function<Dispatcher, Action<O, O>>() {
+		return lift(new Supplier<Action<O, O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new ElementAtAction(index, defaultValue);
+			public Action<O, O> get() {
+				return new ElementAtAction<O>(index, defaultValue);
 			}
 		});
 	}
