@@ -864,6 +864,25 @@ class StreamsSpec extends Specification {
 
 	}
 
+	def "Adaptive consuming"() {
+		given:
+			'source iterable'
+			def s = Streams.just(1, 2, 3, 4, 5, 6, 7, 8)
+
+		when:
+			'the source is consumed every in 3 times'
+			def res = []
+			println s.capacity(1).batchConsume(
+					{ res << it },
+					{ res << "r:${it*2}"; it*2 }
+			).debug()
+
+		then:
+			'the values are all collected in 4 times'
+			res == ['r:2', 1, 2, 'r:4', 3, 4, 5, 6, 'r:8', 7, 8]
+
+	}
+
 	def "Combine latest stream data"() {
 		given:
 			'source composables to zip, buffer and tap'

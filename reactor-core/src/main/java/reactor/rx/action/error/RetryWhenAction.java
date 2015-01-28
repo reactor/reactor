@@ -132,12 +132,16 @@ public class RetryWhenAction<T> extends Action<T, T> {
 			//s.cancel();
 			//publisher.subscribe(this);
 			doRetry();
-			s.request(1l);
+			if(s != null) {
+				s.request(1l);
+			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			s.cancel();
+			if(s != null) {
+				s.cancel();
+			}
 			RetryWhenAction.this.onError(t);
 		}
 

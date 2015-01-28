@@ -55,18 +55,15 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	public void requestMore(long n) {
 		if (upstreamSubscription != null) {
 			long toRequest = Math.min(n, capacity);
-			if (toRequest != n) {
-				synchronized (this) {
-					pendingRequests += (n - capacity);
-				}
-			}
 			if(COUNTED.addAndGet(this, toRequest) < 0l){
 				COUNTED.set(this, Long.MAX_VALUE);
 			}
 			dispatcher.dispatch(toRequest, upstreamSubscription, null);
 		}else{
-			if((pendingRequests += n) < 0l){
-				pendingRequests = Long.MAX_VALUE;
+			synchronized (this) {
+				if ((pendingRequests += n) < 0l) {
+					pendingRequests = Long.MAX_VALUE;
+				}
 			}
 		}
 	}
