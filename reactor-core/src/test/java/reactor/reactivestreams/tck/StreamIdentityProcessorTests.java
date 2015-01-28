@@ -15,12 +15,14 @@
  */
 package reactor.reactivestreams.tck;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import reactor.Environment;
 import reactor.core.Dispatcher;
@@ -62,12 +64,19 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(3, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
 
 		//preinit the two dispatchers
 		dispatchers.get();
 		dispatchers.get();
-		subscriberDispatcher = dispatchers.get();
+		subscriberDispatcher = Environment.newDispatcher();
+	}
+
+	@AfterTest
+	@After
+	public void afterEnv() {
+		dispatchers.shutdown();
+		subscriberDispatcher.shutdown();
 	}
 
 	@Override
@@ -171,7 +180,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
 		final int elements = 10;
-		CountDownLatch latch = new CountDownLatch(elements+1);
+		CountDownLatch latch = new CountDownLatch(elements + 1);
 
 		CombineAction<Integer, Integer> processor = createIdentityProcessor(16);
 
@@ -218,7 +227,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		System.out.println(counters);
 		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " ("+list+")  , Running on " + Environment.PROCESSORS + " CPU");
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " (" + list + ")  , Running on " + Environment
+				.PROCESSORS + " CPU");
 	}
 
 	@Test
