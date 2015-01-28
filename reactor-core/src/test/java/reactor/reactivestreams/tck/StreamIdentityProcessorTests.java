@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.BeforeTest;
 import reactor.Environment;
+import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
@@ -51,6 +52,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	private DispatcherSupplier dispatchers;
 	private Environment        env;
+	private Dispatcher         subscriberDispatcher;
 
 	public StreamIdentityProcessorTests() {
 		super(new TestEnvironment(2500, true), 3500);
@@ -65,7 +67,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//preinit the two dispatchers
 		dispatchers.get();
 		dispatchers.get();
-		dispatchers.get();
+		subscriberDispatcher = dispatchers.get();
 	}
 
 	@Override
@@ -90,11 +92,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 										.<Integer>split()
 										.flatMap(i ->
 														Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-														//Streams.just(i)
+												//Streams.just(i)
 												//		.log(stream.key() + ":zip")
 										)
 						)
-						.dispatchOn(dispatchers.get())
+						.dispatchOn(subscriberDispatcher)
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 
