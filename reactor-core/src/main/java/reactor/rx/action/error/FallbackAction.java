@@ -16,7 +16,6 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import reactor.core.Dispatcher;
 import reactor.rx.action.Action;
 
 /**
@@ -30,18 +29,21 @@ public class FallbackAction<T> extends Action<T, T> {
 	private boolean switched        = false;
 	private long    pendingRequests = 0l;
 
-	public FallbackAction(Dispatcher dispatcher, Publisher<? extends T> fallback) {
-		super(dispatcher);
+	public FallbackAction(Publisher<? extends T> fallback) {
 		this.fallback = fallback;
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		if(pendingRequests > 0 && pendingRequests != Long.MAX_VALUE){
-			pendingRequests--;
+		boolean toSwitch;
+		synchronized (this){
+			if(pendingRequests > 0 && pendingRequests != Long.MAX_VALUE){
+				pendingRequests--;
+			}
+			toSwitch = switched;
 		}
 
-		if(switched){
+		if(toSwitch){
 			doFallbackNext(ev);
 		}else{
 			doNormalNext(ev);
@@ -50,17 +52,25 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+		synchronized (this) {
+			if ((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+		}
 		super.requestUpstream(capacity, terminated, elements);
 	}
 
 	protected void doSwitch(){
 		this.cancel();
-		this.switched = true;
+		long pending;
+
+		synchronized (this){
+			this.switched = true;
+			pending = pendingRequests;
+		}
+
 		fallback.subscribe(this);
 
-		if(pendingRequests > 0){
-			upstreamSubscription.request(pendingRequests);
+		if(pending > 0){
+			upstreamSubscription.request(pending);
 		}
 	}
 

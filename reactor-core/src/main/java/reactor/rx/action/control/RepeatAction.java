@@ -16,9 +16,13 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Publisher;
+import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -26,52 +30,77 @@ import reactor.rx.action.Action;
  */
 public class RepeatAction<T> extends Action<T, T> {
 
-	private final long                 numRetries;
+	private final long numRetries;
 	private long currentNumRetries = 0;
 	private final Publisher<? extends T> rootPublisher;
-	private       long                   pendingRequests;
+	private       Dispatcher             dispatcher;
+	private       long                   pendingRequests = 0l;
 
 	public RepeatAction(Dispatcher dispatcher, int numRetries, Publisher<? extends T> parentStream) {
-		super(dispatcher);
 		this.numRetries = numRetries;
+		if (SynchronousDispatcher.INSTANCE == dispatcher) {
+			this.dispatcher = Environment.tailRecurse();
+		} else {
+			this.dispatcher = dispatcher;
+		}
 		this.rootPublisher = parentStream;
 	}
 
 	@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
-		super.requestUpstream(capacity, terminated, elements);
+	protected void doNext(T ev) {
+		broadcastNext(ev);
+		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
+			synchronized (this){
+				if(pendingRequests != Long.MAX_VALUE) {
+					pendingRequests--;
+				}
+			}
+		}
 	}
 
 	@Override
-	protected void doNext(T ev) {
-		if (pendingRequests > 0l && pendingRequests != Long.MAX_VALUE) {
-			pendingRequests--;
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	@Override
+	public void requestMore(long n) {
+		synchronized (this) {
+			if ((pendingRequests += n) < 0l) {
+				pendingRequests = Long.MAX_VALUE;
+			}
 		}
-		broadcastNext(ev);
+		super.requestMore(n);
 	}
 
 	@Override
 	public void onComplete() {
-		trySyncDispatch(null, new Consumer<Void>() {
+		dispatcher.dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void nothing) {
 				if (numRetries != -1 && ++currentNumRetries > numRetries) {
 					doComplete();
 					currentNumRetries = 0;
 				} else {
-					if (upstreamSubscription != null) {
+					PushSubscription<T> upstream = upstreamSubscription;
+					if (upstream != null) {
+						long pendingRequests = RepeatAction.this.pendingRequests;
 						if (rootPublisher != null) {
+							if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
+								dispatcher.shutdown();
+								dispatcher = Environment.tailRecurse();
+							}
 							cancel();
 							rootPublisher.subscribe(RepeatAction.this);
+							upstream = upstreamSubscription;
 						}
-						if (pendingRequests > 0) {
-							upstreamSubscription.request(pendingRequests);
+						if (upstream != null && pendingRequests >= 0) {
+							upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
 						}
 					}
 				}
 
 			}
-		});
+		}, null);
 	}
 }

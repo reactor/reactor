@@ -163,6 +163,11 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return getClass().getSimpleName().replaceAll("Dispatcher", "");
+	}
+
 	public abstract class Task implements Runnable, Recyclable {
 
 		protected volatile Object              data;

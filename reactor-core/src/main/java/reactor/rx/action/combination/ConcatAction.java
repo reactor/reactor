@@ -62,8 +62,9 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this);
-			outerAction.innerSubscriptions.addSubscription(s);
+			setSubscription(
+					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this)
+			);
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
@@ -81,6 +82,26 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		}
 
 		@Override
+		public void onComplete() {
+			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
+				s.cancel();
+				outerAction.status.set(COMPLETING);
+				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+				Subscription current = outerAction.innerSubscriptions.shift(sequenceId);
+
+				long request = outerAction.innerSubscriptions.pendingRequestSignals();
+				if (current != null &&  request > 0) {
+					current.request(request);
+				}
+				if (left == 0
+						&& !outerAction.checkDynamicMerge()
+						) {
+					outerAction.innerSubscriptions.serialComplete();
+				}
+			}
+		}
+
+		@Override
 		public String toString() {
 			return "Concat.InnerSubscriber{pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
 		}
@@ -95,22 +116,10 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		}
 
 		@Override
-		int removeSubscription(InnerSubscription s) {
-			int newSize = RUNNING_COMPOSABLE_UPDATER.decrementAndGet(this);
-			subscriptions.poll();
-			current = subscriptions.peek();
-
-			if (current != null && pendingRequestSignals > 0) {
-				current.request(pendingRequestSignals);
-			}
-			return newSize;
-		}
-
-		@Override
 		@SuppressWarnings("unchecked")
-		int addSubscription(InnerSubscription s) {
+		int addSubscription(FanInAction.InnerSubscriber s) {
 			int newSize = super.addSubscription(s);
-			current = subscriptions.peek();
+			current = peek();
 			return newSize;
 		}
 

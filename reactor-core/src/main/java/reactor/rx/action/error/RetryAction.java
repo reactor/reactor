@@ -16,10 +16,15 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -27,57 +32,93 @@ import reactor.rx.action.Action;
  */
 public class RetryAction<T> extends Action<T, T> {
 
-	private final long                 numRetries;
-	private final Predicate<Throwable> retryMatcher;
-	private long currentNumRetries = 0;
+	private final long                   numRetries;
+	private final Predicate<Throwable>   retryMatcher;
 	private final Publisher<? extends T> rootPublisher;
-	private       long                   pendingRequests;
+	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
+	private       long                currentNumRetries = 0;
+	private       long                pendingRequests = 0l;
+	private Dispatcher dispatcher;
 
 	public RetryAction(Dispatcher dispatcher, int numRetries,
 	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
-		super(dispatcher);
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
 		this.rootPublisher = parentStream;
+
+		if (SynchronousDispatcher.INSTANCE == dispatcher) {
+			this.dispatcher = Environment.tailRecurse();
+		} else {
+			this.dispatcher = dispatcher;
+		}
 	}
 
 	@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
-		super.requestUpstream(capacity, terminated, elements);
+	protected void doSubscribe(Subscription subscription) {
+		dispatcher = Environment.tailRecurse();
+		super.doSubscribe(subscription);
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		if (pendingRequests > 0l && pendingRequests != Long.MAX_VALUE) {
-			pendingRequests--;
-		}
 		currentNumRetries = 0;
 		broadcastNext(ev);
+		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
+			synchronized (this){
+				if(pendingRequests != Long.MAX_VALUE) {
+					pendingRequests--;
+				}
+			}
+		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void onError(Throwable cause) {
-		trySyncDispatch(cause, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test(throwable))) {
-					doError(throwable);
-					currentNumRetries = 0;
-				} else {
-					if (upstreamSubscription != null) {
-						if (rootPublisher != null) {
-							cancel();
-							rootPublisher.subscribe(RetryAction.this);
-						}
-						if (pendingRequests > 0) {
-							upstreamSubscription.request(pendingRequests);
-						}
-					}
-				}
+	public void onError(Throwable throwable) {
+		if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test
+				(throwable))) {
+			doError(throwable);
+			currentNumRetries = 0;
+		} else {
+			dispatcher.dispatch(throwable, throwableConsumer, null);
 
+		}
+	}
+
+	@Override
+	public void requestMore(long n) {
+		synchronized (this){
+			if( (pendingRequests += n) < 0l){
+				pendingRequests = Long.MAX_VALUE;
 			}
-		});
+		}
+		super.requestMore(n);
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}
+
+	private class ThrowableConsumer implements Consumer<Throwable> {
+		@Override
+		public void accept(Throwable throwable) {
+			PushSubscription<?> upstream = upstreamSubscription;
+			if (upstream != null) {
+				long pendingRequests = RetryAction.this.pendingRequests;
+				if (rootPublisher != null) {
+					if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
+						dispatcher.shutdown();
+						dispatcher = Environment.tailRecurse();
+					}
+					cancel();
+					rootPublisher.subscribe(RetryAction.this);
+					upstream = upstreamSubscription;
+				}
+				if (upstream != null && pendingRequests >= 0) {
+					upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
+				}
+			}
+		}
 	}
 }

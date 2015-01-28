@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.filter;
 
-import reactor.core.Dispatcher;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
 
@@ -32,8 +31,7 @@ public class DistinctAction<T, V> extends Action<T, T> {
 
 	private final Function<? super T, ? extends V> keySelector;
 
-	public DistinctAction(Function<? super T, ? extends V> keySelector, Dispatcher dispatcher) {
-		super(dispatcher);
+	public DistinctAction(Function<? super T, ? extends V> keySelector) {
 		this.keySelector = keySelector;
 	}
 

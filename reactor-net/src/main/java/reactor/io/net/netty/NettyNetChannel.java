@@ -93,6 +93,11 @@ public class NettyNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 	}
 
 	@Override
+	public Channel nativeConnection() {
+		return ioChannel;
+	}
+
+	@Override
 	protected void write(ByteBuffer data, Promise<Void> onComplete, boolean flush) {
 		ByteBuf buf = ioChannel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);

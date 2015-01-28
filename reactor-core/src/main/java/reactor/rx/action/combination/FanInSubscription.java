@@ -17,13 +17,11 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.queue.internal.MpscLinkedQueue;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.subscription.ReactiveSubscription;
 
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
@@ -33,15 +31,16 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubscriber<O, E, X>> extends
 		ReactiveSubscription<E> implements Subscriber<E> {
 
-	private static final int GC_SUBSCRIPTIONS_TRESHOLD = 16;
-	volatile             int runningComposables        = 0;
+	volatile int runningComposables = 0;
 
 	static final AtomicIntegerFieldUpdater<FanInSubscription> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInSubscription.class, "runningComposables");
 
-	protected volatile boolean                                    terminated    = false;
-	protected final    Queue<InnerSubscription<O, E, SUBSCRIBER>> subscriptions = MpscLinkedQueue.create();
-	protected final    SerializedSubscriber<E>                    serializer    = SerializedSubscriber.create(this);
+	protected final FastList                subscriptions = new FastList();
+	protected final SerializedSubscriber<E> serializer    = SerializedSubscriber.create(this);
+
+	protected volatile boolean terminated = false;
+	protected          int     leftIndex  = Integer.MAX_VALUE;
 
 	public FanInSubscription(Subscriber<? super E> subscriber) {
 		super(null, subscriber);
@@ -60,34 +59,29 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 			if (size > 0) {
 
-				//deal with recursive cancel while requesting
-				InnerSubscription<O, E, SUBSCRIBER> subscription;
-				int i = 0;
-				do {
-
-					//
-					synchronized (subscriptions) {
-						if (!subscriptions.isEmpty()) {
-							subscription = subscriptions.poll();
-						} else {
-							subscription = null;
-						}
+				FanInAction.InnerSubscriber sub;
+				int i;
+				long toRequest = elements != Long.MAX_VALUE && elements / size > 0 ? elements / size : elements;
+				FanInAction.InnerSubscriber[] subs;
+				int arraySize;
+				synchronized (this) {
+					if (subscriptions.size == 0) {
+						return;
 					}
-					if (subscription != null) {
-						if (!subscription.toRemove) {
-							subscriptions.add(subscription);
-							i++;
-						}
+					subs = subscriptions.array;
+					arraySize = subscriptions.size;
+				}
 
-						subscription.subscriber.request(elements / size > 0 ? elements / size : elements);
+				for (i = 0; i < arraySize; i++) {
+					sub = subs[i];
+					if (sub != null) {
+						sub.request(toRequest);
 
 						if (terminated) {
 							break;
 						}
 					}
-				} while (i < size && subscription != null);
-			} else {
-				updatePendingRequests(elements);
+				}
 			}
 
 			if (terminated) {
@@ -98,83 +92,116 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 	}
 
-	public void scheduleTermination() {
-		terminated = true;
-	}
-
+	@SuppressWarnings("unchecked")
 	public void forEach(Consumer<InnerSubscription<O, E, SUBSCRIBER>> consumer) {
 		try {
-			for (InnerSubscription<O, E, SUBSCRIBER> innerSubscription : subscriptions) {
-				consumer.accept(innerSubscription);
+			FanInAction.InnerSubscriber[] subs;
+			int size;
+			synchronized (this) {
+				if (subscriptions.size == 0) {
+					return;
+				}
+				subs = subscriptions.array;
+				size = subscriptions.size;
+			}
+
+			if (size > 0) {
+				FanInAction.InnerSubscriber sub;
+				for (int i = 0; i < size; i++) {
+					sub = subs[i];
+					if (sub != null) {
+						consumer.accept(sub.s);
+					}
+				}
 			}
 		} catch (Throwable t) {
 			subscriber.onError(t);
 		}
 	}
 
-	boolean isDraining(){
-		synchronized (this) {
-			return draining;
-		}
-	}
-
 	@Override
 	public void cancel() {
-		if (!subscriptions.isEmpty()) {
-			Subscription s;
-			while ((s = subscriptions.poll()) != null) {
-				s.cancel();
-			}
-		}
 		super.cancel();
-	}
 
-	@SuppressWarnings("unchecked")
-	int removeSubscription(final InnerSubscription s) {
-		int newSize = RUNNING_COMPOSABLE_UPDATER.decrementAndGet(this);
-		if (subscriptions.peek() == s) {
-			InnerSubscription removed;
-			if ((removed = subscriptions.poll()) != s) {
-				if(removed != null) {
-					subscriptions.add(removed);
-				}
-				s.toRemove = true;
+		FanInAction.InnerSubscriber[] subs;
+		int size;
+		synchronized (this) {
+			if (subscriptions.size == 0) {
+				return;
 			}
-		} else {
-			s.toRemove = true;
+			subs = subscriptions.array;
+			size = subscriptions.size;
 		}
-		return newSize;
+
+		FanInAction.InnerSubscriber sub = null;
+		for (int i = 0; i < size; i++) {
+			synchronized (this) {
+				if (subs[i] != null) {
+					sub = subs[i];
+					subs[i] = null;
+				}
+			}
+			if (sub != null) {
+				sub.cancel();
+			}
+		}
+
+		synchronized (this) {
+			subscriptions.clear();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
-	int addSubscription(final InnerSubscription s) {
+	int addSubscription(final FanInAction.InnerSubscriber s) {
 		if (terminated) return 0;
-		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
-		int realSize = subscriptions.size();
-		if (realSize > GC_SUBSCRIPTIONS_TRESHOLD) {
-			InnerSubscription cleaning;
-			int i = 0;
-			while (i < realSize && (cleaning = subscriptions.poll()) != null) {
-				if (!cleaning.toRemove) {
-					subscriptions.add(cleaning);
-				}
-				i++;
+		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
+		synchronized (this) {
+			if(leftIndex < subscriptions.size && subscriptions.array[leftIndex] == null){
+				subscriptions.array[leftIndex] = s;
+			}else{
+				subscriptions.add(s);
+				leftIndex = subscriptions.size - 1;
 			}
+			return leftIndex;
 		}
-		subscriptions.add(s);
-		return newSize;
 	}
 
-	@Override
-	public void updatePendingRequests(long n) {
-		super.updatePendingRequests(n);
-		if (!subscriptions.isEmpty()) {
-			for (InnerSubscription<O, E, SUBSCRIBER> subscription : subscriptions) {
-				if(subscription != null && subscription.subscriber != null){
-					subscription.subscriber.pendingRequests += n;
+	void remove(int sequenceId) {
+		synchronized (this) {
+			if (sequenceId < subscriptions.size) {
+				subscriptions.array[sequenceId] = null;
+				leftIndex = leftIndex > sequenceId ? sequenceId : leftIndex;
+			}
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	protected InnerSubscription<O, E, SUBSCRIBER> shift(int sequenceId) {
+		FanInAction.InnerSubscriber sub;
+		synchronized (this) {
+			if (sequenceId < subscriptions.size) {
+				subscriptions.array[sequenceId] = null;
+				for (int i = 0; i < subscriptions.size; i++) {
+					sub = subscriptions.array[i];
+					if (sub != null) {
+						return sub.s;
+					}
 				}
 			}
 		}
+		return null;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected InnerSubscription<O, E, SUBSCRIBER> peek() {
+		synchronized (this) {
+			for (int i = 0; i < subscriptions.size; i++) {
+				if (subscriptions.array[i] != null) {
+					return subscriptions.array[i].s;
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -194,21 +221,16 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		serializer.onComplete();
 	}
 
-	public void serialRequest(long n) {
-		serializer.request(n);
+	@Override
+	public String toString() {
+		return super.toString() + serializer;
 	}
-
-	public void serialCancel() {
-		serializer.cancel();
-	}
-
 
 	public static class InnerSubscription<O, E, SUBSCRIBER
 			extends FanInAction.InnerSubscriber<O, E, ?>> implements Subscription {
 
 		final SUBSCRIBER   subscriber;
 		final Subscription wrapped;
-		boolean toRemove = false;
 
 		public InnerSubscription(Subscription wrapped, SUBSCRIBER subscriber) {
 			this.wrapped = wrapped;
@@ -227,6 +249,32 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 		public Subscription getDelegate() {
 			return wrapped;
+		}
+	}
+
+	static final class FastList {
+		FanInAction.InnerSubscriber[] array;
+		int                           size;
+
+		public void add(FanInAction.InnerSubscriber o) {
+			int s = size;
+			FanInAction.InnerSubscriber[] a = array;
+			if (a == null) {
+				a = new FanInAction.InnerSubscriber[16];
+				array = a;
+			} else if (s == a.length) {
+				FanInAction.InnerSubscriber[] array2 = new FanInAction.InnerSubscriber[s + (s >> 2)];
+				System.arraycopy(a, 0, array2, 0, s);
+				a = array2;
+				array = a;
+			}
+			a[s] = o;
+			size = s + 1;
+		}
+
+		public void clear() {
+			array = null;
+			size = 0;
 		}
 	}
 

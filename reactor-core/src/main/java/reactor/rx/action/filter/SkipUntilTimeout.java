@@ -16,7 +16,6 @@
 package reactor.rx.action.filter;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -35,8 +34,7 @@ public class SkipUntilTimeout<T> extends Action<T, T> {
 
 	private volatile boolean started = false;
 
-	public SkipUntilTimeout(Dispatcher dispatcher, long time, TimeUnit unit, Timer timer) {
-		super(dispatcher);
+	public SkipUntilTimeout(long time, TimeUnit unit, Timer timer) {
 		this.unit = unit;
 		this.timer = timer;
 		this.time = time;

@@ -61,6 +61,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@SuppressWarnings("unchecked")
 	protected void broadcastTuple(boolean isFinishing) {
+		long capacity = this.capacity;
 		if (count >= capacity) {
 
 
@@ -76,7 +77,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 				broadcastNext(res);
 
 				if (!isFinishing && upstreamSubscription.pendingRequestSignals() > 0) {
-					innerSubscriptions.request(capacity);
+					dispatcher.dispatch(capacity, upstreamSubscription, null);
 				}
 			}
 		}
@@ -128,7 +129,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
-		int newSize = innerSubscriptions.subscriptions.size() + 1;
+		int newSize = innerSubscriptions.runningComposables + 1;
 		capacity(newSize);
 
 		if (newSize > toZip.length) {
@@ -142,10 +143,12 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected long initUpstreamPublisherAndCapacity() {
+		long i = 0l;
 		for (Publisher<? extends O> composable : composables) {
 			addPublisher(composable);
+			i++;
 		}
-		return innerSubscriptions.subscriptions.size();
+		return i;
 	}
 
 	@Override
@@ -176,7 +179,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
 					this));
 
-			outerAction.innerSubscriptions.addSubscription(s);
 			if (pendingRequests > 0) {
 				request(1);
 			}
@@ -196,7 +198,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			//emittedSignals++;
 			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 
-			if(outerAction.status.get() == COMPLETING){
+			if(outerAction.toZip[index] != null && outerAction.status.get() == COMPLETING){
 				onComplete();
 			}
 		}
@@ -227,7 +229,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public boolean shouldRequestPendingSignals() {
-			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && count == maxCapacity;
+			synchronized (this) {
+				return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE && count == maxCapacity;
+			}
 		}
 
 		@Override
@@ -235,15 +239,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (pendingRequestSignals == Long.MAX_VALUE) {
 				super.parallelRequest(1);
 			} else {
-				super.request(Math.max(elements, subscriptions.size()));
-			}
-		}
-
-		@Override
-		protected void parallelRequest(long elements) {
-			super.parallelRequest(1);
-			if (buffer.isComplete()) {
-				scheduleTermination();
+				super.request(Math.max(elements, runningComposables));
 			}
 		}
 	}

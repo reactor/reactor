@@ -59,7 +59,7 @@ public final class FutureStream<T> extends Stream<T> {
 	private final TimeUnit            unit;
 
 	public FutureStream(Future<? extends T> future) {
-		this(future, 0, TimeUnit.SECONDS);
+		this(future, 0, null);
 	}
 
 	public FutureStream(Future<? extends T> future,

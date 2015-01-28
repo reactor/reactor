@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.io.codec.StandardCodecs;
+import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.netty.udp.NettyDatagramServer;
 import reactor.io.net.tcp.support.SocketUtils;
@@ -53,11 +54,12 @@ public class UdpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
 
-		final DatagramServer<byte[], byte[]> server = new DatagramServerSpec<byte[], byte[]>(NettyDatagramServer.class)
-				.env(env)
-				.listen(port)
-				.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-				.get();
+		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(s ->
+						s
+								.env(env)
+								.listen(port)
+								.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+		);
 
 		server.consume(ch -> ch.consume(new Consumer<byte[]>() {
 			@Override
@@ -68,22 +70,22 @@ public class UdpServerTests {
 			}
 		}));
 
-		server.start().onComplete( p-> {
-				try {
-					DatagramChannel udp = DatagramChannel.open();
-					udp.configureBlocking(true);
-					udp.connect(new InetSocketAddress(port));
+		server.start().onComplete(p -> {
+			try {
+				DatagramChannel udp = DatagramChannel.open();
+				udp.configureBlocking(true);
+				udp.connect(new InetSocketAddress(port));
 
-					byte[] data = new byte[1024];
-					new Random().nextBytes(data);
-					for (int i = 0; i < 4; i++) {
-						udp.write(ByteBuffer.wrap(data));
-					}
-
-					udp.close();
-				} catch (IOException e) {
-					e.printStackTrace();
+				byte[] data = new byte[1024];
+				new Random().nextBytes(data);
+				for (int i = 0; i < 4; i++) {
+					udp.write(ByteBuffer.wrap(data));
 				}
+
+				udp.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		});
 
 		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
@@ -93,10 +95,10 @@ public class UdpServerTests {
 	@Ignore
 	@SuppressWarnings("unchecked")
 	public void supportsUdpMulticast() throws InterruptedException,
-	                                          UnknownHostException,
-	                                          SocketException,
-	                                          TimeoutException,
-	                                          ExecutionException {
+			UnknownHostException,
+			SocketException,
+			TimeoutException,
+			ExecutionException {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(Environment.PROCESSORS ^ 2);
 
@@ -111,7 +113,7 @@ public class UdpServerTests {
 					.listen(port)
 					.multicastInterface(multicastIface)
 					.options(new ServerSocketOptions()
-							         .reuseAddr(true))
+							.reuseAddr(true))
 					.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 					.get();
 

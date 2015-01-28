@@ -24,14 +24,11 @@ import reactor.bus.Observable;
 import reactor.bus.selector.Selector;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.*;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.broadcast.SerializedBroadcaster;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.*;
@@ -625,7 +622,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
-		final Action<Publisher<? extends T>, T> concatAction = new DynamicMergeAction<T, T>(SynchronousDispatcher.INSTANCE,
+		final Action<Publisher<? extends T>, T> concatAction = new DynamicMergeAction<T, T>(
 				new ConcatAction<T>(SynchronousDispatcher.INSTANCE, null)
 		);
 
@@ -827,9 +824,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<E, E>(SynchronousDispatcher.INSTANCE,
-				new MergeAction<E>(SynchronousDispatcher.INSTANCE, null)
-		);
+		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<E, E>(null);
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
@@ -1250,8 +1245,7 @@ public class Streams {
 	public static <E, TUPLE extends Tuple, V> Stream<V> combineLatest(
 			Publisher<? extends Publisher<E>> sources,
 			Function<TUPLE, ? extends V> combinator) {
-		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher
-				.INSTANCE,
+		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
 				new CombineLatestAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
 		);
 
@@ -1510,8 +1504,7 @@ public class Streams {
 	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
 			Publisher<? extends Publisher<E>> sources,
 			Function<TUPLE, ? extends V> combinator) {
-		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(SynchronousDispatcher
-				.INSTANCE,
+		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
 				new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
 		);
 

@@ -17,6 +17,7 @@ package reactor.rx.action.control;
 
 import reactor.bus.registry.Registration;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.InsufficientCapacityException;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
@@ -32,23 +33,30 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 
 	private final Timer timer;
 	private final long  period;
-	private final Consumer<Long> periodTask = new Consumer<Long>() {
-		@Override
-		public void accept(Long aLong) {
-			if (upstreamSubscription != null) {
-				dispatch(1l, upstreamSubscription);
-			}
-		}
-	};
-
+	private final Consumer<Long> periodTask;
+	private long pending;
 
 	private Registration<? extends Consumer<Long>> timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
-	public ThrottleRequestAction(Dispatcher dispatcher,
+	public ThrottleRequestAction(final Dispatcher dispatcher,
 	                             Timer timer, long period) {
-		super(dispatcher, 1);
+		super(1l);
+
 		Assert.state(timer != null, "Timer must be supplied");
+		this.periodTask = new Consumer<Long>() {
+			@Override
+			public void accept(Long aLong) {
+				if (upstreamSubscription != null) {
+					try {
+						dispatcher.tryDispatch(1l, upstreamSubscription, null);
+					} catch (InsufficientCapacityException e) {
+						//IGNORE
+					}
+				}
+			}
+		};
+
 		this.timer = timer;
 		this.period = period;
 	}
@@ -56,12 +64,26 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
+		synchronized (this){
+			if(pending != Long.MAX_VALUE){
+				pending--;
+			}
+		}
+		if(pending > 0l){
+			timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
+		}
 	}
 
 	@Override
 	public void requestMore(long n) {
+		synchronized (this){
+			if(pending != Long.MAX_VALUE){
+				pending += n;
+				pending = pending < 0l ? Long.MAX_VALUE : pending;
+			}
+		}
 		if(timeoutRegistration == null) {
-			timeoutRegistration = timer.schedule(periodTask, period, TimeUnit.MILLISECONDS);
+			timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);
 		}
 	}
 
@@ -73,7 +95,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	@Override
 	protected void doStart(long pending) {
 		requestMore(pending);
-		super.requestMore(1);
+		//super.requestMore(1);
 	}
 
 	@Override

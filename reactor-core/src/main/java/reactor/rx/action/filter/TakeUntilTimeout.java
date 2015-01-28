@@ -29,16 +29,17 @@ import java.util.concurrent.TimeUnit;
  */
 public class TakeUntilTimeout<T> extends Action<T, T> {
 
-	private final long     time;
-	private final TimeUnit unit;
-	private final Timer    timer;
+	private final long       time;
+	private final TimeUnit   unit;
+	private final Timer      timer;
+	private final Dispatcher dispatcher;
 
 
 	public TakeUntilTimeout(Dispatcher dispatcher, long time, TimeUnit unit, Timer timer) {
-		super(dispatcher);
 		this.unit = unit;
 		this.timer = timer;
 		this.time = time;
+		this.dispatcher = dispatcher;
 	}
 
 	@Override
@@ -52,12 +53,12 @@ public class TakeUntilTimeout<T> extends Action<T, T> {
 			@Override
 			public void accept(Long aLong) {
 				cancel();
-				dispatch(new Consumer<Void>() {
+				dispatcher.dispatch(null, new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
 						broadcastComplete();
 					}
-				});
+				}, null);
 
 			}
 		}, time, unit);

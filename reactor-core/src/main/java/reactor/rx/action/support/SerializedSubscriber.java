@@ -253,8 +253,17 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
 
 	@Override
 	public String toString() {
-		return "serialized{" +
-				"subscription=" + subscription +
-				'}';
+		FastList queue;
+		synchronized (this) {
+			queue = this.queue;
+			if(queue == null) return "";
+		}
+		String res = "{";
+
+		for(Object o : queue.array){
+			res += o + " ";
+		}
+
+		return res + "}";
 	}
 }

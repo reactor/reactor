@@ -51,7 +51,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream() {
-		Broadcaster<T> action = Broadcaster.create(getEnvironment(), dispatcher);
+		Broadcaster<T> action = Broadcaster.create(environment, dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
@@ -94,5 +94,9 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 		}
 	}
 
+	@Override
+	public final Environment getEnvironment() {
+		return environment;
+	}
 
 }

@@ -18,8 +18,6 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
 
@@ -35,20 +33,13 @@ public class BufferWhenAction<T> extends Action<T, List<T>> {
 	private final List<T> values = new ArrayList<T>();
 	private final Supplier<? extends Publisher<?>> boundarySupplier;
 
-	public BufferWhenAction(Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
-		super(dispatcher);
+	public BufferWhenAction(Supplier<? extends Publisher<?>> boundarySupplier) {
 		this.boundarySupplier = boundarySupplier;
 	}
 
 	@Override
 	protected void doSubscribe(Subscription subscription) {
 		super.doSubscribe(subscription);
-		final Consumer<Void> consumerFlush = new Consumer<Void>() {
-			@Override
-			public void accept(Void o) {
-				flush();
-			}
-		};
 
 		boundarySupplier.get().subscribe(new Subscriber<Object>() {
 
@@ -62,7 +53,7 @@ public class BufferWhenAction<T> extends Action<T, List<T>> {
 
 			@Override
 			public void onNext(Object o) {
-				dispatch(consumerFlush);
+				flush();
 				if (s != null) {
 					s.request(1);
 				}
@@ -87,23 +78,33 @@ public class BufferWhenAction<T> extends Action<T, List<T>> {
 	}
 
 	private void flush() {
-		if (values.isEmpty()) {
-			return;
+		List<T> toSend;
+		synchronized (values) {
+			if (values.isEmpty()) {
+				return;
+			}
+			toSend = new ArrayList<T>(values);
+			values.clear();
 		}
-		List<T> toSend = new ArrayList<T>(values);
-		values.clear();
+
 		broadcastNext(toSend);
 	}
 
 	@Override
 	protected void doError(Throwable ev) {
-		values.clear();
+		synchronized (values) {
+			values.clear();
+		}
 		super.doError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		if(!values.isEmpty()){
+		boolean last;
+		synchronized (values){
+			last = values.isEmpty();
+		}
+		if(!last){
 			broadcastNext(values);
 		}
 		super.doComplete();

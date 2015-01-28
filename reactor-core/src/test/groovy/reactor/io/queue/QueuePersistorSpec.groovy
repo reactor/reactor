@@ -108,7 +108,7 @@ class QueuePersistorSpec extends Specification {
 			def bufferedStream = stream.onOverflowBuffer{persistentQueue}.observe{
 				println it
 				result = it
-			}.consume(0)
+			}.consumeLater()
 
 		when:
 			"an object is persisted"

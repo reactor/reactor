@@ -20,14 +20,13 @@ import org.reactivestreams.Subscription;
 import reactor.rx.subscription.support.WrappedSubscription;
 
 /**
- *
  * A Subscription wrapper which request
  *
-* @author Stephane Maldini
-*/
+ * @author Stephane Maldini
+ */
 public final class BatchSubscription<T> extends WrappedSubscription<T> {
 
-	private final int         batchSize;
+	private final int batchSize;
 
 	public BatchSubscription(Subscription subscription, Subscriber<T> subscriber, int batchSize) {
 		super(subscription, subscriber);
@@ -40,12 +39,12 @@ public final class BatchSubscription<T> extends WrappedSubscription<T> {
 			if (n == Long.MAX_VALUE) {
 				pushSubscription.request(Long.MAX_VALUE);
 			} else if (pushSubscription.pendingRequestSignals() != Long.MAX_VALUE) {
-				long toRequest = n*batchSize;
+				long toRequest = n * batchSize;
 				toRequest = toRequest > 0 ? toRequest : Long.MAX_VALUE;
-					pushSubscription.request(toRequest);
+				pushSubscription.request(toRequest);
 			}
 		} else {
-				super.request(n);
+			super.request(n);
 		}
 	}
 }

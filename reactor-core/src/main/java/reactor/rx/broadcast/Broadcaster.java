@@ -21,6 +21,7 @@ import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -34,12 +35,8 @@ import reactor.rx.subscription.ReactiveSubscription;
  */
 public class Broadcaster<O> extends Action<O, O> {
 
-	private boolean keepAlive = false;
-	private Environment environment;
-
-	public Broadcaster(Dispatcher dispatcher, long capacity) {
-		super(dispatcher, capacity);
-	}
+	protected final Dispatcher dispatcher;
+	protected final Environment environment;
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
@@ -51,7 +48,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new Broadcaster<T>(SynchronousDispatcher.INSTANCE, Long.MAX_VALUE).keepAlive();
+		return new Broadcaster<T>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
 	}
 
 	/**
@@ -96,13 +93,28 @@ public class Broadcaster<O> extends Action<O, O> {
 	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single dispatchers");
-		Broadcaster<T> broadcaster = new Broadcaster<T>(dispatcher, dispatcher.backlogSize() > 0 ?
+		Broadcaster<T> broadcaster = new Broadcaster<T>(env, dispatcher, dispatcher.backlogSize() > 0 ?
 				(RESERVED_SLOTS > dispatcher.backlogSize() ?
 						dispatcher.backlogSize() :
 						dispatcher.backlogSize() - RESERVED_SLOTS) :
 				Long.MAX_VALUE);
-		broadcaster.environment = env;
-		return broadcaster.keepAlive();
+		return broadcaster;
+	}
+
+	/**
+	 *
+	 * INTERNAL
+	 *
+	 */
+	protected Broadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
+		super(capacity);
+		this.dispatcher = dispatcher;
+		this.environment = environment;
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
 	}
 
 	@Override
@@ -110,13 +122,41 @@ public class Broadcaster<O> extends Action<O, O> {
 		broadcastNext(ev);
 	}
 
+	@Override
+	public void onNext(O ev) {
+		if(!dispatcher.inContext()){
+			dispatcher.dispatch(ev, this, null);
+		}else{
+			super.onNext(ev);
+		}
+	}
 
 	@Override
-	protected void doComplete() {
-		if (!keepAlive && downstreamSubscription == null) {
-			cancel();
+	public void onError(Throwable cause) {
+		if(!dispatcher.inContext()){
+			dispatcher.dispatch(cause, new Consumer<Throwable>() {
+				@Override
+				public void accept(Throwable throwable) {
+					Broadcaster.super.doError(throwable);
+				}
+			}, null);
+		}else{
+			super.onError(cause);
 		}
-		broadcastComplete();
+	}
+
+	@Override
+	public void onComplete() {
+		if(!dispatcher.inContext()){
+			dispatcher.dispatch(null, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					Broadcaster.super.onComplete();
+				}
+			}, null);
+		}else{
+			super.onComplete();
+		}
 	}
 
 	@Override
@@ -149,38 +189,9 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	public Broadcaster<O> env(Environment environment) {
-		this.environment = environment;
-		return this;
-	}
-
-	@Override
 	public Broadcaster<O> capacity(long elements) {
 		super.capacity(elements);
 		return this;
 	}
 
-	public Broadcaster<O> keepAlive(boolean keepAlive) {
-		this.keepAlive = keepAlive;
-		return this;
-	}
-
-	@Override
-	public Broadcaster<O> keepAlive() {
-		this.keepAlive(true);
-		return this;
-	}
-
-	@Override
-	protected void onShutdown() {
-		if (!keepAlive) {
-			super.onShutdown();
-		}
-	}
-
-	@Override
-	public String toString() {
-		return super.toString() + "{keepAlive=" + keepAlive +
-				"}";
-	}
 }

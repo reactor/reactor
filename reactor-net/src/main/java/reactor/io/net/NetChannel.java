@@ -93,6 +93,12 @@ public interface NetChannel<IN, OUT> extends Publisher<IN> {
 	void close();
 
 	/**
+	 * Close this {@literal NetChannel} and signal complete to the contentStream (@link this#in()).
+	 */
+	Object nativeConnection();
+
+
+	/**
 	 * Assign event handlers to certain channel lifecycle events.
 	 *
 	 * @return ConsumerSpec to build the events handlers

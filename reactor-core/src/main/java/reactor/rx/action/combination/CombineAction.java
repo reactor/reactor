@@ -17,11 +17,9 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
 
 /**
  * Create a Processor where a given head/tail couple is provided as a Stream (Input upstream) and Action (Output
@@ -35,7 +33,7 @@ final public class CombineAction<E, O> extends Action<E, O> {
 	private final Action<E, ?> subscriber;
 
 	public CombineAction(Action<E, ?> head, Action<?, O> tail) {
-		super(head.getDispatcher(), head.getCapacity());
+		super(head.getCapacity());
 		this.publisher = tail;
 		this.subscriber = head;
 	}
@@ -84,14 +82,6 @@ final public class CombineAction<E, O> extends Action<E, O> {
 		publisher.capacity(elements);
 		subscriber.capacity(elements);
 		return super.capacity(elements);
-	}
-
-	@Override
-	public Stream<O> env(Environment environment) {
-		if( Broadcaster.class.isAssignableFrom(publisher.getClass())){
-			publisher.env(environment);
-		}
-		return super.env(environment);
 	}
 
 	@Override

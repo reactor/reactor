@@ -16,8 +16,6 @@
 package reactor.rx;
 
 import org.reactivestreams.Publisher;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.pair.ReduceByKeyAction;
@@ -37,60 +35,132 @@ public class BiStreams extends Streams {
 	private BiStreams() {
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return reduceByKey(publisher, null, null, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param mapStream
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                MapStream<KEY,VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return reduceByKey(publisher, mapStream, mapStream, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return reduceByKeyOn(publisher, store, listener, SynchronousDispatcher.INSTANCE, accumulator);
+		return reduceByKeyOn(publisher, store, listener, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> reduceByKeyOn(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
-	                                                                Dispatcher dispatcher,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		ReduceByKeyAction<KEY,VALUE> reduceByKeyAction = new ReduceByKeyAction<>(accumulator, store, listener, dispatcher);
+		ReduceByKeyAction<KEY,VALUE> reduceByKeyAction = new ReduceByKeyAction<>(accumulator, store, listener);
 		publisher.subscribe(reduceByKeyAction);
 		return reduceByKeyAction;
 	}
 
 	//scan
 
+	/**
+	 *
+	 * @param publisher
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return scanByKey(publisher, null, null, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param mapStream
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                MapStream<KEY,VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
 		return scanByKey(publisher, mapStream, mapStream, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKey(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                Map<KEY,VALUE> store,
 	                                                                Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return scanByKeyOn(publisher, store, listener, SynchronousDispatcher.INSTANCE, accumulator);
+		return scanByKeyOn(publisher, store, listener, accumulator);
 	}
 
+	/**
+	 *
+	 * @param publisher
+	 * @param store
+	 * @param listener
+	 * @param accumulator
+	 * @param <KEY>
+	 * @param <VALUE>
+	 * @return
+	 */
 	public static <KEY,VALUE> Stream<Tuple2<KEY,VALUE>> scanByKeyOn(Publisher<Tuple2<KEY,VALUE>> publisher,
 	                                                                  Map<KEY,VALUE> store,
 	                                                                  Publisher<? extends MapStream.Signal<KEY, VALUE>> listener,
-	                                                                  Dispatcher dispatcher,
 	                                                                  BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		ScanByKeyAction<KEY,VALUE> scanByKeyAction = new ScanByKeyAction<>(accumulator, store, listener, dispatcher);
+		ScanByKeyAction<KEY,VALUE> scanByKeyAction = new ScanByKeyAction<>(accumulator, store, listener);
 		publisher.subscribe(scanByKeyAction);
 		return scanByKeyAction;
 	}

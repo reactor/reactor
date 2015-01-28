@@ -127,8 +127,15 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				if (last) {
 					onComplete();
 				} else {
-					elements -= list.size;
-					toRequest = Math.min(maxCapacity, elements);
+					if(elements != Long.MAX_VALUE) {
+						elements -= list.size;
+					}
+					if(draining) {
+						toRequest = Math.min(maxCapacity, elements);
+					}else if(elements > 0l){
+						onRequest(elements);
+						toRequest = 0;
+					}
 				}
 			} while (draining && toRequest > 0);
 
@@ -143,8 +150,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if (list.size > 0) {
 			for (Object el : list.array) {
 				if (el == null) break;
-				subscriber.onNext((O) el);
 				currentNextSignals++;
+				subscriber.onNext((O) el);
 			}
 		}
 	}
@@ -218,6 +225,21 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
+	public void updatePendingRequests(long n) {
+		long oldPending;
+		long newPending;
+
+		synchronized (this) {
+			oldPending = pendingRequestSignals;
+			newPending = n == 0l ? 0l : oldPending + n;
+			if(newPending < 0) {
+				newPending = n > 0 ? Long.MAX_VALUE : 0;
+			}
+			pendingRequestSignals = newPending;
+		}
+	}
+
+	@Override
 	public boolean shouldRequestPendingSignals() {
 		synchronized (this) {
 			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE
@@ -245,7 +267,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public final boolean isComplete() {
 		synchronized (this) {
-			return buffer.isComplete();
+			return buffer.isEmpty() && buffer.isComplete();
 		}
 	}
 

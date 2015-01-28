@@ -19,7 +19,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Dispatcher;
 import reactor.rx.action.Action;
 
 /**
@@ -29,8 +28,7 @@ public class LoggerAction<T> extends Action<T, T> {
 
 	private final Logger log;
 
-	public LoggerAction(Dispatcher dispatcher, String logger) {
-		super(dispatcher);
+	public LoggerAction(String logger) {
 		log = logger != null && !logger.isEmpty() ? LoggerFactory.getLogger(logger) : LoggerFactory.getLogger(LoggerAction
 				.class);
 	}

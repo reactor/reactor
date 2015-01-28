@@ -150,10 +150,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		return stream().lift(new Function<Dispatcher, Action<O, O>>() {
+		return stream().lift(new Supplier<Action<O,O>>() {
 			@Override
-			public Action<O, O> apply(Dispatcher dispatcher) {
-				return new Action<O, O>(dispatcher) {
+			public Action<O, O> get() {
+				return new Action<O, O>() {
 					@Override
 					protected void doNext(O ev) {
 						onComplete.accept(Promise.this);
