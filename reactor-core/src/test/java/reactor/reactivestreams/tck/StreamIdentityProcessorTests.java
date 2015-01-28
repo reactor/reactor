@@ -60,9 +60,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
-		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
+		dispatchers = Environment.newCachedDispatchers(3, "test-partition");
 
 		//preinit the two dispatchers
+		dispatchers.get();
 		dispatchers.get();
 		dispatchers.get();
 	}
@@ -93,7 +94,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 												//		.log(stream.key() + ":zip")
 										)
 						)
-						.dispatchOn(Environment.dispatcher(Environment.MPSC))
+						.dispatchOn(dispatchers.get())
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 
