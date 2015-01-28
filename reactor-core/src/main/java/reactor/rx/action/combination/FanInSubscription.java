@@ -17,13 +17,11 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.queue.internal.MpscLinkedQueue;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.subscription.ReactiveSubscription;
 
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
@@ -38,9 +36,11 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	static final AtomicIntegerFieldUpdater<FanInSubscription> RUNNING_COMPOSABLE_UPDATER = AtomicIntegerFieldUpdater
 			.newUpdater(FanInSubscription.class, "runningComposables");
 
-	protected volatile boolean                                    terminated    = false;
-	protected final    Queue<InnerSubscription<O, E, SUBSCRIBER>> subscriptions = MpscLinkedQueue.create();
-	protected final    SerializedSubscriber<E>                    serializer    = SerializedSubscriber.create(this);
+	protected final FastList                subscriptions = new FastList();
+	protected final SerializedSubscriber<E> serializer    = SerializedSubscriber.create(this);
+
+	protected volatile boolean terminated = false;
+	protected          int     leftIndex  = Integer.MAX_VALUE;
 
 	public FanInSubscription(Subscriber<? super E> subscriber) {
 		super(null, subscriber);
@@ -59,25 +59,29 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 			if (size > 0) {
 
-				//deal with recursive cancel while requesting
-				InnerSubscription<O, E, SUBSCRIBER> subscription;
-				int i = 0;
+				FanInAction.InnerSubscriber sub;
+				int i;
 				long toRequest = elements != Long.MAX_VALUE && elements / size > 0 ? elements / size : elements;
-				do {
-					subscription = subscriptions.poll();
-					if (subscription != null) {
-						if (!subscription.toRemove) {
-							subscriptions.add(subscription);
-							i++;
-						}
+				FanInAction.InnerSubscriber[] subs;
+				int arraySize;
+				synchronized (this) {
+					if (subscriptions.size == 0) {
+						return;
+					}
+					subs = subscriptions.array;
+					arraySize = subscriptions.size;
+				}
 
-						subscription.subscriber.request(toRequest);
+				for (i = 0; i < arraySize; i++) {
+					sub = subs[i];
+					if (sub != null) {
+						sub.request(toRequest);
 
 						if (terminated) {
 							break;
 						}
 					}
-				} while (i < size && subscription != null);
+				}
 			}
 
 			if (terminated) {
@@ -88,14 +92,26 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public void forEach(Consumer<InnerSubscription<O, E, SUBSCRIBER>> consumer) {
 		try {
-			if (RUNNING_COMPOSABLE_UPDATER.get(this) > 0) {
-				for (InnerSubscription<O, E, SUBSCRIBER> innerSubscription : subscriptions) {
-					if (innerSubscription == null) {
-						return;
+			FanInAction.InnerSubscriber[] subs;
+			int size;
+			synchronized (this) {
+				if (subscriptions.size == 0) {
+					return;
+				}
+				subs = subscriptions.array;
+				size = subscriptions.size;
+			}
+
+			if (size > 0) {
+				FanInAction.InnerSubscriber sub;
+				for (int i = 0; i < size; i++) {
+					sub = subs[i];
+					if (sub != null) {
+						consumer.accept(sub.s);
 					}
-					consumer.accept(innerSubscription);
 				}
 			}
 		} catch (Throwable t) {
@@ -105,21 +121,87 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	@Override
 	public void cancel() {
-		if (!subscriptions.isEmpty()) {
-			Subscription s;
-			while ((s = subscriptions.poll()) != null) {
-				s.cancel();
+		super.cancel();
+
+		FanInAction.InnerSubscriber[] subs;
+		int size;
+		synchronized (this) {
+			if (subscriptions.size == 0) {
+				return;
+			}
+			subs = subscriptions.array;
+			size = subscriptions.size;
+		}
+
+		FanInAction.InnerSubscriber sub = null;
+		for (int i = 0; i < size; i++) {
+			synchronized (this) {
+				if (subs[i] != null) {
+					sub = subs[i];
+					subs[i] = null;
+				}
+			}
+			if (sub != null) {
+				sub.cancel();
 			}
 		}
-		super.cancel();
+
+		synchronized (this) {
+			subscriptions.clear();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
-	int addSubscription(final InnerSubscription s) {
+	int addSubscription(final FanInAction.InnerSubscriber s) {
 		if (terminated) return 0;
-		int newSize = RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
-		subscriptions.add(s);
-		return newSize;
+		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
+		synchronized (this) {
+			if(leftIndex < subscriptions.size && subscriptions.array[leftIndex] == null){
+				subscriptions.array[leftIndex] = s;
+			}else{
+				subscriptions.add(s);
+				leftIndex = subscriptions.size - 1;
+			}
+			return leftIndex;
+		}
+	}
+
+	void remove(int sequenceId) {
+		synchronized (this) {
+			if (sequenceId < subscriptions.size) {
+				subscriptions.array[sequenceId] = null;
+				leftIndex = leftIndex > sequenceId ? sequenceId : leftIndex;
+			}
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	protected InnerSubscription<O, E, SUBSCRIBER> shift(int sequenceId) {
+		FanInAction.InnerSubscriber sub;
+		synchronized (this) {
+			if (sequenceId < subscriptions.size) {
+				subscriptions.array[sequenceId] = null;
+				for (int i = 0; i < subscriptions.size; i++) {
+					sub = subscriptions.array[i];
+					if (sub != null) {
+						return sub.s;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected InnerSubscription<O, E, SUBSCRIBER> peek() {
+		synchronized (this) {
+			for (int i = 0; i < subscriptions.size; i++) {
+				if (subscriptions.array[i] != null) {
+					return subscriptions.array[i].s;
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -149,7 +231,6 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 		final SUBSCRIBER   subscriber;
 		final Subscription wrapped;
-		boolean toRemove = false;
 
 		public InnerSubscription(Subscription wrapped, SUBSCRIBER subscriber) {
 			this.wrapped = wrapped;
@@ -168,6 +249,32 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 		public Subscription getDelegate() {
 			return wrapped;
+		}
+	}
+
+	static final class FastList {
+		FanInAction.InnerSubscriber[] array;
+		int                           size;
+
+		public void add(FanInAction.InnerSubscriber o) {
+			int s = size;
+			FanInAction.InnerSubscriber[] a = array;
+			if (a == null) {
+				a = new FanInAction.InnerSubscriber[16];
+				array = a;
+			} else if (s == a.length) {
+				FanInAction.InnerSubscriber[] array2 = new FanInAction.InnerSubscriber[s + (s >> 2)];
+				System.arraycopy(a, 0, array2, 0, s);
+				a = array2;
+				array = a;
+			}
+			a[s] = o;
+			size = s + 1;
+		}
+
+		public void clear() {
+			array = null;
+			size = 0;
 		}
 	}
 

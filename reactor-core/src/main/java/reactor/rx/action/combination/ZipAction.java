@@ -179,7 +179,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
 					this));
 
-			outerAction.innerSubscriptions.addSubscription(s);
 			if (pendingRequests > 0) {
 				request(1);
 			}
