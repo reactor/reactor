@@ -93,6 +93,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 												//		.log(stream.key() + ":zip")
 										)
 						)
+						.dispatchOn(Environment.dispatcher(Environment.MPSC))
 						.when(Throwable.class, Throwable::printStackTrace)
 						.combine();
 
