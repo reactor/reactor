@@ -330,8 +330,8 @@ class StreamsSpec extends Specification {
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
 					.dispatchOn(Environment.cachedDispatcher())
-					.log()
 					.subscribeOn(Environment.get())
+					.log()
 					.next()
 
 		then:
@@ -861,6 +861,25 @@ class StreamsSpec extends Specification {
 		then:
 			'the values are all collected from source1 and source2 stream'
 			res == [1, 2, 3, 4, 5, 6, 7, 9, 'done']
+
+	}
+
+	def "Adaptive consuming"() {
+		given:
+			'source iterable'
+			def s = Streams.just(1, 2, 3, 4, 5, 6, 7, 8)
+
+		when:
+			'the source is consumed every in 3 times'
+			def res = []
+			println s.capacity(1).batchConsume(
+					{ res << it },
+					{ res << "r:${it*2}"; it*2 }
+			).debug()
+
+		then:
+			'the values are all collected in 4 times'
+			res == ['r:2', 1, 2, 'r:4', 3, 4, 5, 6, 'r:8', 7, 8]
 
 	}
 

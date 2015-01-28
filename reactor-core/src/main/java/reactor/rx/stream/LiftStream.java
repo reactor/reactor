@@ -39,12 +39,7 @@ public class LiftStream<O, V> extends Stream<V> {
 	}
 
 	public final Action<O, V> onLift() {
-		Action<O, V> action = child.get();
-		Environment environment = getEnvironment();
-		if (environment != null && action.getEnvironment() == null) {
-			action.env(environment);
-		}
-		return action;
+		return child.get();
 	}
 
 	@SuppressWarnings("unchecked")

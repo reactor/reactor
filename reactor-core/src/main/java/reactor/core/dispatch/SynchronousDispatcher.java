@@ -81,6 +81,11 @@ public final class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
+	public String toString() {
+		return "immediate";
+	}
+
+	@Override
 	public void execute(Runnable command) {
 		command.run();
 	}

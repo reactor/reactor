@@ -30,6 +30,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetChannelStream;
 import reactor.io.net.NetClient;
+import reactor.io.net.NetStreams;
 import reactor.io.net.Reconnect;
 import reactor.io.net.netty.NettyClientSocketOptions;
 import reactor.io.net.netty.tcp.NettyTcpClient;
@@ -111,11 +112,9 @@ public class TcpClientTests {
 	public void testTcpClient() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
-				.env(env)
-				.codec(StandardCodecs.STRING_CODEC)
-				.connect("localhost", echoServerPort)
-				.get();
+		TcpClient<String, String> client = NetStreams.tcpClient(s ->
+						s.env(env).codec(StandardCodecs.STRING_CODEC).connect("localhost", echoServerPort)
+		);
 
 		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
 			@Override
@@ -173,11 +172,12 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(messages);
 		final List<String> strings = new ArrayList<String>();
 
-		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
-				.env(env)
-				.codec(StandardCodecs.LINE_FEED_CODEC)
-				.connect("localhost", echoServerPort)
-				.get();
+		TcpClient<String, String> client = NetStreams.tcpClient(s ->
+						s
+								.env(env)
+								.codec(StandardCodecs.LINE_FEED_CODEC)
+								.connect("localhost", echoServerPort)
+		);
 
 		client.open().onSuccess(new Consumer<NetChannelStream<String, String>>() {
 			@Override
@@ -200,7 +200,7 @@ public class TcpClientTests {
 		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
-		           latch.await(5, TimeUnit.SECONDS));
+				latch.await(5, TimeUnit.SECONDS));
 		client.close();
 
 		assertEquals(messages, strings.size());
@@ -289,14 +289,14 @@ public class TcpClientTests {
 				.env(env)
 				.connect("localhost", timeoutServerPort)
 				.get().open().await(5, TimeUnit.SECONDS).on()
-				.close( v-> latch.countDown() )
+				.close(v -> latch.countDown())
 				.readIdle(500, v -> {
-						totalDelay.addAndGet(System.currentTimeMillis() - start);
-						latch.countDown();
+					totalDelay.addAndGet(System.currentTimeMillis() - start);
+					latch.countDown();
 				})
 				.writeIdle(500, v -> {
-						totalDelay.addAndGet(System.currentTimeMillis() - start);
-						latch.countDown();
+					totalDelay.addAndGet(System.currentTimeMillis() - start);
+					latch.countDown();
 				});
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
@@ -313,7 +313,7 @@ public class TcpClientTests {
 				.connect("localhost", heartbeatServerPort)
 				.get().open().await().on()
 				.readIdle(500, v -> {
-						latch.countDown();
+					latch.countDown();
 				});
 
 		Thread.sleep(700);
@@ -337,9 +337,9 @@ public class TcpClientTests {
 				.get().open().await();
 
 		connection.on()
-		          .writeIdle(500, v ->  {
-				          latch.countDown();
-		          });
+				.writeIdle(500, v -> {
+					latch.countDown();
+				});
 
 		for (int i = 0; i < 5; i++) {
 			Thread.sleep(100);
@@ -359,24 +359,24 @@ public class TcpClientTests {
 				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
 						.env(env)
 						.options(new NettyClientSocketOptions()
-								         .pipelineConfigurer(new Consumer<ChannelPipeline>() {
-									         @Override
-									         public void accept(ChannelPipeline pipeline) {
-										         pipeline.addLast(new HttpClientCodec());
-									         }
-								         }))
+								.pipelineConfigurer(new Consumer<ChannelPipeline>() {
+									@Override
+									public void accept(ChannelPipeline pipeline) {
+										pipeline.addLast(new HttpClientCodec());
+									}
+								}))
 						.connect("www.google.com", 80)
 						.get().open().await();
 
 		final CountDownLatch latch = new CountDownLatch(1);
 		connection.sendAndReceive(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))
-		          .onSuccess(new Consumer<HttpObject>() {
-			          @Override
-			          public void accept(HttpObject resp) {
-				          latch.countDown();
-				          System.out.println("resp: " + resp);
-			          }
-		          });
+				.onSuccess(new Consumer<HttpObject>() {
+					@Override
+					public void accept(HttpObject resp) {
+						latch.countDown();
+						System.out.println("resp: " + resp);
+					}
+				});
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}
@@ -412,8 +412,8 @@ public class TcpClientTests {
 
 
 		String msg = ch.sendAndReceive(Buffer.wrap("Hello World!"))
-		               .await(5, TimeUnit.SECONDS)
-		               .asString();
+				.await(5, TimeUnit.SECONDS)
+				.asString();
 
 		assertThat("messages were exchanged", msg, is("Goodbye World!"));
 	}

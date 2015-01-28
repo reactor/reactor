@@ -50,6 +50,7 @@ import reactor.rx.action.passive.CallbackAction;
 import reactor.rx.action.passive.LoggerAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
+import reactor.rx.action.terminal.AdaptiveConsumerAction;
 import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.terminal.ObservableAction;
 import reactor.rx.action.transformation.*;
@@ -281,7 +282,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Pass values accepted by this {@code Stream} into the given {@link Observable}, notifying with the given key.
 	 *
 	 * @param observable the {@link Observable} to notify
-	 * @param keyMapper        the key function mapping each incoming data to a key to notify on
+	 * @param keyMapper  the key function mapping each incoming data to a key to notify on
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
@@ -384,8 +385,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * Stream}. As such this a terminal action to be placed on a stream flow.
+	 * It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
@@ -398,8 +399,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
+	 * publisher.
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
 	 *
@@ -423,8 +424,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
 	 * Stream}. As such this a terminal action to be placed on a stream flow.
 	 * Any Error signal will be consumed by the error consumer.
-	 * Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 *
 	 * @param consumer      the consumer to invoke on each next signal
@@ -432,7 +432,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
-	                              Consumer<? super Throwable> errorConsumer) {
+	                             Consumer<? super Throwable> errorConsumer) {
 		return consumeOn(getDispatcher(), consumer, errorConsumer);
 	}
 
@@ -440,8 +440,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
 	 * Stream}. As such this a terminal action to be placed on a stream flow.
 	 * Any Error signal will be consumed by the error consumer.
-	 * Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 *
 	 * @param consumer      the consumer to invoke on each next signal
@@ -450,7 +449,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
-	                                Consumer<? super Throwable> errorConsumer) {
+	                               Consumer<? super Throwable> errorConsumer) {
 		return consumeOn(dispatcher, consumer, errorConsumer, null);
 	}
 
@@ -468,11 +467,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
-	                              Consumer<? super Throwable> errorConsumer,
-	                              Consumer<Void> completeConsumer) {
+	                             Consumer<? super Throwable> errorConsumer,
+	                             Consumer<Void> completeConsumer) {
 		return consumeOn(getDispatcher(), consumer, errorConsumer, completeConsumer);
 	}
-
 
 	/**
 	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
@@ -489,8 +487,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return {@literal new Stream}
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
-	                                Consumer<? super Throwable> errorConsumer,
-	                                Consumer<Void> completeConsumer) {
+	                               Consumer<? super Throwable> errorConsumer,
+	                               Consumer<Void> completeConsumer) {
 		ConsumerAction<O> consumerAction =
 				new ConsumerAction<O>(dispatcher, consumer, errorConsumer, completeConsumer);
 
@@ -500,6 +498,115 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		subscribe(consumerAction);
 		consumerAction.requestMore(consumerAction.getCapacity());
+		return consumerAction;
+	}
+
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
+	 * publisher.
+	 * <p>
+	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
+	 * -starting with the
+	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
+	 * long signals
+	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
+	 * <p>
+	 * <p>
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @return a new {@link Control} interface to operate on the materialized upstream
+	 */
+	public final Control batchConsume(final Consumer<? super O> consumer,
+	                                  final Function<Long, ? extends Long> requestMapper) {
+		return batchConsumeOn(getDispatcher(), consumer, requestMapper);
+	}
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
+	 * publisher.
+	 * <p>
+	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
+	 * -starting with the
+	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
+	 * long signals
+	 * S that will instruct the consumer to request S more elements.
+	 * <p>
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @return a new {@link Control} interface to operate on the materialized upstream
+	 */
+	public final Control adaptiveConsume(final Consumer<? super O> consumer,
+	                                     final Function<Stream<Long>, ? extends Publisher<? extends Long>>
+			                                     requestMapper) {
+		return adaptiveConsumeOn(getDispatcher(), consumer, requestMapper);
+	}
+
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
+	 * publisher.
+	 * <p>
+	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
+	 * -starting with the
+	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
+	 * long signals
+	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
+	 * <p>
+	 * <p>
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @return a new {@link Control} interface to operate on the materialized upstream
+	 */
+	public final Control batchConsumeOn(final Dispatcher dispatcher,
+	                                    final Consumer<? super O> consumer,
+	                                    final Function<Long, ? extends Long>
+			                                    requestMapper) {
+		return adaptiveConsumeOn(dispatcher, consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
+			@Override
+			public Publisher<? extends Long> apply(Stream<Long> longStream) {
+				return longStream.map(requestMapper);
+			}
+		});
+	}
+
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
+	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
+	 * publisher.
+	 * <p>
+	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
+	 * -starting with the
+	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
+	 * long signals
+	 * S that will instruct the consumer to request S more elements.
+	 * <p>
+	 * Multiple long signals S can be requested before a given request complete and therefore
+	 * an approriate ordering Dispatcher should be used.
+	 * <p>
+	 * <p>
+	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 *
+	 * @param consumer the consumer to invoke on each value
+	 * @return a new {@link Control} interface to operate on the materialized upstream
+	 */
+	public final Control adaptiveConsumeOn(final Dispatcher dispatcher,
+	                                       final Consumer<? super O> consumer,
+	                                       final Function<Stream<Long>, ? extends Publisher<? extends Long>>
+			                                       requestMapper) {
+		AdaptiveConsumerAction<O> consumerAction =
+				new AdaptiveConsumerAction<O>(dispatcher, getCapacity(), consumer, requestMapper);
+
+		subscribe(consumerAction);
+		if (consumer != null) {
+			consumerAction.requestMore(consumerAction.getCapacity());
+		}
 		return consumerAction;
 	}
 
@@ -546,7 +653,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whom request are running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
-		return new Stream<O>(){
+		return new Stream<O>() {
 			@Override
 			public long getCapacity() {
 				return Stream.this.getCapacity();
@@ -586,29 +693,34 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
 	public Stream<O> dispatchOn(final Environment environment, @Nonnull final Dispatcher dispatcher) {
-		if(dispatcher == SynchronousDispatcher.INSTANCE
-				|| dispatcher == getDispatcher()){
+		if (dispatcher == SynchronousDispatcher.INSTANCE
+				|| dispatcher == getDispatcher()) {
 
-			if (environment != getEnvironment()){
+			if (environment != getEnvironment()) {
 				return env(environment);
-			}else{
+			} else {
 				return this;
 			}
 		}
 
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to #partition()/groupBy() method and assign individual single dispatchers. ");
+				" For concurrent signal dispatching, refer to #partition()/groupBy() method and assign individual single " +
+				"dispatchers. ");
 
-		final long capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
+		long _capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS :
 				Long.MAX_VALUE;
 
-		return new LiftStream<O, O>(this, new Supplier<Action<O, O>>(){
+		long parentCapacity = getCapacity();
+
+		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;
+
+		return new LiftStream<O, O>(this, new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
 				return new DispatcherAction<O>(dispatcher).capacity(capacity);
 			}
-		}){
+		}) {
 			@Override
 			public Dispatcher getDispatcher() {
 				return dispatcher;
@@ -896,6 +1008,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			public Environment getEnvironment() {
 				return Stream.this.getEnvironment();
 			}
+
 			@Override
 			public long getCapacity() {
 				return Stream.this.getCapacity();
@@ -1324,8 +1437,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the exception if of the given type.
-	 * The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the given exception type, the error signal will be propagated downstream but not to the recovered values sink.
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the exception if of
+	 * the given type.
+	 * The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the given
+	 * exception type, the error signal will be propagated downstream but not to the recovered values sink.
 	 *
 	 * @param recoveredValuesSink the subscriber to listen for recovered values
 	 * @param exceptionType       the type of exceptions to handle
@@ -2067,7 +2182,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Supplier<Action<O, List<O>>>() {
 			@Override
 			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>(getDispatcher(), Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan, unit,
+				return new BufferShiftAction<O>(getDispatcher(), Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan,
+						unit,
 						timer);
 			}
 		});
@@ -2709,7 +2825,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a
 	 */
 	public Stream<O> env(final Environment environment) {
-		return new Stream<O>(){
+		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Stream.this.subscribe(s);
@@ -2828,10 +2944,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	@Override
 	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-		Dispatcher  currentDispatcher = getDispatcher();
-		return (currentDispatcher != dispatcher
-				|| getCapacity() < producerCapacity)
-				&& currentDispatcher.getClass() != TailRecurseDispatcher.class
+		return (getCapacity() < producerCapacity)
+				&& getDispatcher().getClass() != TailRecurseDispatcher.class
 				&& dispatcher.getClass() != TailRecurseDispatcher.class;
 	}
 

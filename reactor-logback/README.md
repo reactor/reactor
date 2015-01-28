@@ -1,23 +1,20 @@
 # Disruptor-based AsyncAppender for Logback
 
-The `reactor-logback` module is somewhat misleadingly-named. There are no Reactor dependencies in it. It uses the LMAX Disruptor RingBuffer directly to provide high-speed, asynchronous logging for applications that don't want to give up logging just because it kills the performance of your async application.
+The `reactor-logback` module uses the LMAX Disruptor RingBuffer via Reactor's `Processor` facility to provide high-speed, asynchronous logging for applications that don't want to give up logging just because it kills the performance of your async application.
 
 ### Maven artifacts
 
-The Maven artifacts are currently in the snapshot repo. To use them, you'll need to add a reference to the snapshot repo in your build file. For Gradle, that would be something like:
-
     ext {
-      reactorVersion = '1.0.0.BUILD-SNAPSHOT'
+      reactorVersion = '2.0.0.BUILD-SNAPSHOT'
     }
 
     repositories {
-      mavenLocal()
+      maven { url 'http://repo.spring.io/libs-snapshot' }
       mavenCentral()
-      maven { url 'http://repo.springsource.org/libs-snapshot' }
     }
 
     dependencies {
-      runtime "reactor:reactor-logback:$reactorVersion"
+      runtime "io.projectreactor:reactor-logback:$reactorVersion"
     }
 
 ### Configuration

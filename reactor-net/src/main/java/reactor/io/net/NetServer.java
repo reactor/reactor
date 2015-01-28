@@ -46,4 +46,21 @@ public interface NetServer<IN, OUT, CONN extends NetChannel<IN, OUT>> extends Pu
 	 */
 	Promise<Void> shutdown();
 
+	/**
+	 * Consume any
+	 * down.
+	 *
+	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is shut down
+	 */
+	//NetServer<IN, OUT, CONN> service(Function<CONN, ? extends Publisher<? extends OUT>> serviceFunction);
+
+
+	/**
+	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
+	 * down.
+	 *
+	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link NetServer} is shut down
+	 */
+	//NetServer<IN, OUT, CONN> service(BiConsumer<CONN, Subscriber<? super OUT>> serviceConsumer);
+
 }

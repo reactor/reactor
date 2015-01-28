@@ -62,8 +62,9 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this);
-			outerAction.innerSubscriptions.addSubscription(s);
+			setSubscription(
+					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this)
+			);
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
@@ -83,12 +84,10 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		@Override
 		public void onComplete() {
 			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
-				s.toRemove = true;
 				s.cancel();
 				outerAction.status.set(COMPLETING);
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-				outerAction.innerSubscriptions.subscriptions.poll();
-				Subscription current = outerAction.innerSubscriptions.subscriptions.peek();
+				Subscription current = outerAction.innerSubscriptions.shift(sequenceId);
 
 				long request = outerAction.innerSubscriptions.pendingRequestSignals();
 				if (current != null &&  request > 0) {
@@ -118,9 +117,9 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 
 		@Override
 		@SuppressWarnings("unchecked")
-		int addSubscription(InnerSubscription s) {
+		int addSubscription(FanInAction.InnerSubscriber s) {
 			int newSize = super.addSubscription(s);
-			current = subscriptions.peek();
+			current = peek();
 			return newSize;
 		}
 

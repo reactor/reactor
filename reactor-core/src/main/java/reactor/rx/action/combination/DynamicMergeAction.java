@@ -123,11 +123,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	public boolean isPublishing() {
-		return super.isPublishing() || wip > 0;
-	}
-
-	@Override
 	public Action<Publisher<? extends I>, O> capacity(long elements) {
 		fanInAction.capacity(elements);
 		return super.capacity(elements);

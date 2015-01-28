@@ -100,7 +100,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
-		int newSize = innerSubscriptions.subscriptions.size() + 1;
+		int newSize = innerSubscriptions.runningComposables + 1;
 		capacity(newSize);
 
 		if (newSize > toZip.length) {
@@ -114,10 +114,12 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected long initUpstreamPublisherAndCapacity() {
+		long i = 0l;
 		for (Publisher<? extends O> composable : composables) {
 			addPublisher(composable);
+			i++;
 		}
-		return innerSubscriptions.subscriptions.size();
+		return i++;
 	}
 
 	@Override
@@ -147,8 +149,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		public void onSubscribe(Subscription subscription) {
 			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
 					this));
-
-			outerAction.innerSubscriptions.addSubscription(s);
 			if (pendingRequests > 0) {
 				request(pendingRequests);
 			}

@@ -54,8 +54,9 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			this.s = new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this);
-			outerAction.innerSubscriptions.addSubscription(s);
+			setSubscription(
+					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this)
+			);
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}

@@ -23,9 +23,9 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Jon Brisbin
  */
-@Ignore
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
+	static Environment ENV;
 	static Kryo                  KRYO;
 	static KryoCodec<Data, Data> KRYO_CODEC;
 	static ZeroMQ<Data>          ZMQ;
@@ -34,14 +34,16 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@BeforeClass
 	public static void classSetup() {
+		ENV=Environment.initialize();
 		KRYO = new Kryo();
 		KRYO_CODEC = new KryoCodec<>(KRYO, false);
-		ZMQ = new ZeroMQ<Data>(new Environment(), SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
+		ZMQ = new ZeroMQ<Data>(ENV, SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
 	}
 
 	@AfterClass
 	public static void classCleanup() {
 		ZMQ.shutdown();
+		ENV.shutdown();
 	}
 
 	@Override

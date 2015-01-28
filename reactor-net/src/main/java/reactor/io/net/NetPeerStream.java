@@ -29,7 +29,6 @@ import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Abstract base class that implements common functionality shared by clients and servers.
@@ -78,13 +77,6 @@ public abstract class NetPeerStream<IN, OUT> extends Stream<NetChannelStream<IN,
 				inoutNetPeerStream.open.subscribe(s);
 			}
 		});
-		if(!start.isComplete()) {
-			try {
-				start.await(5, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				s.onError(e);
-			}
-		}
 	}
 
 	/**

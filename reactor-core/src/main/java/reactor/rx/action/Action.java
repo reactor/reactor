@@ -550,8 +550,9 @@ public abstract class Action<I, O> extends Stream<O>
 		if (upstreamSubscription != null && !terminated) {
 			requestMore(elements);
 		} else {
-			if (downstreamSubscription != null) {
-				downstreamSubscription.updatePendingRequests(elements);
+			PushSubscription<O> _downstreamSubscription = downstreamSubscription;
+			if (_downstreamSubscription != null) {
+				_downstreamSubscription.updatePendingRequests(elements);
 			}
 		}
 	}
@@ -687,7 +688,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public String toString() {
 		return "{" +
 				(capacity != Long.MAX_VALUE || upstreamSubscription == null ?
-						"{dispatcher=" + getDispatcher().getClass().getSimpleName().replaceAll("Dispatcher", "") +
+						"{dispatcher=" + getDispatcher()+
 								((!SynchronousDispatcher.class.isAssignableFrom(getDispatcher().getClass()) ? (":" + getDispatcher()
 										.remainingSlots()) :
 										"")) +

@@ -140,6 +140,11 @@ public final class TailRecurseDispatcher implements Dispatcher {
 		return true;
 	}
 
+	@Override
+	public String toString() {
+		return counter+", "+queue.toString();
+	}
+
 	private static class Task implements Comparable<Task> {
 		final Object              data;
 		final Consumer            eventConsumer;
