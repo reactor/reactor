@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-package reactor.bus;
+package reactor.bus.registry;
 
 import org.junit.Test;
-import reactor.bus.registry.CachingRegistry;
-import reactor.bus.registry.Registration;
-import reactor.bus.registry.Registry;
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
@@ -145,7 +142,7 @@ public final class CachingRegistryTests {
 		// notify1
 		List<Registration<?>> registrations = this.cachingRegistry.select("test");
 
-		assertEquals( "number of consumers incorrect", 1, registrations.size());
+		assertEquals("number of consumers incorrect", 1, registrations.size());
 
 
 		// consumer2
@@ -167,10 +164,10 @@ public final class CachingRegistryTests {
 
 		// notify2
 		registrations = this.cachingRegistry.select("test");
-		assertEquals( "number of consumers incorrect", 3, registrations.size());
+		assertEquals("number of consumers incorrect", 3, registrations.size());
 
 		registrations = this.cachingRegistry.select("test2");
-		assertEquals( "number of consumers incorrect", 2, registrations.size());
+		assertEquals("number of consumers incorrect", 2, registrations.size());
 
 
 		/*for(Registration<?> registration : registrations){
@@ -182,6 +179,7 @@ public final class CachingRegistryTests {
 		private final AtomicInteger cacheMisses;
 
 		public CacheMissCountingCachingRegistry(AtomicInteger cacheMisses) {
+			super(true, true, null);
 			this.cacheMisses = cacheMisses;
 		}
 

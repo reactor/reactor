@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
@@ -70,7 +71,7 @@ public class SimpleHashWheelTimer implements Timer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SimpleHashWheelTimer.class);
 
-	private final Registry<Consumer<Long>> tasks = new CachingRegistry<Consumer<Long>>(true, false, null);
+	private final Registry<Consumer<Long>> tasks = Registries.create(true, false, null);
 	private final int    resolution;
 	private final Thread loop;
 
@@ -96,27 +97,27 @@ public class SimpleHashWheelTimer implements Timer {
 				new Runnable() {
 					@Override
 					public void run() {
-						while(!Thread.currentThread().isInterrupted()) {
+						while (!Thread.currentThread().isInterrupted()) {
 							long now = now(resolution);
-							for(Registration<? extends Consumer<Long>> reg : tasks.select(now)) {
+							for (Registration<? extends Consumer<Long>> reg : tasks.select(now)) {
 								try {
-									if(reg.isCancelled() || reg.isPaused()) {
+									if (reg.isCancelled() || reg.isPaused()) {
 										continue;
 									}
 									reg.getObject().accept(now);
-								} catch(CancelConsumerException cce) {
+								} catch (CancelConsumerException cce) {
 									reg.cancel();
-								} catch(Throwable t) {
+								} catch (Throwable t) {
 									LOG.error(t.getMessage(), t);
 								} finally {
-									if(reg.isCancelAfterUse()) {
+									if (reg.isCancelAfterUse()) {
 										reg.cancel();
 									}
 								}
 							}
 							try {
 								Thread.sleep(resolution);
-							} catch(InterruptedException e) {
+							} catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 								return;
 							}
@@ -139,7 +140,8 @@ public class SimpleHashWheelTimer implements Timer {
 	                                                       long delayInMilliseconds) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long milliPeriod = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		Assert.isTrue(milliPeriod % resolution == 0, "Period must be a multiple of timer resolution (e.g. period % resolution == 0 )");
+		Assert.isTrue(milliPeriod % resolution == 0,
+		              "Period must be a multiple of timer resolution (e.g. period % resolution == 0 )");
 		return tasks.register(
 				new PeriodSelector(milliPeriod, delayInMilliseconds, resolution),
 				consumer
