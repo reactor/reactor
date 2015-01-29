@@ -1007,6 +1007,60 @@ class StreamsSpec extends Specification {
 			tap.get() == 3
 	}
 
+	def 'A Stream can return a value at a certain index'() {
+		given:
+			'a composable with values 1 to 5'
+			def s = Streams.just(1, 2, 3, 4, 5)
+			def error = 0
+			def errorConsumer = { error++ }
+
+		when:
+			'element at index 2 is requested'
+			def tap = s.elementAt(2).buffer().tap()
+
+		then:
+			'3 is emitted'
+			tap.get() == [ 3 ]
+
+		when:
+			'element with negative index is requested'
+			s.elementAt(-1).when(IndexOutOfBoundsException, errorConsumer).consume()
+
+		then:
+			'exception is thrown'
+			error == 1
+
+		when:
+			'element with index > number of values is requested'
+			s.elementAt(10).when(IndexOutOfBoundsException, errorConsumer).consume()
+
+		then:
+			'exception is thrown'
+			error == 2
+	}
+
+	def 'A Stream can return a value at a certain index or a default value'() {
+		given:
+			'a composable with values 1 to 5'
+			def s = Streams.just(1, 2, 3, 4, 5)
+
+		when:
+			'element at index 2 is requested'
+			def tap = s.elementAtOrDefault(2, -1).buffer().tap()
+
+		then:
+			'3 is emitted'
+			tap.get() == [ 3 ]
+
+		when:
+			'element with index > number of values is requested'
+			tap = s.elementAtOrDefault(10, -1).buffer().tap()
+
+		then:
+			'-1 is emitted'
+			tap.get() == [ -1 ]
+	}
+
 	def "A Stream's values can be filtered"() {
 		given:
 			'a source composable with a filter that rejects odd values'
