@@ -20,11 +20,11 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpServer;
-import reactor.io.net.spec.NetServerSpec;
+import reactor.io.net.spec.ServerSpec;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -43,7 +43,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public class HttpServerSpec<IN, OUT>
-		extends NetServerSpec<IN, OUT, NetChannelStream<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
+		extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
 
 	private final Constructor<? extends HttpServer> serverImplConstructor;
 
@@ -53,7 +53,7 @@ public class HttpServerSpec<IN, OUT>
 	 * Create a {@code TcpServer.Spec} using the given implementation class.
 	 *
 	 * @param serverImpl
-	 * 		The concrete implementation of {@link reactor.io.net.http.HttpServer} to instantiate.
+	 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public HttpServerSpec(@Nonnull Class<? extends HttpServer> serverImpl) {

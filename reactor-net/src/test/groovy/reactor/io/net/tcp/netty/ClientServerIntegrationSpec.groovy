@@ -20,7 +20,7 @@ import reactor.Environment
 import reactor.fn.Consumer
 import reactor.io.codec.LengthFieldCodec
 import reactor.io.codec.json.JsonCodec
-import reactor.io.net.NetChannel
+import reactor.io.net.Channel
 import reactor.io.net.netty.tcp.NettyTcpClient
 import reactor.io.net.netty.tcp.NettyTcpServer
 import reactor.io.net.tcp.spec.TcpClientSpec
@@ -48,7 +48,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 	@Unroll
 	def "Client should be able to send data to server"(List<Pojo> data) {
-		given: "a TcpServer and TcpClient with JSON codec"
+		given: "a TcpServer and TcpClient with JSON defaultCodec"
 			def dataLatch = new CountDownLatch(data.size())
 
 			final int port = SocketUtils.findAvailableTcpPort()
@@ -65,7 +65,7 @@ class ClientServerIntegrationSpec extends Specification {
 							dataLatch.countDown()
 							consumerMock.accept(pojo)
 						} as Consumer<Pojo>)
-					} as Consumer<NetChannel<Pojo, Pojo>>).
+					} as Consumer<Channel<Pojo, Pojo>>).
 					get()
 
 			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
@@ -101,7 +101,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 	@Unroll
 	def "Server should be able to send POJO to client"(List<Pojo> data) {
-		given: "a TcpServer and TcpClient with JSON codec"
+		given: "a TcpServer and TcpClient with JSON defaultCodec"
 			def dataLatch = new CountDownLatch(data.size())
 
 			final int port = SocketUtils.findAvailableTcpPort()
@@ -127,7 +127,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 		and: "connection is established"
 			client.open().
-					consume({ NetChannel conn ->
+					consume({ Channel conn ->
 						conn.consume({ Pojo pojo ->
 							dataLatch.countDown()
 							consumerMock.accept(pojo)

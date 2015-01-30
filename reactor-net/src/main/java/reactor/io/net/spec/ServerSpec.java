@@ -20,8 +20,8 @@ import reactor.bus.spec.DispatcherComponentSpec;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannel;
-import reactor.io.net.NetServer;
+import reactor.io.net.Channel;
+import reactor.io.net.Server;
 import reactor.io.net.config.ServerSocketOptions;
 
 import javax.annotation.Nonnull;
@@ -31,10 +31,10 @@ import java.net.InetSocketAddress;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class NetServerSpec<IN, OUT,
-		CONN extends NetChannel<IN,OUT>,
-		S extends NetServerSpec<IN, OUT, CONN, S, N>,
-		N extends NetServer<IN,OUT,CONN>>
+public abstract class ServerSpec<IN, OUT,
+		CONN extends Channel<IN,OUT>,
+		S extends ServerSpec<IN, OUT, CONN, S, N>,
+		N extends Server<IN,OUT,CONN>>
 		extends DispatcherComponentSpec<S, N> {
 
 	protected ServerSocketOptions options = new ServerSocketOptions();

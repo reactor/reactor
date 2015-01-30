@@ -56,7 +56,7 @@ class NettyTcpServerSpec extends Specification {
 		when: "the server is started"
 			server.consume{ conn ->
 				conn.consume{ data ->
-					conn.echo Buffer.wrap("Hello World!")
+					conn.echoBuffer Buffer.wrap("Hello World!")
 				}
 			}
 
@@ -84,7 +84,7 @@ class NettyTcpServerSpec extends Specification {
 	}
 
 	def "NettyTcpServer can encode and decode JSON"() {
-		given: "a TcpServer with JSON codec"
+		given: "a TcpServer with JSON defaultCodec"
 		def stopLatch = new CountDownLatch(1)
 		def dataLatch = new CountDownLatch(1)
 		def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).

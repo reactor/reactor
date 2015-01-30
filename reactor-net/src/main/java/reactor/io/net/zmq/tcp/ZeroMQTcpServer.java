@@ -34,7 +34,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.zmq.ZeroMQNetChannel;
+import reactor.io.net.zmq.ZeroMQChannelStream;
 import reactor.io.net.zmq.ZeroMQServerSocketOptions;
 import reactor.io.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
@@ -131,6 +131,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			}
 
 			@Override
+			@SuppressWarnings("unchecked")
 			protected void start(final ZMQ.Socket socket) {
 				String addr;
 				try {
@@ -148,7 +149,8 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						@Override
 						public void accept(GroupedStream<String, ZMsg> stringZMsgGroupedStream) {
 
-							final ZeroMQNetChannel<IN, OUT> netChannel = createChannel(null)
+							final ZeroMQChannelStream<IN, OUT> netChannel =
+									createChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
 									.setConnectionId(stringZMsgGroupedStream.key())
 									.setSocket(socket);
 
@@ -158,7 +160,9 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 								public void accept(ZMsg msg) {
 									ZFrame content;
 									while (null != (content = msg.pop())) {
-										netChannel.read(Buffer.wrap(content.getData()));
+										netChannel.in().onNext(netChannel.getDecoder() != null ?
+												netChannel.getDecoder().apply(Buffer.wrap(content.getData())) :
+												(IN) content.getData());
 									}
 									msg.destroy();
 								}
@@ -185,12 +189,14 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	protected ZeroMQNetChannel<IN, OUT> createChannel(Object ioChannel) {
-		return new ZeroMQNetChannel<IN, OUT>(
+	protected ZeroMQChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
+		return new ZeroMQChannelStream<IN, OUT>(
 				getEnvironment(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				this,
 				getDispatcher(),
 				getDispatcher(),
-				getCodec()
+				getDefaultCodec()
 		);
 	}
 

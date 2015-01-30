@@ -32,7 +32,6 @@ import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpServer;
@@ -110,6 +109,9 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 						if (log.isDebugEnabled()) {
 							log.debug("CONNECT {}", ch);
 						}
+						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
+							ch.config().setAutoRead(false);
+						}
 
 						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
@@ -123,20 +125,17 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 
-						final NettyNetChannel<IN, OUT> netChannel = createChannel(ch);
+						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
 						notifyNewChannel(netChannel);
 
-						ch.pipeline().addLast(createChannelHandlers(netChannel));
+						mergeWrite(netChannel);
 
-						ch.closeFuture().addListener(new ChannelFutureListener() {
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								if (log.isDebugEnabled()) {
-									log.debug("CLOSE {}", ch);
-								}
-								netChannel.notifyClose();
-							}
-						});
+						ch.pipeline().addLast(
+								new NettyNetChannelInboundHandler<IN>(
+										netChannel.in(), netChannel),
+								new NettyNetChannelOutboundHandler()
+						);
+
 					}
 				});
 	}
@@ -186,22 +185,16 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected NettyNetChannel<IN, OUT> createChannel(Object nativeChannel) {
-		return new NettyNetChannel<IN, OUT>(
+	protected NettyChannelStream<IN, OUT> createChannel(Object nativeChannel, long prefetch) {
+		return new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
-				getCodec(),
+				getDefaultCodec(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				this,
 				new NettyEventLoopDispatcher(((Channel) nativeChannel).eventLoop(), 256),
 				getDispatcher(),
 				(Channel) nativeChannel
 		);
-	}
-
-	protected ChannelHandler[] createChannelHandlers(NetChannelStream<IN,OUT> netChannel) {
-		NettyNetChannelInboundHandler readHandler = new NettyNetChannelInboundHandler()
-				.setNetChannel(netChannel);
-		NettyNetChannelOutboundHandler writeHandler = new NettyNetChannelOutboundHandler();
-
-		return new ChannelHandler[]{readHandler, writeHandler};
 	}
 
 }

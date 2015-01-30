@@ -18,6 +18,7 @@ import reactor.io.net.tcp.spec.TcpClientSpec;
 import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -57,14 +58,14 @@ public class AbstractNetClientServerTest {
 		return new Data(random.nextInt(), random.nextLong(), new String(name));
 	}
 
-	protected static <IN, OUT> NetChannelStream<IN, OUT> assertClientStarted(NetClient<IN, OUT, ?> client)
+	protected static <IN, OUT> ChannelStream<IN, OUT> assertClientStarted(Client<IN, OUT, ?> client)
 			throws InterruptedException {
-		NetChannelStream<IN, OUT> ch = client.open().await(5, TimeUnit.SECONDS);
+		ChannelStream<IN, OUT> ch = client.open().await(5, TimeUnit.SECONDS);
 		assertNotNull(client.getClass().getSimpleName() + " was started", ch);
 		return ch;
 	}
 
-	protected static <IN, OUT> void assertClientStopped(NetClient<IN, OUT, ?> client)
+	protected static <IN, OUT> void assertClientStopped(Client<IN, OUT, ?> client)
 			throws InterruptedException {
 		Promise<Void> closed = client.close();
 		closed.await(1, TimeUnit.SECONDS);
@@ -72,13 +73,13 @@ public class AbstractNetClientServerTest {
 	}
 
 
-	protected static <IN, OUT> void assertServerStarted(NetServer<IN, OUT, ?>  server) throws InterruptedException {
+	protected static <IN, OUT> void assertServerStarted(Server<IN, OUT, ?> server) throws InterruptedException {
 		Promise<Void> started = server.start();
 		started.await(5, TimeUnit.SECONDS);
 		assertTrue(server.getClass().getSimpleName() + " was started", started.isSuccess());
 	}
 
-	protected static <IN, OUT> void assertServerStopped(NetServer<IN, OUT, ?>  server) throws InterruptedException {
+	protected static <IN, OUT> void assertServerStopped(Server<IN, OUT, ?> server) throws InterruptedException {
 		Promise<Void> started = server.shutdown();
 		started.await(1, TimeUnit.SECONDS);
 		assertTrue(server.getClass().getSimpleName() + " was stopped", started.isSuccess());
@@ -158,27 +159,34 @@ public class AbstractNetClientServerTest {
 	                                                      T data,
 	                                                      Predicate<T> replyPredicate)
 			throws InterruptedException {
-		if (null == codec) {
-			codec = (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC;
-		}
-		TcpServer<T, T> server = new TcpServerSpec<T, T>(serverType)
-				.env(env1)
-				.listen(LOCALHOST, getPort())
-				.codec(codec)
-				.get();
+		final Codec<Buffer, T, T> elCodec = codec == null ? (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC :
+				codec;
 
-		server.consume(ch -> ch.consume(ch::echo));
+		TcpServer<T, T> server = NetStreams.tcpServer(serverType, s -> s
+						.env(env1)
+						.listen(LOCALHOST, getPort())
+						.codec(elCodec)
+		);
+
+		server.service(ch -> ch);
 		assertServerStarted(server);
 
-		TcpClient<T, T> client = new TcpClientSpec<T, T>(clientType)
-				.env(env2)
-				.connect(LOCALHOST, getPort())
-				.codec(codec)
-				.get();
+		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
+						.env(env2)
+						.connect(LOCALHOST, getPort())
+						.codec(elCodec)
+		);
 
-		NetChannelStream<T, T> ch = assertClientStarted(client);
+		final Promise<T> p = Promises.prepare(getClientEnvironment());
 
-		T reply = ch.sendAndReceive(data).await(5, TimeUnit.SECONDS);
+		client.connect((output, input) -> {
+			input.subscribe(p);
+			output.onNext(data);
+		});
+
+		ChannelStream<T, T> ch = assertClientStarted(client);
+
+		T reply = p.await(5, TimeUnit.SECONDS);
 
 		assertTrue("reply was correct", replyPredicate.test(reply));
 

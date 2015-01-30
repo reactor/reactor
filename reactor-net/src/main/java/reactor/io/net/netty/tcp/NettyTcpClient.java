@@ -35,7 +35,7 @@ import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
@@ -126,6 +126,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
 
+						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
+							ch.config().setAutoRead(false);
+						}
+
 						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
 							if (log.isDebugEnabled()) {
@@ -137,20 +141,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						final NettyNetChannel<IN, OUT> netChannel = createChannel(ch);
+						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
 						notifyNewChannel(netChannel);
 
-						ch.pipeline().addLast(createChannelHandlers(netChannel));
-
-						ch.closeFuture().addListener(new ChannelFutureListener() {
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								if (log.isDebugEnabled()) {
-									log.debug("CLOSE {}", ch);
-								}
-								netChannel.notifyClose();
-							}
-						});
+						ch.pipeline().addLast(
+								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
+						   new NettyNetChannelOutboundHandler()
+						);
 					}
 				});
 
@@ -167,8 +164,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<NetChannelStream<IN, OUT>> open() {
-		final Promise<NetChannelStream<IN, OUT>> connection
+	public Promise<ChannelStream<IN, OUT>> open() {
+		final Promise<ChannelStream<IN, OUT>> connection
 				= Promises.ready(getEnvironment(), getDispatcher());
 
 		openChannel(new ConnectingChannelListener(connection));
@@ -177,8 +174,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Stream<NetChannelStream<IN, OUT>> open(final Reconnect reconnect) {
-		final Broadcaster<NetChannelStream<IN, OUT>> connections
+	public Stream<ChannelStream<IN, OUT>> open(final Reconnect reconnect) {
+		final Broadcaster<ChannelStream<IN, OUT>> connections
 				= Broadcaster.create(getEnvironment(), getDispatcher());
 
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
@@ -192,9 +189,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
-				if(future.isDone() && future.isSuccess()) {
+				if (future.isDone() && future.isSuccess()) {
 					promise.onComplete();
-				}else{
+				} else {
 					promise.onError(future.cause());
 				}
 			}
@@ -203,25 +200,19 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	protected NettyNetChannel<IN, OUT> createChannel(Object nativeChannel) {
+	protected NettyChannelStream<IN, OUT> createChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
-		return new NettyNetChannel<IN, OUT>(
+		return new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
-				getCodec(),
+				getDefaultCodec(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				this,
 				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
 				getDispatcher(),
 				ch
 		);
-	}
-
-	protected ChannelHandler[] createChannelHandlers(NettyNetChannel<IN,OUT> conn) {
-		NettyNetChannelInboundHandler readHandler = new NettyNetChannelInboundHandler()
-				.setNetChannel(conn);
-		NettyNetChannelOutboundHandler writeHandler = new NettyNetChannelOutboundHandler();
-
-		return new ChannelHandler[]{readHandler, writeHandler};
 	}
 
 	private void openChannel(ChannelFutureListener listener) {
@@ -232,9 +223,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	private class ConnectingChannelListener implements ChannelFutureListener {
-		private final Promise<NetChannelStream<IN, OUT>> connection;
+		private final Promise<ChannelStream<IN, OUT>> connection;
 
-		private ConnectingChannelListener(Promise<NetChannelStream<IN, OUT>> connection) {
+		private ConnectingChannelListener(Promise<ChannelStream<IN, OUT>> connection) {
 			this.connection = connection;
 		}
 
@@ -256,16 +247,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			NettyNetChannelInboundHandler inboundHandler = future.channel()
 					.pipeline()
 					.get(NettyNetChannelInboundHandler.class);
-			final NetChannelStream<IN, OUT> ch = inboundHandler.getNetChannel();
+			final ChannelStream<IN, OUT> ch = inboundHandler.channelStream();
 
-			future.channel().closeFuture().addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (log.isInfoEnabled()) {
-						log.info("CLOSED: " + future.channel());
-					}
-				}
-			});
 
 			future.channel().eventLoop().submit(new Runnable() {
 				@Override
@@ -280,14 +263,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 
-		private final Reconnect                        reconnect;
-		private final Broadcaster<NetChannelStream<IN, OUT>> connections;
+		private final Reconnect                           reconnect;
+		private final Broadcaster<ChannelStream<IN, OUT>> connections;
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
 		                                    Reconnect reconnect,
-		                                    Broadcaster<NetChannelStream<IN, OUT>> connections) {
+		                                    Broadcaster<ChannelStream<IN, OUT>> connections) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 			this.connections = connections;
@@ -322,7 +305,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 				final Channel ioCh = future.channel();
 				final ChannelPipeline ioChPipline = ioCh.pipeline();
-				final NetChannelStream<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).getNetChannel();
+				final ChannelStream<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).channelStream();
 
 				ioChPipline.addLast(new ChannelDuplexHandler() {
 					@Override
@@ -336,7 +319,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							// do not attempt a reconnect
 							return;
 						}
-						if (!((NettyNetChannel) ch).isClosing()) {
+						if (!((NettyChannelStream) ch).isClosing()) {
 							attemptReconnect(tup);
 						} else {
 							closing = true;

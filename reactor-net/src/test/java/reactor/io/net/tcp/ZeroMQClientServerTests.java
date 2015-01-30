@@ -3,7 +3,6 @@ package reactor.io.net.tcp;
 import com.esotericsoftware.kryo.Kryo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
@@ -83,9 +82,10 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   .onSuccess(ch -> ch.consume(ch::echo));
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch ->
-				   ch.sendAndReceive(data)
-						   .onSuccess(v -> latch.countDown())
+		   .onSuccess(ch -> {
+					   ch.consume(d -> latch.countDown());
+					   ch.send(data).onSuccess(v -> latch.countDown());
+				   }
 		   );
 
 		assertTrue("REQ/REP socket exchanged data", latch.await(5, TimeUnit.SECONDS));

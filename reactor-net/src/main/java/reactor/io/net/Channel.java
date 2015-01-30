@@ -18,9 +18,7 @@ package reactor.io.net;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
-import reactor.fn.batch.BatchConsumer;
 import reactor.rx.Promise;
-import reactor.rx.Stream;
 
 import java.net.InetSocketAddress;
 
@@ -28,13 +26,13 @@ import java.net.InetSocketAddress;
  * {@code NetChannel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
  * Implementations handle interacting inbound (received data) and errors by subscribing to it.
  * Sending data to outbound, effectively replying on that virtual connection, is done via {@link this#send(OUT)} and
- * {@link this#echo(OUT)} or {@link this#echoFrom(Publisher)} for fire and forget.
+ * {@link this#echo(OUT)} for write through.
  *
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface NetChannel<IN, OUT> extends Publisher<IN> {
+public interface Channel<IN, OUT> extends Publisher<IN> {
 
 	/**
 	 * Get the address of the remote peer.
@@ -44,21 +42,7 @@ public interface NetChannel<IN, OUT> extends Publisher<IN> {
 	InetSocketAddress remoteAddress();
 
 	/**
-	 * {@link reactor.rx.Stream} of incoming decoded data.
-	 *
-	 * @return input {@link reactor.rx.Stream}
-	 */
-	Stream<IN> in();
-
-	/**
-	 * {@link reactor.fn.batch.BatchConsumer} for efficiently data to the peer.
-	 *
-	 * @return output {@link reactor.fn.batch.BatchConsumer}
-	 */
-	BatchConsumer<OUT> out();
-
-	/**
-	 * Send data to the peer, listen for any error on write and complete after successful write.
+	 * Send data to the peer, listen for any error on write and complete after successful flush or likely behavior.
 	 *
 	 * @param data
 	 * 		the data to send
@@ -68,32 +52,32 @@ public interface NetChannel<IN, OUT> extends Publisher<IN> {
 	Promise<Void> send(OUT data);
 
 	/**
-	 * Send data to the peer.
+	 * Send data to the peer, listen for any error on write and complete after write.
 	 *
 	 * @param data
 	 * 		the data to send
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
 	 */
-	NetChannel<IN, OUT> echo(OUT data);
+	Promise<Void> echo(OUT data);
 
 	/**
-	 * Send data to the peer that passes through the given {@link reactor.rx.Stream}.
+	 * Send data to the peer, listen for any error on write and complete after write.
 	 *
-	 * @param data
-	 * 		the {@link reactor.rx.Stream} of data to monitor
+	 * @param dataStream
+	 * 		the dataStream publishing OUT items to write on this channel
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
 	 */
-	NetChannel<IN, OUT> echoFrom(Publisher<? extends OUT> data);
+	Channel<IN, OUT> sink(Publisher<? extends OUT> dataStream);
 
 	/**
-	 * Close this {@literal NetChannel} and signal complete to the contentStream (@link this#in()).
+	 * Close this {@literal NetChannel} and signal complete to the channel subscribers.
 	 */
 	void close();
 
 	/**
-	 * Close this {@literal NetChannel} and signal complete to the contentStream (@link this#in()).
+	 * @return the underlying native connection/channel in use
 	 */
 	Object nativeConnection();
 

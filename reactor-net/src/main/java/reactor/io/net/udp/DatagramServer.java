@@ -16,18 +16,22 @@
 
 package reactor.io.net.udp;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.batch.BatchConsumer;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.io.net.NetPeerStream;
-import reactor.io.net.NetServer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.PeerStream;
+import reactor.io.net.Server;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
-import reactor.rx.Stream;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -40,8 +44,8 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends NetPeerStream<IN, OUT>
-		implements NetServer<IN, OUT, NetChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT>
+		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
@@ -60,6 +64,44 @@ public abstract class DatagramServer<IN, OUT>
 		this.options = options;
 	}
 
+
+
+	@Override
+	public Server<IN, OUT, ChannelStream<IN, OUT>> service(
+			final BiConsumer<ChannelStream<IN, OUT>, Subscriber<? super OUT>> serviceConsumer) {
+		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			@Override
+			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+				Broadcaster<OUT> b = Broadcaster.create(getEnvironment(), getDispatcher());
+				addWritePublisher(b);
+				serviceConsumer.accept(inoutChannelStream, b);
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		});
+		return this;
+	}
+
+	@Override
+	public Server<IN, OUT, ChannelStream<IN, OUT>> service(
+			Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			@Override
+			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+				addWritePublisher(serviceFunction.apply(inoutChannelStream));
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		});
+		return this;
+	}
+
 	/**
 	 * Start this server.
 	 *
@@ -76,21 +118,6 @@ public abstract class DatagramServer<IN, OUT>
 	 * @return {@literal this}
 	 */
 	public abstract DatagramServer<IN, OUT> send(OUT data);
-
-	/**
-	 * Retrieve the {@link reactor.rx.Stream} on which can be composed actions to take when data comes into
-	 * this {@literal DatagramServer}.
-	 *
-	 * @return the input {@link reactor.rx.Stream}
-	 */
-	public abstract Stream<IN> in();
-
-	/**
-	 * Retrieve the {@link reactor.rx.Stream} into which data can accepted for sending to peers.
-	 *
-	 * @return a {@link reactor.fn.batch.BatchConsumer} for sending data out
-	 */
-	public abstract BatchConsumer<OUT> out();
 
 	/**
 	 * Join a multicast group.

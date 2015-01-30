@@ -21,14 +21,14 @@ import io.netty.channel.*;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
+import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.rx.Promise;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.PeerStream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -38,26 +38,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
- * {@link reactor.io.net.NetChannel} implementation that delegates to Netty.
+ * {@link reactor.io.net.Channel} implementation that delegates to Netty.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class NettyNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
+public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
 
 	private volatile int closing = 0;
 
-	private static final AtomicIntegerFieldUpdater<NettyNetChannel> CLOSING =
-			AtomicIntegerFieldUpdater.newUpdater(NettyNetChannel.class, "closing");
+	private static final AtomicIntegerFieldUpdater<NettyChannelStream> CLOSING =
+			AtomicIntegerFieldUpdater.newUpdater(NettyChannelStream.class, "closing");
 
-	public NettyNetChannel(@Nonnull Environment env,
-	                       @Nullable Codec<Buffer, IN, OUT> codec,
-	                       @Nonnull Dispatcher ioDispatcher,
-	                       @Nonnull Dispatcher eventsDispatcher,
-	                       @Nonnull Channel ioChannel) {
-		super(env, codec, ioDispatcher, eventsDispatcher);
+	public NettyChannelStream(@Nonnull Environment env,
+	                          @Nullable Codec<Buffer, IN, OUT> codec,
+	                          long prefetch,
+	                          @Nonnull PeerStream<IN, OUT> peer,
+	                          @Nonnull Dispatcher ioDispatcher,
+	                          @Nonnull Dispatcher eventsDispatcher,
+	                          @Nonnull Channel ioChannel) {
+		super(env, codec, prefetch, peer, ioDispatcher, eventsDispatcher);
 		this.ioChannel = ioChannel;
 	}
 
@@ -98,23 +100,34 @@ public class NettyNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, Promise<Void> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
 		ByteBuf buf = ioChannel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
 		write(buf, onComplete, flush);
 	}
 
 	@Override
-	protected void write(Object data, final Promise<Void> onComplete, boolean flush) {
-		ChannelFuture writeFuture = ioChannel.write(Tuple.of(data, flush));
+	protected void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
+		ChannelFuture writeFuture = ioChannel.write(data);
+
+
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
+				if(flush) {
+					try {
+						ioChannel.flush();
+					} catch (Throwable t) {
+						onComplete.onError(t);
+						return;
+					}
+				}
+
 				if (!success) {
 					Throwable t = future.cause();
-					contentStream.onError(t);
+					onComplete.onError(t);
 				}
 				if (null != onComplete) {
 					onComplete.onComplete();
@@ -125,7 +138,7 @@ public class NettyNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 
 	@Override
 	protected void flush() {
-		ioChannel.write(Tuple.of(null, true));
+		ioChannel.write(NettyNetChannelOutboundHandler.FLUSH);
 	}
 
 	@Override

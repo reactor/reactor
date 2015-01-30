@@ -28,14 +28,12 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.Environment;
-import reactor.bus.EventBus;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetChannelStream;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.spec.TcpClientSpec;
@@ -45,8 +43,6 @@ import reactor.io.net.zmq.ZeroMQServerSocketOptions;
 import reactor.rx.Promise;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,11 +57,9 @@ public class ZeroMQ<T> {
 	private final MutableList<TcpClient<T, T>> clients = SynchronizedMutableList.of(FastList.<TcpClient<T, T>>newList());
 	private final MutableList<TcpServer<T, T>> servers = SynchronizedMutableList.of(FastList.<TcpServer<T, T>>newList());
 
-	private final ExecutorService threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("zmq"));
 
 	private final Environment env;
 	private final Dispatcher  dispatcher;
-	private final EventBus    reactor;
 	private final ZContext    zmqCtx;
 
 	@SuppressWarnings("unchecked")
@@ -83,7 +77,6 @@ public class ZeroMQ<T> {
 	public ZeroMQ(Environment env, Dispatcher dispatcher) {
 		this.env = env;
 		this.dispatcher = dispatcher;
-		this.reactor = EventBus.create(env, dispatcher);
 		this.zmqCtx = new ZContext();
 		this.zmqCtx.setLinger(100);
 	}
@@ -114,31 +107,31 @@ public class ZeroMQ<T> {
 		return this;
 	}
 
-	public Promise<NetChannelStream<T, T>> dealer(String addrs) {
+	public Promise<ChannelStream<T, T>> dealer(String addrs) {
 		return createClient(addrs, ZMQ.DEALER);
 	}
 
-	public Promise<NetChannelStream<T, T>> push(String addrs) {
+	public Promise<ChannelStream<T, T>> push(String addrs) {
 		return createClient(addrs, ZMQ.PUSH);
 	}
 
-	public Promise<NetChannelStream<T, T>> pull(String addrs) {
+	public Promise<ChannelStream<T, T>> pull(String addrs) {
 		return createServer(addrs, ZMQ.PULL);
 	}
 
-	public Promise<NetChannelStream<T, T>> request(String addrs) {
+	public Promise<ChannelStream<T, T>> request(String addrs) {
 		return createClient(addrs, ZMQ.REQ);
 	}
 
-	public Promise<NetChannelStream<T, T>> reply(String addrs) {
+	public Promise<ChannelStream<T, T>> reply(String addrs) {
 		return createServer(addrs, ZMQ.REP);
 	}
 
-	public Promise<NetChannelStream<T, T>> router(String addrs) {
+	public Promise<ChannelStream<T, T>> router(String addrs) {
 		return createServer(addrs, ZMQ.ROUTER);
 	}
 
-	public Promise<NetChannelStream<T, T>> createClient(String addrs, int socketType) {
+	public Promise<ChannelStream<T, T>> createClient(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = new TcpClientSpec<T, T>(ZeroMQTcpClient.class)
@@ -154,7 +147,7 @@ public class ZeroMQ<T> {
 		return client.open();
 	}
 
-	public Promise<NetChannelStream<T, T>> createServer(String addrs, int socketType) {
+	public Promise<ChannelStream<T, T>> createServer(String addrs, int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpServer<T, T> server = new TcpServerSpec<T, T>(ZeroMQTcpServer.class)
@@ -165,7 +158,7 @@ public class ZeroMQ<T> {
 						.socketType(socketType))
 				.get();
 		
-		Promise<NetChannelStream<T, T>> d = server.next();
+		Promise<ChannelStream<T, T>> d = server.next();
 
 		servers.add(server);
 

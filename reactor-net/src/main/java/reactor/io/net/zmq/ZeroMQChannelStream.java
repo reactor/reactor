@@ -20,6 +20,7 @@ import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
 import com.gs.collections.impl.list.mutable.FastList;
 import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
+import org.reactivestreams.Subscriber;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
@@ -28,8 +29,8 @@ import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.rx.Promise;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.PeerStream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,31 +42,34 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
+public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
-	private static final AtomicReferenceFieldUpdater<ZeroMQNetChannel, ZMsg> MSG_UPD =
-			AtomicReferenceFieldUpdater.newUpdater(ZeroMQNetChannel.class, ZMsg.class, "currentMsg");
+	private static final AtomicReferenceFieldUpdater<ZeroMQChannelStream, ZMsg> MSG_UPD =
+			AtomicReferenceFieldUpdater.newUpdater(ZeroMQChannelStream.class, ZMsg.class, "currentMsg");
 
-	private final ZeroMQConsumerSpec    eventSpec     = new ZeroMQConsumerSpec();
-	private final MutableList<Consumer<Void>> closeHandlers = SynchronizedMutableList.of(FastList.<Consumer<Void>>newList());
+	private final ZeroMQConsumerSpec          eventSpec     = new ZeroMQConsumerSpec();
+	private final MutableList<Consumer<Void>> closeHandlers = SynchronizedMutableList.of(FastList
+			.<Consumer<Void>>newList());
 
 	private volatile String     connectionId;
 	private volatile ZMQ.Socket socket;
 	private volatile ZMsg       currentMsg;
 
-	public ZeroMQNetChannel(@Nonnull Environment env,
-	                        @Nonnull Dispatcher eventsDispatcher,
-	                        @Nonnull Dispatcher ioDispatcher,
-	                        @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, codec, ioDispatcher, eventsDispatcher);
+	public ZeroMQChannelStream(@Nonnull Environment env,
+	                           long prefetch,
+	                           PeerStream<IN, OUT> peer,
+	                           @Nonnull Dispatcher eventsDispatcher,
+	                           @Nonnull Dispatcher ioDispatcher,
+	                           @Nullable Codec<Buffer, IN, OUT> codec) {
+		super(env, codec, prefetch, peer, ioDispatcher, eventsDispatcher);
 	}
 
-	public ZeroMQNetChannel<IN, OUT> setConnectionId(String connectionId) {
+	public ZeroMQChannelStream<IN, OUT> setConnectionId(String connectionId) {
 		this.connectionId = connectionId;
 		return this;
 	}
 
-	public ZeroMQNetChannel<IN, OUT> setSocket(ZMQ.Socket socket) {
+	public ZeroMQChannelStream<IN, OUT> setSocket(ZMQ.Socket socket) {
 		this.socket = socket;
 		return this;
 	}
@@ -76,7 +80,7 @@ public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, final Promise<Void> onComplete, boolean flush) {
+	protected void write(ByteBuffer data, final Subscriber<?> onComplete, boolean flush) {
 		byte[] bytes = new byte[data.remaining()];
 		data.get(bytes);
 		boolean isNewMsg = MSG_UPD.compareAndSet(this, null, new ZMsg());
@@ -98,7 +102,7 @@ public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected void write(Object data, Promise<Void> onComplete, boolean flush) {
+	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
 		Buffer buff = getEncoder().apply((OUT) data);
 		write(buff.byteBuffer(), onComplete, flush);
 	}
@@ -108,9 +112,9 @@ public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 		doFlush(null);
 	}
 
-	private void doFlush(final Promise<Void> onComplete) {
-		ZMsg msg = MSG_UPD.get(ZeroMQNetChannel.this);
-		MSG_UPD.compareAndSet(ZeroMQNetChannel.this, msg, null);
+	private void doFlush(final Subscriber<?> onComplete) {
+		ZMsg msg = MSG_UPD.get(ZeroMQChannelStream.this);
+		MSG_UPD.compareAndSet(ZeroMQChannelStream.this, msg, null);
 		if (null != msg) {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
@@ -168,12 +172,12 @@ public class ZeroMQNetChannel<IN, OUT> extends NetChannelStream<IN, OUT> {
 		}
 
 		@Override
-		public ConsumerSpec readIdle(long idleTimeout, Consumer<Void>  onReadIdle) {
+		public ConsumerSpec readIdle(long idleTimeout, Consumer<Void> onReadIdle) {
 			return this;
 		}
 
 		@Override
-		public ConsumerSpec writeIdle(long idleTimeout, Consumer<Void>  onWriteIdle) {
+		public ConsumerSpec writeIdle(long idleTimeout, Consumer<Void> onWriteIdle) {
 			return this;
 		}
 	}

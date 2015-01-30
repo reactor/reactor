@@ -16,18 +16,24 @@
 
 package reactor.io.net.http;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.io.net.NetClient;
-import reactor.io.net.NetPeerStream;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.Client;
+import reactor.io.net.PeerStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -45,8 +51,8 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class HttpClient<IN, OUT>
-		extends NetPeerStream<IN, OUT>
-		implements NetClient<IN, OUT, NetChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT>
+		implements Client<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
@@ -64,29 +70,67 @@ public abstract class HttpClient<IN, OUT>
 		this.sslOptions = sslOptions;
 	}
 
-	/**
-	 * Open a {@link reactor.io.net.NetChannelStream} to the configured host:port and return a {@link reactor.rx.Promise} that
-	 * will be fulfilled when the client is connected.
-	 *
-	 * @return A {@link reactor.rx.Promise} that will be filled with the {@link reactor.io.net.NetChannelStream} when
-	 * connected.
-	 */
-	public abstract Promise<NetChannelStream<IN, OUT>> open();
+
+
+	@Override
+	public Client<IN, OUT, ChannelStream<IN, OUT>> connect(
+			final BiConsumer<Subscriber<? super OUT>, ChannelStream<IN, OUT>> serviceConsumer) {
+		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			@Override
+			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+				Broadcaster<OUT> b = Broadcaster.create(getEnvironment(), getDispatcher());
+				addWritePublisher(b);
+				serviceConsumer.accept(b, inoutChannelStream);
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		});
+		return this;
+	}
+
+	@Override
+	public Client<IN, OUT, ChannelStream<IN, OUT>> connect(
+			Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			@Override
+			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+				addWritePublisher(serviceFunction.apply(inoutChannelStream));
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		});
+		return this;
+	}
 
 	/**
-	 * Open a {@link reactor.io.net.NetChannelStream} to the configured host:port and return a {@link reactor.rx.Stream} that will be passed a new {@link
-	 * reactor.io.net.NetChannel} object every time the client is connected to the endpoint. The given {@link reactor.io.net.Reconnect}
+	 * Open a {@link reactor.io.net.ChannelStream} to the configured host:port and return a {@link reactor.rx.Promise} that
+	 * will be fulfilled when the client is connected.
+	 *
+	 * @return A {@link reactor.rx.Promise} that will be filled with the {@link reactor.io.net.ChannelStream} when
+	 * connected.
+	 */
+	public abstract Promise<ChannelStream<IN, OUT>> open();
+
+	/**
+	 * Open a {@link reactor.io.net.ChannelStream} to the configured host:port and return a {@link reactor.rx.Stream} that will be passed a new {@link
+	 * reactor.io.net.Channel} object every time the client is connected to the endpoint. The given {@link reactor.io.net.Reconnect}
 	 * describes how the client should attempt to reconnect to the host if the initial connection fails or if the client
 	 * successfully connects but at some point in the future gets cut off from the host. The {@code Reconnect} tells the
 	 * client where to try reconnecting and gives a delay describing how long to wait to attempt to reconnect. When the
-	 * connect is successfully made, the {@link reactor.rx.Stream} is sent a new {@link reactor.io.net.NetChannelStream} backed by the newly-connected
+	 * connect is successfully made, the {@link reactor.rx.Stream} is sent a new {@link reactor.io.net.ChannelStream} backed by the newly-connected
 	 * connection.
 	 *
 	 * @param reconnect
 	 *
 	 * @return
 	 */
-	public abstract Stream<NetChannelStream<IN, OUT>> open(Reconnect reconnect);
+	public abstract Stream<ChannelStream<IN, OUT>> open(Reconnect reconnect);
 
 	/**
 	 * Get the {@link java.net.InetSocketAddress} to which this client must connect.

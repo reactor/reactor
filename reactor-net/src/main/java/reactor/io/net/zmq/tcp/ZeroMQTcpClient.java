@@ -33,13 +33,13 @@ import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.tcp.TcpClient;
+import reactor.io.net.zmq.ZeroMQChannelStream;
 import reactor.io.net.zmq.ZeroMQClientSocketOptions;
-import reactor.io.net.zmq.ZeroMQNetChannel;
 import reactor.io.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -91,8 +91,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<NetChannelStream<IN, OUT>> open() {
-		Promise<NetChannelStream<IN, OUT>> d =
+	public Promise<ChannelStream<IN, OUT>> open() {
+		Promise<ChannelStream<IN, OUT>> d =
 				Promises.ready(getEnvironment(), getDispatcher());
 
 		doOpen(d);
@@ -101,7 +101,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Stream<NetChannelStream<IN, OUT>> open(Reconnect reconnect) {
+	public Stream<ChannelStream<IN, OUT>> open(Reconnect reconnect) {
 		throw new IllegalStateException("Reconnects are handled transparently by the ZeroMQ network library");
 	}
 
@@ -131,17 +131,19 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	protected ZeroMQNetChannel<IN, OUT> createChannel(Object ioChannel) {
-		final ZeroMQNetChannel<IN, OUT> ch = new ZeroMQNetChannel<IN, OUT>(
+	protected ZeroMQChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
+		final ZeroMQChannelStream<IN, OUT> ch = new ZeroMQChannelStream<IN, OUT>(
 				getEnvironment(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				this,
 				getDispatcher(),
 				getDispatcher(),
-				getCodec()
+				getDefaultCodec()
 		);
 		return ch;
 	}
 
-	private void doOpen(final Promise<NetChannelStream<IN, OUT>> promise) {
+	private void doOpen(final Promise<ChannelStream<IN, OUT>> promise) {
 		final UUID id = UUIDUtils.random();
 
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
@@ -174,7 +176,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					socket.connect(addr);
 					notifyStart();
 
-					final ZeroMQNetChannel<IN, OUT> netChannel = createChannel(null)
+					final ZeroMQChannelStream<IN, OUT> netChannel =
+							createChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
 							.setConnectionId(id.toString())
 							.setSocket(socket);
 
@@ -186,7 +189,9 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						public void accept(ZMsg msg) {
 							ZFrame content;
 							while (null != (content = msg.pop())) {
-								netChannel.read(Buffer.wrap(content.getData()));
+								netChannel.in().onNext(netChannel.getDecoder() != null ?
+										netChannel.getDecoder().apply(Buffer.wrap(content.getData())) :
+										(IN)content.getData());
 							}
 							msg.destroy();
 						}

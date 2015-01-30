@@ -21,7 +21,6 @@ import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannelConfig;
-import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
@@ -32,17 +31,15 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.fn.batch.BatchConsumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.netty.NettyNetChannel;
+import reactor.io.net.netty.NettyChannelStream;
 import reactor.io.net.netty.NettyNetChannelInboundHandler;
 import reactor.io.net.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
-import reactor.rx.Stream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -60,11 +57,11 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final    NettyServerSocketOptions nettyOptions;
-	private final    Bootstrap                bootstrap;
-	private final    EventLoopGroup           ioGroup;
-	private volatile NioDatagramChannel       channel;
-	private volatile NettyNetChannel<IN, OUT> netChannel;
+	private final    NettyServerSocketOptions    nettyOptions;
+	private final    Bootstrap                   bootstrap;
+	private final    EventLoopGroup              ioGroup;
+	private volatile NioDatagramChannel          channel;
+	private volatile NettyChannelStream<IN, OUT> netChannel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
 	                           @Nonnull Dispatcher dispatcher,
@@ -89,13 +86,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
 		}
 
-		final NettyNetChannelInboundHandler inboundHandler = new NettyNetChannelInboundHandler() {
-			@Override
-			public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-				super.channelRead(ctx, ((DatagramPacket) msg).content());
-			}
-		};
-
 		this.bootstrap = new Bootstrap()
 				.group(ioGroup)
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
@@ -110,6 +100,10 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						config.setSendBufferSize(options.sndbuf());
 						config.setReuseAddress(options.reuseAddr());
 
+						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
+							ch.config().setAutoRead(false);
+						}
+
 						if (null != multicastInterface) {
 							config.setNetworkInterface(multicastInterface);
 						}
@@ -117,7 +111,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						netChannel = createChannel(ch);
+						netChannel = createChannel(ch, options.prefetch());
 						ch.closeFuture().addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
@@ -128,19 +122,19 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 							}
 						});
 						notifyNewChannel(netChannel);
-						inboundHandler.setNetChannel(netChannel);
 
-						ch.pipeline().addLast(new ChannelOutboundHandlerAdapter() {
-							@Override
-							public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-								super.write(ctx, msg, promise);
-							}
-						});
+						ch.pipeline().addLast(
+								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
+								new ChannelOutboundHandlerAdapter() {
+									@Override
+									public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+										super.write(ctx, msg, promise);
+									}
+								});
 
 						return ch;
 					}
-				})
-				.handler(inboundHandler);
+				});
 
 		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);
@@ -196,7 +190,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		future.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
-				if(!future.isSuccess()){
+				if (!future.isSuccess()) {
 					d.onError(future.cause());
 					return;
 				}
@@ -219,16 +213,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		netChannel.send(data);
 
 		return this;
-	}
-
-	@Override
-	public Stream<IN> in() {
-		return netChannel.in();
-	}
-
-	@Override
-	public BatchConsumer<OUT> out() {
-		return netChannel.out();
 	}
 
 	@Override
@@ -278,10 +262,12 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 	@Override
-	protected NettyNetChannel<IN, OUT> createChannel(Object ioChannel) {
-		return new NettyNetChannel<IN, OUT>(
+	protected NettyChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
+		return new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
-				getCodec(),
+				getDefaultCodec(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				this,
 				SynchronousDispatcher.INSTANCE,
 				getDispatcher(),
 				(NioDatagramChannel) ioChannel

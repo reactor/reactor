@@ -20,10 +20,10 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.spec.NetServerSpec;
+import reactor.io.net.spec.ServerSpec;
 import reactor.io.net.tcp.TcpServer;
 
 import javax.annotation.Nonnull;
@@ -43,7 +43,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public class TcpServerSpec<IN, OUT>
-		extends NetServerSpec<IN, OUT, NetChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
+		extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
 	private final Constructor<? extends TcpServer> serverImplConstructor;
 
