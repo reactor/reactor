@@ -169,7 +169,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			value == stream
+			value == Signal.complete()
 	}
 
 	def 'A deferred Stream can be run on various dispatchers'() {

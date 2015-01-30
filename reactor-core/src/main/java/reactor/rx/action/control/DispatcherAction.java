@@ -16,6 +16,7 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
@@ -54,6 +55,22 @@ public final class DispatcherAction<T> extends Action<T, T> {
 		checkRequest(n);
 		dispatcher.dispatch(n, upstreamSubscription, null);
 	}*/
+
+
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		if(dispatcher.inContext()){
+			super.onSubscribe(s);
+		} else {
+			dispatcher.dispatch(s, new Consumer<Subscription>() {
+				@Override
+				public void accept(Subscription subscription) {
+					DispatcherAction.super.onSubscribe(subscription);
+				}
+			}, null);
+		}
+	}
 
 	@Override
 	public void onNext(T ev) {
