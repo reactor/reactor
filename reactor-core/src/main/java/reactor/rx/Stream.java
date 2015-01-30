@@ -37,7 +37,6 @@ import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
-import reactor.rx.action.filter.ElementAtAction;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
@@ -650,6 +649,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
+	 * @param subscriber the subscriber to request using the current dispatcher
+	 * @param currentDispatcher the new dispatcher
+	 */
+	public final void subscribeOn(@Nonnull final Dispatcher currentDispatcher, Subscriber<? super O> sub) {
+		subscribeOn(currentDispatcher).subscribe(sub);
+	}
+	/**
+	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
+	 *
 	 * @param currentDispatcher the new dispatcher
 	 * @return a new {@link Stream} whom request are running on a different {@link Dispatcher}
 	 */
@@ -871,19 +879,18 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. It will pass
-	 * the current {@link Action} for introspection/utility.
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error.
+	 * The consumer will listen for the signal and introspect its state.
 	 *
 	 * @param consumer the consumer to invoke on terminal signal
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
-	public final <E extends Stream<O>> Stream<O> finallyDo(final Consumer<? super E> consumer) {
+	public final Stream<O> finallyDo(final Consumer<Signal<O>> consumer) {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new FinallyAction<O, E>((E) Stream.this, consumer);
+				return new FinallyAction<O>(consumer);
 			}
 		});
 	}

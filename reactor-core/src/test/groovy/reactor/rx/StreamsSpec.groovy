@@ -872,13 +872,13 @@ class StreamsSpec extends Specification {
 		when:
 			'the source is consumed every in 3 times'
 			def res = []
-			println s.capacity(1).batchConsume(
+			s.capacity(1).batchConsume(
 					{ res << it },
 					{ res << "r:${it*2}"; it*2 }
-			).debug()
+			)
 
 		then:
-			'the values are all collected in 4 times'
+			'the values are all collected in 3 times'
 			res == ['r:2', 1, 2, 'r:4', 3, 4, 5, 6, 'r:8', 7, 8]
 
 	}
