@@ -649,7 +649,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
-	 * @param subscriber the subscriber to request using the current dispatcher
+	 * @param sub the subscriber to request using the current dispatcher
 	 * @param currentDispatcher the new dispatcher
 	 */
 	public final void subscribeOn(@Nonnull final Dispatcher currentDispatcher, Subscriber<? super O> sub) {
