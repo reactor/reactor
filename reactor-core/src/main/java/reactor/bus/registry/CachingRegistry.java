@@ -45,11 +45,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	private final MultiReaderFastList<Registration<? extends T>>                                 registrations;
 	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>> threadLocalCache;
 
-	public CachingRegistry() {
-		this(true, true, null);
-	}
-
-	public CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
+	 CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
 		this.useCache = useCache;
 		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;

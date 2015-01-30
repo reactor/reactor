@@ -17,6 +17,7 @@
 package reactor.core.dispatch.processor.spec;
 
 import reactor.bus.registry.CachingRegistry;
+import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selectors;
 import reactor.core.dispatch.processor.Processor;
@@ -32,7 +33,7 @@ import reactor.jarjar.com.lmax.disruptor.*;
  */
 public class ProcessorSpec<T> implements Supplier<Processor<T>> {
 
-	private Registry<Consumer<Throwable>> errorConsumers        = new CachingRegistry<Consumer<Throwable>>();
+	private Registry<Consumer<Throwable>> errorConsumers        = Registries.create();
 	private boolean                       multiThreadedProducer = false;
 	private int                           dataBufferSize        = -1;
 	private WaitStrategy                  waitStrategy          = null;
