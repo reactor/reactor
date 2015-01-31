@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -73,7 +72,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		this.ioDispatcher = ioDispatcher;
 		this.peer = peer;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream = Broadcaster.<IN>create(env, SynchronousDispatcher.INSTANCE);
+		this.contentStream = Broadcaster.<IN>create(env, getDispatcher());
 
 		if (null != codec) {
 			this.decoder = codec.decoder(new Consumer<IN>() {

@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -186,10 +185,10 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		final Promise<Void> promise;
 
 		if (!closing) {
-			promise = Promises.ready(getEnvironment(), SynchronousDispatcher.INSTANCE);
+			promise = Promises.ready(getEnvironment(), getDispatcher());
 			closing = true;
 		} else {
-			return Promises.prepare();
+			return Promises.success(null);
 		}
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
