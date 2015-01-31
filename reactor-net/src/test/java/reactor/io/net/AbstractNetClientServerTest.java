@@ -19,6 +19,7 @@ import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
+import reactor.rx.Streams;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -177,11 +178,11 @@ public class AbstractNetClientServerTest {
 						.codec(elCodec)
 		);
 
-		final Promise<T> p = Promises.prepare(getClientEnvironment());
+		final Promise<T> p = Promises.prepare();
 
 		client.connect((output, input) -> {
 			input.subscribe(p);
-			output.onNext(data);
+			Streams.just(data).subscribe(output);
 		});
 
 		ChannelStream<T, T> ch = assertClientStarted(client);

@@ -13,6 +13,7 @@ import reactor.io.net.AbstractNetClientServerTest;
 import reactor.io.net.zmq.tcp.ZeroMQ;
 import reactor.io.net.zmq.tcp.ZeroMQTcpClient;
 import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
+import reactor.rx.Streams;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +34,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@BeforeClass
 	public static void classSetup() {
-		ENV=Environment.initialize();
+		ENV=Environment.initializeIfEmpty().assignErrorJournal();
 		KRYO = new Kryo();
 		KRYO_CODEC = new KryoCodec<>(KRYO, false);
 		ZMQ = new ZeroMQ<Data>(ENV, SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
@@ -79,12 +80,12 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test//(timeout = 60000)
 	public void zmqRequestReply() throws InterruptedException {
 		ZMQ.reply("tcp://*:" + getPort())
-		   .onSuccess(ch -> ch.consume(ch::echo));
+		   .onSuccess(ch -> ch.sink(ch.observe(d -> latch.countDown())));
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
 		   .onSuccess(ch -> {
 					   ch.consume(d -> latch.countDown());
-					   ch.send(data).onSuccess(v -> latch.countDown());
+					   ch.sink(Streams.just(data));
 				   }
 		   );
 
@@ -97,7 +98,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   .onSuccess(ch -> latch.countDown());
 
 		ZMQ.push("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> ch.send(data));
+		   .onSuccess(ch -> ch.sink(Streams.just(data)));
 
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
 	}
@@ -108,7 +109,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   .onSuccess(ch -> latch.countDown());
 
 		ZMQ.dealer("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> ch.send(data));
+		   .onSuccess(ch -> ch.sink(Streams.just(data)));
 
 		assertTrue("ROUTER socket received data", latch.await(5, TimeUnit.SECONDS));
 	}
@@ -127,7 +128,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 		ZMQ.dealer("inproc://queue" + getPort())
 		   .onSuccess(ch -> {
-			   ch.echo(data);
+			   ch.sink(Streams.just(data));
 		   });
 
 		assertTrue("ROUTER socket received inproc data", latch.await(1, TimeUnit.SECONDS));

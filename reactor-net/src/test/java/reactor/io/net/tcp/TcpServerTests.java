@@ -45,10 +45,11 @@ import reactor.io.net.config.SslOptions;
 import reactor.io.net.netty.NettyServerSocketOptions;
 import reactor.io.net.netty.tcp.NettyTcpClient;
 import reactor.io.net.netty.tcp.NettyTcpServer;
-import reactor.io.net.tcp.spec.TcpClientSpec;
 import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
+import reactor.rx.Streams;
+import reactor.rx.action.Control;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -87,7 +88,7 @@ public class TcpServerTests {
 
 	@Before
 	public void loadEnv() {
-		env = new Environment();
+		env = Environment.initializeIfEmpty().assignErrorJournal();
 		latch = new CountDownLatch(msgs * threads);
 	}
 
@@ -150,10 +151,10 @@ public class TcpServerTests {
 								.codec(codec)
 		);
 
-		server.consume(new Consumer<ChannelStream<Pojo, Pojo>>() {
+		server.log("serv").consume(new Consumer<ChannelStream<Pojo, Pojo>>() {
 			@Override
 			public void accept(ChannelStream<Pojo, Pojo> ch) {
-				ch.consume(new Consumer<Pojo>() {
+				ch.log("conn").consume(new Consumer<Pojo>() {
 					@Override
 					public void accept(Pojo data) {
 						if ("John Doe".equals(data.getName())) {
@@ -165,7 +166,7 @@ public class TcpServerTests {
 		});
 
 		server.start().await();
-		client.open().await().send(new Pojo("John Doe"));
+		client.open().await().sink(Streams.just(new Pojo("John Doe")));
 
 		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -190,10 +191,8 @@ public class TcpServerTests {
 
 		System.out.println(latch.getCount());
 
-		server.consume(new Consumer<ChannelStream<byte[], byte[]>>() {
-			@Override
-			public void accept(ChannelStream<byte[], byte[]> ch) {
-				ch.consume(new Consumer<byte[]>() {
+		Control c = server.consume( ch ->
+				System.out.println(ch.consume(new Consumer<byte[]>() {
 					long num = 1;
 
 					@Override
@@ -206,21 +205,25 @@ public class TcpServerTests {
 						int next = bb.getInt();
 						if (next != num++) {
 							System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
+						}else{
+							System.out.println(Thread.currentThread().getName()+": received "+ (num - 1 ));
 						}
 					}
-				});
-			}
-		});
+				}).debug())
+		);
 
 		server.start().await();
+
 
 		start.set(System.currentTimeMillis());
 		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new LengthFieldMessageWriter(port));
 		}
+		System.out.println(c.debug());
 		latch.await(10, TimeUnit.SECONDS);
+		System.out.println(c.debug());
 		System.out.println(latch.getCount());
-		assertTrue("Latch was counted down", latch.getCount() == 0);
+		assertTrue("Latch was counted down: "+latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -269,7 +272,7 @@ public class TcpServerTests {
 			threadPool.submit(new FramedLengthFieldMessageWriter(port));
 		}
 
-		assertTrue("Latch was counted down", latch.await(60, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -284,18 +287,18 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<Buffer, Buffer> client = new TcpClientSpec<Buffer, Buffer>(NettyTcpClient.class)
-				.env(env)
-				.synchronousDispatcher()
-				.connect("localhost", port)
-				.get();
+		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(NettyTcpClient.class, s ->
+						s.env(env)
+								.synchronousDispatcher()
+								.connect("localhost", port)
+		);
 
-		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer.class)
-				.env(env)
-				.synchronousDispatcher()
-				.listen(port)
-				.codec(new PassThroughCodec<Buffer>())
-				.get();
+		TcpServer<Buffer, Buffer> server =  NetStreams.<Buffer, Buffer>tcpServer(NettyTcpServer.class , s ->
+						s.env(env)
+								.synchronousDispatcher()
+								.listen(port)
+								.codec(new PassThroughCodec<Buffer>())
+		);
 
 		server.consume(new Consumer<ChannelStream<Buffer, Buffer>>() {
 			@Override
@@ -309,7 +312,7 @@ public class TcpServerTests {
 		server.start().await();
 
 		ChannelStream<Buffer, Buffer> out = client.open().await();
-		out.send(Buffer.wrap("Hello World!"));
+		out.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")));
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -349,10 +352,9 @@ public class TcpServerTests {
 
 		final ChannelStream<String, String> ch = client.open().await();
 
-		ch.echo("Hello World!")
-				.onSuccess(s -> ch.send("Hello 11!"));
+		ch.sink(Streams.just("Hello World!", "Hello 11!"));
 
-		assertTrue("Latch was counted down", latch.await(50, TimeUnit.SECONDS));
+		assertTrue("Latch was counted down", latch.await(100, TimeUnit.SECONDS));
 
 		client.close().await();
 		server.shutdown().await();
@@ -427,27 +429,21 @@ public class TcpServerTests {
 		server.consume(new Consumer<ChannelStream<HttpRequest, HttpResponse>>() {
 			@Override
 			public void accept(final ChannelStream<HttpRequest, HttpResponse> ch) {
-				ch.consume(new Consumer<HttpRequest>() {
-					@Override
-					public void accept(HttpRequest req) {
-						ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
-						int len = buf.readableBytes();
-						DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-								HttpVersion.HTTP_1_1,
-								HttpResponseStatus.OK,
-								buf
-						);
-						resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
-						resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
-						resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
+				ch.consume(req -> {
+					ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
+					int len = buf.readableBytes();
+					DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
+							HttpVersion.HTTP_1_1,
+							HttpResponseStatus.OK,
+							buf
+					);
+					resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
+					resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
+					resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
 
-						ch.send(resp).onComplete(s -> {
-							if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
-								latch.countDown();
-							}
-						});
-
-
+					ch.sink(Streams.just(resp));
+					if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
+						latch.countDown();
 					}
 				});
 			}
@@ -459,8 +455,8 @@ public class TcpServerTests {
 		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new HttpRequestWriter(port));
 		}
-
-		assertTrue("Latch was counted down", latch.await(15, TimeUnit.SECONDS));
+		latch.await(15, TimeUnit.SECONDS);
+		assertTrue("Latch was counted down : "+latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get());
@@ -488,7 +484,7 @@ public class TcpServerTests {
 				} else {
 					log.info("data: {}", buff.asString());
 				}
-				ch.echo(Buffer.wrap("Goodbye World!"));
+				ch.sinkBuffers(Streams.just(Buffer.wrap("Goodbye World!")));
 			});
 		});
 

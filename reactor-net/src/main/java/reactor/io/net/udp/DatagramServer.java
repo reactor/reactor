@@ -87,7 +87,7 @@ public abstract class DatagramServer<IN, OUT>
 
 	@Override
 	public Server<IN, OUT, ChannelStream<IN, OUT>> service(
-			Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
 		consume(new Consumer<ChannelStream<IN, OUT>>() {
 			@Override
 			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
@@ -109,15 +109,6 @@ public abstract class DatagramServer<IN, OUT>
 	 */
 	public abstract Promise<Void> start();
 
-	/**
-	 * Send data to peers.
-	 *
-	 * @param data
-	 * 		the data to send
-	 *
-	 * @return {@literal this}
-	 */
-	public abstract DatagramServer<IN, OUT> send(OUT data);
 
 	/**
 	 * Join a multicast group.

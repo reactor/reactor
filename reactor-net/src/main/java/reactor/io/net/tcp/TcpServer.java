@@ -88,7 +88,7 @@ public abstract class TcpServer<IN, OUT>
 
 	@Override
 	public Server<IN, OUT, ChannelStream<IN, OUT>> service(
-			Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
 		consume(new Consumer<ChannelStream<IN, OUT>>() {
 			@Override
 			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {

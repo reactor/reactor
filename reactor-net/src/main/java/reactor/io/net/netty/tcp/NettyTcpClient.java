@@ -45,7 +45,6 @@ import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -126,10 +125,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
 
-						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
-							ch.config().setAutoRead(false);
-						}
-
 						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
 							if (log.isDebugEnabled()) {
@@ -137,16 +132,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
+						}else{
+							ch.config().setAutoRead(false);
 						}
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-						notifyNewChannel(netChannel);
 
 						ch.pipeline().addLast(
 								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-						   new NettyNetChannelOutboundHandler()
+								new NettyNetChannelOutboundHandler()
 						);
 					}
 				});
@@ -165,27 +161,28 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<ChannelStream<IN, OUT>> open() {
-		final Promise<ChannelStream<IN, OUT>> connection
-				= Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<ChannelStream<IN, OUT>> connection = next();
 
-		openChannel(new ConnectingChannelListener(connection));
-
+		openChannel(new ConnectingChannelListener());
 		return connection;
 	}
 
 	@Override
 	public Stream<ChannelStream<IN, OUT>> open(final Reconnect reconnect) {
-		final Broadcaster<ChannelStream<IN, OUT>> connections
-				= Broadcaster.create(getEnvironment(), getDispatcher());
-
-		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
-
-		return connections;
+		openChannel(new ReconnectingChannelListener(connectAddress, reconnect));
+		return this;
 	}
 
 	@Override
 	public Promise<Void> close() {
-		final Promise<Void> promise = Promises.ready(getEnvironment(), SynchronousDispatcher.INSTANCE);
+		final Promise<Void> promise;
+		if (!closing) {
+			promise = Promises.ready(getEnvironment(), SynchronousDispatcher.INSTANCE);
+			closing = true;
+		} else {
+			return Promises.prepare();
+		}
+
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
@@ -223,11 +220,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	private class ConnectingChannelListener implements ChannelFutureListener {
-		private final Promise<ChannelStream<IN, OUT>> connection;
-
-		private ConnectingChannelListener(Promise<ChannelStream<IN, OUT>> connection) {
-			this.connection = connection;
-		}
 
 		@SuppressWarnings("unchecked")
 		@Override
@@ -236,44 +228,23 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (log.isErrorEnabled()) {
 					log.error(future.cause().getMessage(), future.cause());
 				}
-				connection.onError(future.cause());
+				notifyError(future.cause());
 				return;
 			}
-
-			if (log.isInfoEnabled()) {
-				log.info("CONNECTED: " + future.channel());
-			}
-
-			NettyNetChannelInboundHandler inboundHandler = future.channel()
-					.pipeline()
-					.get(NettyNetChannelInboundHandler.class);
-			final ChannelStream<IN, OUT> ch = inboundHandler.channelStream();
-
-
-			future.channel().eventLoop().submit(new Runnable() {
-				@Override
-				public void run() {
-					connection.onNext(ch);
-				}
-			});
 		}
 	}
 
 	private class ReconnectingChannelListener implements ChannelFutureListener {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
-
-		private final Reconnect                           reconnect;
-		private final Broadcaster<ChannelStream<IN, OUT>> connections;
+		private final Reconnect reconnect;
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
-		                                    Reconnect reconnect,
-		                                    Broadcaster<ChannelStream<IN, OUT>> connections) {
+		                                    Reconnect reconnect) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
-			this.connections = connections;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -290,7 +261,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
 						public void run() {
-							connections.onError(future.cause());
+							notifyError(future.cause());
 						}
 					});
 					return;
@@ -304,10 +275,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				}
 
 				final Channel ioCh = future.channel();
-				final ChannelPipeline ioChPipline = ioCh.pipeline();
-				final ChannelStream<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).channelStream();
-
-				ioChPipline.addLast(new ChannelDuplexHandler() {
+				ioCh.pipeline().addLast(new ChannelDuplexHandler() {
 					@Override
 					public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 						if (log.isInfoEnabled()) {
@@ -319,19 +287,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							// do not attempt a reconnect
 							return;
 						}
-						if (!((NettyChannelStream) ch).isClosing()) {
+						if (!closing) {
 							attemptReconnect(tup);
-						} else {
-							closing = true;
 						}
 						super.channelInactive(ctx);
-					}
-				});
-
-				ioCh.eventLoop().submit(new Runnable() {
-					@Override
-					public void run() {
-						connections.onNext(ch);
 					}
 				});
 			}

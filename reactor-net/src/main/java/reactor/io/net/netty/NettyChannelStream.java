@@ -29,13 +29,13 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.PeerStream;
+import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * {@link reactor.io.net.Channel} implementation that delegates to Netty.
@@ -46,11 +46,6 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
-
-	private volatile int closing = 0;
-
-	private static final AtomicIntegerFieldUpdater<NettyChannelStream> CLOSING =
-			AtomicIntegerFieldUpdater.newUpdater(NettyChannelStream.class, "closing");
 
 	public NettyChannelStream(@Nonnull Environment env,
 	                          @Nullable Codec<Buffer, IN, OUT> codec,
@@ -63,30 +58,9 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		this.ioChannel = ioChannel;
 	}
 
-	public boolean isClosing() {
-		return closing == 1;
-	}
-
 	@Override
 	public InetSocketAddress remoteAddress() {
 		return (InetSocketAddress) ioChannel.remoteAddress();
-	}
-
-	@Override
-	public void close() {
-		if (CLOSING.compareAndSet(this, 0, 1)) {
-			ioChannel.close().addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						notifyClose();
-					} else {
-						notifyError(future.cause());
-					}
-					closing = 0;
-				}
-			});
-		}
 	}
 
 	@Override
@@ -95,8 +69,20 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	@Override
-	public Channel nativeConnection() {
+	public Channel delegate() {
 		return ioChannel;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	protected void doDecoded(IN in) {
+		NettyNetChannelInboundHandler ch = ioChannel.pipeline().get(NettyNetChannelInboundHandler.class);
+		PushSubscription<IN> subscription = ch == null ? null : ch.subscription();
+		if (subscription != null) {
+			subscription.onNext(in);
+		} else {
+			super.doDecoded(in);
+		}
 	}
 
 	@Override
@@ -110,24 +96,32 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
 		ChannelFuture writeFuture = ioChannel.write(data);
 
-
+		if (!flush && onComplete == null) {
+			//return;
+		}
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
-				if(flush) {
+				if (flush) {
 					try {
 						ioChannel.flush();
 					} catch (Throwable t) {
-						onComplete.onError(t);
+						if( null != onComplete){
+							onComplete.onError(t);
+						}
+						cascadeErrorToPeer(t);
 						return;
 					}
 				}
 
 				if (!success) {
 					Throwable t = future.cause();
-					onComplete.onError(t);
+					if( null != onComplete) {
+						onComplete.onError(t);
+					}
+					cascadeErrorToPeer(t);
 				}
 				if (null != onComplete) {
 					onComplete.onComplete();

@@ -36,7 +36,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * @author Jon Brisbin
@@ -44,16 +43,14 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
-	private static final AtomicReferenceFieldUpdater<ZeroMQChannelStream, ZMsg> MSG_UPD =
-			AtomicReferenceFieldUpdater.newUpdater(ZeroMQChannelStream.class, ZMsg.class, "currentMsg");
-
 	private final ZeroMQConsumerSpec          eventSpec     = new ZeroMQConsumerSpec();
 	private final MutableList<Consumer<Void>> closeHandlers = SynchronizedMutableList.of(FastList
 			.<Consumer<Void>>newList());
 
 	private volatile String     connectionId;
 	private volatile ZMQ.Socket socket;
-	private volatile ZMsg       currentMsg;
+
+	private ZMsg currentMsg;
 
 	public ZeroMQChannelStream(@Nonnull Environment env,
 	                           long prefetch,
@@ -83,8 +80,18 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected void write(ByteBuffer data, final Subscriber<?> onComplete, boolean flush) {
 		byte[] bytes = new byte[data.remaining()];
 		data.get(bytes);
-		boolean isNewMsg = MSG_UPD.compareAndSet(this, null, new ZMsg());
-		ZMsg msg = MSG_UPD.get(this);
+		boolean isNewMsg;
+		ZMsg msg;
+		synchronized (this) {
+			msg = currentMsg;
+			currentMsg = new ZMsg();
+			if (msg == null) {
+				msg = currentMsg;
+				isNewMsg = true;
+			}else{
+				isNewMsg = false;
+			}
+		}
 		if (isNewMsg) {
 			switch (socket.getType()) {
 				case ZMQ.ROUTER:
@@ -100,6 +107,11 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		}
 	}
 
+	@Override
+	protected void write(Buffer data, Subscriber<?> onComplete, boolean flush) {
+		write(data.byteBuffer(), onComplete, flush);
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
@@ -113,8 +125,11 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	private void doFlush(final Subscriber<?> onComplete) {
-		ZMsg msg = MSG_UPD.get(ZeroMQChannelStream.this);
-		MSG_UPD.compareAndSet(ZeroMQChannelStream.this, msg, null);
+		ZMsg msg;
+		synchronized (this) {
+			msg = currentMsg;
+			currentMsg = null;
+		}
 		if (null != msg) {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
@@ -127,7 +142,6 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		}
 	}
 
-	@Override
 	public void close() {
 		getDispatcher().dispatch(null, new Consumer<Void>() {
 			@Override
@@ -139,7 +153,6 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 						return true;
 					}
 				});
-				notifyClose();
 			}
 		}, null);
 	}
@@ -151,7 +164,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 
 	@Override
-	public ZMQ.Socket nativeConnection() {
+	public ZMQ.Socket delegate() {
 		return socket;
 	}
 

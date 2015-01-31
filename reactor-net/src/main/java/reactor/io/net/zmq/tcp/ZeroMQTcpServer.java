@@ -67,7 +67,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final ExecutorService           threadPool;
 
 	private volatile ZeroMQWorker worker;
-	private volatile Future<?>             workerFuture;
+	private volatile Future<?>    workerFuture;
 
 	public ZeroMQTcpServer(@Nonnull Environment env,
 	                       @Nonnull Dispatcher eventsDispatcher,
@@ -135,15 +135,15 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			protected void start(final ZMQ.Socket socket) {
 				String addr;
 				try {
-				if (null != zmqOpts && null != zmqOpts.listenAddresses()) {
-					addr = zmqOpts.listenAddresses();
-				} else {
-					addr = "tcp://" + getListenAddress().getHostString() + ":" + getListenAddress().getPort();
-				}
-				if (log.isInfoEnabled()) {
-					String type = findSocketTypeName(socket.getType());
-					log.info("BIND: starting ZeroMQ {} socket on {}", type, addr);
-				}
+					if (null != zmqOpts && null != zmqOpts.listenAddresses()) {
+						addr = zmqOpts.listenAddresses();
+					} else {
+						addr = "tcp://" + getListenAddress().getHostString() + ":" + getListenAddress().getPort();
+					}
+					if (log.isInfoEnabled()) {
+						String type = findSocketTypeName(socket.getType());
+						log.info("BIND: starting ZeroMQ {} socket on {}", type, addr);
+					}
 					socket.bind(addr);
 					grouped.consume(new Consumer<GroupedStream<String, ZMsg>>() {
 						@Override
@@ -151,25 +151,33 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 							final ZeroMQChannelStream<IN, OUT> netChannel =
 									createChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
-									.setConnectionId(stringZMsgGroupedStream.key())
-									.setSocket(socket);
+											.setConnectionId(stringZMsgGroupedStream.key())
+											.setSocket(socket);
 
 							notifyNewChannel(netChannel);
+							mergeWrite(netChannel);
+
 							stringZMsgGroupedStream.consume(new Consumer<ZMsg>() {
 								@Override
 								public void accept(ZMsg msg) {
 									ZFrame content;
 									while (null != (content = msg.pop())) {
-										netChannel.in().onNext(netChannel.getDecoder() != null ?
-												netChannel.getDecoder().apply(Buffer.wrap(content.getData())) :
-												(IN) content.getData());
+										if (netChannel.getDecoder() != null) {
+											netChannel.getDecoder().apply(Buffer.wrap(content.getData()));
+										} else {
+											netChannel.in().onNext((IN) Buffer.wrap(content.getData()));
+										}
 									}
 									msg.destroy();
 								}
-							}, null, new Consumer<Void>() {
+							}, createErrorConsumer(netChannel), new Consumer<Void>() {
 								@Override
 								public void accept(Void aVoid) {
-									netChannel.close();
+									try {
+										netChannel.close();
+									} catch (Throwable t) {
+										notifyError(t);
+									}
 								}
 							});
 
@@ -178,7 +186,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 					});
 					notifyStart();
 					promise.onComplete();
-				} catch (Exception e){
+				} catch (Exception e) {
 					promise.onError(e);
 				}
 			}

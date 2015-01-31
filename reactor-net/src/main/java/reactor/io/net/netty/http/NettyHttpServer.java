@@ -109,9 +109,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 						if (log.isDebugEnabled()) {
 							log.debug("CONNECT {}", ch);
 						}
-						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
-							ch.config().setAutoRead(false);
-						}
+
 
 						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
@@ -120,15 +118,15 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
+						}else{
+							config.setAutoRead(false);
 						}
+
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 
 						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-						notifyNewChannel(netChannel);
-
-						mergeWrite(netChannel);
 
 						ch.pipeline().addLast(
 								new NettyNetChannelInboundHandler<IN>(

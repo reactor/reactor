@@ -18,9 +18,9 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -59,9 +59,9 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	                              Function<Stream<Long>, ? extends Publisher<? extends Long>>
 			                              requestMapper) {
 		this.consumer = consumer;
-		this.requestMapperStream = Broadcaster.create(null, dispatcher);
+		this.requestMapperStream = Broadcaster.create();
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = Environment.tailRecurse();
+			this.dispatcher =  TailRecurseDispatcher.INSTANCE;
 		} else {
 			this.dispatcher = dispatcher;
 		}
@@ -165,7 +165,10 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			if (COUNTED.addAndGet(AdaptiveConsumerAction.this, n) < 0l) {
 				COUNTED.set(AdaptiveConsumerAction.this, Long.MAX_VALUE);
 			}
-			dispatcher.dispatch(n, upstreamSubscription, null);
+			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
+			if(upstreamSubscription != null) {
+				dispatcher.dispatch(n, upstreamSubscription, null);
+			}
 			if (s != null) {
 				s.request(1l);
 			}

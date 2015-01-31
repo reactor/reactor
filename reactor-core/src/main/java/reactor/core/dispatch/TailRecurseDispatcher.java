@@ -32,6 +32,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  */
 public final class TailRecurseDispatcher implements Dispatcher {
 
+	public static final TailRecurseDispatcher INSTANCE = new TailRecurseDispatcher();
+
 	private final        PriorityBlockingQueue<Task>                      queue           = new
 			PriorityBlockingQueue<Task>();
 	private final        AtomicInteger                                    wip             = new AtomicInteger();
@@ -142,7 +144,7 @@ public final class TailRecurseDispatcher implements Dispatcher {
 
 	@Override
 	public String toString() {
-		return counter+", "+queue.toString();
+		return counter + ", " + queue.toString();
 	}
 
 	private static class Task implements Comparable<Task> {

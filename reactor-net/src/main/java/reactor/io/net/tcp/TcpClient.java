@@ -20,6 +20,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -78,7 +79,7 @@ public abstract class TcpClient<IN, OUT>
 		consume(new Consumer<ChannelStream<IN, OUT>>() {
 			@Override
 			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
-				Broadcaster<OUT> b = Broadcaster.create(getEnvironment(), getDispatcher());
+				Broadcaster<OUT> b = Broadcaster.create(getEnvironment(), SynchronousDispatcher.INSTANCE);
 				addWritePublisher(b);
 				serviceConsumer.accept(b, inoutChannelStream);
 			}
@@ -93,7 +94,7 @@ public abstract class TcpClient<IN, OUT>
 
 	@Override
 	public Client<IN, OUT, ChannelStream<IN, OUT>> connect(
-			Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
 		consume(new Consumer<ChannelStream<IN, OUT>>() {
 			@Override
 			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {

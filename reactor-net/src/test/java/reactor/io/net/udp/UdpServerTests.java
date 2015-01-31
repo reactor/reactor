@@ -38,7 +38,7 @@ public class UdpServerTests {
 
 	@Before
 	public void setup() {
-		env = new Environment();
+		env = Environment.initializeIfEmpty().assignErrorJournal();
 		threadPool = Executors.newCachedThreadPool();
 	}
 
@@ -88,7 +88,7 @@ public class UdpServerTests {
 			}
 		});
 
-		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertThat("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 	}
 
 	@Test

@@ -15,6 +15,7 @@
  */
 package reactor.io.net;
 
+import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.HttpServer;
@@ -75,7 +76,6 @@ public class NetStreams extends Streams {
 	// TCP
 
 	/**
-	 *
 	 * @param <IN>
 	 * @param <OUT>
 	 * @return
@@ -85,7 +85,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param port
 	 * @param <IN>
 	 * @param <OUT>
@@ -96,7 +95,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param <IN>
 	 * @param <OUT>
@@ -107,7 +105,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param port
 	 * @param <IN>
@@ -124,7 +121,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param configuringFunction
 	 * @param <IN>
 	 * @param <OUT>
@@ -137,7 +133,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param serverFactory
 	 * @param configuringFunction
 	 * @param <IN>
@@ -153,7 +148,6 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 *
 	 * @param <IN>
 	 * @param <OUT>
 	 * @return
@@ -163,7 +157,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param <IN>
 	 * @param <OUT>
@@ -174,7 +167,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param port
 	 * @param <IN>
 	 * @param <OUT>
@@ -185,7 +177,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param port
 	 * @param <IN>
@@ -202,7 +193,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param configuringFunction
 	 * @param <IN>
 	 * @param <OUT>
@@ -215,7 +205,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param clientFactory
 	 * @param configuringFunction
 	 * @param <IN>
@@ -232,7 +221,6 @@ public class NetStreams extends Streams {
 	// HTTP
 
 	/**
-	 *
 	 * @param <IN>
 	 * @param <OUT>
 	 * @return
@@ -242,7 +230,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param <IN>
 	 * @param <OUT>
@@ -253,7 +240,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param port
 	 * @param <IN>
 	 * @param <OUT>
@@ -264,7 +250,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param port
 	 * @param <IN>
@@ -281,7 +266,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param configuringFunction
 	 * @param <IN>
 	 * @param <OUT>
@@ -294,7 +278,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param serverFactory
 	 * @param configuringFunction
 	 * @param <IN>
@@ -310,7 +293,6 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 *
 	 * @param <IN>
 	 * @param <OUT>
 	 * @return
@@ -320,7 +302,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param <IN>
 	 * @param <OUT>
@@ -331,7 +312,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param port
 	 * @param <IN>
 	 * @param <OUT>
@@ -342,7 +322,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param port
 	 * @param <IN>
@@ -359,7 +338,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param configuringFunction
 	 * @param <IN>
 	 * @param <OUT>
@@ -372,7 +350,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param clientFactory
 	 * @param configuringFunction
 	 * @param <IN>
@@ -389,7 +366,6 @@ public class NetStreams extends Streams {
 	// UDP
 
 	/**
-	 *
 	 * @param <IN>
 	 * @param <OUT>
 	 * @return
@@ -399,7 +375,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param <IN>
 	 * @param <OUT>
@@ -410,7 +385,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param port
 	 * @param <IN>
 	 * @param <OUT>
@@ -421,7 +395,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param bindAddress
 	 * @param port
 	 * @param <IN>
@@ -438,7 +411,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param configuringFunction
 	 * @param <IN>
 	 * @param <OUT>
@@ -451,7 +423,6 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 *
 	 * @param serverFactory
 	 * @param configuringFunction
 	 * @param <IN>
@@ -465,6 +436,25 @@ public class NetStreams extends Streams {
 		return configuringFunction.apply(new DatagramServerSpec<IN, OUT>(serverFactory)).get();
 	}
 
+
+	/**
+	 * Utils to read the ChannelStream underlying channel
+	 */
+
+	@SuppressWarnings("unchecked")
+	public static <E, IN, OUT> E delegate(ChannelStream<IN, OUT> channelStream) {
+		return (E)delegate(channelStream, Object.class);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <E, IN, OUT> E delegate(ChannelStream<IN, OUT> channelStream, Class<E> clazz) {
+		Assert.isTrue(
+				clazz.isAssignableFrom(channelStream.delegate().getClass()),
+				"Underlying channel is not of the given type: " + clazz.getName()
+		);
+
+		return (E) channelStream.delegate();
+	}
 
 	/**
 	 * INTERNAL CLASSPATH INIT

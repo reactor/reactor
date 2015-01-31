@@ -23,11 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.io.buffer.Buffer;
-import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
@@ -44,14 +40,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	private final    Subscriber<? super IN>    subscriber;
 	private final    NettyChannelStream<IN, ?> channelStream;
 	private volatile ByteBuf                   remainder;
-	private volatile long pendingRequests = 0l;
-	private volatile int  terminated      = 0;
-
-	private final AtomicLongFieldUpdater<NettyNetChannelInboundHandler> READ_UPDATER =
-			AtomicLongFieldUpdater.newUpdater(NettyNetChannelInboundHandler.class, "pendingRequests");
-
-	private final AtomicIntegerFieldUpdater<NettyNetChannelInboundHandler> TERMINATED =
-			AtomicIntegerFieldUpdater.newUpdater(NettyNetChannelInboundHandler.class, "terminated");
+	private volatile PushSubscription<IN>      channelSubscription;
 
 	public NettyNetChannelInboundHandler(
 			Subscriber<? super IN> subscriber, NettyChannelStream<IN, ?> channelStream
@@ -60,9 +49,10 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 		this.channelStream = channelStream;
 	}
 
-	public Subscriber<? super IN> subscriber() {
-		return subscriber;
+	public PushSubscription<IN> subscription() {
+		return channelSubscription;
 	}
+
 	public NettyChannelStream<IN, ?> channelStream() {
 		return channelStream;
 	}
@@ -70,30 +60,35 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
 		try {
+			if (this.channelSubscription != null) {
+				super.channelActive(ctx);
+				if (log.isDebugEnabled()) {
+					log.debug("RESUME: " + ctx.channel());
+				}
+				return;
+			}
+
 			if (log.isDebugEnabled()) {
 				log.debug("OPEN: " + ctx.channel());
 			}
-			subscriber.onSubscribe(new PushSubscription<IN>(null, subscriber) {
+
+			this.channelSubscription = new PushSubscription<IN>(null, subscriber) {
 				@Override
-				public void request(long n) {
-					Action.checkRequest(n);
-
-					if (NettyNetChannelInboundHandler.this.terminated == 1) return;
-
-					if (READ_UPDATER.addAndGet(NettyNetChannelInboundHandler.this, n) < 0l) {
-						READ_UPDATER.set(NettyNetChannelInboundHandler.this, Long.MAX_VALUE);
+				protected void onRequest(long n) {
+					if(n == Long.MAX_VALUE){
+						ctx.channel().config().setAutoRead(true);
 					}
 					ctx.read();
 				}
 
 				@Override
 				public void cancel() {
-					if (TERMINATED.compareAndSet(NettyNetChannelInboundHandler.this, 0, 1)) {
-						super.cancel();
-						ctx.close();
-					}
+					super.cancel();
+					ctx.close();
 				}
-			});
+			};
+			channelStream.registerOnPeer();
+			subscriber.onSubscribe(channelSubscription);
 			super.channelActive(ctx);
 		} catch (Throwable err) {
 			subscriber.onError(err);
@@ -102,25 +97,26 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		if (terminated == 1) {
+		if (channelSubscription.isComplete()) {
 			return;
 		}
 
 		try {
-			if (pendingRequests == Long.MAX_VALUE || READ_UPDATER.decrementAndGet(this) > 0l) {
+			if (channelSubscription.pendingRequestSignals() > 0l) {
 				super.channelReadComplete(ctx);
+				if(!ctx.channel().config().isAutoRead()){
+					ctx.read();
+				}
 			}
 		} catch (Throwable throwable) {
-			subscriber.onError(throwable);
+			channelSubscription.onError(throwable);
 		}
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		try {
-			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				subscriber.onComplete();
-			}
+			channelSubscription.onComplete();
 			if (log.isDebugEnabled()) {
 				log.debug("CLOSE: " + ctx.channel());
 			}
@@ -135,9 +131,9 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		if (!ByteBuf.class.isInstance(msg) || null == channelStream.getDecoder()) {
 			try {
-				subscriber.onNext((IN) msg);
+				channelSubscription.onNext((IN) msg);
 			} catch (Throwable t) {
-				subscriber.onError(t);
+				channelSubscription.onError(t);
 			}
 			return;
 		}
@@ -184,8 +180,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				log.debug(ctx.channel().toString() + " " + cause.getMessage());
 			}
 		}
-		subscriber.onError(cause);
-		ctx.close();
+		channelSubscription.onError(cause);
 	}
 
 	private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {
@@ -203,7 +198,10 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 		Buffer b = new Buffer(data.nioBuffer());
 		int start = b.position();
 		if (null != channelStream.getDecoder() && null != b.byteBuffer()) {
-			channelStream.getDecoder().apply(b);
+			IN read = channelStream.getDecoder().apply(b);
+			if (read != null) {
+				channelSubscription.onNext(read);
+			}
 		}
 
 		//data.remaining() > 0;

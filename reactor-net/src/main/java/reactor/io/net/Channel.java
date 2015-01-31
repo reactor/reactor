@@ -18,15 +18,16 @@ package reactor.io.net;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
-import reactor.rx.Promise;
 
 import java.net.InetSocketAddress;
 
 /**
  * {@code NetChannel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
  * Implementations handle interacting inbound (received data) and errors by subscribing to it.
- * Sending data to outbound, effectively replying on that virtual connection, is done via {@link this#send(OUT)} and
- * {@link this#echo(OUT)} for write through.
+ * Sending data to outbound, closing and even flushing behavior are effectively replying on that virtual connection.
+ * That can be achieved by sinking 1 or more {@link this#sink(org.reactivestreams.Publisher)} that will forward data to outbound.
+ * When all drained Publisher completes, the channel will automatically close.
+ * When an error is met by any of the publisher and is not retried, the channel will also be closed.
  *
  *
  * @author Jon Brisbin
@@ -42,44 +43,14 @@ public interface Channel<IN, OUT> extends Publisher<IN> {
 	InetSocketAddress remoteAddress();
 
 	/**
-	 * Send data to the peer, listen for any error on write and complete after successful flush or likely behavior.
-	 *
-	 * @param data
-	 * 		the data to send
-	 *
-	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
-	 */
-	Promise<Void> send(OUT data);
-
-	/**
-	 * Send data to the peer, listen for any error on write and complete after write.
-	 *
-	 * @param data
-	 * 		the data to send
-	 *
-	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
-	 */
-	Promise<Void> echo(OUT data);
-
-	/**
-	 * Send data to the peer, listen for any error on write and complete after write.
+	 * Send data to the peer, listen for any error on write and close on terminal signal (complete|error).
+	 * If more than one publisher is attached (multiple calls to sink()) completion occurs after all publishers complete.
 	 *
 	 * @param dataStream
 	 * 		the dataStream publishing OUT items to write on this channel
 	 *
-	 * @return a {@link reactor.rx.Promise} indicating when the send operation has completed
 	 */
-	Channel<IN, OUT> sink(Publisher<? extends OUT> dataStream);
-
-	/**
-	 * Close this {@literal NetChannel} and signal complete to the channel subscribers.
-	 */
-	void close();
-
-	/**
-	 * @return the underlying native connection/channel in use
-	 */
-	Object nativeConnection();
+	void sink(Publisher<? extends OUT> dataStream);
 
 
 	/**

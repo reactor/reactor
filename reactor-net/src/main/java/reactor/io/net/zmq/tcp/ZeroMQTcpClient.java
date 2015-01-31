@@ -92,11 +92,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	public Promise<ChannelStream<IN, OUT>> open() {
-		Promise<ChannelStream<IN, OUT>> d =
-				Promises.ready(getEnvironment(), getDispatcher());
-
-		doOpen(d);
-
+		Promise<ChannelStream<IN, OUT>> d = next();
+		doOpen();
 		return d;
 	}
 
@@ -143,7 +140,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		return ch;
 	}
 
-	private void doOpen(final Promise<ChannelStream<IN, OUT>> promise) {
+	private void doOpen() {
 		final UUID id = UUIDUtils.random();
 
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
@@ -165,6 +162,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 
 			@Override
+			@SuppressWarnings("unchecked")
 			protected void start(final ZMQ.Socket socket) {
 				try {
 					String addr = createConnectAddress();
@@ -182,20 +180,22 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							.setSocket(socket);
 
 					notifyNewChannel(netChannel);
-					promise.onNext(netChannel);
+					mergeWrite(netChannel);
 
 					broadcaster.consume(new Consumer<ZMsg>() {
 						@Override
 						public void accept(ZMsg msg) {
 							ZFrame content;
 							while (null != (content = msg.pop())) {
-								netChannel.in().onNext(netChannel.getDecoder() != null ?
-										netChannel.getDecoder().apply(Buffer.wrap(content.getData())) :
-										(IN)content.getData());
+								if(netChannel.getDecoder() != null){
+									netChannel.getDecoder().apply(Buffer.wrap(content.getData()));
+								}else{
+									netChannel.in().onNext((IN)Buffer.wrap(content.getData()));
+								}
 							}
 							msg.destroy();
 						}
-					}, null, new Consumer<Void>() {
+					}, createErrorConsumer(netChannel), new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
 							netChannel.close();
@@ -205,7 +205,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 
 				} catch (Exception e) {
-					promise.onError(e);
+					notifyError(e);
 				}
 			}
 		};

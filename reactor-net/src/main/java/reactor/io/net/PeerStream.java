@@ -20,6 +20,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -78,20 +79,15 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 				Streams.<NetChannelStream<IN, OUT>>create(env) :
 				Streams.<NetChannelStream<IN, OUT>>create(env, dispatcher);*/
 
-		this.open = Broadcaster.<ChannelStream<IN, OUT>>create(env, dispatcher);
-		this.close = Broadcaster.<ChannelStream<IN, OUT>>create(env, dispatcher);
-		this.start = Promises.ready(env, dispatcher);
-		this.shutdown = Promises.ready(env, dispatcher);
+		this.open = Broadcaster.<ChannelStream<IN, OUT>>create(env, SynchronousDispatcher.INSTANCE);
+		this.close = Broadcaster.<ChannelStream<IN, OUT>>create(env, SynchronousDispatcher.INSTANCE);
+		this.start = Promises.ready(env, SynchronousDispatcher.INSTANCE);
+		this.shutdown = Promises.ready(env, SynchronousDispatcher.INSTANCE);
 	}
 
 	@Override
 	public void subscribe(final Subscriber<? super ChannelStream<IN, OUT>> s) {
-		start.onSuccess(new Consumer<PeerStream<IN, OUT>>() {
-			@Override
-			public void accept(PeerStream<IN, OUT> inoutNetPeerStream) {
-				inoutNetPeerStream.open.subscribe(s);
-			}
-		});
+		open.subscribe(s);
 	}
 
 	/**
@@ -151,7 +147,6 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 			@Override
 			public void accept(Throwable throwable) {
 				try {
-					ch.close();
 					open.onError(throwable);
 				} catch (Throwable t2) {
 					open.onError(t2);
@@ -160,49 +155,22 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		};
 	}
 
-	protected Consumer<Void> createCompleteConsumer(final ChannelStream<IN, OUT> ch) {
-		return new Consumer<Void>() {
-			@Override
-			public void accept(Void nothing) {
-				try {
-					ch.close();
-				} catch (Throwable t2) {
-					open.onError(t2);
-				}
-			}
-		};
-	}
-
-	protected Function<? super OUT, Promise<Void>> createSendTask(final ChannelStream<IN, OUT> ch) {
-		return new Function<OUT, Promise<Void>>() {
-			@Override
-			public Promise<Void> apply(OUT out) {
-				return ch.echo(out);
-			}
-		};
-	}
-
 	protected Action<Long, Long> createBatchAction(
 			final ChannelStream<IN, OUT> ch,
-			final Consumer<Throwable> errorConsumer,
-			final Consumer<Void> completeConsumer) {
+			final Consumer<Throwable> errorConsumer) {
 
 		return new Action<Long, Long>() {
 			boolean first = true;
 
 			@Override
 			protected void doNext(Long aLong) {
-				if (first) {
-					first = false;
-				} else {
-					ch.flush();
-				}
+				shouldFlush();
 				broadcastNext(aLong);
 			}
 
 			@Override
 			protected void doComplete() {
-				completeConsumer.accept(null);
+				ch.flush();
 				super.doComplete();
 			}
 
@@ -211,19 +179,26 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 				errorConsumer.accept(ev);
 				super.doError(ev);
 			}
+
+			private void shouldFlush() {
+				if (first) {
+					first = false;
+				} else {
+					ch.flush();
+				}
+			}
 		};
 	}
 
 	protected Function<Stream<Long>, ? extends Publisher<? extends Long>> createAdaptiveDemandMapper(
 			final ChannelStream<IN, OUT> ch,
-			final Consumer<Throwable> errorConsumer,
-			final Consumer<Void> completeConsumer
+			final Consumer<Throwable> errorConsumer
 	) {
 		return new Function<Stream<Long>, Publisher<? extends Long>>() {
 			@Override
 			public Publisher<? extends Long> apply(Stream<Long> requests) {
 				return requests
-						.broadcastTo(createBatchAction(ch, errorConsumer, completeConsumer));
+						.broadcastTo(createBatchAction(ch, errorConsumer));
 			}
 		};
 	}
@@ -269,20 +244,21 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		);
 	}
 
-	protected void subscribeChannelHandlers(final Stream<? extends OUT> writeStream, final ChannelStream<IN, OUT> ch) {
+	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final ChannelStream<IN, OUT> ch) {
 		final Consumer<Throwable> errorConsumer = createErrorConsumer(ch);
-		final Consumer<Void> completeConsumer = createCompleteConsumer(ch);
 
-		if (ch.getPrefetch() != Long.MAX_VALUE) {
+		if (writeStream == ch || ch.getPrefetch() != Long.MAX_VALUE) {
 			writeStream
-					.dispatchOn(ch.getIODispatcher())
-					.observe(ch.writeThrough())
-					.capacity(ch.getPrefetch())
-					.adaptiveConsume(null, createAdaptiveDemandMapper(ch, errorConsumer, completeConsumer));
+					.capacity(writeStream == ch  && ch.getPrefetch() == Long.MAX_VALUE ? 1l : ch.getPrefetch())
+					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(), createAdaptiveDemandMapper(ch, errorConsumer));
 		} else {
 			writeStream
-					.flatMap(createSendTask(ch))
-					.consume(null, errorConsumer, completeConsumer);
+					.consumeOn(ch.getIODispatcher(), ch.writeThrough(), errorConsumer, new Consumer<Void>() {
+						@Override
+						public void accept(Void aVoid) {
+							ch.flush();
+						}
+					});
 		}
 	}
 
@@ -303,11 +279,6 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 
 	public final long getPrefetchSize() {
 		return prefetch;
-	}
-
-	@Nonnull
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
 	}
 
 	static final class FastList<T> implements Iterable<Publisher<? extends T>> {

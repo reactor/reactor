@@ -106,9 +106,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						config.setSoLinger(options.linger());
 						config.setTcpNoDelay(options.tcpNoDelay());
 
-						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
-							ch.config().setAutoRead(false);
-						}
 
 						if (log.isDebugEnabled()) {
 							log.debug("CONNECT {}", ch);
@@ -121,16 +118,16 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
+						}else{
+							//Do not disable with SSL as it needs to read off the handler
+							config.setAutoRead(false);
 						}
+
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 
 						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-						notifyNewChannel(netChannel);
-
-						mergeWrite(netChannel);
-
 						ch.pipeline().addLast(
 								new NettyNetChannelInboundHandler<IN>(
 										netChannel.in(), netChannel),

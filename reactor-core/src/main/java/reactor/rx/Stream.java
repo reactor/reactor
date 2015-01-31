@@ -1089,6 +1089,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> startWith(final Publisher<? extends O> publisher) {
+		if(publisher == null) return this;
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
@@ -1276,6 +1277,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a backpressure capable stream
 	 */
 	public Stream<O> capacity(final long elements) {
+		if(elements == getCapacity()) return this;
+
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {

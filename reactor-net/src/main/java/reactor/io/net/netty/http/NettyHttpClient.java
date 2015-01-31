@@ -125,9 +125,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
 						ch.config().setConnectTimeoutMillis(options.timeout());
-						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
-							ch.config().setAutoRead(false);
-						}
+
 						if (null != sslOptions) {
 							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
 							if (log.isDebugEnabled()) {
@@ -135,16 +133,18 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
+						}else{
+							ch.config().setAutoRead(false);
 						}
+
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-						notifyNewChannel(netChannel);
 
 						ch.pipeline().addLast(
 								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-						   new NettyNetChannelOutboundHandler()
+								new NettyNetChannelOutboundHandler()
 						);
 					}
 				});
@@ -183,7 +183,15 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 	@Override
 	public Promise<Void> close() {
-		final Promise<Void> promise = Promises.ready(getEnvironment(), SynchronousDispatcher.INSTANCE);
+		final Promise<Void> promise;
+
+		if (!closing) {
+			promise = Promises.ready(getEnvironment(), SynchronousDispatcher.INSTANCE);
+			closing = true;
+		} else {
+			return Promises.prepare();
+		}
+
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
@@ -316,7 +324,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 							// do not attempt a reconnect
 							return;
 						}
-						if (!((NettyChannelStream) ch).isClosing()) {
+						if (!closing) {
 							attemptReconnect(tup);
 						} else {
 							closing = true;

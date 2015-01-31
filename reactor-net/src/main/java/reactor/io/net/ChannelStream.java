@@ -22,13 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.rx.Promise;
-import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
@@ -48,18 +47,18 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
-	protected final PeerStream<IN, OUT>                   peer;
-	protected final Broadcaster<IN>                   contentStream;
-	private final Environment env;
+	protected final PeerStream<IN, OUT> peer;
+	protected final Broadcaster<IN>     contentStream;
+	private final   Environment         env;
 
-	private final Dispatcher  ioDispatcher;
-	private final Dispatcher  eventsDispatcher;
+	private final Dispatcher ioDispatcher;
+	private final Dispatcher eventsDispatcher;
 
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected  Broadcaster<Publisher<? extends OUT>> writerStream;
+	protected Stream<? extends OUT> head;
 
 	protected ChannelStream(final @Nonnull Environment env,
 	                        @Nullable Codec<Buffer, IN, OUT> codec,
@@ -74,10 +73,15 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		this.ioDispatcher = ioDispatcher;
 		this.peer = peer;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream = Broadcaster.<IN>create(env, eventsDispatcher);
+		this.contentStream = Broadcaster.<IN>create(env, SynchronousDispatcher.INSTANCE);
 
 		if (null != codec) {
-			this.decoder = codec.decoder(contentStream);
+			this.decoder = codec.decoder(new Consumer<IN>() {
+				@Override
+				public void accept(IN in) {
+					doDecoded(in);
+				}
+			});
 			this.encoder = codec.encoder();
 		} else {
 			this.decoder = null;
@@ -95,45 +99,25 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	@Override
-	final public ChannelStream<IN, OUT> sink(Publisher<? extends OUT> source) {
-		synchronized (this){
-			if(writerStream == null){
-				writerStream = Broadcaster.create(env, eventsDispatcher);
-				peer.subscribeChannelHandlers(Streams.concat(writerStream), this);
+	final public void sink(Publisher<? extends OUT> source) {
+		peer.subscribeChannelHandlers(Streams.create(source), this);
+	}
+
+	final public void sinkBuffers(Publisher<? extends Buffer> source) {
+		Stream<OUT> encodedSource = Streams.create(source).map(new Function<Buffer, OUT>() {
+			@Override
+			@SuppressWarnings("unchecked")
+			public OUT apply(Buffer data) {
+				if (null != encoder) {
+					Buffer bytes = encoder.apply((OUT) data);
+					return (OUT) bytes;
+				} else {
+					return (OUT) data;
+				}
 			}
-		}
-		writerStream.onNext(source);
-		return this;
-	}
+		});
 
-	final public Promise<Void> sendBuffer(Buffer data) {
-		if(data == null) return Promises.success(env, eventsDispatcher, null);
-		final Promise<Void> d = Promises.ready(env, eventsDispatcher);
-		send(data, d);
-		return d;
-	}
-
-	@Override
-	final public Promise<Void> send(OUT data) {
-		if(data == null) return Promises.success(env, eventsDispatcher, null);
-		final Promise<Void> d = Promises.ready(env, eventsDispatcher);
-		send(data, d);
-		return d;
-	}
-
-	final public Promise<Void> echoBuffer(Buffer data) {
-		if(data == null) return Promises.success(env, eventsDispatcher, null);
-		final Promise<Void> d = Promises.ready(env, eventsDispatcher);
-		ioDispatcher.dispatch(data, new BufferWriteConsumer(d, false), null);
-		return d;
-	}
-
-	@Override
-	final public Promise<Void> echo(OUT data) {
-		if(data == null) return Promises.success(env, eventsDispatcher, null);
-		Promise<Void> d = Promises.ready(env, eventsDispatcher);
-		ioDispatcher.dispatch(data, new WriteConsumer(d, false), null);
-		return d;
+		peer.subscribeChannelHandlers(encodedSource, this);
 	}
 
 	@Override
@@ -162,48 +146,36 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		return prefetch;
 	}
 
-	@Override
-	public void close() {
-		notifyClose();
-	}
-
-
-	Consumer<OUT> writeThrough() {
-		return new WriteConsumer(null, false);
-	}
+	/**
+	 * @return the underlying native connection/channel in use
+	 */
+	public abstract Object delegate();
 
 	/**
-	 * Send data on this connection. The current codec (if any) will be used to encode the data to a {@link
-	 * reactor.io.buffer.Buffer}. The given callback will be invoked when the write has completed.
-	 *
-	 * @param data       The outgoing data.
-	 * @param onComplete The callback to invoke when the write is complete.
+	 * notify Peer subscribers the channel has been created and attach the Peer defined writer Publishers
 	 */
-	final protected void send(OUT data, final Subscriber<Void> onComplete) {
-		ioDispatcher.dispatch(data, new WriteConsumer(onComplete, true), null);
+	public void registerOnPeer() {
+		peer.notifyNewChannel(this);
+		peer.mergeWrite(this);
 	}
 
-	final protected void send(Buffer data, final Subscriber<Void> onComplete) {
-		ioDispatcher.dispatch(data, new BufferWriteConsumer(onComplete, true), null);
+	protected final void cascadeErrorToPeer(Throwable t) {
+		log.error("", t);
+		peer.notifyError(t);
 	}
 
-	final protected void notifyError(Throwable throwable) {
-		contentStream.onError(throwable);
+	protected void doDecoded(IN in) {
+		contentStream.onNext(in);
 	}
 
-	final protected void notifyClose() {
-		Broadcaster<Publisher<? extends OUT>> writers;
-		synchronized (this){
-			writers = writerStream;
-		}
-		if(writers != null){
-			writers.onComplete();
-		}
+	Consumer<OUT> writeThrough() {
+		return new WriteConsumer();
 	}
-
 
 	Publisher<? extends OUT> head() {
-		return null;
+		synchronized (this) {
+			return head;
+		}
 	}
 
 	/**
@@ -240,58 +212,23 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	protected abstract void flush();
 
 	final class WriteConsumer implements Consumer<OUT> {
-		private final Subscriber<Void> onComplete;
-		private final boolean          flush;
-
 		@Override
 		public void accept(OUT data) {
 			try {
 				if (null != encoder) {
 					Buffer bytes = encoder.apply(data);
 					if (bytes.remaining() > 0) {
-						write(bytes, onComplete, flush);
+						write(bytes, null, false);
 					}
 				} else {
-					write(data, onComplete, flush);
-				}
-			} catch (Throwable t) {
-				if (null != onComplete) {
-					onComplete.onError(t);
-				}
-			}
-		}
-
-		WriteConsumer(Subscriber<Void> onComplete, boolean autoFlush) {
-			this.onComplete = onComplete;
-			this.flush = autoFlush;
-		}
-	}
-
-	private final class BufferWriteConsumer implements Consumer<Buffer> {
-		private final Subscriber<?> onComplete;
-		private final boolean       flush;
-
-		private BufferWriteConsumer(Subscriber<Void> onComplete, boolean autoFlush) {
-			this.onComplete = onComplete;
-			this.flush = autoFlush;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public void accept(Buffer data) {
-			try {
-				if (null != encoder) {
-					Buffer bytes = encoder.apply((OUT) data);
-					if (bytes.remaining() > 0) {
-						write(bytes, onComplete, flush);
+					if (Buffer.class == data.getClass()) {
+						write((Buffer) data, null, false);
+					} else {
+						write(data, null, false);
 					}
-				} else {
-					write(data, onComplete, flush);
 				}
 			} catch (Throwable t) {
-				if (null != onComplete) {
-					onComplete.onError(t);
-				}
+				peer.notifyError(t);
 			}
 		}
 	}

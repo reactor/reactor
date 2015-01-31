@@ -21,6 +21,7 @@ import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannelConfig;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
@@ -99,10 +100,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						config.setReceiveBufferSize(options.rcvbuf());
 						config.setSendBufferSize(options.sndbuf());
 						config.setReuseAddress(options.reuseAddr());
-
-						if(options.prefetch() != -1 && options.prefetch() != Long.MAX_VALUE){
-							ch.config().setAutoRead(false);
-						}
+						config.setAutoRead(false);
 
 						if (null != multicastInterface) {
 							config.setNetworkInterface(multicastInterface);
@@ -111,30 +109,35 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						netChannel = createChannel(ch, options.prefetch());
-						ch.closeFuture().addListener(new ChannelFutureListener() {
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								if (log.isInfoEnabled()) {
-									log.info("CLOSE {}", ch);
-								}
-								netChannel.close();
-							}
-						});
-						notifyNewChannel(netChannel);
-
-						ch.pipeline().addLast(
-								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-								new ChannelOutboundHandlerAdapter() {
-									@Override
-									public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-										super.write(ctx, msg, promise);
-									}
-								});
-
 						return ch;
 					}
-				});
+				}).handler(new ChannelInitializer<NioDatagramChannel>() {
+			@Override
+			public void initChannel(final NioDatagramChannel ch) throws Exception {
+				ch.config().setConnectTimeoutMillis(options.timeout());
+				ch.config().setAutoRead(false);
+
+				final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
+
+				ch.pipeline().addLast(
+						new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel){
+							@Override
+							public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+								if(msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())){
+									super.channelRead(ctx, ((DatagramPacket)msg).content());
+								}else{
+									super.channelRead(ctx, msg);
+								}
+							}
+						},
+						new ChannelOutboundHandlerAdapter() {
+							@Override
+							public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+								super.write(ctx, msg, promise);
+							}
+						});
+			}
+		});;
 
 		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);
@@ -202,17 +205,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		});
 
 		return d;
-	}
-
-	@Override
-	public DatagramServer<IN, OUT> send(OUT data) {
-		if (null == channel) {
-			throw new IllegalStateException("DatagramServer not running.");
-		}
-
-		netChannel.send(data);
-
-		return this;
 	}
 
 	@Override
