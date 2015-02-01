@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -150,6 +151,23 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.ERROR) {
+					onComplete.accept(this);
+					return Promises.error(environment, dispatcher, error);
+				} else if (finalState == FinalState.COMPLETE) {
+					onComplete.accept(this);
+					return Promises.success(environment, dispatcher, value);
+				}
+			} catch (Throwable t) {
+				return Promises.error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
+
 		return stream().lift(new Supplier<Action<O,O>>() {
 			@Override
 			public Action<O, O> get() {
@@ -181,6 +199,23 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.ERROR) {
+					return Promises.error(environment, dispatcher, error);
+				} else if (finalState == FinalState.COMPLETE) {
+					if (value != null) {
+						onSuccess.accept(value);
+					}
+					return Promises.success(environment, dispatcher, value);
+				}
+			} catch (Throwable t) {
+				return Promises.error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
 		return stream().observe(onSuccess).next();
 	}
 
@@ -194,6 +229,20 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public <V> Promise<V> map(@Nonnull final Function<? super O, V> transformation) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.ERROR) {
+					return Promises.error(environment, dispatcher, error);
+				} else if (finalState == FinalState.COMPLETE) {
+					return Promises.success(environment, dispatcher, value != null ? transformation.apply(value) : null);
+				}
+			} catch (Throwable t) {
+				return Promises.error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
 		return stream().map(transformation).next();
 	}
 
@@ -202,15 +251,37 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * with
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
 	 * current {@link Dispatcher}.
-	 *
-	 * FlatMap is typically used to listen for a delayed/async publisher, e.g. promise.flatMap( data -> Promise.success(data) ).
+	 * <p>
+	 * FlatMap is typically used to listen for a delayed/async publisher, e.g. promise.flatMap( data -> Promise.success
+	 * (data) ).
 	 * The result is merged directly on the returned stream.
 	 *
 	 * @param transformation the function to apply on signal to the supplied Promise that will be merged back.
 	 * @return {@literal the new Promise}
 	 */
 	public <V> Promise<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> transformation) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.ERROR) {
+					return Promises.error(environment, dispatcher, error);
+				} else if (finalState == FinalState.COMPLETE) {
+					if (value != null) {
+						Promise<V> successPromise = Promises.<V>ready(environment, dispatcher);
+						transformation.apply(value).subscribe(successPromise);
+						return successPromise;
+					} else {
+						return Promises.success(environment, dispatcher, null);
+					}
+				}
+			} catch (Throwable t) {
+				return Promises.error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
 		return stream().flatMap(transformation).next();
+
 	}
 
 	/**
@@ -222,6 +293,22 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@literal the new Promise}
 	 */
 	public Promise<Throwable> onError(@Nonnull final Consumer<Throwable> onError) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.ERROR) {
+					onError.accept(error);
+					return Promises.success(environment, dispatcher, error);
+				} else if(finalState == FinalState.COMPLETE){
+					return Promises.success(environment, dispatcher, null);
+				}
+			} catch (Throwable t) {
+				return Promises.error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
+
 		return stream().materialize().map(new Function<Signal<O>, Throwable>() {
 			@Override
 			public Throwable apply(Signal<O> oSignal) {
@@ -241,6 +328,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @return {@code true} if this {@code Promise} is complete, {@code false} otherwise.
 	 * @see #isPending()
 	 */
+
 	public boolean isComplete() {
 		lock.lock();
 		try {
@@ -509,8 +597,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 
 
 	public StreamUtils.StreamVisitor debug() {
-		Action<?,?> debugged = findOldestStream();
-		if(subscription == null || debugged == null){
+		Action<?, ?> debugged = findOldestStream();
+		if (subscription == null || debugged == null) {
 			return outboundStream != null ? outboundStream.debug() : null;
 		}
 
@@ -538,9 +626,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	protected void errorAccepted(Throwable error) {
 		lock.lock();
 		try {
-			if (!isPending()){
+			if (!isPending()) {
 				if (isSuccess())
-					throw new IllegalStateException(finalState.toString()+" : "+value, error);
+					throw new IllegalStateException(finalState.toString() + " : " + value, error);
 				else
 					throw new IllegalStateException(finalState.toString(), error);
 			}
@@ -570,11 +658,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		try {
 			if (!isPending()) {
 				if (isError())
-					throw new IllegalStateException(value+" >> "+finalState.toString(), error);
+					throw new IllegalStateException(value + " >> " + finalState.toString(), error);
 				else if (isSuccess())
-					throw new IllegalStateException(value+" >> "+finalState.toString()+" : "+value);
+					throw new IllegalStateException(value + " >> " + finalState.toString() + " : " + value);
 				else
-					throw new IllegalStateException(value+" >> "+finalState.toString());
+					throw new IllegalStateException(value + " >> " + finalState.toString());
 			}
 			this.value = value;
 			this.finalState = FinalState.COMPLETE;

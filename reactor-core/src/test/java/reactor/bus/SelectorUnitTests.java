@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
@@ -128,7 +129,7 @@ public class SelectorUnitTests {
 
 	private void runTest(String type, Function<Integer, Tuple2<Selector, Object>> fn) {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
-		Registry<Consumer<?>> registry = new CachingRegistry<Consumer<?>>();
+		Registry<Consumer<?>> registry = Registries.create();
 
 		Consumer<?> countDown = new Consumer<Object>() {
 			@Override

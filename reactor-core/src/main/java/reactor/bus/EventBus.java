@@ -22,6 +22,7 @@ import reactor.Environment;
 import reactor.bus.filter.PassThroughFilter;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
@@ -168,7 +169,7 @@ public class EventBus implements Observable<Event<?>>, Consumer<Event<?>> {
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
-		this(new CachingRegistry<Consumer<? extends Event<?>>>(),
+		this(Registries.<Consumer<? extends Event<?>>>create(),
 				dispatcher,
 				router,
 				dispatchErrorHandler,

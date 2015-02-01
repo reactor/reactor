@@ -20,6 +20,7 @@ import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.filter.*;
 import reactor.bus.registry.CachingRegistry;
+import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
@@ -195,7 +196,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @return {@code this}
 	 */
 	public SPEC consumerNotFoundHandler(Consumer<Object> consumerNotFoundHandler) {
-		this.consumerRegistry = new CachingRegistry<Consumer<? extends Event<?>>>(true, true, consumerNotFoundHandler);
+		this.consumerRegistry = Registries.create(true,true,consumerNotFoundHandler);
 		return (SPEC) this;
 	}
 
@@ -242,7 +243,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	private Registry createRegistry() {
-		return new CachingRegistry<Consumer<? extends Event<?>>>();
+		return Registries.create();
 	}
 
 	protected enum EventRoutingStrategy {

@@ -17,19 +17,18 @@ package reactor.rx.action.control;
 
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
-public class FinallyAction<T, C> extends Action<T, T> {
+public class FinallyAction<T> extends Action<T, T> {
 
-	private final Consumer<? super C> consumer;
-	private final C           input;
+	private final Consumer<Signal<T>> consumer;
 
-	public FinallyAction(C input, Consumer<? super C> consumer) {
+	public FinallyAction(Consumer<Signal<T>> consumer) {
 		this.consumer = consumer;
-		this.input = input;
 	}
 
 	@Override
@@ -39,13 +38,13 @@ public class FinallyAction<T, C> extends Action<T, T> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		consumer.accept(input);
+		consumer.accept(Signal.<T>error(ev));
 		broadcastError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		consumer.accept(input);
+		consumer.accept(Signal.<T>complete());
 		broadcastComplete();
 	}
 

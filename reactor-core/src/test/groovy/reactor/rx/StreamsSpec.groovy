@@ -169,7 +169,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			value == stream
+			value == Signal.complete()
 	}
 
 	def 'A deferred Stream can be run on various dispatchers'() {
@@ -872,13 +872,13 @@ class StreamsSpec extends Specification {
 		when:
 			'the source is consumed every in 3 times'
 			def res = []
-			println s.capacity(1).batchConsume(
+			s.capacity(1).batchConsume(
 					{ res << it },
 					{ res << "r:${it*2}"; it*2 }
-			).debug()
+			)
 
 		then:
-			'the values are all collected in 4 times'
+			'the values are all collected in 3 times'
 			res == ['r:2', 1, 2, 'r:4', 3, 4, 5, 6, 'r:8', 7, 8]
 
 	}
@@ -1005,6 +1005,60 @@ class StreamsSpec extends Specification {
 		then:
 			'the count value matches the number of accept'
 			tap.get() == 3
+	}
+
+	def 'A Stream can return a value at a certain index'() {
+		given:
+			'a composable with values 1 to 5'
+			def s = Streams.just(1, 2, 3, 4, 5)
+			def error = 0
+			def errorConsumer = { error++ }
+
+		when:
+			'element at index 2 is requested'
+			def tap = s.elementAt(2).buffer().tap()
+
+		then:
+			'3 is emitted'
+			tap.get() == [ 3 ]
+
+		when:
+			'element with negative index is requested'
+			s.elementAt(-1).when(IndexOutOfBoundsException, errorConsumer).consume()
+
+		then:
+			'exception is thrown'
+			error == 1
+
+		when:
+			'element with index > number of values is requested'
+			s.elementAt(10).when(IndexOutOfBoundsException, errorConsumer).consume()
+
+		then:
+			'exception is thrown'
+			error == 2
+	}
+
+	def 'A Stream can return a value at a certain index or a default value'() {
+		given:
+			'a composable with values 1 to 5'
+			def s = Streams.just(1, 2, 3, 4, 5)
+
+		when:
+			'element at index 2 is requested'
+			def tap = s.elementAtOrDefault(2, -1).buffer().tap()
+
+		then:
+			'3 is emitted'
+			tap.get() == [ 3 ]
+
+		when:
+			'element with index > number of values is requested'
+			tap = s.elementAtOrDefault(10, -1).buffer().tap()
+
+		then:
+			'-1 is emitted'
+			tap.get() == [ -1 ]
 	}
 
 	def "A Stream's values can be filtered"() {

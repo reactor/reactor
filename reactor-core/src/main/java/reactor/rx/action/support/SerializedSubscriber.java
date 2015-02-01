@@ -228,7 +228,9 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
 		if (list == null || list.size == 0) {
 			return;
 		}
-		for (Object v : list.array) {
+		Object v;
+		for (int i = 0; i < list.size; i++) {
+			v = list.array[i];
 			if (v == null) {
 				break;
 			}

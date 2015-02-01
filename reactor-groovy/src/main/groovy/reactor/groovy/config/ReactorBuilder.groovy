@@ -9,6 +9,7 @@ import reactor.bus.Event
 import reactor.bus.EventBus
 import reactor.bus.filter.*
 import reactor.bus.registry.CachingRegistry
+import reactor.bus.registry.Registries
 import reactor.bus.routing.Router
 import reactor.bus.selector.Selector
 import reactor.bus.selector.Selectors
@@ -203,7 +204,7 @@ class ReactorBuilder implements Supplier<EventBus> {
 			spec.eventRouter(router)
 		} else if (processors) {
 
-			def registry = new CachingRegistry<Processor<Event<?>,Event<?>>>()
+			def registry = Registries.<Processor<Event<?>,Event<?>>>create()
 			Iterator<SelectorProcessor> it = processors.iterator()
 			SelectorProcessor p
 			while(it.hasNext()){

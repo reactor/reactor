@@ -35,7 +35,6 @@ import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.combination.CombineAction;
 import reactor.rx.action.combination.FanInAction;
-import reactor.rx.action.control.DispatcherAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
 import reactor.rx.broadcast.Broadcaster;
@@ -626,13 +625,21 @@ public abstract class Action<I, O> extends Stream<O>
 				if (!dispatched) {
 					subscriber.onSubscribe(subscription);
 				} else {
-					Dispatcher dispatcher = getDispatcher();
+					final Dispatcher dispatcher = getDispatcher();
 					if(dispatcher == SynchronousDispatcher.INSTANCE){
 						subscriber.onSubscribe(subscription);
 					}else{
-						DispatcherAction<O> dispatcherAction = new DispatcherAction<O>(dispatcher);
-						dispatcherAction.onSubscribe(subscription);
-						dispatcherAction.subscribe(subscriber);
+						subscriber.onSubscribe(new Subscription() {
+							@Override
+							public void request(long n) {
+								dispatcher.dispatch(n, subscription, null);
+							}
+
+							@Override
+							public void cancel() {
+								subscription.cancel();
+							}
+						});
 					}
 				}
 			} else {
