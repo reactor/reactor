@@ -91,8 +91,8 @@ class NettyTcpServerSpec extends Specification {
 			}
 
 		when: "the server is started"
-			server.service { conn ->
-				conn.map { pojo ->
+			server.pipeline { conn ->
+				conn.take(1).map { pojo ->
 							assert pojo.name == "John Doe"
 							println pojo.name
 							new Pojo(name: "Jane Doe")
