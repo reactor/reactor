@@ -46,13 +46,6 @@ import java.util.List;
  */
 public interface Spec {
 
-	/**
-	 * @return a Specification to configure and supply a Reconnect handler
-	 */
-	static public IncrementalBackoffReconnect backoffReconnect(){
-		return new Spec.IncrementalBackoffReconnect();
-	}
-
 	//
 	//   Client and Server Specifications
 	//

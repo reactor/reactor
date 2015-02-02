@@ -112,7 +112,7 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public int backlogSize() {
+	public long backlogSize() {
 		return delegate.backlogSize();
 	}
 

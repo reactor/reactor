@@ -72,7 +72,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return {@literal this}
 	 */
-	public abstract Promise<Void> start();
+	public abstract Promise<Boolean> start();
 
 
 	/**

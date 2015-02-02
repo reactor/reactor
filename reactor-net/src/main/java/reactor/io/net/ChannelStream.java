@@ -72,7 +72,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		this.ioDispatcher = ioDispatcher;
 		this.peer = peer;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream = Broadcaster.<IN>create(env, getDispatcher());
+		this.contentStream = Broadcaster.<IN>create(env, eventsDispatcher);
 
 		if (null != codec) {
 			this.decoder = codec.decoder(new Consumer<IN>() {
@@ -129,6 +129,11 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		return eventsDispatcher;
 	}
 
+	@Override
+	final public long getCapacity() {
+		return prefetch;
+	}
+
 	public final Dispatcher getIODispatcher() {
 		return ioDispatcher;
 	}
@@ -139,10 +144,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	public final Function<OUT, Buffer> getEncoder() {
 		return encoder;
-	}
-
-	final public long getPrefetch() {
-		return prefetch;
 	}
 
 	/**
@@ -158,6 +159,16 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		peer.mergeWrite(this);
 	}
 
+	Consumer<OUT> writeThrough(boolean autoflush) {
+		return new WriteConsumer(autoflush);
+	}
+
+	Publisher<? extends OUT> head() {
+		synchronized (this) {
+			return head;
+		}
+	}
+
 	protected final void cascadeErrorToPeer(Throwable t) {
 		log.error("", t);
 		peer.notifyError(t);
@@ -165,16 +176,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	protected void doDecoded(IN in) {
 		contentStream.onNext(in);
-	}
-
-	Consumer<OUT> writeThrough() {
-		return new WriteConsumer();
-	}
-
-	Publisher<? extends OUT> head() {
-		synchronized (this) {
-			return head;
-		}
 	}
 
 	/**
@@ -211,19 +212,26 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	protected abstract void flush();
 
 	final class WriteConsumer implements Consumer<OUT> {
+
+		final boolean autoflush;
+
+		public WriteConsumer(boolean autoflush) {
+			this.autoflush = autoflush;
+		}
+
 		@Override
 		public void accept(OUT data) {
-			try {
+		try {
 				if (null != encoder) {
 					Buffer bytes = encoder.apply(data);
 					if (bytes.remaining() > 0) {
-						write(bytes, null, false);
+						write(bytes, null, autoflush);
 					}
 				} else {
 					if (Buffer.class == data.getClass()) {
-						write((Buffer) data, null, false);
+						write((Buffer) data, null, autoflush);
 					} else {
-						write(data, null, false);
+						write(data, null, autoflush);
 					}
 				}
 			} catch (Throwable t) {

@@ -94,31 +94,16 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	@Override
 	protected void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
-		ChannelFuture writeFuture = ioChannel.write(data);
+		ChannelFuture writeFuture = flush ? ioChannel.writeAndFlush(data) : ioChannel.write(data);
 
-		if (!flush && onComplete == null) {
-			//return;
-		}
 		writeFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				boolean success = future.isSuccess();
 
-				if (flush) {
-					try {
-						ioChannel.flush();
-					} catch (Throwable t) {
-						if( null != onComplete){
-							onComplete.onError(t);
-						}
-						cascadeErrorToPeer(t);
-						return;
-					}
-				}
-
 				if (!success) {
 					Throwable t = future.cause();
-					if( null != onComplete) {
+					if (null != onComplete) {
 						onComplete.onError(t);
 					}
 					cascadeErrorToPeer(t);
@@ -132,7 +117,9 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	@Override
 	protected void flush() {
-		ioChannel.write(NettyNetChannelOutboundHandler.FLUSH);
+		if(ioChannel.isActive()) {
+			ioChannel.flush();
+		}
 	}
 
 	@Override

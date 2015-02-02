@@ -221,6 +221,7 @@ public class TcpServerTests {
 		latch.await(10, TimeUnit.SECONDS);
 		System.out.println(c.debug());
 		System.out.println(latch.getCount());
+
 		assertTrue("Latch was counted down: " + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 

@@ -133,7 +133,7 @@ public final class TailRecurseDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public int backlogSize() {
+	public long backlogSize() {
 		return counter;
 	}
 

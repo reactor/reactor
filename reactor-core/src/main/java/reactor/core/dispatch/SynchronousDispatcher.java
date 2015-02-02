@@ -101,8 +101,8 @@ public final class SynchronousDispatcher implements Dispatcher {
 	}
 
 	@Override
-	public int backlogSize() {
-		return Integer.MAX_VALUE;
+	public long backlogSize() {
+		return Long.MAX_VALUE;
 	}
 
 	@Override

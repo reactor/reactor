@@ -501,4 +501,11 @@ public class NetStreams extends Streams {
 		}
 
 	}
+
+	/**
+	 * @return a Specification to configure and supply a Reconnect handler
+	 */
+	static public Spec.IncrementalBackoffReconnect backoffReconnect(){
+		return new Spec.IncrementalBackoffReconnect();
+	}
 }

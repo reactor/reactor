@@ -93,12 +93,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single dispatchers");
-		Broadcaster<T> broadcaster = new Broadcaster<T>(env, dispatcher, dispatcher.backlogSize() > 0 ?
-				(RESERVED_SLOTS > dispatcher.backlogSize() ?
-						dispatcher.backlogSize() :
-						dispatcher.backlogSize() - RESERVED_SLOTS) :
-				Long.MAX_VALUE);
-		return broadcaster;
+		return new Broadcaster<T>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()));
 	}
 
 	/**

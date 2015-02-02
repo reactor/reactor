@@ -716,10 +716,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				" For concurrent signal dispatching, refer to #partition()/groupBy() method and assign individual single " +
 				"dispatchers. ");
 
-		long _capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
-				dispatcher.backlogSize() - Action.RESERVED_SLOTS :
-				Long.MAX_VALUE;
-
+		long _capacity = Action.evaluateCapacity(dispatcher.backlogSize());
 		long parentCapacity = getCapacity();
 
 		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;

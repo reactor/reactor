@@ -52,7 +52,7 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	}
 
 	@Override
-	public int backlogSize() {
+	public long backlogSize() {
 		return backlog;
 	}
 

@@ -132,8 +132,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Promise<Void> start() {
-		final Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+	public Promise<Boolean> start() {
+		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
 
 		ChannelFuture future = bootstrap.bind();
 		future.addListener(new ChannelFutureListener() {
@@ -143,7 +143,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 					log.info("BIND {}", future.channel().localAddress());
 					channel = (NioDatagramChannel) future.channel();
 					notifyStart();
-					promise.onComplete();
+					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
 				}
@@ -155,15 +155,15 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Promise<Void> shutdown() {
-		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+	public Promise<Boolean> shutdown() {
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		ChannelFuture future = channel.close();
 		final GenericFutureListener listener = new GenericFutureListener() {
 			@Override
 			public void operationComplete(Future future) throws Exception {
 				if (future.isSuccess()) {
-					d.onComplete();
+					d.onNext(true);
 					notifyShutdown();
 				} else {
 					d.onError(future.cause());

@@ -17,7 +17,6 @@
 package reactor.io.net.tcp.netty
 
 import reactor.Environment
-import reactor.fn.Consumer
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
@@ -40,7 +39,7 @@ class NettyTcpServerSpec extends Specification {
 	Environment env
 
 	def setup() {
-		env = new Environment()
+		env = Environment.initializeIfEmpty()
 	}
 
 	def "NettyTcpServer responds to requests from clients"() {
@@ -73,9 +72,9 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess({
+			server.shutdown().onSuccess{
 				stopLatch.countDown()
-			} as Consumer<Void>)
+			}
 			stopLatch.await(5, TimeUnit.SECONDS)
 
 	}
@@ -92,15 +91,14 @@ class NettyTcpServerSpec extends Specification {
 
 		when: "the server is started"
 			server.pipeline { conn ->
-				conn.take(1).map { pojo ->
-							assert pojo.name == "John Doe"
-							println pojo.name
-							new Pojo(name: "Jane Doe")
-						}
+				conn.map { pojo ->
+					assert pojo.name == "John Doe"
+					new Pojo(name: "Jane Doe")
+				}
 			}
 
 		then: "the server was started"
-			server.start().awaitSuccess(5, TimeUnit.SECONDS)
+			server.start().awaitSuccess(50, TimeUnit.SECONDS)
 
 		when: "a pojo is written"
 			def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))
@@ -113,10 +111,52 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess({
+			server.shutdown().onSuccess{
 				stopLatch.countDown()
-			} as Consumer<Void>)
+			}
 			stopLatch.await(5, TimeUnit.SECONDS)
+	}
+
+	def "flush every 5 elems"() {
+		given: "a TcpServer with JSON defaultCodec"
+
+			def latch = new CountDownLatch(10)
+			def server = NetStreams.<Pojo, Pojo> tcpServer {
+				it.env(env).
+						listen(port).
+						codec(new JsonCodec<Pojo, Pojo>(Pojo))
+			}
+
+			def client = NetStreams.<Pojo, Pojo> tcpClient {
+				it.env(env).
+						connect("localhost", port).
+						codec(new JsonCodec<Pojo, Pojo>(Pojo))
+			}
+
+		when: "the client/server is prepared"
+			server.pipeline { input ->
+				input
+						.log('serve')
+						.capacity(5l)
+			}
+
+			client.pipeline { input ->
+				input
+						.log('receive')
+						.consume { latch.countDown() }
+
+				Streams.range(1, 10)
+						.map { new Pojo(name: 'test' + it) }
+						.log('send')
+			}
+
+		then: "the server was started"
+			server.start().flatMap { client.open() }.awaitSuccess(5, TimeUnit.SECONDS)
+			latch.await(10, TimeUnit.SECONDS)
+
+
+		cleanup: "the server is stopped"
+			client.close().flatMap { server.shutdown() }.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
 	static class SimpleClient extends Thread {
@@ -138,7 +178,7 @@ class NettyTcpServerSpec extends Specification {
 			assert ch.connected
 			data = ByteBuffer.allocate(len)
 			int read = ch.read(data)
-			//assert read > 0
+			assert read > 0
 			data.flip()
 			latch.countDown()
 		}
@@ -146,6 +186,11 @@ class NettyTcpServerSpec extends Specification {
 
 	static class Pojo {
 		String name
+
+		@Override
+		String toString() {
+			name
+		}
 	}
 
 }

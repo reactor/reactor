@@ -95,7 +95,7 @@ public interface Dispatcher extends Executor, Resource {
 	 * @return the remaining capacity if supported otherwise it returns a negative value.
 	 * @since 2.0
 	 */
-	int backlogSize();
+	long backlogSize();
 
 
 	/**

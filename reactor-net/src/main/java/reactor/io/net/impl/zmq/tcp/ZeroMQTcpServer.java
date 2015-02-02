@@ -87,10 +87,10 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> start() {
+	public Promise<Boolean> start() {
 		Assert.isNull(worker, "This ZeroMQ server has already been started");
 
-		final Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
 
 		final UUID id = UUIDUtils.random();
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.ROUTER);
@@ -182,7 +182,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						}
 					});
 					notifyStart();
-					promise.onComplete();
+					promise.onNext(true);
 				} catch (Exception e) {
 					promise.onError(e);
 				}
@@ -206,12 +206,12 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> shutdown() {
+	public Promise<Boolean> shutdown() {
 		if (null == worker) {
-			return Promises.<Void>error(new IllegalStateException("This ZeroMQ server has not been started"));
+			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started"));
 		}
 
-		Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+		Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		worker.shutdown();
 		if (!workerFuture.isDone()) {
@@ -220,7 +220,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		threadPool.shutdownNow();
 
 		notifyShutdown();
-		d.onComplete();
+		d.onNext(true);
 
 
 		return d;

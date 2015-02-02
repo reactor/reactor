@@ -17,6 +17,7 @@
 package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -94,6 +95,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
+				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
@@ -133,16 +135,16 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> start() {
+	public Promise<Boolean> start() {
 		ChannelFuture bindFuture = bootstrap.bind();
-		final Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
 					notifyStart();
-					promise.onComplete();
+					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
 				}
@@ -154,8 +156,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Promise<Void> shutdown() {
-		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+	public Promise<Boolean> shutdown() {
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
@@ -164,7 +166,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			public void operationComplete(Future future) throws Exception {
 				if (groupsToShutdown.decrementAndGet() == 0) {
 					notifyShutdown();
-					d.onComplete();
+					d.onNext(true);
 				}
 			}
 		};

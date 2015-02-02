@@ -67,20 +67,20 @@ public class AbstractNetClientServerTest {
 
 	protected static <IN, OUT> void assertClientStopped(Client<IN, OUT, ?> client)
 			throws InterruptedException {
-		Promise<Void> closed = client.close();
+		Promise<Boolean> closed = client.close();
 		closed.await(1, TimeUnit.SECONDS);
 		assertTrue(client.getClass().getSimpleName() + " was stopped", closed.isSuccess());
 	}
 
 
 	protected static <IN, OUT> void assertServerStarted(Server<IN, OUT, ?> server) throws InterruptedException {
-		Promise<Void> started = server.start();
+		Promise<Boolean> started = server.start();
 		started.await(5, TimeUnit.SECONDS);
 		assertTrue(server.getClass().getSimpleName() + " was started", started.isSuccess());
 	}
 
 	protected static <IN, OUT> void assertServerStopped(Server<IN, OUT, ?> server) throws InterruptedException {
-		Promise<Void> started = server.shutdown();
+		Promise<Boolean> started = server.shutdown();
 		started.await(1, TimeUnit.SECONDS);
 		assertTrue(server.getClass().getSimpleName() + " was stopped", started.isSuccess());
 	}

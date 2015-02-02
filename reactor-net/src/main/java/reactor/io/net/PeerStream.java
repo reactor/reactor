@@ -262,18 +262,13 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final ChannelStream<IN, OUT> ch) {
 		final Consumer<Throwable> errorConsumer = createErrorConsumer(ch);
 
-		if (writeStream == ch || ch.getPrefetch() != Long.MAX_VALUE) {
+		if (writeStream.getCapacity() != Long.MAX_VALUE) {
 			writeStream
-					.capacity(writeStream == ch  && ch.getPrefetch() == Long.MAX_VALUE ? 1l : ch.getPrefetch())
-					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(), createAdaptiveDemandMapper(ch, errorConsumer));
+					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false), createAdaptiveDemandMapper(ch,
+							errorConsumer));
 		} else {
 			writeStream
-					.consumeOn(ch.getIODispatcher(), ch.writeThrough(), errorConsumer, new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							ch.flush();
-						}
-					});
+					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true),  createErrorConsumer(ch));
 		}
 	}
 

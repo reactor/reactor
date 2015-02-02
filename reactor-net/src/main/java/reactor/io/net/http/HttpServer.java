@@ -75,7 +75,7 @@ public abstract class HttpServer<IN, OUT>
 	 *
 	 * @return {@literal this}
 	 */
-	public abstract Promise<Void> start();
+	public abstract Promise<Boolean> start();
 
 	/**
 	 * Get the address to which this server is bound.

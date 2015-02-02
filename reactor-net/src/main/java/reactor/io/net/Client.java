@@ -55,7 +55,7 @@ public interface Client<IN, OUT, CONN extends Channel<IN,OUT>> extends Publisher
 	 * Close this client and the underlying channel.
 	 * @return a Promise successful when closed
 	 */
-	Promise<Void> close();
+	Promise<Boolean> close();
 
 	/**
 	 * A global handling pipeline that will be called on each new connection and will listen for signals emitted

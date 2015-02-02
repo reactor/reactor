@@ -37,7 +37,7 @@ public interface Server<IN, OUT, CONN extends Channel<IN, OUT>> extends Publishe
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is started
 	 */
-	Promise<Void> start();
+	Promise<Boolean> start();
 
 	/**
 	 * Shutdown this {@literal Server} and complete the returned {@link reactor.rx.Promise} when shut
@@ -45,7 +45,7 @@ public interface Server<IN, OUT, CONN extends Channel<IN, OUT>> extends Publishe
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
 	 */
-	Promise<Void> shutdown();
+	Promise<Boolean> shutdown();
 
 	/**
 	 * A global handling pipeline that will be called on each new connection and will listen for signals emitted

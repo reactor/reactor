@@ -21,6 +21,7 @@ import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
+import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -104,11 +105,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
 				"dispatchers");
-		return new BehaviorBroadcaster<>(env, dispatcher, dispatcher.backlogSize() > 0 ?
-				(RESERVED_SLOTS > dispatcher.backlogSize() ?
-						dispatcher.backlogSize() :
-						dispatcher.backlogSize() - RESERVED_SLOTS) :
-				Long.MAX_VALUE, value);
+		return new BehaviorBroadcaster<>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()), value);
 	}
 
 	/**

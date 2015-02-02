@@ -176,21 +176,21 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> close() {
-		final Promise<Void> promise;
+	public Promise<Boolean> close() {
+		final Promise<Boolean> promise;
 
 		if (!closing) {
 			promise = Promises.ready(getEnvironment(), getDispatcher());
 			closing = true;
 		} else {
-			return Promises.success(null);
+			return Promises.success(true);
 		}
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
 				if (future.isDone() && future.isSuccess()) {
-					promise.onComplete();
+					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
 				}

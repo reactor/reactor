@@ -101,12 +101,12 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> close() {
+	public Promise<Boolean> close() {
 		if (workers.isEmpty()) {
 			throw new IllegalStateException("This ZeroMQ server has not been started");
 		}
 
-		Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+		Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
 
 		workers.forEachKeyValue(new CheckedProcedure2<ZeroMQWorker, Future<?>>() {
 			@Override
@@ -120,7 +120,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		threadPool.shutdownNow();
 
 		notifyShutdown();
-		promise.onComplete();
+		promise.onNext(true);
 
 		return promise;
 	}

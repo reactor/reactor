@@ -17,6 +17,7 @@
 package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -118,6 +119,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
 				.option(ChannelOption.SO_LINGER, options.linger())
 				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
+				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.remoteAddress(this.connectAddress)
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
@@ -170,20 +172,20 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> close() {
-		final Promise<Void> promise;
+	public Promise<Boolean> close() {
+		final Promise<Boolean> promise;
 		if (!closing) {
 			promise = Promises.ready(getEnvironment(), getDispatcher());
 			closing = true;
 		} else {
-			return Promises.success(null);
+			return Promises.success(true);
 		}
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
 				if (future.isDone() && future.isSuccess()) {
-					promise.onComplete();
+					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
 				}

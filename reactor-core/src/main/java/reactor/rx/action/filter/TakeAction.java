@@ -38,8 +38,8 @@ public class TakeAction<T> extends Action<T, T> {
 		broadcastNext(ev);
 
 		if (++counted >= limit || (endPredicate != null && !endPredicate.test(ev))) {
-			broadcastComplete();
 			cancel();
+			broadcastComplete();
 		}
 
 	}

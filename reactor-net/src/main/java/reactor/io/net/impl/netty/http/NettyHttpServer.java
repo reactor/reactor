@@ -132,16 +132,16 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> start() {
+	public Promise<Boolean> start() {
 		ChannelFuture bindFuture = bootstrap.bind();
-		final Promise<Void> promise = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
 					notifyStart();
-					promise.onComplete();
+					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
 				}
@@ -153,8 +153,8 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Promise<Void> shutdown() {
-		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+	public Promise<Boolean> shutdown() {
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
@@ -163,7 +163,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 			public void operationComplete(Future future) throws Exception {
 				if (groupsToShutdown.decrementAndGet() == 0) {
 					notifyShutdown();
-					d.onComplete();
+					d.onNext(true);
 				}
 			}
 		};

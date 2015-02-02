@@ -39,7 +39,9 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	private final    Subscriber<? super IN>    subscriber;
 	private final    NettyChannelStream<IN, ?> channelStream;
+
 	private volatile ByteBuf                   remainder;
+	private int i = 0;
 	private volatile PushSubscription<IN>      channelSubscription;
 
 	public NettyNetChannelInboundHandler(
@@ -75,7 +77,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 			this.channelSubscription = new PushSubscription<IN>(null, subscriber) {
 				@Override
 				protected void onRequest(long n) {
-					if(n == Long.MAX_VALUE){
+					if (n == Long.MAX_VALUE) {
 						ctx.channel().config().setAutoRead(true);
 					}
 					ctx.read();
@@ -84,7 +86,9 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				@Override
 				public void cancel() {
 					super.cancel();
-					ctx.close();
+					if (ctx.channel().isOpen()) {
+						ctx.close();
+					}
 				}
 			};
 			channelStream.registerOnPeer();
@@ -102,9 +106,10 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 		}
 
 		try {
+			super.channelReadComplete(ctx);
 			if (channelSubscription.pendingRequestSignals() > 0l) {
-				super.channelReadComplete(ctx);
 				if(!ctx.channel().config().isAutoRead()){
+					log.debug("CONTINUE "+ctx.channel());
 					ctx.read();
 				}
 			}
@@ -129,48 +134,54 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	@Override
 	@SuppressWarnings("unchecked")
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		if (!ByteBuf.class.isInstance(msg) || null == channelStream.getDecoder()) {
-			try {
-				channelSubscription.onNext((IN) msg);
-			} catch (Throwable t) {
-				channelSubscription.onError(t);
+		try {
+			log.info("read "+i++);
+			if (channelSubscription.isComplete()) {
+				return;
 			}
-			return;
-		}
 
-		ByteBuf data = (ByteBuf) msg;
-		if (remainder == null) {
+			if (!ByteBuf.class.isInstance(msg) || null == channelStream.getDecoder()) {
+				channelSubscription.onNext((IN) msg);
+				return;
+			}
+
+			ByteBuf data = (ByteBuf) msg;
+			if (remainder == null) {
+				try {
+					passToConnection(data);
+				} finally {
+					if (data.isReadable()) {
+						remainder = data;
+					} else {
+						data.release();
+					}
+				}
+				return;
+			}
+
+			if (!bufferHasSufficientCapacity(remainder, data)) {
+				ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
+				remainder.release();
+				remainder = combined;
+			} else {
+				remainder.writeBytes(data);
+			}
+			data.release();
+
 			try {
-				passToConnection(data);
+				passToConnection(remainder);
 			} finally {
-				if (data.isReadable()) {
-					remainder = data;
+				if (remainder.isReadable()) {
+					remainder.discardSomeReadBytes();
 				} else {
-					data.release();
+					remainder.release();
+					remainder = null;
 				}
 			}
-			return;
+		} catch (Throwable t) {
+			channelSubscription.onError(t);
 		}
 
-		if (!bufferHasSufficientCapacity(remainder, data)) {
-			ByteBuf combined = createCombinedBuffer(remainder, data, ctx);
-			remainder.release();
-			remainder = combined;
-		} else {
-			remainder.writeBytes(data);
-		}
-		data.release();
-
-		try {
-			passToConnection(remainder);
-		} finally {
-			if (remainder.isReadable()) {
-				remainder.discardSomeReadBytes();
-			} else {
-				remainder.release();
-				remainder = null;
-			}
-		}
 	}
 
 	@Override
