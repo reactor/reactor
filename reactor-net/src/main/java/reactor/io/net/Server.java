@@ -17,8 +17,6 @@
 package reactor.io.net;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.fn.BiConsumer;
 import reactor.fn.Function;
 import reactor.rx.Promise;
 
@@ -35,14 +33,14 @@ import reactor.rx.Promise;
 public interface Server<IN, OUT, CONN extends Channel<IN, OUT>> extends Publisher<CONN> {
 
 	/**
-	 * Start and bind this {@literal NetServer} to the configured listen port.
+	 * Start and bind this {@literal Server} to the configured listen port.
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is started
 	 */
 	Promise<Void> start();
 
 	/**
-	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
+	 * Shutdown this {@literal Server} and complete the returned {@link reactor.rx.Promise} when shut
 	 * down.
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
@@ -50,20 +48,11 @@ public interface Server<IN, OUT, CONN extends Channel<IN, OUT>> extends Publishe
 	Promise<Void> shutdown();
 
 	/**
-	 * Consume any
-	 * down.
+	 * A global handling pipeline that will be called on each new connection and will listen for signals emitted
+	 * by the returned Publisher to write back.
 	 *
-	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
+	 * @return this
 	 */
-	Server<IN, OUT, CONN> service(Function<CONN, ? extends Publisher<? extends OUT>> serviceFunction);
-
-
-	/**
-	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
-	 * down.
-	 *
-	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
-	 */
-	Server<IN, OUT, CONN> service(BiConsumer<CONN, Subscriber<? super OUT>> serviceConsumer);
+	Server<IN, OUT, CONN> pipeline(Function<CONN, ? extends Publisher<? extends OUT>> serviceFunction);
 
 }

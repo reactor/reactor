@@ -19,4 +19,4 @@
  *
  * @see <a href="https://github.com/netty/netty">https://github.com/netty/netty</a>
  */
-package reactor.io.net.netty;
+package reactor.io.net.impl.netty;

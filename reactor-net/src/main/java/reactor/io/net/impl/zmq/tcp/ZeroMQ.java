@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.zmq.tcp;
+package reactor.io.net.impl.zmq.tcp;
 
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.function.checked.CheckedFunction0;
@@ -37,10 +37,10 @@ import reactor.io.codec.StandardCodecs;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.NetStreams;
 import reactor.io.net.Spec;
+import reactor.io.net.impl.zmq.ZeroMQClientSocketOptions;
+import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.zmq.ZeroMQClientSocketOptions;
-import reactor.io.net.zmq.ZeroMQServerSocketOptions;
 import reactor.rx.Promise;
 
 import java.lang.reflect.Field;

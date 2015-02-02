@@ -31,11 +31,11 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.Client;
 import reactor.io.net.NetStreams;
 import reactor.io.net.Reconnect;
-import reactor.io.net.netty.NettyClientSocketOptions;
-import reactor.io.net.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
-import reactor.io.net.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
 
@@ -139,9 +139,9 @@ public class TcpClientTests {
 						.connect(new InetSocketAddress(echoServerPort))
 		);
 
-		client.connect((output, input) -> {
+		client.pipeline(input -> {
 			input.consume(d -> latch.countDown());
-			Streams.just("Hello").subscribe(output);
+			return Streams.just("Hello");
 		}).open();
 
 		latch.await(30, TimeUnit.SECONDS);
@@ -164,15 +164,15 @@ public class TcpClientTests {
 								.connect("localhost", echoServerPort)
 		);
 
-		client.connect((output, input) -> {
+		client.pipeline(input -> {
 			input.log("received").consume(s -> {
 				strings.add(s);
 				latch.countDown();
 			});
 
-			Streams.range(1, messages)
+			return Streams.range(1, messages)
 					.map(i -> "Hello World!")
-					.subscribeOn(env.getDefaultDispatcher(), output);
+					.subscribeOn(env.getDefaultDispatcher());
 		}).open();
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,

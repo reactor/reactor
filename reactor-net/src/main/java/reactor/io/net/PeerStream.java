@@ -90,6 +90,21 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		open.subscribe(s);
 	}
 
+	protected void doPipeline(
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			@Override
+			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+				addWritePublisher(serviceFunction.apply(inoutChannelStream));
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		});
+	}
+
 	/**
 	 * Notify this server's consumers that the server has errors.
 	 *

@@ -14,44 +14,44 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.zmq;
+package reactor.io.net.impl.zmq;
 
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.io.net.config.ClientSocketOptions;
+import reactor.io.net.config.ServerSocketOptions;
 
 /**
- * {@link reactor.io.net.config.ClientSocketOptions} that include ZeroMQ-specific configuration options.
+ * {@link reactor.io.net.config.ServerSocketOptions} that include ZeroMQ-specific configuration options.
  *
  * @author Jon Brisbin
  */
-public class ZeroMQClientSocketOptions extends ClientSocketOptions {
+public class ZeroMQServerSocketOptions extends ServerSocketOptions {
 
 	private ZContext context;
 	private int socketType = ZMQ.ROUTER;
 	private Consumer<ZMQ.Socket> socketConfigurer;
-	private String connectAddresses;
+	private String               listenAddresses;
 
 	/**
-	 * Get the {@link org.zeromq.ZContext} to use for IO.
+	 * Get the {@link org.zeromq.ZMQ.Context} to use for IO.
 	 *
-	 * @return the {@link org.zeromq.ZContext} to use
+	 * @return the {@link org.zeromq.ZMQ.Context} to use
 	 */
 	public ZContext context() {
 		return context;
 	}
 
 	/**
-	 * Set the {@link org.zeromq.ZContext} to use for IO.
+	 * Set the {@link org.zeromq.ZMQ.Context} to use for IO.
 	 *
 	 * @param context
-	 * 		the {@link org.zeromq.ZContext} to use
+	 * 		the {@link org.zeromq.ZMQ.Context} to use
 	 *
 	 * @return {@literal this}
 	 */
-	public ZeroMQClientSocketOptions context(ZContext context) {
+	public ZeroMQServerSocketOptions context(ZContext context) {
 		Assert.notNull(context, "ZeroMQ Context cannot be null");
 		this.context = context;
 		return this;
@@ -74,10 +74,11 @@ public class ZeroMQClientSocketOptions extends ClientSocketOptions {
 	 *
 	 * @return {@literal this}
 	 */
-	public ZeroMQClientSocketOptions socketType(int socketType) {
+	public ZeroMQServerSocketOptions socketType(int socketType) {
 		this.socketType = socketType;
 		return this;
 	}
+
 
 	/**
 	 * The {@link reactor.fn.Consumer} responsible for configuring the underlying ZeroMQ socket.
@@ -96,17 +97,18 @@ public class ZeroMQClientSocketOptions extends ClientSocketOptions {
 	 *
 	 * @return {@literal this}
 	 */
-	public ZeroMQClientSocketOptions socketConfigurer(Consumer<ZMQ.Socket> socketConfigurer) {
+	public ZeroMQServerSocketOptions socketConfigurer(Consumer<ZMQ.Socket> socketConfigurer) {
 		this.socketConfigurer = socketConfigurer;
 		return this;
 	}
 
-	public String connectAddresses() {
-		return connectAddresses;
+
+	public String listenAddresses() {
+		return listenAddresses;
 	}
 
-	public ZeroMQClientSocketOptions connectAddresses(String connectAddresses) {
-		this.connectAddresses = connectAddresses;
+	public ZeroMQServerSocketOptions listenAddresses(String listenAddresses) {
+		this.listenAddresses = listenAddresses;
 		return this;
 	}
 

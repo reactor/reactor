@@ -12,7 +12,7 @@ import reactor.fn.Consumer;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.netty.udp.NettyDatagramServer;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
 import reactor.io.net.tcp.support.SocketUtils;
 
 import java.io.IOException;

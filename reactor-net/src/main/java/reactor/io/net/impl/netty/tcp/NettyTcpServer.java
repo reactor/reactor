@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.netty.tcp;
+package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -34,7 +34,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.netty.*;
+import reactor.io.net.impl.netty.*;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
@@ -177,7 +177,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	protected NettyChannelStream<IN, OUT>  bindChannel(Object nativeChannel, long prefetch) {
+	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel)nativeChannel;
 		//int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 

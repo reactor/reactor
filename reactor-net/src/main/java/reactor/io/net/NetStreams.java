@@ -19,6 +19,13 @@ import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.impl.netty.http.NettyHttpClient;
+import reactor.io.net.impl.netty.http.NettyHttpServer;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.netty.tcp.NettyTcpServer;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.udp.DatagramServer;
@@ -30,7 +37,7 @@ import reactor.rx.Streams;
  * <pre>
  * {@code
  * //echo server
- * NetStreams.tcpServer(1234).service( connection ->
+ * NetStreams.tcpServer(1234).pipeline( connection ->
  *   connection
  * )
  *
@@ -40,7 +47,7 @@ import reactor.rx.Streams;
  *   .onSuccess(log::info)
  * )
  *
- * NetStreams.tcpServer(spec -> spec.listen(1234)).service( intput, output -> {
+ * NetStreams.tcpServer(spec -> spec.listen(1234)).pipeline( intput, output -> {
  *      input.consume(log::info);
  *     Streams.period(1l).subscribe(output);
  * })
@@ -464,11 +471,11 @@ public class NetStreams extends Streams {
 			//IGNORE
 		}
 		if (hasNetty) {
-			DEFAULT_TCP_SERVER_TYPE = reactor.io.net.netty.tcp.NettyTcpServer.class;
-			DEFAULT_TCP_CLIENT_TYPE = reactor.io.net.netty.tcp.NettyTcpClient.class;
-			DEFAULT_UDP_SERVER_TYPE = reactor.io.net.netty.udp.NettyDatagramServer.class;
-			DEFAULT_HTTP_SERVER_TYPE = reactor.io.net.netty.http.NettyHttpServer.class;
-			DEFAULT_HTTP_CLIENT_TYPE = reactor.io.net.netty.http.NettyHttpClient.class;
+			DEFAULT_TCP_SERVER_TYPE = NettyTcpServer.class;
+			DEFAULT_TCP_CLIENT_TYPE = NettyTcpClient.class;
+			DEFAULT_UDP_SERVER_TYPE = NettyDatagramServer.class;
+			DEFAULT_HTTP_SERVER_TYPE = NettyHttpServer.class;
+			DEFAULT_HTTP_CLIENT_TYPE = NettyHttpClient.class;
 		} else {
 			boolean hasZMQ = false;
 
@@ -485,8 +492,8 @@ public class NetStreams extends Streams {
 
 
 			if (hasZMQ) {
-				DEFAULT_TCP_SERVER_TYPE = reactor.io.net.zmq.tcp.ZeroMQTcpServer.class;
-				DEFAULT_TCP_CLIENT_TYPE = reactor.io.net.zmq.tcp.ZeroMQTcpClient.class;
+				DEFAULT_TCP_SERVER_TYPE = ZeroMQTcpServer.class;
+				DEFAULT_TCP_CLIENT_TYPE = ZeroMQTcpClient.class;
 			} else {
 				DEFAULT_TCP_SERVER_TYPE = null;
 				DEFAULT_TCP_CLIENT_TYPE = null;

@@ -157,8 +157,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @throws java.lang.IllegalStateException if there is no environment initialized.
 	 */
 	public static void terminate() throws IllegalStateException {
-		get().shutdown();
-		enviromentReference.set(null);
+		Environment env = get();
+		enviromentReference.compareAndSet(env, null);
+		env.shutdown();
 	}
 
 	/**

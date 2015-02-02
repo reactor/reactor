@@ -10,9 +10,9 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.json.JacksonJsonCodec;
 import reactor.io.codec.kryo.KryoCodec;
 import reactor.io.net.AbstractNetClientServerTest;
-import reactor.io.net.zmq.tcp.ZeroMQ;
-import reactor.io.net.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
+import reactor.io.net.impl.zmq.tcp.ZeroMQ;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.rx.Streams;
 
 import java.util.concurrent.CountDownLatch;
@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 

@@ -17,8 +17,6 @@
 package reactor.io.net;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.fn.BiConsumer;
 import reactor.fn.Function;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
@@ -49,31 +47,23 @@ public interface Client<IN, OUT, CONN extends Channel<IN,OUT>> extends Publisher
 	 * @param reconnect
 	 * 		the reconnection strategy to use when disconnects happen
 	 *
-	 * @return
+	 * @return a Stream of reconnected connections
 	 */
 	Stream<ChannelStream<IN, OUT>> open(Reconnect reconnect);
 
 	/**
 	 * Close this client and the underlying channel.
+	 * @return a Promise successful when closed
 	 */
 	Promise<Void> close();
 
 	/**
-	 * Consume any
-	 * down.
+	 * A global handling pipeline that will be called on each new connection and will listen for signals emitted
+	 * by the returned Publisher to write back.
 	 *
-	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
+	 * @return this
 	 */
-	Client<IN, OUT, CONN> connect(Function<CONN, ? extends Publisher<? extends OUT>> connectFunction);
-
-
-	/**
-	 * Shutdown this {@literal NetServer} and complete the returned {@link reactor.rx.Promise} when shut
-	 * down.
-	 *
-	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link Server} is shut down
-	 */
-	Client<IN, OUT, CONN> connect(BiConsumer<Subscriber<? super OUT>, CONN> connectConsumer);
+	Client<IN, OUT, CONN> pipeline(Function<CONN, ? extends Publisher<? extends OUT>> serviceFunction);
 
 
 }

@@ -41,11 +41,11 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.netty.NettyServerSocketOptions;
-import reactor.io.net.netty.tcp.NettyTcpClient;
-import reactor.io.net.netty.tcp.NettyTcpServer;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.netty.tcp.NettyTcpServer;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
-import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.rx.Streams;
 import reactor.rx.action.Control;
 

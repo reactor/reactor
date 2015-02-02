@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class AbstractNetClientServerTest {
 
@@ -167,7 +168,7 @@ public class AbstractNetClientServerTest {
 						.codec(elCodec)
 		);
 
-		server.service(ch -> ch);
+		server.pipeline(ch -> ch);
 		assertServerStarted(server);
 
 		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
@@ -178,12 +179,12 @@ public class AbstractNetClientServerTest {
 
 		final Promise<T> p = Promises.prepare();
 
-		client.connect((output, input) -> {
+		client.pipeline(input -> {
 			input.subscribe(p);
-			Streams.just(data).subscribe(output);
+			return Streams.just(data);
 		});
 
-		ChannelStream<T, T> ch = assertClientStarted(client);
+		assertClientStarted(client);
 
 		T reply = p.await(5, TimeUnit.SECONDS);
 

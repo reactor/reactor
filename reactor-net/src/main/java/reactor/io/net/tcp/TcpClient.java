@@ -17,11 +17,8 @@
 package reactor.io.net.tcp;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.fn.BiConsumer;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -33,7 +30,6 @@ import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -70,41 +66,10 @@ public abstract class TcpClient<IN, OUT>
 		this.sslOptions = sslOptions;
 	}
 
-
-
 	@Override
-	public Client<IN, OUT, ChannelStream<IN, OUT>> connect(
-			final BiConsumer<Subscriber<? super OUT>, ChannelStream<IN, OUT>> serviceConsumer) {
-		consume(new Consumer<ChannelStream<IN, OUT>>() {
-			@Override
-			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
-				Broadcaster<OUT> b = Broadcaster.create();
-				addWritePublisher(b);
-				serviceConsumer.accept(b, inoutChannelStream);
-			}
-		}, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				notifyError(throwable);
-			}
-		});
-		return this;
-	}
-
-	@Override
-	public Client<IN, OUT, ChannelStream<IN, OUT>> connect(
+	public Client<IN, OUT, ChannelStream<IN, OUT>> pipeline(
 			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		consume(new Consumer<ChannelStream<IN, OUT>>() {
-			@Override
-			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
-				addWritePublisher(serviceFunction.apply(inoutChannelStream));
-			}
-		}, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				notifyError(throwable);
-			}
-		});
+		doPipeline(serviceFunction);
 		return this;
 	}
 

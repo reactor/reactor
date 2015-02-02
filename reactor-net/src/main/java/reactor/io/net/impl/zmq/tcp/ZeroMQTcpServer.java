@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.zmq.tcp;
+package reactor.io.net.impl.zmq.tcp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +33,10 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.zmq.ZeroMQChannelStream;
+import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
+import reactor.io.net.impl.zmq.ZeroMQWorker;
 import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.zmq.ZeroMQChannelStream;
-import reactor.io.net.zmq.ZeroMQServerSocketOptions;
-import reactor.io.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
@@ -51,8 +51,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static reactor.io.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
 /**
  * @author Jon Brisbin
@@ -141,7 +139,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						addr = "tcp://" + getListenAddress().getHostString() + ":" + getListenAddress().getPort();
 					}
 					if (log.isInfoEnabled()) {
-						String type = findSocketTypeName(socket.getType());
+						String type = ZeroMQ.findSocketTypeName(socket.getType());
 						log.info("BIND: starting ZeroMQ {} socket on {}", type, addr);
 					}
 					socket.bind(addr);

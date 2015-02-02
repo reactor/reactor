@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.netty.udp;
+package reactor.io.net.impl.netty.udp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
@@ -35,9 +35,9 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.netty.NettyChannelStream;
-import reactor.io.net.netty.NettyNetChannelInboundHandler;
-import reactor.io.net.netty.NettyServerSocketOptions;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -112,13 +112,13 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						return ch;
 					}
 				}).handler(new ChannelInitializer<NioDatagramChannel>() {
-			@Override
-			public void initChannel(final NioDatagramChannel ch) throws Exception {
-				ch.config().setConnectTimeoutMillis(options.timeout());
-				ch.config().setAutoRead(false);
-				bindChannel(ch, options.prefetch());
-			}
-		});
+					@Override
+					public void initChannel(final NioDatagramChannel ch) throws Exception {
+						ch.config().setConnectTimeoutMillis(options.timeout());
+						ch.config().setAutoRead(false);
+						bindChannel(ch, options.prefetch());
+					}
+				});
 
 		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);

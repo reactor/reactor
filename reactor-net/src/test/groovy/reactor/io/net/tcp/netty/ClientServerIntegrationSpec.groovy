@@ -22,8 +22,8 @@ import reactor.io.codec.LengthFieldCodec
 import reactor.io.codec.json.JsonCodec
 import reactor.io.net.Channel
 import reactor.io.net.Spec
-import reactor.io.net.netty.tcp.NettyTcpClient
-import reactor.io.net.netty.tcp.NettyTcpServer
+import reactor.io.net.impl.netty.tcp.NettyTcpClient
+import reactor.io.net.impl.netty.tcp.NettyTcpServer
 import reactor.io.net.tcp.support.SocketUtils
 import spock.lang.Ignore
 import spock.lang.Specification

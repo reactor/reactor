@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.zmq;
+package reactor.io.net.impl.zmq;
 
 import com.gs.collections.api.list.MutableList;
 import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;

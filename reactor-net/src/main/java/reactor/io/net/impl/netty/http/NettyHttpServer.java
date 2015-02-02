@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.netty.http;
+package reactor.io.net.impl.netty.http;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -35,7 +35,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpServer;
-import reactor.io.net.netty.*;
+import reactor.io.net.impl.netty.*;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;

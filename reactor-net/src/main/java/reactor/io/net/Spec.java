@@ -56,8 +56,6 @@ public interface Spec {
 	//
 	//   Client and Server Specifications
 	//
-
-
 	public abstract static class Server<IN, OUT,
 			CONN extends Channel<IN,OUT>,
 			S extends Server<IN, OUT, CONN, S, N>,

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.zmq.tcp;
+package reactor.io.net.impl.zmq.tcp;
 
 import com.gs.collections.api.map.MutableMap;
 import com.gs.collections.impl.block.procedure.checked.CheckedProcedure2;
@@ -37,10 +37,10 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.zmq.ZeroMQChannelStream;
+import reactor.io.net.impl.zmq.ZeroMQClientSocketOptions;
+import reactor.io.net.impl.zmq.ZeroMQWorker;
 import reactor.io.net.tcp.TcpClient;
-import reactor.io.net.zmq.ZeroMQChannelStream;
-import reactor.io.net.zmq.ZeroMQClientSocketOptions;
-import reactor.io.net.zmq.ZeroMQWorker;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
@@ -54,8 +54,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static reactor.io.net.zmq.tcp.ZeroMQ.findSocketTypeName;
 
 /**
  * @author Jon Brisbin
@@ -167,7 +165,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				try {
 					String addr = createConnectAddress();
 					if (log.isInfoEnabled()) {
-						String type = findSocketTypeName(socket.getType());
+						String type = ZeroMQ.findSocketTypeName(socket.getType());
 						log.info("CONNECT: connecting ZeroMQ {} socket to {}", type, addr);
 					}
 

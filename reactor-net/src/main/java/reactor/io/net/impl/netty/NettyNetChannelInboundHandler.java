@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.netty;
+package reactor.io.net.impl.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
