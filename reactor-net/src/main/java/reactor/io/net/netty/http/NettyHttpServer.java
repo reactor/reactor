@@ -126,14 +126,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
 
-						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-
-						ch.pipeline().addLast(
-								new NettyNetChannelInboundHandler<IN>(
-										netChannel.in(), netChannel),
-								new NettyNetChannelOutboundHandler()
-						);
-
+						bindChannel(ch, options.prefetch());
 					}
 				});
 	}
@@ -181,18 +174,27 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 		return d;
 	}
-
 	@Override
-	protected NettyChannelStream<IN, OUT> createChannel(Object nativeChannel, long prefetch) {
-		return new NettyChannelStream<IN, OUT>(
+	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+		SocketChannel ch = (SocketChannel)nativeChannel;
+		//int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
+
+		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
 				getDefaultCodec(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,
 				this,
-				new NettyEventLoopDispatcher(((Channel) nativeChannel).eventLoop(), 256),
+				new NettyEventLoopDispatcher(ch.eventLoop(), 256),
 				getDispatcher(),
-				(Channel) nativeChannel
+				ch
 		);
+
+		ch.pipeline().addLast(
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
+				new NettyNetChannelOutboundHandler()
+		);
+
+		return netChannel;
 	}
 
 }

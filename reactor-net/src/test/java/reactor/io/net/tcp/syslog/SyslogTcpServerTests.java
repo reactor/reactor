@@ -32,11 +32,10 @@ import org.junit.Test;
 import reactor.Environment;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
+import reactor.io.net.NetStreams;
 import reactor.io.net.codec.syslog.SyslogCodec;
 import reactor.io.net.codec.syslog.SyslogMessage;
-import reactor.io.net.netty.tcp.NettyTcpServer;
 import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.syslog.hdfs.HdfsConsumer;
 
 import java.io.IOException;
@@ -141,13 +140,14 @@ public class SyslogTcpServerTests {
 		conf.addResource("/usr/local/Cellar/hadoop/1.1.2/libexec/conf/core-site.xml");
 		final HdfsConsumer hdfs = new HdfsConsumer(conf, "loadtests", "syslog");
 
-		TcpServer<SyslogMessage, Void> server = new TcpServerSpec<SyslogMessage, Void>(NettyTcpServer.class)
-				.env(env)
-						//.using(SynchronousDispatcher.INSTANCE)
-						//.dispatcher(Environment.DISPATCHER_GROUP)
-				.dispatcher(Environment.SHARED)
-				.codec(new SyslogCodec())
-				.get();
+		TcpServer<SyslogMessage, Void> server = NetStreams.tcpServer(spec ->
+						spec
+								.env(env)
+										//.using(SynchronousDispatcher.INSTANCE)
+										//.dispatcher(Environment.DISPATCHER_GROUP)
+								.dispatcher(Environment.SHARED)
+								.codec(new SyslogCodec())
+		);
 
 		server.consume(conn -> {
 					conn.consume(msg -> {
@@ -157,6 +157,7 @@ public class SyslogTcpServerTests {
 					conn.consume(hdfs);
 				}
 		);
+
 		server.start().await();
 
 		for (int i = 0; i < threads; i++) {

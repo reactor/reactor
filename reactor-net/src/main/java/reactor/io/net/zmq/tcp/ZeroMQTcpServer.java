@@ -150,12 +150,11 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						public void accept(GroupedStream<String, ZMsg> stringZMsgGroupedStream) {
 
 							final ZeroMQChannelStream<IN, OUT> netChannel =
-									createChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
+									bindChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
 											.setConnectionId(stringZMsgGroupedStream.key())
 											.setSocket(socket);
 
-							notifyNewChannel(netChannel);
-							mergeWrite(netChannel);
+							netChannel.registerOnPeer();
 
 							stringZMsgGroupedStream.consume(new Consumer<ZMsg>() {
 								@Override
@@ -197,7 +196,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	protected ZeroMQChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
+	protected ZeroMQChannelStream<IN, OUT> bindChannel(Object ioChannel, long prefetch) {
 		return new ZeroMQChannelStream<IN, OUT>(
 				getEnvironment(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,

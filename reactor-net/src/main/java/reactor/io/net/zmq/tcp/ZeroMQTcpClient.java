@@ -128,8 +128,9 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	protected ZeroMQChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
-		final ZeroMQChannelStream<IN, OUT> ch = new ZeroMQChannelStream<IN, OUT>(
+	protected ZeroMQChannelStream<IN, OUT> bindChannel(Object ioChannel, long prefetch) {
+
+		return new ZeroMQChannelStream<IN, OUT>(
 				getEnvironment(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,
 				this,
@@ -137,7 +138,6 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				getDispatcher(),
 				getDefaultCodec()
 		);
-		return ch;
 	}
 
 	private void doOpen() {
@@ -175,12 +175,11 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					notifyStart();
 
 					final ZeroMQChannelStream<IN, OUT> netChannel =
-							createChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
+							bindChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
 							.setConnectionId(id.toString())
 							.setSocket(socket);
 
-					notifyNewChannel(netChannel);
-					mergeWrite(netChannel);
+					netChannel.registerOnPeer();
 
 					broadcaster.consume(new Consumer<ZMsg>() {
 						@Override

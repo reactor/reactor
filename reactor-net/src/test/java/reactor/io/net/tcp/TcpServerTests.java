@@ -19,7 +19,6 @@ package reactor.io.net.tcp;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufProcessor;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
@@ -45,7 +44,6 @@ import reactor.io.net.config.SslOptions;
 import reactor.io.net.netty.NettyServerSocketOptions;
 import reactor.io.net.netty.tcp.NettyTcpClient;
 import reactor.io.net.netty.tcp.NettyTcpServer;
-import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
 import reactor.rx.Streams;
@@ -186,30 +184,30 @@ public class TcpServerTests {
 										.reuseAddr(true)
 										.tcpNoDelay(true))
 								.listen(port)
-								.codec(new LengthFieldCodec<byte[], byte[]>(StandardCodecs.BYTE_ARRAY_CODEC))
+								.codec(new LengthFieldCodec<>(StandardCodecs.BYTE_ARRAY_CODEC))
 		);
 
 		System.out.println(latch.getCount());
 
-		Control c = server.consume( ch ->
-				System.out.println(ch.consume(new Consumer<byte[]>() {
-					long num = 1;
+		Control c = server.consume(ch ->
+						System.out.println(ch.consume(new Consumer<byte[]>() {
+							long num = 1;
 
-					@Override
-					public void accept(byte[] bytes) {
-						latch.countDown();
-						ByteBuffer bb = ByteBuffer.wrap(bytes);
-						if (bb.remaining() < 4) {
-							System.err.println("insufficient len: " + bb.remaining());
-						}
-						int next = bb.getInt();
-						if (next != num++) {
-							System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
-						}else{
-							System.out.println(Thread.currentThread().getName()+": received "+ (num - 1 ));
-						}
-					}
-				}).debug())
+							@Override
+							public void accept(byte[] bytes) {
+								latch.countDown();
+								ByteBuffer bb = ByteBuffer.wrap(bytes);
+								if (bb.remaining() < 4) {
+									System.err.println("insufficient len: " + bb.remaining());
+								}
+								int next = bb.getInt();
+								if (next != num++) {
+									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
+								} else {
+									System.out.println(Thread.currentThread().getName() + ": received " + (num - 1));
+								}
+							}
+						}).debug())
 		);
 
 		server.start().await();
@@ -223,7 +221,7 @@ public class TcpServerTests {
 		latch.await(10, TimeUnit.SECONDS);
 		System.out.println(c.debug());
 		System.out.println(latch.getCount());
-		assertTrue("Latch was counted down: "+latch.getCount(), latch.getCount() == 0);
+		assertTrue("Latch was counted down: " + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -237,16 +235,17 @@ public class TcpServerTests {
 	public void tcpServerHandlesFrameData() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		TcpServer<Frame, Frame> server = new TcpServerSpec<Frame, Frame>(NettyTcpServer.class)
-				.env(env)
-				.synchronousDispatcher()
-				.options(new ServerSocketOptions()
-						.backlog(1000)
-						.reuseAddr(true)
-						.tcpNoDelay(true))
-				.listen(port)
-				.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
-				.get();
+		TcpServer server = NetStreams.<Frame, Frame>tcpServer(NettyTcpServer.class, spec ->
+						spec
+								.env(env)
+								.synchronousDispatcher()
+								.options(new ServerSocketOptions()
+										.backlog(1000)
+										.reuseAddr(true)
+										.tcpNoDelay(true))
+								.listen(port)
+								.codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
+		);
 
 		server.consume(new Consumer<ChannelStream<Frame, Frame>>() {
 			@Override
@@ -293,7 +292,7 @@ public class TcpServerTests {
 								.connect("localhost", port)
 		);
 
-		TcpServer<Buffer, Buffer> server =  NetStreams.<Buffer, Buffer>tcpServer(NettyTcpServer.class , s ->
+		TcpServer server = NetStreams.<Buffer, Buffer>tcpServer(NettyTcpServer.class, s ->
 						s.env(env)
 								.synchronousDispatcher()
 								.listen(port)
@@ -365,11 +364,11 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(msgs);
 
-		TcpServer<ByteBuf, ByteBuf> server = new TcpServerSpec<ByteBuf, ByteBuf>(NettyTcpServer.class)
-				.env(env)
-				.listen(port)
-				.dispatcher(SynchronousDispatcher.INSTANCE)
-				.get();
+		TcpServer<ByteBuf, ByteBuf> server = NetStreams.tcpServer(spec -> spec
+						.env(env)
+						.listen(port)
+						.dispatcher(SynchronousDispatcher.INSTANCE)
+		);
 
 		server.consume(new Consumer<ChannelStream<ByteBuf, ByteBuf>>() {
 			@Override
@@ -411,20 +410,16 @@ public class TcpServerTests {
 	public void exposesHttpServer() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		final TcpServer<HttpRequest, HttpResponse> server
-				= new TcpServerSpec<HttpRequest, HttpResponse>(NettyTcpServer.class)
+		final TcpServer<HttpRequest, HttpResponse> server = NetStreams.tcpServer(spec -> spec
 				.env(env)
 				.listen(port)
 				.options(new NettyServerSocketOptions()
-						.pipelineConfigurer(new Consumer<ChannelPipeline>() {
-							@Override
-							public void accept(ChannelPipeline pipeline) {
-								pipeline.addLast(new HttpRequestDecoder());
-								pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-								pipeline.addLast(new HttpResponseEncoder());
-							}
+						.pipelineConfigurer(pipeline -> {
+							pipeline.addLast(new HttpRequestDecoder());
+							pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+							pipeline.addLast(new HttpResponseEncoder());
 						}))
-				.get();
+		);
 
 		server.consume(new Consumer<ChannelStream<HttpRequest, HttpResponse>>() {
 			@Override
@@ -456,7 +451,7 @@ public class TcpServerTests {
 			threadPool.submit(new HttpRequestWriter(port));
 		}
 		latch.await(15, TimeUnit.SECONDS);
-		assertTrue("Latch was counted down : "+latch.getCount(), latch.getCount() == 0);
+		assertTrue("Latch was counted down : " + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get());
@@ -472,10 +467,10 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 		ZContext zmq = new ZContext();
 
-		TcpServer<Buffer, Buffer> server = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
-				.env(env)
-				.listen("127.0.0.1", port)
-				.get();
+		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(ZeroMQTcpServer.class, spec -> spec
+						.env(env)
+						.listen("127.0.0.1", port)
+		);
 
 		server.consume(ch -> {
 			ch.consume(buff -> {

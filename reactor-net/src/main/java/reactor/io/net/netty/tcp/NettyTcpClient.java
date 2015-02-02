@@ -131,18 +131,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
-						}else{
+						} else {
 							ch.config().setAutoRead(false);
 						}
+
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
 
-						ch.pipeline().addLast(
-								new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-								new NettyNetChannelOutboundHandler()
-						);
+						bindChannel(ch, options.prefetch());
 					}
 				});
 
@@ -196,11 +193,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	protected NettyChannelStream<IN, OUT> createChannel(Object nativeChannel, long prefetch) {
+	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
-		return new NettyChannelStream<IN, OUT>(
+		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
 				getDefaultCodec(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,
@@ -209,6 +206,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				getDispatcher(),
 				ch
 		);
+
+		ch.pipeline().addLast(
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
+				new NettyNetChannelOutboundHandler()
+		);
+
+		return netChannel;
 	}
 
 	private void openChannel(ChannelFutureListener listener) {

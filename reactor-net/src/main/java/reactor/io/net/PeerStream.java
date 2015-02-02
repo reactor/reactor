@@ -138,9 +138,9 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	/**
 	 * Subclasses should implement this method and provide a {@link ChannelStream} object.
 	 *
-	 * @return The new {@link Channel} object.
+	 * @return the bound Reactor Channel Stream
 	 */
-	protected abstract ChannelStream<IN, OUT> createChannel(Object nativeChannel, long prefetch);
+	protected abstract Channel<IN, OUT> bindChannel(Object nativeChannel, long prefetch);
 
 	protected Consumer<Throwable> createErrorConsumer(final ChannelStream<IN, OUT> ch) {
 		return new Consumer<Throwable>() {

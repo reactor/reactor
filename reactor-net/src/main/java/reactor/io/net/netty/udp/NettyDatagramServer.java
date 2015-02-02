@@ -116,28 +116,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			public void initChannel(final NioDatagramChannel ch) throws Exception {
 				ch.config().setConnectTimeoutMillis(options.timeout());
 				ch.config().setAutoRead(false);
-
-				final NettyChannelStream<IN, OUT> netChannel = createChannel(ch, options.prefetch());
-
-				ch.pipeline().addLast(
-						new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel){
-							@Override
-							public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-								if(msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())){
-									super.channelRead(ctx, ((DatagramPacket)msg).content());
-								}else{
-									super.channelRead(ctx, msg);
-								}
-							}
-						},
-						new ChannelOutboundHandlerAdapter() {
-							@Override
-							public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-								super.write(ctx, msg, promise);
-							}
-						});
+				bindChannel(ch, options.prefetch());
 			}
-		});;
+		});
 
 		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);
@@ -254,16 +235,37 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 	@Override
-	protected NettyChannelStream<IN, OUT> createChannel(Object ioChannel, long prefetch) {
-		return new NettyChannelStream<IN, OUT>(
+	protected NettyChannelStream<IN, OUT> bindChannel(Object _ioChannel, long prefetch) {
+		NioDatagramChannel ioChannel = (NioDatagramChannel) _ioChannel;
+		NettyChannelStream<IN, OUT> netChannel =  new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
 				getDefaultCodec(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,
 				this,
 				SynchronousDispatcher.INSTANCE,
 				getDispatcher(),
-				(NioDatagramChannel) ioChannel
+				ioChannel
 		);
+
+		ioChannel.pipeline().addLast(
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel){
+					@Override
+					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+						if(msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())){
+							super.channelRead(ctx, ((DatagramPacket)msg).content());
+						}else{
+							super.channelRead(ctx, msg);
+						}
+					}
+				},
+				new ChannelOutboundHandlerAdapter() {
+					@Override
+					public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+						super.write(ctx, msg, promise);
+					}
+				});
+
+		return netChannel;
 	}
 
 	private static class PromiseCompletingListener implements ChannelFutureListener {

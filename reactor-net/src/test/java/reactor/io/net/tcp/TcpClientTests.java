@@ -33,8 +33,6 @@ import reactor.io.net.NetStreams;
 import reactor.io.net.Reconnect;
 import reactor.io.net.netty.NettyClientSocketOptions;
 import reactor.io.net.netty.tcp.NettyTcpClient;
-import reactor.io.net.tcp.spec.TcpClientSpec;
-import reactor.io.net.tcp.spec.TcpServerSpec;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.io.net.zmq.tcp.ZeroMQTcpClient;
 import reactor.io.net.zmq.tcp.ZeroMQTcpServer;
@@ -135,11 +133,11 @@ public class TcpClientTests {
 	public void testTcpClientWithInetSocketAddress() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
-				.env(env)
-				.codec(StandardCodecs.STRING_CODEC)
-				.connect(new InetSocketAddress(echoServerPort))
-				.get();
+		TcpClient<String, String> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
+						.env(env)
+						.codec(StandardCodecs.STRING_CODEC)
+						.connect(new InetSocketAddress(echoServerPort))
+		);
 
 		client.connect((output, input) -> {
 			input.consume(d -> latch.countDown());
@@ -189,11 +187,11 @@ public class TcpClientTests {
 
 	@Test
 	public void closingPromiseIsFulfilled() throws InterruptedException {
-		TcpClient<String, String> client = new TcpClientSpec<String, String>(NettyTcpClient.class)
-				.env(env)
-				.codec(null)
-				.connect("localhost", echoServerPort)
-				.get();
+		TcpClient<String, String> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
+						.env(env)
+						.codec(null)
+						.connect("localhost", echoServerPort)
+		);
 
 		assertTrue("Client was not closed within 30 seconds", client.close().awaitSuccess(30, TimeUnit.SECONDS));
 	}
@@ -329,7 +327,7 @@ public class TcpClientTests {
 	@Test
 	public void nettyNetChannelAcceptsNettyChannelHandlers() throws InterruptedException {
 		ChannelStream<HttpObject, HttpRequest> connection =
-				new TcpClientSpec<HttpObject, HttpRequest>(NettyTcpClient.class)
+				NetStreams.<HttpObject, HttpRequest>tcpClient(NettyTcpClient.class, spec -> spec
 						.env(env)
 						.options(new NettyClientSocketOptions()
 								.pipelineConfigurer(new Consumer<ChannelPipeline>() {
@@ -339,7 +337,7 @@ public class TcpClientTests {
 									}
 								}))
 						.connect("www.google.com", 80)
-						.get().open().await();
+				).open().await();
 
 		final CountDownLatch latch = new CountDownLatch(1);
 		connection.next().onSuccess(resp -> {
@@ -357,10 +355,10 @@ public class TcpClientTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
 
-		TcpServer<Buffer, Buffer> zmqs = new TcpServerSpec<Buffer, Buffer>(ZeroMQTcpServer.class)
-				.env(env)
-				.listen(port)
-				.get();
+		TcpServer<Buffer, Buffer> zmqs = NetStreams.tcpServer(ZeroMQTcpServer.class, spec -> spec
+						.env(env)
+						.listen(port)
+		);
 
 		zmqs.consume(ch -> {
 			ch.consume(buff -> {
