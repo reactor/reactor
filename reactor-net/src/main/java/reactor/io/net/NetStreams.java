@@ -15,6 +15,7 @@
  */
 package reactor.io.net;
 
+import reactor.Environment;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -110,6 +111,9 @@ public class NetStreams extends Streams {
 		return tcpServer(new Function<Spec.TcpServer<Buffer, Buffer>, Spec.TcpServer<Buffer, Buffer>>() {
 			@Override
 			public Spec.TcpServer<Buffer, Buffer> apply(Spec.TcpServer<Buffer, Buffer> serverSpec) {
+				if(Environment.alive()){
+					serverSpec.env(Environment.get());
+				}
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -174,6 +178,9 @@ public class NetStreams extends Streams {
 		return tcpClient(new Function<Spec.TcpClient<Buffer, Buffer>, Spec.TcpClient<Buffer, Buffer>>() {
 			@Override
 			public Spec.TcpClient<Buffer, Buffer> apply(Spec.TcpClient<Buffer, Buffer> clientSpec) {
+				if(Environment.alive()){
+					clientSpec.env(Environment.get());
+				}
 				return clientSpec.connect(bindAddress, port);
 			}
 		});
@@ -239,6 +246,9 @@ public class NetStreams extends Streams {
 		return httpServer(new Function<Spec.HttpServer<IN, OUT>, Spec.HttpServer<IN, OUT>>() {
 			@Override
 			public Spec.HttpServer<IN, OUT> apply(Spec.HttpServer<IN, OUT> serverSpec) {
+				if(Environment.alive()){
+					serverSpec.env(Environment.get());
+				}
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -303,6 +313,9 @@ public class NetStreams extends Streams {
 		return httpClient(new Function<Spec.HttpClient<Buffer, Buffer>, Spec.HttpClient<Buffer, Buffer>>() {
 			@Override
 			public Spec.HttpClient<Buffer, Buffer> apply(Spec.HttpClient<Buffer, Buffer> clientSpec) {
+				if(Environment.alive()){
+					clientSpec.env(Environment.get());
+				}
 				return clientSpec.connect(bindAddress, port);
 			}
 		});
@@ -368,6 +381,9 @@ public class NetStreams extends Streams {
 		return udpServer(new Function<Spec.DatagramServer<Buffer, Buffer>, Spec.DatagramServer<Buffer, Buffer>>() {
 			@Override
 			public Spec.DatagramServer<Buffer, Buffer> apply(Spec.DatagramServer<Buffer, Buffer> serverSpec) {
+				if(Environment.alive()){
+					serverSpec.env(Environment.get());
+				}
 				return serverSpec.listen(bindAddress, port);
 			}
 		});

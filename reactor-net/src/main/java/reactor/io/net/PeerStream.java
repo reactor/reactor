@@ -67,11 +67,7 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	                     Dispatcher dispatcher,
 	                     Codec<Buffer, IN, OUT> codec,
 	                     long prefetch) {
-		if(env == null && Environment.alive()){
-			this.env = Environment.get();
-		}else{
-			this.env = env;
-		}
+		this.env = env;
 		this.defaultCodec = codec;
 		this.prefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
 		this.dispatcher = dispatcher;
