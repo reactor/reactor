@@ -107,7 +107,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
@@ -120,6 +120,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				.option(ChannelOption.SO_LINGER, options.linger())
 				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+				.option(ChannelOption.AUTO_READ, sslOptions != null)
 				.remoteAddress(this.connectAddress)
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override

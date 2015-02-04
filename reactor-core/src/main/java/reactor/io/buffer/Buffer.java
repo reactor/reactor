@@ -1070,9 +1070,9 @@ public class Buffer implements Recyclable,
 	 * @param delimiter
 	 * 		The delimiter on which to split this buffer.
 	 *
-	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
-	public Iterable<View> split(int delimiter) {
+	public List<View> split(int delimiter) {
 		return split(new ArrayList<View>(), delimiter, false);
 	}
 
@@ -1084,9 +1084,9 @@ public class Buffer implements Recyclable,
 	 * @param delimiter
 	 * 		The delimiter on which to split this buffer.
 	 *
-	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
-	public Iterable<View> split(List<View> views, int delimiter) {
+	public List<View> split(List<View> views, int delimiter) {
 		return split(views, delimiter, false);
 	}
 
@@ -1098,9 +1098,9 @@ public class Buffer implements Recyclable,
 	 * @param stripDelimiter
 	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 *
-	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
-	public Iterable<View> split(int delimiter, boolean stripDelimiter) {
+	public List<View> split(int delimiter, boolean stripDelimiter) {
 		return split(new ArrayList<View>(), delimiter, stripDelimiter);
 	}
 
@@ -1115,9 +1115,9 @@ public class Buffer implements Recyclable,
 	 * @param stripDelimiter
 	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 *
-	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
+	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
-	public Iterable<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
+	public List<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
 		snapshot();
 
 		int start = this.position;

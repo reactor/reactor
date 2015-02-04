@@ -30,7 +30,7 @@ import java.util.Date;
  *
  * @author Jon Brisbin
  */
-public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
+public class SyslogCodec extends Codec<Buffer, SyslogMessage, Void> {
 
 	private static final int MAXIMUM_SEVERITY = 7;
 	private static final int MAXIMUM_FACILITY = 23;

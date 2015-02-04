@@ -34,9 +34,7 @@ import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.NetStreams;
-import reactor.io.net.Spec;
+import reactor.io.net.*;
 import reactor.io.net.impl.zmq.ZeroMQClientSocketOptions;
 import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
 import reactor.io.net.tcp.TcpClient;
@@ -134,7 +132,7 @@ public class ZeroMQ<T> {
 		return createServer(addrs, ZMQ.ROUTER);
 	}
 
-	public Promise<ChannelStream<T, T>> createClient(String addrs, int socketType) {
+	public Promise<ChannelStream<T, T>> createClient(final String addrs, final int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = NetStreams.tcpClient(ZeroMQTcpClient.class,
@@ -155,7 +153,7 @@ public class ZeroMQ<T> {
 		return client.open();
 	}
 
-	public Promise<ChannelStream<T, T>> createServer(String addrs, int socketType) {
+	public Promise<ChannelStream<T, T>> createServer(final String addrs, final int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpServer<T, T> server = NetStreams.<T, T>tcpServer(ZeroMQTcpServer.class,
@@ -188,19 +186,19 @@ public class ZeroMQ<T> {
 		}
 		shutdown = true;
 
-		servers.removeIf(new CheckedPredicate<reactor.io.net.tcp.TcpServer>() {
+		servers.removeIf(new CheckedPredicate<Server>() {
 			@Override
-			public boolean safeAccept(reactor.io.net.tcp.TcpServer server) throws Exception {
-				Promise<Void> promise = server.shutdown();
+			public boolean safeAccept(Server server) throws Exception {
+				Promise promise = server.shutdown();
 				promise.await(60, TimeUnit.SECONDS);
 				Assert.isTrue(promise.isSuccess(), "Server " + server + " not properly shut down");
 				return true;
 			}
 		});
-		clients.removeIf(new CheckedPredicate<reactor.io.net.tcp.TcpClient>() {
+		clients.removeIf(new CheckedPredicate<Client>() {
 			@Override
-			public boolean safeAccept(reactor.io.net.tcp.TcpClient client) throws Exception {
-				Promise<Void> promise = client.close();
+			public boolean safeAccept(Client client) throws Exception {
+				Promise promise = client.close();
 				promise.await(60, TimeUnit.SECONDS);
 				Assert.isTrue(promise.isSuccess(), "Client " + client + " not properly shut down");
 				return true;

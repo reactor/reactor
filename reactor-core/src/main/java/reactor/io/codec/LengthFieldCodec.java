@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
  *
  * @author Jon Brisbin
  */
-public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class LengthFieldCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final int                    lengthFieldLength;
 	private final Codec<Buffer, IN, OUT> delegate;

@@ -25,7 +25,7 @@ import reactor.io.buffer.Buffer;
  *
  * @author Jon Brisbin
  */
-public class FrameCodec implements Codec<Buffer, Frame, Frame> {
+public class FrameCodec extends Codec<Buffer, Frame, Frame> {
 
 	public enum LengthField {
 		SHORT, INT, LONG

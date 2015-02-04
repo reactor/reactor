@@ -17,6 +17,7 @@
 package reactor.io.net.tcp.netty
 
 import reactor.Environment
+import reactor.io.IOStreams
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
@@ -72,7 +73,7 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess{
+			server.shutdown().onSuccess {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
@@ -111,52 +112,51 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess{
+			server.shutdown().onSuccess {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
 	}
 
-	def "flush every 5 elems"() {
-		given: "a TcpServer with JSON defaultCodec"
-
+	def "flush every 5 elems with manual decoding"() {
+		given: "a TcpServer and a TcpClient"
 			def latch = new CountDownLatch(10)
-			def server = NetStreams.<Pojo, Pojo> tcpServer {
-				it.env(env).
-						listen(port).
-						codec(new JsonCodec<Pojo, Pojo>(Pojo))
-			}
 
-			def client = NetStreams.<Pojo, Pojo> tcpClient {
-				it.env(env).
-						connect("localhost", port).
-						codec(new JsonCodec<Pojo, Pojo>(Pojo))
-			}
+			def server = NetStreams.tcpServer(port)
+			def client = NetStreams.tcpClient("localhost", port)
+			def codec = new JsonCodec<Pojo, Pojo>(Pojo)
 
-		when: "the client/server is prepared"
+		when: "the client/server are prepared"
 			server.pipeline { input ->
 				input
+						.nest()
+						.flatMap{ IOStreams.decode(codec, it) }
 						.log('serve')
+						.map(codec.encoder())
 						.capacity(5l)
 			}
 
 			client.pipeline { input ->
 				input
+						.nest()
+						.flatMap{ IOStreams.decode(codec, it) }
 						.log('receive')
 						.consume { latch.countDown() }
 
 				Streams.range(1, 10)
 						.map { new Pojo(name: 'test' + it) }
 						.log('send')
+						.map(codec.encoder())
+						.capacity(10l)
 			}
 
-		then: "the server was started"
-			server.start().flatMap { client.open() }.awaitSuccess(5, TimeUnit.SECONDS)
+		then: "the client/server were started"
+			server?.start()?.flatMap { client.open() }?.awaitSuccess(5, TimeUnit.SECONDS)
 			latch.await(10, TimeUnit.SECONDS)
 
 
-		cleanup: "the server is stopped"
-			client.close().flatMap { server.shutdown() }.awaitSuccess(5, TimeUnit.SECONDS)
+		cleanup: "the client/server where stopped"
+			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
 	static class SimpleClient extends Thread {

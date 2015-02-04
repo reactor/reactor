@@ -17,6 +17,7 @@ package reactor.io.net;
 
 import reactor.core.support.Assert;
 import reactor.fn.Function;
+import reactor.io.buffer.Buffer;
 import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.HttpServer;
 import reactor.io.net.impl.netty.http.NettyHttpClient;
@@ -78,45 +79,37 @@ public class NetStreams extends Streams {
 	// TCP
 
 	/**
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpServer<IN, OUT> tcpServer() {
+	public static TcpServer<Buffer, Buffer> tcpServer() {
 		return tcpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(int port) {
+	public static TcpServer<Buffer, Buffer> tcpServer(int port) {
 		return tcpServer(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
 	 * @param bindAddress
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(String bindAddress) {
+	public static TcpServer<Buffer, Buffer> tcpServer(String bindAddress) {
 		return tcpServer(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
 	 * @param bindAddress
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(final String bindAddress, final int port) {
-		return tcpServer(new Function<Spec.TcpServer<IN, OUT>, Spec.TcpServer<IN, OUT>>() {
+	public static TcpServer<Buffer, Buffer> tcpServer(final String bindAddress, final int port) {
+		return tcpServer(new Function<Spec.TcpServer<Buffer, Buffer>, Spec.TcpServer<Buffer, Buffer>>() {
 			@Override
-			public Spec.TcpServer<IN, OUT> apply(Spec.TcpServer<IN, OUT> serverSpec) {
+			public Spec.TcpServer<Buffer, Buffer> apply(Spec.TcpServer<Buffer, Buffer> serverSpec) {
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -150,45 +143,37 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpClient<IN, OUT> tcpClient() {
+	public static TcpClient<Buffer, Buffer> tcpClient() {
 		return tcpClient(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
 	 * @param bindAddress
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(String bindAddress) {
+	public static TcpClient<Buffer, Buffer> tcpClient(String bindAddress) {
 		return tcpClient(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(int port) {
+	public static TcpClient<Buffer, Buffer> tcpClient(int port) {
 		return tcpClient(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
 	 * @param bindAddress
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(final String bindAddress, final int port) {
-		return tcpClient(new Function<Spec.TcpClient<IN, OUT>, Spec.TcpClient<IN, OUT>>() {
+	public static TcpClient<Buffer, Buffer> tcpClient(final String bindAddress, final int port) {
+		return tcpClient(new Function<Spec.TcpClient<Buffer, Buffer>, Spec.TcpClient<Buffer, Buffer>>() {
 			@Override
-			public Spec.TcpClient<IN, OUT> apply(Spec.TcpClient<IN, OUT> clientSpec) {
+			public Spec.TcpClient<Buffer, Buffer> apply(Spec.TcpClient<Buffer, Buffer> clientSpec) {
 				return clientSpec.connect(bindAddress, port);
 			}
 		});
@@ -223,18 +208,14 @@ public class NetStreams extends Streams {
 	// HTTP
 
 	/**
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> HttpServer<IN, OUT> httpServer() {
+	public static HttpServer<Buffer, Buffer> httpServer() {
 		return httpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
 	 * @param bindAddress
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(String bindAddress) {
@@ -243,8 +224,6 @@ public class NetStreams extends Streams {
 
 	/**
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(int port) {
@@ -254,8 +233,6 @@ public class NetStreams extends Streams {
 	/**
 	 * @param bindAddress
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(final String bindAddress, final int port) {
@@ -295,45 +272,37 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> HttpClient<IN, OUT> httpClient() {
+	public static HttpClient<Buffer, Buffer> httpClient() {
 		return httpClient(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
 	 * @param bindAddress
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> HttpClient<IN, OUT> httpClient(String bindAddress) {
+	public static  HttpClient<Buffer, Buffer> httpClient(String bindAddress) {
 		return httpClient(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> HttpClient<IN, OUT> httpClient(int port) {
+	public static HttpClient<Buffer, Buffer> httpClient(int port) {
 		return httpClient(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
 	 * @param bindAddress
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> HttpClient<IN, OUT> httpClient(final String bindAddress, final int port) {
-		return httpClient(new Function<Spec.HttpClient<IN, OUT>, Spec.HttpClient<IN, OUT>>() {
+	public static HttpClient<Buffer, Buffer> httpClient(final String bindAddress, final int port) {
+		return httpClient(new Function<Spec.HttpClient<Buffer, Buffer>, Spec.HttpClient<Buffer, Buffer>>() {
 			@Override
-			public Spec.HttpClient<IN, OUT> apply(Spec.HttpClient<IN, OUT> clientSpec) {
+			public Spec.HttpClient<Buffer, Buffer> apply(Spec.HttpClient<Buffer, Buffer> clientSpec) {
 				return clientSpec.connect(bindAddress, port);
 			}
 		});
@@ -368,45 +337,37 @@ public class NetStreams extends Streams {
 	// UDP
 
 	/**
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> DatagramServer<IN, OUT> udpServer() {
+	public static DatagramServer<Buffer, Buffer> udpServer() {
 		return udpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
 	 * @param bindAddress
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> DatagramServer udpServer(String bindAddress) {
+	public static DatagramServer<Buffer, Buffer> udpServer(String bindAddress) {
 		return udpServer(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> DatagramServer udpServer(int port) {
+	public static DatagramServer<Buffer, Buffer> udpServer(int port) {
 		return udpServer(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
 	 * @param bindAddress
 	 * @param port
-	 * @param <IN>
-	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> DatagramServer<IN, OUT> udpServer(final String bindAddress, final int port) {
-		return udpServer(new Function<Spec.DatagramServer<IN, OUT>, Spec.DatagramServer<IN, OUT>>() {
+	public static DatagramServer<Buffer, Buffer> udpServer(final String bindAddress, final int port) {
+		return udpServer(new Function<Spec.DatagramServer<Buffer, Buffer>, Spec.DatagramServer<Buffer, Buffer>>() {
 			@Override
-			public Spec.DatagramServer<IN, OUT> apply(Spec.DatagramServer<IN, OUT> serverSpec) {
+			public Spec.DatagramServer<Buffer, Buffer> apply(Spec.DatagramServer<Buffer, Buffer> serverSpec) {
 				return serverSpec.listen(bindAddress, port);
 			}
 		});

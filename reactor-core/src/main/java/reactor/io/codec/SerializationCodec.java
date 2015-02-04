@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author Jon Brisbin
  */
-public abstract class SerializationCodec<E, IN, OUT> implements Codec<Buffer, IN, OUT> {
+public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Logger                 log   = LoggerFactory.getLogger(getClass());
 	private final Map<String, Class<IN>> types = new ConcurrentHashMap<String, Class<IN>>();
@@ -119,7 +119,7 @@ public abstract class SerializationCodec<E, IN, OUT> implements Codec<Buffer, IN
 		return type;
 	}
 
-	private class DelegateCodec implements Codec<Buffer, IN, OUT> {
+	private class DelegateCodec extends Codec<Buffer, IN, OUT> {
 		@Override
 		public Function<Buffer, IN> decoder(final Consumer<IN> next) {
 			return new Function<Buffer, IN>() {

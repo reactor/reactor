@@ -37,12 +37,11 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final    Subscriber<? super IN>    subscriber;
-	private final    NettyChannelStream<IN, ?> channelStream;
+	private final Subscriber<? super IN>    subscriber;
+	private final NettyChannelStream<IN, ?> channelStream;
 
-	private volatile ByteBuf                   remainder;
-	private int i = 0;
-	private volatile PushSubscription<IN>      channelSubscription;
+	private volatile ByteBuf              remainder;
+	private volatile PushSubscription<IN> channelSubscription;
 
 	public NettyNetChannelInboundHandler(
 			Subscriber<? super IN> subscriber, NettyChannelStream<IN, ?> channelStream
@@ -107,11 +106,9 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 		try {
 			super.channelReadComplete(ctx);
-			if (channelSubscription.pendingRequestSignals() > 0l) {
-				if(!ctx.channel().config().isAutoRead()){
-					log.debug("CONTINUE "+ctx.channel());
-					ctx.read();
-				}
+			if (channelSubscription.pendingRequestSignals() != Long.MAX_VALUE
+					&& channelSubscription.pendingRequestSignals() > 1l) {
+				ctx.read();
 			}
 		} catch (Throwable throwable) {
 			channelSubscription.onError(throwable);
@@ -135,13 +132,16 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	@SuppressWarnings("unchecked")
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		try {
-			log.info("read "+i++);
+
 			if (channelSubscription.isComplete()) {
 				return;
 			}
 
-			if (!ByteBuf.class.isInstance(msg) || null == channelStream.getDecoder()) {
+			if (!ByteBuf.class.isAssignableFrom(msg.getClass())) {
 				channelSubscription.onNext((IN) msg);
+				return;
+			}else if(channelStream.getDecoder() == null){
+				channelSubscription.onNext((IN)new Buffer(((ByteBuf)msg).nioBuffer()));
 				return;
 			}
 

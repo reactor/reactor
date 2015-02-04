@@ -17,110 +17,138 @@
 package reactor.io.codec
 
 import reactor.fn.Consumer
+import reactor.io.IOStreams
 import reactor.io.buffer.Buffer
+import reactor.rx.Streams
 import spock.lang.Specification
+
+import java.util.concurrent.TimeUnit
 
 /**
  * Tests to cover the basic, built-in Codecs.
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class StandardCodecsSpec extends Specification {
 
 	def "StringCodec can encode and decode to Strings"() {
 		given: "String data"
-		def codec = new StringCodec()
-		def data = Buffer.wrap("Hello World!")
-		def hello = ""
+			def codec = new StringCodec()
+			def data = Buffer.wrap("Hello World!")
+			def hello = ""
 
 		when: "the Buffer is decoded"
-		hello = codec.decoder(null).apply(data)
+			hello = codec.decoder(null).apply(data)
 
 		then: "the String was decoded"
-		hello == "Hello World!"
+			hello == "Hello World!"
 
 		when: "the String is encoded"
-		data = codec.encoder().apply(hello)
+			data = codec.encoder().apply(hello)
 
 		then: "the String was encoded"
-		data instanceof Buffer
-		data.asString() == "Hello World!"
+			data instanceof Buffer
+			data.asString() == "Hello World!"
 	}
 
 	def "DelimitedCodec can encode and decode delimited lines"() {
 		given: "delimited data"
-		def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
-		def data = Buffer.wrap("Hello World!\nHello World!\nHello World!\n")
-		def hellos = []
+			def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
+			def data = Buffer.wrap("Hello World!\nHello World!\nHello World!\n")
+			def hellos = []
 
 		when: "data is decoded"
-		def decoder = codec.decoder({ String s ->
-			hellos << s
-		} as Consumer<String>)
-		decoder.apply(data)
+			def decoder = codec.decoder({ String s ->
+				hellos << s
+			} as Consumer<String>)
+			decoder.apply(data)
 
 		then: "data was decoded"
-		hellos == ["Hello World!\n", "Hello World!\n", "Hello World!\n"]
+			hellos == ["Hello World!\n", "Hello World!\n", "Hello World!\n"]
 
 		when: "data is encoded"
-		def encoder = codec.encoder()
-		def hw1 = encoder.apply("Hello World!")
-		def hw2 = encoder.apply("Hello World!")
-		def hw3 = encoder.apply("Hello World!")
-		def buff = new Buffer().append(hw1, hw2, hw3).flip()
+			def encoder = codec.encoder()
+			def hw1 = encoder.apply("Hello World!")
+			def hw2 = encoder.apply("Hello World!")
+			def hw3 = encoder.apply("Hello World!")
+			def buff = new Buffer().append(hw1, hw2, hw3).flip()
 
 		then: "data was encoded"
-		buff.asString() == data.flip().asString()
+			buff.asString() == data.flip().asString()
 	}
 
 	def "Once decoding has completed, the buffer's position and limit are at the end of the buffer"() {
 		given: "A decoder and a buffer of delimited data"
-		def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
-		def string = 'Hello World!\nHello World!\nHello World!\n'
-		def data = Buffer.wrap(string)
+			def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
+			def string = 'Hello World!\nHello World!\nHello World!\n'
+			def data = Buffer.wrap(string)
 
 		when: "data has been decoded"
-		def decoder = codec.decoder({} as Consumer<String>)
-		decoder.apply(data)
+			def decoder = codec.decoder({} as Consumer<String>)
+			decoder.apply(data)
 
 		then: "the buffer's take and position are at the end of the buffer"
-		data.limit() == string.length()
-		data.position() == string.length()
+			data.limit() == string.length()
+			data.position() == string.length()
 	}
 
 	def "Once delimiter stripping decoding has completed, the buffer's position and limit are at the end of the buffer"() {
 		given: "A delimiter stripping decoder and a buffer of delimited data"
-		def codec = new DelimitedCodec<String, String>(true, StandardCodecs.STRING_CODEC)
-		def string = 'Hello World!\nHello World!\nHello World!\n'
-		def data = Buffer.wrap(string)
+			def codec = new DelimitedCodec<String, String>(true, StandardCodecs.STRING_CODEC)
+			def string = 'Hello World!\nHello World!\nHello World!\n'
+			def data = Buffer.wrap(string)
 
 		when: "data has been decoded"
-		def decoder = codec.decoder({} as Consumer<String>)
-		decoder.apply(data)
+			def decoder = codec.decoder({} as Consumer<String>)
+			decoder.apply(data)
 
 		then: "the buffer's take and position are at the end of the buffer"
-		data.limit() == string.length()
-		data.position() == string.length()
+			data.limit() == string.length()
+			data.position() == string.length()
 	}
 
 	def "LengthFieldCodec can encode and decode length-prefixed items"() {
 		given: "length-prefixed data"
-		def codec = new LengthFieldCodec<String, String>(StandardCodecs.STRING_CODEC)
-		def data = new Buffer().append((int) 12).append("Hello World!").flip()
+			def codec = new LengthFieldCodec<String, String>(StandardCodecs.STRING_CODEC)
+			def data = new Buffer().append((int) 12).append("Hello World!").flip()
 
 		when: "the data is decoded"
-		def len = data.readInt()
-		def hello = data.asString()
+			def len = data.readInt()
+			def hello = data.asString()
 
 		then: "the data was decoded"
-		len == 12
-		hello == "Hello World!"
+			len == 12
+			hello == "Hello World!"
 
 		when: "the data is encoded"
-		data = codec.encoder().apply(hello)
+			data = codec.encoder().apply(hello)
 
 		then: "the data was encoded"
-		data.readInt() == 12
-		data.asString() == "Hello World!"
+			data.readInt() == 12
+			data.asString() == "Hello World!"
 	}
+
+
+	def "A Codec output can be streamed"() {
+		given: "A delimiter stripping decoder and a buffer of delimited data"
+			def codec = new DelimitedCodec<String, String>(true, StandardCodecs.STRING_CODEC)
+			def string = 'Hello World!\nHello World!\nHello World!\n'
+			def data1 = Buffer.wrap(string)
+			string = 'Test\nTest\n'
+			def data2 = Buffer.wrap(string)
+			string = 'Test\nEnd\n'
+			def data3 = Buffer.wrap(string)
+
+		when: "data stream is decoded"
+		 def res = Streams.just(data1, data2, data3)
+				 .nest()
+				 .flatMap{ IOStreams.decode(codec, it) }
+				 .toList()
+				 .await(5, TimeUnit.SECONDS)
+
+		then: "the buffers have been correctly decoded"
+			res == ['Hello World!','Hello World!','Hello World!','Test', 'Test', 'Test', 'End']
+	}
+
 
 }

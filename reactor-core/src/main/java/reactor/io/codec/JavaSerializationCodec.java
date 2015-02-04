@@ -27,7 +27,7 @@ import java.io.*;
  *
  * @author Jon Brisbin
  */
-public class JavaSerializationCodec<T> implements Codec<Buffer, T, T> {
+public class JavaSerializationCodec<T> extends Codec<Buffer, T, T> {
 
 	private final Encoder encoder = new Encoder();
 

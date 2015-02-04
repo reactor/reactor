@@ -57,17 +57,21 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	private final Environment            env;
 	private final Codec<Buffer, IN, OUT> defaultCodec;
 
-	protected PeerStream(@Nonnull Environment env,
-	                     @Nonnull Dispatcher dispatcher,
-	                     @Nullable Codec<Buffer, IN, OUT> codec) {
+	protected PeerStream(Environment env,
+	                     Dispatcher dispatcher,
+	                     Codec<Buffer, IN, OUT> codec) {
 		this(env, dispatcher, codec, Long.MAX_VALUE);
 	}
 
-	protected PeerStream(@Nonnull Environment env,
-	                     @Nonnull Dispatcher dispatcher,
-	                     @Nullable Codec<Buffer, IN, OUT> codec,
+	protected PeerStream(Environment env,
+	                     Dispatcher dispatcher,
+	                     Codec<Buffer, IN, OUT> codec,
 	                     long prefetch) {
-		this.env = env;
+		if(env == null && Environment.alive()){
+			this.env = Environment.get();
+		}else{
+			this.env = env;
+		}
 		this.defaultCodec = codec;
 		this.prefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
 		this.dispatcher = dispatcher;
@@ -105,6 +109,12 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		});
 	}
 
+
+	/*@Override
+	public final Dispatcher getDispatcher() {
+		return dispatcher;
+	}*/
+
 	/**
 	 * Notify this server's consumers that the server has errors.
 	 *
@@ -126,7 +136,7 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	 *
 	 * @param channel The channel that was opened.
 	 */
-	final protected void notifyNewChannel(@Nonnull ChannelStream<IN, OUT> channel) {
+	final protected void notifyNewChannel(ChannelStream<IN, OUT> channel) {
 		open.onNext(channel);
 	}
 
@@ -260,15 +270,13 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	}
 
 	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final ChannelStream<IN, OUT> ch) {
-		final Consumer<Throwable> errorConsumer = createErrorConsumer(ch);
-
 		if (writeStream.getCapacity() != Long.MAX_VALUE) {
 			writeStream
 					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false), createAdaptiveDemandMapper(ch,
-							errorConsumer));
+							createErrorConsumer(ch)));
 		} else {
 			writeStream
-					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true),  createErrorConsumer(ch));
+					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch));
 		}
 	}
 

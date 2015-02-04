@@ -26,7 +26,7 @@ import java.io.*;
 /**
  * @author Jon Brisbin
  */
-public abstract class CompressionCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public abstract class CompressionCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 

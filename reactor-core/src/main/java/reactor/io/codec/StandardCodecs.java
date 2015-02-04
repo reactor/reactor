@@ -41,6 +41,11 @@ public abstract class StandardCodecs {
 	public static final StringCodec STRING_CODEC = new StringCodec();
 
 	/**
+	 * A {@link StringCodec}.
+	 */
+	public static final StringCodec DELIMITED_STRING_CODEC = new StringCodec(Codec.DEFAULT_DELIMITER);
+
+	/**
 	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed ({@code '\n'}) character
 	 */
 	public static final DelimitedCodec<String, String> LINE_FEED_CODEC = new DelimitedCodec<String,

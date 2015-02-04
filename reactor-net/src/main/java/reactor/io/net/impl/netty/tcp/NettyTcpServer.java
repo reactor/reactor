@@ -17,7 +17,6 @@
 package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -78,9 +77,10 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.nettyOptions = null;
 		}
 
-		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class,
+		int selectThreadCount = getEnvironment().getProperty("reactor.tcp.selectThreadCount", Integer.class,
 				Environment.PROCESSORS / 2);
-		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+		int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+				.PROCESSORS);
 		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
@@ -95,8 +95,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
+			//	.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+				.childOption(ChannelOption.AUTO_READ, sslOptions != null)
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
@@ -120,9 +121,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
-						}else{
-							//Do not disable with SSL as it needs to read off the handler
-							config.setAutoRead(false);
 						}
 
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
@@ -177,6 +175,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		return d;
 	}
+
+
 
 	@Override
 	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {

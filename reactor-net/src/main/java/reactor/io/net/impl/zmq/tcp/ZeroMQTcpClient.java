@@ -77,7 +77,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	                       @Nullable Codec<Buffer, IN, OUT> codec) {
 		super(env, eventsDispatcher, connectAddress, options, sslOptions, codec);
 
-		this.ioThreadCount = env.getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
+		this.ioThreadCount = getEnvironment().getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
 
 		if (options instanceof ZeroMQClientSocketOptions) {
 			this.zmqOpts = (ZeroMQClientSocketOptions) options;

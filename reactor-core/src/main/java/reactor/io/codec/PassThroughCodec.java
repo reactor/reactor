@@ -26,7 +26,7 @@ import reactor.fn.Function;
  *
  * @author Jon Brisbin
  */
-public class PassThroughCodec<SRC> implements Codec<SRC, SRC, SRC> {
+public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	@Override
 	public Function<SRC, SRC> decoder(final Consumer<SRC> next) {
 		return new Function<SRC, SRC>() {

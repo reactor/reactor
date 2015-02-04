@@ -31,11 +31,11 @@ import reactor.io.buffer.Buffer.View;
  * @param <OUT> The type that will be consumed by encoding
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class DelimitedCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
-	private final byte                   delimiter;
 	private final boolean                stripDelimiter;
 
 	/**
@@ -70,7 +70,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * @param delegate       The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(byte delimiter, boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
-		this.delimiter = delimiter;
+		super(delimiter);
 		this.stripDelimiter = stripDelimiter;
 		this.delegate = delegate;
 	}

@@ -88,4 +88,9 @@ public class NettyEventLoopDispatcher extends MultiThreadDispatcher {
 	public long backlogSize() {
 		return Long.MAX_VALUE;
 	}
+
+	@Override
+	public boolean supportsOrdering() {
+		return true;
+	}
 }

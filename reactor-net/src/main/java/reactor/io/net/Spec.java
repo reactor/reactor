@@ -135,7 +135,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClient<IN, OUT> extends DispatcherComponentSpec<TcpClient<IN, OUT>, reactor.io.net.tcp.TcpClient> {
+	class TcpClient<IN, OUT> extends DispatcherComponentSpec<TcpClient<IN, OUT>, reactor.io.net.tcp.TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -240,7 +240,8 @@ public interface Spec {
 		}
 
 		@Override
-		protected reactor.io.net.tcp.TcpClient configure(Dispatcher dispatcher, Environment environment) {
+		@SuppressWarnings("unchecked")
+		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,
@@ -316,7 +317,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.tcp.TcpServer configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -378,7 +379,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.udp.DatagramServer configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return serverImplCtor.newInstance(
 						environment,
@@ -454,7 +455,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.http.HttpServer configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.http.HttpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -585,7 +586,8 @@ public interface Spec {
 		}
 
 		@Override
-		protected reactor.io.net.http.HttpClient configure(Dispatcher dispatcher, Environment environment) {
+		@SuppressWarnings("unchecked")
+		protected reactor.io.net.http.HttpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,

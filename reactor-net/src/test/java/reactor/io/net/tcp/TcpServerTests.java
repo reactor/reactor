@@ -43,7 +43,6 @@ import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.impl.netty.tcp.NettyTcpServer;
 import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Streams;
@@ -236,7 +235,7 @@ public class TcpServerTests {
 	public void tcpServerHandlesFrameData() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		TcpServer server = NetStreams.<Frame, Frame>tcpServer(NettyTcpServer.class, spec ->
+		TcpServer<Frame, Frame> server = NetStreams.tcpServer(spec ->
 						spec
 								.env(env)
 								.synchronousDispatcher()
@@ -293,7 +292,7 @@ public class TcpServerTests {
 								.connect("localhost", port)
 		);
 
-		TcpServer server = NetStreams.<Buffer, Buffer>tcpServer(NettyTcpServer.class, s ->
+		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(s ->
 						s.env(env)
 								.synchronousDispatcher()
 								.listen(port)

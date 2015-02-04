@@ -30,13 +30,31 @@ import java.nio.charset.CharsetEncoder;
 /**
  * @author Jon Brisbin
  */
-public class StringCodec implements Codec<Buffer, String, String> {
+public class StringCodec extends Codec<Buffer, String, String> {
 
-	private final Charset utf8 = Charset.forName("UTF-8");
+	private final Charset        utf8    = Charset.forName("UTF-8");
+	private final CharsetDecoder decoder = utf8.newDecoder();
+
+	public StringCodec() {
+		this(null);
+	}
+
+	public StringCodec(Byte delimiter) {
+		super(delimiter);
+	}
 
 	@Override
 	public Function<Buffer, String> decoder(Consumer<String> next) {
 		return new StringDecoder(next);
+	}
+
+	@Override
+	protected String doBufferDecode(Buffer buffer) {
+		try {
+			return decoder.decode(buffer.byteBuffer()).toString();
+		} catch (CharacterCodingException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
 	@Override
@@ -46,7 +64,6 @@ public class StringCodec implements Codec<Buffer, String, String> {
 
 	private class StringDecoder implements Function<Buffer, String> {
 		private final Consumer<String> next;
-		private final CharsetDecoder decoder = utf8.newDecoder();
 
 		private StringDecoder(Consumer<String> next) {
 			this.next = next;
@@ -54,17 +71,7 @@ public class StringCodec implements Codec<Buffer, String, String> {
 
 		@Override
 		public String apply(Buffer bytes) {
-			try {
-				String s = decoder.decode(bytes.byteBuffer()).toString();
-				if (null != next) {
-					next.accept(s);
-					return null;
-				} else {
-					return s;
-				}
-			} catch (CharacterCodingException e) {
-				throw new IllegalStateException(e);
-			}
+			return doDelimitedBufferDecode(next, bytes);
 		}
 	}
 
@@ -75,7 +82,11 @@ public class StringCodec implements Codec<Buffer, String, String> {
 		public Buffer apply(String s) {
 			try {
 				ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
-				return new Buffer(bb);
+				if(delimiter != null) {
+					return addDelimiterIfAny(new Buffer().append(bb));
+				}else{
+					return new Buffer(bb);
+				}
 			} catch (CharacterCodingException e) {
 				throw new IllegalStateException(e);
 			}
