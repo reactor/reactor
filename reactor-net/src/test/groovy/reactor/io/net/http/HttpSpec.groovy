@@ -39,23 +39,20 @@ class HttpSpec extends Specification {
 	}
 
 	def "http responds to requests from clients"() {
-		given: "a simple TcpServer"
+		given: "a simple HttpServer"
 			def stopLatch = new CountDownLatch(1)
-			def server = NetStreams.httpServer {
-				it.
-						env(env).
-						listen(port)
-			}
+
+			def server = NetStreams.httpServer(port)
 
 		when: "the server is started"
-			server.post('/test') { conn ->
-				conn
+			server.post('/test/{param}') { req ->
+				req
 						.decode(StandardCodecs.STRING_CODEC)
 						.log('received')
 						.consume()
 
 				Streams
-						.just("Hello World!")
+						.just('Hello '+ req.param('param') +'!')
 						.map(StandardCodecs.STRING_CODEC)
 
 			}
@@ -64,7 +61,7 @@ class HttpSpec extends Specification {
 			server.start().awaitSuccess()
 
 		when: "data is sent"
-			def content = Request.Post("http://localhost:8080/test")
+			def content = Request.Post("http://localhost:8080/test/World")
 					.bodyString("hello", ContentType.TEXT_PLAIN)
 					.execute()
 					.returnContent()

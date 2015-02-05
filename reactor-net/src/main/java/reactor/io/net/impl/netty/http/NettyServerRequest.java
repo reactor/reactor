@@ -45,7 +45,8 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 
 	public NettyServerRequest(NettyChannelStream<IN, OUT> tcpStream,
 	                          PeerStream<IN, OUT, ChannelStream<IN, OUT>> server,
-	                          HttpRequest request) {
+	                          HttpRequest request
+	                          ) {
 		super(tcpStream.getEnvironment(), null, tcpStream.getCapacity(), server,
 				SynchronousDispatcher.INSTANCE, SynchronousDispatcher.INSTANCE);
 		this.tcpStream = tcpStream;
@@ -56,6 +57,7 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 	}
 
 	// REQUEST contract
+
 
 	@Override
 	public Protocol protocol() {

@@ -17,6 +17,7 @@
 package reactor.io.net.http;
 
 import reactor.Environment;
+import reactor.bus.selector.HeaderResolver;
 import reactor.core.Dispatcher;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -24,6 +25,7 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.PeerStream;
 import reactor.io.net.http.model.*;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
@@ -33,6 +35,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private volatile int statusAndHeadersSent = 0;
+	private HeaderResolver<String> paramsResolver;
 
 	protected final static AtomicIntegerFieldUpdater<ServerRequest> HEADERS_SENT =
 			AtomicIntegerFieldUpdater.newUpdater(ServerRequest.class, "statusAndHeadersSent");
@@ -48,6 +51,29 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	// REQUEST contract
+
+	/**
+	 * Read all URI params
+	 *
+	 * @return
+	 */
+	public final Map<String, String> params() {
+		return null != paramsResolver ? paramsResolver.resolve(uri()) : null;
+	}
+
+	/**
+	 * Read URI param from the given key
+	 *
+	 * @param key
+	 * @return
+	 */
+	public final String param(String key) {
+		Map<String,String> params = null;
+		if(paramsResolver != null){
+			params = this.paramsResolver.resolve(uri());
+		}
+		return null != params ? params.get(key) : null;
+	}
 
 	/**
 	 * @return
@@ -70,6 +96,10 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	public abstract Method method();
 
 
+	void paramsResolver(HeaderResolver<String> headerResolver) {
+		this.paramsResolver = headerResolver;
+	}
+
 	// RESPONSE contract
 
 	/**
@@ -84,7 +114,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	public ServerRequest<IN, OUT> responseStatus(Status status) {
 		if (statusAndHeadersSent == 0) {
 			doResponseStatus(status);
-		}else{
+		} else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -105,7 +135,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	public final ServerRequest<IN, OUT> responseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doResponseHeader(name, value);
-		}else{
+		} else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -121,7 +151,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	public ServerRequest<IN, OUT> addResponseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doAddResponseHeader(name, value);
-		}else{
+		} else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;

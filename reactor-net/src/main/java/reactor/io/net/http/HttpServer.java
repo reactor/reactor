@@ -150,12 +150,18 @@ public abstract class HttpServer<IN, OUT>
 						return iterator.hasNext();
 					}
 
+					//Lazy apply
 					@Override
+					@SuppressWarnings("unchecked")
 					public Publisher<? extends OUT> next() {
 						Registration<? extends Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>> next
 								= iterator.next();
-
-						return next != null ? next.getObject().apply(ch) : null;
+						if (next != null) {
+							ch.paramsResolver(next.getSelector().getHeaderResolver());
+							return next.getObject().apply(ch);
+						} else {
+							return null;
+						}
 					}
 				};
 			}
