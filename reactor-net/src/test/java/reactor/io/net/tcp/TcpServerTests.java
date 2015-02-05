@@ -367,6 +367,7 @@ public class TcpServerTests {
 		TcpServer<ByteBuf, ByteBuf> server = NetStreams.tcpServer(spec -> spec
 						.env(env)
 						.listen(port)
+						.rawData(true)
 						.dispatcher(SynchronousDispatcher.INSTANCE)
 		);
 

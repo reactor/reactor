@@ -19,6 +19,8 @@ import reactor.Environment;
 import reactor.bus.spec.DispatcherComponentSpec;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.Suppliers;
 import reactor.fn.tuple.Tuple;
@@ -28,6 +30,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.ServerRequest;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -46,13 +49,32 @@ import java.util.List;
  */
 public interface Spec {
 
+	public static final Function NOOP_DECODER = new Function() {
+		@Override
+		public Object apply(Object o) {
+			return o;
+		}
+	};
+
+	public static final Codec NOOP_CODEC = new Codec() {
+		@Override
+		public Function decoder(Consumer next) {
+			return NOOP_DECODER;
+		}
+
+		@Override
+		public Object apply(Object o) {
+			return o;
+		}
+	};
+
 	//
 	//   Client and Server Specifications
 	//
 	public abstract static class Server<IN, OUT,
-			CONN extends Channel<IN,OUT>,
+			CONN extends Channel<IN, OUT>,
 			S extends Server<IN, OUT, CONN, S, N>,
-			N extends reactor.io.net.Server<IN,OUT,CONN>>
+			N extends reactor.io.net.Server<IN, OUT, CONN>>
 			extends DispatcherComponentSpec<S, N> {
 
 		protected ServerSocketOptions options = new ServerSocketOptions();
@@ -122,6 +144,20 @@ public interface Spec {
 			this.codec = codec;
 			return (S) this;
 		}
+
+		/**
+		 * Bypass any Reactor Buffer encoding for received data
+		 *
+		 * @param israw to enable raw data transfer from the server (e.g. ByteBuf from Netty).
+		 * @return this
+		 */
+		@SuppressWarnings("unchecked")
+		public S rawData(boolean israw) {
+			if(israw){
+				this.codec = NOOP_CODEC;
+			}
+			return (S) this;
+		}
 	}
 
 	/**
@@ -141,10 +177,11 @@ public interface Spec {
 
 		private InetSocketAddress connectAddress;
 
-		private ClientSocketOptions options    = new ClientSocketOptions();
+		private ClientSocketOptions options = new ClientSocketOptions();
 
-		private SslOptions          sslOptions = null;
+		private SslOptions sslOptions = null;
 		private Codec<Buffer, IN, OUT> codec;
+
 		/**
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
 		 *
@@ -236,6 +273,20 @@ public interface Spec {
 		public TcpClient<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
 			Assert.isNull(this.codec, "Codec has already been set.");
 			this.codec = codec;
+			return this;
+		}
+
+		/**
+		 * Bypass any Reactor Buffer encoding for received data
+		 *
+		 * @param israw to enable raw data transfer from the server (e.g. ByteBuf from Netty).
+		 * @return this
+		 */
+		@SuppressWarnings("unchecked")
+		public TcpClient<IN, OUT> rawData(boolean israw) {
+			if(israw){
+				this.codec = NOOP_CODEC;
+			}
 			return this;
 		}
 
@@ -408,7 +459,7 @@ public interface Spec {
 	 * @author Stephane Maldini
 	 */
 	class HttpServer<IN, OUT>
-			extends Server<IN, OUT, ChannelStream<IN, OUT>, HttpServer<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
+			extends Server<IN, OUT, ServerRequest<IN, OUT>, HttpServer<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 

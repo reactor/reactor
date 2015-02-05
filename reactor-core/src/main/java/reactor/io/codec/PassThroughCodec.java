@@ -25,6 +25,7 @@ import reactor.fn.Function;
  * (respectively).
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	@Override
@@ -32,7 +33,7 @@ public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 		return new Function<SRC, SRC>() {
 			@Override
 			public SRC apply(SRC src) {
-				if(null != next) {
+				if (null != next) {
 					next.accept(beforeAccept(src));
 					return null;
 				} else {
@@ -43,13 +44,8 @@ public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	}
 
 	@Override
-	public Function<SRC, SRC> encoder() {
-		return new Function<SRC, SRC>() {
-			@Override
-			public SRC apply(SRC src) {
-				return beforeApply(src);
-			}
-		};
+	public SRC apply(SRC src) {
+		return beforeApply(src);
 	}
 
 	/**
@@ -57,7 +53,6 @@ public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	 * returned to the caller if a {@link reactor.fn.Consumer} is not set.
 	 *
 	 * @param src The source object.
-	 *
 	 * @return
 	 */
 	protected SRC beforeAccept(SRC src) {
@@ -69,7 +64,6 @@ public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	 * Override to intercept the source object before it is returned for output.
 	 *
 	 * @param src
-	 *
 	 * @return
 	 */
 	protected SRC beforeApply(SRC src) {

@@ -25,6 +25,7 @@ import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.io.IOStreams;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Stream;
@@ -46,7 +47,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
-	protected final PeerStream<IN, OUT> peer;
+	protected final PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer;
 	protected final Broadcaster<IN>     contentStream;
 	private final   Environment         env;
 
@@ -57,12 +58,10 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected Stream<? extends OUT> head;
-
 	protected ChannelStream(final @Nonnull Environment env,
 	                        @Nullable Codec<Buffer, IN, OUT> codec,
 	                        long prefetch,
-	                        @Nonnull PeerStream<IN, OUT> peer,
+	                        @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
 	                        @Nonnull Dispatcher ioDispatcher,
 	                        @Nonnull Dispatcher eventsDispatcher) {
 		Assert.notNull(env, "IO Dispatcher cannot be null");
@@ -81,7 +80,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 					doDecoded(in);
 				}
 			});
-			this.encoder = codec.encoder();
+			this.encoder = codec;
 		} else {
 			this.decoder = null;
 			this.encoder = null;
@@ -91,10 +90,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	@Override
 	public void subscribe(Subscriber<? super IN> s) {
 		contentStream.subscribe(s);
-	}
-
-	final public Subscriber<IN> in() {
-		return contentStream;
 	}
 
 	@Override
@@ -147,6 +142,24 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	/**
+	 * Direct access to receiving side - should be used to forward incoming data manually or testing purpose
+	 *
+	 * @return a writer for the current ChannelStream consumers
+	 */
+	final public Subscriber<IN> in() {
+		return contentStream;
+	}
+
+	/**
+	 * Convert the current stream data into the decoded type produced by the passed codec
+	 *
+	 * @return the decoded stream
+	 */
+	final public <DECODED> Stream<DECODED> decode(Codec<IN, DECODED, ?> codec){
+		return IOStreams.decode(codec, this);
+	}
+
+	/**
 	 * @return the underlying native connection/channel in use
 	 */
 	public abstract Object delegate();
@@ -161,12 +174,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	Consumer<OUT> writeThrough(boolean autoflush) {
 		return new WriteConsumer(autoflush);
-	}
-
-	Publisher<? extends OUT> head() {
-		synchronized (this) {
-			return head;
-		}
 	}
 
 	protected final void cascadeErrorToPeer(Throwable t) {

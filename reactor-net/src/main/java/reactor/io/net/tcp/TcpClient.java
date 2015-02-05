@@ -47,7 +47,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpClient<IN, OUT>
-		extends PeerStream<IN, OUT>
+		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
 		implements Client<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;

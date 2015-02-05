@@ -23,6 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.io.buffer.Buffer;
+import reactor.io.net.Spec;
 import reactor.rx.subscription.PushSubscription;
 
 /**
@@ -124,7 +125,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 			}
 			super.channelInactive(ctx);
 		} catch (Throwable err) {
-			subscriber.onError(err);
+			channelSubscription.onError(err);
 		}
 	}
 
@@ -137,7 +138,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				return;
 			}
 
-			if (!ByteBuf.class.isAssignableFrom(msg.getClass())) {
+			if (channelStream.getDecoder() == Spec.NOOP_DECODER || !ByteBuf.class.isAssignableFrom(msg.getClass())) {
 				channelSubscription.onNext((IN) msg);
 				return;
 			}else if(channelStream.getDecoder() == null){

@@ -142,7 +142,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				if (future.isSuccess()) {
 					log.info("BIND {}", future.channel().localAddress());
 					channel = (NioDatagramChannel) future.channel();
-					notifyStart();
 					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());

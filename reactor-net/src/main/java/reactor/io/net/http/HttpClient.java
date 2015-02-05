@@ -47,8 +47,8 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class HttpClient<IN, OUT>
-		extends PeerStream<IN, OUT>
-		implements Client<IN, OUT, ChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT, ClientRequest<IN, OUT>>
+		implements Client<IN, OUT, ClientRequest<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
@@ -68,8 +68,8 @@ public abstract class HttpClient<IN, OUT>
 
 
 	@Override
-	public Client<IN, OUT, ChannelStream<IN, OUT>> pipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+	public Client<IN, OUT, ClientRequest<IN, OUT>> pipeline(
+			final Function<ClientRequest<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
 		doPipeline(serviceFunction);
 		return this;
 	}

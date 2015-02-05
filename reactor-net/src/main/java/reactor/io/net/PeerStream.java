@@ -25,8 +25,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.rx.Promise;
-import reactor.rx.Promises;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Action;
@@ -42,16 +40,12 @@ import java.util.Iterator;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>> {
+public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> extends Stream<CONN> {
 
 	private final Dispatcher dispatcher;
 
-	private final Broadcaster<ChannelStream<IN, OUT>> open;
-	private final Broadcaster<ChannelStream<IN, OUT>> close;
-	private final Promise<PeerStream<IN, OUT>>        start;
-	private final Promise<PeerStream<IN, OUT>>        shutdown;
-
-	protected final long prefetch;
+	protected final Broadcaster<CONN> channels;
+	protected final long              prefetch;
 
 	private final FastList<OUT> writePublishers = new FastList<OUT>();
 	private final Environment            env;
@@ -72,29 +66,26 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		this.prefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
 		this.dispatcher = dispatcher;
 
-		/*this.open = SynchronousDispatcher.INSTANCE == dispatcher ?
+		/*this.channels = SynchronousDispatcher.INSTANCE == dispatcher ?
 				Streams.<NetChannelStream<IN, OUT>>create(env) :
 				Streams.<NetChannelStream<IN, OUT>>create(env, dispatcher);
 		this.close = SynchronousDispatcher.INSTANCE == dispatcher ?
 				Streams.<NetChannelStream<IN, OUT>>create(env) :
 				Streams.<NetChannelStream<IN, OUT>>create(env, dispatcher);*/
 
-		this.open = Broadcaster.<ChannelStream<IN, OUT>>create(env, SynchronousDispatcher.INSTANCE);
-		this.close = Broadcaster.<ChannelStream<IN, OUT>>create(env, SynchronousDispatcher.INSTANCE);
-		this.start = Promises.ready(env, SynchronousDispatcher.INSTANCE);
-		this.shutdown = Promises.ready(env, SynchronousDispatcher.INSTANCE);
+		this.channels = Broadcaster.<CONN>create(env, SynchronousDispatcher.INSTANCE);
 	}
 
 	@Override
-	public void subscribe(final Subscriber<? super ChannelStream<IN, OUT>> s) {
-		open.subscribe(s);
+	public void subscribe(final Subscriber<? super CONN> s) {
+		channels.subscribe(s);
 	}
 
 	protected void doPipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		consume(new Consumer<ChannelStream<IN, OUT>>() {
+			final Function<? super CONN, ? extends Publisher<? extends OUT>> serviceFunction) {
+		consume(new Consumer<CONN>() {
 			@Override
-			public void accept(ChannelStream<IN, OUT> inoutChannelStream) {
+			public void accept(CONN inoutChannelStream) {
 				addWritePublisher(serviceFunction.apply(inoutChannelStream));
 			}
 		}, new Consumer<Throwable>() {
@@ -117,14 +108,7 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	 * @param t the error to signal
 	 */
 	final protected void notifyError(Throwable t) {
-		open.onError(t);
-	}
-
-	/**
-	 * Notify this server's consumers that the server has started.
-	 */
-	final protected void notifyStart() {
-		start.onNext(this);
+		channels.onError(t);
 	}
 
 	/**
@@ -132,17 +116,15 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	 *
 	 * @param channel The channel that was opened.
 	 */
-	final protected void notifyNewChannel(ChannelStream<IN, OUT> channel) {
-		open.onNext(channel);
+	final protected void notifyNewChannel(CONN channel) {
+		channels.onNext(channel);
 	}
 
 	/**
 	 * Notify this server's consumers that the server has stopped.
 	 */
 	final protected void notifyShutdown() {
-		open.onComplete();
-		close.onComplete();
-		shutdown.onNext(this);
+		channels.onComplete();
 	}
 
 	/**
@@ -150,9 +132,10 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	 * The routeChannel method will resolve the current channel consumers to execute and listen for returning signals.
 	 */
 
-	final protected void addWritePublisher(Publisher<? extends OUT> publisher) {
+	final protected Publisher<? extends OUT> addWritePublisher(Publisher<? extends OUT> publisher) {
 		synchronized (this) {
 			writePublishers.add(publisher);
+			return publisher;
 		}
 	}
 
@@ -161,23 +144,23 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	 *
 	 * @return the bound Reactor Channel Stream
 	 */
-	protected abstract Channel<IN, OUT> bindChannel(Object nativeChannel, long prefetch);
+	protected abstract CONN bindChannel(Object nativeChannel, long prefetch);
 
 	protected Consumer<Throwable> createErrorConsumer(final ChannelStream<IN, OUT> ch) {
 		return new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable throwable) {
 				try {
-					open.onError(throwable);
+					channels.onError(throwable);
 				} catch (Throwable t2) {
-					open.onError(t2);
+					channels.onError(t2);
 				}
 			}
 		};
 	}
 
 	protected Action<Long, Long> createBatchAction(
-			final ChannelStream<IN, OUT> ch,
+			final CONN ch,
 			final Consumer<Throwable> errorConsumer) {
 
 		return new Action<Long, Long>() {
@@ -212,7 +195,7 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 	}
 
 	protected Function<Stream<Long>, ? extends Publisher<? extends Long>> createAdaptiveDemandMapper(
-			final ChannelStream<IN, OUT> ch,
+			final CONN ch,
 			final Consumer<Throwable> errorConsumer
 	) {
 		return new Function<Stream<Long>, Publisher<? extends Long>>() {
@@ -224,12 +207,12 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		};
 	}
 
-	protected Iterable<Publisher<? extends OUT>> routeChannel(ChannelStream<IN, OUT> ch) {
+	protected Iterable<Publisher<? extends OUT>> routeChannel(CONN ch) {
 		return writePublishers;
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void mergeWrite(final ChannelStream<IN, OUT> ch) {
+	protected void mergeWrite(final CONN ch) {
 		Iterable<Publisher<? extends OUT>> publishers = routeChannel(ch);
 
 		if (publishers == writePublishers) {
@@ -243,13 +226,9 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 			}
 
 			if (size == 0) {
-				if (ch.head() != null) {
-					subscribeChannelHandlers(Streams.create(ch.head()), ch);
-					return;
-				}
 				return;
 			} else if (size == 1 && publisher != null) {
-				subscribeChannelHandlers(Streams.create(publisher).startWith(ch.head()), ch);
+				subscribeChannelHandlers(Streams.create(publisher), ch);
 				return;
 			}
 		}
@@ -260,12 +239,12 @@ public abstract class PeerStream<IN, OUT> extends Stream<ChannelStream<IN, OUT>>
 		// so maybe we need to specify another dispatcher if we decide to implement an "all handlers
 		// contribute at the same time" behavior)
 		subscribeChannelHandlers(
-				Streams.concat(publishers).startWith(ch.head()),
+				Streams.concat(publishers),
 				ch
 		);
 	}
 
-	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final ChannelStream<IN, OUT> ch) {
+	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final CONN ch) {
 		if (writeStream.getCapacity() != Long.MAX_VALUE) {
 			writeStream
 					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false), createAdaptiveDemandMapper(ch,

@@ -16,35 +16,29 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.SocketChannelConfig;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpServerCodec;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpServer;
-import reactor.io.net.impl.netty.*;
-import reactor.io.net.tcp.ssl.SSLEngineSupplier;
+import reactor.io.net.http.ServerRequest;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
+import reactor.io.net.impl.netty.tcp.NettyTcpServer;
+import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
+import reactor.rx.Streams;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A Netty-based {@code TcpServer} implementation
@@ -58,143 +52,82 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final NettyServerSocketOptions nettyOptions;
-	private final ServerBootstrap          bootstrap;
-	private final EventLoopGroup           selectorGroup;
-	private final EventLoopGroup           ioGroup;
+	protected final TcpServer<IN, OUT>                 server;
 
-	protected NettyHttpServer(@Nonnull Environment env,
-	                          @Nonnull Dispatcher dispatcher,
-	                          @Nullable InetSocketAddress listenAddress,
+	protected NettyHttpServer(final Environment env,
+	                          final Dispatcher dispatcher,
+	                          final InetSocketAddress listenAddress,
 	                          final ServerSocketOptions options,
 	                          final SslOptions sslOptions,
-	                          @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, listenAddress, options, sslOptions, codec);
+	                          final Codec<Buffer, IN, OUT> codec) {
 
-		if (options instanceof NettyServerSocketOptions) {
-			this.nettyOptions = (NettyServerSocketOptions) options;
-		} else {
-			this.nettyOptions = null;
-		}
+		super(env, dispatcher, codec);
 
-		int selectThreadCount = getEnvironment().getProperty("reactor.tcp.selectThreadCount", Integer.class,
-				Environment.PROCESSORS / 2);
-		int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
-		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
-		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
-			this.ioGroup = nettyOptions.eventLoopGroup();
-		} else {
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
-		}
+		this.server = new NettyTcpServer<IN, OUT>(env,
+				dispatcher,
+				listenAddress,
+				options,
+				sslOptions,
+				codec){
 
-		this.bootstrap = new ServerBootstrap()
-				.group(selectorGroup, ioGroup)
-				.channel(NioServerSocketChannel.class)
-				.option(ChannelOption.SO_BACKLOG, options.backlog())
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
-				.childHandler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(final SocketChannel ch) throws Exception {
-						SocketChannelConfig config = ch.config();
-						config.setReceiveBufferSize(options.rcvbuf());
-						config.setSendBufferSize(options.sndbuf());
-						config.setKeepAlive(options.keepAlive());
-						config.setReuseAddress(options.reuseAddr());
-						config.setSoLinger(options.linger());
-						config.setTcpNoDelay(options.tcpNoDelay());
-
-						if (log.isDebugEnabled()) {
-							log.debug("CONNECT {}", ch);
-						}
-
-
-						if (null != sslOptions) {
-							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
-							if (log.isDebugEnabled()) {
-								log.debug("SSL enabled using keystore {}",
-										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
-							}
-							ch.pipeline().addLast(new SslHandler(ssl));
-						}else{
-							config.setAutoRead(false);
-						}
-
-						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
-						}
-
-						bindChannel(ch, options.prefetch());
-					}
-				});
-	}
-
-	@Override
-	public Promise<Boolean> start() {
-		ChannelFuture bindFuture = bootstrap.bind();
-		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
-		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				log.info("BIND {}", future.channel().localAddress());
-				if (future.isSuccess()) {
-					notifyStart();
-					promise.onNext(true);
-				} else {
-					promise.onError(future.cause());
-				}
+			protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+				NettyHttpServer.this.bindChannel(nativeChannel, prefetch);
+				return null;
+			}
+		};
+
+		this.server.consume(null, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		}, new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				notifyShutdown();
 			}
 		});
 
-		return promise;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
-
-		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
-		GenericFutureListener listener = new GenericFutureListener() {
-
-			@Override
-			public void operationComplete(Future future) throws Exception {
-				if (groupsToShutdown.decrementAndGet() == 0) {
-					notifyShutdown();
-					d.onNext(true);
-				}
-			}
-		};
-		selectorGroup.shutdownGracefully().addListener(listener);
-		if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
-			ioGroup.shutdownGracefully().addListener(listener);
-		}
-
-		return d;
+	public final Promise<Boolean> start(){
+		return server.start();
 	}
+
 	@Override
-	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
-		SocketChannel ch = (SocketChannel)nativeChannel;
+	public final Promise<Boolean> shutdown() {
+		return server.shutdown();
+	}
+
+	protected ServerRequest<IN, OUT> createServerRequest(NettyChannelStream<IN, OUT> channelStream, HttpRequest content) {
+		ServerRequest<IN, OUT> request = new NettyServerRequest<IN, OUT>(channelStream, server, content);
+		Iterable<? extends Publisher<? extends OUT>> handlers = routeChannel(request);
+		subscribeChannelHandlers(Streams.concat(handlers), request);
+		channelStream.subscribe(request.in());
+		return request;
+	}
+
+	@Override
+	protected ServerRequest<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+		SocketChannel ch = (SocketChannel) nativeChannel;
 		//int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
-		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
+		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getEnvironment(),
 				getDefaultCodec(),
 				prefetch == -1l ? getPrefetchSize() : prefetch,
-				this,
+				server,
 				new NettyEventLoopDispatcher(ch.eventLoop(), 256),
 				getDispatcher(),
 				ch
 		);
 
-		ch.pipeline().addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-				new NettyNetChannelOutboundHandler()
-		);
+		ch.pipeline()
+				.addLast(new HttpServerCodec())
+				.addLast(new NettyHttpInboundHandler<IN, OUT>(netChannel, this));
 
-		return netChannel;
+		return null;
 	}
-
 }

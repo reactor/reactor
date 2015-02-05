@@ -31,31 +31,36 @@ import java.util.concurrent.ConcurrentHashMap;
  * names so that an object that is serialized can be properly instantiated with full type information on the other end.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Logger                 log   = LoggerFactory.getLogger(getClass());
 	private final Map<String, Class<IN>> types = new ConcurrentHashMap<String, Class<IN>>();
-	private final E       engine;
-	private final boolean lengthFieldFraming;
+	private final E                      engine;
+	private final boolean                lengthFieldFraming;
+	private final Codec<Buffer, IN, OUT> encoder;
 
 	/**
 	 * Create a {@code SerializationCodec} using the given engine and specifying whether or not to prepend a length field
 	 * to frame the message.
 	 *
-	 * @param engine
-	 * 		the engine which will perform the serialization
-	 * @param lengthFieldFraming
-	 * 		{@code true} to prepend a length field, or {@code false} to skip
+	 * @param engine             the engine which will perform the serialization
+	 * @param lengthFieldFraming {@code true} to prepend a length field, or {@code false} to skip
 	 */
 	protected SerializationCodec(E engine, boolean lengthFieldFraming) {
 		this.engine = engine;
 		this.lengthFieldFraming = lengthFieldFraming;
+		if (lengthFieldFraming) {
+			this.encoder = new LengthFieldCodec<IN, OUT>(new DelegateCodec());
+		} else {
+			this.encoder = new DelegateCodec();
+		}
 	}
 
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
-		if(lengthFieldFraming) {
+		if (lengthFieldFraming) {
 			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).decoder(next);
 		} else {
 			return new DelegateCodec().decoder(next);
@@ -63,12 +68,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 	}
 
 	@Override
-	public Function<OUT, Buffer> encoder() {
-		if(lengthFieldFraming) {
-			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).encoder();
-		} else {
-			return new DelegateCodec().encoder();
-		}
+	public Buffer apply(OUT out) {
+		return encoder.apply(out);
 	}
 
 	protected E getEngine() {
@@ -82,8 +83,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 	private String readTypeName(Buffer buffer) {
 		int len = buffer.readInt();
 		Assert.isTrue(buffer.remaining() > len,
-		              "Incomplete buffer. Must contain " + len + " bytes, "
-				              + "but only " + buffer.remaining() + " were found.");
+				"Incomplete buffer. Must contain " + len + " bytes, "
+						+ "but only " + buffer.remaining() + " were found.");
 		byte[] bytes = new byte[len];
 		buffer.read(bytes);
 		return new String(bytes);
@@ -94,9 +95,9 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 		int len = typeName.length();
 		Buffer buffer = new Buffer(4 + len + bytes.length, true);
 		return buffer.append(len)
-		             .append(typeName)
-		             .append(bytes)
-		             .flip();
+				.append(typeName)
+				.append(bytes)
+				.flip();
 
 	}
 
@@ -108,10 +109,10 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 	@SuppressWarnings("unchecked")
 	private Class<IN> getType(String name) {
 		Class<IN> type = types.get(name);
-		if(null == type) {
+		if (null == type) {
 			try {
-				type = (Class<IN>)Class.forName(name);
-			} catch(ClassNotFoundException e) {
+				type = (Class<IN>) Class.forName(name);
+			} catch (ClassNotFoundException e) {
 				throw new IllegalArgumentException(e.getMessage(), e);
 			}
 			types.put(name, type);
@@ -120,6 +121,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 	}
 
 	private class DelegateCodec extends Codec<Buffer, IN, OUT> {
+		final Function<OUT, byte[]> fn = serializer(engine);
+
 		@Override
 		public Function<Buffer, IN> decoder(final Consumer<IN> next) {
 			return new Function<Buffer, IN>() {
@@ -127,8 +130,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 				public IN apply(Buffer buffer) {
 					try {
 						return deserializer(engine, readType(buffer), next).apply(buffer.asBytes());
-					} catch(RuntimeException e) {
-						if(log.isErrorEnabled()) {
+					} catch (RuntimeException e) {
+						if (log.isErrorEnabled()) {
 							log.error("Could not decode " + buffer, e);
 						}
 						throw e;
@@ -138,21 +141,15 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 		}
 
 		@Override
-		public Function<OUT, Buffer> encoder() {
-			final Function<OUT, byte[]> fn = serializer(engine);
-			return new Function<OUT, Buffer>() {
-				@Override
-				public Buffer apply(OUT o) {
-					try {
-						return writeTypeName(o.getClass(), fn.apply(o));
-					} catch(RuntimeException e) {
-						if(log.isErrorEnabled()) {
-							log.error("Could not encode " + o, e);
-						}
-						throw e;
-					}
+		public Buffer apply(OUT o) {
+			try {
+				return writeTypeName(o.getClass(), fn.apply(o));
+			} catch (RuntimeException e) {
+				if (log.isErrorEnabled()) {
+					log.error("Could not encode " + o, e);
 				}
-			};
+				throw e;
+			}
 		}
 	}
 

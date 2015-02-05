@@ -34,6 +34,7 @@ public class StringCodec extends Codec<Buffer, String, String> {
 
 	private final Charset        utf8    = Charset.forName("UTF-8");
 	private final CharsetDecoder decoder = utf8.newDecoder();
+	private final CharsetEncoder encoder = utf8.newEncoder();
 
 	public StringCodec() {
 		this(null);
@@ -57,39 +58,31 @@ public class StringCodec extends Codec<Buffer, String, String> {
 		}
 	}
 
-	@Override
-	public Function<String, Buffer> encoder() {
-		return new StringEncoder();
-	}
-
 	private class StringDecoder implements Function<Buffer, String> {
+
 		private final Consumer<String> next;
 
 		private StringDecoder(Consumer<String> next) {
 			this.next = next;
 		}
-
 		@Override
 		public String apply(Buffer bytes) {
 			return doDelimitedBufferDecode(next, bytes);
 		}
+
 	}
 
-	private class StringEncoder implements Function<String, Buffer> {
-		private final CharsetEncoder encoder = utf8.newEncoder();
-
-		@Override
-		public Buffer apply(String s) {
-			try {
-				ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
-				if(delimiter != null) {
-					return addDelimiterIfAny(new Buffer().append(bb));
-				}else{
-					return new Buffer(bb);
-				}
-			} catch (CharacterCodingException e) {
-				throw new IllegalStateException(e);
+	@Override
+	public Buffer apply(String s) {
+		try {
+			ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
+			if (delimiter != null) {
+				return addDelimiterIfAny(new Buffer().append(bb));
+			} else {
+				return new Buffer(bb);
 			}
+		} catch (CharacterCodingException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 

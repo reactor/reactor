@@ -18,21 +18,21 @@ package reactor.io.net.http;
 
 import org.reactivestreams.Publisher;
 import reactor.Environment;
+import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
+import reactor.bus.registry.Registry;
+import reactor.bus.selector.Selector;
+import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
-import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
+import reactor.io.net.NetSelectors;
 import reactor.io.net.PeerStream;
 import reactor.io.net.Server;
-import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.net.InetSocketAddress;
+import java.util.Iterator;
 
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
@@ -43,65 +43,122 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>
-		extends PeerStream<IN, OUT>
-		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT, ServerRequest<IN, OUT>>
+		implements Server<IN, OUT, ServerRequest<IN, OUT>> {
 
-	private final InetSocketAddress   listenAddress;
-	private final ServerSocketOptions options;
-	private final SslOptions          sslOptions;
+	protected final Registry<Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>> routedWriters;
 
-	protected HttpServer(@Nonnull Environment env,
-	                     @Nonnull Dispatcher dispatcher,
-	                     @Nullable InetSocketAddress listenAddress,
-	                     ServerSocketOptions options,
-	                     SslOptions sslOptions,
-	                     @Nullable Codec<Buffer, IN, OUT> codec) {
+	protected HttpServer(Environment env, Dispatcher dispatcher, Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, codec);
-		this.listenAddress = listenAddress;
-		Assert.notNull(options, "ServerSocketOptions cannot be null");
-		this.options = options;
-		this.sslOptions = sslOptions;
+		this.routedWriters = Registries.create();
 	}
 
+	/**
+	 * @param condition
+	 * @param serviceFunction
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public HttpServer<IN, OUT> route(
+			final Selector condition,
+			final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+
+		routedWriters.register(condition, serviceFunction);
+		return this;
+	}
+
+
 	@Override
-	public Server<IN, OUT, ChannelStream<IN, OUT>> pipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		doPipeline(serviceFunction);
+	public Server<IN, OUT, ServerRequest<IN, OUT>> pipeline(
+			final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		route(Selectors.matchAll(), serviceFunction);
 		return this;
 	}
 
 	/**
 	 * Start this server.
 	 *
-	 * @return {@literal this}
+	 * @return {@literal promise} fulfilling when started
 	 */
+	@Override
 	public abstract Promise<Boolean> start();
 
+	@Override
+	public abstract Promise<Boolean> shutdown();
+
 	/**
-	 * Get the address to which this server is bound.
-	 *
+	 * @param path
+	 * @param handler
 	 * @return
 	 */
-	protected InetSocketAddress getListenAddress() {
-		return listenAddress;
+	public final HttpServer<IN, OUT> get(String path,
+	                                     final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>
+			                                     handler) {
+		route(NetSelectors.get(path), handler);
+		return this;
 	}
 
 	/**
-	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.
-	 *
+	 * @param path
+	 * @param handler
 	 * @return
 	 */
-	protected ServerSocketOptions getOptions() {
-		return options;
+	public final HttpServer<IN, OUT> post(String path,
+	                                      final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>
+			                                      handler) {
+		route(NetSelectors.post(path), handler);
+		return this;
+	}
+
+
+	/**
+	 * @param path
+	 * @param handler
+	 * @return
+	 */
+	public final HttpServer<IN, OUT> put(String path,
+	                                     final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>
+			                                     handler) {
+		route(NetSelectors.put(path), handler);
+		return this;
 	}
 
 	/**
-	 * Get the {@link reactor.io.net.config.SslOptions} current in effect.
-	 *
-	 * @return the SSL options
+	 * @param path
+	 * @param handler
+	 * @return
 	 */
-	protected SslOptions getSslOptions() {
-		return sslOptions;
+	public final HttpServer<IN, OUT> delete(String path,
+	                                        final Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>
+			                                        handler) {
+		route(NetSelectors.delete(path), handler);
+		return this;
 	}
 
+	@Override
+	protected Iterable<Publisher<? extends OUT>> routeChannel(final ServerRequest<IN, OUT> ch) {
+		return new Iterable<Publisher<? extends OUT>>() {
+			@Override
+			public Iterator<Publisher<? extends OUT>> iterator() {
+				final Iterator<Registration<? extends Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>>>
+						iterator
+						= routedWriters.select(ch).iterator();
+
+				return new Iterator<Publisher<? extends OUT>>() {
+					@Override
+					public boolean hasNext() {
+						return iterator.hasNext();
+					}
+
+					@Override
+					public Publisher<? extends OUT> next() {
+						Registration<? extends Function<ServerRequest<IN, OUT>, ? extends Publisher<? extends OUT>>> next
+								= iterator.next();
+
+						return next != null ? next.getObject().apply(ch) : null;
+					}
+				};
+			}
+		};
+	}
 }

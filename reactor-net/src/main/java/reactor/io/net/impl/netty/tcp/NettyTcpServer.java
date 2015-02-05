@@ -34,7 +34,10 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.impl.netty.*;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
+import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
@@ -141,7 +144,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
-					notifyStart();
 					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());
@@ -194,8 +196,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		);
 
 		ch.pipeline().addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-				new NettyNetChannelOutboundHandler()
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
 		);
 
 		return netChannel;

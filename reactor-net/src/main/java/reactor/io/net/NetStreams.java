@@ -39,25 +39,30 @@ import reactor.rx.Streams;
  * <pre>
  * {@code
  * //echo server
- * NetStreams.tcpServer(1234).pipeline( connection ->
- *   connection
- * )
+ * NetStreams.tcpServer(1234).pipeline( connection -> connection );
  *
- * NetStreams.tcpClient(1234).connect( output ->
- *   output
- *   .sendAndReceive(Buffer.wrap("hello"))
- *   .onSuccess(log::info)
- * )
+ * NetStreams.tcpClient(1234).pipeline( connection ->
+ *    connection
+ *      //Listen for any incoming data on that connection, they will be Buffer an IOStream can easily decode
+ *      .nest()
+ *      .flatMap(self -> IOStreams.decode(new StringCodec('\n'), self))
+ *      .consume(log::info);
  *
- * NetStreams.tcpServer(spec -> spec.listen(1234)).pipeline( intput, output -> {
+ *    //Push anything from the publisher returned, here a simple Reactor Stream. By default a Buffer is expected
+ *    return Streams.just(Buffer.wrap("hello\n"));
+ * });
+ *
+ * //We can also preconfigure global codecs and other custom client/server parameter with the Function signature:
+ * NetStreams.tcpServer(spec -> spec.codec(kryoCodec).listen(1235)).pipeline( intput -> {
  *      input.consume(log::info);
- *     Streams.period(1l).subscribe(output);
- * })
+ *      return Streams.period(1l);
+ * });
  *
- * NetStreams.tcpClient(spec -> spec.codec(kryoCodec)).connect( output, input -> {
+ * //Assigning the same codec to a client and a server greatly improve readability and provide for extended type safety.
+ * NetStreams.tcpClient(spec -> spec.connect("localhost", 1235).codec(kryoCodec)).pipeline( input -> {
  *   input.consume(log::info);
- *   output.send("hello");
- * })
+ *   return Streams.just("hello");
+ * });
  *
  * }
  * </pre>
@@ -80,32 +85,130 @@ public class NetStreams extends Streams {
 	// TCP
 
 	/**
-	 * @return
+	 * Bind a new TCP server to "loopback" on port {@literal 12012}. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpServer<Buffer, Buffer> tcpServer() {
 		return tcpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
-	 * @param port
-	 * @return
+	 * Bind a new TCP server to "loopback" on the given port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param port the port to listen on loopback
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpServer<Buffer, Buffer> tcpServer(int port) {
 		return tcpServer(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @return
+	 * Bind a new TCP server to the given bind address on port {@literal 12012}. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param bindAddress bind address (e.g. "127.0.0.1") to create the server on the default port 12012
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpServer<Buffer, Buffer> tcpServer(String bindAddress) {
 		return tcpServer(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @param port
-	 * @return
+	 * Bind a new TCP server to the given bind address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param port the port to listen on the passed bind address
+	 * @param bindAddress bind address (e.g. "127.0.0.1") to create the server on the passed port
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpServer<Buffer, Buffer> tcpServer(final String bindAddress, final int port) {
 		return tcpServer(new Function<Spec.TcpServer<Buffer, Buffer>, Spec.TcpServer<Buffer, Buffer>>() {
@@ -120,10 +223,35 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new TCP server to the specified bind address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(
 			Function<? super Spec.TcpServer<IN, OUT>, ? extends Spec.TcpServer<IN, OUT>> configuringFunction
@@ -132,11 +260,34 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param serverFactory
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new TCP server to the specified bind address and port.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param serverFactory the given implementation class for this peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(
 			Class<? extends TcpServer> serverFactory,
@@ -147,32 +298,132 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 * @return
+	 * Bind a new TCP client to the localhost on port 12012. By default the default client implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpClient<Buffer, Buffer> tcpClient() {
 		return tcpClient(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @return
+	 * Bind a new TCP client to the specified connect address and port 12012. By default the default client implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param bindAddress the address to connect to on port 12012
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpClient<Buffer, Buffer> tcpClient(String bindAddress) {
 		return tcpClient(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
-	 * @param port
-	 * @return
+	 * Bind a new TCP client to "loopback" on the the specified port. By default the default client implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param port the port to connect to on "loopback"
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpClient<Buffer, Buffer> tcpClient(int port) {
 		return tcpClient(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @param port
-	 * @return
+	 * Bind a new TCP client to the specified connect address and port. By default the default client implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param bindAddress the address to connect to
+	 * @param port the port to connect to
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpClient<Buffer, Buffer> tcpClient(final String bindAddress, final int port) {
 		return tcpClient(new Function<Spec.TcpClient<Buffer, Buffer>, Spec.TcpClient<Buffer, Buffer>>() {
@@ -187,10 +438,35 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new TCP client to the specified connect address and port. By default the default client implementation is scanned
+	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(
 			Function<? super Spec.TcpClient<IN, OUT>, ? extends Spec.TcpClient<IN, OUT>> configuringFunction
@@ -199,11 +475,34 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param clientFactory
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new TCP client to the specified connect address and port.
+	 *
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param clientFactory the given implementation class for this peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(
 			Class<? extends TcpClient> clientFactory,
@@ -322,10 +621,35 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new HTTP client to the specified connect address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.http.HttpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> HttpClient<IN, OUT> httpClient(
 			Function<? super Spec.HttpClient<IN, OUT>, ? extends Spec.HttpClient<IN, OUT>> configuringFunction
@@ -334,11 +658,36 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param clientFactory
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new HTTP client to the specified connect address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when client is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.http.HttpClient#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param clientFactory the given implementation class for this peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> HttpClient<IN, OUT> httpClient(
 			Class<? extends HttpClient> clientFactory,
@@ -350,32 +699,131 @@ public class NetStreams extends Streams {
 	// UDP
 
 	/**
-	 * @return
+	 * Bind a new UDP server to the "loopback" address. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static DatagramServer<Buffer, Buffer> udpServer() {
 		return udpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @return
+	 * Bind a new UDP server to the given bind address. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param bindAddress bind address (e.g. "127.0.0.1") to create the server on the passed port
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static DatagramServer<Buffer, Buffer> udpServer(String bindAddress) {
 		return udpServer(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
-	 * @param port
-	 * @return
+	 * Bind a new UDP server to the "loopback" address and specified port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param port the port to listen on the passed bind address
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static DatagramServer<Buffer, Buffer> udpServer(int port) {
 		return udpServer(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @param port
-	 * @return
+	 * Bind a new UDP server to the given bind address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param port the port to listen on the passed bind address
+	 * @param bindAddress bind address (e.g. "127.0.0.1") to create the server on the passed port
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static DatagramServer<Buffer, Buffer> udpServer(final String bindAddress, final int port) {
 		return udpServer(new Function<Spec.DatagramServer<Buffer, Buffer>, Spec.DatagramServer<Buffer, Buffer>>() {
@@ -390,10 +838,35 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new UDP server to the specified bind address and port. By default the default server implementation is scanned
+	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
+	 * library dependencies are on the classpath.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> DatagramServer<IN, OUT> udpServer(
 			Function<? super Spec.DatagramServer<IN, OUT>, ? extends Spec.DatagramServer<IN, OUT>> configuringFunction
@@ -402,11 +875,34 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param serverFactory
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Bind a new UDP server to the specified bind address and port.
+	 *
+	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
+	 * - onComplete when server is shutdown
+	 * - onError when any exception (more specifically IO exception) occurs
+	 * From the emitted {@link reactor.io.net.Channel}, one can decide to add in-channel consumers to read any incoming data.
+	 *
+	 * To reply data on the active connection, {@link Channel#sink} can subscribe to any passed {@link org.reactivestreams.Publisher}.
+	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers and the output
+	 * producers in a single call;
+	 *
+	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on write mode.
+	 * If the capacity is Long.MAX_Value, write on flush and auto read will apply. Otherwise, data will be flushed every
+	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
+	 *
+	 * Emitted channels will run on the same thread they have beem receiving IO events.
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * asynchronously.
+	 *
+	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
+	 *
+	 * @param serverFactory the given implementation class for this peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
+	 * @param <IN> the given input type received by this peer. Any configured codec decoder must match this type.
+	 * @param <OUT> the given output type received by this peer. Any configured codec encoder must match this type.
+	 *
+	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> DatagramServer<IN, OUT> udpServer(
 			Class<? extends DatagramServer> serverFactory,

@@ -138,7 +138,7 @@ public final class ChronicleStream<K, V>
 		if (valueCodec == null) {
 			excerpt.writeObject(value);
 		} else {
-			Buffer buff = valueCodec.encoder().apply(value);
+			Buffer buff = valueCodec.apply(value);
 			int size = buff.remaining();
 			excerpt.writeInt(size);
 			excerpt.write(buff.byteBuffer());
@@ -149,7 +149,7 @@ public final class ChronicleStream<K, V>
 		if (keyCodec == null) {
 			excerpt.writeObject(key);
 		} else {
-			Buffer buff = keyCodec.encoder().apply(key);
+			Buffer buff = keyCodec.apply(key);
 			int size = buff.remaining();
 			excerpt.writeInt(size);
 			excerpt.write(buff.byteBuffer());

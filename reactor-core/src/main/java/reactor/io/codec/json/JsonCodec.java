@@ -59,7 +59,7 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	 * @param customModule The module to register with the underlying ObjectMapper
 	 */
 	@SuppressWarnings("unchecked")
-	public JsonCodec(Class<IN> inputType, Module customModule){
+	public JsonCodec(Class<IN> inputType, Module customModule) {
 		this(inputType, customModule, DEFAULT_DELIMITER);
 	}
 
@@ -70,7 +70,7 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	 *
 	 * @param inputType    The type to create when decoding.
 	 * @param customModule The module to register with the underlying ObjectMapper
-	 * @param delimiter A nullable delimiting byte for batch decoding
+	 * @param delimiter    A nullable delimiting byte for batch decoding
 	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule, Byte delimiter) {
@@ -88,12 +88,12 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	@SuppressWarnings("unchecked")
 	protected IN doBufferDecode(Buffer buffer) {
 		try {
-			if(JsonNode.class.isAssignableFrom(inputType)) {
-				return (IN)mapper.readTree(buffer.inputStream());
+			if (JsonNode.class.isAssignableFrom(inputType)) {
+				return (IN) mapper.readTree(buffer.inputStream());
 			} else {
 				return mapper.readValue(buffer.inputStream(), inputType);
 			}
-		} catch(IOException e) {
+		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
 	}
@@ -101,11 +101,6 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		return new JsonDecoder(next);
-	}
-
-	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new JsonEncoder();
 	}
 
 	private class JsonDecoder implements Function<Buffer, IN> {
@@ -122,14 +117,12 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		}
 	}
 
-	private class JsonEncoder implements Function<OUT, Buffer> {
-		@Override
-		public Buffer apply(OUT out) {
-			try {
-					return addDelimiterIfAny(new Buffer().append(mapper.writeValueAsBytes(out)));
-			} catch (JsonProcessingException e) {
-				throw new IllegalStateException(e);
-			}
+	@Override
+	public Buffer apply(OUT out) {
+		try {
+			return addDelimiterIfAny(new Buffer().append(mapper.writeValueAsBytes(out)));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 

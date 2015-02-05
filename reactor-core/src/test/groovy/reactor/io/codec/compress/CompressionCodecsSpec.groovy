@@ -24,7 +24,7 @@ class CompressionCodecsSpec extends Specification {
 			Buffer buffer
 
 		when: "an object is encoded with GZIP"
-			buffer = gzip.encoder().apply(Buffer.wrap("Hello World!"))
+			buffer = gzip.apply(Buffer.wrap("Hello World!"))
 
 		then: "the Buffer was encoded and compressed"
 			buffer.remaining() == 32
@@ -36,7 +36,7 @@ class CompressionCodecsSpec extends Specification {
 			hw == "Hello World!"
 
 		when: "an object is encoded with Snappy"
-			buffer = snappy.encoder().apply(Buffer.wrap("Hello World!"))
+			buffer = snappy.apply(Buffer.wrap("Hello World!"))
 
 		then: "the Buffer was encoded and compressed"
 			buffer.remaining() == 34

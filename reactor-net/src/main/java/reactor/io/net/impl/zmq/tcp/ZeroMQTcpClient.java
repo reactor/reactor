@@ -170,7 +170,6 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					}
 
 					socket.connect(addr);
-					notifyStart();
 
 					final ZeroMQChannelStream<IN, OUT> netChannel =
 							bindChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)

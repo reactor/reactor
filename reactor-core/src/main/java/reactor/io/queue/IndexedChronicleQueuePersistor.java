@@ -148,7 +148,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	@Override
 	public Long offer(@Nonnull T t) {
 		synchronized (monitor) {
-			Buffer buff = codec.encoder().apply(t);
+			Buffer buff = codec.apply(t);
 
 			int len = buff.remaining();
 			exAppender.startExcerpt(4 + len);
@@ -173,7 +173,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			return lastId();
 		}
 
-		Function<T, Buffer> encoder = codec.encoder();
+		Function<T, Buffer> encoder = codec;
 		int elasticity = 16;
 		Buffer buff;
 

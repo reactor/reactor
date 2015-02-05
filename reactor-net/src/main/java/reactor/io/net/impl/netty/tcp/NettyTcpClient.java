@@ -39,7 +39,10 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.impl.netty.*;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
+import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
@@ -107,7 +110,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+					.PROCESSORS);
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
@@ -211,8 +215,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		);
 
 		ch.pipeline().addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-				new NettyNetChannelOutboundHandler()
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
 		);
 
 		return netChannel;

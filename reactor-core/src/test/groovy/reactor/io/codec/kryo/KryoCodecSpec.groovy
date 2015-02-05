@@ -24,7 +24,7 @@ class KryoCodecSpec extends Specification {
 			Buffer buffer
 
 		when: "an objects are serialized"
-			buffer = codec.encoder().apply(obj)
+			buffer = codec.apply(obj)
 
 		then: "all objects were serialized"
 			buffer.remaining() == 75

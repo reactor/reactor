@@ -38,8 +38,10 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.ClientRequest;
 import reactor.io.net.http.HttpClient;
-import reactor.io.net.impl.netty.*;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -107,7 +109,8 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
+			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+					.PROCESSORS);
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
@@ -200,26 +203,13 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected ClientRequest<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
-		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getEnvironment(),
-				getDefaultCodec(),
-				prefetch == -1l ? getPrefetchSize() : prefetch,
-				this,
-				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
-				getDispatcher(),
-				ch
-		);
 
-		ch.pipeline().addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel),
-				new NettyNetChannelOutboundHandler()
-		);
 
-		return netChannel;
+		return null;
 	}
 
 	private void openChannel(ChannelFutureListener listener) {

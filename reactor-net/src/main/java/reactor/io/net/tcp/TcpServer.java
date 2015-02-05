@@ -43,7 +43,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends PeerStream<IN, OUT>
+		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
 		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;

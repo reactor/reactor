@@ -44,7 +44,7 @@ class StandardCodecsSpec extends Specification {
 			hello == "Hello World!"
 
 		when: "the String is encoded"
-			data = codec.encoder().apply(hello)
+			data = codec.apply(hello)
 
 		then: "the String was encoded"
 			data instanceof Buffer
@@ -67,7 +67,7 @@ class StandardCodecsSpec extends Specification {
 			hellos == ["Hello World!\n", "Hello World!\n", "Hello World!\n"]
 
 		when: "data is encoded"
-			def encoder = codec.encoder()
+			def encoder = codec
 			def hw1 = encoder.apply("Hello World!")
 			def hw2 = encoder.apply("Hello World!")
 			def hw3 = encoder.apply("Hello World!")
@@ -121,7 +121,7 @@ class StandardCodecsSpec extends Specification {
 			hello == "Hello World!"
 
 		when: "the data is encoded"
-			data = codec.encoder().apply(hello)
+			data = codec.apply(hello)
 
 		then: "the data was encoded"
 			data.readInt() == 12

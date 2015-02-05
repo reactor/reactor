@@ -27,9 +27,8 @@ import reactor.io.buffer.Buffer.View;
  * During decoding the delegate is used to process each segment. During encoding the delegate
  * is used to create a buffer for each piece of output to which the delimiter is then appended.
  *
- * @param <IN> The type that will be produced by decoding
+ * @param <IN>  The type that will be produced by decoding
  * @param <OUT> The type that will be consumed by encoding
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -80,11 +79,6 @@ public class DelimitedCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		return new DelimitedDecoder(next);
 	}
 
-	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new DelimitedEncoder();
-	}
-
 	private class DelimitedDecoder implements Function<Buffer, IN> {
 		private final Function<Buffer, IN> decoder;
 
@@ -115,19 +109,14 @@ public class DelimitedCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		}
 	}
 
-	private class DelimitedEncoder implements Function<OUT, Buffer> {
-		Function<OUT, Buffer> encoder = delegate.encoder();
-
-		@Override
-		@SuppressWarnings("resource")
-		public Buffer apply(OUT out) {
-			Buffer buffer = new Buffer();
-			Buffer encoded = encoder.apply(out);
-			if (null != encoded && encoded.remaining() > 0) {
-				buffer.append(encoded).append(delimiter);
-			}
-			return buffer.flip();
+	@Override
+	public Buffer apply(OUT out) {
+		Buffer buffer = new Buffer();
+		Buffer encoded = delegate.apply(out);
+		if (null != encoded && encoded.remaining() > 0) {
+			buffer.append(encoded).append(delimiter);
 		}
+		return buffer.flip();
 	}
 
 }

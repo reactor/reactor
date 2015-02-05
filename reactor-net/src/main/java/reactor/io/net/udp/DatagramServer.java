@@ -40,7 +40,7 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends PeerStream<IN, OUT>
+		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
 		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;

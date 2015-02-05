@@ -17,7 +17,6 @@
 package reactor.io.net.tcp.netty
 
 import reactor.Environment
-import reactor.io.IOStreams
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
@@ -129,24 +128,22 @@ class NettyTcpServerSpec extends Specification {
 		when: "the client/server are prepared"
 			server.pipeline { input ->
 				input
-						.nest()
-						.flatMap{ IOStreams.decode(codec, it) }
+						.decode(codec)
 						.log('serve')
-						.map(codec.encoder())
+						.map(codec)
 						.capacity(5l)
 			}
 
 			client.pipeline { input ->
 				input
-						.nest()
-						.flatMap{ IOStreams.decode(codec, it) }
+						.decode(codec)
 						.log('receive')
 						.consume { latch.countDown() }
 
 				Streams.range(1, 10)
 						.map { new Pojo(name: 'test' + it) }
 						.log('send')
-						.map(codec.encoder())
+						.map(codec)
 						.capacity(10l)
 			}
 

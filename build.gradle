@@ -434,6 +434,9 @@ project('reactor-net') {
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
 								"com.esotericsoftware.kryo:kryo:$kryoVersion"
+
+		testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
+
 		testRuntime project(':reactor-logback'),
 								"org.slf4j:jcl-over-slf4j:$slf4jVersion"
 	}

@@ -23,7 +23,7 @@ package reactor.bus.selector;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector  {
+public interface Selector<T>  {
 
 
 	/**
@@ -40,7 +40,7 @@ public interface Selector  {
 	 *
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
-	boolean matches(Object key);
+	boolean matches(T key);
 
 	/**
 	 * Return a component that can resolve headers from a key

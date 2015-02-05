@@ -34,14 +34,15 @@ import java.util.List;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class Codec<SRC, IN, OUT> {
+public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 	static public final byte DEFAULT_DELIMITER = (byte) '\0';
 
-	protected final Byte delimiter;
+	protected final Byte               delimiter;
 
 	/**
-	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or scan for delimited decoded Buffers.
+	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or scan for delimited decoded
+	 * Buffers.
 	 */
 	public Codec() {
 		this(DEFAULT_DELIMITER);
@@ -50,7 +51,8 @@ public abstract class Codec<SRC, IN, OUT> {
 	/**
 	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
 	 *
-	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at decode time.
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at decode
+	 *                   time.
 	 */
 	public Codec(Byte delimiter) {
 		this.delimiter = delimiter;
@@ -81,7 +83,9 @@ public abstract class Codec<SRC, IN, OUT> {
 	 *
 	 * @return The encoded source object.
 	 */
-	public abstract Function<OUT, SRC> encoder();
+	public Function<OUT, SRC> encoder(){
+		return this;
+	}
 
 	/**
 	 * Helper method to scan for delimiting byte the codec might benefit from, e.g. JSON codec.

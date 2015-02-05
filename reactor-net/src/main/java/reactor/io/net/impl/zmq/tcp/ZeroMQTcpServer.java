@@ -181,7 +181,6 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 						}
 					});
-					notifyStart();
 					promise.onNext(true);
 				} catch (Exception e) {
 					promise.onError(e);

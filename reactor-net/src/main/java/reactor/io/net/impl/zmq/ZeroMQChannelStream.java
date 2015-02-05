@@ -54,7 +54,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	public ZeroMQChannelStream(@Nonnull Environment env,
 	                           long prefetch,
-	                           PeerStream<IN, OUT> peer,
+	                           PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
 	                           @Nonnull Dispatcher eventsDispatcher,
 	                           @Nonnull Dispatcher ioDispatcher,
 	                           @Nullable Codec<Buffer, IN, OUT> codec) {

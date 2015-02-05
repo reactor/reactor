@@ -50,7 +50,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	public NettyChannelStream(@Nonnull Environment env,
 	                          @Nullable Codec<Buffer, IN, OUT> codec,
 	                          long prefetch,
-	                          @Nonnull PeerStream<IN, OUT> peer,
+	                          @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
 	                          @Nonnull Dispatcher ioDispatcher,
 	                          @Nonnull Dispatcher eventsDispatcher,
 	                          @Nonnull Channel ioChannel) {
@@ -86,14 +86,14 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	@Override
-	protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
+	public void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
 		ByteBuf buf = ioChannel.alloc().buffer(data.remaining());
 		buf.writeBytes(data);
 		write(buf, onComplete, flush);
 	}
 
 	@Override
-	protected void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
+	public void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
 		ChannelFuture writeFuture = flush ? ioChannel.writeAndFlush(data) : ioChannel.write(data);
 
 		writeFuture.addListener(new ChannelFutureListener() {
@@ -116,7 +116,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	@Override
-	protected void flush() {
+	public void flush() {
 		if(ioChannel.isActive()) {
 			ioChannel.flush();
 		}
