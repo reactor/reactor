@@ -25,7 +25,7 @@ class ProtobufCodecSpec extends Specification {
 			Buffer buffer
 
 		when: "an object is serialized"
-			buffer = codec.encoder().apply(obj)
+			buffer = codec.apply(obj)
 
 		then: "the object ws serialized"
 			buffer.remaining() == 70

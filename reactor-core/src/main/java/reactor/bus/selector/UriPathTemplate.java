@@ -38,14 +38,14 @@ public class UriPathTemplate {
 	private static final String  FULL_SPLAT_REPLACEMENT = ".*";
 
 	private static final Pattern NAME_SPLAT_PATTERN     = Pattern.compile("\\{([^/]+?)\\}[\\*][\\*]");
-	// TODO: JDK 6 doesn't support named capture groups
-	//private static final String  NAME_SPLAT_REPLACEMENT = "(?<%NAME%>.*)";
-	private static final String  NAME_SPLAT_REPLACEMENT = "(.*)";
+	// JDK 6 doesn't support named capture groups
+	private static final String  NAME_SPLAT_REPLACEMENT = "(?<%NAME%>.*)";
+	//private static final String  NAME_SPLAT_REPLACEMENT = "(.*)";
 
 	private static final Pattern NAME_PATTERN     = Pattern.compile("\\{([^/]+?)\\}");
-	// TODO: JDK 6 doesn't support named capture groups
-	//private static final String  NAME_REPLACEMENT = "(?<%NAME%>[^\\/.]*)";
-	private static final String  NAME_REPLACEMENT = "([^\\/.]*)";
+	// JDK 6 doesn't support named capture groups
+	private static final String  NAME_REPLACEMENT = "(?<%NAME%>[^\\/.]*)";
+	//private static final String  NAME_REPLACEMENT = "([^\\/.]*)";
 
 	private final List<String>                         pathVariables = new ArrayList<String>();
 	private final HashMap<String, Matcher>             matchers      = new HashMap<String, Matcher>();

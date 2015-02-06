@@ -25,8 +25,9 @@ import java.io.*;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public abstract class CompressionCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public abstract class CompressionCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 
@@ -43,18 +44,18 @@ public abstract class CompressionCodec<IN, OUT> implements Codec<Buffer, IN, OUT
 					ByteArrayInputStream bin = new ByteArrayInputStream(buffer.asBytes());
 					InputStream zin = createInputStream(bin);
 					Buffer newBuff = new Buffer();
-					while(zin.available() > 0) {
-						newBuff.append((byte)zin.read());
+					while (zin.available() > 0) {
+						newBuff.append((byte) zin.read());
 					}
 					zin.close();
 					IN in = delegate.decoder(null).apply(newBuff.flip());
-					if(null != next) {
+					if (null != next) {
 						next.accept(in);
 						return null;
 					} else {
 						return in;
 					}
-				} catch(IOException e) {
+				} catch (IOException e) {
 					throw new IllegalStateException(e.getMessage(), e);
 				}
 			}
@@ -62,24 +63,19 @@ public abstract class CompressionCodec<IN, OUT> implements Codec<Buffer, IN, OUT
 	}
 
 	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new Function<OUT, Buffer>() {
-			@Override
-			public Buffer apply(OUT out) {
-				Buffer buff = delegate.encoder().apply(out);
-				try {
-					ByteArrayOutputStream bout = new ByteArrayOutputStream();
-					OutputStream zout = createOutputStream(bout);
-					zout.write(buff.asBytes());
-					zout.flush();
-					bout.flush();
-					zout.close();
-					return Buffer.wrap(bout.toByteArray());
-				} catch(IOException e) {
-					throw new IllegalStateException(e.getMessage(), e);
-				}
-			}
-		};
+	public Buffer apply(OUT out) {
+		Buffer buff = delegate.apply(out);
+		try {
+			ByteArrayOutputStream bout = new ByteArrayOutputStream();
+			OutputStream zout = createOutputStream(bout);
+			zout.write(buff.asBytes());
+			zout.flush();
+			bout.flush();
+			zout.close();
+			return Buffer.wrap(bout.toByteArray());
+		} catch (IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 	}
 
 	protected abstract InputStream createInputStream(InputStream parent) throws IOException;

@@ -25,8 +25,9 @@ import reactor.io.buffer.Buffer;
  * visa-versa.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class ByteArrayCodec implements Codec<Buffer, byte[], byte[]> {
+public class ByteArrayCodec extends Codec<Buffer, byte[], byte[]> {
 
 	@Override
 	public Function<Buffer, byte[]> decoder(final Consumer<byte[]> next) {
@@ -35,7 +36,7 @@ public class ByteArrayCodec implements Codec<Buffer, byte[], byte[]> {
 			public byte[] apply(Buffer buffer) {
 				byte[] bytes = buffer.asBytes();
 				buffer.skip(bytes.length);
-				if(null != next) {
+				if (null != next) {
 					next.accept(bytes);
 					return null;
 				} else {
@@ -46,13 +47,8 @@ public class ByteArrayCodec implements Codec<Buffer, byte[], byte[]> {
 	}
 
 	@Override
-	public Function<byte[], Buffer> encoder() {
-		return new Function<byte[], Buffer>() {
-			@Override
-			public Buffer apply(byte[] bytes) {
-				return Buffer.wrap(bytes);
-			}
-		};
+	public Buffer apply(byte[] bytes) {
+		return Buffer.wrap(bytes);
 	}
 
 }

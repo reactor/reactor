@@ -717,10 +717,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				" For concurrent signal dispatching, refer to #partition()/groupBy() method and assign individual single " +
 				"dispatchers. ");
 
-		long _capacity = dispatcher.backlogSize() != Long.MAX_VALUE ?
-				dispatcher.backlogSize() - Action.RESERVED_SLOTS :
-				Long.MAX_VALUE;
-
+		long _capacity = Action.evaluateCapacity(dispatcher.backlogSize());
 		long parentCapacity = getCapacity();
 
 		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;
@@ -1090,6 +1087,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	public final Stream<O> startWith(final Publisher<? extends O> publisher) {
+		if(publisher == null) return this;
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
@@ -1277,6 +1275,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a backpressure capable stream
 	 */
 	public Stream<O> capacity(final long elements) {
+		if(elements == getCapacity()) return this;
+
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
@@ -2852,9 +2852,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Blocking call to eagerly fetch values from this stream
+	 * Fetch all values in a List to the returned Promise
 	 *
-	 * @return the buffered collection
+	 * @return the promise of all data from this Stream
 	 * @since 2.0
 	 */
 	public final Promise<List<O>> toList() {
@@ -2865,7 +2865,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Return the promise of N signals collected into an array list.
 	 *
 	 * @param maximum list size and therefore events signal to listen for
-	 * @return the buffered collection
+	 * @return the promise of all data from this Stream
 	 * @since 2.0
 	 */
 	public final Promise<List<O>> toList(long maximum) {
@@ -2912,7 +2912,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return the buffered queue
 	 * @since 2.0
 	 */
-	public final CompletableBlockingQueue<O> toBlockingQueue() throws InterruptedException {
+	public final CompletableBlockingQueue<O> toBlockingQueue() {
 		return toBlockingQueue(-1);
 	}
 
@@ -2925,7 +2925,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final CompletableBlockingQueue<O> toBlockingQueue(int maximum) throws InterruptedException {
+	public final CompletableBlockingQueue<O> toBlockingQueue(int maximum) {
 		final CompletableBlockingQueue<O> blockingQueue;
 		Stream<O> tail = this;
 		if (maximum > 0) {

@@ -30,9 +30,19 @@ import java.nio.charset.CharsetEncoder;
 /**
  * @author Jon Brisbin
  */
-public class StringCodec implements Codec<Buffer, String, String> {
+public class StringCodec extends Codec<Buffer, String, String> {
 
-	private final Charset utf8 = Charset.forName("UTF-8");
+	private final Charset        utf8    = Charset.forName("UTF-8");
+	private final CharsetDecoder decoder = utf8.newDecoder();
+	private final CharsetEncoder encoder = utf8.newEncoder();
+
+	public StringCodec() {
+		this(null);
+	}
+
+	public StringCodec(Byte delimiter) {
+		super(delimiter);
+	}
 
 	@Override
 	public Function<Buffer, String> decoder(Consumer<String> next) {
@@ -40,45 +50,39 @@ public class StringCodec implements Codec<Buffer, String, String> {
 	}
 
 	@Override
-	public Function<String, Buffer> encoder() {
-		return new StringEncoder();
+	protected String doBufferDecode(Buffer buffer) {
+		try {
+			return decoder.decode(buffer.byteBuffer()).toString();
+		} catch (CharacterCodingException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
 	private class StringDecoder implements Function<Buffer, String> {
+
 		private final Consumer<String> next;
-		private final CharsetDecoder decoder = utf8.newDecoder();
 
 		private StringDecoder(Consumer<String> next) {
 			this.next = next;
 		}
-
 		@Override
 		public String apply(Buffer bytes) {
-			try {
-				String s = decoder.decode(bytes.byteBuffer()).toString();
-				if (null != next) {
-					next.accept(s);
-					return null;
-				} else {
-					return s;
-				}
-			} catch (CharacterCodingException e) {
-				throw new IllegalStateException(e);
-			}
+			return doDelimitedBufferDecode(next, bytes);
 		}
+
 	}
 
-	private class StringEncoder implements Function<String, Buffer> {
-		private final CharsetEncoder encoder = utf8.newEncoder();
-
-		@Override
-		public Buffer apply(String s) {
-			try {
-				ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
+	@Override
+	public Buffer apply(String s) {
+		try {
+			ByteBuffer bb = encoder.encode(CharBuffer.wrap(s));
+			if (delimiter != null) {
+				return addDelimiterIfAny(new Buffer().append(bb));
+			} else {
 				return new Buffer(bb);
-			} catch (CharacterCodingException e) {
-				throw new IllegalStateException(e);
 			}
+		} catch (CharacterCodingException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 

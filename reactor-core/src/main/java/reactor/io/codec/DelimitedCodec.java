@@ -27,15 +27,14 @@ import reactor.io.buffer.Buffer.View;
  * During decoding the delegate is used to process each segment. During encoding the delegate
  * is used to create a buffer for each piece of output to which the delimiter is then appended.
  *
- * @param <IN> The type that will be produced by decoding
+ * @param <IN>  The type that will be produced by decoding
  * @param <OUT> The type that will be consumed by encoding
- *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class DelimitedCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
-	private final byte                   delimiter;
 	private final boolean                stripDelimiter;
 
 	/**
@@ -70,7 +69,7 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * @param delegate       The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(byte delimiter, boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
-		this.delimiter = delimiter;
+		super(delimiter);
 		this.stripDelimiter = stripDelimiter;
 		this.delegate = delegate;
 	}
@@ -78,11 +77,6 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		return new DelimitedDecoder(next);
-	}
-
-	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new DelimitedEncoder();
 	}
 
 	private class DelimitedDecoder implements Function<Buffer, IN> {
@@ -115,19 +109,14 @@ public class DelimitedCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		}
 	}
 
-	private class DelimitedEncoder implements Function<OUT, Buffer> {
-		Function<OUT, Buffer> encoder = delegate.encoder();
-
-		@Override
-		@SuppressWarnings("resource")
-		public Buffer apply(OUT out) {
-			Buffer buffer = new Buffer();
-			Buffer encoded = encoder.apply(out);
-			if (null != encoded && encoded.remaining() > 0) {
-				buffer.append(encoded).append(delimiter);
-			}
-			return buffer.flip();
+	@Override
+	public Buffer apply(OUT out) {
+		Buffer buffer = new Buffer();
+		Buffer encoded = delegate.apply(out);
+		if (null != encoded && encoded.remaining() > 0) {
+			buffer.append(encoded).append(delimiter);
 		}
+		return buffer.flip();
 	}
 
 }

@@ -29,8 +29,9 @@ import java.util.Date;
  * function returns {@code null}.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
+public class SyslogCodec extends Codec<Buffer, SyslogMessage, Void> {
 
 	private static final int MAXIMUM_SEVERITY = 7;
 	private static final int MAXIMUM_FACILITY = 23;
@@ -38,21 +39,14 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 	private static final int MAXIMUM_PRI      = (MAXIMUM_FACILITY * 8) + MAXIMUM_SEVERITY;
 	private static final int DEFAULT_PRI      = 13;
 
-	private static final Function<Void, Buffer> ENDCODER = new Function<Void, Buffer>() {
-		@Override
-		public Buffer apply(Void v) {
-			return null;
-		}
-	};
+	@Override
+	public Buffer apply(Void v) {
+		return null;
+	}
 
 	@Override
 	public Function<Buffer, SyslogMessage> decoder(Consumer<SyslogMessage> next) {
 		return new SyslogMessageDecoder(next);
-	}
-
-	@Override
-	public Function<Void, Buffer> encoder() {
-		return ENDCODER;
 	}
 
 	private class SyslogMessageDecoder implements Function<Buffer, SyslogMessage> {
@@ -123,12 +117,12 @@ public class SyslogCodec implements Codec<Buffer, SyslogMessage, Void> {
 				String msg = line.substring(start);
 
 				SyslogMessage syslogMsg = new SyslogMessage(line,
-																										priority,
-																										facility,
-																										severity,
-																										tstamp,
-																										host,
-																										msg);
+						priority,
+						facility,
+						severity,
+						tstamp,
+						host,
+						msg);
 				if (null != next) {
 					next.accept(syslogMsg);
 				} else {

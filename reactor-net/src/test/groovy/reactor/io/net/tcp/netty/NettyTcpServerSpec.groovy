@@ -17,12 +17,11 @@
 package reactor.io.net.tcp.netty
 
 import reactor.Environment
-import reactor.fn.Consumer
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
-import reactor.io.net.netty.tcp.NettyTcpServer
-import reactor.io.net.tcp.spec.TcpServerSpec
+import reactor.io.net.NetStreams
+import reactor.rx.Streams
 import spock.lang.Specification
 
 import java.nio.ByteBuffer
@@ -40,88 +39,121 @@ class NettyTcpServerSpec extends Specification {
 	Environment env
 
 	def setup() {
-		env = new Environment()
+		env = Environment.initializeIfEmpty()
 	}
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
-		def stopLatch = new CountDownLatch(1)
-		def dataLatch = new CountDownLatch(1)
-		def server = new TcpServerSpec<Buffer, Buffer>(NettyTcpServer).
-				env(env).
-				listen(port).
-				codec(new PassThroughCodec<Buffer>()).
-				get()
+			def stopLatch = new CountDownLatch(1)
+			def dataLatch = new CountDownLatch(1)
+			def server = NetStreams.<Buffer, Buffer> tcpServer {
+				it.
+						env(env).
+						listen(port).
+						codec(new PassThroughCodec<Buffer>())
+			}
 
 		when: "the server is started"
-			server.consume{ conn ->
-				conn.consume{ data ->
-					conn.echo Buffer.wrap("Hello World!")
+			server.consume { conn ->
+				conn.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")))
+			}
+
+		then: "the server was started"
+			server.start().awaitSuccess()
+
+		when: "data is sent"
+			def client = new SimpleClient(port, dataLatch, Buffer.wrap("Hello World!"))
+			client.start()
+			dataLatch.await(5, TimeUnit.SECONDS)
+
+		then: "data was recieved"
+			client.data?.remaining() == 12
+			new Buffer(client.data).asString() == "Hello World!"
+			dataLatch.count == 0
+
+		cleanup: "the server is stopped"
+			server.shutdown().onSuccess {
+				stopLatch.countDown()
+			}
+			stopLatch.await(5, TimeUnit.SECONDS)
+
+	}
+
+	def "NettyTcpServer can encode and decode JSON"() {
+		given: "a TcpServer with JSON defaultCodec"
+			def stopLatch = new CountDownLatch(1)
+			def dataLatch = new CountDownLatch(1)
+			def server = NetStreams.<Pojo, Pojo> tcpServer {
+				it.env(env).
+						listen(port).
+						codec(new JsonCodec<Pojo, Pojo>(Pojo))
+			}
+
+		when: "the server is started"
+			server.pipeline { conn ->
+				conn.map { pojo ->
+					assert pojo.name == "John Doe"
+					new Pojo(name: "Jane Doe")
 				}
 			}
 
 		then: "the server was started"
-		server.start().awaitSuccess()
-
-		when: "data is sent"
-		def client = new SimpleClient(port, dataLatch, Buffer.wrap("Hello World!"))
-		client.start()
-		dataLatch.await(5, TimeUnit.SECONDS)
-
-		then: "data was recieved"
-		client.data?.remaining() == 12
-		new Buffer(client.data).asString() == "Hello World!"
-		dataLatch.count == 0
-
-		when: "the server is stopped"
-		server.shutdown().onSuccess({
-			stopLatch.countDown()
-		} as Consumer<Void>)
-		stopLatch.await(5, TimeUnit.SECONDS)
-
-		then: "the server was stopped"
-		stopLatch.count == 0
-	}
-
-	def "NettyTcpServer can encode and decode JSON"() {
-		given: "a TcpServer with JSON codec"
-		def stopLatch = new CountDownLatch(1)
-		def dataLatch = new CountDownLatch(1)
-		def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
-				env(env).
-				listen(port).
-				codec(new JsonCodec<Pojo, Pojo>(Pojo)).
-				get()
-
-				when: "the server is started"
-					server.consume{ conn ->
-						conn.consume{ pojo ->
-							assert pojo.name == "John Doe"
-							conn.echo new Pojo(name: "Jane Doe")
-						}
-					}
-
-		then: "the server was started"
-			server.start().awaitSuccess(5, TimeUnit.SECONDS)
+			server.start().awaitSuccess(50, TimeUnit.SECONDS)
 
 		when: "a pojo is written"
-		def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))
-		client.start()
-		dataLatch.await(5, TimeUnit.SECONDS)
+			def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))
+			client.start()
+			dataLatch.await(5, TimeUnit.SECONDS)
 
 		then: "data was recieved"
-		client.data?.remaining() == 19
-		new Buffer(client.data).asString() == "{\"name\":\"Jane Doe\"}"
-		dataLatch.count == 0
+			client.data?.remaining() == 19
+			new Buffer(client.data).asString() == "{\"name\":\"Jane Doe\"}"
+			dataLatch.count == 0
 
-		when: "the server is stopped"
-		server.shutdown().onSuccess({
-			stopLatch.countDown()
-		} as Consumer<Void>)
-		stopLatch.await(5, TimeUnit.SECONDS)
+		cleanup: "the server is stopped"
+			server.shutdown().onSuccess {
+				stopLatch.countDown()
+			}
+			stopLatch.await(5, TimeUnit.SECONDS)
+	}
 
-		then: "the server was stopped"
-		stopLatch.count == 0
+	def "flush every 5 elems with manual decoding"() {
+		given: "a TcpServer and a TcpClient"
+			def latch = new CountDownLatch(10)
+
+			def server = NetStreams.tcpServer(port)
+			def client = NetStreams.tcpClient("localhost", port)
+			def codec = new JsonCodec<Pojo, Pojo>(Pojo)
+
+		when: "the client/server are prepared"
+			server.pipeline { input ->
+				input
+						.decode(codec)
+						.log('serve')
+						.map(codec)
+						.capacity(5l)
+			}
+
+			client.pipeline { input ->
+				input
+						.decode(codec)
+						.log('receive')
+						.consume { latch.countDown() }
+
+				Streams.range(1, 10)
+						.map { new Pojo(name: 'test' + it) }
+						.log('send')
+						.map(codec)
+						.capacity(10l)
+			}
+
+		then: "the client/server were started"
+			server?.start()?.flatMap { client.open() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			latch.await(10, TimeUnit.SECONDS)
+
+
+		cleanup: "the client/server where stopped"
+			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
 	static class SimpleClient extends Thread {
@@ -151,6 +183,11 @@ class NettyTcpServerSpec extends Specification {
 
 	static class Pojo {
 		String name
+
+		@Override
+		String toString() {
+			name
+		}
 	}
 
 }

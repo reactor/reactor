@@ -22,7 +22,7 @@ class JacksonJsonCodecSpec extends Specification {
 			Buffer buffer
 
 		when: "an object is serialized"
-			buffer = codec.encoder().apply(new Person(name: "John Doe"))
+			buffer = codec.apply(new Person(name: "John Doe"))
 
 		then: "the object was serialized"
 			buffer.remaining() == 76

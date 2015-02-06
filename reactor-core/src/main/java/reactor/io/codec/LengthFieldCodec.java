@@ -29,14 +29,12 @@ import java.nio.ByteBuffer;
  * is used to encode each piece of output into a buffer. The buffer is then output, with its
  * length prepended.
  *
- * @param <IN>
- * 		The type that will be produced by decoding
- * @param <OUT>
- * 		The type that will be consumed by encoding
- *
+ * @param <IN>  The type that will be produced by decoding
+ * @param <OUT> The type that will be consumed by encoding
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class LengthFieldCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final int                    lengthFieldLength;
 	private final Codec<Buffer, IN, OUT> delegate;
@@ -45,8 +43,7 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * Create a length-field codec that reads the first integer as the length of the
 	 * remaining message.
 	 *
-	 * @param delegate
-	 * 		The delegate {@link Codec}.
+	 * @param delegate The delegate {@link Codec}.
 	 */
 	public LengthFieldCodec(Codec<Buffer, IN, OUT> delegate) {
 		this(4, delegate);
@@ -56,14 +53,12 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * Create a length-field codec that reads the first short, integer, or long as the
 	 * length of the remaining message, and prepends a short, integer, long to its output.
 	 *
-	 * @param lengthFieldLength
-	 * 		The size of the length field. Valid values are 4 (int) or 8 (long).
-	 * @param delegate
-	 * 		The delegate {@link Codec}.
+	 * @param lengthFieldLength The size of the length field. Valid values are 4 (int) or 8 (long).
+	 * @param delegate          The delegate {@link Codec}.
 	 */
 	public LengthFieldCodec(int lengthFieldLength, Codec<Buffer, IN, OUT> delegate) {
 		Assert.state(lengthFieldLength == 2 || lengthFieldLength == 4 || lengthFieldLength == 8,
-		             "lengthFieldLength should be 2 (short), 4 (int), or 8 (long).");
+				"lengthFieldLength should be 2 (short), 4 (int), or 8 (long).");
 		this.lengthFieldLength = lengthFieldLength;
 		this.delegate = delegate;
 	}
@@ -71,11 +66,6 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		return new LengthFieldDecoder(next);
-	}
-
-	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new LengthFieldEncoder();
 	}
 
 	private class LengthFieldDecoder implements Function<Buffer, IN> {
@@ -87,9 +77,9 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 
 		@Override
 		public IN apply(Buffer buffer) {
-			while(buffer.remaining() > lengthFieldLength) {
+			while (buffer.remaining() > lengthFieldLength) {
 				int expectedLen = readLen(buffer);
-				if(expectedLen < 0 || expectedLen > buffer.remaining()) {
+				if (expectedLen < 0 || expectedLen > buffer.remaining()) {
 					// This Buffer doesn't contain a full frame of data
 					// reset to the start and bail out
 					buffer.rewind(lengthFieldLength);
@@ -107,11 +97,11 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 				IN in = decoder.apply(v.get());
 				// reset the limit
 				buffer.byteBuffer().limit(limit);
-				if(buffer.position() == pos) {
+				if (buffer.position() == pos) {
 					// the pointer hasn't advanced, advance it
 					buffer.skip(expectedLen);
 				}
-				if(null != in) {
+				if (null != in) {
 					// no Consumer was invoked, return this data
 					return in;
 				}
@@ -121,46 +111,42 @@ public class LengthFieldCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		}
 
 		private int readLen(Buffer buffer) {
-			if(lengthFieldLength == 4) {
+			if (lengthFieldLength == 4) {
 				return buffer.readInt();
-			} else if(lengthFieldLength == 2) {
+			} else if (lengthFieldLength == 2) {
 				return buffer.readShort();
 			} else {
-				return (int)buffer.readLong();
+				return (int) buffer.readLong();
 			}
 		}
 	}
 
-	private class LengthFieldEncoder implements Function<OUT, Buffer> {
-		private final Function<OUT, Buffer> encoder = delegate.encoder();
-
-		@Override
-		public Buffer apply(OUT out) {
-			if(null == out) {
-				return null;
-			}
-
-			Buffer encoded = encoder.apply(out);
-			if(null != encoded && encoded.remaining() > 0) {
-				int len = encoded.remaining();
-				ByteBuffer bb = null;
-				if(lengthFieldLength == 4) {
-					bb = ByteBuffer.allocate(len + 4);
-					bb.putInt(len);
-				} else if(lengthFieldLength == 2) {
-					bb = ByteBuffer.allocate(len + 2);
-					bb.putShort((short)len);
-				} else if(lengthFieldLength == 8) {
-					bb = ByteBuffer.allocate(len + 8);
-					bb.putLong((long)len);
-				}
-				if(null != bb) {
-					bb.put(encoded.byteBuffer()).flip();
-					return new Buffer(bb);
-				}
-			}
-			return encoded;
+	@Override
+	public Buffer apply(OUT out) {
+		if (null == out) {
+			return null;
 		}
+
+		Buffer encoded = delegate.apply(out);
+		if (null != encoded && encoded.remaining() > 0) {
+			int len = encoded.remaining();
+			ByteBuffer bb = null;
+			if (lengthFieldLength == 4) {
+				bb = ByteBuffer.allocate(len + 4);
+				bb.putInt(len);
+			} else if (lengthFieldLength == 2) {
+				bb = ByteBuffer.allocate(len + 2);
+				bb.putShort((short) len);
+			} else if (lengthFieldLength == 8) {
+				bb = ByteBuffer.allocate(len + 8);
+				bb.putLong((long) len);
+			}
+			if (null != bb) {
+				bb.put(encoded.byteBuffer()).flip();
+				return new Buffer(bb);
+			}
+		}
+		return encoded;
 	}
 
 }

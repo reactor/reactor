@@ -17,11 +17,12 @@ package reactor.rx.action.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.Dispatcher;
 
 /**
  * @author Stephane Maldini
  */
-public class DefaultSubscriber<O> implements Subscriber<O> {
+public class DefaultSubscriber<O> implements Subscriber<O>, NonBlocking {
 
 	@Override
 	public void onSubscribe(Subscription s) {
@@ -41,5 +42,15 @@ public class DefaultSubscriber<O> implements Subscriber<O> {
 	@Override
 	public void onComplete() {
 
+	}
+
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return getCapacity() < producerCapacity;
+	}
+
+	@Override
+	public long getCapacity() {
+		return Long.MAX_VALUE;
 	}
 }

@@ -23,8 +23,9 @@ import java.util.Map;
  * Responsible for extracting any applicable headers from a key.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public interface HeaderResolver {
+public interface HeaderResolver<T> {
 
 	/**
 	 * Resolve the headers that might be encoded in a key.
@@ -34,6 +35,6 @@ public interface HeaderResolver {
 	 * @return Any applicable headers. Might be {@literal null}.
 	 */
 	@Nullable
-	Map<String, Object> resolve(Object key);
+	Map<String, T> resolve(Object key);
 
 }

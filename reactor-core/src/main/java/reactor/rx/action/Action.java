@@ -95,18 +95,24 @@ public abstract class Action<I, O> extends Stream<O>
 
 	protected long capacity;
 
+	public static void checkRequest(long n) {
+		if (n <= 0l) {
+			throw SpecificationExceptions.spec_3_09_exception(n);
+		}
+	}
+
+	public static long evaluateCapacity(long n) {
+		return n != Long.MAX_VALUE ?
+				Math.max(Action.RESERVED_SLOTS, n - Action.RESERVED_SLOTS) :
+				Long.MAX_VALUE;
+	}
+
 	public Action() {
 		this(Long.MAX_VALUE);
 	}
 
 	public Action(long batchSize) {
 		this.capacity = batchSize;
-	}
-
-	public static void checkRequest(long n) {
-		if (n <= 0l) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
-		}
 	}
 
 	/**
@@ -205,7 +211,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public Action<I, O> capacity(long elements) {
 		Dispatcher dispatcher = getDispatcher();
 		if (dispatcher != SynchronousDispatcher.INSTANCE && dispatcher.getClass() != TailRecurseDispatcher.class) {
-			long dispatcherCapacity = dispatcher.backlogSize() - RESERVED_SLOTS;
+			long dispatcherCapacity = evaluateCapacity(dispatcher.backlogSize());
 			capacity = elements > dispatcherCapacity ? dispatcherCapacity : elements;
 		} else {
 			capacity = elements;

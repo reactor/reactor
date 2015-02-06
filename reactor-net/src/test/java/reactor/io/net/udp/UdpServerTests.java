@@ -12,9 +12,8 @@ import reactor.fn.Consumer;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.netty.udp.NettyDatagramServer;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
 import reactor.io.net.tcp.support.SocketUtils;
-import reactor.io.net.udp.spec.DatagramServerSpec;
 
 import java.io.IOException;
 import java.net.*;
@@ -38,7 +37,7 @@ public class UdpServerTests {
 
 	@Before
 	public void setup() {
-		env = new Environment();
+		env = Environment.initializeIfEmpty().assignErrorJournal();
 		threadPool = Executors.newCachedThreadPool();
 	}
 
@@ -88,7 +87,7 @@ public class UdpServerTests {
 			}
 		});
 
-		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertThat("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -107,7 +106,7 @@ public class UdpServerTests {
 		final DatagramServer[] servers = new DatagramServer[Environment.PROCESSORS];
 
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
-			servers[i] = new DatagramServerSpec<byte[], byte[]>(NettyDatagramServer.class)
+			servers[i] = NetStreams.<byte[], byte[]>udpServer(NettyDatagramServer.class, spec -> spec
 					.env(env)
 					.dispatcher(Environment.SHARED)
 					.listen(port)
@@ -115,7 +114,7 @@ public class UdpServerTests {
 					.options(new ServerSocketOptions()
 							.reuseAddr(true))
 					.codec(StandardCodecs.BYTE_ARRAY_CODEC)
-					.get();
+			);
 
 			servers[i].consume(new Consumer<byte[]>() {
 				int count = 0;

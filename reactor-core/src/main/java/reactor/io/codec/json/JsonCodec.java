@@ -31,14 +31,11 @@ import java.io.IOException;
 /**
  * A codec for decoding JSON into Java objects and encoding Java objects into JSON.
  *
- * @param <IN>
- * 		The type to decode JSON into
- * @param <OUT>
- * 		The type to encode into JSON
- *
+ * @param <IN>  The type to decode JSON into
+ * @param <OUT> The type to encode into JSON
  * @author Jon Brisbin
  */
-public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
+public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	private final Class<IN>    inputType;
 	private final ObjectMapper mapper;
@@ -47,8 +44,7 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
 	 * decoding.
 	 *
-	 * @param inputType
-	 * 		The type to create when decoding.
+	 * @param inputType The type to create when decoding.
 	 */
 	public JsonCodec(Class<IN> inputType) {
 		this(inputType, null);
@@ -59,30 +55,52 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 	 * decoding. The {@code customModule} will be registered with the underlying {@link
 	 * ObjectMapper}.
 	 *
-	 * @param inputType
-	 * 		The type to create when decoding.
-	 * @param customModule
-	 * 		The module to register with the underlying ObjectMapper
+	 * @param inputType    The type to create when decoding.
+	 * @param customModule The module to register with the underlying ObjectMapper
 	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule) {
+		this(inputType, customModule, DEFAULT_DELIMITER);
+	}
+
+	/**
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
+	 * decoding. The {@code customModule} will be registered with the underlying {@link
+	 * ObjectMapper}.
+	 *
+	 * @param inputType    The type to create when decoding.
+	 * @param customModule The module to register with the underlying ObjectMapper
+	 * @param delimiter    A nullable delimiting byte for batch decoding
+	 */
+	@SuppressWarnings("unchecked")
+	public JsonCodec(Class<IN> inputType, Module customModule, Byte delimiter) {
+		super(delimiter);
 		Assert.notNull(inputType, "inputType must not be null");
-		this.inputType = (null == inputType ? (Class<IN>)JsonNode.class : inputType);
+		this.inputType = inputType;
 
 		this.mapper = new ObjectMapper();
-		if(null != customModule) {
+		if (null != customModule) {
 			this.mapper.registerModule(customModule);
+		}
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	protected IN doBufferDecode(Buffer buffer) {
+		try {
+			if (JsonNode.class.isAssignableFrom(inputType)) {
+				return (IN) mapper.readTree(buffer.inputStream());
+			} else {
+				return mapper.readValue(buffer.inputStream(), inputType);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		return new JsonDecoder(next);
-	}
-
-	@Override
-	public Function<OUT, Buffer> encoder() {
-		return new JsonEncoder();
 	}
 
 	private class JsonDecoder implements Function<Buffer, IN> {
@@ -95,33 +113,16 @@ public class JsonCodec<IN, OUT> implements Codec<Buffer, IN, OUT> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public IN apply(Buffer buffer) {
-			IN in;
-			try {
-				if(JsonNode.class.isAssignableFrom(inputType)) {
-					in = (IN)mapper.readTree(buffer.inputStream());
-				} else {
-					in = mapper.readValue(buffer.inputStream(), inputType);
-				}
-				if(null != next) {
-					next.accept(in);
-					return null;
-				} else {
-					return in;
-				}
-			} catch(IOException e) {
-				throw new IllegalStateException(e);
-			}
+			return doDelimitedBufferDecode(next, buffer);
 		}
 	}
 
-	private class JsonEncoder implements Function<OUT, Buffer> {
-		@Override
-		public Buffer apply(OUT out) {
-			try {
-				return Buffer.wrap(mapper.writeValueAsBytes(out));
-			} catch(JsonProcessingException e) {
-				throw new IllegalStateException(e);
-			}
+	@Override
+	public Buffer apply(OUT out) {
+		try {
+			return addDelimiterIfAny(new Buffer().append(mapper.writeValueAsBytes(out)));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 

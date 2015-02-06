@@ -20,11 +20,10 @@ import reactor.Environment
 import reactor.fn.Consumer
 import reactor.io.codec.LengthFieldCodec
 import reactor.io.codec.json.JsonCodec
-import reactor.io.net.NetChannel
-import reactor.io.net.netty.tcp.NettyTcpClient
-import reactor.io.net.netty.tcp.NettyTcpServer
-import reactor.io.net.tcp.spec.TcpClientSpec
-import reactor.io.net.tcp.spec.TcpServerSpec
+import reactor.io.net.Channel
+import reactor.io.net.Spec
+import reactor.io.net.impl.netty.tcp.NettyTcpClient
+import reactor.io.net.impl.netty.tcp.NettyTcpServer
 import reactor.io.net.tcp.support.SocketUtils
 import spock.lang.Ignore
 import spock.lang.Specification
@@ -48,7 +47,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 	@Unroll
 	def "Client should be able to send data to server"(List<Pojo> data) {
-		given: "a TcpServer and TcpClient with JSON codec"
+		given: "a TcpServer and TcpClient with JSON defaultCodec"
 			def dataLatch = new CountDownLatch(data.size())
 
 			final int port = SocketUtils.findAvailableTcpPort()
@@ -56,7 +55,7 @@ class ClientServerIntegrationSpec extends Specification {
 			def consumerMock = Mock(Consumer) { data.size() * accept(_) }
 			def codec = new LengthFieldCodec(new JsonCodec(Pojo))
 
-			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
+			def server = new Spec.TcpServer<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
 					listen(port).
 					codec(codec).
@@ -65,10 +64,10 @@ class ClientServerIntegrationSpec extends Specification {
 							dataLatch.countDown()
 							consumerMock.accept(pojo)
 						} as Consumer<Pojo>)
-					} as Consumer<NetChannel<Pojo, Pojo>>).
+					} as Consumer<Channel<Pojo, Pojo>>).
 					get()
 
-			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
+			def client = new Spec.TcpClient<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
 					connect("localhost", port).
@@ -101,7 +100,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 	@Unroll
 	def "Server should be able to send POJO to client"(List<Pojo> data) {
-		given: "a TcpServer and TcpClient with JSON codec"
+		given: "a TcpServer and TcpClient with JSON defaultCodec"
 			def dataLatch = new CountDownLatch(data.size())
 
 			final int port = SocketUtils.findAvailableTcpPort()
@@ -109,14 +108,14 @@ class ClientServerIntegrationSpec extends Specification {
 			def consumerMock = Mock(Consumer) { data.size() * accept(_) }
 			def codec = new LengthFieldCodec(new JsonCodec(Pojo))
 
-			def server = new TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
+			def server = new Spec.TcpServer<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
 					listen(port).
 					codec(codec).
 					consume({ conn -> data.each { pojo -> conn.sendAndForget(pojo) } } as Consumer).
 					get()
 
-			def client = new TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
+			def client = new Spec.TcpClient<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
 					connect("localhost", port).
@@ -127,7 +126,7 @@ class ClientServerIntegrationSpec extends Specification {
 
 		and: "connection is established"
 			client.open().
-					consume({ NetChannel conn ->
+					consume({ Channel conn ->
 						conn.consume({ Pojo pojo ->
 							dataLatch.countDown()
 							consumerMock.accept(pojo)

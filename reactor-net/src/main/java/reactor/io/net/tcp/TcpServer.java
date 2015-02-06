@@ -16,17 +16,18 @@
 
 package reactor.io.net.tcp;
 
+import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.io.net.NetPeerStream;
-import reactor.io.net.NetServer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.PeerStream;
+import reactor.io.net.Server;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.rx.Promise;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,8 +42,8 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends NetPeerStream<IN, OUT>
-		implements NetServer<IN, OUT, NetChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
+		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final ServerSocketOptions options;
@@ -61,12 +62,12 @@ public abstract class TcpServer<IN, OUT>
 		this.sslOptions = sslOptions;
 	}
 
-	/**
-	 * Start this server.
-	 *
-	 * @return {@literal this}
-	 */
-	public abstract Promise<Void> start();
+	@Override
+	public Server<IN, OUT, ChannelStream<IN, OUT>> pipeline(
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		doPipeline(serviceFunction);
+		return this;
+	}
 
 	/**
 	 * Get the address to which this server is bound.

@@ -18,6 +18,8 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -44,7 +46,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
-		this.dispatcher = dispatcher;
+		this.dispatcher = dispatcher == SynchronousDispatcher.INSTANCE ? TailRecurseDispatcher.INSTANCE : dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
 		//TODO define option to choose ?
@@ -53,6 +55,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	public void requestMore(long n) {
+		PushSubscription<T> upstreamSubscription = this.upstreamSubscription;
 		if (upstreamSubscription != null) {
 			long toRequest = Math.min(n, capacity);
 			if(COUNTED.addAndGet(this, toRequest) < 0l){

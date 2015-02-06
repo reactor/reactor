@@ -16,18 +16,18 @@
 
 package reactor.io.net.udp;
 
+import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.batch.BatchConsumer;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.NetChannelStream;
-import reactor.io.net.NetPeerStream;
-import reactor.io.net.NetServer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.PeerStream;
+import reactor.io.net.Server;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
-import reactor.rx.Stream;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -40,8 +40,8 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends NetPeerStream<IN, OUT>
-		implements NetServer<IN, OUT, NetChannelStream<IN, OUT>> {
+		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
+		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
@@ -60,37 +60,20 @@ public abstract class DatagramServer<IN, OUT>
 		this.options = options;
 	}
 
+	@Override
+	public Server<IN, OUT, ChannelStream<IN, OUT>> pipeline(
+			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+		doPipeline(serviceFunction);
+		return this;
+	}
+
 	/**
 	 * Start this server.
 	 *
 	 * @return {@literal this}
 	 */
-	public abstract Promise<Void> start();
+	public abstract Promise<Boolean> start();
 
-	/**
-	 * Send data to peers.
-	 *
-	 * @param data
-	 * 		the data to send
-	 *
-	 * @return {@literal this}
-	 */
-	public abstract DatagramServer<IN, OUT> send(OUT data);
-
-	/**
-	 * Retrieve the {@link reactor.rx.Stream} on which can be composed actions to take when data comes into
-	 * this {@literal DatagramServer}.
-	 *
-	 * @return the input {@link reactor.rx.Stream}
-	 */
-	public abstract Stream<IN> in();
-
-	/**
-	 * Retrieve the {@link reactor.rx.Stream} into which data can accepted for sending to peers.
-	 *
-	 * @return a {@link reactor.fn.batch.BatchConsumer} for sending data out
-	 */
-	public abstract BatchConsumer<OUT> out();
 
 	/**
 	 * Join a multicast group.

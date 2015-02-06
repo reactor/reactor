@@ -18,7 +18,6 @@ package reactor.fn.timer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
@@ -182,7 +181,7 @@ public class SimpleHashWheelTimer implements Timer {
 		return (long)(Math.ceil(System.currentTimeMillis() / resolution) * resolution);
 	}
 
-	private static class PeriodSelector implements Selector {
+	private static class PeriodSelector implements Selector<Long> {
 		private final long period;
 		private final long delay;
 		private final long createdMillis;
@@ -201,8 +200,8 @@ public class SimpleHashWheelTimer implements Timer {
 		}
 
 		@Override
-		public boolean matches(Object key) {
-			long now = (Long)key;
+		public boolean matches(Long key) {
+			long now = key;
 			long period = (long)(Math.ceil((now - createdMillis) / resolution) * resolution);
 			return period >= delay && period % this.period == 0;
 		}
