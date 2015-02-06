@@ -25,7 +25,7 @@
 	</appender>
 
 	<logger name="reactor" level="DEBUG"/>
-	<logger name="reactor.io.net.impl" level="INFO"/>
+	<logger name="reactor.io.net.impl" level="DEBUG"/>
 
 	<root level="info">
 		<appender-ref ref="stdout"/>
