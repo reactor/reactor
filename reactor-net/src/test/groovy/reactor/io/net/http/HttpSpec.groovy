@@ -37,10 +37,10 @@ class HttpSpec extends Specification {
 
 	def "http responds to requests from clients"() {
 		given: "a simple HttpServer"
-			def server = NetStreams.httpServer{
+			def server = NetStreams.httpServer {
 				it.codec(StandardCodecs.STRING_CODEC).listen(port)
 			}
-			def client = NetStreams.httpClient{
+			def client = NetStreams.httpClient {
 				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", port)
 			}
 
@@ -48,7 +48,7 @@ class HttpSpec extends Specification {
 			server.post('/test/{param}') { req ->
 				req
 						.log('server-received')
-						.map{it+' ' + req.param('param') + '!'}
+						.map { it + ' ' + req.param('param') + '!' }
 						.log('server-reply')
 			}
 
@@ -57,15 +57,15 @@ class HttpSpec extends Specification {
 
 		when: "data is sent with Reactor HTTP support"
 			def content = client.post('/test/World') { req ->
-				req
-						.header('Content-Type', 'text/plain')
-						.log('client-received')
+				req.header('Content-Type', 'text/plain')
 
-					Streams
-							.just("Hello")
-							.log('client-send')
+				Streams
+						.just("Hello")
+						.log('client-send')
 			}.flatMap { replies ->
-				replies.next()
+				replies.log('client-received').next()
+			}.onError{
+				println "Failed requesting server"
 			}
 
 
