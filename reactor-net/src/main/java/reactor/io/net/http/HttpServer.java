@@ -34,11 +34,12 @@ import reactor.io.net.Server;
 import java.util.Iterator;
 
 /**
- * Base functionality needed by all servers that communicate with clients over TCP.
+ * Base functionality needed by all servers that communicate with clients over HTTP.
  *
  * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
+ *
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>

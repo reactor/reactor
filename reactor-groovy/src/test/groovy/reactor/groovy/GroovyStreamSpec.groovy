@@ -18,6 +18,7 @@ package reactor.groovy
 import reactor.Environment
 import reactor.bus.EventBus
 import reactor.fn.support.Tap
+import reactor.fn.tuple.Tuple
 import reactor.rx.Stream
 import reactor.rx.Streams
 import spock.lang.Shared
@@ -54,6 +55,32 @@ class GroovyStreamSpec extends Specification {
 		then:
 			d.tap().get() == sum
 			sum == 15
+	}
+
+
+	def "Reduce By Key on Tuple Stream from multiple values"() {
+		when:
+			'Defer a composition'
+			def s = Streams.just(
+					Tuple.of('1', 1),
+					Tuple.of('1', 1),
+					Tuple.of('2', 1),
+					Tuple.of('1', 2),
+					Tuple.of('3', 1),
+					Tuple.of('3', 1),
+			)
+
+		and:
+			'apply a transformation'
+			def d = s.
+					reduceByKey{ prev, acc -> prev + acc}.
+					sort{ a, b -> b.t2 <=> a.t2 }.
+					map { it.t1 }.
+					toList().
+					await()
+
+		then:
+			d == ['1', '3', '2']
 	}
 
 	def "Compose from multiple filtered values"() {
@@ -119,69 +146,6 @@ class GroovyStreamSpec extends Specification {
 			first.tap().get() == 1
 			last.tap().get() == 5
 	}
-
-	/*def "Compose events (Request/Reply)"() {
-		given:
-			'a eventBus and a selector'
-			def r = EventBus.config().using(testEnv).dispatcher('eventLoop').get()
-			def key = $()
-
-		when:
-			'register a Reply Consumer'
-			r.receive(key.t1) { String test ->
-				Integer.parseInt test
-			}
-
-		and:
-			'compose the event'
-			def c = r.compose(key.t2, '1') % { i, acc = [] -> acc << i }
-
-		then:
-			c.awaitNext(1, TimeUnit.SECONDS)
-			c.get() == [1]
-	}*/
-
-	/* def "Compose events (Request/ N Replies)"() {
-			given:
-				'a eventBus and a selector'
-				def r = EventBus.config().using(testEnv).dispatcher('eventLoop').get()
-				def key = $()
-
-			when:
-				'register a Reply Consumer'
-				r.receive(key.t1) { String test ->
-					Integer.parseInt test
-				}
-				r.receive(key.t1) { String test ->
-					(Integer.parseInt(test)) * 100
-				}
-
-				r.receive(key.t1) { String test ->
-					(Integer.parseInt(test)) * 1000
-				}
-
-			and:
-				'prepare reduce and notify composition'
-				def c1 = Streams.generate().using(r).get()
-				def c2 = c1.take(2).reduce { i, acc = [] -> acc << i }
-
-				r.compose(key.t2, '1', c1)
-
-			then:
-				c2.awaitNext(1, TimeUnit.SECONDS)
-				c2.get() == [1, 100]
-
-			when:
-				'using reduce() alias'
-				c1 = Streams.generate().using(r).get()
-				c2 = c1.take(3).reduce()
-
-				r.compose(key.t2, '1', c1)
-
-			then:
-				c2.awaitNext(1, TimeUnit.SECONDS)
-				c2.get() == [1, 100, 1000]
-		}*/
 
 	def "relay events to reactor"() {
 		given:

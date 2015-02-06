@@ -28,7 +28,7 @@ import reactor.io.net.http.model.Method;
 import reactor.rx.Stream;
 
 /**
- * The base class for a Reactor-based TCP client.
+ * The base class for a Reactor-based Http client.
  *
  * @param <IN>
  * 		The type that will be received by this client
