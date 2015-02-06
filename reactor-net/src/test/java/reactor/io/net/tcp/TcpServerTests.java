@@ -73,7 +73,7 @@ import static org.junit.Assert.assertTrue;
 public class TcpServerTests {
 
 	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
-	final ExecutorService threadPool = Executors.newCachedThreadPool();
+	ExecutorService threadPool;
 	final int             msgs       = 150;
 	final int             threads    = 4;
 
@@ -87,6 +87,7 @@ public class TcpServerTests {
 	public void loadEnv() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
 		latch = new CountDownLatch(msgs * threads);
+		threadPool = Executors.newCachedThreadPool();
 	}
 
 	@After
@@ -191,7 +192,7 @@ public class TcpServerTests {
 		System.out.println(latch.getCount());
 
 		Control c = server.consume(ch ->
-						System.out.println(ch.consume(new Consumer<byte[]>() {
+						log.info(ch.consume(new Consumer<byte[]>() {
 							long num = 1;
 
 							@Override
@@ -205,10 +206,10 @@ public class TcpServerTests {
 								if (next != num++) {
 									System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
 								} else {
-									System.out.println(Thread.currentThread().getName() + ": received " + (num - 1));
+									log.info("received " + (num - 1));
 								}
 							}
-						}).debug())
+						}).debug().toString())
 		);
 
 		server.start().await();
