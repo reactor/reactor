@@ -97,10 +97,10 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 	}
 
 
-	/*@Override
+	@Override
 	public final Dispatcher getDispatcher() {
 		return dispatcher;
-	}*/
+	}
 
 	/**
 	 * Notify this server's consumers that the server has errors.

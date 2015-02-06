@@ -40,12 +40,12 @@ class HttpSpec extends Specification {
 
 		  //Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(port)
+				it.codec(StandardCodecs.STRING_CODEC).listen(port).dispatcher(Environment.sharedDispatcher())
 			}
 
 		  //Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", port)
+				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", port).dispatcher(Environment.sharedDispatcher())
 			}
 
 		when: "the server is prepared"
