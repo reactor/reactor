@@ -28,7 +28,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
-import reactor.rx.action.Signal;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.subscription.PushSubscription;
@@ -202,13 +201,11 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
 			lock.lock();
 			try {
-				if (finalState == FinalState.ERROR) {
-					return Promises.error(environment, dispatcher, error);
-				} else if (finalState == FinalState.COMPLETE) {
+				if (finalState == FinalState.COMPLETE) {
 					if (value != null) {
 						onSuccess.accept(value);
 					}
-					return Promises.success(environment, dispatcher, value);
+					return this;
 				}
 			} catch (Throwable t) {
 				return Promises.error(environment, dispatcher, t);
@@ -292,15 +289,15 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	 * @param onError the error {@link Consumer}
 	 * @return {@literal the new Promise}
 	 */
-	public Promise<Throwable> onError(@Nonnull final Consumer<Throwable> onError) {
+	public Promise<O> onError(@Nonnull final Consumer<Throwable> onError) {
 		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
 			lock.lock();
 			try {
 				if (finalState == FinalState.ERROR) {
 					onError.accept(error);
-					return Promises.success(environment, dispatcher, error);
-				} else if(finalState == FinalState.COMPLETE){
-					return Promises.success(environment, dispatcher, null);
+					return this;
+				}else if(finalState == FinalState.COMPLETE){
+					return this;
 				}
 			} catch (Throwable t) {
 				return Promises.error(environment, dispatcher, t);
@@ -309,17 +306,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			}
 		}
 
-		return stream().materialize().map(new Function<Signal<O>, Throwable>() {
-			@Override
-			public Throwable apply(Signal<O> oSignal) {
-				if (oSignal.isOnError()) {
-					onError.accept(oSignal.getThrowable());
-					return oSignal.getThrowable();
-				}
-				return null;
-			}
-		})
-				.next();
+		return stream().when(Throwable.class, onError).next();
 	}
 
 	/**
