@@ -60,7 +60,7 @@ public abstract class HttpClient<IN, OUT>
 	 * @param handler
 	 * @return
 	 */
-	public final Promise<HttpChannel<IN, OUT>> get(String url,
+	public final Promise<? extends HttpChannel<IN, OUT>> get(String url,
 	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 			                                     handler) {
 
@@ -72,7 +72,7 @@ public abstract class HttpClient<IN, OUT>
 	 * @param handler
 	 * @return
 	 */
-	public final Promise<HttpChannel<IN, OUT>> post(String url,
+	public final Promise<? extends HttpChannel<IN, OUT>> post(String url,
 	                                      final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 			                                      handler) {
 		return request(Method.POST, url, handler);
@@ -84,7 +84,7 @@ public abstract class HttpClient<IN, OUT>
 	 * @param handler
 	 * @return
 	 */
-	public final Promise<HttpChannel<IN, OUT>> put(String url,
+	public final Promise<? extends HttpChannel<IN, OUT>> put(String url,
 	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 			                                     handler) {
 		return request(Method.PUT, url, handler);
@@ -95,18 +95,18 @@ public abstract class HttpClient<IN, OUT>
 	 * @param handler
 	 * @return
 	 */
-	public final Promise<HttpChannel<IN, OUT>> delete(String url,
+	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url,
 	                                        final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 			                                        handler) {
 		return request(Method.DELETE, url, handler);
 	}
 
-	public final Promise<HttpChannel<IN, OUT>> delete(String url) {
+	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url) {
 		return request(Method.DELETE, url, null);
 	}
 
 	
-	public abstract Promise<HttpChannel<IN, OUT>> request(Method method, String url,
+	public abstract Promise<? extends HttpChannel<IN, OUT>> request(Method method, String url,
 	                                            final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 	                                            handler);
 

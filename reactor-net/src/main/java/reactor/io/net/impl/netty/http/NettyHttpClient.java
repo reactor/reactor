@@ -42,6 +42,7 @@ import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Stream;
 
 import java.net.InetSocketAddress;
@@ -73,12 +74,12 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env        The configuration environment
-	 * @param dispatcher The dispatcher used to send events
+	 * @param env            The configuration environment
+	 * @param dispatcher     The dispatcher used to send events
 	 * @param connectAddress The root host and port to connect relatively from in http handlers
-	 * @param options    The configuration options for the client's socket
-	 * @param sslOptions The SSL configuration options for the client's socket
-	 * @param codec      The codec used to encode and decode data
+	 * @param options        The configuration options for the client's socket
+	 * @param sslOptions     The SSL configuration options for the client's socket
+	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyHttpClient(final Environment env,
 	                       final Dispatcher dispatcher,
@@ -104,7 +105,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 			@Override
 			public InetSocketAddress getConnectAddress() {
-				if(connectAddress != null) return connectAddress;
+				if (connectAddress != null) return connectAddress;
 				try {
 					URL url = new URL(lastURL);
 					String host = url.getHost();
@@ -118,25 +119,45 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<HttpChannel<IN, OUT>> request(final Method method, final String url,
-	                                            final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                            handler) {
+	public Promise<? extends HttpChannel<IN, OUT>> request(final Method method, final String url,
+	                                                       final Function<HttpChannel<IN, OUT>, ? extends Publisher<?
+			                                                       extends OUT>>
+			                                                       handler) {
 		lastURL = url;
 		Assert.isTrue(method != null && url != null);
+		final Promise<HttpChannel<IN, OUT>> p = Promises.prepare();
 
-		return observe(new Consumer<HttpChannel<IN, OUT>>() {
+		take(1).consume(new Consumer<HttpChannel<IN, OUT>>() {
 			@Override
 			public void accept(HttpChannel<IN, OUT> inoutHttpChannel) {
-				((NettyHttpClientChannel) inoutHttpChannel)
+				final NettyHttpClientChannel ch = ((NettyHttpClientChannel) inoutHttpChannel);
+				ch
 						.getNettyRequest()
 						.setUri(URI.create(url).getPath())
 						.setMethod(new HttpMethod(method.getName()));
 
-				if(handler != null) {
+				ch.promise.onComplete(new Consumer<Promise<Object>>() {
+					@Override
+					public void accept(Promise<Object> promise) {
+						if(promise.isError()){
+							p.onError(promise.reason());
+						}else{
+							p.onNext(ch);
+						}
+					}
+				});
+
+				if (handler != null) {
 					addWritePublisher(handler.apply(inoutHttpChannel));
 				}
 			}
-		}).next();
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				p.onError(throwable);
+			}
+		});
+		return p;
 	}
 
 	@Override
@@ -208,12 +229,14 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		final         Buffer                      body;
 		private final NettyChannelStream<IN, OUT> tcpStream;
 		private final HttpRequest                 request;
+		private final Promise<Object>             promise;
 
 		public NettyHttpClientChannel(NettyChannelStream<IN, OUT> tcpStream, HttpRequest request) {
 			super(tcpStream, NettyHttpClient.this.client, request, NettyHttpClient.this.getDefaultCodec());
 			this.tcpStream = tcpStream;
 			this.request = request;
 			body = new Buffer();
+			promise = Promises.ready(getEnvironment(), getDispatcher());
 		}
 
 		@Override
@@ -235,7 +258,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				HttpHeaders.setContentLength(req, body.limit());
 				HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE,
 						HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE));
-				tcpStream.write(req, null, true);
+				tcpStream.write(req, promise, true);
 			}
 		}
 	}
