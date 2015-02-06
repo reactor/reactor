@@ -41,7 +41,7 @@ class HttpSpec extends Specification {
 				it.codec(StandardCodecs.STRING_CODEC).listen(port)
 			}
 			def client = NetStreams.httpClient{
-				it.codec(StandardCodecs.STRING_CODEC)
+				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", port)
 			}
 
 		when: "the server is prepared"
@@ -56,7 +56,7 @@ class HttpSpec extends Specification {
 			server?.start()?.awaitSuccess(5, TimeUnit.SECONDS)
 
 		when: "data is sent with Reactor HTTP support"
-			def content = client.post('http://localhost:8080/test/World') { req ->
+			def content = client.post('/test/World') { req ->
 				req
 						.header('Content-Type', 'text/plain')
 						.log('client-received')
@@ -64,11 +64,9 @@ class HttpSpec extends Specification {
 					Streams
 							.just("Hello")
 							.log('client-send')
-			}.
-					next().
-					flatMap { rep ->
-						rep.next()
-					}
+			}.flatMap { replies ->
+				replies.next()
+			}
 
 
 

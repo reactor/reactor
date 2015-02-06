@@ -118,40 +118,25 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	public Stream<HttpChannel<IN, OUT>> request(final Method method, final String url,
+	public Promise<HttpChannel<IN, OUT>> request(final Method method, final String url,
 	                                            final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
 			                                            handler) {
 		lastURL = url;
-		Assert.isTrue(method != null && url != null && handler != null);
+		Assert.isTrue(method != null && url != null);
 
-		map(new Function<HttpChannel<IN, OUT>, Publisher<? extends OUT>>() {
+		return observe(new Consumer<HttpChannel<IN, OUT>>() {
 			@Override
-			public Publisher<? extends OUT> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
-				((NettyHttpChannel) inoutHttpChannel)
+			public void accept(HttpChannel<IN, OUT> inoutHttpChannel) {
+				((NettyHttpClientChannel) inoutHttpChannel)
 						.getNettyRequest()
 						.setUri(URI.create(url).getPath())
 						.setMethod(new HttpMethod(method.getName()));
 
-				return handler.apply(inoutHttpChannel);
+				if(handler != null) {
+					addWritePublisher(handler.apply(inoutHttpChannel));
+				}
 			}
-		}).consume(new Consumer<Publisher<? extends OUT>>() {
-			@Override
-			public void accept(Publisher<? extends OUT> publisher) {
-				addWritePublisher(publisher);
-			}
-		}, new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-				notifyError(throwable);
-			}
-		}, new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				notifyShutdown();
-			}
-		});
-
-		return this;
+		}).next();
 	}
 
 	@Override
@@ -173,34 +158,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	HttpRequest
 			request) {
 
-		NettyHttpChannel<IN, OUT> httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, client, request, getDefaultCodec()) {
-
-
-			final Buffer body = new Buffer();
-
-			@Override
-			protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
-				body.append(data);
-				if(flush) {
-					write(1, null, true);
-				}
-			}
-
-			@Override
-			protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
-				if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
-					HttpRequest req = new DefaultFullHttpRequest(
-							request.getProtocolVersion(),
-							request.getMethod(),
-							request.getUri(),
-							Unpooled.wrappedBuffer(body.flip().byteBuffer()));
-					HttpHeaders.setContentLength(req, body.limit());
-					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE,
-							HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE));
-					tcpStream.write(req, null, true);
-				}
-			}
-		};
+		NettyHttpChannel<IN, OUT> httpChannel = new NettyHttpClientChannel(tcpStream, request);
 
 		notifyNewChannel(httpChannel);
 		mergeWrite(httpChannel);
@@ -244,4 +202,41 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		return null;
 	}
 
+	private class NettyHttpClientChannel extends NettyHttpChannel<IN, OUT> {
+
+
+		final         Buffer                      body;
+		private final NettyChannelStream<IN, OUT> tcpStream;
+		private final HttpRequest                 request;
+
+		public NettyHttpClientChannel(NettyChannelStream<IN, OUT> tcpStream, HttpRequest request) {
+			super(tcpStream, NettyHttpClient.this.client, request, NettyHttpClient.this.getDefaultCodec());
+			this.tcpStream = tcpStream;
+			this.request = request;
+			body = new Buffer();
+		}
+
+		@Override
+		protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
+			body.append(data);
+			if (flush) {
+				write(1, null, true);
+			}
+		}
+
+		@Override
+		protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
+			if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
+				HttpRequest req = new DefaultFullHttpRequest(
+						request.getProtocolVersion(),
+						request.getMethod(),
+						request.getUri(),
+						Unpooled.wrappedBuffer(body.flip().byteBuffer()));
+				HttpHeaders.setContentLength(req, body.limit());
+				HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE,
+						HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE));
+				tcpStream.write(req, null, true);
+			}
+		}
+	}
 }
