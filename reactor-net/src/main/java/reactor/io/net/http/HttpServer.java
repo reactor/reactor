@@ -138,6 +138,11 @@ public abstract class HttpServer<IN, OUT>
 						return iterator.hasNext();
 					}
 
+					@Override
+					public void remove() {
+						iterator.remove();
+					}
+
 					//Lazy apply
 					@Override
 					@SuppressWarnings("unchecked")
