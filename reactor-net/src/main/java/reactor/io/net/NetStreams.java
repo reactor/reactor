@@ -584,38 +584,13 @@ public class NetStreams extends Streams {
 	 * @return
 	 */
 	public static HttpClient<Buffer, Buffer> httpClient() {
-		return httpClient(DEFAULT_BIND_ADDRESS);
-	}
-
-	/**
-	 * @param bindAddress
-	 * @return
-	 */
-	public static  HttpClient<Buffer, Buffer> httpClient(String bindAddress) {
-		return httpClient(bindAddress, DEFAULT_PORT);
-	}
-
-	/**
-	 * @param port
-	 * @return
-	 */
-	public static HttpClient<Buffer, Buffer> httpClient(int port) {
-		return httpClient(DEFAULT_BIND_ADDRESS, port);
-	}
-
-	/**
-	 * @param bindAddress
-	 * @param port
-	 * @return
-	 */
-	public static HttpClient<Buffer, Buffer> httpClient(final String bindAddress, final int port) {
 		return httpClient(new Function<Spec.HttpClient<Buffer, Buffer>, Spec.HttpClient<Buffer, Buffer>>() {
 			@Override
 			public Spec.HttpClient<Buffer, Buffer> apply(Spec.HttpClient<Buffer, Buffer> clientSpec) {
 				if(Environment.alive()){
 					clientSpec.env(Environment.get());
 				}
-				return clientSpec.connect(bindAddress, port);
+				return clientSpec;
 			}
 		});
 	}

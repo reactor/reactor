@@ -26,7 +26,7 @@ import reactor.io.net.http.model.Protocol;
  *
  * @author Stephane Maldini
  */
-public class HttpSelector implements Selector<ServerRequest> {
+public class HttpSelector implements Selector<HttpChannel> {
 
 	final protected Protocol protocol;
 	final protected Method   method;
@@ -54,7 +54,7 @@ public class HttpSelector implements Selector<ServerRequest> {
 	}
 
 	@Override
-	public boolean matches(ServerRequest key) {
+	public boolean matches(HttpChannel key) {
 	return (protocol == null || protocol.equals(key.protocol()))
 				&& (method == null || method.equals(key.method()) )
 				&& (uriPathSelector == null || uriPathSelector.matches(key.uri()));

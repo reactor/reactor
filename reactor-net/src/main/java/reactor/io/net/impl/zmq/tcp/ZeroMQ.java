@@ -149,8 +149,9 @@ public class ZeroMQ<T> {
 				});
 
 		clients.add(client);
-
-		return client.open();
+		Promise<ChannelStream<T, T>> promise = client.next();
+		client.open();
+		return promise;
 	}
 
 	public Promise<ChannelStream<T, T>> createServer(final String addrs, final int socketType) {

@@ -23,6 +23,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannelConfig;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -246,13 +247,19 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				ioChannel
 		);
 
-		ioChannel.pipeline().addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel){
+		ChannelPipeline pipeline = ioChannel.pipeline();
+
+		if(log.isDebugEnabled()){
+			pipeline.addLast(new LoggingHandler(getClass()));
+		}
+
+		pipeline.addLast(
+				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel) {
 					@Override
 					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-						if(msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())){
-							super.channelRead(ctx, ((DatagramPacket)msg).content());
-						}else{
+						if (msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())) {
+							super.channelRead(ctx, ((DatagramPacket) msg).content());
+						} else {
 							super.channelRead(ctx, msg);
 						}
 					}
@@ -263,6 +270,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 						super.write(ctx, msg, promise);
 					}
 				});
+
+
 
 		return netChannel;
 	}

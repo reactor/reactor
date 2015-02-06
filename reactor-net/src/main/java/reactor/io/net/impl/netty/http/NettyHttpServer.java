@@ -16,9 +16,10 @@
 
 package reactor.io.net.impl.netty.http;
 
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +30,8 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
-import reactor.io.net.http.ServerRequest;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
 import reactor.io.net.impl.netty.tcp.NettyTcpServer;
@@ -50,7 +51,7 @@ import java.net.InetSocketAddress;
  */
 public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(NettyHttpServer.class);
 
 	protected final TcpServer<IN, OUT>                 server;
 
@@ -101,8 +102,9 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		return server.shutdown();
 	}
 
-	protected ServerRequest<IN, OUT> createServerRequest(NettyChannelStream<IN, OUT> channelStream, HttpRequest content) {
-		ServerRequest<IN, OUT> request = new NettyServerRequest<IN, OUT>(channelStream, server, content);
+	protected HttpChannel<IN, OUT> createServerRequest(NettyChannelStream<IN, OUT> channelStream, io.netty.handler.codec
+			.http.HttpRequest content) {
+		HttpChannel<IN, OUT> request = new NettyHttpChannel<IN, OUT>(channelStream, server, content, getDefaultCodec());
 		Iterable<? extends Publisher<? extends OUT>> handlers = routeChannel(request);
 		subscribeChannelHandlers(Streams.concat(handlers), request);
 		channelStream.subscribe(request.in());
@@ -110,7 +112,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected ServerRequest<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected HttpChannel<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 		//int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
@@ -124,9 +126,16 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 				ch
 		);
 
-		ch.pipeline()
+
+		ChannelPipeline pipeline = ch.pipeline();
+
+		if(log.isDebugEnabled()){
+			pipeline.addLast(new LoggingHandler(getClass()));
+		}
+
+		pipeline
 				.addLast(new HttpServerCodec())
-				.addLast(new NettyHttpInboundHandler<IN, OUT>(netChannel, this));
+				.addLast(new NettyHttpServerHandler<IN, OUT>(netChannel, this));
 
 		return null;
 	}

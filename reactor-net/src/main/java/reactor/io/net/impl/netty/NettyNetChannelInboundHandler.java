@@ -17,6 +17,7 @@
 package reactor.io.net.impl.netty;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.EmptyByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.reactivestreams.Subscriber;
@@ -39,7 +40,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final Subscriber<? super IN>    subscriber;
-	private final NettyChannelStream<IN, ?> channelStream;
+	protected final NettyChannelStream<IN, ?> channelStream;
 
 	private volatile ByteBuf              remainder;
 	private volatile PushSubscription<IN> channelSubscription;
@@ -68,10 +69,6 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 					log.debug("RESUME: " + ctx.channel());
 				}
 				return;
-			}
-
-			if (log.isDebugEnabled()) {
-				log.debug("OPEN: " + ctx.channel());
 			}
 
 			this.channelSubscription = new PushSubscription<IN>(null, subscriber) {
@@ -120,9 +117,6 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		try {
 			channelSubscription.onComplete();
-			if (log.isDebugEnabled()) {
-				log.debug("CLOSE: " + ctx.channel());
-			}
 			super.channelInactive(ctx);
 		} catch (Throwable err) {
 			channelSubscription.onError(err);
@@ -134,7 +128,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		try {
 
-			if (channelSubscription.isComplete()) {
+			if (channelSubscription.isComplete() || msg.getClass() == EmptyByteBuf.class) {
 				return;
 			}
 

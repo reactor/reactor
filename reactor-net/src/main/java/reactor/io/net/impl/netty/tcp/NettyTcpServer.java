@@ -22,6 +22,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -59,7 +60,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	private final Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
 
 	private final NettyServerSocketOptions nettyOptions;
 	private final ServerBootstrap          bootstrap;
@@ -195,7 +196,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				ch
 		);
 
-		ch.pipeline().addLast(
+		ChannelPipeline pipeline = ch.pipeline();
+
+		if(log.isDebugEnabled()){
+			pipeline.addLast(new LoggingHandler(getClass()));
+		}
+		pipeline.addLast(
 				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
 		);
 

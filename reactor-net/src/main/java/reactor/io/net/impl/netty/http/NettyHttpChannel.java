@@ -22,9 +22,12 @@ import io.netty.handler.codec.http.*;
 import org.reactivestreams.Subscriber;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
+import reactor.io.buffer.Buffer;
+import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.PeerStream;
-import reactor.io.net.http.ServerRequest;
+import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.*;
 import reactor.io.net.impl.netty.NettyChannelStream;
 
@@ -35,25 +38,27 @@ import java.nio.ByteBuffer;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
+public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 	private final NettyChannelStream<IN, OUT> tcpStream;
 	private final HttpRequest                 nettyRequest;
-	private final HttpResponse                nettyResponse;
-	private final NettyServerRequestHeaders   headers;
-	private final NettyServerResponseHeaders  responseHeaders;
+	private final NettyHttpHeaders            headers;
+	private       HttpResponse                nettyResponse;
+	private       NettyHttpResponseHeaders    responseHeaders;
 
-	public NettyServerRequest(NettyChannelStream<IN, OUT> tcpStream,
-	                          PeerStream<IN, OUT, ChannelStream<IN, OUT>> server,
-	                          HttpRequest request
-	                          ) {
-		super(tcpStream.getEnvironment(), null, tcpStream.getCapacity(), server,
+	public NettyHttpChannel(NettyChannelStream<IN, OUT> tcpStream,
+	                        PeerStream<IN, OUT, ChannelStream<IN, OUT>> server,
+	                        HttpRequest request, Codec<Buffer, IN, OUT> codec
+	) {
+		super(tcpStream.getEnvironment(), codec, tcpStream.getCapacity(), server,
 				SynchronousDispatcher.INSTANCE, SynchronousDispatcher.INSTANCE);
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
 		this.nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-		this.headers = new NettyServerRequestHeaders(request);
-		this.responseHeaders = new NettyServerResponseHeaders(this.nettyResponse);
+		this.headers = new NettyHttpHeaders(request);
+		this.responseHeaders = new NettyHttpResponseHeaders(this.nettyResponse);
+
+		responseHeader(ResponseHeaders.TRANSFER_ENCODING, "chunked");
 	}
 
 	// REQUEST contract
@@ -71,6 +76,16 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 	}
 
 	@Override
+	protected void doHeader(String name, String value) {
+		this.headers.set(name, value);
+	}
+
+	@Override
+	protected void doAddHeader(String name, String value) {
+		this.headers.add(name, value);
+	}
+
+	@Override
 	public String uri() {
 		return this.nettyRequest.getUri();
 	}
@@ -81,7 +96,7 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 	}
 
 	@Override
-	public RequestHeaders headers() {
+	public HttpHeaders headers() {
 		return this.headers;
 	}
 
@@ -113,7 +128,7 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 	}
 
 	@Override
-	public ServerRequest<IN, OUT> transfer(Transfer transfer) {
+	public HttpChannel<IN, OUT> transfer(Transfer transfer) {
 		switch (transfer) {
 			case EVENT_STREAM:
 				throw new IllegalStateException("Transfer " + Transfer.EVENT_STREAM + " is not supported yet");
@@ -161,15 +176,19 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 		return tcpStream.on();
 	}
 
+	void setNettyResponse(HttpResponse nettyResponse) {
+		this.nettyResponse = nettyResponse;
+	}
+
 	@Override
 	protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
-		write(new DefaultHttpContent(Unpooled.wrappedBuffer(data)), onComplete, false);
+		write(new DefaultHttpContent(Unpooled.wrappedBuffer(data)), onComplete, flush);
 	}
 
 	@Override
 	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
 		boolean willFlush = flush;
-		if(HEADERS_SENT.compareAndSet(this, 0, 1)){
+		if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
 			tcpStream.write(nettyResponse, onComplete, false);
 			willFlush = true;
 		}
@@ -181,7 +200,7 @@ public class NettyServerRequest<IN, OUT> extends ServerRequest<IN, OUT> {
 		tcpStream.flush();
 	}
 
-	NettyChannelStream<IN,OUT> tcpStream(){
+	NettyChannelStream<IN, OUT> tcpStream() {
 		return tcpStream;
 	}
 }

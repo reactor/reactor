@@ -61,10 +61,10 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 	                     Dispatcher dispatcher,
 	                     Codec<Buffer, IN, OUT> codec,
 	                     long prefetch) {
-		this.env = env;
+		this.env = env == null && Environment.alive() ? Environment.get() : env;
 		this.defaultCodec = codec;
 		this.prefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
-		this.dispatcher = dispatcher;
+		this.dispatcher = dispatcher != null ? dispatcher : SynchronousDispatcher.INSTANCE;
 
 		/*this.channels = SynchronousDispatcher.INSTANCE == dispatcher ?
 				Streams.<NetChannelStream<IN, OUT>>create(env) :
@@ -161,7 +161,9 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 
 	protected Action<Long, Long> createBatchAction(
 			final CONN ch,
-			final Consumer<Throwable> errorConsumer) {
+			final Consumer<Throwable> errorConsumer,
+			final Consumer<Void> completionConsumer
+	) {
 
 		return new Action<Long, Long>() {
 			boolean first = true;
@@ -202,7 +204,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 			@Override
 			public Publisher<? extends Long> apply(Stream<Long> requests) {
 				return requests
-						.broadcastTo(createBatchAction(ch, errorConsumer));
+						.broadcastTo(createBatchAction(ch, errorConsumer, completeConsumer(ch)));
 			}
 		};
 	}
@@ -244,14 +246,19 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 		);
 	}
 
+	protected Consumer<Void> completeConsumer(CONN ch){
+		return null;
+	}
+
 	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final CONN ch) {
 		if (writeStream.getCapacity() != Long.MAX_VALUE) {
 			writeStream
-					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false), createAdaptiveDemandMapper(ch,
+					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false),
+							createAdaptiveDemandMapper(ch,
 							createErrorConsumer(ch)));
 		} else {
 			writeStream
-					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch));
+					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch), completeConsumer(ch));
 		}
 	}
 

@@ -16,44 +16,38 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.FutureListener;
+import io.netty.handler.codec.http.*;
+import io.netty.handler.logging.LoggingHandler;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.fn.Supplier;
-import reactor.fn.tuple.Tuple2;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.http.ClientRequest;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpClient;
-import reactor.io.net.impl.netty.NettyClientSocketOptions;
-import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
-import reactor.io.net.tcp.ssl.SSLEngineSupplier;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.Broadcaster;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.net.URI;
+import java.net.URL;
+import java.nio.ByteBuffer;
 
 /**
  * A Netty-based {@code TcpClient}.
@@ -67,13 +61,8 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 	private final Logger log = LoggerFactory.getLogger(NettyHttpClient.class);
 
-	private final NettyClientSocketOptions nettyOptions;
-	private final Bootstrap                bootstrap;
-	private final EventLoopGroup           ioGroup;
-	private final Supplier<ChannelFuture>  connectionSupplier;
-
-	private volatile InetSocketAddress connectAddress;
-	private volatile boolean           closing;
+	private final NettyTcpClient<IN, OUT> client;
+	private String lastURL = "http://localhost:8080";
 
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code
@@ -84,277 +73,175 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env            The configuration environment
-	 * @param dispatcher     The dispatcher used to send events
-	 * @param connectAddress The address the client will connect to
-	 * @param options        The configuration options for the client's socket
-	 * @param sslOptions     The SSL configuration options for the client's socket
-	 * @param codec          The codec used to encode and decode data
+	 * @param env        The configuration environment
+	 * @param dispatcher The dispatcher used to send events
+	 * @param connectAddress The root host and port to connect relatively from in http handlers
+	 * @param options    The configuration options for the client's socket
+	 * @param sslOptions The SSL configuration options for the client's socket
+	 * @param codec      The codec used to encode and decode data
 	 */
-	public NettyHttpClient(@Nonnull Environment env,
-	                       @Nonnull Dispatcher dispatcher,
-	                       @Nonnull InetSocketAddress connectAddress,
-	                       @Nonnull final ClientSocketOptions options,
-	                       @Nullable final SslOptions sslOptions,
-	                       @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, connectAddress, options, sslOptions, codec);
-		this.connectAddress = connectAddress;
+	public NettyHttpClient(final Environment env,
+	                       final Dispatcher dispatcher,
+	                       final InetSocketAddress connectAddress,
+	                       final ClientSocketOptions options,
+	                       final SslOptions sslOptions,
+	                       final Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec);
 
-		if (options instanceof NettyClientSocketOptions) {
-			this.nettyOptions = (NettyClientSocketOptions) options;
-		} else {
-			this.nettyOptions = null;
-
-		}
-		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
-			this.ioGroup = nettyOptions.eventLoopGroup();
-		} else {
-			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
-					.PROCESSORS);
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
-		}
-
-		this.bootstrap = new Bootstrap()
-				.group(ioGroup)
-				.channel(NioSocketChannel.class)
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
-				.option(ChannelOption.SO_LINGER, options.linger())
-				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
-				.remoteAddress(this.connectAddress)
-				.handler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(final SocketChannel ch) throws Exception {
-						ch.config().setConnectTimeoutMillis(options.timeout());
-
-						if (null != sslOptions) {
-							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
-							if (log.isDebugEnabled()) {
-								log.debug("SSL enabled using keystore {}",
-										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
-							}
-							ch.pipeline().addLast(new SslHandler(ssl));
-						}else{
-							ch.config().setAutoRead(false);
-						}
-
-						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
-						}
-						bindChannel(ch, options.prefetch());
-					}
-				});
-
-		this.connectionSupplier = new Supplier<ChannelFuture>() {
+		this.client = new NettyTcpClient<IN, OUT>(
+				env,
+				dispatcher,
+				connectAddress,
+				options,
+				sslOptions,
+				codec
+		) {
 			@Override
-			public ChannelFuture get() {
-				if (!closing) {
-					return bootstrap.connect(getConnectAddress());
-				} else {
-					return null;
+			protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+				NettyHttpClient.this.bindChannel(nativeChannel, prefetch);
+				return null;
+			}
+
+			@Override
+			public InetSocketAddress getConnectAddress() {
+				if(connectAddress != null) return connectAddress;
+				try {
+					URL url = new URL(lastURL);
+					String host = url.getHost();
+					int port = url.getPort();
+					return new InetSocketAddress(host, port);
+				} catch (Exception e) {
+					throw new IllegalArgumentException(e);
 				}
 			}
 		};
 	}
 
 	@Override
-	public Promise<ChannelStream<IN, OUT>> open() {
-		final Promise<ChannelStream<IN, OUT>> connection
-				= Promises.ready(getEnvironment(), getDispatcher());
+	public Stream<HttpChannel<IN, OUT>> request(final Method method, final String url,
+	                                            final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
+			                                            handler) {
+		lastURL = url;
+		Assert.isTrue(method != null && url != null && handler != null);
 
-		openChannel(new ConnectingChannelListener(connection));
+		map(new Function<HttpChannel<IN, OUT>, Publisher<? extends OUT>>() {
+			@Override
+			public Publisher<? extends OUT> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
+				((NettyHttpChannel) inoutHttpChannel)
+						.getNettyRequest()
+						.setUri(URI.create(url).getPath())
+						.setMethod(new HttpMethod(method.getName()));
 
-		return connection;
+				return handler.apply(inoutHttpChannel);
+			}
+		}).consume(new Consumer<Publisher<? extends OUT>>() {
+			@Override
+			public void accept(Publisher<? extends OUT> publisher) {
+				addWritePublisher(publisher);
+			}
+		}, new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable throwable) {
+				notifyError(throwable);
+			}
+		}, new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				notifyShutdown();
+			}
+		});
+
+		return this;
 	}
 
 	@Override
-	public Stream<ChannelStream<IN, OUT>> open(final Reconnect reconnect) {
-		final Broadcaster<ChannelStream<IN, OUT>> connections
-				= Broadcaster.create(getEnvironment(), getDispatcher());
+	public Promise<Boolean> open() {
+		return client.open();
+	}
 
-		openChannel(new ReconnectingChannelListener(connectAddress, reconnect, connections));
-
-		return connections;
+	@Override
+	public Stream<Boolean> open(final Reconnect reconnect) {
+		return client.open(reconnect);
 	}
 
 	@Override
 	public Promise<Boolean> close() {
-		final Promise<Boolean> promise;
+		return client.close();
+	}
 
-		if (!closing) {
-			promise = Promises.ready(getEnvironment(), getDispatcher());
-			closing = true;
-		} else {
-			return Promises.success(true);
-		}
+	protected NettyHttpChannel<IN, OUT> createClientRequest(final NettyChannelStream<IN, OUT> tcpStream, final
+	HttpRequest
+			request) {
 
-		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
+		NettyHttpChannel<IN, OUT> httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, client, request, getDefaultCodec()) {
+
+
+			final Buffer body = new Buffer();
+
 			@Override
-			public void operationComplete(Future<Object> future) throws Exception {
-				if (future.isDone() && future.isSuccess()) {
-					promise.onNext(true);
-				} else {
-					promise.onError(future.cause());
+			protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
+				body.append(data);
+				if(flush) {
+					write(1, null, true);
 				}
 			}
-		});
-		return promise;
+
+			@Override
+			protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
+				if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
+					HttpRequest req = new DefaultFullHttpRequest(
+							request.getProtocolVersion(),
+							request.getMethod(),
+							request.getUri(),
+							Unpooled.wrappedBuffer(body.flip().byteBuffer()));
+					HttpHeaders.setContentLength(req, body.limit());
+					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE,
+							HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE));
+					tcpStream.write(req, null, true);
+				}
+			}
+		};
+
+		notifyNewChannel(httpChannel);
+		mergeWrite(httpChannel);
+		return httpChannel;
 	}
+
+	/*@Override
+	protected Consumer<Void> completeConsumer(final HttpChannel<IN, OUT> ch) {
+		return new Consumer<Void>() {
+			@Override
+			@SuppressWarnings("unchecked")
+			public void accept(Void aVoid) {
+				((NettyHttpChannel)ch).write(new DefaultLastHttpContent(Unpooled.EMPTY_BUFFER), null, true);
+			}
+		};
+	}*/
 
 	@Override
-	protected ClientRequest<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected HttpChannel<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
-		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
+		int backlog = 128;
+
+		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
+				getEnvironment(),
+				getDefaultCodec(),
+				prefetch == -1l ? getPrefetchSize() : prefetch,
+				client,
+				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
+				getDispatcher(),
+				ch
+		);
 
 
-
+		ChannelPipeline pipeline = ch.pipeline();
+		if (log.isDebugEnabled()) {
+			pipeline.addLast(new LoggingHandler(NettyHttpClient.class));
+		}
+		pipeline
+				.addLast(new HttpClientCodec())
+				.addLast(new NettyHttpClientHandler<IN, OUT>(netChannel, this));
 		return null;
-	}
-
-	private void openChannel(ChannelFutureListener listener) {
-		ChannelFuture channel = connectionSupplier.get();
-		if (null != channel && null != listener) {
-			channel.addListener(listener);
-		}
-	}
-
-	private class ConnectingChannelListener implements ChannelFutureListener {
-		private final Promise<ChannelStream<IN, OUT>> connection;
-
-		private ConnectingChannelListener(Promise<ChannelStream<IN, OUT>> connection) {
-			this.connection = connection;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			if (!future.isSuccess()) {
-				if (log.isErrorEnabled()) {
-					log.error(future.cause().getMessage(), future.cause());
-				}
-				connection.onError(future.cause());
-				return;
-			}
-
-			if (log.isInfoEnabled()) {
-				log.info("CONNECTED: " + future.channel());
-			}
-
-			NettyNetChannelInboundHandler inboundHandler = future.channel()
-					.pipeline()
-					.get(NettyNetChannelInboundHandler.class);
-			final ChannelStream<IN, OUT> ch = inboundHandler.channelStream();
-
-			future.channel().eventLoop().submit(new Runnable() {
-				@Override
-				public void run() {
-					connection.onNext(ch);
-				}
-			});
-		}
-	}
-
-	private class ReconnectingChannelListener implements ChannelFutureListener {
-
-		private final AtomicInteger attempts = new AtomicInteger(0);
-
-		private final Reconnect                           reconnect;
-		private final Broadcaster<ChannelStream<IN, OUT>> connections;
-
-		private volatile InetSocketAddress connectAddress;
-
-		private ReconnectingChannelListener(InetSocketAddress connectAddress,
-		                                    Reconnect reconnect,
-		                                    Broadcaster<ChannelStream<IN, OUT>> connections) {
-			this.connectAddress = connectAddress;
-			this.reconnect = reconnect;
-			this.connections = connections;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public void operationComplete(final ChannelFuture future) throws Exception {
-			if (!future.isSuccess()) {
-				int attempt = attempts.incrementAndGet();
-				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
-				if (null == tup) {
-					// do not attempt a reconnect
-					if (log.isErrorEnabled()) {
-						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt - 1);
-					}
-					future.channel().eventLoop().submit(new Runnable() {
-						@Override
-						public void run() {
-							connections.onError(future.cause());
-						}
-					});
-					return;
-				}
-
-				attemptReconnect(tup);
-			} else {
-				// connected
-				if (log.isInfoEnabled()) {
-					log.info("CONNECTED: " + future.channel());
-				}
-
-				final Channel ioCh = future.channel();
-				final ChannelPipeline ioChPipline = ioCh.pipeline();
-				final ChannelStream<IN, OUT> ch = ioChPipline.get(NettyNetChannelInboundHandler.class).channelStream();
-
-				ioChPipline.addLast(new ChannelDuplexHandler() {
-					@Override
-					public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-						if (log.isInfoEnabled()) {
-							log.info("CLOSED: " + ioCh);
-						}
-
-						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts.incrementAndGet());
-						if (null == tup) {
-							// do not attempt a reconnect
-							return;
-						}
-						if (!closing) {
-							attemptReconnect(tup);
-						} else {
-							closing = true;
-						}
-						super.channelInactive(ctx);
-					}
-				});
-
-				ioCh.eventLoop().submit(new Runnable() {
-					@Override
-					public void run() {
-						connections.onNext(ch);
-					}
-				});
-			}
-		}
-
-		private void attemptReconnect(Tuple2<InetSocketAddress, Long> tup) {
-			connectAddress = tup.getT1();
-			bootstrap.remoteAddress(connectAddress);
-			long delay = tup.getT2();
-
-			if (log.isInfoEnabled()) {
-				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
-			}
-
-			getEnvironment().getTimer()
-					.submit(
-							new Consumer<Long>() {
-								@Override
-								public void accept(Long now) {
-									openChannel(ReconnectingChannelListener.this);
-								}
-							},
-							delay,
-							TimeUnit.MILLISECONDS
-					)
-					.cancelAfterUse();
-		}
 	}
 
 }

@@ -31,6 +31,7 @@ import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -89,14 +90,20 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<ChannelStream<IN, OUT>> open() {
-		Promise<ChannelStream<IN, OUT>> d = next();
+	public Promise<Boolean> open() {
+		Promise<Boolean> d = map(new Function<ChannelStream<IN, OUT>, Boolean>() {
+			@Override
+			public Boolean apply(ChannelStream<IN, OUT> channelStream) {
+				return true;
+			}
+		}).next();
+
 		doOpen();
 		return d;
 	}
 
 	@Override
-	public Stream<ChannelStream<IN, OUT>> open(Reconnect reconnect) {
+	public Stream<Boolean> open(Reconnect reconnect) {
 		throw new IllegalStateException("Reconnects are handled transparently by the ZeroMQ network library");
 	}
 

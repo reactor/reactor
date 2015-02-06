@@ -30,7 +30,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.http.ServerRequest;
+import reactor.io.net.http.HttpChannel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -459,7 +459,7 @@ public interface Spec {
 	 * @author Stephane Maldini
 	 */
 	class HttpServer<IN, OUT>
-			extends Server<IN, OUT, ServerRequest<IN, OUT>, HttpServer<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
+			extends Server<IN, OUT, HttpChannel<IN, OUT>, HttpServer<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 

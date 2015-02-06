@@ -58,11 +58,11 @@ public class AbstractNetClientServerTest {
 		return new Data(random.nextInt(), random.nextLong(), new String(name));
 	}
 
-	protected static <IN, OUT> ChannelStream<IN, OUT> assertClientStarted(Client<IN, OUT, ?> client)
+	protected static <IN, OUT> ChannelStream<IN, OUT> assertClientStarted(TcpClient<IN, OUT> client)
 			throws InterruptedException {
-		ChannelStream<IN, OUT> ch = client.open().await(5, TimeUnit.SECONDS);
-		assertNotNull(client.getClass().getSimpleName() + " was started", ch);
-		return ch;
+		Promise<ChannelStream<IN, OUT>> p = client.next();
+		assertNotNull(client.getClass().getSimpleName() + " was started", client.open().await(5, TimeUnit.SECONDS));
+		return p.await(5, TimeUnit.SECONDS);
 	}
 
 	protected static <IN, OUT> void assertClientStopped(Client<IN, OUT, ?> client)

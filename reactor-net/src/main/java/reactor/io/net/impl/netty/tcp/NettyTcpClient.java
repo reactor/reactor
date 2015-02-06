@@ -22,6 +22,7 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
@@ -31,6 +32,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -49,8 +51,6 @@ import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
@@ -92,12 +92,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * @param sslOptions     The SSL configuration options for the client's socket
 	 * @param codec          The codec used to encode and decode data
 	 */
-	public NettyTcpClient(@Nonnull Environment env,
-	                      @Nonnull Dispatcher dispatcher,
-	                      @Nonnull InetSocketAddress connectAddress,
-	                      @Nonnull final ClientSocketOptions options,
-	                      @Nullable final SslOptions sslOptions,
-	                      @Nullable Codec<Buffer, IN, OUT> codec) {
+	public NettyTcpClient(Environment env,
+	                      Dispatcher dispatcher,
+	                      InetSocketAddress connectAddress,
+	                      final ClientSocketOptions options,
+	                      final SslOptions sslOptions,
+	                      Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, connectAddress, options, sslOptions, codec);
 		this.connectAddress = connectAddress;
 
@@ -110,8 +110,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
-					.PROCESSORS);
+			int ioThreadCount = env != null ? env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+					.PROCESSORS) : Environment.PROCESSORS;
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
@@ -125,7 +125,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
-				.remoteAddress(this.connectAddress)
+				//.remoteAddress(this.connectAddress)
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
@@ -163,17 +163,27 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<ChannelStream<IN, OUT>> open() {
-		final Promise<ChannelStream<IN, OUT>> connection = next();
+	public Promise<Boolean> open() {
+		final Promise<Boolean> connection = map(new Function<ChannelStream<IN,OUT>, Boolean>() {
+			@Override
+			public Boolean apply(ChannelStream<IN, OUT> channelStream) {
+				return true;
+			}
+		}).next();
 
 		openChannel(new ConnectingChannelListener());
 		return connection;
 	}
 
 	@Override
-	public Stream<ChannelStream<IN, OUT>> open(final Reconnect reconnect) {
+	public Stream<Boolean> open(final Reconnect reconnect) {
 		openChannel(new ReconnectingChannelListener(connectAddress, reconnect));
-		return this;
+		return map(new Function<ChannelStream<IN, OUT>, Boolean>() {
+			@Override
+			public Boolean apply(ChannelStream<IN, OUT> channelStream) {
+				return true;
+			}
+		});
 	}
 
 	@Override
@@ -214,9 +224,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				ch
 		);
 
-		ch.pipeline().addLast(
+		ChannelPipeline pipeline = ch.pipeline();
+		if(log.isDebugEnabled()){
+			pipeline.addLast(new LoggingHandler(getClass()));
+		}
+		pipeline.addLast(
 				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
 		);
+
 
 		return netChannel;
 	}

@@ -16,14 +16,10 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.LastHttpContent;
-import reactor.io.buffer.Buffer;
-import reactor.io.net.http.ServerRequest;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
 
@@ -31,19 +27,19 @@ import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
  * Conversion between Netty types ({@link io.netty.handler.codec.http.HttpRequest}, {@link io.netty.handler.codec
  * .http.HttpResponse}, {@link io.netty.handler.codec.http.HttpContent} and {@link io.netty.handler.codec.http
  * .LastHttpContent})
- * and Reactor types ({@link NettyServerRequest} and {@link reactor.io.buffer.Buffer}).
+ * and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
  *
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public class NettyHttpInboundHandler<IN, OUT> extends NettyNetChannelInboundHandler<IN> {
+public class NettyHttpServerHandler<IN, OUT> extends NettyNetChannelInboundHandler<IN> {
 
-	private final NettyHttpServer<IN, OUT>     server;
+	private final NettyHttpServer<IN, OUT>    server;
 	private final NettyChannelStream<IN, OUT> tcpStream;
-	private       ServerRequest<IN, OUT>      request;
+	private       HttpChannel<IN, OUT>        request;
 
-	public NettyHttpInboundHandler(NettyChannelStream<IN, OUT> tcpStream,
-	                               NettyHttpServer<IN, OUT> server) {
+	public NettyHttpServerHandler(NettyChannelStream<IN, OUT> tcpStream,
+	                              NettyHttpServer<IN, OUT> server) {
 		super(tcpStream.in(), tcpStream);
 		this.server = server;
 		this.tcpStream = tcpStream;
@@ -52,7 +48,7 @@ public class NettyHttpInboundHandler<IN, OUT> extends NettyNetChannelInboundHand
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		super.channelActive(ctx);
-		if(ctx.channel().isActive()){
+		if (ctx.channel().isActive()) {
 			ctx.read();
 		}
 	}
@@ -60,22 +56,13 @@ public class NettyHttpInboundHandler<IN, OUT> extends NettyNetChannelInboundHand
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
-		if (request == null && HttpRequest.class.isAssignableFrom(messageClass)) {
-			request = server.createServerRequest(tcpStream, (HttpRequest)msg);
+		if (request == null && io.netty.handler.codec.http.HttpRequest.class.isAssignableFrom(messageClass)) {
+			request = server.createServerRequest(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg);
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
-			ByteBuf content = ((ByteBufHolder) msg).content();
-			super.channelRead(ctx, new Buffer(content.nioBuffer()));
-			if (LastHttpContent.class.isAssignableFrom(messageClass)) {
-				super.channelInactive(ctx);
-			}
+			super.channelRead(ctx, ((ByteBufHolder) msg).content());
+
 		}
 	}
 
-
-	@Override
-	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		super.channelReadComplete(ctx);
-		ctx.pipeline().flush(); // If there is nothing to flush, this is a short-circuit in netty.
-	}
 
 }

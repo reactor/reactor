@@ -28,7 +28,6 @@ import reactor.io.net.PeerStream;
 import reactor.io.net.Server;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.rx.Promise;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -69,13 +68,6 @@ public abstract class TcpServer<IN, OUT>
 		doPipeline(serviceFunction);
 		return this;
 	}
-
-	/**
-	 * Start this server.
-	 *
-	 * @return {@literal this}
-	 */
-	public abstract Promise<Boolean> start();
 
 	/**
 	 * Get the address to which this server is bound.

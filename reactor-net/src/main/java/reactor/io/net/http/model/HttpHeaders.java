@@ -20,7 +20,7 @@ package reactor.io.net.http.model;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public interface RequestHeaders extends Headers, ReadableHeaders {
+public interface HttpHeaders extends Headers, WritableHeaders<HttpHeaders>, ReadableHeaders {
 
 	/**
 	 * The HTTP {@code Accept} header field name.

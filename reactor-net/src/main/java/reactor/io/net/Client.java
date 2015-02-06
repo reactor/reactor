@@ -38,7 +38,7 @@ public interface Client<IN, OUT, CONN extends Channel<IN,OUT>> extends Publisher
 	 *
 	 * @return {@link reactor.rx.Promise} that will be completed when connected
 	 */
-	Promise<ChannelStream<IN, OUT>> open();
+	Promise<Boolean> open();
 
 	/**
 	 * Open a channel to the configured address and return a {@link reactor.rx..Stream} that will be populated
@@ -47,9 +47,9 @@ public interface Client<IN, OUT, CONN extends Channel<IN,OUT>> extends Publisher
 	 * @param reconnect
 	 * 		the reconnection strategy to use when disconnects happen
 	 *
-	 * @return a Stream of reconnected connections
+	 * @return a Stream of reconnected boolean to signal connection success
 	 */
-	Stream<ChannelStream<IN, OUT>> open(Reconnect reconnect);
+	Stream<Boolean> open(Reconnect reconnect);
 
 	/**
 	 * Close this client and the underlying channel.

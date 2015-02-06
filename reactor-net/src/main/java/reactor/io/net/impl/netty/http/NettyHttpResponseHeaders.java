@@ -30,13 +30,13 @@ import java.util.Set;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public class NettyServerResponseHeaders implements ResponseHeaders {
+public class NettyHttpResponseHeaders implements ResponseHeaders {
 
 	private final HttpResponse nettyResponse;
 	private final HttpHeaders nettyHeaders;
 
 
-	public NettyServerResponseHeaders(HttpResponse nettyResponse) {
+	public NettyHttpResponseHeaders(HttpResponse nettyResponse) {
 		this.nettyResponse = nettyResponse;
 		this.nettyHeaders = nettyResponse.headers();
 	}

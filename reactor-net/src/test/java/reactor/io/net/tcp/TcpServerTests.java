@@ -163,7 +163,9 @@ public class TcpServerTests {
 		});
 
 		server.start().await();
-		client.open().await().sink(Streams.just(new Pojo("John Doe")));
+
+		client.consume(ch -> ch.sink(Streams.just(new Pojo("John Doe"))));
+		client.open().await();
 
 		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -310,8 +312,8 @@ public class TcpServerTests {
 
 		server.start().await();
 
-		ChannelStream<Buffer, Buffer> out = client.open().await();
-		out.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")));
+		client.consume(ch -> ch.sinkBuffers(Streams.just(Buffer.wrap("Hello World!"))));
+		client.open().await();
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -349,9 +351,8 @@ public class TcpServerTests {
 		server.consume(serverHandler);
 		server.start().await();
 
-		final ChannelStream<String, String> ch = client.open().await();
-
-		ch.sink(Streams.just("Hello World!", "Hello 11!"));
+		client.consume(ch -> ch.sink(Streams.just("Hello World!", "Hello 11!")));
+		client.open().await();
 
 		assertTrue("Latch was counted down", latch.await(100, TimeUnit.SECONDS));
 
@@ -412,14 +413,14 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 
 		final TcpServer<HttpRequest, HttpResponse> server = NetStreams.tcpServer(spec -> spec
-				.env(env)
-				.listen(port)
-				.options(new NettyServerSocketOptions()
-						.pipelineConfigurer(pipeline -> {
-							pipeline.addLast(new HttpRequestDecoder());
-							pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
-							pipeline.addLast(new HttpResponseEncoder());
-						}))
+						.env(env)
+						.listen(port)
+						.options(new NettyServerSocketOptions()
+								.pipelineConfigurer(pipeline -> {
+									pipeline.addLast(new HttpRequestDecoder());
+									pipeline.addLast(new HttpObjectAggregator(Integer.MAX_VALUE));
+									pipeline.addLast(new HttpResponseEncoder());
+								}))
 		);
 
 		server.consume(new Consumer<ChannelStream<HttpRequest, HttpResponse>>() {

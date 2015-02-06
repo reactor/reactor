@@ -32,20 +32,20 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Sebastien Deleuze
  * @author Stephane maldini
  */
-public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
+public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private volatile int statusAndHeadersSent = 0;
 	private HeaderResolver<String> paramsResolver;
 
-	protected final static AtomicIntegerFieldUpdater<ServerRequest> HEADERS_SENT =
-			AtomicIntegerFieldUpdater.newUpdater(ServerRequest.class, "statusAndHeadersSent");
+	protected final static AtomicIntegerFieldUpdater<HttpChannel> HEADERS_SENT =
+			AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
-	public ServerRequest(Environment env,
-	                     Codec<Buffer, IN, OUT> codec,
-	                     long prefetch,
-	                     PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
-	                     Dispatcher ioDispatcher,
-	                     Dispatcher eventsDispatcher
+	public HttpChannel(Environment env,
+	                   Codec<Buffer, IN, OUT> codec,
+	                   long prefetch,
+	                   PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
+	                   Dispatcher ioDispatcher,
+	                   Dispatcher eventsDispatcher
 	) {
 		super(env, codec, prefetch, peer, ioDispatcher, eventsDispatcher);
 	}
@@ -68,8 +68,8 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @return
 	 */
 	public final String param(String key) {
-		Map<String,String> params = null;
-		if(paramsResolver != null){
+		Map<String, String> params = null;
+		if (paramsResolver != null) {
 			params = this.paramsResolver.resolve(uri());
 		}
 		return null != params ? params.get(key) : null;
@@ -78,7 +78,39 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * @return
 	 */
-	public abstract RequestHeaders headers();
+	public abstract HttpHeaders headers();
+
+	/**
+	 * @param name
+	 * @param value
+	 * @return this
+	 */
+	public final HttpChannel<IN, OUT> header(String name, String value) {
+		if (statusAndHeadersSent == 0) {
+			doHeader(name, value);
+		} else {
+			throw new IllegalStateException("Status and headers already sent");
+		}
+		return this;
+	}
+
+	protected abstract void doHeader(String name, String value);
+
+	/**
+	 * @param name
+	 * @param value
+	 * @return this
+	 */
+	public HttpChannel<IN, OUT> addHeader(String name, String value) {
+		if (statusAndHeadersSent == 0) {
+			doAddHeader(name, value);
+		} else {
+			throw new IllegalStateException("Status and headers already sent");
+		}
+		return this;
+	}
+
+	protected abstract void doAddHeader(String name, String value);
 
 	/**
 	 * @return
@@ -111,7 +143,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @param status
 	 * @return this
 	 */
-	public ServerRequest<IN, OUT> responseStatus(Status status) {
+	public HttpChannel<IN, OUT> responseStatus(Status status) {
 		if (statusAndHeadersSent == 0) {
 			doResponseStatus(status);
 		} else {
@@ -132,7 +164,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @param value
 	 * @return this
 	 */
-	public final ServerRequest<IN, OUT> responseHeader(String name, String value) {
+	public final HttpChannel<IN, OUT> responseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doResponseHeader(name, value);
 		} else {
@@ -148,7 +180,7 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @param value
 	 * @return this
 	 */
-	public ServerRequest<IN, OUT> addResponseHeader(String name, String value) {
+	public HttpChannel<IN, OUT> addResponseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doAddResponseHeader(name, value);
 		} else {
@@ -169,6 +201,6 @@ public abstract class ServerRequest<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @param transfer
 	 * @return this
 	 */
-	public abstract ServerRequest<IN, OUT> transfer(Transfer transfer);
+	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);
 
 }

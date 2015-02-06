@@ -15,15 +15,12 @@
  */
 package reactor.io.net.http
 
-import org.apache.http.client.fluent.Request
-import org.apache.http.entity.ContentType
 import reactor.Environment
 import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
 import reactor.rx.Streams
 import spock.lang.Specification
 
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -40,41 +37,47 @@ class HttpSpec extends Specification {
 
 	def "http responds to requests from clients"() {
 		given: "a simple HttpServer"
-			def stopLatch = new CountDownLatch(1)
+			def server = NetStreams.httpServer{
+				it.codec(StandardCodecs.STRING_CODEC).listen(port)
+			}
+			def client = NetStreams.httpClient{
+				it.codec(StandardCodecs.STRING_CODEC)
+			}
 
-			def server = NetStreams.httpServer(port)
-
-		when: "the server is started"
+		when: "the server is prepared"
 			server.post('/test/{param}') { req ->
 				req
-						.decode(StandardCodecs.STRING_CODEC)
-						.log('received')
-						.consume()
-
-				Streams
-						.just('Hello '+ req.param('param') +'!')
-						.map(StandardCodecs.STRING_CODEC)
-
+						.log('server-received')
+						.map{it+' ' + req.param('param') + '!'}
+						.log('server-reply')
 			}
 
 		then: "the server was started"
-			server.start().awaitSuccess()
+			server?.start()?.awaitSuccess(5, TimeUnit.SECONDS)
 
-		when: "data is sent"
-			def content = Request.Post("http://localhost:8080/test/World")
-					.bodyString("hello", ContentType.TEXT_PLAIN)
-					.execute()
-					.returnContent()
-					.asString()
+		when: "data is sent with Reactor HTTP support"
+			def content = client.post('http://localhost:8080/test/World') { req ->
+				req
+						.header('Content-Type', 'text/plain')
+						.log('client-received')
+
+					Streams
+							.just("Hello")
+							.log('client-send')
+			}.
+					next().
+					flatMap { rep ->
+						rep.next()
+					}
+
+
 
 		then: "data was recieved"
-			content == "Hello World!"
+			client.open().awaitSuccess(500, TimeUnit.SECONDS)
+			content.await(300, TimeUnit.SECONDS) == "Hello World!"
 
-		cleanup: "the server is stopped"
-			server.shutdown().onSuccess {
-				stopLatch.countDown()
-			}
-			stopLatch.await(5, TimeUnit.SECONDS)
+		cleanup: "the client/server where stopped"
+			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
 }

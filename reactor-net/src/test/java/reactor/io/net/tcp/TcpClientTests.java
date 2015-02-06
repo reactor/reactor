@@ -27,8 +27,6 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.Client;
 import reactor.io.net.NetStreams;
 import reactor.io.net.Reconnect;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
@@ -37,6 +35,7 @@ import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
 import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.Streams;
 
 import java.io.IOException;
@@ -115,12 +114,14 @@ public class TcpClientTests {
 						s.env(env).codec(StandardCodecs.STRING_CODEC).connect("localhost", echoServerPort)
 		);
 
-		client.open().onSuccess(conn -> {
+		client.next().onSuccess(conn -> {
 			conn.consume(s -> {
 				latch.countDown();
 			});
 			conn.sink(Streams.just("Hello World!"));
 		});
+
+		client.open();
 
 		latch.await(30, TimeUnit.SECONDS);
 
@@ -233,18 +234,20 @@ public class TcpClientTests {
 	public void connectionWillAttemptToReconnectWhenItIsDropped() throws InterruptedException, IOException {
 		final CountDownLatch connectionLatch = new CountDownLatch(1);
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
-		NetStreams.<Buffer, Buffer>tcpClient(s -> s
+		TcpClient<Buffer, Buffer> tcpClient = NetStreams.<Buffer, Buffer>tcpClient(s -> s
 						.env(env)
 						.connect("localhost", abortServerPort)
-		)
-				.open((currentAddress, attempt) -> {
-					reconnectionLatch.countDown();
-					return null;
-				})
-				.consume(connection -> {
-					connectionLatch.countDown();
-					connection.consume();
-				});
+		);
+
+		tcpClient.consume(connection -> {
+			connectionLatch.countDown();
+			connection.consume();
+		});
+
+		tcpClient.open((currentAddress, attempt) -> {
+			reconnectionLatch.countDown();
+			return null;
+		});
 
 		assertTrue("Initial connection is made", connectionLatch.await(5, TimeUnit.SECONDS));
 		assertTrue("A reconnect attempt was made", reconnectionLatch.await(5, TimeUnit.SECONDS));
@@ -256,19 +259,25 @@ public class TcpClientTests {
 		final AtomicLong totalDelay = new AtomicLong();
 		final long start = System.currentTimeMillis();
 
-		NetStreams.<Buffer, Buffer>tcpClient(s -> s
+		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(s -> s
 						.env(env)
 						.connect("localhost", timeoutServerPort)
-		).open().await(5, TimeUnit.SECONDS).on()
-				.close(v -> latch.countDown())
-				.readIdle(500, v -> {
-					totalDelay.addAndGet(System.currentTimeMillis() - start);
-					latch.countDown();
-				})
-				.writeIdle(500, v -> {
-					totalDelay.addAndGet(System.currentTimeMillis() - start);
-					latch.countDown();
-				});
+		);
+
+		client.next().onSuccess(p ->
+						p.on()
+								.close(v -> latch.countDown())
+								.readIdle(500, v -> {
+									totalDelay.addAndGet(System.currentTimeMillis() - start);
+									latch.countDown();
+								})
+								.writeIdle(500, v -> {
+									totalDelay.addAndGet(System.currentTimeMillis() - start);
+									latch.countDown();
+								})
+		);
+
+		client.open().await(5, TimeUnit.SECONDS);
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		assertThat("totalDelay was >500ms", totalDelay.get(), greaterThanOrEqualTo(500L));
@@ -279,13 +288,19 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		long start = System.currentTimeMillis();
 
-		NetStreams.<Buffer, Buffer>tcpClient(s -> s
+		TcpClient<Buffer, Buffer> client = NetStreams.tcpClient(s -> s
 						.env(env)
 						.connect("localhost", heartbeatServerPort)
-		).open().await().on()
-				.readIdle(500, v -> {
-					latch.countDown();
-				});
+		);
+
+		client.next().onSuccess(p ->
+						p.on()
+								.readIdle(500, v -> {
+									latch.countDown();
+								})
+		);
+
+		client.open().await();
 
 		Thread.sleep(700);
 		heartbeatServer.close();
@@ -302,20 +317,25 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		long start = System.currentTimeMillis();
 
-		ChannelStream<Buffer, Buffer> connection = NetStreams.<Buffer, Buffer>tcpClient(s ->
+		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(s ->
 						s.env(env)
 								.connect("localhost", echoServerPort)
-		).open().await();
+		);
 
-		connection.on()
-				.writeIdle(500, v -> {
-					latch.countDown();
-				});
 
-		for (int i = 0; i < 5; i++) {
-			Thread.sleep(100);
-			connection.sinkBuffers(Streams.just(Buffer.wrap("a")));
-		}
+		client.next().onSuccess(connection -> {
+					connection.on()
+							.writeIdle(500, v -> {
+								latch.countDown();
+							});
+
+					for (int i = 0; i < 5; i++) {
+						connection.sinkBuffers(Streams.just(Buffer.wrap("a")).throttle(100));
+					}
+				}
+		);
+
+		client.open().await();
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
@@ -326,8 +346,8 @@ public class TcpClientTests {
 
 	@Test
 	public void nettyNetChannelAcceptsNettyChannelHandlers() throws InterruptedException {
-		ChannelStream<HttpObject, HttpRequest> connection =
-				NetStreams.<HttpObject, HttpRequest>tcpClient(NettyTcpClient.class, spec -> spec
+		TcpClient<HttpObject, HttpRequest> client = NetStreams.<HttpObject, HttpRequest>tcpClient(NettyTcpClient.class,
+				spec -> spec
 						.env(env)
 						.options(new NettyClientSocketOptions()
 								.pipelineConfigurer(new Consumer<ChannelPipeline>() {
@@ -337,15 +357,19 @@ public class TcpClientTests {
 									}
 								}))
 						.connect("www.google.com", 80)
-				).open().await();
+		);
+
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		connection.next().onSuccess(resp -> {
+		client.next().onSuccess(resp -> {
 			latch.countDown();
 			System.out.println("resp: " + resp);
+
+			resp.sink(Streams.just(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")));
 		});
 
-		connection.sink(Streams.just(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")));
+		client.open().await();
+
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
 	}
@@ -371,17 +395,19 @@ public class TcpClientTests {
 
 		assertTrue("server was started", zmqs.start().awaitSuccess(5, TimeUnit.SECONDS));
 
-		Client<Buffer, Buffer, ?> zmqc = NetStreams.<Buffer, Buffer>tcpClient(ZeroMQTcpClient.class, s -> s
+		TcpClient<Buffer, Buffer> zmqc = NetStreams.<Buffer, Buffer>tcpClient(ZeroMQTcpClient.class, s -> s
 						.env(env)
 						.connect("127.0.0.1", port)
 		);
 
-		ChannelStream<Buffer, Buffer> ch = zmqc.open().await(5, TimeUnit.SECONDS);
-		assertNotNull("channel was connected", ch);
+		final Promise<Buffer> promise = Promises.prepare();
 
+		zmqc.consume(ch -> {
+			ch.subscribe(promise);
+			ch.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")));
+		});
 
-		Promise<Buffer> promise = ch.next();
-		ch.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")));
+		assertNotNull("channel was connected", zmqc.open().await(5, TimeUnit.SECONDS));
 
 		String msg = promise
 				.await(10, TimeUnit.SECONDS)
