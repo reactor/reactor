@@ -246,7 +246,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 		);
 	}
 
-	protected Consumer<Void> completeConsumer(CONN ch){
+	protected Consumer<Void> completeConsumer(CONN ch) {
 		return null;
 	}
 
@@ -255,7 +255,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 			writeStream
 					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false),
 							createAdaptiveDemandMapper(ch,
-							createErrorConsumer(ch)));
+									createErrorConsumer(ch)));
 		} else {
 			writeStream
 					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch), completeConsumer(ch));
@@ -309,6 +309,11 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 				@Override
 				public boolean hasNext() {
 					return i < size;
+				}
+
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException("");
 				}
 
 				@Override

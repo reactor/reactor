@@ -70,6 +70,7 @@ public class SimpleCachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public synchronized boolean unregister(Object key) {
 		boolean found = false;
 		for (Selector sel : registrations.keySet()) {
@@ -86,6 +87,7 @@ public class SimpleCachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public synchronized List<Registration<? extends T>> select(final Object key) {
 		List<Registration<? extends T>> selectedRegs;
 		if (null != (selectedRegs = cache.get(key))) {

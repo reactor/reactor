@@ -73,6 +73,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public boolean unregister(final Object key) {
 		final AtomicBoolean modified = new AtomicBoolean(false);
 		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
@@ -96,6 +97,7 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public List<Registration<? extends T>> select(Object key) {
 		// use a thread-local cache
 		UnifiedMap<Object, List<Registration<? extends T>>> allRegs = threadLocalRegs();
