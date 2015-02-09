@@ -402,10 +402,11 @@ public class TcpClientTests {
 
 		final Promise<Buffer> promise = Promises.prepare();
 
-		zmqc.consume(ch -> {
+		zmqc.pipeline(ch -> {
 			ch.subscribe(promise);
-			ch.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")));
+			return Streams.just(Buffer.wrap("Hello World!"));
 		});
+
 
 		assertNotNull("channel was connected", zmqc.open().await(5, TimeUnit.SECONDS));
 

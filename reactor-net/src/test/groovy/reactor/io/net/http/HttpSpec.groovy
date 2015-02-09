@@ -78,14 +78,11 @@ class HttpSpec extends Specification {
 						.log('client-send')
 
 			}.flatMap { replies ->
-
-				//successful request, listen for replies
+				//successful request, listen for the first returned next reply and pass it downstream
 				replies
 						.log('client-received')
 						.next()
-
 			}.onError{
-
 				//something failed during the request or the reply processing
 				println "Failed requesting server: $it"
 			}
