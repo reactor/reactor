@@ -156,6 +156,55 @@ class NettyTcpServerSpec extends Specification {
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
+
+	def "retry strategies when server fails"() {
+		given: "a TcpServer and a TcpClient"
+			def latch = new CountDownLatch(10)
+
+			def server = NetStreams.tcpServer(port)
+			def client = NetStreams.tcpClient("localhost", port)
+			def codec = new JsonCodec<Pojo, Pojo>(Pojo)
+			def i = 0
+
+		when: "the client/server are prepared"
+			server.pipeline { input ->
+				input
+						.decode(codec)
+						.flatMap {
+							Streams.just(it)
+								.log('serve')
+								.observe {
+									if (i++ < 2) {
+										throw new Exception("test")
+									}
+								}
+								.retry(2)
+						}
+						.map(codec)
+			}
+
+			client.pipeline { input ->
+				input
+						.decode(codec)
+						.log('receive')
+						.consume { latch.countDown() }
+
+				Streams.range(1, 10)
+						.map { new Pojo(name: 'test' + it) }
+						.log('send')
+						.map(codec)
+			}
+
+		then: "the client/server were started"
+			server?.start()?.flatMap { client.open() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			latch.await(10, TimeUnit.SECONDS)
+
+
+		cleanup: "the client/server where stopped"
+			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+	}
+
+
 	static class SimpleClient extends Thread {
 		final int port
 		final CountDownLatch latch
