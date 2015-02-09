@@ -72,10 +72,10 @@ import static org.junit.Assert.assertTrue;
  */
 public class TcpServerTests {
 
-	final Logger          log        = LoggerFactory.getLogger(TcpServerTests.class);
+	final Logger log = LoggerFactory.getLogger(TcpServerTests.class);
 	ExecutorService threadPool;
-	final int             msgs       = 150;
-	final int             threads    = 4;
+	final int msgs    = 150;
+	final int threads = 4;
 
 	Environment    env;
 	CountDownLatch latch;
@@ -475,16 +475,15 @@ public class TcpServerTests {
 						.listen("127.0.0.1", port)
 		);
 
-		server.consume(ch -> {
-			ch.consume(buff -> {
-				if (buff.remaining() == 128) {
-					latch.countDown();
-				} else {
-					log.info("data: {}", buff.asString());
-				}
-				ch.sinkBuffers(Streams.just(Buffer.wrap("Goodbye World!")));
-			});
-		});
+		server.pipeline(ch ->
+						ch.observe(buff -> {
+							if (buff.remaining() == 128) {
+								latch.countDown();
+							} else {
+								log.info("data: {}", buff.asString());
+							}
+						}).map(d -> Buffer.wrap("Goodbye World!") )
+		);
 
 		assertTrue("Server was started", server.start().awaitSuccess(5, TimeUnit.SECONDS));
 
