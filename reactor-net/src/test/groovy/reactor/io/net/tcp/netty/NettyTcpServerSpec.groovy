@@ -36,14 +36,11 @@ import java.util.concurrent.TimeUnit
 class NettyTcpServerSpec extends Specification {
 
 	static final int port = 26874
-	Environment env
 
-	def setup() {
-		env = Environment.initializeIfEmpty()
-	}
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
+			def env = Environment.initializeIfEmpty()
 			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
 			def server = NetStreams.<Buffer, Buffer> tcpServer {
@@ -76,11 +73,12 @@ class NettyTcpServerSpec extends Specification {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
-
+			Environment.terminate()
 	}
 
 	def "NettyTcpServer can encode and decode JSON"() {
 		given: "a TcpServer with JSON defaultCodec"
+			def env = Environment.initializeIfEmpty()
 			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
 			def server = NetStreams.<Pojo, Pojo> tcpServer {
@@ -115,10 +113,12 @@ class NettyTcpServerSpec extends Specification {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
+			Environment.terminate()
 	}
 
 	def "flush every 5 elems with manual decoding"() {
 		given: "a TcpServer and a TcpClient"
+			def env = Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -154,11 +154,13 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			Environment.terminate()
 	}
 
 
 	def "retry strategies when server fails"() {
 		given: "a TcpServer and a TcpClient"
+			def env = Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -202,6 +204,7 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			Environment.terminate()
 	}
 
 

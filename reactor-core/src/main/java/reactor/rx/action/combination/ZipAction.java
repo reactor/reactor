@@ -123,8 +123,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		//can receive multiple queued complete signals
 		cancel();
 		broadcastComplete();
-
-
 	}
 
 	@Override

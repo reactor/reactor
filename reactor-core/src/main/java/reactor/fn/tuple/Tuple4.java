@@ -98,11 +98,7 @@ public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 
 	@Override
 	public String toString() {
-		return "Tuple4{" +
-				"t1=" + t1 + ", " +
-				"t2=" + t2 + ", " +
-				"t3=" + t3 + ", " +
-				"t4=" + t4 +
-				'}';
+		return super.toString()+
+				(t4 != null ? ","+t4.toString() : "");
 	}
 }

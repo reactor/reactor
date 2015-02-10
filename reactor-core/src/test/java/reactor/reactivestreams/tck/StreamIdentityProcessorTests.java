@@ -157,6 +157,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Override
 	@org.testng.annotations.Test
 	public void spec212_mustNotCallOnSubscribeMoreThanOnceBasedOnObjectEquality_specViolation() throws Throwable {
+		//IGNORE (since 1.0 RC2)
 	}
 
 	@Override

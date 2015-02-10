@@ -87,8 +87,6 @@ public class Tuple1<T1> extends Tuple {
 
 	@Override
 	public String toString() {
-		return "Tuple1{" +
-				"t1=" + t1 +
-				'}';
+		return t1 != null ? t1.toString() : "";
 	}
 }

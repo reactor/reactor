@@ -72,7 +72,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			do {
 				synchronized (this) {
 					//Subscription terminated, Buffer done, return immediately
-					if (buffer.isComplete() && buffer.isEmpty()) {
+					if (terminated == 1) {
 						return;
 					}
 
@@ -102,11 +102,11 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						}
 
 						if (list.size != 0 && pendingRequestSignals != Long.MAX_VALUE) {
-							if(PENDING_UPDATER.addAndGet(this, -list.size) < 0){
+							if (PENDING_UPDATER.addAndGet(this, -list.size) < 0) {
 								pendingRequestSignals = 0l;
 							}
 						}
-					}else {
+					} else {
 						currentNextSignals = 0;
 					}
 				}
@@ -121,18 +121,17 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				synchronized (this) {
 					draining = !buffer.isEmpty();
 					last = !draining && buffer.isComplete();
-
 				}
 
 				if (last) {
 					onComplete();
 				} else {
-					if(elements != Long.MAX_VALUE) {
+					if (elements != Long.MAX_VALUE) {
 						elements -= list.size;
 					}
-					if(draining) {
+					if (draining) {
 						toRequest = Math.min(maxCapacity, elements);
-					}else if(elements > 0l){
+					} else if (elements > 0l) {
 						onRequest(elements);
 						toRequest = 0;
 					}
@@ -158,45 +157,29 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void onNext(O ev) {
-		boolean emit = false;
 
 		synchronized (this) {
 			if (draining) {
 				if (ev != null) {
-					if(pendingRequestSignals != Long.MAX_VALUE){
+					if (pendingRequestSignals != Long.MAX_VALUE) {
 						PENDING_UPDATER.incrementAndGet(this);
 					}
 					buffer.add(ev);
 				}
 				return;
-			}
-			if (pendingRequestSignals != Long.MAX_VALUE &&
+			} else if (pendingRequestSignals != Long.MAX_VALUE &&
 					PENDING_UPDATER.decrementAndGet(this) < 0l) {
-				PENDING_UPDATER.incrementAndGet(this);
-			} else {
-				currentNextSignals++;
-				emit = true;
-			}
-		}
-
-		if (emit) {
-			subscriber.onNext(ev);
-		} else {
-			boolean retry = false;
-
-			synchronized (this) {
-				if (pendingRequestSignals == Long.MAX_VALUE) {
-					retry = true;
-				} else if (ev != null) {
+				if (ev != null) {
 					buffer.add(ev);
 				}
+				PENDING_UPDATER.incrementAndGet(this);
+				return;
+			} else {
+				currentNextSignals++;
 			}
-
-			if (retry) {
-				onNext(ev);
-			}
-
 		}
+
+		subscriber.onNext(ev);
 	}
 
 	@Override
@@ -232,7 +215,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		synchronized (this) {
 			oldPending = pendingRequestSignals;
 			newPending = n == 0l ? 0l : oldPending + n;
-			if(newPending < 0) {
+			if (newPending < 0) {
 				newPending = n > 0 ? Long.MAX_VALUE : 0;
 			}
 			pendingRequestSignals = newPending;
@@ -276,7 +259,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		return "{" +
 				"current=" + currentNextSignals +
 				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
-				(buffer != null ? (buffer.isComplete() ? " ,complete" : ", waiting=" + buffer.size()) : "") +
+				(buffer != null ? (terminated == 1 ? ", complete" : "") + (", waiting=" + buffer.size()) : "") +
 				'}';
 	}
 
