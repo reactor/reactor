@@ -635,17 +635,23 @@ public abstract class Action<I, O> extends Stream<O>
 					if(dispatcher == SynchronousDispatcher.INSTANCE){
 						subscriber.onSubscribe(subscription);
 					}else{
-						subscriber.onSubscribe(new Subscription() {
+						dispatcher.dispatch(null, new Consumer<Void>() {
 							@Override
-							public void request(long n) {
-								dispatcher.dispatch(n, subscription, null);
-							}
+							public void accept(Void aVoid) {
+								subscriber.onSubscribe(new Subscription() {
+									@Override
+									public void request(long n) {
+										dispatcher.dispatch(n, subscription, null);
+									}
 
-							@Override
-							public void cancel() {
-								subscription.cancel();
+									@Override
+									public void cancel() {
+										subscription.cancel();
+									}
+								});
 							}
-						});
+						}, null);
+
 					}
 				}
 			} else {
