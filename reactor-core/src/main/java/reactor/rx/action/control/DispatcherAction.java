@@ -57,6 +57,20 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 
 	@Override
+	protected void doStart(final long n) {
+		if(dispatcher.inContext()){
+			super.doStart(n);
+		} else {
+			dispatcher.dispatch(null, new Consumer<Void>() {
+				@Override
+				public void accept(Void aVoid) {
+					DispatcherAction.super.doStart(n);
+				}
+			}, null);
+		}
+	}
+
+	@Override
 	public void onNext(T ev) {
 		if(dispatcher.inContext()){
 			super.onNext(ev);
@@ -73,7 +87,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 			dispatcher.dispatch(cause, new Consumer<Throwable>() {
 				@Override
 				public void accept(Throwable throwable) {
-					doError(throwable);
+					DispatcherAction.super.onError(throwable);
 				}
 			}, null);
 		}
@@ -87,7 +101,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 			dispatcher.dispatch(null, new Consumer<Void>() {
 				@Override
 				public void accept(Void aVoid) {
-					doComplete();
+					DispatcherAction.super.onComplete();
 				}
 			}, null);
 		}
