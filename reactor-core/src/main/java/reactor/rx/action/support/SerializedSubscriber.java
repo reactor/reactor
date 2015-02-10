@@ -33,7 +33,7 @@ import org.reactivestreams.Subscription;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
+public class SerializedSubscriber<T> extends DefaultSubscriber<T> implements Subscription {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;
@@ -44,7 +44,6 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription {
 	private static final int    MAX_DRAIN_ITERATION = Integer.MAX_VALUE;
 	private static final Object NULL_SENTINEL       = new Object();
 	private static final Object COMPLETE_SENTINEL   = new Object();
-	private static final Object CANCEL_SENTINEL     = new Object();
 
 	static final class FastList {
 		Object[] array;

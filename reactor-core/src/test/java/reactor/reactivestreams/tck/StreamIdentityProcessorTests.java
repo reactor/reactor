@@ -185,6 +185,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		super.spec317_mustSupportAPendingElementCountUpToLongMaxValue();
 	}*/
 
+	@Test
+	//@Ignore
+	public void testAlotOfHotStreams() throws InterruptedException{
+		for(int i = 0; i<10000; i++)
+			testHotIdentityProcessor();
+	}
 
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {

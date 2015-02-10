@@ -17,8 +17,6 @@ package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
 
@@ -98,16 +96,6 @@ final public class CompositeAction<E, O> extends Action<E, O> {
 				.getSimpleName().replaceAll("Action", "")) +
 				", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass().getSimpleName
 				().replaceAll("Action", ""));
-	}
-
-	@Override
-	public final Dispatcher getDispatcher() {
-		return subscriber.getDispatcher();
-	}
-
-	@Override
-	public final Environment getEnvironment() {
-		return subscriber.getEnvironment();
 	}
 
 	@Override

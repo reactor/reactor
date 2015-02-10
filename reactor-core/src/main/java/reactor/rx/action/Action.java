@@ -634,7 +634,7 @@ public abstract class Action<I, O> extends Stream<O>
 					if(dispatcher == SynchronousDispatcher.INSTANCE){
 						subscriber.onSubscribe(subscription);
 					}else{
-						dispatcher.dispatch(null, new Consumer<Void>() {
+						TailRecurseDispatcher.INSTANCE.dispatch(null, new Consumer<Void>() {
 							@Override
 							public void accept(Void aVoid) {
 								subscriber.onSubscribe(new Subscription() {

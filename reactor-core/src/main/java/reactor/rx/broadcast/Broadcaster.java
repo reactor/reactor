@@ -112,6 +112,7 @@ public class Broadcaster<O> extends Action<O, O> {
 		return dispatcher;
 	}
 
+
 	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
