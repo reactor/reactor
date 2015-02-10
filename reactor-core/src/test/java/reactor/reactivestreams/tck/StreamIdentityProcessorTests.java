@@ -17,7 +17,6 @@ package reactor.reactivestreams.tck;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -186,12 +185,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		super.spec317_mustSupportAPendingElementCountUpToLongMaxValue();
 	}*/
 
-	@Test
+	/*@Test
 	@Ignore
 	public void testAlotOfHotStreams() throws InterruptedException{
 		for(int i = 0; i<10000; i++)
 			testHotIdentityProcessor();
-	}
+	}*/
 
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
