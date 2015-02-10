@@ -64,7 +64,7 @@ public final class DispatcherConfiguration {
 	 * @return The name
 	 */
 	public String getName() {
-		return name;
+		return name != null ? name : type.toString().toLowerCase();
 	}
 
 	/**

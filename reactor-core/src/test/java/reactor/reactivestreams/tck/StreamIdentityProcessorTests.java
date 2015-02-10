@@ -31,7 +31,7 @@ import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.combination.CombineAction;
+import reactor.rx.action.CompositeAction;
 import reactor.rx.broadcast.Broadcaster;
 
 import java.util.ArrayList;
@@ -80,13 +80,13 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	}
 
 	@Override
-	public CombineAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
+	public CompositeAction<Integer, Integer> createIdentityProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		//Dispatcher dispatcherZip = env.getCachedDispatcher();
 		AtomicLong total = new AtomicLong();
 		System.out.println("Providing new processor");
-		final CombineAction<Integer, Integer> integerIntegerCombineAction =
+		final CompositeAction<Integer, Integer> integerIntegerCombineAction =
 				Broadcaster.<Integer>create(Environment.get())
 						.capacity(bufferSize)
 						.partition(2)
@@ -191,7 +191,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		final int elements = 10;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		CombineAction<Integer, Integer> processor = createIdentityProcessor(16);
+		CompositeAction<Integer, Integer> processor = createIdentityProcessor(16);
 
 		createHelperPublisher(10).subscribe(processor);
 
@@ -245,7 +245,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
 
-		CombineAction<Integer, Integer> processor = createIdentityProcessor(1000);
+		CompositeAction<Integer, Integer> processor = createIdentityProcessor(1000);
 
 		Broadcaster<Integer> stream = Broadcaster.create();
 

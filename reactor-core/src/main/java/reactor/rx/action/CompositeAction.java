@@ -13,13 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.action.combination;
+package reactor.rx.action;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Environment;
+import reactor.core.Dispatcher;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
-import reactor.rx.action.Action;
 
 /**
  * Create a Processor where a given head/tail couple is provided as a Stream (Input upstream) and Action (Output
@@ -28,11 +29,11 @@ import reactor.rx.action.Action;
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class CombineAction<E, O> extends Action<E, O> {
+final public class CompositeAction<E, O> extends Action<E, O> {
 	private final Action<?, O> publisher;
 	private final Action<E, ?> subscriber;
 
-	public CombineAction(Action<E, ?> head, Action<?, O> tail) {
+	public CompositeAction(Action<E, ?> head, Action<?, O> tail) {
 		super(head.getCapacity());
 		this.publisher = tail;
 		this.subscriber = head;
@@ -97,6 +98,16 @@ final public class CombineAction<E, O> extends Action<E, O> {
 				.getSimpleName().replaceAll("Action", "")) +
 				", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass().getSimpleName
 				().replaceAll("Action", ""));
+	}
+
+	@Override
+	public final Dispatcher getDispatcher() {
+		return subscriber.getDispatcher();
+	}
+
+	@Override
+	public final Environment getEnvironment() {
+		return subscriber.getEnvironment();
 	}
 
 	@Override

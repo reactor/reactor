@@ -21,7 +21,7 @@ import reactor.core.Dispatcher;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.combination.CombineAction;
+import reactor.rx.action.CompositeAction;
 
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.
@@ -44,7 +44,7 @@ public class LiftStream<O, V> extends Stream<V> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> CombineAction<E, V> combine() {
+	public final <E> CompositeAction<E, V> combine() {
 		Action<O, V> action = onLift();
 
 		if (action == null) {
@@ -52,7 +52,12 @@ public class LiftStream<O, V> extends Stream<V> {
 		}
 
 		producer.subscribe(action);
-		return action.combine();
+
+		if(action.getDispatcher() != getDispatcher()){
+			return action.dispatchOn(getDispatcher()).combine();
+		}else{
+			return action.combine();
+		}
 	}
 
 	@Override

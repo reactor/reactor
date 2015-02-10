@@ -33,7 +33,6 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
 import reactor.rx.StreamUtils;
-import reactor.rx.action.combination.CombineAction;
 import reactor.rx.action.combination.FanInAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.SpecificationExceptions;
@@ -379,10 +378,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> CombineAction<E, O> combine() {
+	public final <E> CompositeAction<E, O> combine() {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class);
 		subscriber.upstreamSubscription = null;
-		return new CombineAction<E, O>(subscriber, this);
+		return new CompositeAction<E, O>(subscriber, this);
 	}
 
 	/**

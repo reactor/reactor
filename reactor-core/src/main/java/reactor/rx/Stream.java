@@ -36,11 +36,12 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
+import reactor.rx.action.CompositeAction;
 import reactor.rx.action.Control;
-import reactor.rx.action.conditional.ExistsAction;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.*;
 import reactor.rx.action.combination.*;
+import reactor.rx.action.conditional.ExistsAction;
 import reactor.rx.action.control.*;
 import reactor.rx.action.error.*;
 import reactor.rx.action.filter.*;
@@ -706,7 +707,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		if (dispatcher == SynchronousDispatcher.INSTANCE
 				|| dispatcher == getDispatcher()) {
 
-			if (environment != getEnvironment()) {
+			if (environment != null && environment != getEnvironment()) {
 				return env(environment);
 			} else {
 				return this;
@@ -2830,7 +2831,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @param <E> the type of the most ancien action input.
 	 * @return new Combined Action
 	 */
-	public <E> CombineAction<E, O> combine() {
+	public <E> CompositeAction<E, O> combine() {
 		throw new IllegalStateException("Cannot combine a single Stream");
 	}
 
@@ -2984,14 +2985,14 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Subscribe the {@link reactor.rx.action.combination.CombineAction#input()} to this Stream. Combining action
+	 * Subscribe the {@link reactor.rx.action.CompositeAction#input()} to this Stream. Combining action
 	 * through {@link
 	 * reactor.rx.action.Action#combine()} allows for easy distribution of a full flow.
 	 *
 	 * @param subscriber the combined actions to subscribe
 	 * @since 2.0
 	 */
-	public final <A> void subscribe(final CombineAction<O, A> subscriber) {
+	public final <A> void subscribe(final CompositeAction<O, A> subscriber) {
 		subscribe(subscriber.input());
 	}
 

@@ -15,11 +15,9 @@
  */
 package reactor.rx.action.control;
 
-import org.reactivestreams.Subscriber;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -39,15 +37,6 @@ public final class DispatcherAction<T> extends Action<T, T> {
 		return this.dispatcher != dispatcher;
 	}
 
-	@Override
-	public void subscribe(Subscriber<? super T> subscriber) {
-		final PushSubscription<T> subscription = createSubscription(subscriber, false);
-
-		if (subscription == null)
-			return;
-
-		subscribeWithSubscription(subscriber, subscription, false);
-	}
 /*
 	@Override
 	public void requestMore(long n) {
