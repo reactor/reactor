@@ -368,6 +368,11 @@ project('reactor-groovy') {
 	apply plugin: 'osgi'
 	apply plugin: 'groovy'
 
+	artifacts {
+		archives sourcesJar
+		archives javadocJar
+		archives groovydocJar
+	}
 	sonarRunner {
 		sonarProperties {
 			property "sonar.language", "grvy"

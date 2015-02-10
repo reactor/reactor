@@ -70,7 +70,6 @@ configure(subprojects) { subproject ->
 	artifacts {
 		archives sourcesJar
 		archives javadocJar
-		archives groovydocJar
 	}
 }
 

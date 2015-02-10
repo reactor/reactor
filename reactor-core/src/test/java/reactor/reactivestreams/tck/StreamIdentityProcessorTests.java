@@ -160,6 +160,14 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//IGNORE (since 1.0 RC2)
 	}
 
+	/*@Override
+	public void spec103_mustSignalOnMethodsSequentially() throws Throwable {
+		for(int i = 0; i < 10000; i++) {
+			System.out.println(i);
+			super.spec103_mustSignalOnMethodsSequentially();
+		}
+	}*/
+
 	@Override
 	public void spec317_mustSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
 		//IGNORE (since 1.0 RC2)
