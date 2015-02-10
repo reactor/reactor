@@ -384,14 +384,14 @@ public class TcpClientTests {
 						.listen(port)
 		);
 
-		zmqs.consume(ch -> {
-			ch.consume(buff -> {
+		zmqs.pipeline(ch ->
+			ch.map(buff -> {
 				if (buff.remaining() == 12) {
 					latch.countDown();
-					ch.sinkBuffers(Streams.just(Buffer.wrap("Goodbye World!")));
 				}
-			});
-		});
+				return Buffer.wrap("Goodbye World!");
+			})
+		);
 
 		assertTrue("server was started", zmqs.start().awaitSuccess(5, TimeUnit.SECONDS));
 

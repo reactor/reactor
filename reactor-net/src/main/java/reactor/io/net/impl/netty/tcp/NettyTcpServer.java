@@ -17,6 +17,7 @@
 package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -100,7 +101,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
-			//	.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.childOption(ChannelOption.AUTO_READ, sslOptions != null)
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override

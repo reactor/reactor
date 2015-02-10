@@ -274,7 +274,8 @@ public class TcpServerTests {
 			threadPool.submit(new FramedLengthFieldMessageWriter(port));
 		}
 
-		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		latch.await(10, TimeUnit.SECONDS);
+		assertTrue("Latch was counted down", latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -424,9 +425,7 @@ public class TcpServerTests {
 								}))
 		);
 
-		server.consume(new Consumer<ChannelStream<HttpRequest, HttpResponse>>() {
-			@Override
-			public void accept(final ChannelStream<HttpRequest, HttpResponse> ch) {
+		server.consume(ch -> {
 				ch.consume(req -> {
 					ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
 					int len = buf.readableBytes();
@@ -444,7 +443,6 @@ public class TcpServerTests {
 						latch.countDown();
 					}
 				});
-			}
 		});
 
 		log.info("Starting HTTP server on http://localhost:{}/", port);
