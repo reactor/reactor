@@ -75,17 +75,16 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests =
-				Math.min(capacity, innerSubscriptions.pendingRequestSignals());
+		inlineMerge.pendingRequests =  innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables + 1);
 		publisher.subscribe(inlineMerge);
 	}
 
 
 	@Override
 	protected void doStart(long pending) {
-		/*if (dynamicMergeAction != null) {
-			dispatcher.dispatch(pending, innerSubscriptions, null);
-		}*/
+		if (dynamicMergeAction != null) {
+			dispatcher.dispatch(pending, dynamicMergeAction.getSubscription(), null);
+		}
 	}
 
 	public void scheduleCompletion() {
@@ -162,6 +161,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
+		elements = Math.max(this.capacity, elements);
 		super.requestUpstream(capacity, terminated, elements);
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);

@@ -732,14 +732,16 @@ public class StreamTests extends AbstractReactorTest {
 										globalFeed,
 										Streams.just(1111, l, 3333, 4444, 5555, 6666)
 								)
+										.log("merged")
 										.dispatchOn(env)
+										.log("dispatched")
 										.observeSubscribe(x -> afterSubscribe.countDown())
 										.filter(nearbyLoc -> 3333 >= nearbyLoc)
 										.filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 				);
 
-		s.subscribe(new Action<Integer, Void>() {
+		Action<Integer, Void> action = s.broadcastTo(new Action<Integer, Void>() {
 			Subscription s;
 
 			@Override
@@ -767,12 +769,17 @@ public class StreamTests extends AbstractReactorTest {
 			}
 		});
 
+		System.out.println(action.debug());
+
 		afterSubscribe.await(5, TimeUnit.SECONDS);
+
+		System.out.println(action.debug());
 
 		globalFeed.onNext(2223);
 		globalFeed.onNext(2224);
 
 		latch.await(5, TimeUnit.SECONDS);
+		System.out.println(action.debug());
 		assertEquals("Must have counted 4 elements", 0, latch.getCount());
 
 	}

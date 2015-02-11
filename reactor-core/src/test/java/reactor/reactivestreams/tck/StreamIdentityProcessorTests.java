@@ -186,7 +186,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	}*/
 
 	/*@Test
-	@Ignore
 	public void testAlotOfHotStreams() throws InterruptedException{
 		for(int i = 0; i<10000; i++)
 			testHotIdentityProcessor();
@@ -271,7 +270,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 			@Override
 			public void onError(Throwable t) {
-				t.printStackTrace();
+				System.out.println("error! "+t);
 			}
 
 			@Override

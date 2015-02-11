@@ -60,6 +60,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
+
 			if(pendingRequests > 0l){
 				request(pendingRequests);
 			}
@@ -75,6 +76,14 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 				pendingRequests = 0l;
 			}
 		}
+
+
+
+		@Override
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return false;
+		}
+
 
 		@Override
 		public String toString() {

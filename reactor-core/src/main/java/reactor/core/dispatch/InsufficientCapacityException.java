@@ -28,7 +28,7 @@ package reactor.core.dispatch;
  *
  */
 @SuppressWarnings("serial")
-public final class InsufficientCapacityException extends Exception
+public final class InsufficientCapacityException extends RuntimeException
 {
 	public static final InsufficientCapacityException INSTANCE = new InsufficientCapacityException();
 

@@ -130,7 +130,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						elements -= list.size;
 					}
 					if (draining) {
-						toRequest = Math.min(maxCapacity, elements);
+						toRequest = elements;
 					} else if (elements > 0l) {
 						onRequest(elements);
 						toRequest = 0;
@@ -159,7 +159,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public void onNext(O ev) {
 
 		synchronized (this) {
-			if (draining) {
+			/*if (draining) {
 				if (ev != null) {
 					if (pendingRequestSignals != Long.MAX_VALUE) {
 						PENDING_UPDATER.incrementAndGet(this);
@@ -167,12 +167,14 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					buffer.add(ev);
 				}
 				return;
-			} else if (pendingRequestSignals != Long.MAX_VALUE &&
+			} else */
+
+			if (pendingRequestSignals != Long.MAX_VALUE &&
 					PENDING_UPDATER.decrementAndGet(this) < 0l) {
+				PENDING_UPDATER.incrementAndGet(this);
 				if (ev != null) {
 					buffer.add(ev);
 				}
-				PENDING_UPDATER.incrementAndGet(this);
 				return;
 			} else {
 				currentNextSignals++;

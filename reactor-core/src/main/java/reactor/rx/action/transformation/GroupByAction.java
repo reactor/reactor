@@ -54,7 +54,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 		public void onNext(Long aLong) {
 			checkRequest(aLong);
 			if(upstreamSubscription != null){
-				upstreamSubscription.request(aLong);
+				upstreamSubscription.request(aLong );
 			}
 		}
 

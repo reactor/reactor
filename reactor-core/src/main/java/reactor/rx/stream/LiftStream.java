@@ -53,11 +53,7 @@ public class LiftStream<O, V> extends Stream<V> {
 
 		producer.subscribe(action);
 
-		if(action.getDispatcher() != getDispatcher()){
-			return action.dispatchOn(getDispatcher()).combine();
-		}else{
-			return action.combine();
-		}
+		return action.combine();
 	}
 
 	@Override

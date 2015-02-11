@@ -275,7 +275,7 @@ public class TcpServerTests {
 		}
 
 		latch.await(10, TimeUnit.SECONDS);
-		assertTrue("Latch was counted down", latch.getCount() == 0);
+		assertTrue("Latch was counted down:" +latch.getCount() , latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
