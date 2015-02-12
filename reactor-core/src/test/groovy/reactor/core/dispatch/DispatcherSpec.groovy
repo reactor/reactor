@@ -17,6 +17,8 @@
 
 package reactor.core.dispatch
 
+import org.reactivestreams.Subscriber
+import org.reactivestreams.Subscription
 import reactor.Environment
 import reactor.bus.Event
 import reactor.bus.EventBus
@@ -25,6 +27,7 @@ import reactor.fn.Consumer
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
 import reactor.rx.broadcast.Broadcaster
+import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -108,6 +111,87 @@ class DispatcherSpec extends Specification {
 		then:
 			"a task is submitted to the thread pool dispatcher"
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+	}
+
+	@Ignore
+	def "Dispatcher on Reactive Stream"() {
+
+		given:
+			"ring buffer dispatcher"
+			def dispatcher = (RingBufferDispatcher) env.cachedDispatcher
+			def dispatcher2 = (RingBufferDispatcher) env.cachedDispatcher
+			println dispatcher.backlogSize()
+			def bc = Broadcaster.<String> create()
+			def bc2 = Broadcaster.<String> create()
+			def elems = 18
+			def latch = new CountDownLatch(elems)
+			def name = 'spec1'
+			def sub = { new Subscriber<String>() {
+				def s
+
+				@Override
+				void onSubscribe(Subscription s) {
+					this.s = s
+					println name +" "+Thread.currentThread().name + ": subscribe: " + s
+					s.request(1)
+				}
+
+				@Override
+				void onNext(String o) {
+					println name +" "+Thread.currentThread().name + ": next: " + o
+					latch.countDown()
+					s.request(2)
+				}
+
+				@Override
+				void onError(Throwable t) {
+					println name +" "+Thread.currentThread().name + ": error:" + t
+				}
+
+				@Override
+				void onComplete() {
+					println name +" "+Thread.currentThread().name + ": complete"
+					//latch.countDown()
+				}
+			}}
+
+			bc.subscribe(dispatcher.dispatch(bc2))
+			bc2.subscribe(dispatcher2.dispatch(sub()))
+		println bc.debug()
+		println bc2.debug()
+
+		when:
+			"call the broadcaster"
+			elems.times {
+				bc.onNext 'hello ' + it
+			}
+			//bc.onComplete()
+			println bc.debug()
+			println bc2.debug()
+
+			def ended = latch.await(50, TimeUnit.SECONDS) // Wait for task to execute
+			println bc.debug()
+			println bc2.debug()
+
+		then:
+			"a task is submitted to the thread pool dispatcher"
+		ended
+			//!bc.downstreamSubscription()
+
+		when:
+			latch = new CountDownLatch(elems)
+			name = "spec2"
+			bc = Broadcaster.create()
+			bc.subscribe(dispatcher.dispatch(sub()))
+
+			elems.times {
+				bc.onNext 'hello ' + it
+			}
+			bc.onComplete()
+
+		then:
+			"a task is submitted to the thread pool dispatcher"
+			latch.await(50, TimeUnit.SECONDS) // Wait for task to execute
 	}
 
 	def "Dispatchers can be shutdown awaiting tasks to complete"() {

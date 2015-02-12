@@ -86,34 +86,29 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		//Dispatcher dispatcherZip = env.getCachedDispatcher();
 		AtomicLong total = new AtomicLong();
 		System.out.println("Providing new processor");
-		final CompositeAction<Integer, Integer> integerIntegerCombineAction =
-				Broadcaster.<Integer>create(Environment.get())
-						.capacity(bufferSize)
-						.partition(2)
-						.flatMap(stream -> stream
-										.dispatchOn(env, dispatchers.get())
-										.scan(0, (prev, next) -> -next)
-										.filter(integer -> integer <= 0)
-										.sample(1)
-										.observe(this::monitorThreadUse)
-										.map(integer -> -integer)
-										.buffer(1024, 200, TimeUnit.MILLISECONDS)
-										.<Integer>split()
-										.flatMap(i ->
-														Streams.zip(Streams.just(i), otherStream, Tuple1::getT1)
-												//Streams.just(i)
-												//		.log(stream.key() + ":zip")
-										)
-						)
-						.dispatchOn(subscriberDispatcher)
-						.when(Throwable.class, Throwable::printStackTrace)
-						.combine();
 
 		/*Streams.period(env.getTimer(), 2, 1)
 				.takeWhile(i -> integerIntegerCombineAction.isPublishing())
 				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
 */
-		return integerIntegerCombineAction;
+		return Broadcaster.<Integer>
+				create(Environment.get())
+				.capacity(bufferSize)
+				.partition(2)
+				.flatMap(stream -> stream
+								.dispatchOn(env, dispatchers.get())
+								.scan(0, (prev, next) -> -next)
+								.filter(integer -> integer <= 0)
+								.sample(1)
+								.observe(this::monitorThreadUse)
+								.map(integer -> -integer)
+								.buffer(1024, 200, TimeUnit.MILLISECONDS)
+								.<Integer>split()
+								.flatMap(i ->  Streams.zip(Streams.just(i), otherStream, Tuple1::getT1) )
+				)
+				.dispatchOn(subscriberDispatcher)
+				.when(Throwable.class, Throwable::printStackTrace)
+				.combine();
 	}
 
 	private void monitorThreadUse(int val) {

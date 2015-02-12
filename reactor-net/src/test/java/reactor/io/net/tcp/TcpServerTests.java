@@ -135,7 +135,8 @@ public class TcpServerTests {
 
 		final CountDownLatch latch = new CountDownLatch(1);
 		final TcpClient<Pojo, Pojo> client = NetStreams.tcpClient(s ->
-						s.env(env)
+						s
+								.env(env)
 								.ssl(clientOpts)
 								.codec(codec)
 								.connect("localhost", port)

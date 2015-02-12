@@ -16,10 +16,13 @@
 
 package reactor.core.dispatch;
 
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.SpecificationExceptions;
 import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
@@ -151,6 +154,8 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 				handleOnStartException(ex);
 			}
 		});
+
+
 		this.disruptor.handleEventsWith(new EventHandler<RingBufferTask>() {
 			@Override
 			public void onEvent(RingBufferTask task, long sequence, boolean endOfBatch) throws Exception {
@@ -159,6 +164,18 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		});
 
 		this.ringBuffer = disruptor.start();
+	}
+
+	//@Override
+	public <E> Subscriber<E> dispatch(Subscriber<? super E> sub) {
+		final SequenceBarrier barrier = ringBuffer.newBarrier();
+		final RingBufferTaskEventHandler<E> eventHandler = new RingBufferTaskEventHandler<>(sub);
+		final EventProcessor p = new BatchEventProcessor<RingBufferTask>(
+				ringBuffer,
+				barrier,
+				eventHandler
+		);
+		return new RingBufferSubscriber<>(p, barrier, sub, eventHandler);
 	}
 
 	@Override
@@ -250,4 +267,179 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		}
 	}
 
+	private class RingBufferTaskEventHandler<E> implements EventHandler<RingBufferTask>, Consumer<E> {
+		private final Subscriber<? super E> sub;
+
+		Subscription s;
+
+		public RingBufferTaskEventHandler(Subscriber<? super E> sub) {
+			this.sub = sub;
+		}
+
+		@Override
+		public void accept(E e) {
+			try {
+				sub.onNext(e);
+			} catch (Throwable t) {
+				sub.onError(t);
+			}
+		}
+
+		@Override
+		public void onEvent(RingBufferTask ringBufferTask, long seq, boolean end) throws Exception {
+			if (ringBufferTask.eventConsumer == COMPLETE_SENTINEL) {
+				try {
+					if (s != null) {
+						s.cancel();
+						s = null;
+					}
+					sub.onComplete();
+				} catch (Throwable e) {
+					sub.onError(e);
+				}
+			} else if (ringBufferTask.eventConsumer == ERROR_SENTINEL) {
+				if (s != null) {
+					s.cancel();
+					s = null;
+				}
+				sub.onError((Throwable) ringBufferTask.data);
+			} else {
+				System.out.println(Thread.currentThread()+" ] Task:" + ringBufferTask.data + " seq:" + seq + " " + end);
+				ringBufferTask.run();
+			}
+		}
+	}
+
+	private class RingBufferSubscriber<E> implements Subscriber<E> {
+		private final EventProcessor                p;
+		private final SequenceBarrier               barrier;
+		private final Subscriber<? super E>         sub;
+		private final RingBufferTaskEventHandler<E> eventHandler;
+		Subscription s;
+		long         pending;
+
+		public RingBufferSubscriber(EventProcessor p, SequenceBarrier barrier, Subscriber<? super E> sub,
+		                            RingBufferTaskEventHandler<E> eventHandler) {
+			this.p = p;
+			this.barrier = barrier;
+			this.sub = sub;
+			this.eventHandler = eventHandler;
+			this.pending = 0l;
+		}
+
+		@Override
+		public void onSubscribe(final Subscription s) {
+			if (this.s != null) {
+				s.cancel();
+				return;
+			}
+			p.getSequence().set(barrier.getCursor());
+			ringBuffer.addGatingSequences(p.getSequence());
+			executor.execute(p);
+
+			Subscription subscription = new Subscription() {
+
+				@Override
+				@SuppressWarnings("unchecked")
+				public void request(long n) {
+					if (n <= 0l) {
+						sub.onError(SpecificationExceptions.spec_3_09_exception(n));
+						return;
+					}
+
+					if (pending == Long.MAX_VALUE) {
+						return;
+					}
+
+					if (s == null) {
+						if ((pending += n) < 0l) pending = Long.MAX_VALUE;
+						return;
+					}
+
+					int toRequest = (int)Math.min(Integer.MAX_VALUE, n);
+					pending += n - toRequest;
+
+					if(!inContext()) {
+						ringBuffer.next(toRequest);
+					}
+					s.request(toRequest);
+				}
+
+				@Override
+				public void cancel() {
+					close();
+					s.cancel();
+				}
+			};
+
+			eventHandler.s = subscription;
+			sub.onSubscribe(subscription);
+
+			this.s = s;
+		}
+
+		void publishSignal(Object data, Consumer consumer) {
+			long seqId = p.getSequence().incrementAndGet();
+			ringBuffer.get(seqId)
+					.setSequenceId(seqId)
+					.setData(data)
+					.setEventConsumer(consumer);
+
+			long cursor = barrier.getCursor();
+			if (cursor >= seqId) {
+				ringBuffer.publish(seqId, cursor);
+			}
+		}
+
+		@Override
+		public void onNext(E o) {
+			if (!inContext()) {
+				publishSignal(o, eventHandler);
+
+			} else {
+				allocateRecursiveTask()
+						.setData(o)
+						.setEventConsumer(eventHandler);
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			try {
+				ringBuffer.next();
+				publishSignal(t, ERROR_SENTINEL);
+			} finally {
+				if (s != null) {
+					s.cancel();
+				}
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			try {
+				ringBuffer.next();
+				publishSignal(null, COMPLETE_SENTINEL);
+			} finally {
+				if (s != null) {
+					s.cancel();
+				}
+			}
+		}
+
+		void close() {
+			ringBuffer.removeGatingSequence(p.getSequence());
+			p.halt();
+		}
+
+		@Override
+		public String toString() {
+			return "RingBufferSubscriber{" +
+					"p=" + p.getSequence() +
+					", barrier=" + barrier.getCursor() +
+					", sub=" + sub.getClass().getSimpleName() +
+					", pending=" + pending +
+					'}';
+		}
+	}
 }

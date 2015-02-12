@@ -133,7 +133,7 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		}, null);
 	}
 
-	protected Task tryAllocateTask() throws InsufficientCapacityException{
+	protected Task tryAllocateTask() throws InsufficientCapacityException {
 		return allocateTask();
 	}
 
@@ -146,6 +146,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 	@SuppressWarnings("unchecked")
 	protected static void route(Task task) {
 		try {
+			if (task.eventConsumer == null) return;
+
 			task.eventConsumer.accept(task.data);
 
 		} catch (Exception e) {
@@ -197,5 +199,17 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 		}
 
 	}
+
+	protected final static Consumer COMPLETE_SENTINEL = new Consumer() {
+		@Override
+		public void accept(Object o) {
+		}
+	};
+
+	protected final static Consumer<Throwable> ERROR_SENTINEL = new Consumer<Throwable>() {
+		@Override
+		public void accept(Throwable throwable) {
+		}
+	};
 
 }
