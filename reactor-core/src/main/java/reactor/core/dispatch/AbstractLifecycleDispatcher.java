@@ -200,16 +200,4 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
 	}
 
-	protected final static Consumer COMPLETE_SENTINEL = new Consumer() {
-		@Override
-		public void accept(Object o) {
-		}
-	};
-
-	protected final static Consumer<Throwable> ERROR_SENTINEL = new Consumer<Throwable>() {
-		@Override
-		public void accept(Throwable throwable) {
-		}
-	};
-
 }

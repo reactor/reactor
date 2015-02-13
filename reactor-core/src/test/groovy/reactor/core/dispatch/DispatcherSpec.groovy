@@ -48,7 +48,7 @@ class DispatcherSpec extends Specification {
 	Environment env
 
 	def setup() {
-		env = new Environment()
+		env = Environment.initializeIfEmpty().assignErrorJournal()
 	}
 
 	def cleanup() {
@@ -122,7 +122,6 @@ class DispatcherSpec extends Specification {
 			def dispatcher2 = (RingBufferDispatcher) env.cachedDispatcher
 			println dispatcher.backlogSize()
 			def bc = Broadcaster.<String> create()
-			def bc2 = Broadcaster.<String> create()
 			def elems = 18
 			def latch = new CountDownLatch(elems)
 			def name = 'spec1'
@@ -155,10 +154,10 @@ class DispatcherSpec extends Specification {
 				}
 			}}
 
-			bc.subscribe(dispatcher.dispatch(bc2))
-			bc2.subscribe(dispatcher2.dispatch(sub()))
-		println bc.debug()
-		println bc2.debug()
+		def bc2 = dispatcher2.dispatch()
+			bc.broadcastTo(dispatcher.dispatch()).subscribe(bc2)
+			bc2.subscribe(sub())
+			println bc.debug()
 
 		when:
 			"call the broadcaster"
@@ -167,11 +166,9 @@ class DispatcherSpec extends Specification {
 			}
 			//bc.onComplete()
 			println bc.debug()
-			println bc2.debug()
 
 			def ended = latch.await(50, TimeUnit.SECONDS) // Wait for task to execute
 			println bc.debug()
-			println bc2.debug()
 
 		then:
 			"a task is submitted to the thread pool dispatcher"
@@ -182,7 +179,7 @@ class DispatcherSpec extends Specification {
 			latch = new CountDownLatch(elems)
 			name = "spec2"
 			bc = Broadcaster.create()
-			bc.subscribe(dispatcher.dispatch(sub()))
+			bc.broadcastTo(dispatcher.dispatch()).subscribe(sub())
 
 			elems.times {
 				bc.onNext 'hello ' + it

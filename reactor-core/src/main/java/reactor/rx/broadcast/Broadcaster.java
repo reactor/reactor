@@ -100,7 +100,6 @@ public class Broadcaster<O> extends Action<O, O> {
 	/**
 	 *
 	 * INTERNAL
-	 *
 	 */
 	protected Broadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
 		super(capacity);
@@ -116,7 +115,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
-		}
+	}
 
 	@Override
 	public void onNext(O ev) {

@@ -28,11 +28,11 @@ import java.util.List;
  */
 public abstract class SingleThreadDispatcher extends AbstractLifecycleDispatcher {
 
-	private final List<Task> tailRecursionPile = new ArrayList<Task>();
-	private final int backlog;
+	protected final List<Task> tailRecursionPile = new ArrayList<Task>();
+	protected final int backlog;
 
-	private int tailRecurseSeq        = -1;
-	private int tailRecursionPileSize = 0;
+	protected int tailRecurseSeq        = -1;
+	protected int tailRecursionPileSize = 0;
 
 	public SingleThreadDispatcher(int backlog) {
 		this.backlog = backlog;

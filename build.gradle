@@ -306,8 +306,8 @@ project('reactor-core') {
 		compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
 		// Reactive Streams
-		compile "org.reactivestreams:reactive-streams:1.0.0.RC1"
-		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC1"
+		compile "org.reactivestreams:reactive-streams:1.0.0.RC2"
+		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC2"
 
 		// High-speed Messaging
 		optional "net.openhft:chronicle:$openHftChronicleVersion",
