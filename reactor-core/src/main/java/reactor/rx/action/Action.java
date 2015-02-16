@@ -42,6 +42,8 @@ import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
  * to a {@link reactor.rx.Stream}. Stream is usually the place where actions are created.
@@ -639,10 +641,13 @@ public abstract class Action<I, O> extends Stream<O>
 									TailRecurseDispatcher.INSTANCE :
 									_dispatcher;
 
+					final AtomicLong pendingOnSub = new AtomicLong(-1l);
 							subscriber.onSubscribe(new Subscription() {
 								@Override
 								public void request(long n) {
-									dispatcher.dispatch(n, subscription, null);
+									if(!pendingOnSub.compareAndSet(-1l, n)) {
+										dispatcher.dispatch(n, subscription, null);
+									}
 								}
 
 								@Override
@@ -660,6 +665,10 @@ public abstract class Action<I, O> extends Stream<O>
 									return subscriber.equals(obj);
 								}
 							});
+
+					if(!pendingOnSub.compareAndSet(-1l, 0l)){
+						dispatcher.dispatch(pendingOnSub.get(), subscription, null);
+					}
 				}
 			} else {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
