@@ -137,6 +137,7 @@ configure(allprojects) { project ->
 	repositories {
 		mavenLocal()
 		mavenCentral()
+		maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 		maven { url 'http://repo.spring.io/libs-milestone' }
 	}
 
