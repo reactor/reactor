@@ -115,7 +115,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.flatMap(i ->  Streams.zip(Streams.just(i), otherStream, Tuple1::getT1) )
 				)
 				.dispatchOn(subscriberDispatcher)
-				.log("end")
+				//.log("end")
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
 	}

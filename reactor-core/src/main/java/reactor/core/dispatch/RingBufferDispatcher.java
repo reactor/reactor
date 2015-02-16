@@ -121,7 +121,7 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 			this.waitingMood = null;
 		}
 
-		this.executor = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, getContext()));
+		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
 					@Override
