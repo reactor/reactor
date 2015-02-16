@@ -17,6 +17,7 @@ package reactor.rx.action.control;
 
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public final class DispatcherAction<T> extends Action<T, T> {
 
 	private final Dispatcher dispatcher;
+	private final Dispatcher requestDispatcher;
 
 	private volatile long pendingRequests = 0l;
 
@@ -37,8 +39,9 @@ public final class DispatcherAction<T> extends Action<T, T> {
 			AtomicLongFieldUpdater.newUpdater(DispatcherAction.class, "pendingRequests");
 
 
-	public DispatcherAction(Dispatcher dispatcher) {
+	public DispatcherAction(Dispatcher dispatcher, Dispatcher requestDispatcher) {
 		this.dispatcher = dispatcher;
+		this.requestDispatcher = requestDispatcher == SynchronousDispatcher.INSTANCE ? dispatcher : requestDispatcher;
 	}
 
 	@Override
@@ -81,7 +84,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 			}
 
 			if (toRequest > 0) {
-					upstreamSubscription.accept(toRequest);
+				requestDispatcher.dispatch(n, upstreamSubscription, null);
 			}
 		} else {
 			if (n == Long.MAX_VALUE || PENDING_UPDATER.addAndGet(this, n) < 0l) {
@@ -129,6 +132,9 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	@Override
 	public void onNext(T ev) {
+		if(ev == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		if (dispatcher.inContext()) {
 			super.onNext(ev);
 		} else {
@@ -138,6 +144,9 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	@Override
 	public void onError(Throwable cause) {
+		if(cause == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		if (dispatcher.inContext()) {
 			super.onError(cause);
 		} else {

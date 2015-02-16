@@ -364,7 +364,7 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		}
 
 		@Override
-		public void subscribe(Subscriber<? super E> sub) {
+		public void subscribe(final Subscriber<? super E> sub) {
 			final RingBufferTaskEventHandler<E> eventHandler = new RingBufferTaskEventHandler<>(this, sub);
 			final EventProcessor p = new BatchEventProcessor<RingBufferTask>(
 					ringBuffer,

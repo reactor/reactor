@@ -329,8 +329,8 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.dispatchOn(Environment.cachedDispatcher())
 					.subscribeOn(Environment.get())
+					.dispatchOn(Environment.cachedDispatcher())
 					.log()
 					.next()
 
@@ -1981,7 +1981,7 @@ class StreamsSpec extends Specification {
 			'dispatching works'
 			latch.await(2, TimeUnit.SECONDS)
 			nexts.size() == 6
-			nexts[0] + nexts[1] + nexts[2] > 400
+			nexts[0] + nexts[1] + nexts[2] >= 400
 			nexts[3] + nexts[4] + nexts[5] < 50
 			!errors
 	}

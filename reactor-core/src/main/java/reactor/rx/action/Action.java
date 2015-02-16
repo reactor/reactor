@@ -149,6 +149,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
+		if(subscription == null){
+			throw new NullPointerException("Spec 2.13: Subscription cannot be null");
+		}
+
 		final boolean hasRequestTracker = upstreamSubscription != null;
 
 		//if request tracker was connected to another subscription
@@ -179,6 +183,9 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onNext(I ev) {
+		if(ev == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		try {
 			doNext(ev);
 		} catch (Throwable cause) {
@@ -197,6 +204,9 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onError(Throwable cause) {
+		if(cause == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
 		doError(cause);
 	}
@@ -622,22 +632,34 @@ public abstract class Action<I, O> extends Stream<O>
 				if (!dispatched) {
 					subscriber.onSubscribe(subscription);
 				} else {
-					final Dispatcher dispatcher = getDispatcher();
-					if (dispatcher == SynchronousDispatcher.INSTANCE) {
-						subscriber.onSubscribe(subscription);
-					} else {
-						subscriber.onSubscribe(new Subscription() {
-							@Override
-							public void request(long n) {
-								dispatcher.dispatch(n, subscription, null);
-							}
+					Dispatcher _dispatcher = getDispatcher();
 
-							@Override
-							public void cancel() {
-								subscription.cancel();
-							}
-						});
-					}
+					final Dispatcher dispatcher =
+							SynchronousDispatcher.INSTANCE == _dispatcher ?
+									TailRecurseDispatcher.INSTANCE :
+									_dispatcher;
+
+							subscriber.onSubscribe(new Subscription() {
+								@Override
+								public void request(long n) {
+									dispatcher.dispatch(n, subscription, null);
+								}
+
+								@Override
+								public void cancel() {
+									subscription.cancel();
+								}
+
+								@Override
+								public int hashCode() {
+									return subscriber.hashCode();
+								}
+
+								@Override
+								public boolean equals(Object obj) {
+									return subscriber.equals(obj);
+								}
+							});
 				}
 			} else {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));

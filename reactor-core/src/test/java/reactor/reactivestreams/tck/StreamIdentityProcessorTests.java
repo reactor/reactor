@@ -38,9 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -58,6 +56,16 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	public StreamIdentityProcessorTests() {
 		super(new TestEnvironment(2500, true), 3500);
+	}
+
+	@Override
+	public ExecutorService publisherExecutorService() {
+		return Executors.newCachedThreadPool();
+	}
+
+	@Override
+	public Integer createElement(int element) {
+		return element;
 	}
 
 	@BeforeTest
@@ -150,12 +158,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return Streams.fail(new Exception("oops")).cast(Integer.class);
 	}
 
-	@Override
-	@org.testng.annotations.Test
-	public void spec212_mustNotCallOnSubscribeMoreThanOnceBasedOnObjectEquality_specViolation() throws Throwable {
-		//IGNORE (since 1.0 RC2)
-	}
-
 	/*@Override
 	public void spec103_mustSignalOnMethodsSequentially() throws Throwable {
 		for(int i = 0; i < 10000; i++) {
@@ -164,22 +166,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 	}*/
 
-	@Override
-	public void spec317_mustSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
-		//IGNORE (since 1.0 RC2)
-	}/*
-
-	@Override
-	public void spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue() throws Throwable {
-		for(int i = 0; i < 10000; i++)
-		super.spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue();
-	}
-
-	@Override
-	public void spec317_mustSupportAPendingElementCountUpToLongMaxValue() throws Throwable {
-		for(int i = 0; i < 10000; i++)
-		super.spec317_mustSupportAPendingElementCountUpToLongMaxValue();
-	}*/
 
 	/*@Test
 	public void testAlotOfHotStreams() throws InterruptedException{

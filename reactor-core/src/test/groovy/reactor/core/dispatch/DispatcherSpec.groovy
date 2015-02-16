@@ -48,7 +48,7 @@ class DispatcherSpec extends Specification {
 	Environment env
 
 	def setup() {
-		env = Environment.initializeIfEmpty().assignErrorJournal()
+		env = new Environment().assignErrorJournal()
 	}
 
 	def cleanup() {

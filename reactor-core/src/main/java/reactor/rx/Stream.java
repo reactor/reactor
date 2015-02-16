@@ -720,13 +720,14 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		long _capacity = Action.evaluateCapacity(dispatcher.backlogSize());
 		long parentCapacity = getCapacity();
+		final Dispatcher parentDispatcher = getDispatcher();
 
 		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;
 
 		return new LiftStream<O, O>(this, new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new DispatcherAction<O>(dispatcher).capacity(capacity);
+				return new DispatcherAction<O>(dispatcher, parentDispatcher).capacity(capacity);
 			}
 		}) {
 			@Override

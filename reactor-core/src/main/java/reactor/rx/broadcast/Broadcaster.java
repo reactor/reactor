@@ -119,6 +119,9 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onNext(O ev) {
+		if(ev == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		if (!dispatcher.inContext()) {
 			dispatcher.dispatch(ev, this, null);
 		} else {
@@ -128,6 +131,9 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onError(Throwable cause) {
+		if(cause == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
 		if (!dispatcher.inContext()) {
 			dispatcher.dispatch(cause, new Consumer<Throwable>() {
 				@Override
@@ -188,5 +194,21 @@ public class Broadcaster<O> extends Action<O, O> {
 		super.capacity(elements);
 		return this;
 	}
+
+
+	/*@Override
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		requestMore(elements);
+	}
+
+	@Override
+	public void requestMore(long n) {
+		Action.checkRequest(n);
+		PushSubscription<O> upstreamSubscription = this.upstreamSubscription;
+		if(upstreamSubscription != null) {
+			dispatcher.dispatch(n, upstreamSubscription, null);
+		}
+	}*/
+
 
 }
