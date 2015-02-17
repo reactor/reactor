@@ -40,10 +40,12 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
       //compile 'io.projectreactor:reactor-spring:$reactorVersion'
     }
 
+
 ### Documentation
 
 * [Guides](https://github.com/reactor/reactor/wiki)
 * [API Reference](http://reactor.github.io/docs/api/)
+* [Reactive Streams](http://www.reactive-streams.org/)
 
 ### Community / Support
 
