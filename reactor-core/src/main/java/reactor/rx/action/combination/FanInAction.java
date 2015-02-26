@@ -41,7 +41,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 
 	final FanInSubscription<I, E, O, SUBSCRIBER>     innerSubscriptions;
-	final Iterable<? extends Publisher<? extends I>> composables;
+	final Iterable<? extends Publisher<? extends I>> publishers;
 
 	final static protected int NOT_STARTED = 0;
 	final static protected int RUNNING     = 1;
@@ -59,11 +59,11 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	public FanInAction(Dispatcher dispatcher,
-	                   Iterable<? extends Publisher<? extends I>> composables) {
+	                   Iterable<? extends Publisher<? extends I>> publishers) {
 		super();
 		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
-				Environment.tailRecurse() : dispatcher;
-		this.composables = composables;
+		                  Environment.tailRecurse() : dispatcher;
+		this.publishers = publishers;
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
 	}
 
@@ -75,7 +75,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests =  innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables + 1);
+		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables + 1);
 		publisher.subscribe(inlineMerge);
 	}
 
@@ -114,7 +114,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	protected void doSubscribe(Subscription subscription) {
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			innerSubscriptions.maxCapacity(capacity);
-			if (composables != null) {
+			if (publishers != null) {
 				if (innerSubscriptions.runningComposables > 0) {
 					innerSubscriptions.cancel();
 					return;
@@ -126,7 +126,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected long initUpstreamPublisherAndCapacity() {
 		long maxCapacity = capacity;
-		for (Publisher<? extends I> composable : composables) {
+		for (Publisher<? extends I> composable : publishers) {
 			if (Stream.class.isAssignableFrom(composable.getClass())) {
 				maxCapacity = Math.min(maxCapacity, ((Stream<?>) composable).getCapacity());
 			}

@@ -20,7 +20,7 @@ import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * A Stream that emits N {@link java.lang.Integer} from the inclusive start value defined to the inclusive end and then complete.
+ * A Stream that emits N {@link java.lang.Long} from the inclusive start value defined to the inclusive end and then complete.
  * <p>
  * Since the stream retains the boundaries in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
  * will replay all the range. This is a "Cold" stream.
@@ -47,30 +47,30 @@ import reactor.rx.subscription.PushSubscription;
  * </pre>
  * @author Stephane Maldini
  */
-public final class RangeStream extends Stream<Integer> {
+public final class RangeStream extends Stream<Long> {
 
-	private final int start;
-	private final int end;
+	private final long start;
+	private final long end;
 
-	public RangeStream(int start, int end) {
+	public RangeStream(long start, long end) {
 		this.start = start;
 		this.end = end;
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super Integer> subscriber) {
+	public void subscribe(Subscriber<? super Long> subscriber) {
 		if (start <= end) {
-			subscriber.onSubscribe(new PushSubscription<Integer>(this, subscriber) {
-				int cursor = start;
+			subscriber.onSubscribe(new PushSubscription<Long>(this, subscriber) {
+				Long cursor = start;
 
 				@Override
 				public void request(long elements) {
 
-					long i = 0;
-					while (i < elements && cursor <= end) {
+					long l = 0;
+					while (l < elements && cursor <= end) {
 						if(isComplete()) return;
 						onNext(cursor++);
-						i++;
+						l++;
 					}
 					if (cursor > end) {
 						onComplete();

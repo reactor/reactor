@@ -115,7 +115,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	@Override
 	protected long initUpstreamPublisherAndCapacity() {
 		long i = 0l;
-		for (Publisher<? extends O> composable : composables) {
+		for (Publisher<? extends O> composable : publishers) {
 			addPublisher(composable);
 			i++;
 		}

@@ -830,7 +830,7 @@ public class StreamTests extends AbstractReactorTest {
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
 
-		Stream<Integer> worker = Streams.range(0, max).dispatchOn(env);
+		Stream<Long> worker = Streams.range(0, max).dispatchOn(env);
 
 		Control tail =
 				worker.partition(2).consume(s ->

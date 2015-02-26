@@ -205,14 +205,14 @@ public class Streams {
 	}
 
 	/**
-	 * Build a {@literal Stream} that will only emit a sequence of integers within the specified range and then
+	 * Build a {@literal Stream} that will only emit a sequence of longs within the specified range and then
 	 * complete.
 	 *
 	 * @param start the inclusive starting value to be emitted
 	 * @param end   the inclusive closing value to be emitted
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static Stream<Integer> range(int start, int end) {
+	public static Stream<Long> range(long start, long end) {
 		return new RangeStream(start, end);
 	}
 
@@ -532,7 +532,7 @@ public class Streams {
 	 */
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		return new SupplierStream<T>(value);
+		return new SupplierStream<T>(SynchronousDispatcher.INSTANCE,value);
 	}
 
 	/**

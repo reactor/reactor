@@ -106,7 +106,7 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, Supplier<T> supplier) {
-		SupplierStream<T> supplierStream = new SupplierStream<T>(supplier);
+		SupplierStream<T> supplierStream = new SupplierStream<T>(dispatcher, supplier);
 		Promise<T> promise = new Promise<T>(dispatcher, env);
 		supplierStream.subscribe(promise);
 		return promise;

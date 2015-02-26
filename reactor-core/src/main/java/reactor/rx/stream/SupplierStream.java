@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.Dispatcher;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
@@ -40,9 +41,11 @@ import reactor.rx.subscription.PushSubscription;
  */
 public final class SupplierStream<T> extends Stream<T> {
 
+	private final Dispatcher            dispatcher;
 	private final Supplier<? extends T> supplier;
 
-	public SupplierStream(Supplier<? extends T> supplier) {
+	public SupplierStream(Dispatcher dispatcher, Supplier<? extends T> supplier) {
+		this.dispatcher = dispatcher;
 		this.supplier = supplier;
 	}
 
@@ -54,8 +57,7 @@ public final class SupplierStream<T> extends Stream<T> {
 				@Override
 				public void request(long elements) {
 					try {
-							supplyValue(subscriber);
-
+						supplyValue(subscriber);
 					} catch (Throwable throwable) {
 						subscriber.onError(throwable);
 					}
@@ -67,15 +69,18 @@ public final class SupplierStream<T> extends Stream<T> {
 		}
 	}
 
-	private boolean supplyValue(final Subscriber<? super T> subscriber){
-		T supplied = supplier.get();
-		if (supplied != null ) {
-			subscriber.onNext(supplied);
-			return false;
-		} else {
-			subscriber.onComplete();
-			return true;
-		}
+	private void supplyValue(final Subscriber<? super T> subscriber) {
+		dispatcher.execute(new Runnable() {
+			@Override
+			public void run() {
+				T supplied = supplier.get();
+				if (supplied != null) {
+					subscriber.onNext(supplied);
+				} else {
+					subscriber.onComplete();
+				}
+			}
+		});
 	}
 
 }

@@ -17,6 +17,7 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import org.slf4j.LoggerFactory;
 import reactor.core.Dispatcher;
 
 import java.util.List;
@@ -31,8 +32,8 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		super(dispatcher);
 	}
 
-	public MergeAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> composables) {
-		super(dispatcher, composables);
+	public MergeAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> publishers) {
+		super(dispatcher, publishers);
 	}
 
 	@Override
@@ -68,7 +69,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 
 		@Override
 		public void onNext(I ev) {
-			//Action.log.debug("event [" + ev + "] by: " + this);
+			//LoggerFactory.getLogger(getClass()).debug("event [" + ev + "] by: " + this);
 			outerAction.innerSubscriptions.serialNext(ev);
 			emittedSignals++;
 
