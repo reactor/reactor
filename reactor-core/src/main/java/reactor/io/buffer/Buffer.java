@@ -1348,6 +1348,7 @@ public class Buffer implements Recyclable,
 				buffer.limit(Math.min(pos + atLeast, cap));
 			} else {
 				expand();
+				buffer.limit(buffer.capacity());
 			}
 		} else if(pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
 			throw new BufferOverflowException();
