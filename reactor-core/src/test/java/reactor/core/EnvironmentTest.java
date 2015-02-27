@@ -23,7 +23,7 @@ public class EnvironmentTest extends AbstractReactorTest {
             env.getDispatcher("NonexistingDispatcher");
             fail("Should have thrown an exception");
         } catch ( IllegalArgumentException e ) {
-            assertEquals("No Dispatcher found for name 'NonexistingDispatcher'", e.getMessage());
+            assertEquals("No Dispatcher found for name 'NonexistingDispatcher', it must be present in the configuration properties or being registered programmatically through this#addDispatcher(NonexistingDispatcher, someDispatcher)", e.getMessage());
         }
     }
 
