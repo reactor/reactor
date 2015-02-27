@@ -377,19 +377,19 @@ class BufferSpec extends Specification {
 
 	def "A Buffer can be duplicated"() {
 		given: "A Buffer"
-		def buffer = new Buffer(128, true).append("Hello World!").flip()
+		def buffer = new Buffer(100, true).append("Hello World!").flip()
 
 		when: "the Buffer is duplicated"
 		def dup = buffer.duplicate()
 
 		then: "a new Buffer is created on a duplicate"
-		dup.capacity() == 128
+		dup.capacity() == 100
 		dup.asString() == "Hello World!"
 	}
 
 	def "A Buffer can be copied"() {
 		given: "A Buffer"
-		def buffer = new Buffer(128, true).append("Hello World!").flip()
+		def buffer = new Buffer(100, true).append("Hello World!").flip()
 
 		when: "the Buffer is copied"
 		def copy = buffer.copy()
