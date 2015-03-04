@@ -319,7 +319,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 				@Override
 				@SuppressWarnings("unchecked")
 				public Publisher<? extends T> next() {
-					return (Publisher<? extends T>) array[i];
+					return (Publisher<? extends T>) array[i++];
 				}
 			};
 		}
