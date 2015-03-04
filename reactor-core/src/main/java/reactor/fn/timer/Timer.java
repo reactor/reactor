@@ -16,13 +16,14 @@
 
 package reactor.fn.timer;
 
-import reactor.bus.registry.Registration;
 import reactor.fn.Consumer;
+import reactor.fn.Pausable;
 
 import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public interface Timer {
 
@@ -46,11 +47,11 @@ public interface Timer {
 	 * @param delayInMilliseconds
 	 * 		a number of milliseconds in which to delay any execution of the given {@code Consumer}
 	 *
-	 * @return a {@link reactor.bus.registry.Registration} that can be used to {@link
-	 * reactor.bus.registry.Registration#cancel() cancel}, {@link reactor.bus.registry.Registration#pause() pause} or
-	 * {@link reactor.bus.registry.Registration#resume() resume} the given task.
+	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
+	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
+	 * {@link reactor.fn.Pausable#resume() resume} the given task.
 	 */
-	Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	Pausable schedule(Consumer<Long> consumer,
 	                                                long period,
 	                                                TimeUnit timeUnit,
 	                                                long delayInMilliseconds);
@@ -67,13 +68,13 @@ public interface Timer {
 	 * @param timeUnit
 	 * 		the unit of time the {@code period} is to be measured in
 	 *
-	 * @return a {@link reactor.bus.registry.Registration} that can be used to {@link
-	 * reactor.bus.registry.Registration#cancel() cancel}, {@link reactor.bus.registry.Registration#pause() pause} or
-	 * {@link reactor.bus.registry.Registration#resume() resume} the given task.
+	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
+	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
+	 * {@link reactor.fn.Pausable#resume() resume} the given task.
 	 *
 	 * @see #schedule(reactor.fn.Consumer, long, java.util.concurrent.TimeUnit, long)
 	 */
-	Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	Pausable schedule(Consumer<Long> consumer,
 	                                                long period,
 	                                                TimeUnit timeUnit);
 
@@ -87,11 +88,11 @@ public interface Timer {
 	 * @param timeUnit
 	 * 		the unit of time the {@code period} is to be measured in
 	 *
-	 * @return a {@link reactor.bus.registry.Registration} that can be used to {@link
-	 * reactor.bus.registry.Registration#cancel() cancel}, {@link reactor.bus.registry.Registration#pause() pause} or
-	 * {@link reactor.bus.registry.Registration#resume() resume} the given task.
+	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
+	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
+	 * {@link reactor.fn.Pausable#resume() resume} the given task.
 	 */
-	Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
+	Pausable submit(Consumer<Long> consumer,
 	                                              long delay,
 	                                              TimeUnit timeUnit);
 
@@ -103,7 +104,7 @@ public interface Timer {
 	 *
 	 * @return {@literal this}
 	 */
-	Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer);
+	Pausable submit(Consumer<Long> consumer);
 
 	/**
 	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after

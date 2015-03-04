@@ -1,7 +1,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
-import reactor.core.dispatch.processor.spec.ProcessorSpec
+import reactor.bus.processor.spec.ProcessorSpec
 import reactor.groovy.support.ClosureConsumer
 import reactor.groovy.support.ClosureSupplier
 

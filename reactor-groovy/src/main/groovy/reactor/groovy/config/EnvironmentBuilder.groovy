@@ -17,7 +17,7 @@ import static groovy.lang.Closure.DELEGATE_FIRST
 class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 
 	private final List<DispatcherConfiguration> dispatcherConfigurations = []
-	private final Map<String, List<Dispatcher>> dispatchers = [:]
+	private final Map<String, Dispatcher> dispatchers = [:]
 	private final Properties props
 	private Environment environment
 
@@ -58,12 +58,7 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	 * @return {@link Dispatcher}
 	 */
 	Dispatcher dispatcher(String name, Dispatcher d) {
-		def list = dispatchers[name]
-		if (!list) {
-			dispatchers[name] = list = []
-		}
-
-		list << d
+		dispatchers[name] = d
 		d
 	}
 }

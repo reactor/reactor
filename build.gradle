@@ -221,35 +221,13 @@ project('reactor-core') {
       'com.fasterxml.jackson.databind;resolution:=optional',
       'com.fasterxml.jackson.databind.node;resolution:=optional',
       'com.fasterxml.jackson.databind.type;resolution:=optional',
-      'com.jayway.jsonpath;resolution:=optional',
-      'com.jayway.jsonpath.internal;resolution:=optional',
-      'com.jayway.jsonpath.spi;resolution:=optional',
       'org.slf4j;version="[1.5.4,2)"',
       '*'
   ]
 
   configurations {
-    jsr166e
     disruptor
     jarjar
-  }
-
-  task jsr166eRepackJar(type: Jar) { repackJar ->
-    repackJar.baseName = "reactor-jsr166e-repack"
-    repackJar.version = '1.0'
-
-    doLast() {
-      project.ant {
-        taskdef name: "jarjar", classname: "com.tonicsystems.jarjar.JarJarTask",
-            classpath: configurations.jarjar.asPath
-        jarjar(destfile: repackJar.archivePath) {
-          configurations.jsr166e.each { originalJar ->
-            zipfileset(src: originalJar)
-          }
-          rule(pattern: "jsr166e.**", result: "reactor.jarjar.jsr166e.@1")
-        }
-      }
-    }
   }
 
   task disruptorRepackJar(type: Jar) { repackJar ->
@@ -278,23 +256,15 @@ project('reactor-core') {
     disruptor "com.lmax:disruptor:$disruptorVersion@jar"
     compile(files(disruptorRepackJar))
 
-    jsr166e "io.gatling:jsr166e:1.0@jar"
-    compile(files(jsr166eRepackJar))
-
-    // Rich Collections
-    compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
-
     // Reactive Streams
     compile "org.reactivestreams:reactive-streams:1.0.0.RC3"
-    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC3"
 
     // High-speed Messaging
     optional "net.openhft:chronicle:$openHftChronicleVersion",
         "net.openhft:lang:$openHftLangVersion"
 
     // JSON handling
-    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion",
-        "com.jayway.jsonpath:json-path:$jsonPathVersion"
+    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
     // Serialization
     optional "com.esotericsoftware.kryo:kryo:$kryoVersion",
@@ -302,17 +272,9 @@ project('reactor-core') {
         "org.xerial.snappy:snappy-java:$snappyVersion"
   }
 
-  task testNG(type: Test) {
-    useTestNG()
-  }
-
   jar {
     manifest {
       instruction 'Import-Package', bundleImportPackages.join(',')
-    }
-    dependsOn jsr166eRepackJar
-    from(zipTree(jsr166eRepackJar.archivePath)) {
-      include "reactor/jarjar/jsr166e/**"
     }
 
     dependsOn disruptorRepackJar
@@ -324,6 +286,104 @@ project('reactor-core') {
 
 }
 
+project('reactor-stream') {
+  description = 'Reactor Stream components'
+
+  apply plugin: 'osgi'
+  apply plugin: 'groovy'
+
+  ext.bundleImportPackages = [
+      'net.openhft.chronicle;resolution:=optional',
+      'net.openhft.chronicle.tools;resolution:=optional',
+      '*'
+  ]
+
+  task testNG(type: Test) {
+    useTestNG()
+  }
+
+  dependencies {
+    compile project(':reactor-core')
+    compile project(':reactor-bus')
+
+    // High-speed Messaging
+    optional "net.openhft:chronicle:$openHftChronicleVersion",
+        "net.openhft:lang:$openHftLangVersion"
+
+
+    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC3"
+    testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+  }
+}
+
+project('reactor-bus') {
+  description = 'Reactor Event Bus components'
+
+  apply plugin: 'osgi'
+  apply plugin: 'groovy'
+
+  ext.bundleImportPackages = [
+      'com.jayway.jsonpath;resolution:=optional',
+      'com.jayway.jsonpath.internal;resolution:=optional',
+      'com.jayway.jsonpath.spi;resolution:=optional',
+      'com.fasterxml.jackson.core;resolution:=optional',
+      'com.fasterxml.jackson.databind;resolution:=optional',
+      'com.fasterxml.jackson.databind.node;resolution:=optional',
+      'com.fasterxml.jackson.databind.type;resolution:=optional',
+      '*'
+  ]
+
+  configurations {
+    jsr166e
+    jarjar
+  }
+
+  task jsr166eRepackJar(type: Jar) { repackJar ->
+    repackJar.baseName = "reactor-jsr166e-repack"
+    repackJar.version = '1.0'
+
+    doLast() {
+      project.ant {
+        taskdef name: "jarjar", classname: "com.tonicsystems.jarjar.JarJarTask",
+            classpath: configurations.jarjar.asPath
+        jarjar(destfile: repackJar.archivePath) {
+          configurations.jsr166e.each { originalJar ->
+            zipfileset(src: originalJar)
+          }
+          rule(pattern: "jsr166e.**", result: "reactor.jarjar.jsr166e.@1")
+        }
+      }
+    }
+  }
+
+  dependencies {
+    jarjar("com.googlecode.jarjar:jarjar:1.3")
+
+    compile project(':reactor-core')
+
+    jsr166e "io.gatling:jsr166e:1.0@jar"
+    compile(files(jsr166eRepackJar))
+
+    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+    optional "com.jayway.jsonpath:json-path:$jsonPathVersion"
+
+    // Rich Collections
+    compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+  }
+
+  jar {
+    manifest {
+      instruction 'Import-Package', bundleImportPackages.join(',')
+    }
+
+    dependsOn jsr166eRepackJar
+    from(zipTree(jsr166eRepackJar.archivePath)) {
+      include "reactor/jarjar/jsr166e/**"
+    }
+  }
+}
+
+
 project('reactor-groovy-extensions') {
   description = 'Reactor Groovy Ext components'
 
@@ -332,6 +392,8 @@ project('reactor-groovy-extensions') {
 
   dependencies {
     compile project(':reactor-core'),
+        project(':reactor-stream'),
+        project(':reactor-bus'),
         "org.codehaus.groovy:groovy:$groovyVersion"
   }
 }
@@ -350,10 +412,7 @@ project('reactor-groovy') {
 
   dependencies {
     compile(files(project(":reactor-core").disruptorRepackJar))
-    compile(files(project(":reactor-core").jsr166eRepackJar))
-    compile project(':reactor-core'),
-        project(':reactor-groovy-extensions'),
-        "org.codehaus.groovy:groovy:$groovyVersion"
+    compile project(':reactor-groovy-extensions')
   }
 }
 
@@ -368,7 +427,7 @@ project('reactor-logback') {
 
   dependencies {
     compile(files(project(":reactor-core").disruptorRepackJar))
-    compile project(':reactor-core'),
+    compile project(':reactor-bus'),
         "ch.qos.logback:logback-classic:$logbackVersion",
         "net.openhft:chronicle:$openHftChronicleVersion",
         "commons-cli:commons-cli:1.2"
@@ -398,6 +457,7 @@ project('reactor-net') {
 
   dependencies {
     compile project(':reactor-core')
+    compile project(':reactor-stream')
     compile(files(project(":reactor-core").disruptorRepackJar))
 
     compile "io.netty:netty-all:$nettyVersion"

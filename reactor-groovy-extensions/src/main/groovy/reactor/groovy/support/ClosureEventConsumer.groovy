@@ -19,9 +19,9 @@
 package reactor.groovy.support
 
 import groovy.transform.CompileStatic
+import reactor.bus.Bus
 import reactor.bus.Event
 import reactor.bus.EventBus
-import reactor.bus.Observable
 import reactor.fn.Consumer
 import reactor.fn.support.CancelConsumerException
 
@@ -63,9 +63,9 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	class ReplyDecorator {
 
 		final replyTo
-		final Observable observable
+		final Bus observable
 
-		ReplyDecorator(replyTo, Observable observable) {
+		ReplyDecorator(replyTo, Bus observable) {
 			this.replyTo = replyTo
 			this.observable = observable
 		}

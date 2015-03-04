@@ -19,15 +19,15 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
-import reactor.bus.Observable
+import reactor.bus.Bus
 import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
 import reactor.fn.Predicate
 import reactor.fn.tuple.Tuple2
-import reactor.io.IOStreams
 import reactor.io.codec.Codec
 import reactor.rx.BiStreams
+import reactor.rx.IOStreams
 import reactor.rx.Promise
 import reactor.rx.Stream
 import reactor.rx.action.Action
@@ -48,7 +48,7 @@ class ComposableExtensions {
 	 * Alias
 	 */
 	static <T, X extends Stream<T>> Control to(final Stream<T> selfType,
-	                                           final Observable observable
+	                                           final Bus observable
 	                                           , final Object key) {
 		selfType.notify observable, key
 	}

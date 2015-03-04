@@ -16,15 +16,14 @@
 
 package reactor.fn.support;
 
-import reactor.bus.registry.Registration;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A {@link reactor.fn.Consumer} implementation that allows the delegate {@link reactor.fn.Consumer} to only be called once. Should be used in
- * combination with {@link Registration#cancelAfterUse()} to ensure that this {@link reactor.fn.Consumer
- * Consumer's} {@link reactor.bus.registry.Registration} is cancelled as soon after its use as possible.
+ * combination with {@code Registration#cancelAfterUse()} to ensure that this {@link reactor.fn.Consumer
+ * Consumer's} {@code reactor.bus.registry.Registration} is cancelled as soon after its use as possible.
  *
  * @param <T>
  * 		the type of the values that the consumer can accept

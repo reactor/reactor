@@ -51,7 +51,7 @@ public abstract class TimeUtils {
 
 	public static Timer getTimer() {
 		if(null == timer) {
-			setTimer(new SimpleHashWheelTimer(DEFAULT_RESOLUTION));
+			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
 		}
 		return timer;
 	}

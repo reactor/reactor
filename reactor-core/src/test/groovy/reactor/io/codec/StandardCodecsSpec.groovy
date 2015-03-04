@@ -17,12 +17,8 @@
 package reactor.io.codec
 
 import reactor.fn.Consumer
-import reactor.io.IOStreams
 import reactor.io.buffer.Buffer
-import reactor.rx.Streams
 import spock.lang.Specification
-
-import java.util.concurrent.TimeUnit
 
 /**
  * Tests to cover the basic, built-in Codecs.
@@ -127,28 +123,4 @@ class StandardCodecsSpec extends Specification {
 			data.readInt() == 12
 			data.asString() == "Hello World!"
 	}
-
-
-	def "A Codec output can be streamed"() {
-		given: "A delimiter stripping decoder and a buffer of delimited data"
-			def codec = new DelimitedCodec<String, String>(true, StandardCodecs.STRING_CODEC)
-			def string = 'Hello World!\nHello World!\nHello World!\n'
-			def data1 = Buffer.wrap(string)
-			string = 'Test\nTest\n'
-			def data2 = Buffer.wrap(string)
-			string = 'Test\nEnd\n'
-			def data3 = Buffer.wrap(string)
-
-		when: "data stream is decoded"
-		 def res = Streams.just(data1, data2, data3)
-				 .nest()
-				 .flatMap{ IOStreams.decode(codec, it) }
-				 .toList()
-				 .await(5, TimeUnit.SECONDS)
-
-		then: "the buffers have been correctly decoded"
-			res == ['Hello World!','Hello World!','Hello World!','Test', 'Test', 'Test', 'End']
-	}
-
-
 }

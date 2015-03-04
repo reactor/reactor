@@ -18,7 +18,6 @@ package reactor.io.queue
 
 import net.openhft.chronicle.ChronicleQueueBuilder
 import reactor.io.codec.StandardCodecs
-import reactor.rx.broadcast.Broadcaster
 import spock.lang.Specification
 
 /**
@@ -93,45 +92,6 @@ class QueuePersistorSpec extends Specification {
 
 	}
 
-	def "Stream can use persistent queues"() {
 
-		given:
-			"a persistent queue specification and a Stream"
-			def persistentQueue = new reactor.io.queue.spec.PersistentQueueSpec()
-					.codec(StandardCodecs.STRING_CODEC)
-					.deleteOnExit(true)
-					.get()
-
-			def stream = Broadcaster.<String> create()
-			def result = null
-
-			def bufferedStream = stream.onOverflowBuffer{persistentQueue}.observe{
-				println it
-				result = it
-			}.consumeLater()
-
-		when:
-			"an object is persisted"
-			stream.onNext("test!")
-		println bufferedStream.debug()
-
-		then:
-			"the object was persisted"
-			persistentQueue.size() == 1
-
-		when:
-			"the object is read"
-			bufferedStream.requestMore(1)
-			println stream.debug()
-
-		then:
-			"the object was removed"
-			result
-			persistentQueue.size() == 0
-
-		cleanup:
-			persistentQueue?.close()
-
-	}
 
 }

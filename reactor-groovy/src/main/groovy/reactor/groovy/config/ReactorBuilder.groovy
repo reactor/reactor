@@ -8,7 +8,6 @@ import reactor.Environment
 import reactor.bus.Event
 import reactor.bus.EventBus
 import reactor.bus.filter.*
-import reactor.bus.registry.CachingRegistry
 import reactor.bus.registry.Registries
 import reactor.bus.routing.Router
 import reactor.bus.selector.Selector
@@ -19,8 +18,8 @@ import reactor.fn.Consumer
 import reactor.fn.Supplier
 import reactor.groovy.support.ClosureEventConsumer
 import reactor.rx.Stream
-import reactor.rx.broadcast.Broadcaster
 import reactor.rx.action.Action
+import reactor.rx.broadcast.Broadcaster
 
 /**
  * @author Stephane Maldini

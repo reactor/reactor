@@ -18,18 +18,13 @@ package reactor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.bus.EventBus;
-import reactor.bus.convert.StandardConverters;
-import reactor.bus.filter.Filter;
-import reactor.bus.filter.RoundRobinFilter;
 import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.config.*;
+import reactor.core.convert.StandardConverters;
 import reactor.core.dispatch.*;
 import reactor.core.dispatch.wait.AgileWaitingStrategy;
 import reactor.core.internal.PlatformDependent;
-import reactor.core.support.LinkedMultiValueMap;
-import reactor.core.support.MultiValueMap;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.HashWheelTimer;
@@ -47,7 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>>, Closeable {
+public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Closeable {
 
 
 	/**
@@ -194,9 +189,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a multi threaded dispatcher useful for scaling up slow processing.
 	 *
 	 * <p>
-	 * The Multithreaded Dispatcher is suitable for IO work if combined with reactor event buses {@link reactor.bus
+	 * The Multithreaded Dispatcher is suitable for IO work if combined with reactor event buses {@code reactor.bus
 	 * .EventBus} or
-	 * streams {@link reactor.rx.Stream} using {@link reactor.rx.Stream#consumeOn}.
+	 * streams {@code reactor.rx.Stream} using {@code reactor.rx.Stream#consumeOn}.
 	 *
 	 * @return a dispatcher from the default pool, usually a WorkQueueDispatcher.
 	 */
@@ -207,9 +202,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a cached dispatcher out of {@link this#PROCESSORS} maximum pooled. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.bus
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@code reactor.bus
 	 * .EventBus} or
-	 * streams {@link reactor.rx.Stream}.
+	 * streams {@code reactor.rx.Stream}.
 	 *
 	 * @return a dispatcher from the default pool, usually a RingBufferDispatcher.
 	 */
@@ -221,9 +216,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * Obtain a registred dispatcher. The dispatchers are created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
-	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@link reactor.bus
+	 * The Cached Dispatcher is suitable for IO work if combined with distinct reactor event buses {@code reactor.bus
 	 * .EventBus} or
-	 * streams {@link reactor.rx.Stream}.
+	 * streams {@code reactor.rx.Stream}.
 	 *
 	 * @param key the dispatcher name to find
 	 * @return a dispatcher from the context environment registry.
@@ -253,7 +248,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public static Dispatcher dispatcher(String key, Dispatcher dispatcher) {
 		if (dispatcher != null) {
-			get().addDispatcher(key, dispatcher);
+			get().setDispatcher(key, dispatcher);
 		} else {
 			get().removeDispatcher(key);
 		}
@@ -283,7 +278,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			if(dispatcherConfiguration.getName().equals(key)){
 				Dispatcher newDispatcher = initDispatcherFromConfiguration(dispatcherConfiguration);
 				if(newKey != null && !newKey.isEmpty()){
-					env.addDispatcher(newKey, newDispatcher);
+					env.setDispatcher(newKey, newDispatcher);
 				}
 				return newDispatcher;
 			}
@@ -380,7 +375,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 				consumers));
 		if (key != null && !key.isEmpty()) {
 			Environment environment = get();
-			environment.addDispatcher(key, dispatcher);
+			environment.setDispatcher(key, dispatcher);
 		}
 		return dispatcher;
 	}
@@ -433,13 +428,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	private final Properties env;
 
 	private final AtomicReference<Timer>          timer               = new AtomicReference<Timer>();
-	private final AtomicReference<EventBus>       rootBus             = new AtomicReference<EventBus>();
 	private final Object                          monitor             = new Object();
-	private final Filter                          dispatcherFilter    = new RoundRobinFilter();
 	private final Map<String, DispatcherSupplier> dispatcherFactories = new HashMap<String, DispatcherSupplier>();
 
 	private final ReactorConfiguration              configuration;
-	private final MultiValueMap<String, Dispatcher> dispatchers;
+	private final Map<String, Dispatcher> dispatchers;
 	private final String                            defaultDispatcher;
 
 	private volatile Consumer<? super Throwable> errorConsumer;
@@ -451,7 +444,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * META-INF/reactor/reactor-environment.properties}.
 	 */
 	public Environment() {
-		this(Collections.<String, List<Dispatcher>>emptyMap(), new PropertiesConfigurationReader());
+		this(Collections.<String, Dispatcher>emptyMap(), new PropertiesConfigurationReader());
 	}
 
 	/**
@@ -460,7 +453,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @param configurationReader The configuration reader to use to obtain initial configuration
 	 */
 	public Environment(ConfigurationReader configurationReader) {
-		this(Collections.<String, List<Dispatcher>>emptyMap(), configurationReader);
+		this(Collections.<String, Dispatcher>emptyMap(), configurationReader);
 	}
 
 	/**
@@ -470,8 +463,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @param dispatchers         The dispatchers to add include in the Environment
 	 * @param configurationReader The configuration reader to use to obtain additional configuration
 	 */
-	public Environment(Map<String, List<Dispatcher>> dispatchers, ConfigurationReader configurationReader) {
-		this.dispatchers = new LinkedMultiValueMap<String, Dispatcher>(dispatchers);
+	public Environment(Map<String, Dispatcher> dispatchers, ConfigurationReader configurationReader) {
+		this.dispatchers = new HashMap<>(dispatchers);
 
 		configuration = configurationReader.read();
 		defaultDispatcher = configuration.getDefaultDispatcherName() != null ? configuration.getDefaultDispatcherName() :
@@ -653,17 +646,13 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 
 		synchronized (monitor) {
 			initDispatcherFromConfiguration(name);
-			List<Dispatcher> filteredDispatchers = Collections.emptyList();
-			List<Dispatcher> dispatchers = this.dispatchers.get(name);
-			if (dispatchers != null) {
-				filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
-			}
-			if (filteredDispatchers.isEmpty()) {
+			Dispatcher dispatcher = this.dispatchers.get(name);
+			if (dispatcher != null) {
+				return dispatcher;
+			}else {
 				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "', it must be present " +
-						"in the configuration properties or being registered programmatically through this#addDispatcher(" + name
+						"in the configuration properties or being registered programmatically through this#setDispatcher(" + name
 						+ ", someDispatcher)");
-			} else {
-				return filteredDispatchers.get(0);
 			}
 		}
 	}
@@ -716,12 +705,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 * @param dispatcher The dispatcher
 	 * @return This Environment
 	 */
-	public Environment addDispatcher(String name, Dispatcher dispatcher) {
+	public Environment setDispatcher(String name, Dispatcher dispatcher) {
 		synchronized (monitor) {
-			this.dispatchers.add(name, dispatcher);
-			if (name.equals(defaultDispatcher)) {
-				this.dispatchers.add(DEFAULT_DISPATCHER_NAME, dispatcher);
-			}
+			this.dispatchers.put(name, dispatcher);
 		}
 		return this;
 	}
@@ -761,7 +747,8 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	 */
 	public Environment removeDispatcher(String name) {
 		synchronized (monitor) {
-			for (Dispatcher dispatcher : dispatchers.remove(name)) {
+			Dispatcher dispatcher = dispatchers.remove(name);
+			if(dispatcher != null){
 				dispatcher.shutdown();
 			}
 		}
@@ -769,23 +756,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	/**
-	 * Returns this environments root Reactor, creating it if necessary. The Reactor will use the environment default
-	 * dispatcher.
-	 *
-	 * @return The root reactor
-	 * @see Environment#getDefaultDispatcher()
-	 */
-	public EventBus getRootBus() {
-		if (null == rootBus.get()) {
-			synchronized (rootBus) {
-				rootBus.compareAndSet(null, new EventBus(getDefaultDispatcher()));
-			}
-		}
-		return rootBus.get();
-	}
-
-	/**
-	 * Get the {@code Environment}-wide {@link reactor.fn.timer.SimpleHashWheelTimer}.
+	 * Get the {@code Environment}-wide {@link reactor.fn.timer.HashWheelTimer}.
 	 *
 	 * @return the timer.
 	 */
@@ -809,10 +780,9 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public void shutdown() {
 		List<Dispatcher> dispatchers = new ArrayList<Dispatcher>();
 		synchronized (monitor) {
-			for (Map.Entry<String, List<Dispatcher>> entry : this.dispatchers.entrySet()) {
-				dispatchers.addAll(entry.getValue());
-			}
+			dispatchers.addAll(this.dispatchers.values());
 		}
+
 		for (Dispatcher dispatcher : dispatchers) {
 			dispatcher.shutdown();
 		}
@@ -827,7 +797,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	}
 
 	@Override
-	public Iterator<Map.Entry<String, List<Dispatcher>>> iterator() {
+	public Iterator<Map.Entry<String, Dispatcher>> iterator() {
 		return this.dispatchers.entrySet().iterator();
 	}
 
@@ -938,7 +908,7 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 			dispatcher = initDispatcherFromConfiguration(dispatcherConfiguration);
 
 			if (dispatcher != null) {
-				addDispatcher(dispatcherConfiguration.getName(), dispatcher);
+				setDispatcher(dispatcherConfiguration.getName(), dispatcher);
 			}
 		}
 	}

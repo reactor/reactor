@@ -339,8 +339,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							},
 							delay,
 							TimeUnit.MILLISECONDS
-					)
-					.cancelAfterUse();
+					);
 		}
 	}
 

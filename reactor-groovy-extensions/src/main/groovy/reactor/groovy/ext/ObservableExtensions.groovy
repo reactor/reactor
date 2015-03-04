@@ -18,9 +18,9 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
+import reactor.bus.Bus
 import reactor.bus.Event
 import reactor.bus.EventBus
-import reactor.bus.Observable
 import reactor.bus.registry.Registration
 import reactor.bus.selector.Selector
 import reactor.bus.selector.Selectors
@@ -33,7 +33,7 @@ import static Selectors.$
 import static Selectors.object
 
 /**
- * Extensions for providing syntax sugar for working with {@link Observable}s.
+ * Extensions for providing syntax sugar for working with {@link Bus}s.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -89,30 +89,30 @@ class ObservableExtensions {
 		selfType.send key, obj.setReplyTo(replyTo.object)
 	}
 
-	static <T> Observable notify(Observable selfType,
+	static <T> Bus notify(Bus selfType,
 	                                          Object key,
 	                                          T obj) {
 		selfType.notify key, Event.<T> wrap(obj)
 	}
 
-	static <T> Observable notify(Observable selfType,
+	static <T> Bus notify(Bus selfType,
 	                                          Object key,
 	                                          Supplier<Event<T>> obj) {
 		selfType.notify key, obj.get()
 	}
 
-	static Observable notify(Observable selfType,
+	static Bus notify(Bus selfType,
 	                                      Object key) {
 		selfType.notify key, Event.<Void> wrap(null)
 	}
 
-	static <T> Observable notify(Observable selfType,
+	static <T> Bus notify(Bus selfType,
 	                                          String key,
 	                                          Closure<T> closure) {
 		selfType.notify key, Event.wrap((T) closure.call())
 	}
 
-	static Observable notify(final Observable selfType, final Map params) {
+	static Bus notify(final Bus selfType, final Map params) {
 		Object topic = params.remove ARG_TOPIC
 
 		def toSend

@@ -16,8 +16,6 @@
 
 package reactor.fn.timer;
 
-import reactor.bus.registry.Registration;
-import reactor.bus.selector.Selector;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -47,13 +45,15 @@ import java.util.concurrent.atomic.AtomicLong;
  * larger amount of tasks with better performance compared to traditional scheduling.
  *
  * @author Oleksandr Petrov
+ * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class HashWheelTimer implements Timer {
 
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
-	private final RingBuffer<Set<TimerRegistration>> wheel;
+	private final RingBuffer<Set<TimerPausable>> wheel;
 	private final int                                resolution;
 	private final Thread                             loop;
 	private final Executor                           executor;
@@ -106,10 +106,10 @@ public class HashWheelTimer implements Timer {
 	public HashWheelTimer(String name, int res, int wheelSize, WaitStrategy strategy, Executor exec) {
 		this.waitStrategy = strategy;
 
-		this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerRegistration>>() {
+		this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerPausable>>() {
 			@Override
-			public Set<TimerRegistration> newInstance() {
-				return new ConcurrentSkipListSet<TimerRegistration>();
+			public Set<TimerPausable> newInstance() {
+				return new ConcurrentSkipListSet<TimerPausable>();
 			}
 		}, wheelSize);
 
@@ -120,9 +120,9 @@ public class HashWheelTimer implements Timer {
 				long deadline = System.currentTimeMillis();
 
 				while (true) {
-					Set<TimerRegistration> registrations = wheel.get(wheel.getCursor());
+					Set<TimerPausable> registrations = wheel.get(wheel.getCursor());
 
-					for (TimerRegistration r : registrations) {
+					for (TimerPausable r : registrations) {
 						if (r.isCancelled()) {
 							registrations.remove(r);
 						} else if (r.ready()) {
@@ -163,7 +163,7 @@ public class HashWheelTimer implements Timer {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Pausable schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit,
 	                                                            long delayInMilliseconds) {
@@ -173,7 +173,7 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
+	public Pausable submit(Consumer<Long> consumer,
 	                                                          long period,
 	                                                          TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
@@ -183,13 +183,13 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
+	public Pausable submit(Consumer<Long> consumer) {
 		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Pausable schedule(Consumer<Long> consumer,
 	                                                            long period,
 	                                                            TimeUnit timeUnit) {
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit),
@@ -198,7 +198,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private TimerRegistration<? extends Consumer<Long>> schedule(long recurringTimeout,
+	private TimerPausable schedule(long recurringTimeout,
 	                                                             long firstDelay,
 	                                                             Consumer<Long> consumer) {
 		Assert.isTrue(recurringTimeout >= resolution,
@@ -210,17 +210,17 @@ public class HashWheelTimer implements Timer {
 		long firstFireOffset = firstDelay / resolution;
 		long firstFireRounds = firstFireOffset / wheel.getBufferSize();
 
-		TimerRegistration r = new TimerRegistration(firstFireRounds, offset, consumer, rounds);
+		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds);
 		wheel.get(wheel.getCursor() + firstFireOffset + 1).add(r);
 		return r;
 	}
 
 	/**
-	 * Reschedule a {@link TimerRegistration}  for the next fire
+	 * Reschedule a {@link TimerPausable}  for the next fire
 	 *
 	 * @param registration
 	 */
-	private void reschedule(TimerRegistration registration) {
+	private void reschedule(TimerPausable registration) {
 		registration.reset();
 		wheel.get(wheel.getCursor() + registration.getOffset()).add(registration);
 	}
@@ -265,10 +265,9 @@ public class HashWheelTimer implements Timer {
 	 *
 	 * @param <T> type of the Timer Registration Consumer
 	 */
-	public static class TimerRegistration<T extends Consumer<Long>> implements Runnable,
+	public static class TimerPausable<T extends Consumer<Long>> implements Runnable,
 			Comparable,
-			Pausable,
-			Registration {
+			Pausable {
 
 		public static int STATUS_PAUSED    = 1;
 		public static int STATUS_CANCELLED = -1;
@@ -289,7 +288,7 @@ public class HashWheelTimer implements Timer {
 		 * @param offset   offset of in the Ring Buffer for rescheduling
 		 * @param delegate delegate that will be ran whenever the timer is elapsed
 		 */
-		public TimerRegistration(long rounds, long offset, T delegate, long rescheduleRounds) {
+		public TimerPausable(long rounds, long offset, T delegate, long rescheduleRounds) {
 			Assert.notNull(delegate, "Delegate cannot be null");
 			this.rescheduleRounds = rescheduleRounds;
 			this.scheduleOffset = offset;
@@ -337,7 +336,8 @@ public class HashWheelTimer implements Timer {
 		 *
 		 * @return current Registration
 		 */
-		public Registration cancel() {
+		@Override
+		public TimerPausable cancel() {
 			if (!isCancelled()) {
 				if (lifecycle) {
 					((Pausable) delegate).cancel();
@@ -352,7 +352,6 @@ public class HashWheelTimer implements Timer {
 		 *
 		 * @return whether or not the current Registration is cancelled
 		 */
-		@Override
 		public boolean isCancelled() {
 			return status.get() == STATUS_CANCELLED;
 		}
@@ -363,7 +362,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public Registration pause() {
+		public TimerPausable pause() {
 			if (!isPaused()) {
 				if (lifecycle) {
 					((Pausable) delegate).pause();
@@ -378,7 +377,6 @@ public class HashWheelTimer implements Timer {
 		 *
 		 * @return whether or not the current Registration is paused
 		 */
-		@Override
 		public boolean isPaused() {
 			return this.status.get() == STATUS_PAUSED;
 		}
@@ -389,7 +387,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public Registration resume() {
+		public TimerPausable resume() {
 			if (isPaused()) {
 				if (lifecycle) {
 					((Pausable) delegate).resume();
@@ -400,45 +398,24 @@ public class HashWheelTimer implements Timer {
 		}
 
 		/**
-		 * Get the offset of the Registration relative to the current Ring Buffer position
-		 * to make it fire timely.
-		 *
-		 * @return the offset of current Registration
-		 */
-		private long getOffset() {
-			return this.scheduleOffset;
-		}
-
-		@Override
-		public Selector getSelector() {
-			return null;
-		}
-
-		@Override
-		public Object getObject() {
-			return delegate;
-		}
-
-		/**
-		 * Cancel this {@link HashWheelTimer.TimerRegistration} after it has been selected and used. {@link
+		 * Cancel this {@link HashWheelTimer.TimerPausable} after it has been selected and used. {@link
 		 * reactor.core.Dispatcher} implementations should respect this value and perform
 		 * the cancellation.
 		 *
 		 * @return {@literal this}
 		 */
-		public TimerRegistration<T> cancelAfterUse() {
+		public TimerPausable<T> cancelAfterUse() {
 			cancelAfterUse.set(true);
 			return this;
 		}
 
-		@Override
 		public boolean isCancelAfterUse() {
 			return this.cancelAfterUse.get();
 		}
 
 		@Override
 		public int compareTo(Object o) {
-			TimerRegistration other = (TimerRegistration) o;
+			TimerPausable other = (TimerPausable) o;
 			if (rounds.get() == other.rounds.get()) {
 				return other == this ? 0 : -1;
 			} else {
@@ -449,6 +426,10 @@ public class HashWheelTimer implements Timer {
 		@Override
 		public String toString() {
 			return String.format("HashWheelTimer { Rounds left: %d, Status: %d }", rounds.get(), status.get());
+		}
+
+		public long getOffset() {
+			return scheduleOffset;
 		}
 	}
 

@@ -1,6 +1,5 @@
 package reactor.core.alloc
 
-import reactor.bus.Event
 import reactor.core.support.TypeReference
 import reactor.core.support.TypeUtils
 import reactor.fn.Supplier
@@ -65,21 +64,30 @@ class AllocatorsSpec extends Specification {
 	def "Allocators can be provided by Type"() {
 
 		given: "a generic type"
-			def type = TypeUtils.fromTypeRef(new TypeReference<Event<String>>() {})
+			def type = TypeUtils.fromTypeRef(new TypeReference<Generic<String>>() {})
 			def allocators = [:]
-			allocators[type] = new ReferenceCountingAllocator<Event<String>>(new Supplier<Event<String>>() {
+			allocators[type] = new ReferenceCountingAllocator<Generic<String>>(new Supplier<Generic<String>>() {
 				@Override
-				Event<String> get() {
-					return Event.wrap("Hello World!")
+				Generic<String> get() {
+					return new Generic(data:"Hello World!")
 				}
 			})
 
 		when: "a pool is requested"
-			def pool = allocators[TypeUtils.fromTypeRef(new TypeReference<Event<String>>() {})]
+			def pool = allocators[TypeUtils.fromTypeRef(new TypeReference<Generic<String>>() {})]
 
 		then: "a pool was returned"
 			pool
 
+	}
+
+	class Generic<T> implements Recyclable{
+		T data
+
+		@Override
+		void recycle() {
+			data = null
+		}
 	}
 
 	class ReferenceCounter implements Runnable {

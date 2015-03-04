@@ -29,7 +29,8 @@ class EnvironmentSpec extends Specification {
 
 			ReactorConfiguration configuration = new ReactorConfiguration([], 'default', [:] as Properties)
 			Dispatcher dispatcher = Mock(Dispatcher)
-			Environment environment = new Environment(['alpha': [dispatcher, dispatcher], 'bravo': [dispatcher]], Mock(ConfigurationReader, {
+			Dispatcher dispatcher2 = Mock(Dispatcher)
+			Environment environment = new Environment(['alpha': dispatcher, 'bravo': dispatcher2], Mock(ConfigurationReader, {
 				read() >> configuration
 			}))
 
@@ -39,7 +40,8 @@ class EnvironmentSpec extends Specification {
 
 		then:
 			"its dispatchers are cleaned up"
-			3 * dispatcher.shutdown()
+			1 * dispatcher.shutdown()
+			1 * dispatcher2.shutdown()
 	}
 
 	def "An environment can create Dispatchers"() {
@@ -69,7 +71,8 @@ class EnvironmentSpec extends Specification {
 			Environment.sharedDispatcher().backlogSize() == dispatcher.backlogSize()
 
 		cleanup:
-			Environment.terminate()
+			if(Environment.alive())
+				Environment.terminate()
 	}
 
 }
