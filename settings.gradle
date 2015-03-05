@@ -3,7 +3,7 @@ rootProject.name = 'reactor'
 include 'reactor-core',
 		'reactor-bus',
 		'reactor-stream',
+		'reactor-net',
 		'reactor-groovy-extensions',
 		'reactor-groovy',
-		'reactor-logback',
-		'reactor-net'
+		'reactor-logback'

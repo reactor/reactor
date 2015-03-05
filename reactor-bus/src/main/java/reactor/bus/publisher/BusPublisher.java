@@ -13,19 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.stream;
+package reactor.bus.publisher;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.fn.Consumer;
-import reactor.rx.Stream;
-import reactor.rx.action.support.SerializedSubscriber;
-import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
 
@@ -37,36 +37,39 @@ import javax.annotation.Nonnull;
  * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
- * Streams.on(reactor, $("topic")).consume(System.out::println)
+ * Streams.create(eventBus.on($("topic"))).consume(System.out::println)
  * }
  * </pre>
  *
  * @author Stephane Maldini
  */
-public final class BusStream<T> extends Stream<T> {
+public final class BusPublisher<T> implements Publisher<T> {
 
 	private final Selector      selector;
 	private final Bus<T> observable;
-	private final Dispatcher    dispatcher;
 	private final boolean    ordering;
 
 
-	public BusStream(final @Nonnull Bus<T> observable,
-	                 final @Nonnull Selector selector) {
+	public BusPublisher(final @Nonnull Bus<T> observable,
+	                    final @Nonnull Selector selector) {
 
 		this.selector = selector;
 		this.observable = observable;
-		this.dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
+		Dispatcher dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
 				((EventBus)observable).getDispatcher() : SynchronousDispatcher.INSTANCE;
 		this.ordering = dispatcher.supportsOrdering();
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super T> s) {
+		final Subscriber<? super T> subscriber;
 		if(!ordering) {
-			s = SerializedSubscriber.create(s);
+			subscriber = SerializedSubscriber.create(s);
+		}else{
+			subscriber = s;
 		}
-		s.onSubscribe(new PushSubscription<T>(this, s) {
+
+		subscriber.onSubscribe(new Subscription() {
 
 			final Registration<Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
 				@Override
@@ -76,23 +79,22 @@ public final class BusStream<T> extends Stream<T> {
 			});
 
 			@Override
+			public void request(long n) {
+				//IGNORE
+			}
+
+			@Override
 			public void cancel() {
-				super.cancel();
 				registration.cancel();
 			}
 		});
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
-		return ordering ? dispatcher : SynchronousDispatcher.INSTANCE;
-	}
-
-	@Override
 	public String toString() {
-		return "BusStream{" +
+		return "BusPublisher{" +
 				"selector=" + selector +
-				", observable=" + observable +
+				", bus=" + observable +
 				'}';
 	}
 }

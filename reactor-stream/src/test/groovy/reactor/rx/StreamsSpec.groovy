@@ -18,10 +18,6 @@ package reactor.rx
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
 import reactor.Environment
-import reactor.bus.Bus
-import reactor.bus.Event
-import reactor.bus.EventBus
-import reactor.bus.selector.Selectors
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.fn.BiFunction
 import reactor.io.buffer.Buffer
@@ -29,7 +25,6 @@ import reactor.io.codec.DelimitedCodec
 import reactor.io.codec.StandardCodecs
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
-import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
 
 import java.util.concurrent.*
@@ -1769,43 +1764,6 @@ class StreamsSpec extends Specification {
 			v == 'ok'
 	}
 
-	def 'Creating Stream from observable'() {
-		given:
-			'a source stream with a given observable'
-			def r = EventBus.config().get()
-			def selector = Selectors.anonymous()
-			int event = 0
-			def s = Streams.<Integer> on(r, selector).map { it.data }.consume { event = it }
-			println s.debug()
-
-		when:
-			'accept a value'
-			r.notify(selector.object, Event.wrap(1))
-			println s.debug()
-
-		then:
-			'dispatching works'
-			event == 1
-
-		when:
-			"multithreaded bus can be serialized"
-			r = EventBus.create(Environment.get(), Environment.dispatcher("workQueue"))
-			s = SerializedBroadcaster.<Event<Integer>> create()
-			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
-
-			r.on(selector, s)
-
-			10.times {
-				r.notify(selector.object, Event.wrap(it))
-			}
-
-		then:
-			tail.await().size() == 10
-			tail.get().sum { it.t1 } >= 1000 //correctly serialized
-
-
-	}
-
 	def 'Creating Stream from publisher'() {
 		given:
 			'a source stream with a given publisher'
@@ -2540,38 +2498,6 @@ class StreamsSpec extends Specification {
 			'results contains the expected values'
 			println head.debug()
 			sum.get() == length - 1
-	}
-
-	def 'An Observable can consume values from a Stream'() {
-		given:
-			'a Stream and a Observable consumer'
-			def d = Broadcaster.<Integer> create()
-			Stream composable = d
-			Bus observable = Mock(Bus)
-			composable.notify(observable, 'key')
-
-		when:
-			'the composable accepts a value'
-			d.onNext(1)
-
-		then:
-			'the observable is notified'
-			1 * observable.notify('key', _)
-	}
-
-	def 'An observable can consume values from a Stream with a known set of values'() {
-		given:
-			'a Stream with 3 values'
-			Stream stream = Streams.from([1, 2, 3])
-			Bus observable = Mock(Bus)
-
-		when:
-			'a stream consumer is registerd'
-			stream.notify(observable, 'key')
-
-		then:
-			'the observable is notified of the values'
-			3 * observable.notify('key', _)
 	}
 
 

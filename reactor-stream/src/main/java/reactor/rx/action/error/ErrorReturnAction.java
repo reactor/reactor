@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.error;
 
-import reactor.bus.selector.ClassSelector;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
 
@@ -26,9 +25,9 @@ import reactor.rx.action.Action;
 final public class ErrorReturnAction<T, E extends Throwable> extends Action<T, T> {
 
 	private final Function<? super E, ? extends T> function;
-	private final ClassSelector       selector;
+	private final Class<E> selector;
 
-	public ErrorReturnAction(ClassSelector selector, Function<? super E, ? extends T> function) {
+	public ErrorReturnAction(Class<E> selector, Function<? super E, ? extends T> function) {
 		this.function = function;
 		this.selector = selector;
 	}
@@ -41,7 +40,7 @@ final public class ErrorReturnAction<T, E extends Throwable> extends Action<T, T
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
-		if (selector.matches(cause.getClass())) {
+		if (selector.isAssignableFrom(cause.getClass())) {
 			broadcastNext(function.apply((E)cause));
 			broadcastComplete();
 		}else{
@@ -52,7 +51,7 @@ final public class ErrorReturnAction<T, E extends Throwable> extends Action<T, T
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"catch-type=" + selector.getObject() +
+				"catch-type=" + selector +
 				'}';
 	}
 }

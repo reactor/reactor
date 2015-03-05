@@ -225,12 +225,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		r.on(key, tap);
 
-		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Control s =
-				stream
-						.map(STRING_2_INTEGER)
-						.notify(r, key.getObject());
-		System.out.println(s.debug());
+		r.notify(Streams.just("1", "2", "3", "4", "5").map(STRING_2_INTEGER), key.getObject());
 
 		//await(s, is(5));
 		assertThat("latch was counted down", latch.getCount(), is(0l));

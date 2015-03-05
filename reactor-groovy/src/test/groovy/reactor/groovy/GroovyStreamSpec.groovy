@@ -16,18 +16,12 @@
 package reactor.groovy
 
 import reactor.Environment
-import reactor.bus.EventBus
 import reactor.fn.support.Tap
 import reactor.fn.tuple.Tuple
 import reactor.rx.Stream
 import reactor.rx.Streams
 import spock.lang.Shared
 import spock.lang.Specification
-
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-import static reactor.bus.selector.Selectors.$
 
 /**
  * @author Stephane Maldini
@@ -145,32 +139,6 @@ class GroovyStreamSpec extends Specification {
 		then:
 			first.tap().get() == 1
 			last.tap().get() == 5
-	}
-
-	def "relay events to reactor"() {
-		given:
-			'a eventBus and a selector'
-			def r = EventBus.config().env(testEnv).get()
-			def key = $()
-
-		when:
-			'we connect when this eventBus and key'
-			def latch = new CountDownLatch(5)
-			r.on(key) {
-				latch.countDown()
-			}
-
-		and:
-			'Defer a composition'
-			def c = Streams.from(['1', '2', '3', '4', '5'])
-
-		and:
-			'apply a transformation and call an explicit eventBus'
-			(c | { Integer.parseInt it }).to(r, key.object)
-
-		then:
-			latch.await(1, TimeUnit.SECONDS)
-			latch.count == 0
 	}
 
 	def "compose from unknown number of values"() {

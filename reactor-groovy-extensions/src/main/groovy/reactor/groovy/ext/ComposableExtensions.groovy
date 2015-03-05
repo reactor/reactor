@@ -19,7 +19,6 @@ package reactor.groovy.ext
 import groovy.transform.CompileStatic
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
-import reactor.bus.Bus
 import reactor.fn.BiFunction
 import reactor.fn.Consumer
 import reactor.fn.Function
@@ -47,12 +46,6 @@ class ComposableExtensions {
 	/**
 	 * Alias
 	 */
-	static <T, X extends Stream<T>> Control to(final Stream<T> selfType,
-	                                           final Bus observable
-	                                           , final Object key) {
-		selfType.notify observable, key
-	}
-
 	// PAIR Streams
 
 	static <K, V> Stream<Tuple2<K, V>> reduceByKey(final Publisher<? extends Tuple2<K, V>> selfType,

@@ -16,10 +16,14 @@
 
 package reactor.bus;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.bus.filter.PassThroughFilter;
+import reactor.bus.publisher.BusPublisher;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
@@ -134,6 +138,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	public static EventBus create(Environment env, Dispatcher dispatcher) {
 		return new EventBusSpec().env(env).dispatcher(dispatcher).get();
 	}
+
+
 
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
@@ -343,6 +349,18 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		return null;
 	}
 
+
+	/**
+	 * Attach a Publisher to the {@link Bus} with the specified {@link Selector}.
+	 *
+	 * @param broadcastSelector the {@link Selector}/{@literal Object} tuple to listen to
+	 * @return a new {@link Publisher}
+	 * @since 2.0
+	 */
+	public Publisher<? extends Event<?>> on(Selector broadcastSelector) {
+		return new BusPublisher<>(this, broadcastSelector);
+	}
+
 	@Override
 	public EventBus notify(Object key, Event<?> ev) {
 		Assert.notNull(key, "Key cannot be null.");
@@ -350,6 +368,58 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		ev.setKey(key);
 		dispatcher.dispatch(ev, this, dispatchErrorHandler);
 
+		return this;
+	}
+
+	/**
+	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
+	 *
+	 * @param key        the key to notify on
+	 * @param source the {@link Publisher} to consume
+	 * @return {@literal new Stream}
+	 * @since 1.1, 2.0
+	 */
+	public final EventBus notify(@Nonnull final Publisher<?> source, @Nonnull final Object key) {
+		return notify(source, new Function<Object,Object>(){
+			@Override
+			public Object apply(Object o) {
+				return key;
+			}
+		});
+	}
+
+	/**
+	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
+	 *
+	 * @param source the {@link Publisher} to consume
+	 * @param keyMapper  the key function mapping each incoming data to a key to notify on
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final <T> EventBus notify(@Nonnull final Publisher<? extends T> source, @Nonnull final Function<? super T, ?> keyMapper) {
+		source.subscribe(new Subscriber<T>() {
+			Subscription s;
+			@Override
+			public void onSubscribe(Subscription s) {
+				this.s = s;
+				s.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(T t) {
+				EventBus.this.notify(keyMapper.apply(t), Event.wrap(t));
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				if(s != null) s.cancel();
+			}
+
+			@Override
+			public void onComplete() {
+				if(s != null) s.cancel();
+			}
+		});
 		return this;
 	}
 

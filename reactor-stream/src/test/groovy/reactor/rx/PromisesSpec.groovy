@@ -16,7 +16,8 @@
 package reactor.rx
 
 import reactor.Environment
-import reactor.bus.Bus
+import reactor.bus.EventBus
+import reactor.bus.selector.Selectors
 import reactor.rx.broadcast.Broadcaster
 import spock.lang.Shared
 import spock.lang.Specification
@@ -274,8 +275,11 @@ class PromisesSpec extends Specification {
     given:
       "a promise with a consuming Observable"
       def promise = Promises.<Object> prepare()
-      def observable = Mock(Bus)
-      promise.stream().notify(observable, 'key')
+      def promise2 = Promises.<Object> prepare()
+      def bus = EventBus.create()
+
+      bus.on(Selectors.$('key'), promise2)
+      bus.notify(promise, 'key')
 
     when:
       "the promise is fulfilled"
@@ -283,22 +287,24 @@ class PromisesSpec extends Specification {
 
     then:
       "the observable is notified"
-      1 * observable.notify('key', { event -> event == 'test' })
+      promise2.await()?.data == 'test'
   }
 
   def "An Observable can be used to consume the value of an already-fulfilled promise"() {
     given:
       "a fulfilled promise"
       def promise = Promises.success('test')
-      def observable = Mock(Bus)
+      def promise2 = Promises.<Object> prepare()
+      def bus = EventBus.create()
 
     when:
       "an Observable is added as a consumer"
-      promise.stream().notify(observable, 'key')
+      bus.on(Selectors.$('key'), promise2)
+      bus.notify(promise, 'key')
 
     then:
       "the observable is notified"
-      1 * observable.notify('key', { event -> event == 'test' })
+      promise2.await()?.data == 'test'
   }
 
   def "A function can be used to map a Promise's value when it's fulfilled"() {

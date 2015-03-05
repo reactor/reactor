@@ -25,7 +25,8 @@ import reactor.core.dispatch.SynchronousDispatcher
 import reactor.fn.Consumer
 import reactor.fn.Functions
 import reactor.fn.support.SingleUseConsumer
-import spock.lang.Shared
+import reactor.rx.Streams
+import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -41,11 +42,12 @@ import static reactor.bus.selector.Selectors.*
  */
 class EventBusSpec extends Specification {
 
-	@Shared
-	Environment testEnv
+	void setup() {
+		Environment.initializeIfEmpty().assignErrorJournal()
+	}
 
-	void setupSpec() {
-		testEnv = new Environment()
+	def cleanup() {
+		Environment.terminate()
 	}
 
 	def "A Reactor can be configured with EventBus.create()"() {
@@ -457,6 +459,44 @@ class EventBusSpec extends Specification {
 		then:
 			"the count has increased"
 			count == 2
+
+	}
+
+
+	def 'Creating Stream from observable'() {
+		given:
+			'a source stream with a given observable'
+			def r = EventBus.config().get()
+			def selector = anonymous()
+			int event = 0
+			def s = Streams.create(r.on(selector)).map { it.data }.consume { event = it }
+			println s.debug()
+
+		when:
+			'accept a value'
+			r.notify(selector.object, Event.wrap(1))
+			println s.debug()
+
+		then:
+			'dispatching works'
+			event == 1
+
+		when:
+			"multithreaded bus can be serialized"
+			r = EventBus.create(Environment.dispatcher("workQueue"))
+			s = SerializedBroadcaster.<Event<Integer>> create()
+			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+
+			r.on(selector, s)
+
+			10.times {
+				r.notify(selector.object, Event.wrap(it))
+			}
+
+		then:
+			tail.await().size() == 10
+			tail.get().sum { it.t1 } >= 1000 //correctly serialized
+
 
 	}
 

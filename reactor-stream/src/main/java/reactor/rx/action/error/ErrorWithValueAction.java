@@ -16,7 +16,6 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import reactor.bus.selector.ClassSelector;
 import reactor.core.support.Exceptions;
 import reactor.fn.BiConsumer;
 
@@ -26,9 +25,9 @@ import reactor.fn.BiConsumer;
 final public class ErrorWithValueAction<T, E extends Throwable> extends FallbackAction<T> {
 
 	private final BiConsumer<Object, ? super E> consumer;
-	private final ClassSelector       selector;
+	private final Class<E>       selector;
 
-	public ErrorWithValueAction(ClassSelector selector, BiConsumer<Object, ? super E> consumer, Publisher<?
+	public ErrorWithValueAction(Class<E> selector, BiConsumer<Object, ? super E> consumer, Publisher<?
 			extends
 			T> fallback) {
 		super(fallback);
@@ -44,7 +43,7 @@ final public class ErrorWithValueAction<T, E extends Throwable> extends Fallback
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
-		if (selector.matches(cause.getClass())) {
+		if (selector.isAssignableFrom(cause.getClass())) {
 			if (consumer != null) {
 				consumer.accept(Exceptions.getFinalValueCause(cause), (E) cause);
 			} else if (fallback != null) {
@@ -58,7 +57,7 @@ final public class ErrorWithValueAction<T, E extends Throwable> extends Fallback
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"catch-type=" + selector.getObject() +
+				"catch-type=" + selector +
 				'}';
 	}
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action.support;
+package reactor.core.reactivestreams;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -33,7 +33,7 @@ import org.reactivestreams.Subscription;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> extends DefaultSubscriber<T> implements Subscription {
+public class SerializedSubscriber<T> implements Subscription, Subscriber<T> {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;

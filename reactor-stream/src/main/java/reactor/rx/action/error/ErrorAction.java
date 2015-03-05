@@ -16,7 +16,6 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import reactor.bus.selector.ClassSelector;
 import reactor.fn.Consumer;
 
 /**
@@ -26,10 +25,9 @@ import reactor.fn.Consumer;
 final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T> {
 
 	private final Consumer<? super E> consumer;
-	private final ClassSelector       selector;
+	private final Class<E>            selector;
 
-	public ErrorAction(ClassSelector selector, Consumer<? super E> consumer, Publisher<? extends
-			T> fallback) {
+	public ErrorAction(Class<E> selector, Consumer<? super E> consumer, Publisher<? extends T> fallback) {
 		super(fallback);
 		this.consumer = consumer;
 		this.selector = selector;
@@ -43,7 +41,7 @@ final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T>
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doError(Throwable cause) {
-		if (selector.matches(cause.getClass())) {
+		if (selector.isAssignableFrom(cause.getClass())) {
 			if (consumer != null) {
 				consumer.accept((E) cause);
 			} else if (fallback != null) {
@@ -57,7 +55,7 @@ final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T>
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"catch-type=" + selector.getObject() +
+				"catch-type=" + selector +
 				'}';
 	}
 }

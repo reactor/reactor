@@ -20,8 +20,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.bus.Bus;
-import reactor.bus.selector.Selector;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Function;
@@ -506,19 +504,6 @@ public class Streams {
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
-	}
-
-	/**
-	 * Attach a Stream to the {@link Bus} with the specified {@link Selector}.
-	 *
-	 * @param observable        the {@link Bus} to observe
-	 * @param broadcastSelector the {@link Selector}/{@literal Object} tuple to listen to
-	 * @param <T>               the type of values passing through the {@literal Stream}
-	 * @return a new {@link Stream}
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> on(Bus<T> observable, Selector broadcastSelector) {
-		return new BusStream<T>(observable, broadcastSelector);
 	}
 
 	/**

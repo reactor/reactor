@@ -20,10 +20,10 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.action.support.NonBlocking;
-import reactor.rx.action.support.SerializedSubscriber;
 
 /**
  * @author Stephane Maldini

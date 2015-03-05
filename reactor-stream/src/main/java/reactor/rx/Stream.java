@@ -19,9 +19,6 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
-import reactor.bus.Bus;
-import reactor.bus.selector.ClassSelector;
-import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
@@ -53,7 +50,6 @@ import reactor.rx.action.passive.LoggerAction;
 import reactor.rx.action.support.NonBlocking;
 import reactor.rx.action.support.TapAndControls;
 import reactor.rx.action.terminal.AdaptiveConsumerAction;
-import reactor.rx.action.terminal.BusAction;
 import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.transformation.*;
 import reactor.rx.broadcast.Broadcaster;
@@ -136,11 +132,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 	                                                  @Nonnull final Consumer<E> onError) {
 		return lift(new Supplier<Action<O, O>>() {
-			ClassSelector classSelector = Selectors.T(exceptionType);
 
 			@Override
 			public Action<O, O> get() {
-				return new ErrorAction<O, E>(classSelector, onError, null);
+				return new ErrorAction<O, E>(exceptionType, onError, null);
 			}
 		});
 	}
@@ -159,11 +154,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <E extends Throwable> Stream<O> observeError(@Nonnull final Class<E> exceptionType,
 	                                                          @Nonnull final BiConsumer<Object, ? super E> onError) {
 		return lift(new Supplier<Action<O, O>>() {
-			ClassSelector classSelector = Selectors.T(exceptionType);
-
 			@Override
 			public Action<O, O> get() {
-				return new ErrorWithValueAction<O, E>(classSelector, onError, null);
+				return new ErrorWithValueAction<O, E>(exceptionType, onError, null);
 			}
 		});
 	}
@@ -190,11 +183,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <E extends Throwable> Stream<O> onErrorResumeNext(@Nonnull final Class<E> exceptionType,
 	                                                               @Nonnull final Publisher<? extends O> fallback) {
 		return lift(new Supplier<Action<O, O>>() {
-			ClassSelector classSelector = Selectors.T(exceptionType);
-
 			@Override
 			public Action<O, O> get() {
-				return new ErrorAction<O, E>(classSelector, null, fallback);
+				return new ErrorAction<O, E>(exceptionType, null, fallback);
 			}
 		});
 	}
@@ -221,11 +212,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <E extends Throwable> Stream<O> onErrorReturn(@Nonnull final Class<E> exceptionType,
 	                                                           @Nonnull final Function<E, ? extends O> fallback) {
 		return lift(new Supplier<Action<O, O>>() {
-			ClassSelector classSelector = Selectors.T(exceptionType);
-
 			@Override
 			public Action<O, O> get() {
-				return new ErrorReturnAction<O, E>(classSelector, fallback);
+				return new ErrorReturnAction<O, E>(exceptionType, fallback);
 			}
 		});
 	}
@@ -265,35 +254,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			}
 		});
 	}
-
-	/**
-	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
-	 *
-	 * @param key        the key to notify on
-	 * @param observable the {@link Bus} to notify
-	 * @return {@literal new Stream}
-	 * @since 1.1, 2.0
-	 */
-	public final Control notify(@Nonnull final Bus observable, @Nonnull final Object key) {
-		BusAction<O> observableAction = new BusAction<O>(observable, key, null);
-		subscribe(observableAction);
-		return observableAction.consume();
-	}
-
-	/**
-	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
-	 *
-	 * @param observable the {@link Bus} to notify
-	 * @param keyMapper  the key function mapping each incoming data to a key to notify on
-	 * @return {@literal new Stream}
-	 * @since 2.0
-	 */
-	public final Control notify(@Nonnull final Bus observable, @Nonnull Function<? super O, ?> keyMapper) {
-		BusAction<O> observableAction = new BusAction<O>(observable, null, keyMapper);
-		subscribe(observableAction);
-		return observableAction.consume();
-	}
-
 
 	/**
 	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
@@ -1265,12 +1225,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * org.reactivestreams.Subscription}.
 	 * The subscription can react differently according to the implementation in-use,
 	 * the default strategy is as following:
-	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link reactor.queue
+	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link reactor.core.queue
 	 * .CompletableQueue},
 	 * ready to be polled when the action fire the pending requests.
 	 * - The following pairs of Action->Action will synchronously pass data
 	 * - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair rule.
-	 * - {@link this#onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.queue
+	 * - {@link this#onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.core.queue
 	 * .PersistentQueue}
 	 *
 	 * @param elements maximum number of in-flight data
@@ -1461,7 +1421,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final Stream<O> recover(@Nonnull final Class<? extends Throwable> exceptionType,
 	                               final Subscriber<Object> recoveredValuesSink) {
 		return retryWhen(new Function<Stream<? extends Throwable>, Publisher<?>>() {
-			final ClassSelector classSelector = Selectors.T(exceptionType);
 
 			@Override
 			public Publisher<?> apply(Stream<? extends Throwable> stream) {
@@ -1469,7 +1428,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				stream.map(new Function<Throwable, Object>() {
 					@Override
 					public Object apply(Throwable throwable) {
-						if (classSelector.matches(throwable.getClass())) {
+						if (exceptionType.isAssignableFrom(throwable.getClass())) {
 							return Exceptions.getFinalValueCause(throwable);
 						} else {
 							return null;
@@ -1481,7 +1440,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 					@Override
 					public Signal<Throwable> apply(Throwable throwable) {
-						if (classSelector.matches(throwable.getClass())) {
+						if (exceptionType.isAssignableFrom(throwable.getClass())) {
 							return Signal.next(throwable);
 						} else {
 							return Signal.<Throwable>error(throwable);

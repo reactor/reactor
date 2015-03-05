@@ -17,9 +17,9 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.SerializedSubscriber;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;

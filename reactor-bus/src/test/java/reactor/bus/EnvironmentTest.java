@@ -1,7 +1,8 @@
 package reactor.bus;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import reactor.AbstractReactorTest;
 import reactor.Environment;
 import reactor.bus.selector.Selectors;
 import reactor.core.support.Assert;
@@ -13,7 +14,19 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class EnvironmentTest extends AbstractReactorTest {
+public class EnvironmentTest {
+
+	protected Environment env;
+
+	@Before
+	public void loadEnv() {
+		env = Environment.initializeIfEmpty().assignErrorJournal();
+	}
+
+	@After
+	public void closeEnv() {
+		Environment.terminate();
+	}
 
     @Test
     public void testGetDispatcherThrowsExceptionWhenNoDispatcherIsFound() throws Exception {

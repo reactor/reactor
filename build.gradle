@@ -304,7 +304,6 @@ project('reactor-stream') {
 
   dependencies {
     compile project(':reactor-core')
-    compile project(':reactor-bus')
 
     // High-speed Messaging
     optional "net.openhft:chronicle:$openHftChronicleVersion",
@@ -312,6 +311,7 @@ project('reactor-stream') {
 
 
     testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC3"
+    testCompile project(':reactor-bus')
     testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
   }
 }
@@ -364,11 +364,12 @@ project('reactor-bus') {
     jsr166e "io.gatling:jsr166e:1.0@jar"
     compile(files(jsr166eRepackJar))
 
-    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-    optional "com.jayway.jsonpath:json-path:$jsonPathVersion"
-
     // Rich Collections
     compile "com.goldmansachs:gs-collections:$gsCollectionsVersion"
+
+    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+    optional "com.jayway.jsonpath:json-path:$jsonPathVersion"
+    testCompile project(':reactor-stream')
   }
 
   jar {
@@ -382,6 +383,48 @@ project('reactor-bus') {
     }
   }
 }
+
+project('reactor-net') {
+  description = 'Reactor TCP components'
+
+  apply plugin: 'osgi'
+
+  ext.bundleImportPackages = [
+      'org.zeromq;resolution:=optional',
+      'com.fasterxml.jackson.core;resolution:=optional',
+      'com.fasterxml.jackson.databind;resolution:=optional',
+      'com.fasterxml.jackson.module;resolution:=optional',
+      '*'
+  ]
+
+  dependencies {
+    compile project(':reactor-bus')
+    compile project(':reactor-stream')
+    compile(files(project(":reactor-core").disruptorRepackJar))
+
+    compile "io.netty:netty-all:$nettyVersion"
+
+    optional "org.zeromq:jeromq:$jeromqVersion",
+        "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+
+    // Testing
+    testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
+        "com.esotericsoftware.kryo:kryo:$kryoVersion"
+
+    testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
+
+    testRuntime project(':reactor-logback'),
+        "org.slf4j:jcl-over-slf4j:$slf4jVersion"
+  }
+
+  jar {
+    manifest {
+      instruction 'Import-Package', bundleImportPackages.join(',')
+    }
+  }
+}
+
+
 
 
 project('reactor-groovy-extensions') {
@@ -438,46 +481,6 @@ project('reactor-logback') {
       include(dependency("net.openhft:chronicle:$openHftChronicleVersion"))
       include(dependency("commons-cli:commons-cli:1.2"))
       //include(project(":reactor-core"))
-    }
-  }
-}
-
-project('reactor-net') {
-  description = 'Reactor TCP components'
-
-  apply plugin: 'osgi'
-
-  ext.bundleImportPackages = [
-      'org.zeromq;resolution:=optional',
-      'com.fasterxml.jackson.core;resolution:=optional',
-      'com.fasterxml.jackson.databind;resolution:=optional',
-      'com.fasterxml.jackson.module;resolution:=optional',
-      '*'
-  ]
-
-  dependencies {
-    compile project(':reactor-core')
-    compile project(':reactor-stream')
-    compile(files(project(":reactor-core").disruptorRepackJar))
-
-    compile "io.netty:netty-all:$nettyVersion"
-
-    optional "org.zeromq:jeromq:$jeromqVersion",
-        "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-
-    // Testing
-    testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
-        "com.esotericsoftware.kryo:kryo:$kryoVersion"
-
-    testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
-
-    testRuntime project(':reactor-logback'),
-        "org.slf4j:jcl-over-slf4j:$slf4jVersion"
-  }
-
-  jar {
-    manifest {
-      instruction 'Import-Package', bundleImportPackages.join(',')
     }
   }
 }
