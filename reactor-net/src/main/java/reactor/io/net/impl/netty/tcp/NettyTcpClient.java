@@ -210,17 +210,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected Consumer<Void> completeConsumer(final ChannelStream<IN, OUT> ch) {
-		return new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				((Channel)ch.delegate()).close();
-			}
-		};
-	}
-
-	@Override
 	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);

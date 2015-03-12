@@ -32,10 +32,8 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyChannelStream;
@@ -156,17 +154,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		});
 
 		return promise;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	protected Consumer<Void> completeConsumer(final ChannelStream<IN, OUT> ch) {
-		return new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				((Channel)ch.delegate()).close();
-			}
-		};
 	}
 
 	@Override
