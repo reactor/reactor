@@ -54,7 +54,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		public void run() {
 			route(this);
 
-			for (MultiThreadTask t : tailRecursionPile) {
+			for (MultiThreadTask t : tailRecursionPile.collect()) {
 				route(t);
 			}
 		}
