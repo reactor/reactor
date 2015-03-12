@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
+	protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final AtomicBoolean alive   = new AtomicBoolean(true);
 	public final  ClassLoader   context = new ClassLoader(Thread.currentThread()

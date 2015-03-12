@@ -16,14 +16,10 @@
 
 package reactor.core.dispatch;
 
-import org.reactivestreams.Processor;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.SpecificationExceptions;
 import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
@@ -40,8 +36,6 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  */
 public final class RingBufferDispatcher extends SingleThreadDispatcher implements WaitingMood {
-
-	private static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 	private final ExecutorService            executor;
@@ -81,7 +75,7 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 	 * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
 	 * {@code bufferSize} slots, configured with a producer type of {@link ProducerType#MULTI MULTI}
 	 * and a {@link BlockingWaitStrategy blocking wait. A given @param uncaughtExceptionHandler} will catch anything not
-	 * handled e.g. by the owning {@link reactor.bus.EventBus} or {@link reactor.rx.Stream}.
+	 * handled e.g. by the owning {@code reactor.bus.EventBus} or {@code reactor.rx.Stream}.
 	 *
 	 * @param name                     The name of the dispatcher
 	 * @param bufferSize               The size to configure the ring buffer with
@@ -163,16 +157,6 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		});
 
 		this.ringBuffer = disruptor.start();
-	}
-
-	//@Override
-	public <E> Processor<E, E> dispatch() {
-		if (alive()) {
-			disruptor.shutdown();
-		}
-
-		final SequenceBarrier barrier = ringBuffer.newBarrier();
-		return new RingBufferProcessor<>(barrier);
 	}
 
 	@Override
@@ -267,266 +251,4 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		}
 	}
 
-	private class RingBufferTaskEventHandler<E> implements EventHandler<RingBufferTask>, Consumer<E> {
-		private final Subscriber<? super E>  sub;
-		private final RingBufferProcessor<E> owner;
-
-		Subscription s;
-
-		public RingBufferTaskEventHandler(RingBufferProcessor<E> owner, Subscriber<? super E> sub) {
-			this.sub = sub;
-			this.owner = owner;
-		}
-
-		@Override
-		public void accept(E e) {
-			try {
-				sub.onNext(e);
-			} catch (Throwable t) {
-				sub.onError(t);
-			}
-		}
-
-		@Override
-		public void onEvent(RingBufferTask ringBufferTask, long seq, boolean end) throws Exception {
-			try {
-				handleSubscriber(ringBufferTask, seq, end);
-				recurse();
-			} catch (Throwable e) {
-				sub.onError(e);
-			}
-		}
-
-		@SuppressWarnings("unchecked")
-		private void handleSubscriber(Task task, long seq, boolean end) {
-			if (task.eventConsumer == owner.COMPLETE_SENTINEL) {
-
-				if (s != null) {
-					s.cancel();
-					s = null;
-				}
-				sub.onComplete();
-
-			} else if (task.eventConsumer == owner.ERROR_SENTINEL) {
-				if (s != null) {
-					s.cancel();
-					s = null;
-				}
-				sub.onError((Throwable) task.data);
-			} else if (task.eventConsumer == owner) {
-				System.out.println(Thread.currentThread() + "-" + inContext() + " ] Task:" + task.data + " seq:" + seq + " " +
-						end);
-				sub.onNext((E) task.data);
-			}
-		}
-
-		void recurse() {
-			//Process any recursive tasks
-			if (tailRecurseSeq < 0) {
-				return;
-			}
-			int next = -1;
-			while (next < tailRecurseSeq) {
-				handleSubscriber(tailRecursionPile.get(++next), -1, false);
-			}
-
-			// clean up extra tasks
-			next = tailRecurseSeq;
-			int max = backlog * 2;
-			while (next >= max) {
-				tailRecursionPile.remove(next--);
-			}
-			tailRecursionPileSize = max;
-			tailRecurseSeq = -1;
-		}
-	}
-
-	private class RingBufferProcessor<E> implements Processor<E, E>, Consumer<E> {
-		private final SequenceBarrier barrier;
-		private final Sequence pending           = new Sequence(0l);
-		private final Sequence batch             = new Sequence(0l);
-		final         Consumer COMPLETE_SENTINEL = new Consumer() {
-			@Override
-			public void accept(Object o) {
-			}
-		};
-
-		final Consumer<Throwable> ERROR_SENTINEL = new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable throwable) {
-			}
-		};
-
-		Subscription s;
-
-		public RingBufferProcessor(SequenceBarrier barrier) {
-			this.barrier = barrier;
-		}
-
-		@Override
-		public void subscribe(final Subscriber<? super E> sub) {
-			final RingBufferTaskEventHandler<E> eventHandler = new RingBufferTaskEventHandler<>(this, sub);
-			final EventProcessor p = new BatchEventProcessor<RingBufferTask>(
-					ringBuffer,
-					barrier,
-					eventHandler
-			);
-
-
-			p.getSequence().set(barrier.getCursor());
-			ringBuffer.addGatingSequences(p.getSequence());
-			executor.execute(p);
-
-			Subscription subscription = new Subscription() {
-
-				@Override
-				@SuppressWarnings("unchecked")
-				public void request(long n) {
-					if (n <= 0l) {
-						sub.onError(SpecificationExceptions.spec_3_09_exception(n));
-						return;
-					}
-
-					if (pending.get() == Long.MAX_VALUE) {
-						return;
-					}
-
-					synchronized (this) {
-						if (pending.addAndGet(n) < 0l) pending.set(Long.MAX_VALUE);
-					}
-
-					if (s != null) {
-						if (n == Long.MAX_VALUE) {
-							s.request(n);
-						} else {
-							int toRequest = (int)Math.min(Integer.MAX_VALUE, Math.min(n, remainingSlots()));
-							if (toRequest > 0) {
-								s.request(toRequest);
-								if(batch.get() > 1l){
-									ringBuffer.next(toRequest);
-								}
-							}
-						}
-					}
-
-				}
-
-				@Override
-				public void cancel() {
-					try {
-						ringBuffer.removeGatingSequence(p.getSequence());
-						p.halt();
-					} finally {
-						s.cancel();
-					}
-				}
-			};
-
-			eventHandler.s = subscription;
-			sub.onSubscribe(subscription);
-		}
-
-		@Override
-		public void onSubscribe(final Subscription s) {
-			if (this.s != null) {
-				s.cancel();
-				return;
-			}
-			this.s = s;
-		}
-
-		void publishSignal(Object data, Consumer consumer) {
-			long batch = this.batch.incrementAndGet();
-			long demand = pending.get();
-			long seqId;
-
-			if (batch > 1l) {
-				seqId = (ringBuffer.getCursor() - demand) + batch;
-			} else if (demand == 0l || demand == Long.MAX_VALUE) {
-				seqId = ringBuffer.next();
-			} else {
-				int preallocate =
-						(int) Math.min(Integer.MAX_VALUE,
-								Math.min(
-										ringBuffer.remainingCapacity(),
-										Math.abs(batch - demand)
-								) + 1l
-						);
-
-				if (preallocate > 0l) {
-					seqId = ringBuffer.next(preallocate);
-					System.out.println(Thread.currentThread() + " is nexting " + preallocate + " with " + data + " on seq " +
-							seqId);
-					seqId = seqId - (preallocate - 1l);
-				} else {
-					seqId = ringBuffer.next();
-				}
-			}
-
-			System.out.println(Thread.currentThread() + " is marking " + seqId + " with " + data+"="+batch+"/"+demand+" : "+ringBuffer.getCursor())   ;
-			ringBuffer.get(seqId)
-					.setSequenceId(seqId)
-					.setData(data)
-					.setEventConsumer(consumer);
-
-			if (demand == Long.MAX_VALUE) {
-				ringBuffer.publish(seqId);
-			} else if (demand == batch) {
-				synchronized (this) {
-					if (this.pending.addAndGet(-demand) < 0l) this.pending.set(0l);
-				}
-				this.batch.set(0l);
-				ringBuffer.publish(seqId - (batch - 1l), seqId);
-			}
-		}
-
-		@Override
-		public void onNext(E o) {
-			if (!inContext()) {
-				publishSignal(o, this);
-
-			} else {
-				allocateRecursiveTask()
-						.setData(o)
-						.setEventConsumer(this);
-			}
-		}
-
-		@Override
-		public void accept(E e) {
-			//IGNORE
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			try {
-				pending.set(0l);
-				publishSignal(t, ERROR_SENTINEL);
-			} finally {
-				if (s != null) {
-					s.cancel();
-				}
-			}
-		}
-
-		@Override
-		public void onComplete() {
-			try {
-				pending.set(0l);
-				publishSignal(null, COMPLETE_SENTINEL);
-			} finally {
-				if (s != null) {
-					s.cancel();
-				}
-			}
-		}
-
-		@Override
-		public String toString() {
-			return "RingBufferSubscriber{" +
-					", barrier=" + barrier.getCursor() +
-					", pending=" + pending +
-					'}';
-		}
-	}
 }

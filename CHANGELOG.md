@@ -1,3 +1,5 @@
+# Reactor 2.0.0 - CHANGELOG
+
 # Reactor 1.1.0 - CHANGELOG
 
 This is a non-exhaustive list of changes between Reactor 1.0 and 1.1:

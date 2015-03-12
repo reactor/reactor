@@ -135,9 +135,6 @@ configure(allprojects) { project ->
 
   // dependencies that are common across all java projects
   dependencies {
-    // Logging
-    compile "org.slf4j:slf4j-api:$slf4jVersion"
-
     // JSR-305 annotations
     optional "com.google.code.findbugs:jsr305:2.0.0"
 
@@ -258,6 +255,11 @@ project('reactor-core') {
 
     // Reactive Streams
     compile "org.reactivestreams:reactive-streams:1.0.0.RC3"
+
+    // Logging
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
+
+    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.RC3"
 
     // High-speed Messaging
     optional "net.openhft:chronicle:$openHftChronicleVersion",
