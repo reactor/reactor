@@ -183,6 +183,12 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 						onComplete.accept(Promise.this);
 						broadcastError(ev);
 					}
+
+					@Override
+					protected void doComplete() {
+						onComplete.accept(Promise.this);
+						broadcastComplete();
+					}
 				};
 			}
 		}).next();
@@ -660,7 +666,9 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			}
 
 			if (outboundStream != null) {
-				outboundStream.onNext(value);
+				if(value != null) {
+					outboundStream.onNext(value);
+				}
 				outboundStream.onComplete();
 			}
 

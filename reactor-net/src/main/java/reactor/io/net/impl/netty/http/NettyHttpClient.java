@@ -23,6 +23,7 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
@@ -127,9 +128,14 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		Assert.isTrue(method != null && url != null);
 		final Promise<HttpChannel<IN, OUT>> p = Promises.prepare();
 
-		take(1).consume(new Consumer<HttpChannel<IN, OUT>>() {
+		subscribe(new Subscriber<HttpChannel<IN, OUT>>() {
 			@Override
-			public void accept(HttpChannel<IN, OUT> inoutHttpChannel) {
+			public void onSubscribe(Subscription s) {
+				s.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(HttpChannel<IN, OUT> inoutHttpChannel) {
 				final NettyHttpClientChannel ch = ((NettyHttpClientChannel) inoutHttpChannel);
 				ch
 						.getNettyRequest()
@@ -151,10 +157,15 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 					addWritePublisher(handler.apply(inoutHttpChannel));
 				}
 			}
-		}, new Consumer<Throwable>() {
+
 			@Override
-			public void accept(Throwable throwable) {
-				p.onError(throwable);
+			public void onError(Throwable t) {
+				p.onError(t);
+			}
+
+			@Override
+			public void onComplete() {
+
 			}
 		});
 		return p;
@@ -243,7 +254,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
 			body.append(data);
 			if (flush) {
-				write(1, null, true);
+				write((Object)null, null, true);
 			}
 		}
 
