@@ -160,7 +160,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected Consumer<Void> completeConsumer(ChannelStream<IN, OUT> ch) {
+	protected Consumer<Void> completeConsumer(final ChannelStream<IN, OUT> ch) {
 		return new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
