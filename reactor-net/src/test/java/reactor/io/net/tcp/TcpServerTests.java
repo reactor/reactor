@@ -23,6 +23,7 @@ import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ import reactor.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.*;
@@ -41,12 +43,15 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.HttpServer;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
+import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Control;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -55,6 +60,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -494,6 +500,65 @@ public class TcpServerTests {
 
 		//zmq.destroy();
 	}
+
+	@Test
+	@Ignore
+	public void test5() throws Exception {
+		//Hot stream of data, could be injected from anywhere
+		Broadcaster<String> broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
+
+		//Will go up to 16 parallel threads to proceed clients
+		final int MAX_PARALLEL = 16;
+
+		//Get a reference to the tail of the operation pipeline (microbatching + partitioning)
+		Stream<Stream<List<String>>> tail = broadcaster
+				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
+				.buffer(10, 1, TimeUnit.SECONDS)
+						//create N substreams passed each time a new one is returned to the next operation
+				.groupBy(new Function<List<String>, Integer>(){
+					int i = 0;
+					//the partition strategy will iterate over an index i and modulate to get a number between 0..15
+					//that's 15 possible new substream, we need at least an incoming array to proceed to a new stream (or reuse the previously created for the same index)
+					public Integer apply(List<String> data){
+						return i++ % MAX_PARALLEL;
+					}
+				})
+						//make sure the generated substreams are dispatched on different dispatchers (resulting in different thread)
+				.map(partition -> partition.dispatchOn(Environment.cachedDispatcher()));
+
+
+
+		//create a server dispatching data on the default shared dispatcher, and serializing/deserializing as string
+		HttpServer<String, String> httpServer = NetStreams.httpServer(server -> server
+				.codec(StandardCodecs.STRING_CODEC)
+				.listen(8080)
+				.dispatcher(Environment.sharedDispatcher()));
+
+		//Listen for anything exactly hitting the root URI and route the incoming connection request to the callback
+		httpServer.get("/", (request) -> {
+			//prepare a response header to be appended first before any reply
+			request.addResponseHeader("X-CUSTOM", "12345");
+			//attach to the shared tail, take the most recent generated substream and merge it to the high level stream
+			//returning a stream of String from each microbatch merged
+			return tail
+					.take(1)
+							//make the partition the actual stream returned
+					.flatMap(partition -> partition)
+							//split each microbatch data into individual data
+					.flatMap(microbatch -> Streams.from(microbatch));
+	});
+
+	httpServer.start().awaitSuccess();
+
+
+	for (int i = 0; i < 30; i++) {
+		Thread.sleep(1000);
+		broadcaster.onNext(System.currentTimeMillis() + "\n" );
+	}
+
+	Thread.sleep(30000);
+
+}
 
 	public static class Pojo {
 		private String name;
