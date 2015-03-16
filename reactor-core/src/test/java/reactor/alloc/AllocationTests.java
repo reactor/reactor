@@ -16,11 +16,12 @@
 
 package reactor.alloc;
 
-import com.gs.collections.impl.list.mutable.FastList;
 import org.junit.Test;
 import reactor.AbstractPerformanceTest;
 import reactor.core.Environment;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -44,13 +45,15 @@ public class AllocationTests extends AbstractPerformanceTest {
 		int threadCnt = Environment.PROCESSORS;
 		CountDownLatch latch = new CountDownLatch(threadCnt);
 		Allocator<RecyclableNumber> alloc = new ThreadPartitionedAllocator<>(RecyclableNumber::new);
-		List<Long> threadIds = FastList.newList();
+		List<Long> threadIds = Collections.synchronizedList(new ArrayList<Long>());
 
 		fork(threadCnt, () -> {
 			long threadId = Thread.currentThread().getId();
 			alloc.allocate().get().setValue(threadId);
 			threadIds.add(threadId);
 		});
+
+		Thread.sleep(500);
 
 		fork(threadCnt, () -> {
 			if (threadIds.contains(alloc.allocate().get().longValue())) {
