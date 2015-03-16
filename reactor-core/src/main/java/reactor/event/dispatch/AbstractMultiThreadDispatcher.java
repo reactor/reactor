@@ -2,7 +2,10 @@ package reactor.event.dispatch;
 
 import reactor.alloc.factory.BatchFactorySupplier;
 import reactor.function.Supplier;
-import reactor.util.PartitionedReferencePile;
+import reactor.queue.BlockingQueueFactory;
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Base implementation for multi-threaded dispatchers
@@ -13,10 +16,15 @@ import reactor.util.PartitionedReferencePile;
  */
 public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDispatcher {
 
-	private final int                                       backlog;
-	private final int                                       numberThreads;
-	private final PartitionedReferencePile<MultiThreadTask> tailRecursionPile;
-	private final BatchFactorySupplier<MultiThreadTask>     taskFactory;
+	private static final AtomicLongFieldUpdater<AbstractMultiThreadDispatcher> MPSC_ROUTER
+			= AtomicLongFieldUpdater.newUpdater(AbstractMultiThreadDispatcher.class, "recursiveTaskRouter");
+
+	private volatile long recursiveTaskRouter = 0L;
+
+	private final int                                   backlog;
+	private final int                                   numberThreads;
+	private final BlockingQueue<Task>                   recursiveTasks;
+	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
 	protected AbstractMultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
@@ -30,10 +38,7 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 					}
 				}
 		);
-		this.tailRecursionPile = new PartitionedReferencePile<MultiThreadTask>(
-				numberThreads,
-				taskFactory
-		);
+		this.recursiveTasks = BlockingQueueFactory.createQueue();
 	}
 
 	public int getBacklog() {
@@ -42,7 +47,12 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 
 	@Override
 	protected Task allocateRecursiveTask() {
-		return tailRecursionPile.get();
+		return taskFactory.get();
+	}
+
+	@Override
+	protected void addToTailRecursionPile(Task task) {
+		recursiveTasks.add(task);
 	}
 
 	protected Task allocateTask() {
@@ -53,10 +63,12 @@ public abstract class AbstractMultiThreadDispatcher extends AbstractLifecycleDis
 		@Override
 		public void run() {
 			route(this);
-			synchronized (tailRecursionPile) {
-				for (MultiThreadTask t : tailRecursionPile.collect()) {
+			if (MPSC_ROUTER.compareAndSet(AbstractMultiThreadDispatcher.this, 0L, Thread.currentThread().getId())) {
+				Task t;
+				while (null != (t = recursiveTasks.poll())) {
 					route(t);
 				}
+				recursiveTaskRouter = 0L;
 			}
 		}
 	}
