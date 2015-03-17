@@ -3,7 +3,6 @@ package reactor.io.net.udp;
 import io.netty.util.NetUtil;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +18,8 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -48,13 +49,11 @@ public class UdpServerTests {
 	}
 
 	@Test
-	@Ignore
 	public void supportsReceivingDatagrams() throws InterruptedException {
-		final int port = SocketUtils.findAvailableTcpPort();
+		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
 
-		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(s ->
-						s
+		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(s ->	s
 								.env(env)
 								.listen(port)
 								.codec(StandardCodecs.BYTE_ARRAY_CODEC)
@@ -73,7 +72,7 @@ public class UdpServerTests {
 			try {
 				DatagramChannel udp = DatagramChannel.open();
 				udp.configureBlocking(true);
-				udp.connect(new InetSocketAddress(port));
+				udp.connect(new InetSocketAddress(InetAddress.getLocalHost(), port));
 
 				byte[] data = new byte[1024];
 				new Random().nextBytes(data);
@@ -91,34 +90,33 @@ public class UdpServerTests {
 	}
 
 	@Test
-	@Ignore
 	@SuppressWarnings("unchecked")
 	public void supportsUdpMulticast() throws InterruptedException,
 			UnknownHostException,
 			SocketException,
 			TimeoutException,
 			ExecutionException {
-		final int port = SocketUtils.findAvailableTcpPort();
+		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(Environment.PROCESSORS ^ 2);
 
 		final InetAddress multicastGroup = InetAddress.getByName("230.0.0.1");
 		final NetworkInterface multicastIface = findMulticastInterface();
-		final DatagramServer[] servers = new DatagramServer[Environment.PROCESSORS];
+		final Collection<DatagramServer<byte[], byte[]>> servers = new ArrayList<>();
 
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
-			servers[i] = NetStreams.<byte[], byte[]>udpServer(NettyDatagramServer.class, spec -> spec
+			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(NettyDatagramServer.class, spec -> spec
 					.env(env)
 					.dispatcher(Environment.SHARED)
 					.listen(port)
 					.multicastInterface(multicastIface)
 					.options(new ServerSocketOptions()
-							.reuseAddr(true))
+							.reuseAddr(true)
+							.protocolFamily(StandardProtocolFamily.INET))
 					.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 			);
 
-			servers[i].consume(new Consumer<byte[]>() {
+			server.consume(ch -> ch.consume(new Consumer<byte[]>() {
 				int count = 0;
-
 
 				@Override
 				public void accept(byte[] bytes) {
@@ -127,10 +125,11 @@ public class UdpServerTests {
 						latch.countDown();
 					}
 				}
-			});
+			}));
 
-			servers[i].start().await();
-			servers[i].join(multicastGroup).await();
+			server.start().onSuccess(b -> server.join(multicastGroup, multicastIface)).await();
+
+			servers.add(server);
 		}
 
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
@@ -165,7 +164,7 @@ public class UdpServerTests {
 		Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
 		while (ifaces.hasMoreElements()) {
 			NetworkInterface iface = ifaces.nextElement();
-			if (!iface.isLoopback() && iface.supportsMulticast()) {
+			if (!iface.isLoopback() && iface.supportsMulticast() && iface.isUp()) {
 				return iface;
 			}
 		}

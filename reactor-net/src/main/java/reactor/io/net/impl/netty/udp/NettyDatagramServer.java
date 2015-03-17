@@ -20,8 +20,8 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.DatagramChannelConfig;
 import io.netty.channel.socket.DatagramPacket;
+import io.netty.channel.socket.InternetProtocolFamily;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.NetUtil;
@@ -48,6 +48,7 @@ import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ProtocolFamily;
 
 /**
  * {@link reactor.io.net.udp.DatagramServer} implementation built on Netty.
@@ -63,7 +64,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private final    Bootstrap                   bootstrap;
 	private final    EventLoopGroup              ioGroup;
 	private volatile NioDatagramChannel          channel;
-	private volatile NettyChannelStream<IN, OUT> netChannel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
 	                           @Nonnull Dispatcher dispatcher,
@@ -88,35 +88,28 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
 		}
 
+		final InternetProtocolFamily family = toNettyFamily(options.protocolFamily());
+
 		this.bootstrap = new Bootstrap()
 				.group(ioGroup)
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
+				.option(ChannelOption.AUTO_READ, false)
+				.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout())
 				.channelFactory(new ChannelFactory<Channel>() {
+									@Override
+									public Channel newChannel() {
+										return new NioDatagramChannel(family);
+									}
+								})
+				.handler(new ChannelInitializer<NioDatagramChannel>() {
 					@Override
-					public Channel newChannel() {
-						final NioDatagramChannel ch = new NioDatagramChannel();
-						DatagramChannelConfig config = ch.config();
-						config.setReceiveBufferSize(options.rcvbuf());
-						config.setSendBufferSize(options.sndbuf());
-						config.setReuseAddress(options.reuseAddr());
-						config.setAutoRead(false);
-
-						if (null != multicastInterface) {
-							config.setNetworkInterface(multicastInterface);
-						}
-
+					public void initChannel(final NioDatagramChannel ch) throws Exception {
 						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 						}
-						return ch;
-					}
-				}).handler(new ChannelInitializer<NioDatagramChannel>() {
-					@Override
-					public void initChannel(final NioDatagramChannel ch) throws Exception {
-						ch.config().setConnectTimeoutMillis(options.timeout());
-						ch.config().setAutoRead(false);
+
 						bindChannel(ch, options.prefetch());
 					}
 				});
@@ -128,6 +121,20 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		}
 		if (null != multicastInterface) {
 			bootstrap.option(ChannelOption.IP_MULTICAST_IF, multicastInterface);
+		}
+	}
+
+	private InternetProtocolFamily toNettyFamily(ProtocolFamily family) {
+		if (family == null) {
+			return null;
+		}
+		switch (family.name()) {
+			case "INET":
+				return InternetProtocolFamily.IPv4;
+			case "INET6":
+				return InternetProtocolFamily.IPv6;
+			default:
+				throw new IllegalArgumentException("Unsupported protocolFamily: " + family.name());
 		}
 	}
 
@@ -189,12 +196,12 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface) {
+	public Promise<Boolean> join(final InetAddress multicastAddress, NetworkInterface iface) {
 		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -206,13 +213,23 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		} else {
 			future = channel.joinGroup(multicastAddress);
 		}
-		future.addListener(new PromiseCompletingListener(d));
+		future.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				log.info("JOIN {}", multicastAddress);
+				if (future.isSuccess()) {
+					d.onNext(true);
+				} else {
+					d.onError(future.cause());
+				}
+			}
+		});
 
 		return d;
 	}
 
 	@Override
-	public Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface) {
+	public Promise<Boolean> leave(final InetAddress multicastAddress, NetworkInterface iface) {
 		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
@@ -221,7 +238,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		final ChannelFuture future;
 		if (null != iface) {
@@ -229,7 +246,17 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		} else {
 			future = channel.leaveGroup(multicastAddress);
 		}
-		future.addListener(new PromiseCompletingListener(d));
+		future.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				log.info("LEAVE {}", multicastAddress);
+				if (future.isSuccess()) {
+					d.onNext(true);
+				} else {
+					d.onError(future.cause());
+				}
+			}
+		});
 
 		return d;
 	}
@@ -271,26 +298,6 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 					}
 				});
 
-
-
 		return netChannel;
 	}
-
-	private static class PromiseCompletingListener implements ChannelFutureListener {
-		private final Promise<Void> d;
-
-		private PromiseCompletingListener(Promise<Void> d) {
-			this.d = d;
-		}
-
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			if (future.isSuccess()) {
-				d.onComplete();
-			} else {
-				d.onError(future.cause());
-			}
-		}
-	}
-
 }

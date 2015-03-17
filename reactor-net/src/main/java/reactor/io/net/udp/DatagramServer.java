@@ -68,9 +68,9 @@ public abstract class DatagramServer<IN, OUT>
 	}
 
 	/**
-	 * Start this server.
+	 * Start and bind this {@literal DatagramServer} to the configured listen port.
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link DatagramServer} is started
 	 */
 	public abstract Promise<Boolean> start();
 
@@ -83,9 +83,9 @@ public abstract class DatagramServer<IN, OUT>
 	 * @param iface
 	 * 		interface to use for multicast
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
-	public abstract Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface);
+	public abstract Promise<Boolean> join(InetAddress multicastAddress, NetworkInterface iface);
 
 	/**
 	 * Join a multicast group.
@@ -93,9 +93,9 @@ public abstract class DatagramServer<IN, OUT>
 	 * @param multicastAddress
 	 * 		multicast address of the group to join
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
-	public Promise<Void> join(InetAddress multicastAddress) {
+	public Promise<Boolean> join(InetAddress multicastAddress) {
 		return join(multicastAddress, null);
 	}
 
@@ -107,9 +107,9 @@ public abstract class DatagramServer<IN, OUT>
 	 * @param iface
 	 * 		interface to use for multicast
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
-	public abstract Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface);
+	public abstract Promise<Boolean> leave(InetAddress multicastAddress, NetworkInterface iface);
 
 	/**
 	 * Leave a multicast group.
@@ -117,9 +117,9 @@ public abstract class DatagramServer<IN, OUT>
 	 * @param multicastAddress
 	 * 		multicast address of the group to leave
 	 *
-	 * @return {@literal this}
+	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
-	public Promise<Void> leave(InetAddress multicastAddress) {
+	public Promise<Boolean> leave(InetAddress multicastAddress) {
 		return leave(multicastAddress, null);
 	}
 

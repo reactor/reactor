@@ -16,6 +16,8 @@
 
 package reactor.io.net.config;
 
+import java.net.ProtocolFamily;
+
 /**
  * Encapsulates configuration options for server sockets.
  *
@@ -23,8 +25,10 @@ package reactor.io.net.config;
  */
 public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions> {
 
-	private int     backlog   = 1000;
-	private boolean reuseAddr = true;
+	private int     		backlog   		= 1000;
+	private boolean 		reuseAddr 		= true;
+	private ProtocolFamily 	protocolFamily 	= null;
+
 
 	/**
 	 * Returns the configured pending connection backlog for the socket.
@@ -65,6 +69,25 @@ public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions
 	 */
 	public ServerSocketOptions reuseAddr(boolean reuseAddr) {
 		this.reuseAddr = reuseAddr;
+		return this;
+	}
+
+	/**
+	 * Returns the configured protocol family for the socket.
+	 *
+	 * @return the configured protocol family for the socket
+	 */
+	public ProtocolFamily protocolFamily() { return protocolFamily; }
+
+	/**
+	 * Configures the protocol family for the socket.
+	 *
+	 * @param protocolFamily the protocol family for the socket, or null for the system default family
+	 *
+	 * @return {@code this}
+	 */
+	public ServerSocketOptions protocolFamily(ProtocolFamily protocolFamily) {
+		this.protocolFamily = protocolFamily;
 		return this;
 	}
 }
