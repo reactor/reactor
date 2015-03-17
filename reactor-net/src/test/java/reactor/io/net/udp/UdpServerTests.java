@@ -3,7 +3,7 @@ package reactor.io.net.udp;
 import io.netty.util.NetUtil;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
@@ -48,7 +48,8 @@ public class UdpServerTests {
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 	}
 
-	@Test
+	//@Test
+	@Ignore
 	public void supportsReceivingDatagrams() throws InterruptedException {
 		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -89,8 +90,9 @@ public class UdpServerTests {
 		assertThat("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 	}
 
-	@Test
+	//@Test
 	@SuppressWarnings("unchecked")
+	@Ignore
 	public void supportsUdpMulticast() throws InterruptedException,
 			UnknownHostException,
 			SocketException,
