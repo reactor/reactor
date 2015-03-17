@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
-	static Environment ENV;
+	static Environment           ENV;
 	static Kryo                  KRYO;
 	static KryoCodec<Data, Data> KRYO_CODEC;
 	static ZeroMQ<Data>          ZMQ;
@@ -35,7 +35,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@BeforeClass
 	public static void classSetup() {
-		ENV=Environment.initializeIfEmpty().assignErrorJournal();
+		ENV = Environment.initializeIfEmpty().assignErrorJournal();
 		KRYO = new Kryo();
 		KRYO_CODEC = new KryoCodec<>(KRYO, false);
 		ZMQ = new ZeroMQ<Data>(ENV, SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
@@ -44,7 +44,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@AfterClass
 	public static void classCleanup() {
 		ZMQ.shutdown();
-		ENV.shutdown();
+		//ENV.shutdown();
 	}
 
 	@Override
@@ -85,9 +85,9 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
 		   .onSuccess(ch -> {
-					   ch.consume(d -> latch.countDown());
-					   ch.sink(Streams.just(data));
-				   }
+			              ch.consume(d -> latch.countDown());
+			              ch.sink(Streams.just(data));
+		              }
 		   );
 
 		assertTrue("REQ/REP socket exchanged data", latch.await(5, TimeUnit.SECONDS));
