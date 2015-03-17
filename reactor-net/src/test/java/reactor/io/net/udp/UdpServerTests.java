@@ -3,28 +3,16 @@ package reactor.io.net.udp;
 import io.netty.util.NetUtil;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.fn.Consumer;
-import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetStreams;
-import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.impl.netty.udp.NettyDatagramServer;
-import reactor.io.net.tcp.support.SocketUtils;
 
-import java.io.IOException;
-import java.net.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.Enumeration;
-import java.util.Random;
-import java.util.concurrent.*;
-
-import static org.hamcrest.MatcherAssert.assertThat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Jon Brisbin
@@ -49,7 +37,7 @@ public class UdpServerTests {
 	}
 
 	//@Test
-	@Ignore
+	/*@Ignore
 	public void supportsReceivingDatagrams() throws InterruptedException {
 		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -160,7 +148,7 @@ public class UdpServerTests {
 		for (DatagramServer s : servers) {
 			s.shutdown().await();
 		}
-	}
+	}*/
 
 	private NetworkInterface findMulticastInterface() throws SocketException {
 		Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
