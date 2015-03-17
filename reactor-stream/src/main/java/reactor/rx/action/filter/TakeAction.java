@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.filter;
 
-import reactor.fn.Predicate;
 import reactor.rx.action.Action;
 
 /**
@@ -24,32 +23,29 @@ import reactor.rx.action.Action;
  */
 public class TakeAction<T> extends Action<T, T> {
 
-	private final Predicate<T> endPredicate;
 	private final long         limit;
 	private long counted = 0l;
 
-	public TakeAction(Predicate<T> predicate, long limit) {
-		this.endPredicate = predicate;
+	public TakeAction(long limit) {
 		this.limit = limit;
 	}
 
 	@Override
 	protected void doNext(T ev) {
-		if (++counted >= limit || (endPredicate != null && !endPredicate.test(ev))) {
+		broadcastNext(ev);
+
+		if (++counted >= limit) {
 			cancel();
 			broadcastComplete();
-		}else{
-			broadcastNext(ev);
 		}
-
 	}
 
 
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"take=" + limit + (endPredicate == null ?
-				", with-end-predicate" : "") +
+				"take=" + limit +
+				"counted=" + counted +
 				'}';
 	}
 }

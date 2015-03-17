@@ -1545,8 +1545,13 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> take(long max) {
-		return takeWhile(max, null);
+	public final Stream<O> take(final long max) {
+		return lift(new Supplier<Action<O, O>>() {
+			@Override
+			public Action<O, O> get() {
+				return new TakeAction<O>(max);
+			}
+		});
 	}
 
 	/**
@@ -1587,34 +1592,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Create a new {@code Stream} that will signal next elements while {@param limitMatcher} is true.
 	 *
-	 * @param limitMatcher the predicate to evaluate for stop broadcasting events
-	 * @return a new limited {@code Stream}
-	 * @since 2.0
-	 */
-	public final Stream<O> takeWhile(Predicate<O> limitMatcher) {
-		return takeWhile(Long.MAX_VALUE, limitMatcher);
-	}
-
-	/**
-	 * Create a new {@code Stream} that will signal next elements while {@param limitMatcher} is true or
-	 * up to {@param max} times.
-	 *
-	 * @param max          the number of times to broadcast next signals before dropping
 	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> takeWhile(final long max, final Predicate<O> limitMatcher) {
-		if (max > 0) {
+	public final Stream<O> takeWhile(final Predicate<O> limitMatcher) {
 			return lift(new Supplier<Action<O, O>>() {
 				@Override
 				public Action<O, O> get() {
-					return new TakeAction<O>(limitMatcher, max);
+					return new TakeWhileAction<O>(limitMatcher);
 				}
 			});
-		} else {
-			return Streams.empty();
-		}
 	}
 
 	/**
