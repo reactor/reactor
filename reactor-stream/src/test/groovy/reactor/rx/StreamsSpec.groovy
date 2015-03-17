@@ -2836,11 +2836,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'take to the first 2 elements'
-			def value = stream.take(2).tap().get()
+			def value = stream.take(2).tap()
 
 		then:
 			'the second is the last available'
-			value == 'test2'
+			value.get() == 'test'
 
 		when:
 			'take until test2 is seen'
@@ -2855,7 +2855,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the second is the last available'
-			value2.get() == 'test2'
+			value2.get() == 'test1'
 	}
 
 

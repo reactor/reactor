@@ -514,17 +514,22 @@ public class TcpServerTests {
 		Stream<Stream<List<String>>> tail = broadcaster
 				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
 				.buffer(10, 1, TimeUnit.SECONDS)
+
 						//create N substreams passed each time a new one is returned to the next operation
-				.groupBy(new Function<List<String>, Integer>(){
+				.groupBy(new Function<List<String>, Integer>() {
 					int i = 0;
+
 					//the partition strategy will iterate over an index i and modulate to get a number between 0..15
-					//that's 15 possible new substream, we need at least an incoming array to proceed to a new stream (or reuse the previously created for the same index)
-					public Integer apply(List<String> data){
+					//that's 15 possible new substream, we need at least an incoming array to proceed to a new stream (or reuse
+					// the previously created for the same index)
+					public Integer apply(List<String> data) {
 						return i++ % MAX_PARALLEL;
 					}
 				})
 						//make sure the generated substreams are dispatched on different dispatchers (resulting in different thread)
-				.map(partition -> partition.dispatchOn(Environment.cachedDispatcher()));
+				.map(partition -> partition.dispatchOn(Environment.cachedDispatcher()))
+				.broadcast()
+				.keepAlive();
 
 
 

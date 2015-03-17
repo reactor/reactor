@@ -35,11 +35,11 @@ public class TakeAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doNext(T ev) {
-		broadcastNext(ev);
-
 		if (++counted >= limit || (endPredicate != null && !endPredicate.test(ev))) {
 			cancel();
 			broadcastComplete();
+		}else{
+			broadcastNext(ev);
 		}
 
 	}
