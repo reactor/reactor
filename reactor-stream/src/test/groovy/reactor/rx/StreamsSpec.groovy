@@ -2840,7 +2840,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the second is the last available'
-			value.get() == 'test'
+			value.get() == 'test2'
 
 		when:
 			'take until test2 is seen'
