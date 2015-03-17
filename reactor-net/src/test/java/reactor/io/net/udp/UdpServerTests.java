@@ -1,8 +1,6 @@
 package reactor.io.net.udp;
 
 import io.netty.util.NetUtil;
-import org.junit.After;
-import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
@@ -24,13 +22,13 @@ public class UdpServerTests {
 	Environment     env;
 	ExecutorService threadPool;
 
-	@Before
+	//@Before
 	public void setup() {
 		env = Environment.initializeIfEmpty().assignErrorJournal();
 		threadPool = Executors.newCachedThreadPool();
 	}
 
-	@After
+	//@After
 	public void cleanup() throws InterruptedException {
 		threadPool.shutdown();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
