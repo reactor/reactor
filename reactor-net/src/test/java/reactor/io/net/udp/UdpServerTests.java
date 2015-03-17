@@ -1,16 +1,29 @@
 package reactor.io.net.udp;
 
 import io.netty.util.NetUtil;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
+import reactor.fn.Consumer;
+import reactor.io.codec.StandardCodecs;
+import reactor.io.net.NetStreams;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
+import reactor.io.net.tcp.support.SocketUtils;
 
-import java.net.NetworkInterface;
-import java.net.SocketException;
+import java.io.IOException;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.Random;
+import java.util.concurrent.*;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin
@@ -34,16 +47,16 @@ public class UdpServerTests {
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 	}
 
-	//@Test
-	/*@Ignore
+	@Test
+	@Ignore
 	public void supportsReceivingDatagrams() throws InterruptedException {
 		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
 
-		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(s ->	s
-								.env(env)
-								.listen(port)
-								.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(s -> s
+						.env(env)
+						.listen(port)
+						.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 		);
 
 		server.consume(ch -> ch.consume(new Consumer<byte[]>() {
@@ -76,7 +89,7 @@ public class UdpServerTests {
 		assertThat("latch was counted down", latch.await(30, TimeUnit.SECONDS));
 	}
 
-	//@Test
+	@Test
 	@SuppressWarnings("unchecked")
 	@Ignore
 	public void supportsUdpMulticast() throws InterruptedException,
@@ -146,7 +159,7 @@ public class UdpServerTests {
 		for (DatagramServer s : servers) {
 			s.shutdown().await();
 		}
-	}*/
+	}
 
 	private NetworkInterface findMulticastInterface() throws SocketException {
 		Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
