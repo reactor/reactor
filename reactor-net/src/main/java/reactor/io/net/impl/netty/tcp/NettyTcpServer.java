@@ -21,6 +21,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
@@ -98,16 +99,22 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_BACKLOG, options.backlog())
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.option(ChannelOption.SO_LINGER, options.linger())
-				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
 				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
 				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.childOption(ChannelOption.AUTO_READ, sslOptions != null)
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					public void initChannel(final SocketChannel ch) throws Exception {
+						SocketChannelConfig config = ch.config();
+						config.setReceiveBufferSize(options.rcvbuf());
+						config.setSendBufferSize(options.sndbuf());
+						config.setKeepAlive(options.keepAlive());
+						config.setReuseAddress(options.reuseAddr());
+						config.setSoLinger(options.linger());
+						config.setTcpNoDelay(options.tcpNoDelay());
+
+
 						if (log.isDebugEnabled()) {
 							log.debug("CONNECT {}", ch);
 						}
