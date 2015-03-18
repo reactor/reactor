@@ -33,7 +33,7 @@ class PersistentQueueSpec extends Specification {
 		new IndexedChronicleQueuePersistor<String>(
 				"persistent-queue",
 				StandardCodecs.STRING_CODEC,
-				true,
+				false,
 				false,
 				config
 		)
@@ -45,7 +45,7 @@ class PersistentQueueSpec extends Specification {
 		new IndexedChronicleQueuePersistor<T>(
 				"persistent-queue",
 				new JsonCodec<T, T>(type),
-				true,
+				false,
 				false,
 				config
 		)
@@ -85,9 +85,9 @@ class PersistentQueueSpec extends Specification {
 			"all data was read"
 			strings1 == strings2
 
-        cleanup:
-            wq.close()
-            rq.close()
+		cleanup:
+			wq.close()
+			rq.close()
 	}
 
 	def "Java Chronicle-based PersistentQueue is performant"() {
