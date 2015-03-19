@@ -25,7 +25,6 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -38,65 +37,127 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
-	private final AtomicLong refCount = new AtomicLong(0l);
-
 	private final Sequence workSequence   = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 	private final Sequence pendingRequest = new Sequence(0);
 
-	private Subscription upstreamSubscription;
 
 	/**
+	 *
+	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				BlockingWaitStrategy());
+				BlockingWaitStrategy(), true);
 	}
 
 	/**
 	 *
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
+		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
+				BlockingWaitStrategy(), autoCancel);
+	}
+
+	/**
 	 * @param service
 	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service) {
-		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy());
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * @param name
+	 *
+	 * @param service
+	 * @param autoCancel
+	 * @param <E>
 	 * @return
 	 */
-	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
-		return create(name, bufferSize, new BlockingWaitStrategy());
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, boolean autoCancel) {
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
 	}
 
 
 	/**
 	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
+		return create(name, bufferSize, new BlockingWaitStrategy(), true);
+	}
+
+	/**
+	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
+		return create(name, bufferSize, new BlockingWaitStrategy(), autoCancel);
+	}
+
+
+	/**
 	 * @param service
 	 * @param bufferSize
 	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize) {
-		return create(service, bufferSize, new BlockingWaitStrategy());
-	}
-
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param strategy
-	 * @return
-	 */
-	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
-			strategy) {
-		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy);
+		return create(service, bufferSize, new BlockingWaitStrategy(), true);
 	}
 
 	/**
 	 *
+	 * @param service
+	 * @param bufferSize
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
+		return create(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
+	}
+
+
+	/**
+	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param strategy
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
+			strategy) {
+		return create(name, bufferSize, strategy, true);
+	}
+
+	/**
+	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param strategy
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
+			strategy, boolean autoCancel) {
+		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy, autoCancel);
+	}
+
+	/**
 	 * @param executor
 	 * @param bufferSize
 	 * @param strategy
@@ -105,33 +166,27 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
 			strategy) {
-		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy);
+		return create(executor, bufferSize, strategy, true);
 	}
 
-
-	static <E> void route(MutableSignal<E> task, Subscription s, Subscriber<? super E> sub) {
-		try {
-			if (task.type == SType.COMPLETE) {
-				if (s != null) {
-					s.cancel();
-				}
-				sub.onComplete();
-			} else if (task.type == SType.ERROR) {
-				if (s != null) {
-					s.cancel();
-				}
-				sub.onError(task.throwable);
-			} else if (task.value != null) {
-				sub.onNext(task.value);
-			}
-		} catch (Throwable t) {
-			sub.onError(t);
-		}
+	/**
+	 *
+	 * @param executor
+	 * @param bufferSize
+	 * @param strategy
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
+			strategy, boolean autoCancel) {
+		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, autoCancel);
 	}
 
-	private RingBufferWorkProcessor( String name, ExecutorService executor,
-	                                 int bufferSize,
-	                                 WaitStrategy waitStrategy) {
+	private RingBufferWorkProcessor(String name, ExecutorService executor,
+	                                int bufferSize,
+	                                WaitStrategy waitStrategy, boolean autoCancel) {
+		super(autoCancel);
 
 		this.executor = executor == null ?
 				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
@@ -177,21 +232,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			p.s = new RingBufferSubscription(sub, p);
 
 			//start the subscriber thread
-			refCount.incrementAndGet();
+			incrementSubscribers();
 			executor.execute(p);
 
 		} catch (Throwable t) {
 			sub.onError(t);
 		}
-	}
-
-	@Override
-	public void onSubscribe(final Subscription s) {
-		if (this.upstreamSubscription != null) {
-			s.cancel();
-			return;
-		}
-		this.upstreamSubscription = s;
 	}
 
 	@Override
@@ -266,7 +312,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			Subscription parent = upstreamSubscription;
 
-			if(pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
+			if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 
 			if (parent != null) {
 				parent.request(n);
@@ -281,11 +327,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
 			} finally {
-				Subscription parent = upstreamSubscription;
-				if (refCount.decrementAndGet() == 0l && parent != null) {
-					upstreamSubscription = null;
-					parent.cancel();
-				}
+				decrementSubscribers();
 			}
 		}
 	}
@@ -403,7 +445,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 										//terminate
 										running.set(false);
 										//process last signal
-										route(dataProvider.get(cachedAvailableSequence), s, sub);
+										RingBufferProcessor.route(dataProvider.get(cachedAvailableSequence), s, sub);
 										//short-circuit
 										throw AlertException.INSTANCE;
 									}
@@ -419,12 +461,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 							}
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
-							route(event, s, sub);
+							RingBufferProcessor.route(event, s, sub);
 							nextSequence++;
 						} else {
 							//Complete or Error are terminal events, we shutdown the processor and process the signal
 							running.set(false);
-							route(event, s, sub);
+							RingBufferProcessor.route(event, s, sub);
 							throw AlertException.INSTANCE;
 						}
 

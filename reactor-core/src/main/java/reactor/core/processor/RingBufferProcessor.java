@@ -25,7 +25,6 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -38,26 +37,42 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
-	private final AtomicLong refCount = new AtomicLong(0l);
-	//private final Sequence workSequence = new Sequence(-1l);
-
-	private Subscription upstreamSubscription;
 
 	/**
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create() {
-		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new BlockingWaitStrategy());
+		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
 	}
 
 	/**
 	 *
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(boolean autoCancel) {
+		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
+	}
+
+	/**
 	 * @param service
 	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service) {
-		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy());
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
+	}
+
+	/**
+	 *
+	 * @param service
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service, boolean autoCancel) {
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -65,7 +80,19 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize) {
-		return create(name, bufferSize, new BlockingWaitStrategy());
+		return create(name, bufferSize, new BlockingWaitStrategy(), true);
+	}
+
+	/**
+	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
+		return create(name, bufferSize, new BlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -75,7 +102,19 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize) {
-		return create(service, bufferSize, new BlockingWaitStrategy());
+		return create(service, bufferSize, new BlockingWaitStrategy(), true);
+	}
+
+	/**
+	 *
+	 * @param service
+	 * @param bufferSize
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
+		return create(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -85,7 +124,20 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true);
+	}
+
+	/**
+	 *
+	 * @param name
+	 * @param bufferSize
+	 * @param strategy
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, boolean autoCancel) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, autoCancel);
 	}
 
 	/**
@@ -96,7 +148,20 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy);
+		return create(service, bufferSize, strategy, true);
+	}
+
+	/**
+	 *
+	 * @param service
+	 * @param bufferSize
+	 * @param strategy
+	 * @param autoCancel
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy, boolean autoCancel) {
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, autoCancel);
 	}
 
 
@@ -123,7 +188,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	private RingBufferProcessor(String name,
 	                            ExecutorService executor,
 	                            int bufferSize,
-	                            WaitStrategy waitStrategy) {
+	                            WaitStrategy waitStrategy,
+	                            boolean autoCancel) {
+		super(autoCancel);
 
 		this.executor = executor == null ?
 				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
@@ -168,21 +235,12 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			p.s = new RingBufferSubscription(pendingRequest, sub, p);
 
 			//start the subscriber thread
-			refCount.incrementAndGet();
+			incrementSubscribers();
 			executor.execute(p);
 
 		} catch (Throwable t) {
 			sub.onError(t);
 		}
-	}
-
-	@Override
-	public void onSubscribe(final Subscription s) {
-		if (this.upstreamSubscription != null) {
-			s.cancel();
-			return;
-		}
-		this.upstreamSubscription = s;
 	}
 
 	@Override
@@ -268,10 +326,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			if (toPublish > 0l && n != Long.MAX_VALUE) {
 				toRequest = n - Math.abs(n - toPublish);
 
-				if(pendingRequest.addAndGet(toPublish) < 0) pendingRequest.set(Long.MAX_VALUE);
+				if (pendingRequest.addAndGet(toPublish) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
-				if(pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
+				if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			}
 
 			if (toRequest > 0l) {
@@ -289,11 +347,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
 			} finally {
-				Subscription subscription = upstreamSubscription;
-				if (refCount.decrementAndGet() == 0l && subscription != null) {
-					upstreamSubscription = null;
-					subscription.cancel();
-				}
+				decrementSubscribers();
 			}
 		}
 	}

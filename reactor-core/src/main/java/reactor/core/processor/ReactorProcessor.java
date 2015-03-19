@@ -16,7 +16,10 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A base processor
@@ -26,15 +29,48 @@ import reactor.fn.Consumer;
 public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E> {
 
 	protected static final int DEFAULT_BUFFER_SIZE = 1024;
-	protected static final int SMALL_BUFFER_SIZE = 32;
+	protected static final int SMALL_BUFFER_SIZE   = 32;
 
-	protected final  ClassLoader   context = new ClassLoader(Thread.currentThread()
+	protected final ClassLoader context = new ClassLoader(Thread.currentThread()
 			.getContextClassLoader()) {
 	};
+
+	private final AtomicLong refCount;
+
+	protected Subscription upstreamSubscription;
+
+	public ReactorProcessor(boolean autoCancel) {
+		this.refCount = autoCancel ? new AtomicLong(0l) : null;
+	}
 
 	@Override
 	public final void accept(E e) {
 		onNext(e);
+	}
+
+	@Override
+	public void onSubscribe(final Subscription s) {
+		if (this.upstreamSubscription != null) {
+			s.cancel();
+			return;
+		}
+		this.upstreamSubscription = s;
+	}
+
+	protected void incrementSubscribers(){
+		if(refCount != null){
+			refCount.incrementAndGet();
+		}
+	}
+
+	protected boolean decrementSubscribers(){
+		Subscription subscription = upstreamSubscription;
+		if (refCount != null && refCount.decrementAndGet() == 0l && subscription != null) {
+			upstreamSubscription = null;
+			subscription.cancel();
+			return true;
+		}
+		return false;
 	}
 
 	/**
