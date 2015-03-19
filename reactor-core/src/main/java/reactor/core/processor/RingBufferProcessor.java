@@ -165,17 +165,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	}
 
 
-	static <E> void route(MutableSignal<E> task, Subscription s, Subscriber<? super E> sub) {
+	static <E> void route(MutableSignal<E> task, Subscriber<? super E> sub) {
 		try {
 			if (task.type == SType.COMPLETE) {
-				if (s != null) {
-					s.cancel();
-				}
 				sub.onComplete();
 			} else if (task.type == SType.ERROR) {
-				if (s != null) {
-					s.cancel();
-				}
 				sub.onError(task.throwable);
 			} else if (task.value != null) {
 				sub.onNext(task.value);
@@ -448,7 +442,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 											//terminate
 											running.set(false);
 											//process last signal
-											route(dataProvider.get(availableSequence), s, sub);
+											route(dataProvider.get(availableSequence), sub);
 											//short-circuit
 											throw AlertException.INSTANCE;
 										}
@@ -464,12 +458,12 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 								}
 
 								//It's an unbounded subscriber or there is enough capacity to process the signal
-								route(event, s, sub);
+								route(event, sub);
 								nextSequence++;
 							} else {
 								//Complete or Error are terminal events, we shutdown the processor and process the signal
 								running.set(false);
-								route(event, s, sub);
+								route(event, sub);
 								throw AlertException.INSTANCE;
 							}
 						}

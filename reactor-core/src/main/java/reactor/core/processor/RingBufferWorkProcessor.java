@@ -445,7 +445,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 										//terminate
 										running.set(false);
 										//process last signal
-										RingBufferProcessor.route(dataProvider.get(cachedAvailableSequence), s, sub);
+										RingBufferProcessor.route(dataProvider.get(cachedAvailableSequence), sub);
 										//short-circuit
 										throw AlertException.INSTANCE;
 									}
@@ -461,12 +461,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 							}
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferProcessor.route(event, s, sub);
+							RingBufferProcessor.route(event, sub);
 							nextSequence++;
 						} else {
 							//Complete or Error are terminal events, we shutdown the processor and process the signal
 							running.set(false);
-							RingBufferProcessor.route(event, s, sub);
+							RingBufferProcessor.route(event, sub);
 							throw AlertException.INSTANCE;
 						}
 

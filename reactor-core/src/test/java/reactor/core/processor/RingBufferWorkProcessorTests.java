@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 public class RingBufferWorkProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
 
 	public RingBufferWorkProcessorTests() {
-		super(new TestEnvironment(2000, true), 3500);
+		super(new TestEnvironment(200000, true), 3500);
 	}
 
 	@Override
@@ -54,12 +54,6 @@ public class RingBufferWorkProcessorTests extends org.reactivestreams.tck.Identi
 
 	@Override
 	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
-		//IGNORE since subscribers see distinct data
-	}
-
-	@Override
-	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
-			Throwable {
 		//IGNORE since subscribers see distinct data
 	}
 
