@@ -51,11 +51,31 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
+	 *
+	 * @param service
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service) {
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy());
+	}
+
+	/**
 	 * @param name
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize) {
 		return create(name, bufferSize, new BlockingWaitStrategy());
+	}
+
+	/**
+	 * @param service
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize) {
+		return create(service, bufferSize, new BlockingWaitStrategy());
 	}
 
 	/**
@@ -65,7 +85,18 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(name, bufferSize, strategy);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy);
+	}
+
+	/**
+	 * @param service
+	 * @param bufferSize
+	 * @param strategy
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy) {
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy);
 	}
 
 
@@ -90,10 +121,13 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	private RingBufferProcessor(String name,
+	                            ExecutorService executor,
 	                            int bufferSize,
 	                            WaitStrategy waitStrategy) {
 
-		this.executor = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context));
+		this.executor = executor == null ?
+				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
+				executor;
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
 				new EventFactory<MutableSignal<E>>() {
@@ -233,10 +267,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 			if (toPublish > 0l && n != Long.MAX_VALUE) {
 				toRequest = n - Math.abs(n - toPublish);
-				pendingRequest.addAndGet(toPublish);
+
+				if(pendingRequest.addAndGet(toPublish) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
-				pendingRequest.addAndGet(n);
+				if(pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			}
 
 			if (toRequest > 0l) {
@@ -254,8 +289,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
 			} finally {
-				if (refCount.decrementAndGet() == 0l) {
-					upstreamSubscription.cancel();
+				Subscription subscription = upstreamSubscription;
+				if (refCount.decrementAndGet() == 0l && subscription != null) {
+					upstreamSubscription = null;
+					subscription.cancel();
 				}
 			}
 		}
@@ -353,7 +390,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 									if (nextSequence < availableSequence) {
 
 										//look ahead if the published event was a terminal signal
-										if(dataProvider.get(availableSequence).type != SType.NEXT){
+										if (dataProvider.get(availableSequence).type != SType.NEXT) {
 											//terminate
 											running.set(false);
 											//process last signal

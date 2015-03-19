@@ -48,18 +48,41 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	/**
 	 * @return
 	 */
-	public static <E> reactor.core.processor.RingBufferWorkProcessor<E> create() {
-		return create(reactor.core.processor.RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
+	public static <E> RingBufferWorkProcessor<E> create() {
+		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
 				BlockingWaitStrategy());
+	}
+
+	/**
+	 *
+	 * @param service
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service) {
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy());
 	}
 
 	/**
 	 * @param name
 	 * @return
 	 */
-	public static <E> reactor.core.processor.RingBufferWorkProcessor<E> create(String name, int bufferSize) {
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
 		return create(name, bufferSize, new BlockingWaitStrategy());
 	}
+
+
+	/**
+	 *
+	 * @param service
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize) {
+		return create(service, bufferSize, new BlockingWaitStrategy());
+	}
+
 
 	/**
 	 * @param name
@@ -67,9 +90,22 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	 * @param strategy
 	 * @return
 	 */
-	public static <E> reactor.core.processor.RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
+	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
 			strategy) {
-		return new reactor.core.processor.RingBufferWorkProcessor<E>(name, bufferSize, strategy);
+		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy);
+	}
+
+	/**
+	 *
+	 * @param executor
+	 * @param bufferSize
+	 * @param strategy
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
+			strategy) {
+		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy);
 	}
 
 
@@ -93,11 +129,14 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		}
 	}
 
-	private RingBufferWorkProcessor(String name,
-	                                int bufferSize,
-	                                WaitStrategy waitStrategy) {
+	private RingBufferWorkProcessor( String name, ExecutorService executor,
+	                                 int bufferSize,
+	                                 WaitStrategy waitStrategy) {
 
-		this.executor = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context));
+		this.executor = executor == null ?
+				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
+				executor;
+
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
 				new EventFactory<MutableSignal<E>>() {
@@ -109,9 +148,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				bufferSize,
 				waitStrategy
 		);
-
-		//bind eventProcessor sequence to observe the ringBuffer
-		ringBuffer.addGatingSequences(workSequence);
 
 		this.barrier = ringBuffer.newBarrier();
 	}
@@ -133,6 +169,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			//set eventProcessor sequence to ringbuffer index
 			p.getSequence().set(workSequence.get());
+
+			//bind eventProcessor sequence to observe the ringBuffer
+			ringBuffer.addGatingSequences(p.getSequence());
 
 			//prepare the subscriber subscription to this processor
 			p.s = new RingBufferSubscription(sub, p);
@@ -227,7 +266,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			Subscription parent = upstreamSubscription;
 
-			pendingRequest.addAndGet(n);
+			if(pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 
 			if (parent != null) {
 				parent.request(n);
@@ -242,8 +281,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
 			} finally {
-				if (refCount.decrementAndGet() == 0l) {
-					upstreamSubscription.cancel();
+				Subscription parent = upstreamSubscription;
+				if (refCount.decrementAndGet() == 0l && parent != null) {
+					upstreamSubscription = null;
+					parent.cancel();
 				}
 			}
 		}
