@@ -25,6 +25,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
@@ -32,9 +33,9 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.*;
@@ -48,7 +49,6 @@ import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
-import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
@@ -282,7 +282,7 @@ public class TcpServerTests {
 		}
 
 		latch.await(10, TimeUnit.SECONDS);
-		assertTrue("Latch was counted down:" +latch.getCount() , latch.getCount() == 0);
+		assertTrue("Latch was counted down:" + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -433,23 +433,23 @@ public class TcpServerTests {
 		);
 
 		server.consume(ch -> {
-				ch.consume(req -> {
-					ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
-					int len = buf.readableBytes();
-					DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-							HttpVersion.HTTP_1_1,
-							HttpResponseStatus.OK,
-							buf
-					);
-					resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
-					resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
-					resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
+			ch.consume(req -> {
+				ByteBuf buf = Unpooled.copiedBuffer("Hello World!".getBytes());
+				int len = buf.readableBytes();
+				DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
+						HttpVersion.HTTP_1_1,
+						HttpResponseStatus.OK,
+						buf
+				);
+				resp.headers().set(HttpHeaders.Names.CONTENT_LENGTH, len);
+				resp.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
+				resp.headers().set(HttpHeaders.Names.CONNECTION, "Keep-Alive");
 
-					ch.sink(Streams.just(resp));
-					if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
-						latch.countDown();
-					}
-				});
+				ch.sink(Streams.just(resp));
+				if (req.getMethod() == HttpMethod.GET && "/test".equals(req.getUri())) {
+					latch.countDown();
+				}
+			});
 		});
 
 		log.info("Starting HTTP server on http://localhost:{}/", port);
@@ -487,7 +487,7 @@ public class TcpServerTests {
 							} else {
 								log.info("data: {}", buff.asString());
 							}
-						}).map(d -> Buffer.wrap("Goodbye World!") )
+						}).map(d -> Buffer.wrap("Goodbye World!"))
 		);
 
 		assertTrue("Server was started", server.start().awaitSuccess(5, TimeUnit.SECONDS));
@@ -507,30 +507,13 @@ public class TcpServerTests {
 		//Hot stream of data, could be injected from anywhere
 		Broadcaster<String> broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
 
-		//Will go up to 16 parallel threads to proceed clients
-		final int MAX_PARALLEL = 16;
-
 		//Get a reference to the tail of the operation pipeline (microbatching + partitioning)
-		Stream<Stream<List<String>>> tail = broadcaster
+		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create();
+
+		broadcaster
 				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
 				.buffer(10, 1, TimeUnit.SECONDS)
-
-						//create N substreams passed each time a new one is returned to the next operation
-				.groupBy(new Function<List<String>, Integer>() {
-					int i = 0;
-
-					//the partition strategy will iterate over an index i and modulate to get a number between 0..15
-					//that's 15 possible new substream, we need at least an incoming array to proceed to a new stream (or reuse
-					// the previously created for the same index)
-					public Integer apply(List<String> data) {
-						return i++ % MAX_PARALLEL;
-					}
-				})
-						//make sure the generated substreams are dispatched on different dispatchers (resulting in different thread)
-				.map(partition -> partition.dispatchOn(Environment.cachedDispatcher()))
-				.broadcast()
-				.keepAlive();
-
+				.subscribe(processor);
 
 
 		//create a server dispatching data on the default shared dispatcher, and serializing/deserializing as string
@@ -545,25 +528,23 @@ public class TcpServerTests {
 			request.addResponseHeader("X-CUSTOM", "12345");
 			//attach to the shared tail, take the most recent generated substream and merge it to the high level stream
 			//returning a stream of String from each microbatch merged
-			return tail
-					.take(1)
-							//make the partition the actual stream returned
-					.flatMap(partition -> partition)
+			return
+					Streams.wrap(processor)
 							//split each microbatch data into individual data
-					.flatMap(microbatch -> Streams.from(microbatch));
-	});
+							.flatMap(Streams::from)
+							.log("http");
+		});
 
-	httpServer.start().awaitSuccess();
+		httpServer.start().awaitSuccess();
 
 
-	for (int i = 0; i < 30; i++) {
-		Thread.sleep(1000);
-		broadcaster.onNext(System.currentTimeMillis() + "\n" );
+		for (int i = 0; i < 30; i++) {
+			Thread.sleep(1000);
+			broadcaster.onNext(System.currentTimeMillis() + "\n");
+		}
+
+
 	}
-
-	Thread.sleep(30000);
-
-}
 
 	public static class Pojo {
 		private String name;
@@ -671,16 +652,18 @@ public class TcpServerTests {
 
 		@Override
 		public void run() {
-			try {
-				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
-				start.set(System.currentTimeMillis());
-				for (int i = 0; i < msgs; i++) {
+
+			start.set(System.currentTimeMillis());
+			for (int i = 0; i < msgs; i++) {
+				try {
+					java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 					ch.write(Buffer.wrap("GET /test HTTP/1.1\r\nConnection: Close\r\n\r\n").byteBuffer());
 					ByteBuffer buff = ByteBuffer.allocate(4 * 1024);
 					ch.read(buff);
+					ch.close();
+
+				} catch (IOException e) {
 				}
-				ch.close();
-			} catch (IOException e) {
 			}
 		}
 	}

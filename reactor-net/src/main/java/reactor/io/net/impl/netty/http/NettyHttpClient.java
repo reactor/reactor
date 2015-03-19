@@ -17,6 +17,9 @@
 package reactor.io.net.impl.netty.http;
 
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.*;
@@ -45,6 +48,7 @@ import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
+import reactor.rx.action.Control;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -207,6 +211,19 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			}
 		};
 	}*/
+
+	@Override
+	protected Control mergeWrite(HttpChannel<IN, OUT> ch) {
+		final Control c = super.mergeWrite(ch);
+		if(c == null) return null;
+		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
+		return c;
+	}
 
 	@Override
 	protected HttpChannel<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {

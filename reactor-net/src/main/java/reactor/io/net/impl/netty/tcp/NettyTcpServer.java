@@ -18,6 +18,7 @@ package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -32,8 +33,10 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyChannelStream;
@@ -44,6 +47,7 @@ import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
+import reactor.rx.action.Control;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -135,6 +139,30 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 						bindChannel(ch, options.prefetch());
 					}
 				});
+	}
+
+	@Override
+	protected Consumer<Void> completeConsumer(final ChannelStream<IN, OUT> ch) {
+		return new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				((Channel)ch.delegate()).writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+			}
+		};
+	}
+
+
+	@Override
+	protected Control mergeWrite(ChannelStream<IN, OUT> ch) {
+		final Control c = super.mergeWrite(ch);
+		if(c == null) return null;
+		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
+		return c;
 	}
 
 	@Override

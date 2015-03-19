@@ -313,8 +313,8 @@ public abstract class Action<I, O> extends Stream<O>
 	public void cancel() {
 		PushSubscription<I> parentSub = upstreamSubscription;
 		if (parentSub != null) {
-			parentSub.cancel();
 			upstreamSubscription = null;
+			parentSub.cancel();
 		}
 	}
 

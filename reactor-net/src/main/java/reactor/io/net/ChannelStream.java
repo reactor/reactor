@@ -30,10 +30,12 @@ import reactor.io.codec.Codec;
 import reactor.rx.IOStreams;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -93,11 +95,11 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	@Override
-	final public void sink(Publisher<? extends OUT> source) {
-		peer.subscribeChannelHandlers(Streams.create(source), this);
+	public Control sink(Publisher<? extends OUT> source) {
+		return peer.subscribeChannelHandlers(Streams.create(source), this);
 	}
 
-	final public void sinkBuffers(Publisher<? extends Buffer> source) {
+	final public Control sinkBuffers(Publisher<? extends Buffer> source) {
 		Stream<OUT> encodedSource = Streams.create(source).map(new Function<Buffer, OUT>() {
 			@Override
 			@SuppressWarnings("unchecked")
@@ -111,7 +113,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 			}
 		});
 
-		peer.subscribeChannelHandlers(encodedSource, this);
+		return sink(encodedSource);
 	}
 
 	@Override
@@ -177,7 +179,11 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	protected final void cascadeErrorToPeer(Throwable t) {
-		log.error("", t);
+		if(IOException.class == t.getClass()){
+			log.debug("Writing on channel failed", t);
+		}else {
+			log.error("Writing on channel failed", t);
+		}
 		peer.notifyError(t);
 	}
 

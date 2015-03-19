@@ -18,6 +18,7 @@ package reactor.io.net;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
+import reactor.rx.action.Control;
 
 import java.net.InetSocketAddress;
 
@@ -49,8 +50,9 @@ public interface Channel<IN, OUT> extends Publisher<IN> {
 	 * @param dataStream
 	 * 		the dataStream publishing OUT items to write on this channel
 	 *
+	 * @return Control to unregister that sink anytime (cancel)
 	 */
-	void sink(Publisher<? extends OUT> dataStream);
+	Control sink(Publisher<? extends OUT> dataStream);
 
 
 	/**

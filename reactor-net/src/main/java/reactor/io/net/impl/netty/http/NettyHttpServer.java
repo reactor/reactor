@@ -16,6 +16,10 @@
 
 package reactor.io.net.impl.netty.http;
 
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -38,6 +42,7 @@ import reactor.io.net.impl.netty.tcp.NettyTcpServer;
 import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
+import reactor.rx.action.Control;
 
 import java.net.InetSocketAddress;
 
@@ -106,9 +111,42 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 			.http.HttpRequest content) {
 		HttpChannel<IN, OUT> request = new NettyHttpChannel<IN, OUT>(channelStream, server, content, getDefaultCodec());
 		Iterable<? extends Publisher<? extends OUT>> handlers = routeChannel(request);
-		subscribeChannelHandlers(Streams.concat(handlers), request);
+		final Control c = subscribeChannelHandlers(Streams.concat(handlers), request);
+
+		//TODO handle 404
+
+
+		channelStream.delegate().closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
 		channelStream.subscribe(request.in());
 		return request;
+	}
+
+	@Override
+	protected Consumer<Void> completeConsumer(final HttpChannel<IN, OUT> ch) {
+		return new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				((Channel)ch.delegate()).writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+			}
+		};
+	}
+
+	@Override
+	protected Control mergeWrite(HttpChannel<IN, OUT> ch) {
+		final Control c = super.mergeWrite(ch);
+		if(c == null) return null;
+		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
+		return c;
 	}
 
 	@Override

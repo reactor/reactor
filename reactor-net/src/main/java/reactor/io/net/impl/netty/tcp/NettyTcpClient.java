@@ -50,6 +50,7 @@ import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
+import reactor.rx.action.Control;
 
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
@@ -234,6 +235,19 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 
 		return netChannel;
+	}
+
+	@Override
+	protected Control mergeWrite(ChannelStream<IN, OUT> ch) {
+		final Control c = super.mergeWrite(ch);
+		if(c == null) return null;
+		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
+		return c;
 	}
 
 	private void openChannel(ChannelFutureListener listener) {

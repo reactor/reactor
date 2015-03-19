@@ -60,6 +60,21 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			                              requestMapper) {
 		this.consumer = consumer;
 		this.requestMapperStream = Broadcaster.create();
+		this.requestMapperStream.onSubscribe(new Subscription() {
+			@Override
+			public void request(long n) {
+				//IGNORE
+			}
+
+			@Override
+			public void cancel() {
+				Subscription subscription = upstreamSubscription;
+				if(subscription != null){
+					upstreamSubscription = null;
+					subscription.cancel();
+				}
+			}
+		});
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
 			this.dispatcher =  TailRecurseDispatcher.INSTANCE;
 		} else {
@@ -124,6 +139,12 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	protected void doComplete() {
 		requestMapperStream.onComplete();
 		super.doComplete();
+	}
+
+	@Override
+	public void cancel() {
+		requestMapperStream.onComplete();
+		super.cancel();
 	}
 
 	@Override

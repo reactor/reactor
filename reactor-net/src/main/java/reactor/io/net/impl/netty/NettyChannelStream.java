@@ -21,6 +21,7 @@ import io.netty.channel.*;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
@@ -29,6 +30,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.PeerStream;
+import reactor.rx.action.Control;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
@@ -61,6 +63,19 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	@Override
 	public InetSocketAddress remoteAddress() {
 		return (InetSocketAddress) ioChannel.remoteAddress();
+	}
+
+
+	@Override
+	public Control sink(Publisher<? extends OUT> source) {
+		final Control c = super.sink(source);
+		ioChannel.closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				c.cancel();
+			}
+		});
+		return c;
 	}
 
 	@Override
@@ -106,7 +121,6 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					if (null != onComplete) {
 						onComplete.onError(t);
 					}
-					cascadeErrorToPeer(t);
 				}
 				if (null != onComplete) {
 					onComplete.onComplete();

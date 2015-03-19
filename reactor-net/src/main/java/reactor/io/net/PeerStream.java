@@ -28,6 +28,7 @@ import reactor.io.codec.Codec;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Action;
+import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
@@ -214,7 +215,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void mergeWrite(final CONN ch) {
+	protected Control mergeWrite(final CONN ch) {
 		Iterable<Publisher<? extends OUT>> publishers = routeChannel(ch);
 
 		if (publishers == writePublishers) {
@@ -228,10 +229,9 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 			}
 
 			if (size == 0) {
-				return;
+				return null;
 			} else if (size == 1 && publisher != null) {
-				subscribeChannelHandlers(Streams.create(publisher), ch);
-				return;
+				return subscribeChannelHandlers(Streams.create(publisher), ch);
 			}
 		}
 		// TODO: what behavior do we want to implement?
@@ -240,7 +240,7 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 		// (be careful if on the same single threaded dispatcher it is still executed sequentially,
 		// so maybe we need to specify another dispatcher if we decide to implement an "all handlers
 		// contribute at the same time" behavior)
-		subscribeChannelHandlers(
+		return subscribeChannelHandlers(
 				Streams.concat(publishers),
 				ch
 		);
@@ -250,14 +250,14 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 		return null;
 	}
 
-	protected void subscribeChannelHandlers(Stream<? extends OUT> writeStream, final CONN ch) {
+	protected Control subscribeChannelHandlers(Stream<? extends OUT> writeStream, final CONN ch) {
 		if (writeStream.getCapacity() != Long.MAX_VALUE) {
-			writeStream
+			return writeStream
 					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false),
 							createAdaptiveDemandMapper(ch,
 									createErrorConsumer(ch)));
 		} else {
-			writeStream
+			return writeStream
 					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch), completeConsumer(ch));
 		}
 	}
