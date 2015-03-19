@@ -228,9 +228,9 @@ project('reactor-core') {
   }
 
 
-  task testNG(type: Test) {
+  /*task testNG(type: Test) {
     useTestNG()
-  }
+  }*/
 
   task disruptorRepackJar(type: Jar) { repackJar ->
     repackJar.baseName = "reactor-disruptor-repack"
