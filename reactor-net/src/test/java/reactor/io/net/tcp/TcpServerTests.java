@@ -80,7 +80,7 @@ public class TcpServerTests {
 
 	final Logger log = LoggerFactory.getLogger(TcpServerTests.class);
 	ExecutorService threadPool;
-	final int msgs    = 50;
+	final int msgs    = 10;
 	final int threads = 4;
 
 	Environment    env;
@@ -508,7 +508,7 @@ public class TcpServerTests {
 		Broadcaster<String> broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
 
 		//Get a reference to the tail of the operation pipeline (microbatching + partitioning)
-		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create();
+		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
 
 		broadcaster
 				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
@@ -603,6 +603,7 @@ public class TcpServerTests {
 					count.incrementAndGet();
 				}
 			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -639,6 +640,7 @@ public class TcpServerTests {
 				}
 				ch.close();
 			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -663,6 +665,7 @@ public class TcpServerTests {
 					ch.close();
 
 				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 		}
@@ -685,6 +688,7 @@ public class TcpServerTests {
 				}
 				ch.close();
 			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
