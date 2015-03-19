@@ -458,7 +458,7 @@ public class TcpServerTests {
 		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new HttpRequestWriter(port));
 		}
-		latch.await(15, TimeUnit.SECONDS);
+		latch.await(60, TimeUnit.SECONDS);
 		assertTrue("Latch was counted down : " + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
