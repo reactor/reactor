@@ -80,7 +80,7 @@ public class TcpServerTests {
 
 	final Logger log = LoggerFactory.getLogger(TcpServerTests.class);
 	ExecutorService threadPool;
-	final int msgs    = 150;
+	final int msgs    = 50;
 	final int threads = 4;
 
 	Environment    env;
@@ -680,7 +680,7 @@ public class TcpServerTests {
 			try {
 				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 				start.set(System.currentTimeMillis());
-				for (int i = 0; i < msgs; i++) {
+				for (int i = 0; i < 100; i++) {
 					ch.write(Buffer.wrap("Hello World!\n").byteBuffer());
 				}
 				ch.close();
