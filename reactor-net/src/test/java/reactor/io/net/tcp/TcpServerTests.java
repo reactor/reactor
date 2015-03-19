@@ -187,7 +187,7 @@ public class TcpServerTests {
 
 		TcpServer<byte[], byte[]> server = NetStreams.tcpServer(s ->
 						s.env(env)
-								.synchronousDispatcher()
+								.dispatcher(env.getDefaultDispatcher())
 								.options(new ServerSocketOptions()
 										.backlog(1000)
 										.reuseAddr(true)
@@ -248,7 +248,7 @@ public class TcpServerTests {
 		TcpServer<Frame, Frame> server = NetStreams.tcpServer(spec ->
 						spec
 								.env(env)
-								.synchronousDispatcher()
+								.dispatcher(env.getDefaultDispatcher())
 								.options(new ServerSocketOptions()
 										.backlog(1000)
 										.reuseAddr(true)
@@ -422,7 +422,7 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 
 		final TcpServer<HttpRequest, HttpResponse> server = NetStreams.tcpServer(spec -> spec
-						.env(env)
+						.dispatcher(env.getDefaultDispatcher())
 						.listen(port)
 						.options(new NettyServerSocketOptions()
 								.pipelineConfigurer(pipeline -> {
@@ -458,7 +458,7 @@ public class TcpServerTests {
 		for (int i = 0; i < threads; i++) {
 			threadPool.submit(new HttpRequestWriter(port));
 		}
-		latch.await(60, TimeUnit.SECONDS);
+		latch.await(30, TimeUnit.SECONDS);
 		assertTrue("Latch was counted down : " + latch.getCount(), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
