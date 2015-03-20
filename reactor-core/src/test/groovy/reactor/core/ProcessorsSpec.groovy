@@ -20,6 +20,7 @@ package reactor.core
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
 import reactor.core.processor.RingBufferProcessor
+import reactor.core.processor.RingBufferWorkProcessor
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -83,7 +84,7 @@ class ProcessorsSpec extends Specification {
 			"ring buffer processor with 16 backlog size"
 			def bc = RingBufferProcessor.<String> create(executorService, 16)
 			def bc2 = RingBufferProcessor.<String> create(executorService, 16)
-			def elems = 18
+			def elems = 10
 			def latch = new CountDownLatch(elems)
 			def manualSub = new Subscription(){
 				@Override
@@ -105,7 +106,6 @@ class ProcessorsSpec extends Specification {
 		when:
 			"call the processor"
 			elems.times {
-				println "hello $it"
 				bc.onNext 'hello ' + it
 			}
 			bc.onComplete()
@@ -129,6 +129,44 @@ class ProcessorsSpec extends Specification {
 		then:
 			"a task is submitted to the thread pool dispatcher"
 			latch.await(50, TimeUnit.SECONDS) // Wait for task to execute
+	}
+
+	def "Work Processor on Reactive Stream"() {
+
+		given:
+			"ring buffer processor with 16 backlog size"
+			def bc = RingBufferWorkProcessor.<String> create(executorService, 16)
+			def elems = 18
+			def latch = new CountDownLatch(elems)
+			def manualSub = new Subscription(){
+				@Override
+				void request(long n) {
+					println Thread.currentThread().name+" $n"
+				}
+
+				@Override
+				void cancel() {
+					println Thread.currentThread().name+" cancelling"
+				}
+			}
+
+			bc.onSubscribe(manualSub)
+			//bc.subscribe(bc2)
+			//bc2.subscribe(sub('spec1', latch))
+			bc.subscribe(sub('spec1', latch))
+
+		when:
+			"call the processor"
+			elems.times {
+				bc.onNext 'hello ' + it
+			}
+			bc.onComplete()
+
+			def ended = latch.await(50, TimeUnit.SECONDS) // Wait for task to execute
+
+		then:
+			"a task is submitted to the thread pool dispatcher"
+			ended
 	}
 
 }

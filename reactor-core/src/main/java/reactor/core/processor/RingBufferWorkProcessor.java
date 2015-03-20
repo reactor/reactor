@@ -192,6 +192,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
 				executor;
 
+
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
 				new EventFactory<MutableSignal<E>>() {
@@ -203,6 +204,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				bufferSize,
 				waitStrategy
 		);
+
+		ringBuffer.addGatingSequences(workSequence);
 
 		this.barrier = ringBuffer.newBarrier();
 	}
@@ -486,6 +489,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 								dataProvider.get(sequenceBarrier.getCursor()).type != SType.NEXT){
 							processedSequence = false;
 							nextSequence = sequenceBarrier.getCursor();
+						}else{
+							processedSequence = true;
 						}
 						sequenceBarrier.clearAlert();
 					}

@@ -334,7 +334,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 			if (buffered > 0l && n != Long.MAX_VALUE) {
 				toRequest = n - buffered;
-				while(!p.getSequence().compareAndSet(currentSequence, currentSequence + buffered - 1l));
 				//if (pendingRequest.addAndGet(buffered + n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
