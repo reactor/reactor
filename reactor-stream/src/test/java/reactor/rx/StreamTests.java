@@ -39,7 +39,9 @@ import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.action.support.TapAndControls;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.stream.GroupedStream;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,9 +54,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
+import static org.hamcrest.number.OrderingComparison.lessThanOrEqualTo;
 import static org.junit.Assert.*;
 
 /**
@@ -638,6 +643,16 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println("ev/ms: " + iterations / stop);
 		System.out.println("ev/s: " + iterations / stop * 1000);
 		System.out.println("");
+	}
+
+	/**
+	 * See https://github.com/reactor/reactor/issues/451
+	 */
+	@Test
+	public void partitionByHashCodeShouldNeverCreateMoreStreamsThanSpecified() throws Exception {
+		Stream<Integer> stream = Streams.range(-10, 10).map(Long::intValue);
+
+		assertThat(stream.partition(2).count().tap().get(), is(equalTo(2L)));
 	}
 
 

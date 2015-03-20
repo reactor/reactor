@@ -70,7 +70,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
  * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
- * eventually produce a result {@param <O>} and will offer cascading over its own subscribers.
+ * eventually produce a result {@code <O>} and will offer cascading over its own subscribers.
  * <p>
  * *
  * Typically, new {@code Stream} aren't created directly. To create a {@code Stream},
@@ -589,7 +589,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
 	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
-	 * @return a new {@link Stream} whom requests are running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} whose requests are running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> subscribeOn(@Nonnull final Environment environment) {
 		return subscribeOn(environment.getDefaultDispatcher());
@@ -621,7 +621,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
 	 * @param currentDispatcher the new dispatcher
-	 * @return a new {@link Stream} whom request are running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} whose requests are running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
 		return new Stream<O>() {
@@ -1350,7 +1350,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@literal Integer.MAX_VALUE}.
 	 *
 	 * @return a new fault-tolerant {@code Stream}
@@ -1361,7 +1361,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@param numRetries}.
 	 * This is generally useful for retry strategies and fault-tolerant streams.
 	 *
@@ -1374,7 +1374,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair.
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair.
 	 * {@param retryMatcher} will test an incoming {@link Throwable}, if positive the retry will occur.
 	 * This is generally useful for retry strategies and fault-tolerant streams.
 	 *
@@ -1387,7 +1387,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable},
 	 * if positive
 	 * the retry will occur (in conjonction with the {@param numRetries} condition).
@@ -1408,7 +1408,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the exception if of
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the exception is of
 	 * the given type.
 	 * The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the given
 	 * exception type, the error signal will be propagated downstream but not to the recovered values sink.
@@ -1454,8 +1454,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the backOff stream
-	 * produced by the passed mapper emits any next data or complete signal. It will propagate the error if the backoff
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the backOff stream
+	 * produced by the passed mapper emits any next data or complete signal. It will propagate the error if the backOff
 	 * stream emits an error signal.
 	 *
 	 * @param backOffStream the function taking the error stream as an input and returning a new stream that applies
@@ -1474,7 +1474,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whom will keep re-subscribing its oldest parent-child stream pair on complete.
+	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete.
 	 *
 	 * @return a new infinitely repeated {@code Stream}
 	 * @since 2.0
@@ -1484,7 +1484,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} whom will keep re-subscribing its oldest parent-child stream pair on complete.
+	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete.
 	 * The action will be propagating complete after {@param numRepeat}.
 	 * if positive
 	 *
@@ -1503,13 +1503,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair if the backOff stream
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the backOff stream
 	 * produced by the passed mapper emits any next signal. It will propagate the complete and error if the backoff
 	 * stream emits the relative signals.
 	 *
 	 * @param backOffStream the function taking a stream of complete timestamp in millis as an input and returning a new
-	 *                      stream that applies
-	 *                      some backoff policy e.g. Streams.timer
+	 *                      stream that applies some backoff policy, e.g. @{link Streams#timer(long)}
 	 * @return a new repeated {@code Stream}
 	 * @since 2.0
 	 */
@@ -1686,12 +1685,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} system time in
-	 * millis
-	 * and T2 {@link
-	 * <T>}
-	 * associated data
+	 * millis and T2 {@link <T>} associated data
 	 *
-	 * @return a new {@link Stream} that emits tuples of nano time and matching data
+	 * @return a new {@link Stream} that emits tuples of millis time and matching data
 	 * @since 2.0
 	 */
 	public final Stream<Tuple2<Long, O>> timestamp() {
@@ -1704,14 +1700,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} nanotime and T2
-	 * {@link
-	 * <T>}
-	 * associated data. The timemillis corresponds to the elapsed time between the subscribe and the first next
-	 * signals OR
-	 * between two next signals.
+	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} timemillis and T2
+	 * {@link <T>} associated data. The timemillis corresponds to the elapsed time between the subscribe and the first
+	 * next signal OR between two next signals.
 	 *
-	 * @return a new {@link Stream} that emits tuples of nano time and matching data
+	 * @return a new {@link Stream} that emits tuples of time elapsed in milliseconds and matching data
 	 * @since 2.0
 	 */
 	public final Stream<Tuple2<Long, O>> elapsed() {
@@ -2042,8 +2035,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Collect incoming values into a {@link java.util.List} that will be pushed into the returned {@code Stream} every
-	 * time {@code
-	 * getCapacity()} or flush is triggered has been reached.
+	 * time {@link #getCapacity()} has been reached, or flush is triggered.
 	 *
 	 * @return a new {@link Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
@@ -2053,8 +2045,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Collect incoming values into multiple {@link List} buckets that will be pushed into the returned {@code Stream}
-	 * every time {@code
-	 * getCapacity()} has been reached.
+	 * every time {@link #getCapacity()} has been reached.
 	 *
 	 * @param maxSize the collected size
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
@@ -2231,8 +2222,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2245,8 +2235,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
@@ -2259,8 +2249,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2274,8 +2263,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
@@ -2343,8 +2332,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every  and
-	 * complete every time {@code
-	 * boundarySupplier} stream emits an item.
+	 * complete every time {@code boundarySupplier} stream emits an item.
 	 *
 	 * @param boundarySupplier the factory to create the stream to listen to for separating each window
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
@@ -2360,9 +2348,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every and
-	 * complete every time {@code
-	 * boundarySupplier} stream emits an item. Window starts forwarding when the bucketOpening stream emits an item,
-	 * then subscribe to the boundary supplied to complete.
+	 * complete every time {@code boundarySupplier} stream emits an item. Window starts forwarding when the
+	 * bucketOpening stream emits an item, then subscribe to the boundary supplied to complete.
 	 *
 	 * @param bucketOpening    the publisher to listen for signals to create a new window
 	 * @param boundarySupplier the factory to create the stream to listen to for closing an open window
@@ -2521,23 +2508,18 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
 	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning over the buckets number passed.
 	 * That means that at any point of time at most {@code buckets} number of streams will be created and used
-	 * accordingly
-	 * to the current hashcode % buckets result.
+	 * accordingly to the positive modulo of the current hashcode with respect to the number of buckets specified.
 	 *
-	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
+	 * @param buckets the maximum number of buckets to partition the values across
+	 * @return a new {@link Stream} whose values are a {@link Stream} of all values routed to this partition
 	 * @since 2.0
 	 */
 	public final Stream<GroupedStream<Integer, O>> partition(final int buckets) {
 		return groupBy(new Function<O, Integer>() {
-			//volatile int cursor = -1;
 			@Override
 			public Integer apply(O o) {
-				return o.hashCode() % buckets;
-				/*int key =  ++cursor % buckets;
-				if(cursor == buckets){
-					cursor = 0;
-				}
-				return key;*/
+				int bucket = o.hashCode() % buckets;
+				return bucket < 0 ? bucket + buckets : bucket;
 			}
 		});
 	}

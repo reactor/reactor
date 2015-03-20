@@ -160,9 +160,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 			stream.onComplete();
 		}
 
-		if (groupByMap.isEmpty()) {
-			broadcastComplete();
-		}
+		super.doComplete();
 	}
 
 	@Override
