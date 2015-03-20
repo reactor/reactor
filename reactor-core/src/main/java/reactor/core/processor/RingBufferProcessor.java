@@ -38,7 +38,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
 
+
 	/**
+	 *
+	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create() {
@@ -76,7 +79,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
+	 *
 	 * @param name
+	 * @param bufferSize
+	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize) {
@@ -117,10 +123,13 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		return create(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
 	}
 
+
 	/**
+	 *
 	 * @param name
 	 * @param bufferSize
 	 * @param strategy
+	 * @param <E>
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
@@ -313,18 +322,24 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			final long toRequest;
 
 			//buffered data in producer unpublished
-			long toPublish = p.getSequence().get() > Sequencer.INITIAL_CURSOR_VALUE ?
-					Math.abs(ringBuffer.getCursor() - (p.getSequence().get() + 1l)) :
-					ringBuffer.getCursor();
+			long currentSequence = p.getSequence().get();
+			long cursor = ringBuffer.getCursor();
 
-			if (toPublish > 0l && n != Long.MAX_VALUE) {
-				toRequest = n - Math.abs(n - toPublish);
+			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
+			long buffered = currentSequence <  cursor ?
+					cursor - (currentSequence + 1l) :
+					0l;
 
-				if (pendingRequest.addAndGet(toPublish) < 0) pendingRequest.set(Long.MAX_VALUE);
+			if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
+
+			if (buffered > 0l && n != Long.MAX_VALUE) {
+				toRequest = n - buffered;
+				while(!p.getSequence().compareAndSet(currentSequence, currentSequence + buffered - 1l));
+				//if (pendingRequest.addAndGet(buffered + n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
-				if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			}
+
 
 			if (toRequest > 0l) {
 				if (parent != null) {
@@ -332,14 +347,13 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				}
 			}
 
-
 		}
 
 		@Override
 		public void cancel() {
 			try {
-				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
+				ringBuffer.removeGatingSequence(p.getSequence());
 			} finally {
 				decrementSubscribers();
 			}
@@ -447,10 +461,14 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 											throw AlertException.INSTANCE;
 										}
 										//pause until request
-										while (pendingRequest.get() <= 0l) {
+										while (pendingRequest.addAndGet(-1l) < 0l) {
 											//Todo Use WaitStrategy?
+											pendingRequest.incrementAndGet();
+											sequenceBarrier.checkAlert();
 											LockSupport.parkNanos(1l);
 										}
+										;
+
 									} else {
 										//end-of-loop without processing and incrementing the nextSequence
 										break;
@@ -473,6 +491,8 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 					} catch (final AlertException ex) {
 						if (!running.get()) {
 							break;
+						}else{
+							sequenceBarrier.clearAlert();
 						}
 					} catch (final Throwable ex) {
 						sub.onError(ex);

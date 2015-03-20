@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 public class RingBufferWorkProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
 
 	public RingBufferWorkProcessorTests() {
-		super(new TestEnvironment(200000, true), 3500);
+		super(new TestEnvironment(2000, true), 3500);
 	}
 
 	@Override

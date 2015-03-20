@@ -511,6 +511,7 @@ public class TcpServerTests {
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
 
 		broadcaster
+				.log("broadcaster")
 				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
 				.buffer(10, 1, TimeUnit.SECONDS)
 				.subscribe(processor);
@@ -532,15 +533,16 @@ public class TcpServerTests {
 					Streams.wrap(processor)
 							//split each microbatch data into individual data
 							.flatMap(Streams::from)
-							.log("http");
+							.take(5, TimeUnit.SECONDS)
+							.concatWith(Streams.just("end\n"));
 		});
 
 		httpServer.start().awaitSuccess();
 
 
-		for (int i = 0; i < 30; i++) {
-			Thread.sleep(1000);
-			broadcaster.onNext(System.currentTimeMillis() + "\n");
+		for (int i = 0; i < 50; i++) {
+			Thread.sleep(500);
+			broadcaster.onNext(System.currentTimeMillis()+"\n");
 		}
 
 

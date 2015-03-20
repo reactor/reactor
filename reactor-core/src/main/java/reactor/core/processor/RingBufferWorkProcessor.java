@@ -324,8 +324,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void cancel() {
 			try {
-				ringBuffer.removeGatingSequence(p.getSequence());
 				p.halt();
+				ringBuffer.removeGatingSequence(p.getSequence());
 			} finally {
 				decrementSubscribers();
 			}
@@ -450,8 +450,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 										throw AlertException.INSTANCE;
 									}
 									//pause until request
-									while (pendingRequest.get() <= 0l) {
+									//pause until request
+									while (pendingRequest.addAndGet(-1l) < 0l) {
 										//Todo Use WaitStrategy?
+										pendingRequest.incrementAndGet();
+										sequenceBarrier.checkAlert();
 										LockSupport.parkNanos(1l);
 									}
 								} else {
@@ -459,25 +462,34 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 									break;
 								}
 							}
-
-							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferProcessor.route(event, sub);
-							nextSequence++;
 						} else {
 							//Complete or Error are terminal events, we shutdown the processor and process the signal
 							running.set(false);
 							RingBufferProcessor.route(event, sub);
+							sequenceBarrier.alert();
 							throw AlertException.INSTANCE;
 						}
 
+						//It's an unbounded subscriber or there is enough capacity to process the signal
+						RingBufferProcessor.route(event, sub);
+						nextSequence++;
 						processedSequence = true;
+
 					} else {
 						cachedAvailableSequence = sequenceBarrier.waitFor(nextSequence);
 					}
 				} catch (final AlertException ex) {
 					if (!running.get()) {
 						break;
+					}else{
+						if(cachedAvailableSequence < nextSequence &&
+								dataProvider.get(sequenceBarrier.getCursor()).type != SType.NEXT){
+							processedSequence = false;
+							nextSequence = sequenceBarrier.getCursor();
+						}
+						sequenceBarrier.clearAlert();
 					}
+
 				} catch (final Throwable ex) {
 					sub.onError(ex);
 					sequence.set(nextSequence);

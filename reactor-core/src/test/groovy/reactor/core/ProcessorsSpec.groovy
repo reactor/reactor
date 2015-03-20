@@ -53,7 +53,7 @@ class ProcessorsSpec extends Specification {
 			void onSubscribe(Subscription s) {
 				this.s = s
 				println name + " " + Thread.currentThread().name + ": subscribe: " + s
-				s.request(10)
+				s.request(1)
 			}
 
 			@Override
@@ -82,15 +82,30 @@ class ProcessorsSpec extends Specification {
 		given:
 			"ring buffer processor with 16 backlog size"
 			def bc = RingBufferProcessor.<String> create(executorService, 16)
-			//def bc2 = RingBufferProcessor.<String> create(executorService, 16)
+			def bc2 = RingBufferProcessor.<String> create(executorService, 16)
 			def elems = 18
 			def latch = new CountDownLatch(elems)
+			def manualSub = new Subscription(){
+				@Override
+				void request(long n) {
+					println Thread.currentThread().name+" $n"
+				}
 
+				@Override
+				void cancel() {
+					println Thread.currentThread().name+" cancelling"
+				}
+			}
+
+			bc.onSubscribe(manualSub)
+			//bc.subscribe(bc2)
+			//bc2.subscribe(sub('spec1', latch))
 			bc.subscribe(sub('spec1', latch))
 
 		when:
 			"call the processor"
 			elems.times {
+				println "hello $it"
 				bc.onNext 'hello ' + it
 			}
 			bc.onComplete()
