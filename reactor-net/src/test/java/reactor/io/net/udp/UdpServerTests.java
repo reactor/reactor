@@ -1,5 +1,6 @@
 package reactor.io.net.udp;
 
+import io.netty.util.NetUtil;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,6 +17,7 @@ import reactor.io.net.tcp.support.SocketUtils;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
@@ -64,8 +66,8 @@ public class UdpServerTests {
 
 		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(
 				s -> s.env(env)
-				      .listen(port)
-				      .codec(StandardCodecs.BYTE_ARRAY_CODEC)
+						.listen(port)
+						.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 		);
 
 		server.consume(ch -> ch.consume(new Consumer<byte[]>() {
@@ -106,6 +108,8 @@ public class UdpServerTests {
 		final CountDownLatch latch = new CountDownLatch(Environment.PROCESSORS ^ 2);
 
 		final InetAddress multicastGroup = InetAddress.getByName("230.0.0.1");
+		final NetworkInterface multicastInterface = findMulticastEnabledIPv4Interface();
+		log.info("Using network interface '{}' for multicast", multicastInterface);
 		final Collection<DatagramServer<byte[], byte[]>> servers = new ArrayList<>();
 
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
@@ -132,30 +136,17 @@ public class UdpServerTests {
 				}
 			}));
 
-			server.start().onSuccess(b -> {
-				try {
-					Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
-					while (ifaces.hasMoreElements()) {
-						NetworkInterface iface = ifaces.nextElement();
-						if (!iface.isLoopback() && iface.supportsMulticast() && iface.isUp()) {
-							server.join(multicastGroup, iface);
-						}
-					}
-				} catch (SocketException e) {
-					throw new IllegalStateException(e);
-				}
-			}).await();
+			server.start().onSuccess(b -> server.join(multicastGroup, multicastInterface)).await();
+			servers.add(server);
+		}
 
-				servers.add(server);
-			}
-
-			for (int i = 0; i < Environment.PROCESSORS; i++) {
+		for (int i = 0; i < Environment.PROCESSORS; i++) {
 			threadPool.submit(new Runnable() {
 				@Override
 				public void run() {
 					try {
-						MulticastSocket multicast = new MulticastSocket(port);
-						//multicast.joinGroup(multicastGroup);
+						MulticastSocket multicast = new MulticastSocket();
+//						multicast.joinGroup(new InetSocketAddress(multicastGroup, port), multicastInterface);
 
 						byte[] data = new byte[1024];
 						new Random().nextBytes(data);
@@ -177,4 +168,33 @@ public class UdpServerTests {
 		}
 	}
 
+	private boolean isMulticastEnabledIPv4Interface(NetworkInterface iface) throws SocketException {
+		if (!iface.supportsMulticast() || !iface.isUp()) {
+			return false;
+		}
+
+		for (Enumeration<InetAddress> i = iface.getInetAddresses(); i.hasMoreElements();) {
+			InetAddress address = i.nextElement();
+			if (address.getClass() == Inet4Address.class) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private NetworkInterface findMulticastEnabledIPv4Interface() throws SocketException {
+		if (isMulticastEnabledIPv4Interface(NetUtil.LOOPBACK_IF)) {
+			return NetUtil.LOOPBACK_IF;
+		}
+
+		for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements();) {
+			NetworkInterface iface = ifaces.nextElement();
+			if (isMulticastEnabledIPv4Interface(iface)) {
+				return iface;
+			}
+		}
+
+		throw new UnsupportedOperationException("This test requires a multicast enabled IPv4 network interface, but none were found");
+	}
 }
