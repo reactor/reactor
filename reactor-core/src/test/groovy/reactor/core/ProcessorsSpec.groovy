@@ -99,9 +99,9 @@ class ProcessorsSpec extends Specification {
 			}
 
 			bc.onSubscribe(manualSub)
-			//bc.subscribe(bc2)
-			//bc2.subscribe(sub('spec1', latch))
-			bc.subscribe(sub('spec1', latch))
+			bc.subscribe(bc2)
+			bc2.subscribe(sub('spec1', latch))
+			//bc.subscribe(sub('spec1', latch))
 
 		when:
 			"call the processor"

@@ -511,9 +511,10 @@ public class TcpServerTests {
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
 
 		broadcaster
-				.log("broadcaster")
+
 				//transform 10 data in a [] of 10 elements or wait up to 1 Second before emitting whatever the list contains
 				.buffer(10, 1, TimeUnit.SECONDS)
+				.log("broadcaster")
 				.subscribe(processor);
 
 

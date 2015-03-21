@@ -259,7 +259,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		signal.value = o;
 		signal.throwable = null;
 		signal.type = SType.NEXT;
-
 		ringBuffer.publish(seqId);
 	}
 
@@ -326,20 +325,22 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			long cursor = ringBuffer.getCursor();
 
 			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
-			long buffered = currentSequence <  cursor ?
-					cursor - (currentSequence + 1l) :
+			long buffered = currentSequence <  cursor - 1l ?
+					cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE ? currentSequence + 1l : currentSequence) :
 					0l;
 
+			//System.out.println(Thread.currentThread()+": +"+n+" [before] pending: "+pendingRequest+" - "+currentSequence+"/"+cursor+" - buffered:"+buffered+" @"+this.hashCode());
 			if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
 
 			if (buffered > 0l && n != Long.MAX_VALUE) {
-				toRequest = n - buffered;
+				toRequest = (n - buffered) <= 0l ? n : n - buffered;
 				//if (pendingRequest.addAndGet(buffered + n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
 			}
 
 
+			//System.out.println(Thread.currentThread()+": +"+n+" [after] pending: "+pendingRequest+" - "+toRequest+"/"+cursor+" - buffered:"+buffered+" @"+this.hashCode());
 			if (toRequest > 0l) {
 				if (parent != null) {
 					parent.request(toRequest);
@@ -451,7 +452,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 									if (nextSequence < availableSequence) {
 
 										//look ahead if the published event was a terminal signal
-										if (dataProvider.get(availableSequence).type != SType.NEXT) {
+										if (dataProvider.get(nextSequence + 1l).type != SType.NEXT) {
 											//terminate
 											running.set(false);
 											//process last signal
@@ -460,13 +461,12 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 											throw AlertException.INSTANCE;
 										}
 										//pause until request
-										while (pendingRequest.addAndGet(-1l) < 0l) {
+										while (pendingRequest.get() <= 0l) {
 											//Todo Use WaitStrategy?
-											pendingRequest.incrementAndGet();
 											sequenceBarrier.checkAlert();
 											LockSupport.parkNanos(1l);
 										}
-										;
+										pendingRequest.incrementAndGet();
 
 									} else {
 										//end-of-loop without processing and incrementing the nextSequence

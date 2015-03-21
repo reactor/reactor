@@ -42,7 +42,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 *
 	 * @param <E>
 	 * @return
 	 */
@@ -52,7 +51,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param autoCancel
 	 * @param <E>
 	 * @return
@@ -72,7 +70,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param service
 	 * @param autoCancel
 	 * @param <E>
@@ -84,7 +81,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 *
 	 * @param name
 	 * @param bufferSize
 	 * @param <E>
@@ -95,7 +91,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param name
 	 * @param bufferSize
 	 * @param autoCancel
@@ -118,7 +113,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param service
 	 * @param bufferSize
 	 * @param autoCancel
@@ -131,7 +125,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 *
 	 * @param name
 	 * @param bufferSize
 	 * @param strategy
@@ -144,7 +137,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param name
 	 * @param bufferSize
 	 * @param strategy
@@ -170,7 +162,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 *
 	 * @param executor
 	 * @param bufferSize
 	 * @param strategy
@@ -226,7 +217,13 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			);
 
 			//set eventProcessor sequence to ringbuffer index
-			p.getSequence().set(workSequence.get());
+			//p.getSequence().set(workSequence.get());
+			final long min = ringBuffer.getMinimumGatingSequence();
+			//if a subscriber has started consuming
+			if(min > -1l){
+				//decrement the workSequence to replay the actual data as the processor will peek the next one
+				workSequence.compareAndSet(min, workSequence.get() - 1l);
+			}
 
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(p.getSequence());
@@ -444,7 +441,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 								if (nextSequence < cachedAvailableSequence) {
 
 									//look ahead if the published event was a terminal signal
-									if (dataProvider.get(cachedAvailableSequence).type != SType.NEXT) {
+									if (dataProvider.get(nextSequence + 1l).type != SType.NEXT) {
 										//terminate
 										running.set(false);
 										//process last signal
@@ -454,12 +451,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 									}
 									//pause until request
 									//pause until request
-									while (pendingRequest.addAndGet(-1l) < 0l) {
+									while (pendingRequest.get() <= 0l) {
 										//Todo Use WaitStrategy?
-										pendingRequest.incrementAndGet();
 										sequenceBarrier.checkAlert();
 										LockSupport.parkNanos(1l);
 									}
+									pendingRequest.incrementAndGet();
 								} else {
 									//end-of-loop without processing and incrementing the nextSequence
 									break;
@@ -484,12 +481,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				} catch (final AlertException ex) {
 					if (!running.get()) {
 						break;
-					}else{
-						if(cachedAvailableSequence < nextSequence &&
-								dataProvider.get(sequenceBarrier.getCursor()).type != SType.NEXT){
+					} else {
+						if (cachedAvailableSequence < nextSequence &&
+								dataProvider.get(sequenceBarrier.getCursor()).type != SType.NEXT) {
 							processedSequence = false;
 							nextSequence = sequenceBarrier.getCursor();
-						}else{
+						} else {
 							processedSequence = true;
 						}
 						sequenceBarrier.clearAlert();
