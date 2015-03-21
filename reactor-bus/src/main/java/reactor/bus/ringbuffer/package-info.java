@@ -15,7 +15,7 @@
  */
 
 /**
- * Specs help create {@link reactor.bus.processor.Processor Processors} by providing a fluent API to specify
- * common options.
+ * A {@link reactor.bus.ringbuffer.Processor} is a thin wrapper around the LMAX Disruptor RingBuffer.
+ * @see <a href="http://lmax-exchange.github.io/disruptor/">http://lmax-exchange.github.io/disruptor/</a>
  */
-package reactor.bus.processor.spec;
+package reactor.bus.ringbuffer;

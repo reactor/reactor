@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
 import reactor.Environment
 import reactor.core.dispatch.SynchronousDispatcher
+import reactor.core.processor.RingBufferProcessor
 import reactor.fn.BiFunction
 import reactor.io.buffer.Buffer
 import reactor.io.codec.DelimitedCodec
@@ -1153,6 +1154,27 @@ class StreamsSpec extends Specification {
 		then:
 			'the error is passed on'
 			errors == 1
+	}
+
+	def "When a processor is streamed"() {
+		given:
+			'a source composable and a async processor'
+			def source = Broadcaster.<Integer> create()
+			def processor = RingBufferProcessor.<Integer>create()
+
+			def res = source.process(processor).map { it * 2 }.log('processed').toList()
+
+		when:
+			'the source accepts a value'
+			source.onNext(1)
+			source.onNext(2)
+			source.onNext(3)
+			source.onNext(4)
+			source.onComplete()
+
+		then:
+			'the res is passed on'
+			res.await() == [2,4,6,8]
 	}
 
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {

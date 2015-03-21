@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.bus.processor;
+package reactor.bus.ringbuffer;
 
 import reactor.fn.Supplier;
 

@@ -1,6 +1,6 @@
 package reactor.bus
 
-import reactor.bus.processor.spec.ProcessorSpec
+import reactor.bus.ringbuffer.spec.ProcessorSpec
 import reactor.fn.Consumer
 import reactor.fn.Supplier
 import spock.lang.Specification

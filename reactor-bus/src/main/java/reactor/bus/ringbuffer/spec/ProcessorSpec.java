@@ -14,11 +14,11 @@
  *  limitations under the License.
  */
 
-package reactor.bus.processor.spec;
+package reactor.bus.ringbuffer.spec;
 
-import reactor.bus.processor.Processor;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
+import reactor.bus.ringbuffer.Processor;
 import reactor.bus.selector.Selectors;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -26,7 +26,7 @@ import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.*;
 
 /**
- * Specification class to create {@link reactor.bus.processor.Processor Processors}.
+ * Specification class to create {@link reactor.bus.ringbuffer.Processor Processors}.
  *
  * @author Jon Brisbin
  */

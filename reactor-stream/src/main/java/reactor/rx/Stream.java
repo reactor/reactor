@@ -16,6 +16,7 @@
 
 package reactor.rx;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
@@ -309,6 +310,17 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final TapAndControls<O> tap() {
 		final Tap<O> tap = new Tap<>();
 		return new TapAndControls<>(tap, consume(tap));
+	}
+
+	/**
+	 * {@link #subscribe)} the passed processor and return a version decorated with {@link Stream} API.
+	 *
+	 * @return the decorated processor.
+	 * @see Processor
+	 */
+	public final <E> Stream<? extends E> process(final Processor<? super O, ? extends E> processor) {
+		subscribe(processor);
+		return Streams.wrap(processor);
 	}
 
 	/**

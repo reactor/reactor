@@ -4,8 +4,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.bus.processor.Processor;
-import reactor.bus.processor.spec.ProcessorSpec;
+import reactor.bus.ringbuffer.Processor;
+import reactor.bus.ringbuffer.spec.ProcessorSpec;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 

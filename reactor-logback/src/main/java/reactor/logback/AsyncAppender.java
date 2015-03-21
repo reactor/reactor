@@ -21,9 +21,9 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.LogbackException;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.*;
-import reactor.bus.processor.Operation;
-import reactor.bus.processor.Processor;
-import reactor.bus.processor.spec.ProcessorSpec;
+import reactor.bus.ringbuffer.Operation;
+import reactor.bus.ringbuffer.Processor;
+import reactor.bus.ringbuffer.spec.ProcessorSpec;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.bus.processor.Processor} internally
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.bus.ringbuffer.Processor} internally
  * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
  * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
  *
