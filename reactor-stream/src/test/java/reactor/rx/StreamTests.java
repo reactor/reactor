@@ -39,9 +39,7 @@ import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
-import reactor.rx.action.support.TapAndControls;
 import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.stream.GroupedStream;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,10 +54,8 @@ import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
-import static org.hamcrest.number.OrderingComparison.lessThanOrEqualTo;
 import static org.junit.Assert.*;
 
 /**

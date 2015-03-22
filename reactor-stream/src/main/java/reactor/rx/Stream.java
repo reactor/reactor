@@ -313,12 +313,14 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link #subscribe)} the passed processor and return a version decorated with {@link Stream} API.
+	 * Create a {@link reactor.fn.support.Tap} that maintains a reference to the last value seen by this {@code
+	 * Stream}. The {@link reactor.fn.support.Tap} is
+	 * continually updated when new values pass through the {@code Stream}.
 	 *
-	 * @return the decorated processor.
-	 * @see Processor
+	 * @return the new {@link reactor.fn.support.Tap}
+	 * @see Consumer
 	 */
-	public final <E> Stream<? extends E> process(final Processor<? super O, ? extends E> processor) {
+	public final <E> Stream<E> process(final Processor<O, E> processor) {
 		subscribe(processor);
 		return Streams.wrap(processor);
 	}
