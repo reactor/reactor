@@ -46,6 +46,7 @@ import static org.junit.Assert.assertThat;
 /**
  * @author Stephane Maldini
  */
+@Ignore
 public class ClientServerHttpTests {
 	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
 	private Broadcaster<String>                                        broadcaster;
