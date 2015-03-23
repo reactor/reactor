@@ -21,6 +21,7 @@ import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
 import reactor.io.net.NetStreams
+import reactor.io.net.tcp.support.SocketUtils
 import reactor.rx.Streams
 import spock.lang.Specification
 
@@ -35,8 +36,7 @@ import java.util.concurrent.TimeUnit
  */
 class NettyTcpServerSpec extends Specification {
 
-	static final int port = 26874
-
+	static final int port = SocketUtils.findAvailableTcpPort()
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
