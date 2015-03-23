@@ -138,7 +138,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	@Override
 	public String toString() {
-		return "NettyNetChannel{" +
+		return this.getClass().getName() + " {" +
 				"channel=" + ioChannel +
 				'}';
 	}
