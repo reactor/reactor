@@ -18,7 +18,7 @@
 description = 'Reactive fast data framework for the JVM'
 
 ext {
-  gradleVersion = '2.2.1'
+  gradleVersion = '2.3'
   gradleScriptDir = "${rootProject.projectDir}/gradle"
 
   // Languages
@@ -131,6 +131,7 @@ configure(allprojects) { project ->
     maven { url 'http://repo.spring.io/libs-milestone' }
     maven { url "https://oss.sonatype.org/content/repositories/releases/" }
     jcenter()
+    mavenCentral()
   }
 
   // dependencies that are common across all java projects
