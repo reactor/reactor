@@ -352,7 +352,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		public void cancel() {
 			try {
 				p.halt();
-				ringBuffer.removeGatingSequence(p.getSequence());
 			} finally {
 				decrementSubscribers();
 			}
@@ -375,7 +374,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	private final static class InnerEventProcessor<T> implements EventProcessor {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
-		private final DataProvider<MutableSignal<T>> dataProvider;
+		private final RingBuffer<MutableSignal<T>> dataProvider;
 		private final SequenceBarrier                sequenceBarrier;
 		private final Sequence sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 		private final Subscriber<? super T> sub;
@@ -391,7 +390,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		 * @param dataProvider    to which events are published.
 		 * @param sequenceBarrier on which it is waiting.
 		 */
-		public InnerEventProcessor(final DataProvider<MutableSignal<T>> dataProvider,
+		public InnerEventProcessor(final RingBuffer<MutableSignal<T>> dataProvider,
 		                           SequenceBarrier sequenceBarrier,
 		                           Sequence pendingRequest,
 		                           Subscriber<? super T> sub) {
@@ -498,6 +497,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 					}
 				}
 			} finally {
+				dataProvider.removeGatingSequence(sequence);
 				running.set(false);
 			}
 		}
