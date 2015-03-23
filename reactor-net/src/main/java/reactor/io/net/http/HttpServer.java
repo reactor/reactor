@@ -32,6 +32,7 @@ import reactor.io.net.PeerStream;
 import reactor.io.net.Server;
 
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Base functionality needed by all servers that communicate with clients over HTTP.
@@ -126,11 +127,14 @@ public abstract class HttpServer<IN, OUT>
 
 	@Override
 	protected Iterable<Publisher<? extends OUT>> routeChannel(final HttpChannel<IN, OUT> ch) {
+		final List<Registration<? extends Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>>>
+				selected = routedWriters.select(ch);
+
 		return new Iterable<Publisher<? extends OUT>>() {
 			@Override
 			public Iterator<Publisher<? extends OUT>> iterator() {
 				final Iterator<Registration<? extends Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>>>
-						iterator = routedWriters.select(ch).iterator();
+						iterator = selected.iterator();
 
 				return new Iterator<Publisher<? extends OUT>>() {
 					@Override

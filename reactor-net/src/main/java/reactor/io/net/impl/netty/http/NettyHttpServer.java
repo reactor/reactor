@@ -22,7 +22,10 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -41,6 +44,7 @@ import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
 import reactor.io.net.impl.netty.tcp.NettyTcpServer;
 import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
+import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.Control;
 
@@ -109,12 +113,18 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	protected HttpChannel<IN, OUT> createServerRequest(NettyChannelStream<IN, OUT> channelStream, io.netty.handler.codec
 			.http.HttpRequest content) {
-		HttpChannel<IN, OUT> request = new NettyHttpChannel<IN, OUT>(channelStream, server, content, getDefaultCodec());
+		NettyHttpChannel<IN, OUT> request = new NettyHttpChannel<IN, OUT>(channelStream, server, content, getDefaultCodec());
 		Iterable<? extends Publisher<? extends OUT>> handlers = routeChannel(request);
-		final Control c = subscribeChannelHandlers(Streams.concat(handlers), request);
 
-		//TODO handle 404
+		Stream<OUT> writeStream;
+		if (!handlers.iterator().hasNext()) {
+			writeStream = Streams.empty();
+			channelStream.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND), null, false);
+		} else {
+			writeStream = Streams.concat(handlers);
+		}
 
+		final Control c = subscribeChannelHandlers(writeStream, request);
 
 		channelStream.delegate().closeFuture().addListener(new ChannelFutureListener() {
 			@Override
