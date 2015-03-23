@@ -418,6 +418,7 @@ public class TcpServerTests {
 	}
 
 	@Test
+	@Ignore
 	public void exposesHttpServer() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
