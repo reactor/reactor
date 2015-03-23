@@ -30,7 +30,7 @@ import static reactor.bus.selector.Selectors.$
 /**
  * @author Stephane Maldini (smaldini)
  */
-class GroovyReactorSpec extends Specification {
+class GroovyEventBusSpec extends Specification {
 
 	@Shared def testEnv
 
