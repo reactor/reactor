@@ -16,8 +16,8 @@ import reactor.io.net.tcp.support.SocketUtils;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
@@ -136,17 +136,29 @@ public class UdpServerTests {
 				}
 			}));
 
-			server.start().onSuccess(b -> server.join(multicastGroup, multicastInterface)).await();
-			servers.add(server);
-		}
+			server.start().onSuccess(b -> {
+				try {
+					for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+					     ifaces.hasMoreElements(); ) {
+						NetworkInterface iface = ifaces.nextElement();
+						if (isMulticastEnabledIPv4Interface(iface)) {
+							server.join(multicastGroup, iface);
+						}
+					}
+				} catch (Throwable t) {
+					throw new IllegalStateException(t);
+				}
+			}).await();
+				servers.add(server);
+			}
 
-		for (int i = 0; i < Environment.PROCESSORS; i++) {
+			for (int i = 0; i < Environment.PROCESSORS; i++) {
 			threadPool.submit(new Runnable() {
 				@Override
 				public void run() {
 					try {
 						MulticastSocket multicast = new MulticastSocket();
-//						multicast.joinGroup(new InetSocketAddress(multicastGroup, port), multicastInterface);
+						multicast.joinGroup(new InetSocketAddress(multicastGroup, port), multicastInterface);
 
 						byte[] data = new byte[1024];
 						new Random().nextBytes(data);
