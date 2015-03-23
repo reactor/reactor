@@ -75,7 +75,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, boolean autoCancel) {
-		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
+		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -292,7 +292,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				'}';
 	}
 
-
 	private final class RingBufferSubscription implements Subscription {
 
 		final         Sequence              pendingRequest;
@@ -382,7 +381,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		private final Subscriber<? super T> sub;
 		private final Sequence              pendingRequest;
 		Subscription s;
-
 
 		/**
 		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
