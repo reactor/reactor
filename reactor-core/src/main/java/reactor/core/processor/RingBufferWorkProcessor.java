@@ -28,7 +28,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * An implementation of a RingBuffer backed message-passing WorkProcessor
+ * An implementation of a RingBuffer backed message-passing WorkProcessor.
+ *
+ * The processor is very similar to {@link reactor.core.processor.RingBufferProcessor} but only partially respects the
+ * Reactive Streams contract.
+ *
+ * The purpose of this processor is to distribute the signals to only one of the subscribed subscribers and to share the
+ * demand amongst all subscribers. The scenario is akin to Executor or Round-Robin distribution. However there is
+ * no guarantee the distribution will be respecting a round-robin distribution all the time.
+ *
+ * The core use for this component is to scale up easily without suffering the overhead of an Executor and without using
+ *  dedicated queues by subscriber, which is less used memory, less GC, more win.
  *
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
@@ -42,8 +52,14 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and auto-cancel.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
@@ -51,9 +67,15 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
@@ -61,19 +83,32 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 * @param service
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and auto-cancel.
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service) {
 		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * @param service
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 *
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, boolean autoCancel) {
 		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
@@ -81,21 +116,35 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferProcessor using the passed buffer size, blockingWait Strategy
+	 * and auto-cancel.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
 		return create(name, bufferSize, new BlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferProcessor using the passed buffer size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
 		return create(name, bufferSize, new BlockingWaitStrategy(), autoCancel);
@@ -103,21 +152,35 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 * @param service
-	 * @param bufferSize
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferProcessor using the passed buffer size, blockingWait Strategy
+	 * and auto-cancel.
+	 *
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize) {
 		return create(service, bufferSize, new BlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * @param service
-	 * @param bufferSize
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using the passed buffer size, blockingWait Strategy
+	 * and auto-cancel.
+	 *
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
 		return create(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
@@ -125,11 +188,18 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param strategy
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using the passed buffer size, blockingWait Strategy
+	 * and auto-cancel.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
 			strategy) {
@@ -137,12 +207,19 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param strategy
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using the passed buffer size, blockingWait Strategy
+	 * and auto-cancel settings.
+	 *
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
 			strategy, boolean autoCancel) {
@@ -150,11 +227,18 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 * @param executor
-	 * @param bufferSize
-	 * @param strategy
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using the passed buffer size and blockingWait Strategy settings
+	 * but will auto-cancel.
+	 *
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+
+	 * @param executor A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
 			strategy) {
@@ -162,12 +246,19 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	/**
-	 * @param executor
-	 * @param bufferSize
-	 * @param strategy
-	 * @param autoCancel
-	 * @param <E>
-	 * @return
+	 * Create a new RingBufferWorkProcessor using the passed buffer size, wait strategy
+	 * and auto-cancel settings.
+	 *
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param executor A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E> Type of processed signals
+	 *
+	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
 			strategy, boolean autoCancel) {

@@ -1,6 +1,6 @@
 package reactor.bus
 
-import reactor.bus.ringbuffer.spec.ProcessorSpec
+import reactor.bus.ringbuffer.spec.RingBatcherSpec
 import reactor.fn.Consumer
 import reactor.fn.Supplier
 import spock.lang.Specification
@@ -11,14 +11,14 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Jon Brisbin
  */
-class ProcessorsSpec extends Specification {
+class RingBatchersSpec extends Specification {
 
 	def "Processor provides high-speed event processor"() {
 
 		given: 'a Processor for events'
 		def latch = new CountDownLatch(10)
 		List<Data> data = []
-		def processor = new ProcessorSpec<Data>().
+		def processor = new RingBatcherSpec<Data>().
 				dataSupplier({ new Data() } as Supplier<Data>).
 				consume({ Data d -> data << d; latch.countDown() } as Consumer<Data>).
 				get()
@@ -45,7 +45,7 @@ class ProcessorsSpec extends Specification {
 		def latch = new CountDownLatch(3)
 		def data = []
 		def consumer = { Data d -> data << d.data; latch.countDown() } as Consumer<Data>
-		def processor = new ProcessorSpec<Data>().
+		def processor = new RingBatcherSpec<Data>().
 				dataSupplier({ new Data() } as Supplier<Data>).
 				consume(consumer).
 				consume(consumer).
@@ -73,7 +73,7 @@ class ProcessorsSpec extends Specification {
 		given: 'a Processor for events'
 		def latch = new CountDownLatch(300)
 		def consumer = { Data d -> latch.countDown() } as Consumer<Data>
-		def processor = new ProcessorSpec<Data>().
+		def processor = new RingBatcherSpec<Data>().
 				dataBufferSize(128).
 				dataSupplier({ new Data() } as Supplier<Data>).
 				consume(consumer).

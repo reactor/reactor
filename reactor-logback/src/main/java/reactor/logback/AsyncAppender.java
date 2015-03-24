@@ -22,8 +22,8 @@ import ch.qos.logback.core.LogbackException;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.*;
 import reactor.bus.ringbuffer.Operation;
-import reactor.bus.ringbuffer.Processor;
-import reactor.bus.ringbuffer.spec.ProcessorSpec;
+import reactor.bus.ringbuffer.RingBatcher;
+import reactor.bus.ringbuffer.spec.RingBatcherSpec;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.bus.ringbuffer.Processor} internally
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.bus.ringbuffer.RingBatcher} internally
  * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
  * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
  *
@@ -47,8 +47,8 @@ public class AsyncAppender
 	private final FilterAttachableImpl<ILoggingEvent>      fai      = new FilterAttachableImpl<ILoggingEvent>();
 	private final AtomicReference<Appender<ILoggingEvent>> delegate = new AtomicReference<Appender<ILoggingEvent>>();
 
-	private String              name;
-	private Processor<LogEvent> processor;
+	private String                name;
+	private RingBatcher<LogEvent> processor;
 
 	private long    backlog           = 1024 * 1024;
 	private boolean includeCallerData = false;
@@ -103,9 +103,9 @@ public class AsyncAppender
 
 	@Override
 	public void start() {
-    startDelegateAppender();
+		startDelegateAppender();
 
-		processor = new ProcessorSpec<LogEvent>()
+		processor = new RingBatcherSpec<LogEvent>()
 				.dataSupplier(new Supplier<LogEvent>() {
 					@Override
 					public LogEvent get() {
@@ -137,8 +137,8 @@ public class AsyncAppender
 		}
 	}
 
-  private void startDelegateAppender() {
-    Appender<ILoggingEvent> delegateAppender = delegate.get();
+	private void startDelegateAppender() {
+		Appender<ILoggingEvent> delegateAppender = delegate.get();
     if (null != delegateAppender && !delegateAppender.isStarted()) {
       delegateAppender.start();
     }

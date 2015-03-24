@@ -4,8 +4,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.bus.ringbuffer.Processor;
-import reactor.bus.ringbuffer.spec.ProcessorSpec;
+import reactor.bus.ringbuffer.RingBatcher;
+import reactor.bus.ringbuffer.spec.RingBatcherSpec;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -61,7 +61,7 @@ public class ProcessorThroughputTests {
 
 	@Test
 	public void testProcessorThroughput() throws InterruptedException {
-        Processor<Data> proc = new ProcessorSpec<Data>()
+        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .blockingWaitStrategy()
@@ -79,7 +79,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testBlockingWaitStrategyThroughput() throws InterruptedException {
-        Processor<Data> proc = new ProcessorSpec<Data>()
+        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .blockingWaitStrategy()
@@ -96,7 +96,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testBusySpinWaitStrategyThroughput() throws InterruptedException {
-        Processor<Data> proc = new ProcessorSpec<Data>()
+        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .busySpinWaitStrategy()
@@ -113,7 +113,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testSleepingWaitStrategyThroughput() throws InterruptedException {
-        Processor<Data> proc = new ProcessorSpec<Data>()
+        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .sleepingWaitStrategy()
@@ -130,7 +130,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testYieldingWaitStrategyThroughput() throws InterruptedException {
-        Processor<Data> proc = new ProcessorSpec<Data>()
+        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .yieldingWaitStrategy()

@@ -56,7 +56,7 @@ import java.util.concurrent.Executors;
  * @author Jon Brisbin
  * @see <a href="https://github.com/LMAX-Exchange/disruptor">https://github.com/LMAX-Exchange/disruptor</a>
  */
-public class Processor<T> implements Supplier<Operation<T>> {
+public class RingBatcher<T> implements Supplier<Operation<T>> {
 
 	private final int                      opsBufferSize;
 	private final ExecutorService          executor;
@@ -64,12 +64,12 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	private final RingBuffer<Operation<T>> ringBuffer;
 
 	@SuppressWarnings("unchecked")
-	public Processor(@Nonnull final Supplier<T> dataSupplier,
-	                 @Nonnull final Consumer<T> consumer,
-	                 @Nonnull Registry<Consumer<Throwable>> errorConsumers,
-	                 WaitStrategy waitStrategy,
-	                 boolean multiThreadedProducer,
-	                 int opsBufferSize) {
+	public RingBatcher(@Nonnull final Supplier<T> dataSupplier,
+	                   @Nonnull final Consumer<T> consumer,
+	                   @Nonnull Registry<Consumer<Throwable>> errorConsumers,
+	                   WaitStrategy waitStrategy,
+	                   boolean multiThreadedProducer,
+	                   int opsBufferSize) {
 		Assert.notNull(dataSupplier, "Data Supplier cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 		Assert.notNull(errorConsumers, "Error Consumers Registry cannot be null.");
@@ -135,7 +135,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	 * @param ops the {@code Operations} to commit
 	 * @return {@literal this}
 	 */
-	public Processor<T> commit(List<Operation<T>> ops) {
+	public RingBatcher<T> commit(List<Operation<T>> ops) {
 		if (null == ops || ops.isEmpty()) {
 			return this;
 		}
@@ -171,7 +171,7 @@ public class Processor<T> implements Supplier<Operation<T>> {
 	 *                event {@link Consumer}
 	 * @return {@literal this}
 	 */
-	public Processor<T> batch(int size, Consumer<T> mutator) {
+	public RingBatcher<T> batch(int size, Consumer<T> mutator) {
 		long start = -1;
 		long end = 0;
 		for (int i = 0; i < size; i++) {

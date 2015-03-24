@@ -17,5 +17,5 @@
 moduleName=reactor-groovy-module
 moduleVersion=1.0
 extensionClasses=reactor.groovy.ext.StreamExtensions,reactor.groovy.ext.BusExtensions,\
-  reactor.groovy.ext.ProcessorExtensions
+  reactor.groovy.ext.RingBatcherExtensions
 staticExtensionClasses=reactor.groovy.ext.ReactorStaticExtensions

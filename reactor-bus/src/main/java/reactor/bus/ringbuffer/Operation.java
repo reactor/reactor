@@ -21,7 +21,7 @@ import reactor.fn.Supplier;
 /**
  * A {@link Operation} represents the payload that gets (re) used in the processor.
  *
- * The {@link Operation} itself gets allocated during creation time for the {@link Processor}, so at
+ * The {@link Operation} itself gets allocated during creation time for the {@link RingBatcher}, so at
  * runtime the instance will be reused. What changes during runtime is the enclosed payload.
  * </p>
  * In addition to the payload, the {@link #id} represents the corresponding ID in the underlying

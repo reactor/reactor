@@ -15,7 +15,7 @@
  */
 
 /**
- * Specs help create {@link reactor.bus.ringbuffer.Processor Processors} by providing a fluent API to specify
+ * Specs help create {@link reactor.bus.ringbuffer.RingBatcher Processors} by providing a fluent API to specify
  * common options.
  */
 package reactor.bus.ringbuffer.spec;
