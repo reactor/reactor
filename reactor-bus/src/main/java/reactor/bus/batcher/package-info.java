@@ -15,7 +15,7 @@
  */
 
 /**
- * Specs help create {@link reactor.bus.ringbuffer.RingBatcher Processors} by providing a fluent API to specify
- * common options.
+ * A {@link reactor.bus.batcher.OperationBatcher} is a thin wrapper around the LMAX Disruptor RingBuffer.
+ * @see <a href="http://lmax-exchange.github.io/disruptor/">http://lmax-exchange.github.io/disruptor/</a>
  */
-package reactor.bus.ringbuffer.spec;
+package reactor.bus.batcher;

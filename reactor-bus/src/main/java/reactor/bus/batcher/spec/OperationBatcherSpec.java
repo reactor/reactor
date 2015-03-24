@@ -14,11 +14,11 @@
  *  limitations under the License.
  */
 
-package reactor.bus.ringbuffer.spec;
+package reactor.bus.batcher.spec;
 
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
-import reactor.bus.ringbuffer.RingBatcher;
+import reactor.bus.batcher.OperationBatcher;
 import reactor.bus.selector.Selectors;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -26,11 +26,11 @@ import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.*;
 
 /**
- * Specification class to create {@link reactor.bus.ringbuffer.RingBatcher Processors}.
+ * Specification class to create {@link reactor.bus.batcher.OperationBatcher OperationBatchers}.
  *
  * @author Jon Brisbin
  */
-public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
+public class OperationBatcherSpec<T> implements Supplier<OperationBatcher<T>> {
 
 	private Registry<Consumer<Throwable>> errorConsumers        = Registries.create();
 	private boolean                       multiThreadedProducer = false;
@@ -44,7 +44,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> multiThreadedProducer() {
+	public OperationBatcherSpec<T> multiThreadedProducer() {
 		this.multiThreadedProducer = true;
 		return this;
 	}
@@ -55,7 +55,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> singleThreadedProducer() {
+	public OperationBatcherSpec<T> singleThreadedProducer() {
 		this.multiThreadedProducer = false;
 		return this;
 	}
@@ -66,7 +66,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 * @param dataBufferSize number of data objects to pre-allocate
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> dataBufferSize(int dataBufferSize) {
+	public OperationBatcherSpec<T> dataBufferSize(int dataBufferSize) {
 		this.dataBufferSize = dataBufferSize;
 		return this;
 	}
@@ -77,7 +77,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 * @param dataSupplier the {@link Supplier} to provide new data instances
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> dataSupplier(Supplier<T> dataSupplier) {
+	public OperationBatcherSpec<T> dataSupplier(Supplier<T> dataSupplier) {
 		Assert.isNull(this.dataSupplier, "Data Supplier is already set.");
 		this.dataSupplier = dataSupplier;
 		return this;
@@ -89,7 +89,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 * @param waitStrategy the {@link com.lmax.disruptor.WaitStrategy} to use
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> waitStrategy(WaitStrategy waitStrategy) {
+	public OperationBatcherSpec<T> waitStrategy(WaitStrategy waitStrategy) {
 		this.waitStrategy = waitStrategy;
 		return this;
 	}
@@ -99,7 +99,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> blockingWaitStrategy() {
+	public OperationBatcherSpec<T> blockingWaitStrategy() {
 		this.waitStrategy = new BlockingWaitStrategy();
 		return this;
 	}
@@ -109,7 +109,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> sleepingWaitStrategy() {
+	public OperationBatcherSpec<T> sleepingWaitStrategy() {
 		this.waitStrategy = new SleepingWaitStrategy();
 		return this;
 	}
@@ -120,7 +120,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> yieldingWaitStrategy() {
+	public OperationBatcherSpec<T> yieldingWaitStrategy() {
 		this.waitStrategy = new YieldingWaitStrategy();
 		return this;
 	}
@@ -130,7 +130,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 *
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> busySpinWaitStrategy() {
+	public OperationBatcherSpec<T> busySpinWaitStrategy() {
 		this.waitStrategy = new BusySpinWaitStrategy();
 		return this;
 	}
@@ -142,7 +142,7 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 * @param consumer the mutated event data {@code Consumer}
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> consume(Consumer<T> consumer) {
+	public OperationBatcherSpec<T> consume(Consumer<T> consumer) {
 		this.consumer = consumer;
 		return this;
 	}
@@ -154,15 +154,15 @@ public class RingBatcherSpec<T> implements Supplier<RingBatcher<T>> {
 	 * @param errorConsumer exception {@code Consumer}
 	 * @return {@literal this}
 	 */
-	public RingBatcherSpec<T> when(Class<? extends Throwable> type, Consumer<Throwable> errorConsumer) {
+	public OperationBatcherSpec<T> when(Class<? extends Throwable> type, Consumer<Throwable> errorConsumer) {
 		errorConsumers.register(Selectors.type(type), errorConsumer);
 		return this;
 	}
 
 
 	@Override
-	public RingBatcher<T> get() {
-		return new RingBatcher<T>(dataSupplier,
+	public OperationBatcher<T> get() {
+		return new OperationBatcher<T>(dataSupplier,
 		                        consumer,
 		                        errorConsumers,
 		                        waitStrategy,

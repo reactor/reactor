@@ -4,8 +4,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.bus.ringbuffer.RingBatcher;
-import reactor.bus.ringbuffer.spec.RingBatcherSpec;
+import reactor.bus.batcher.OperationBatcher;
+import reactor.bus.batcher.spec.OperationBatcherSpec;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -13,7 +13,7 @@ import reactor.fn.Supplier;
  * @author Jon Brisbin
  */
 @Ignore
-public class ProcessorThroughputTests {
+public class OperationBatcherThroughputTests {
 
 	static final int RUNS = 250000000;
     static final int BATCH_SIZE = 512;
@@ -61,7 +61,7 @@ public class ProcessorThroughputTests {
 
 	@Test
 	public void testProcessorThroughput() throws InterruptedException {
-        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
+        OperationBatcher<Data> proc = new OperationBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .blockingWaitStrategy()
@@ -79,7 +79,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testBlockingWaitStrategyThroughput() throws InterruptedException {
-        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
+        OperationBatcher<Data> proc = new OperationBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .blockingWaitStrategy()
@@ -96,7 +96,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testBusySpinWaitStrategyThroughput() throws InterruptedException {
-        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
+        OperationBatcher<Data> proc = new OperationBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .busySpinWaitStrategy()
@@ -113,7 +113,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testSleepingWaitStrategyThroughput() throws InterruptedException {
-        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
+        OperationBatcher<Data> proc = new OperationBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .sleepingWaitStrategy()
@@ -130,7 +130,7 @@ public class ProcessorThroughputTests {
 
     @Test
     public void testYieldingWaitStrategyThroughput() throws InterruptedException {
-        RingBatcher<Data> proc = new RingBatcherSpec<Data>()
+        OperationBatcher<Data> proc = new OperationBatcherSpec<Data>()
             .dataSupplier(dataSupplier)
             .consume(nullConsumer)
             .yieldingWaitStrategy()
