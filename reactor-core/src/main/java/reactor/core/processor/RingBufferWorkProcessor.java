@@ -566,11 +566,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					if (!running.get()) {
 						break;
 					} else {
-						long seq = workSequence.get();
-						if (nextSequence < seq &&
-								dataProvider.get(seq).type != SType.NEXT) {
+						if (cachedAvailableSequence < nextSequence &&
+								dataProvider.get(sequenceBarrier.getCursor()).type != SType.NEXT) {
 							processedSequence = false;
-							nextSequence = seq;
+							nextSequence = sequenceBarrier.getCursor();
 						} else {
 							processedSequence = true;
 						}
