@@ -72,6 +72,8 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 		}
 		return false;
 	}
+	
+	public abstract long getAvailableCapacity();
 
 	/**
 	 * A Container for data passed on this processor
