@@ -15,17 +15,27 @@
  */
 package reactor.core.processor;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.SpecificationExceptions;
-import reactor.jarjar.com.lmax.disruptor.*;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.SpecificationExceptions;
+import reactor.jarjar.com.lmax.disruptor.AlertException;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.EventFactory;
+import reactor.jarjar.com.lmax.disruptor.EventProcessor;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.jarjar.com.lmax.disruptor.Sequence;
+import reactor.jarjar.com.lmax.disruptor.SequenceBarrier;
+import reactor.jarjar.com.lmax.disruptor.Sequencer;
+import reactor.jarjar.com.lmax.disruptor.TimeoutException;
+import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * An implementation of a RingBuffer backed message-passing Processor.
@@ -381,6 +391,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				", barrier=" + barrier.getCursor() +
 				'}';
 	}
+	
+	@Override
+	public long getAvailableCapacity() {
+		return ringBuffer.remainingCapacity();
+	}	
 
 	private final class RingBufferSubscription implements Subscription {
 

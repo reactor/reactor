@@ -15,17 +15,26 @@
  */
 package reactor.core.processor;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.SpecificationExceptions;
-import reactor.jarjar.com.lmax.disruptor.*;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.SpecificationExceptions;
+import reactor.jarjar.com.lmax.disruptor.AlertException;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.EventFactory;
+import reactor.jarjar.com.lmax.disruptor.EventProcessor;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.jarjar.com.lmax.disruptor.Sequence;
+import reactor.jarjar.com.lmax.disruptor.SequenceBarrier;
+import reactor.jarjar.com.lmax.disruptor.Sequencer;
+import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 /**
  * An implementation of a RingBuffer backed message-passing WorkProcessor.
@@ -385,7 +394,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
 		public void request(long n) {
 			if (n <= 0l) {
 				sub.onError(SpecificationExceptions.spec_3_09_exception(n));
@@ -576,4 +584,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			running.set(false);
 		}
 	}
+
+	@Override
+	public long getAvailableCapacity() {
+		return ringBuffer.remainingCapacity();
+	}	
+	
 }
