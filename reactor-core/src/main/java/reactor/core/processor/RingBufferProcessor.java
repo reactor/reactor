@@ -537,24 +537,13 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 									//if current sequence does not yet match the published one
 									if (nextSequence < availableSequence) {
-
-										//look ahead if the published event was a terminal signal
-										if (dataProvider.get(nextSequence + 1l).type != SType.NEXT) {
-											//terminate
-											running.set(false);
-											//process last signal
-											route(dataProvider.get(availableSequence), sub);
-											//short-circuit
-											throw AlertException.INSTANCE;
-										}
 										//pause until request
-										while (pendingRequest.get() <= 0l) {
+										while (pendingRequest.addAndGet(-1l) < 0l) {
+											pendingRequest.incrementAndGet();
 											//Todo Use WaitStrategy?
 											sequenceBarrier.checkAlert();
 											LockSupport.parkNanos(1l);
 										}
-										pendingRequest.incrementAndGet();
-
 									} else {
 										//end-of-loop without processing and incrementing the nextSequence
 										break;
@@ -568,6 +557,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 								//Complete or Error are terminal events, we shutdown the processor and process the signal
 								running.set(false);
 								route(event, sub);
+								//only alert on error (immediate), complete will be drained as usual with waitFor
+								if(event.type == SType.ERROR){
+									sequenceBarrier.alert();
+								}
 								throw AlertException.INSTANCE;
 							}
 						}
@@ -577,7 +570,14 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 					} catch (final AlertException ex) {
 						if (!running.get()) {
 							break;
-						}else{
+						} else {
+							long cursor = sequenceBarrier.getCursor();
+							if (dataProvider.get(cursor).type != SType.NEXT) {
+								sequence.set(cursor);
+								nextSequence = cursor;
+							} else {
+								sequence.set(cursor - 1l);
+							}
 							sequenceBarrier.clearAlert();
 						}
 					} catch (final Throwable ex) {
