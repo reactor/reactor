@@ -15,14 +15,9 @@
  */
 package reactor.core.processor;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
-
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-
+import reactor.core.processor.util.RingBufferSubscriberUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.AlertException;
@@ -37,21 +32,31 @@ import reactor.jarjar.com.lmax.disruptor.TimeoutException;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
+
 /**
  * An implementation of a RingBuffer backed message-passing Processor.
  *
  * The processor respects the Reactive Streams contract and must not be signalled concurrently on any onXXXX
- * method. Each subscriber will be assigned a unique thread that will only stop on terminal event: Complete, Error or Cancel.
- * If Auto-Cancel is enabled, when all subscribers are unregistered, a cancel signal is sent to the upstream Publisher if any.
+ * method. Each subscriber will be assigned a unique thread that will only stop on terminal event: Complete, Error or
+ * Cancel.
+ * If Auto-Cancel is enabled, when all subscribers are unregistered, a cancel signal is sent to the upstream Publisher
+ * if any.
  * Executor can be customized and will define how many concurrent subscribers are allowed (fixed thread).
- * When a Subscriber requests Long.MAX, there won't be any backpressure applied and the producer will run at risk of being throttled
- * if the subscribers don't catch up. With any other strictly positive demand, a subscriber will stop reading new Next signals
+ * When a Subscriber requests Long.MAX, there won't be any backpressure applied and the producer will run at risk of
+ * being throttled
+ * if the subscribers don't catch up. With any other strictly positive demand, a subscriber will stop reading new Next
+ * signals
  * (Complete and Error will still be read) as soon as the demand has been fully consumed by the pubisher.
  *
  * When more than 1 subscriber listens to that processor, they will all receive the exact same events if their
  * respective demand is still strictly positive, very much like a Fan-Out scenario.
  *
- * When the backlog has been completely booked and no subscribers is draining the signals, the publisher will start throttling.
+ * When the backlog has been completely booked and no subscribers is draining the signals, the publisher will start
+ * throttling.
  * In effect the smaller the backlog size is defined, the smaller the difference in processing rate between subscribers
  * must remain. Since the sequence for each subscriber will point to various ringBuffer locations, the processor
  * nows when a backlog can't override the previously occupied slot.
@@ -60,10 +65,10 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
  * @author Stephane Maldini
  */
 public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
+
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
-
 
 	/**
 	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
@@ -72,7 +77,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * A new Cached ThreadExecutorPool will be implicitely created.
 	 *
 	 * @param <E> Type of processed signals
-	 *
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create() {
@@ -86,8 +90,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * A new Cached ThreadExecutorPool will be implicitely created.
 	 *
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(boolean autoCancel) {
@@ -102,8 +105,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * consuming the ringbuffer as subscribers.
 	 *
 	 * @param service A provided ExecutorService to manage threading infrastructure
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>     Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service) {
@@ -117,10 +119,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param service    A provided ExecutorService to manage threading infrastructure
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, boolean autoCancel) {
@@ -134,11 +135,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
-	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E> Type of processed signals
-	 *
-	 * @return a fresh processor* @param <E>
+	 * @param <E>        Type of processed signals
 	 * @return
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize) {
@@ -152,11 +151,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
@@ -170,10 +168,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param service    A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize) {
@@ -187,11 +184,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param service    A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
@@ -206,11 +202,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
-	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E> Type of processed signals
-	 *
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
@@ -224,15 +219,17 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
-	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> create(String name,
+	                                                int bufferSize,
+	                                                WaitStrategy strategy,
+	                                                boolean autoCancel) {
 		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, autoCancel);
 	}
 
@@ -243,11 +240,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param service    A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E> Type of processed signals
-	 *
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy) {
@@ -261,31 +257,18 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
 	 *
-	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param service    A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E> Type of processed signals
-	 *
+	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+	                                                int bufferSize,
+	                                                WaitStrategy strategy,
+	                                                boolean autoCancel) {
 		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, autoCancel);
-	}
-
-
-	static <E> void route(MutableSignal<E> task, Subscriber<? super E> sub) {
-		try {
-			if (task.type == SType.COMPLETE) {
-				sub.onComplete();
-			} else if (task.type == SType.ERROR) {
-				sub.onError(task.throwable);
-			} else if (task.value != null) {
-				sub.onNext(task.value);
-			}
-		} catch (Throwable t) {
-			sub.onError(t);
-		}
 	}
 
 	private RingBufferProcessor(String name,
@@ -296,14 +279,14 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		super(autoCancel);
 
 		this.executor = executor == null ?
-				Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
-				executor;
+		                Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
+		                executor;
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
 				new EventFactory<MutableSignal<E>>() {
 					@Override
 					public MutableSignal<E> newInstance() {
-						return new MutableSignal<E>(SType.NEXT, null, null);
+						return new MutableSignal<E>();
 					}
 				},
 				bufferSize,
@@ -314,98 +297,78 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	}
 
 	@Override
-	public void subscribe(final Subscriber<? super E> sub) {
-		if (null == sub) {
+	public void subscribe(final Subscriber<? super E> subscriber) {
+		if (null == subscriber) {
 			throw new NullPointerException("Cannot subscribe NULL subscriber");
 		}
+
 		try {
 			//create a unique eventProcessor for this subscriber
 			final Sequence pendingRequest = new Sequence(0);
-			final InnerEventProcessor<E> p = new InnerEventProcessor<E>(
+			final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
 					ringBuffer,
 					barrier,
 					pendingRequest,
-					sub
+					subscriber
 			);
 
 			//set eventProcessor sequence to ringbuffer index
-			p.getSequence().set(ringBuffer.getCursor());
+			signalProcessor.getSequence().set(ringBuffer.getCursor());
 
 			//bind eventProcessor sequence to observe the ringBuffer
-			ringBuffer.addGatingSequences(p.getSequence());
+			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
 			//prepare the subscriber subscription to this processor
-			p.s = new RingBufferSubscription(pendingRequest, sub, p);
+			signalProcessor.setSubscription(new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
 
 			//start the subscriber thread
 			incrementSubscribers();
-			executor.execute(p);
+			executor.execute(signalProcessor);
 
 		} catch (Throwable t) {
-			sub.onError(t);
+			subscriber.onError(t);
 		}
 	}
 
 	@Override
 	public void onNext(E o) {
-		if (o == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		/*	if(context == Thread.currentThread().getContextClassLoader()){
-
-		}*/
-		final long seqId = ringBuffer.next();
-		final MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.value = o;
-		signal.throwable = null;
-		signal.type = SType.NEXT;
-		ringBuffer.publish(seqId);
+		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
 	@Override
 	public void onError(Throwable t) {
-		if (t == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		long seqId = ringBuffer.next();
-		MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.throwable = t;
-		signal.value = null;
-		signal.type = SType.ERROR;
-		ringBuffer.publish(seqId);
+		RingBufferSubscriberUtils.onError(t, ringBuffer);
 	}
 
 	@Override
 	public void onComplete() {
-		long seqId = ringBuffer.next();
-		MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.throwable = null;
-		signal.value = null;
-		signal.type = SType.COMPLETE;
-		ringBuffer.publish(seqId);
+		RingBufferSubscriberUtils.onComplete(ringBuffer);
 	}
 
 	@Override
 	public String toString() {
-		return "RingBufferSubscriber{" +
-				", barrier=" + barrier.getCursor() +
-				'}';
+		return "RingBufferProcessor{" +
+		       "barrier=" + barrier +
+		       ", ringBuffer=" + ringBuffer +
+		       ", executor=" + executor +
+		       '}';
 	}
-	
+
 	@Override
 	public long getAvailableCapacity() {
 		return ringBuffer.remainingCapacity();
-	}	
+	}
 
 	private final class RingBufferSubscription implements Subscription {
+		private final Sequence              pendingRequest;
+		private final Subscriber<? super E> subscriber;
+		private final EventProcessor        eventProcessor;
 
-		final         Sequence              pendingRequest;
-		private final Subscriber<? super E> sub;
-		private final EventProcessor        p;
-
-		public RingBufferSubscription(Sequence pendingRequest, Subscriber<? super E> sub, EventProcessor p) {
-			this.sub = sub;
-			this.p = p;
+		public RingBufferSubscription(Sequence pendingRequest,
+		                              Subscriber<? super E> subscriber,
+		                              EventProcessor eventProcessor) {
+			this.subscriber = subscriber;
+			this.eventProcessor = eventProcessor;
 			this.pendingRequest = pendingRequest;
 		}
 
@@ -413,38 +376,37 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		@SuppressWarnings("unchecked")
 		public void request(long n) {
 			if (n <= 0l) {
-				sub.onError(SpecificationExceptions.spec_3_09_exception(n));
+				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
 				return;
 			}
 
-			if (!p.isRunning() || pendingRequest.get() == Long.MAX_VALUE) {
+			if (!eventProcessor.isRunning() || pendingRequest.get() == Long.MAX_VALUE) {
 				return;
 			}
-
-			Subscription parent = upstreamSubscription;
-			final long toRequest;
 
 			//buffered data in producer unpublished
-			long currentSequence = p.getSequence().get();
-			long cursor = ringBuffer.getCursor();
+			final long currentSequence = eventProcessor.getSequence().get();
+			final long cursor = ringBuffer.getCursor();
 
 			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
-			long buffered = currentSequence <  cursor - 1l ?
-					cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE ? currentSequence + 1l : currentSequence) :
-					0l;
+			final long buffered = currentSequence < cursor - 1l
+			                      ? cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE
+			                                  ? currentSequence + 1l
+			                                  : currentSequence)
+			                      : 0l;
 
-			//System.out.println(Thread.currentThread()+": +"+n+" [before] pending: "+pendingRequest+" - "+currentSequence+"/"+cursor+" - buffered:"+buffered+" @"+this.hashCode());
-			if (pendingRequest.addAndGet(n) < 0) pendingRequest.set(Long.MAX_VALUE);
+			if (pendingRequest.addAndGet(n) < 0) {
+				pendingRequest.set(Long.MAX_VALUE);
+			}
 
+			final long toRequest;
 			if (buffered > 0l && n != Long.MAX_VALUE) {
 				toRequest = (n - buffered) <= 0l ? n : n - buffered;
-				//if (pendingRequest.addAndGet(buffered + n) < 0) pendingRequest.set(Long.MAX_VALUE);
 			} else {
 				toRequest = n;
 			}
 
-
-			//System.out.println(Thread.currentThread()+": +"+n+" [after] pending: "+pendingRequest+" - "+toRequest+"/"+cursor+" - buffered:"+buffered+" @"+this.hashCode());
+			Subscription parent = upstreamSubscription;
 			if (toRequest > 0l) {
 				if (parent != null) {
 					parent.request(toRequest);
@@ -456,7 +418,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void cancel() {
 			try {
-				p.halt();
+				eventProcessor.halt();
 			} finally {
 				decrementSubscribers();
 			}
@@ -476,15 +438,17 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
 	 */
-	private final static class InnerEventProcessor<T> implements EventProcessor {
+	private final static class BatchSignalProcessor<T> implements EventProcessor {
 
-		private final AtomicBoolean running = new AtomicBoolean(false);
+		private final AtomicBoolean running  = new AtomicBoolean(false);
+		private final Sequence      sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+
 		private final RingBuffer<MutableSignal<T>> dataProvider;
-		private final SequenceBarrier                sequenceBarrier;
-		private final Sequence sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-		private final Subscriber<? super T> sub;
-		private final Sequence              pendingRequest;
-		Subscription s;
+		private final SequenceBarrier              sequenceBarrier;
+		private final Subscriber<? super T>        subscriber;
+		private final Sequence                     pendingRequest;
+
+		private Subscription subscription;
 
 		/**
 		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
@@ -495,14 +459,22 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		 * @param dataProvider    to which events are published.
 		 * @param sequenceBarrier on which it is waiting.
 		 */
-		public InnerEventProcessor(final RingBuffer<MutableSignal<T>> dataProvider,
-		                           SequenceBarrier sequenceBarrier,
-		                           Sequence pendingRequest,
-		                           Subscriber<? super T> sub) {
-			this.sub = sub;
+		public BatchSignalProcessor(RingBuffer<MutableSignal<T>> dataProvider,
+		                            SequenceBarrier sequenceBarrier,
+		                            Sequence pendingRequest,
+		                            Subscriber<? super T> subscriber) {
+			this.subscriber = subscriber;
 			this.pendingRequest = pendingRequest;
 			this.dataProvider = dataProvider;
 			this.sequenceBarrier = sequenceBarrier;
+		}
+
+		public Subscription getSubscription() {
+			return subscription;
+		}
+
+		public void setSubscription(Subscription subscription) {
+			this.subscription = subscription;
 		}
 
 		@Override
@@ -527,11 +499,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void run() {
 			if (!running.compareAndSet(false, true)) {
-				sub.onError(new IllegalStateException("Thread is already running"));
+				subscriber.onError(new IllegalStateException("Thread is already running"));
 				return;
 			} else {
 				sequenceBarrier.clearAlert();
-				sub.onSubscribe(s);
+				subscriber.onSubscribe(subscription);
 			}
 
 			MutableSignal<T> event = null;
@@ -544,7 +516,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 							event = dataProvider.get(nextSequence);
 
 							//if event is Next Signal we need to handle backpressure (pendingRequests)
-							if (event.type == SType.NEXT) {
+							if (event.type == MutableSignal.Type.NEXT) {
 								//if bounded and out of capacity
 								if (pendingRequest.get() != Long.MAX_VALUE && pendingRequest.addAndGet(-1l) < 0l) {
 									//re-add the retained capacity
@@ -566,14 +538,14 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 								}
 
 								//It's an unbounded subscriber or there is enough capacity to process the signal
-								route(event, sub);
+								RingBufferSubscriberUtils.route(event, subscriber);
 								nextSequence++;
 							} else {
 								//Complete or Error are terminal events, we shutdown the processor and process the signal
 								running.set(false);
-								route(event, sub);
+								RingBufferSubscriberUtils.route(event, subscriber);
 								//only alert on error (immediate), complete will be drained as usual with waitFor
-								if(event.type == SType.ERROR){
+								if (event.type == MutableSignal.Type.ERROR) {
 									sequenceBarrier.alert();
 								}
 								throw AlertException.INSTANCE;
@@ -587,7 +559,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 							break;
 						} else {
 							long cursor = sequenceBarrier.getCursor();
-							if (dataProvider.get(cursor).type != SType.NEXT) {
+							if (dataProvider.get(cursor).type != MutableSignal.Type.NEXT) {
 								sequence.set(cursor);
 								nextSequence = cursor;
 							} else {
@@ -596,7 +568,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 							sequenceBarrier.clearAlert();
 						}
 					} catch (final Throwable ex) {
-						sub.onError(ex);
+						subscriber.onError(ex);
 						sequence.set(nextSequence);
 						nextSequence++;
 					}
@@ -606,5 +578,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				running.set(false);
 			}
 		}
+
 	}
+
 }

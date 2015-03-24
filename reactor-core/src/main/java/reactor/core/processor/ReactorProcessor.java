@@ -31,16 +31,15 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 	protected static final int DEFAULT_BUFFER_SIZE = 1024;
 	protected static final int SMALL_BUFFER_SIZE   = 32;
 
-	protected final ClassLoader context = new ClassLoader(Thread.currentThread()
-			.getContextClassLoader()) {
+	protected final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
 	};
 
-	private final AtomicLong refCount;
+	private final AtomicLong subscriberCount;
 
 	protected Subscription upstreamSubscription;
 
 	public ReactorProcessor(boolean autoCancel) {
-		this.refCount = autoCancel ? new AtomicLong(0l) : null;
+		this.subscriberCount = autoCancel ? new AtomicLong(0l) : null;
 	}
 
 	@Override
@@ -57,48 +56,22 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 		this.upstreamSubscription = s;
 	}
 
-	protected void incrementSubscribers(){
-		if(refCount != null){
-			refCount.incrementAndGet();
+	protected void incrementSubscribers() {
+		if (subscriberCount != null) {
+			subscriberCount.incrementAndGet();
 		}
 	}
 
-	protected boolean decrementSubscribers(){
+	protected boolean decrementSubscribers() {
 		Subscription subscription = upstreamSubscription;
-		if (refCount != null && refCount.decrementAndGet() == 0l && subscription != null) {
+		if (subscriberCount != null && subscriberCount.decrementAndGet() == 0l && subscription != null) {
 			upstreamSubscription = null;
 			subscription.cancel();
 			return true;
 		}
 		return false;
 	}
-	
+
 	public abstract long getAvailableCapacity();
 
-	/**
-	 * A Container for data passed on this processor
-	 *
-	 * @param <E> the type of the contained value
-	 */
-	protected static class MutableSignal<E> {
-		protected SType     type;
-		protected Throwable throwable;
-		protected E         value;
-
-		public MutableSignal(SType type, Throwable throwable, E value) {
-			this.type = type;
-			this.throwable = throwable;
-			this.value = value;
-		}
-
-	}
-
-	/**
-	 * The type of signal (error|next|complete)
-	 */
-	protected enum SType {
-		ERROR,
-		NEXT,
-		COMPLETE
-	}
 }
