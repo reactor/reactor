@@ -320,9 +320,38 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return the new {@link reactor.fn.support.Tap}
 	 * @see Consumer
 	 */
+	@SuppressWarnings("unchecked")
 	public final <E> Stream<E> process(final Processor<O, E> processor) {
 		subscribe(processor);
-		return Streams.wrap(processor);
+		if(Stream.class.isAssignableFrom(processor.getClass())){
+			return (Stream<E>)processor;
+		}
+		return new Stream<E>() {
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super E> s) {
+				try{
+					processor.subscribe(s);
+				}catch(Throwable t){
+					s.onError(t);
+				}
+			}
+		};
 	}
 
 	/**
